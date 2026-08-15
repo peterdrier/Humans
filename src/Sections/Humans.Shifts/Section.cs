@@ -9,6 +9,7 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
+using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Application.Interfaces;
@@ -90,5 +91,24 @@ public sealed class Section : ISection
 
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
+
+        // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's
+        // contracts leaf — so the section pushes its own rows in
+        // (memory/architecture/base-ui-registries-are-section-populated.md, Peter 2026-08-09).
+        // An unregistered value does not fail loudly: EnumBadgeMap.For falls back to
+        // "bg-secondary". ShiftsArchitectureTests pins all nine by value.
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [ShiftPeriod.Build] = "bg-info",
+            [ShiftPeriod.Event] = "bg-success",
+            [ShiftPeriod.Strike] = "bg-secondary",
+
+            [SignupStatus.Pending] = "bg-warning text-dark",
+            [SignupStatus.Confirmed] = "bg-success",
+            [SignupStatus.Refused] = "bg-danger",
+            [SignupStatus.Bailed] = "bg-secondary",
+            [SignupStatus.Cancelled] = "bg-dark",
+            [SignupStatus.NoShow] = "bg-danger",
+        });
     }
 }

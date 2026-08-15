@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Events.Contracts;
 
 /// <summary>
 /// Drives the instant favourite heart shared by Browse, the events card, and
@@ -6,6 +6,8 @@ namespace Humans.UI.Models;
 /// <c>_FavouriteButton.cshtml</c> and handled by <c>wwwroot/js/site.js</c>:
 /// the button toggles the favourite through the JSON API without reloading the
 /// page, so the user's filters and scroll position survive.
+/// <para>Under <c>Contracts/</c> rather than <c>Models/</c> because Shell's EventsCard
+/// component binds it (HUM0034 — a section type is internal by default).</para>
 /// </summary>
 public sealed class FavouriteButtonModel
 {
@@ -26,11 +28,10 @@ public sealed class FavouriteButtonModel
     public string? ConfirmMessage { get; init; }
 
     // Labels are supplied by the caller rather than looked up in the partial. The strings
-    // are Events' (Events_AddToFavourites and friends) and live in EventsResource since
-    // nobodies-collective/Humans#866 G5, but this model and its partial are Humans.UI —
-    // Base, which must not reference a section. Each caller localizes from the resource
-    // set it already has, and the partial stays resource-neutral for the next section
-    // that needs a favourite heart.
+    // are Events' (Events_AddToFavourites and friends) and live in EventsResource. The
+    // model and its partial moved out of Humans.UI into this section at G5 lane 4b-i
+    // (nobodies-collective/Humans#866); the caller-supplies-labels shape stays because
+    // Shell's EventsCard renders the heart too and binds SharedResource, not EventsResource.
 
     /// <summary>Title/ARIA label for "add to favourites".</summary>
     public required string AddTitle { get; init; }

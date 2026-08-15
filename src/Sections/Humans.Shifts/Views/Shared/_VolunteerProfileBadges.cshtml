@@ -1,4 +1,4 @@
-@model Humans.UI.Models.VolunteerBadgesViewModel
+@model Humans.Shifts.Contracts.VolunteerBadgesViewModel
 
 @if (Model != null)
 {
@@ -21,7 +21,9 @@
         }
         @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.MedicalConditions))
         {
-            <span class="badge bg-danger" title="@Model.MedicalConditions">@Localizer["Medical_Badge"]</span>
+            @* Medical_Badge stayed in SharedResource — Shifts' Localizer is ShiftsResource, so
+               this call site must be SharedLocalizer or the key renders raw in all six languages. *@
+            <span class="badge bg-danger" title="@Model.MedicalConditions">@SharedLocalizer["Medical_Badge"]</span>
         }
     </span>
 }

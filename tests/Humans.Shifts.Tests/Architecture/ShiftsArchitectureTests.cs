@@ -1,7 +1,11 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Onboarding;
+using Humans.Shifts.Contracts;
 using Humans.UI;
+using Humans.UI.Models.Tables;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Xunit;
 
@@ -67,5 +71,42 @@ public class ShiftsArchitectureTests
         // The SDK derives the manifest name from this file's namespace, not its folder, so
         // Humans.Shifts.Resources here would degrade the whole set to raw keys (design §3).
         typeof(ShiftsResource).Namespace.Should().Be("Humans.Shifts");
+    }
+
+    [HumansFact]
+    public void SectionRegistersABadgeClassForEveryShiftPeriodAndSignupStatus()
+    {
+        // Humans.UI cannot name ShiftPeriod or SignupStatus any more, so the badge rows moved
+        // here from its literal map (Peter, 2026-08-09 —
+        // memory/architecture/base-ui-registries-are-section-populated.md; G5 lane 4b-i,
+        // nobodies-collective/Humans#866). An unregistered value does not fail:
+        // EnumBadgeMap.For falls back to "bg-secondary" and the badge renders grey, which no
+        // build, suite or HTML diff would flag — and two of these nine legitimately *are*
+        // bg-secondary, so "not the fallback" cannot be the assertion. The nine classes are
+        // pinned by value instead, exactly as Humans.UI's literal held them before the move.
+        new Section().Register(new ServiceCollection(), new ConfigurationBuilder().Build());
+
+        var periods = Enum.GetValues<ShiftPeriod>()
+            .ToDictionary(p => p.ToString(), p => EnumBadgeMap.For(p), StringComparer.Ordinal);
+
+        periods.Should().BeEquivalentTo(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Build"] = "bg-info",
+            ["Event"] = "bg-success",
+            ["Strike"] = "bg-secondary",
+        });
+
+        var statuses = Enum.GetValues<SignupStatus>()
+            .ToDictionary(s => s.ToString(), s => EnumBadgeMap.For(s), StringComparer.Ordinal);
+
+        statuses.Should().BeEquivalentTo(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Pending"] = "bg-warning text-dark",
+            ["Confirmed"] = "bg-success",
+            ["Refused"] = "bg-danger",
+            ["Bailed"] = "bg-secondary",
+            ["Cancelled"] = "bg-dark",
+            ["NoShow"] = "bg-danger",
+        });
     }
 }

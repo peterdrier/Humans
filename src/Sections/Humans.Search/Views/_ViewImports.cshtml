@@ -7,8 +7,10 @@
    that page's four-key message set to claim it would split the set.
 
    No <vc:> element in either view: the Humans bucket renders through the _HumanSearchResults
-   partial, which moved down to Humans.UI so its <vc:human> resolves against Humans.UI's own
-   _ViewImports rather than this one. Guarded by SearchPageRenderTests (step 12). *@
+   partial, which lives in Humans.Users since G5 lane 4b-i (nobodies-collective/Humans#866),
+   so its <vc:human> resolves against that section's Views/Shared/_ViewImports rather than
+   this one. Its model, HumanSearchResultViewModel, stays in Humans.UI so this section can
+   still name it. Guarded by SearchPageRenderTests (step 12). *@
 @using Humans.Application.DTOs
 @using Humans.Search
 @using Humans.Search.Models

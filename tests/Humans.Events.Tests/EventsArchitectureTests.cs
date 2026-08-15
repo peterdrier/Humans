@@ -81,8 +81,14 @@ public class EventsArchitectureTests
         // carrying [assembly: Section("…")], so internal controllers still route
         // (memory/architecture/section-controllers-need-feature-provider.md — which says in
         // as many words: do not "fix" a 404 by making the controller public).
-        // The section's cross-section surface is the separate Humans.Events.Contracts
-        // assembly, so nothing in *this* one needs to be visible outside it.
+        // The section's cross-section surface is mostly the separate Humans.Events.Contracts
+        // assembly. One exception since G5 lane 4b-i (nobodies-collective/Humans#866):
+        // FavouriteButtonModel, which moved here from Humans.UI and is bound by Shell's
+        // EventsCard component (src/Humans.Web/Views/Shared/Components/EventsCard/Default
+        // .cshtml) as well as this section's Browse and Schedule views. It is a view model,
+        // not a cross-section DTO, so it sits in this assembly's Contracts/ folder rather
+        // than in the leaf — the same placement Teams uses for HumansTeamControllerBase and
+        // Shifts for ShiftSignupsViewComponent.
         // Generated migration classes are emitted `public partial` by `dotnet ef` and are
         // never hand-edited (memory/process/never-hand-edit-migrations); Store's BaselineStore
         // is public for the same reason. They are excluded rather than internalized.
@@ -93,8 +99,13 @@ public class EventsArchitectureTests
             .ToList();
 
         publicTypes.Should().BeEquivalentTo(
-            ["Humans.Events.EventsResource", "Humans.Events.Section"],
-            because: "a section exposes only its ISection entry point and its resource marker; "
+            [
+                "Humans.Events.Contracts.FavouriteButtonModel",
+                "Humans.Events.EventsResource",
+                "Humans.Events.Section",
+            ],
+            because: "a section exposes its ISection entry point, its resource marker and its "
+                   + "Contracts/ folder and nothing else; "
                    + "the resource marker is public because the boot localization diagnostic "
                    + "discovers it via GetExportedTypes()");
     }

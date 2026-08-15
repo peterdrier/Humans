@@ -1,5 +1,12 @@
-namespace Humans.UI.Models;
+namespace Humans.Teams.Contracts;
 
+/// <summary>
+/// Render model for <c>_ShiftsSummaryCard</c>. Teams' — not Shifts': the only producer is
+/// <c>TeamController.MapShiftsSummary</c> and the only renderer is <c>Team/Details</c>
+/// (plus Shell's widget gallery). No Shifts type appears on it
+/// (nobodies-collective/Humans#866, G5 lane 4b-i). Under <c>Contracts/</c> rather than
+/// <c>Models/</c> because Shell's widget gallery binds it (HUM0034).
+/// </summary>
 public class ShiftsSummaryCardViewModel
 {
     public int TotalSlots { get; set; }

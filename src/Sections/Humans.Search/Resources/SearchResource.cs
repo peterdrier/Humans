@@ -17,7 +17,7 @@ namespace Humans.Search;
 /// in <c>SharedResource</c>, because their renderers are elsewhere:
 /// <c>Search_Title</c>/<c>Search_Placeholder</c> belong to Shell's <c>/Profile/Search</c>
 /// person-search page, <c>Search_NoResults</c>/<c>Search_MatchedIn</c> to the
-/// <c>Humans.UI</c> <c>_HumanSearchResults</c> partial four pages render, and
+/// <c>Humans.Users</c> <c>_HumanSearchResults</c> partial four pages render, and
 /// <c>Search_MinChars</c> is read by <c>/Profile/Search</c> and by this section's own
 /// <c>Index.cshtml</c>. Carving that fifth key would split the person-search page's
 /// four-key message set to claim one string, so the section binds

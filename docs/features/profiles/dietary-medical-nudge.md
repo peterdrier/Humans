@@ -5,7 +5,7 @@
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs
   src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Views/Shared/_VolunteerProfileBadges.cshtml
+  src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml
 -->
 <!-- freshness:flag-on-change
   Qualifying-shift threshold, dietary/medical field shape, NoInfoAdmin visibility rule, or Things-to-do card composition.

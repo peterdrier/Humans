@@ -20,10 +20,13 @@ namespace Humans.Shifts;
 /// </para>
 /// <list type="bullet">
 /// <item><description>
-/// <c>ShiftsSummary_</c> (7) — rendered by <c>Humans.UI/Views/Shared/_ShiftsSummaryCard.cshtml</c>.
-/// <c>Humans.UI</c> cannot reference a section, so a key it renders stays shared (Teams' rule).
-/// The partial and its view model are logged as deferred debt: they are Shifts vocabulary and
-/// belong here eventually, and the keys follow them when they move.
+/// <c>ShiftsSummary_</c> (7) — rendered by
+/// <c>Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</c> since G5 lane 4b-i
+/// (nobodies-collective/Humans#866). Re-measured then: the card has <b>zero</b> Shifts
+/// consumers — Teams builds the model, Teams renders it — so it is Teams' vocabulary, not
+/// this section's, and the seven keys stay in <c>SharedResource</c> because
+/// <c>Humans.Shifts</c> already references <c>Humans.Teams</c> and cannot be referenced back.
+/// The partial binds <c>SharedLocalizer</c> for all seven.
 /// </description></item>
 /// <item><description>
 /// <c>Shifts_SetUp</c> / <c>Shifts_Event</c> / <c>Shifts_Strike</c> — <c>Humans.Teams</c>'

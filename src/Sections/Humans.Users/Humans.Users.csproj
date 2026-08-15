@@ -36,8 +36,9 @@
       component now lives here, so the only Humans.Web file left naming an internal Users type
       is Controllers/WidgetGalleryController.cs — its WidgetGalleryViewModel holds
       SampleProfileSummary (ProfileSummaryViewModel) and SampleHumanSearchResults
-      (HumanSearchResultViewModel) to render the _ProfileCard / _HumanPopover /
-      _HumanSearchResults sample cards in the Shell-owned widget catalogue.
+      (HumanSearchResultViewModel, still Humans.UI's — only the _HumanSearchResults *partial*
+      moved here at G5 lane 4b-i, nobodies-collective/Humans#866) to render the _ProfileCard /
+      _HumanPopover / _HumanSearchResults sample cards in the Shell-owned widget catalogue.
 
       Removing the grant therefore needs a decision, not a move: either the catalogue's
       Users cards are fed by the section (a "section contributes gallery samples" seam) or

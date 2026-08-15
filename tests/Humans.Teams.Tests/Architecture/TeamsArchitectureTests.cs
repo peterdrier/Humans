@@ -211,6 +211,12 @@ public class TeamsArchitectureTests
         exported.Should().BeEquivalentTo(
         [
             "Humans.Teams.Contracts.HumansTeamControllerBase",
+            // Shell's widget gallery binds it (WidgetGalleryController.SampleShiftsSummary),
+            // so it cannot be internal. Under Contracts/ rather than Models/ for that reason
+            // — G5 lane 4b-i, nobodies-collective/Humans#866. It is Teams' and not Shifts'
+            // because Teams both builds and renders it, and Humans.Shifts already references
+            // Humans.Teams, so the plan's Shifts destination would have been a cycle.
+            "Humans.Teams.Contracts.ShiftsSummaryCardViewModel",
             "Humans.Teams.Section",
             "Humans.Teams.TeamsResource",
         ]);

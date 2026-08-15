@@ -1,9 +1,8 @@
-using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Humans.UI.Models.Tables;
+using Humans.Users.Contracts;
 
-using Humans.Shifts.Contracts;
 namespace Humans.Web.Tests.Models.Tables;
 
 public class EnumBadgeMapTests
@@ -11,13 +10,15 @@ public class EnumBadgeMapTests
     [HumansFact]
     public void Mapped_enum_values_get_their_registered_badge_class()
     {
-        // Deliberately a Base enum. A moved section's rows reach the map through
+        // Deliberately Base enums. A moved section's rows reach the map through
         // EnumBadgeMap.Register from its Section.Register, which does not run in a unit
-        // test — asserting on one here would be asserting on DI having been composed
-        // (the Tickets rows used to be the sample, until that section's G5 move).
-        EnumBadgeMap.For(SignupStatus.Confirmed).Should().Be("bg-success");
-        EnumBadgeMap.For(ShiftPeriod.Build).Should().Be("bg-info");
-        EnumBadgeMap.For(SignupStatus.Refused).Should().Be("bg-danger");
+        // test — asserting on one here would be asserting on DI having been composed.
+        // (The ShiftPeriod/SignupStatus rows were the sample until Shifts pushed them in
+        // from its own Section.Register — G5 lane 4b-i, nobodies-collective/Humans#866 —
+        // and they are pinned by ShiftsArchitectureTests now.)
+        EnumBadgeMap.For(EmailOutboxStatus.Queued).Should().Be("bg-warning text-dark");
+        EnumBadgeMap.For(EmailOutboxStatus.Sent).Should().Be("bg-success");
+        EnumBadgeMap.For(EmailOutboxStatus.Failed).Should().Be("bg-danger");
     }
 
     [HumansFact]

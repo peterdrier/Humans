@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;

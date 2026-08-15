@@ -1,10 +1,12 @@
-@using Humans.Governance.Contracts
 @* Page-style search results partial — /Profile/Search (PublicAll), /Users/Admin (AdminAll)
    and the Search section's /Search Humans bucket. Admin-only fields render only when present.
-   In Humans.UI rather than Shell so a section view can render it: partial lookup is by name
-   across application parts, but the model type has to be nameable from the section too. *@
+   Owned by Humans.Users since G5 lane 4b-i (nobodies-collective/Humans#866): partial lookup
+   is by name across application parts, so Search and Shell keep rendering it, and its model
+   HumanSearchResultViewModel stays in Base precisely so they can still name it.
+   nobodies-collective/Humans#1061 replaces this with a per-section view component. *@
 @using Humans.UI.Extensions
 @using Humans.UI.ViewComponents
+@using Humans.Users.Extensions
 @model IReadOnlyList<Humans.UI.Models.HumanSearchResultViewModel>
 
 @if (Model.Count == 0)

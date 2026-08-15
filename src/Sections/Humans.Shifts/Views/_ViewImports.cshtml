@@ -25,11 +25,13 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @using NodaTime.Text
-@* Localizer is the section's own 328-key set. SharedLocalizer covers the fifteen keys the
+@* Localizer is the section's own 328-key set. SharedLocalizer covers the keys the
    section renders that stayed in Humans.UI's: Common_*, Nav_MyProfile, Teams_Title,
-   Profile_BuildStrip_Title, and the five Shifts_ keys pinned there by a renderer this
-   assembly cannot be referenced from — see ShiftsResource's remarks for which and why. A
-   call site on the wrong one of the two renders its raw key in all six languages. *@
+   Profile_BuildStrip_Title, Medical_Badge (Shared/_VolunteerProfileBadges, which arrived
+   from Humans.UI at G5 lane 4b-i — nobodies-collective/Humans#866), and the five Shifts_
+   keys pinned there by a renderer this assembly cannot be referenced from — see
+   ShiftsResource's remarks for which and why. A call site on the wrong one of the two
+   renders its raw key in all six languages. *@
 @inject IStringLocalizer<ShiftsResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers

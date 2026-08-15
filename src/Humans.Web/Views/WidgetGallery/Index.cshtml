@@ -4,6 +4,9 @@
 @using Humans.UI.Authorization
 @using Humans.UI.Models.Tables
 @using Humans.Shifts.Contracts
+@* VolunteerBadgesViewModel and ShiftsSummaryCardViewModel moved to their owning sections'
+   Contracts/ at G5 lane 4b-i (nobodies-collective/Humans#866); Humans.Shifts.Contracts and
+   Humans.Teams.Contracts are already imported above. *@
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -441,7 +444,7 @@
                             <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_VolunteerProfileBadges.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
@@ -655,7 +658,7 @@
                             <span class="wg-card-name">_ShiftsSummaryCard.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_ShiftsSummaryCard.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</span>
                     </div>
                     <div class="wg-card-note">Compact shift-staffing card — progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
                     @ParamsBlock(
@@ -907,7 +910,7 @@
                             <span class="wg-card-name">_HumanSearchResults.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchResults.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml</span>
                     </div>
                     <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Users/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
                     @ParamsBlock(
@@ -994,7 +997,7 @@
                             <span class="wg-card-name">_RoleBadge.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RoleBadge.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_RoleBadge.cshtml</span>
                     </div>
                     <div class="wg-card-note">Badge for a TeamMemberRole. Coordinator = warning gold; Member = secondary.</div>
                     @ParamsBlock(

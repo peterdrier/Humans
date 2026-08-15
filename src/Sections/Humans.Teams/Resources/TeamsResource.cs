@@ -11,8 +11,11 @@ namespace Humans.Teams;
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
 /// The set is 190 keys across thirteen prefixes the section is the sole renderer of. Five keys
-/// stay in <c>SharedResource</c> because something outside the section renders them too, and
-/// two of those renderers are <c>Humans.UI</c> partials that cannot see a section set at all:
+/// stay in <c>SharedResource</c> because something outside the section renders them too. Two
+/// of those renderers were <c>Humans.UI</c> partials until G5 lane 4b-i
+/// (nobodies-collective/Humans#866): <c>_RoleBadge</c> is now this section's own file but
+/// Users' ProfileCard and Shell's gallery still render it, and <c>_HumanSearchResults</c> is
+/// <c>Humans.Users</c>'. Neither can see this set, so the keys stay shared:
 /// <c>Teams_Member</c> (<c>_RoleBadge</c>), <c>MyTeams_View</c> (<c>_HumanSearchResults</c>),
 /// <c>Teams_Title</c> (four Shell pages), <c>MyTeams_Role</c> (<c>_RolesListContent</c>,
 /// <c>UsersAdmin/AddRole</c>) and <c>TeamDetail_Actions</c> (<c>UsersAdmin/AdminDetail</c>).

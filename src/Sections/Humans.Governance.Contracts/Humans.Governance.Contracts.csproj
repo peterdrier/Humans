@@ -18,8 +18,10 @@
 
     G5 lane 4b-2k added MembershipStatus and MembershipStatusLabels here. MembershipStatus is
     named by this leaf's own MembershipSnapshot (Budget's rule); MembershipStatusLabels came
-    with it because its only consumer is Humans.UI's StatusBadgeExtensions, and Base can name a
-    leaf but not a section project.
+    with it because its only consumer was Humans.UI's StatusBadgeExtensions, and Base can name a
+    leaf but not a section project. G5 lane 4b-i moved that extension into Humans.Users (it was
+    Base's last site on this leaf), so the consumer is now Humans.Users/Extensions/
+    StatusBadgeExtensions.cs — a section naming a leaf, which is the ordinary direction.
 
     References Humans.Interfaces (IApplicationService) and — new at G5 lane 3b
     (nobodies-collective/Humans#866) — Humans.Users.Contracts, for MembershipTier alone.

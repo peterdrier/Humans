@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 namespace Humans.UI.Models;
 
 /// <summary>
@@ -12,7 +11,9 @@ namespace Humans.UI.Models;
 /// <c>HumanLookupSearchResult</c> and <c>AssigneeOption</c> do: a section cannot
 /// name a <c>Humans.Web</c> type, it carries no section vocabulary, and
 /// duplicating it would fork the shape the shared partial exists to keep
-/// (G5-SECTION-TEMPLATE.md step 6).
+/// (G5-SECTION-TEMPLATE.md step 6). The partial itself moved to <c>Humans.Users</c>
+/// at G5 lane 4b-i (nobodies-collective/Humans#866); this model stayed exactly so
+/// Shell and Search can keep naming it.
 /// </remarks>
 public class HumanSearchResultViewModel
 {
