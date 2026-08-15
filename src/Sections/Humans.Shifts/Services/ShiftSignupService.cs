@@ -2,7 +2,7 @@ using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Notifications.Contracts;

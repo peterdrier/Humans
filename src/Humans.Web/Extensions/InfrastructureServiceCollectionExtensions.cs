@@ -47,7 +47,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
         services.AddAuthSection();
-        services.AddEarlyEntrySection();
         // AuditLog's read+render owner. It resolves actor/subject/team display names
         // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes
         // it a cross-section orchestrator rather than part of the horizontal AuditLog

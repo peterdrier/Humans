@@ -1,9 +1,8 @@
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Services.EarlyEntry;
+namespace Humans.EarlyEntry.Services;
 
 /// <summary>
 /// Singleton caching decorator for <see cref="IEarlyEntryService"/>. Caches the
@@ -13,7 +12,7 @@ namespace Humans.Infrastructure.Services.EarlyEntry;
 /// roster must see live data). No startup warmup — cold-loaded on first read.
 /// EE is derived, so external write paths evict via <see cref="IEarlyEntryInvalidator"/>.
 /// </summary>
-public sealed class CachingEarlyEntryService(
+internal sealed class CachingEarlyEntryService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEarlyEntryService> logger)
     : TrackedCache<Guid, UserEarlyEntry?>("EarlyEntry.UserEarlyEntry", warmOnStartup: false, logger),
