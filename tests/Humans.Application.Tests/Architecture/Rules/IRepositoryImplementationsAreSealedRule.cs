@@ -46,7 +46,12 @@ public class IRepositoryImplementationsAreSealedRule
         // Anchor: any Infrastructure type gives us the assembly to scan — but it must be one
         // that stays there. AuditLogRepository was the anchor until its own G5 move, which
         // would have silently repointed "the Infrastructure assembly" at a section.
+        // G5 lane 3a-2 (nobodies-collective/Humans#866) took AddSectionDbContext out of this
+        // type and into Humans.Interfaces (Base) under the *same namespace*, so the name below
+        // now resolves against two assemblies' worth of namespace — hence the identity check.
         var infraAssembly = typeof(InfrastructureServiceCollectionExtensions).Assembly;
+        infraAssembly.GetName().Name.Should().Be("Humans.Infrastructure",
+            because: "an anchor whose type leaves this assembly would silently retarget the sweep and pass vacuously instead of failing");
 
         var unsealed = infraAssembly
             .GetTypes()

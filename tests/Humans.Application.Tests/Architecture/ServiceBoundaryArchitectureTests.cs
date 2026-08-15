@@ -230,7 +230,10 @@ public class ServiceBoundaryArchitectureTests
     // COVERAGE NOTE: the marker/infra interfaces that now live in Humans.Interfaces under
     // Humans.Application.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
     // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
-    // Humans.Interfaces has no EF reference, so it declares no entity type to expose.
+    // Humans.Interfaces declares no entity type to expose. It stopped being EF-free at G5
+    // lane 3a-2, which put the AddSectionDbContext cluster there, but that cluster is
+    // registration plumbing over an open TContext: the assembly still maps no table and owns
+    // no DbSet, so there is nothing there for an entity-returning read to leak.
     private static IEnumerable<Type> ApplicationInterfaceTypes()
     {
         var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;

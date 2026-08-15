@@ -36,7 +36,12 @@ public class RepositoryImplementationsLiveInInfrastructureRule
     {
         // Anchor must be a type that stays in Humans.Infrastructure — AuditLogRepository was
         // the anchor until its own G5 move (see IRepositoryImplementationsAreSealedRule).
+        // G5 lane 3a-2 (nobodies-collective/Humans#866) split AddSectionDbContext out of this
+        // type into Humans.Interfaces (Base) under the same namespace, so assert the identity
+        // rather than trusting the name.
         var infraAssembly = typeof(InfrastructureServiceCollectionExtensions).Assembly;
+        infraAssembly.GetName().Name.Should().Be("Humans.Infrastructure",
+            because: "an anchor whose type leaves this assembly would silently retarget the sweep and pass vacuously instead of failing");
 
         var violations = infraAssembly
             .GetTypes()

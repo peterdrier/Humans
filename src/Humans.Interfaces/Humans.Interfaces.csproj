@@ -23,6 +23,17 @@
     `_ViewImports`, `<Using Include>` or analyzer full-name constant changed anywhere in the
     repo. The rename of this project to Humans.Base is a later lane. Still zero
     ProjectReference elements — check that before adding one.
+
+    G5 lane 3a-2 followed with the AddSectionDbContext cluster: the generic registration seam
+    (SectionDbContextServiceCollectionExtensions), SectionDbContextRegistration,
+    SectionMigrationRunner, DatabaseMigrationHostedService, PreMigrationSnapshot,
+    SectionMigrationsHistory, QueryMonitoringInterceptor and QueryStatistics. All 28
+    table-owning sections call the seam from their own Section.cs and none of them may
+    reference Humans.Infrastructure, so Base is the only place it can live. Namespaces
+    preserved again (Humans.Infrastructure.Data / .Hosting), so no call site moved.
+    InfrastructureServiceCollectionExtensions itself deliberately stayed in
+    Humans.Infrastructure — two architecture rules read typeof(…).Assembly off it to mean
+    "the Humans.Infrastructure assembly".
   -->
 
   <!--
@@ -33,6 +44,18 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <!--
+      Followed the G5 lane 3a-2 arrivals: DatabaseMigrationHostedService,
+      SectionDbContextRegistration, SectionMigrationRunner and PreMigrationSnapshot are internal
+      and stay that way — 26 .Contracts leaves inherit this assembly's public surface, and the
+      migration plumbing is not part of it. Humans.Infrastructure still names two of them
+      (AddHumansPersistence registers the hosted service, AdminDatabaseDiagnosticsRepository
+      injects the registrations) and Humans.Integration.Tests drives SectionMigrationRunner
+      directly; both were already inside Humans.Infrastructure's own InternalsVisibleTo set
+      before the move.
+    -->
+    <InternalsVisibleTo Include="Humans.Infrastructure" />
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -58,6 +81,24 @@
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Octokit" />
+
+    <!--
+      Added by G5 lane 3a-2 (nobodies-collective/Humans#866) with the AddSectionDbContext
+      cluster: the generic registration seam is called from all 28 table-owning sections, so it
+      has to live below every one of them, and its body names DbContext, AddDbContext,
+      AddDbContextFactory, IInterceptor, CoreEventId, UseNpgsql and UseNodaTime. This is the
+      moment Base stops being EF-free — approved for that reason, not by drift. It changes no
+      leaf's own reference set: the compiler emits an assembly reference only for what a project
+      actually uses, and no .Contracts leaf names an EF type.
+        Microsoft.EntityFrameworkCore                    — DbContext, the options builders, the
+                                                           interceptor base and the migration runner.
+        Npgsql.EntityFrameworkCore.PostgreSQL            — UseNpgsql / NpgsqlDataSource.
+        Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime   — UseNodaTime on the Npgsql builder.
+      Still zero ProjectReference elements — check that before adding one.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
   </ItemGroup>
 
 </Project>
