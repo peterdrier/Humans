@@ -49,7 +49,11 @@ public class AuditLogArchitectureTests
 
     // ── Section boundary (G5, nobodies-collective/Humans#866) ────────────────
 
-    private static System.Reflection.Assembly SectionAssembly => typeof(IAuditLogRepository).Assembly;
+    // Anchored on Section rather than IAuditLogRepository: Section is the ISection registration
+    // and cannot leave Humans.AuditLog, so this anchor is immune by construction. A repository
+    // interface anchor would silently retarget onto Humans.AuditLog.Contracts the day the
+    // interface moves there, after which every sweep below goes near-empty and still passes.
+    private static System.Reflection.Assembly SectionAssembly => typeof(Section).Assembly;
 
     [HumansFact]
     public void SectionTypesTakeNoStringLocalizer()

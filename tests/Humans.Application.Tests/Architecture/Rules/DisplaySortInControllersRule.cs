@@ -80,6 +80,10 @@ public class DisplaySortInControllersRule
     /// </remarks>
     private static IEnumerable<string> RepositoryFiles(string repoRoot)
     {
+        // Base's repository folder is allowed to be absent: G5 drains it section by section and
+        // it legitimately disappears when the last one leaves. src/Sections below is the
+        // opposite — it is the destination, so its absence means the layout moved and the sweep
+        // would otherwise report success by scanning nothing.
         var baseRepos = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Repositories");
         if (Directory.Exists(baseRepos))
         {
@@ -90,7 +94,14 @@ public class DisplaySortInControllersRule
         }
 
         var sections = Path.Combine(repoRoot, "src", "Sections");
-        if (!Directory.Exists(sections)) yield break;
+        if (!Directory.Exists(sections))
+        {
+            throw new DirectoryNotFoundException(
+                $"DisplaySortInControllers: expected section root '{sections}' does not exist. " +
+                "Every G5 section repository lives under it, so a missing path means the sweep " +
+                "scans nothing and the ratchet reads every baseline row as fixed. Update the " +
+                "path here rather than letting the rule pass vacuously.");
+        }
 
         foreach (var sectionData in Directory.EnumerateDirectories(sections)
                      .Select(d => Path.Combine(d, "Data"))

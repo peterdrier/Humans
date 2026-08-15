@@ -116,15 +116,16 @@ public class CampsArchitectureTests
             "Humans.Camps.Services.CampRoleService",
         };
 
-        var assemblies = new[]
-        {
-            typeof(CampService).Assembly,
-            typeof(CampRepository).Assembly,
-            typeof(CachingCampService).Assembly,
-        };
+        // Anchored on Section, not on the three service/repo types this list used to name:
+        // they were three assemblies before G5 and are one (Humans.Camps) now, so the array was
+        // scanning the same assembly three times. Section is the ISection registration and
+        // cannot leave Humans.Camps; any of the old anchors would have silently retargeted onto
+        // Humans.Camps.Contracts on a move, leaving this tripwire scanning an assembly with no
+        // ICampRepository consumers in it and passing vacuously.
+        var sectionAssembly = typeof(Section).Assembly;
 
-        var consumers = assemblies
-            .SelectMany(a => a.GetTypes())
+        var consumers = sectionAssembly
+            .GetTypes()
             .Where(t => t.GetConstructors()
                 .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampRepository))))
             .Select(t => t.FullName ?? t.Name)
@@ -147,7 +148,8 @@ public class CampsArchitectureTests
     [HumansFact]
     public void CampInfoSaveChangesInterceptor_IsNotPresent()
     {
-        var found = typeof(CachingCampService).Assembly
+        // Section anchor: immune to CachingCampService relocating (see above).
+        var found = typeof(Section).Assembly
             .GetTypes()
             .FirstOrDefault(t => string.Equals(t.Name, "CampInfoSaveChangesInterceptor", StringComparison.Ordinal));
 
@@ -166,7 +168,8 @@ public class CampsArchitectureTests
     [HumansFact]
     public void CampRoleService_IsTheOnlyCampsSideGoogleGroupMembershipSource()
     {
-        var campsAssembly = typeof(CampService).Assembly;
+        // Section anchor: immune to CampService relocating (see above).
+        var campsAssembly = typeof(Section).Assembly;
         var campsClaimants = campsAssembly
             .GetTypes()
             .Where(t => !t.IsAbstract

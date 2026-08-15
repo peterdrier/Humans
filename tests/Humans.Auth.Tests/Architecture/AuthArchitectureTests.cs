@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Auth.Data;
 using Humans.Auth.Services;
 
 namespace Humans.Auth.Tests.Architecture;
@@ -23,7 +22,11 @@ namespace Humans.Auth.Tests.Architecture;
 /// </remarks>
 public class AuthArchitectureTests
 {
-    private static System.Reflection.Assembly SectionAssembly => typeof(IRoleAssignmentRepository).Assembly;
+    // Anchored on Section rather than IRoleAssignmentRepository: Section is the ISection
+    // registration and cannot leave Humans.Auth, so this anchor is immune by construction. A
+    // repository interface anchor would silently retarget onto Humans.Auth.Contracts the day the
+    // interface moves there, after which every sweep below goes near-empty and still passes.
+    private static System.Reflection.Assembly SectionAssembly => typeof(Section).Assembly;
 
     [HumansFact]
     public void SectionServicesTakeNoDbContextOrStore()
