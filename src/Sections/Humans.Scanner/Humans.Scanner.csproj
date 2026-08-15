@@ -43,6 +43,7 @@
     -->
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
       Calendar: the ticket card reads the Human's shift commitments through
       IICalFeedService. Calendar's Contracts/ is a folder, not a leaf, so the reference is

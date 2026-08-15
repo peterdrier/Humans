@@ -9,7 +9,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;

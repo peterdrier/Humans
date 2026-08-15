@@ -351,7 +351,7 @@ Three fanouts exist today:
 |--------------|----------------------|----------------------|---------------|
 | `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
-| `IEarlyEntryService` (`EarlyEntryOrchestrator`) | `IEarlyEntryProvider` (`Humans.Application.Interfaces.EarlyEntry`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
+| `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 
 Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
 

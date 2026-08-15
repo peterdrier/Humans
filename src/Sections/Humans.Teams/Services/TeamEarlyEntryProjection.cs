@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 

@@ -10,7 +10,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

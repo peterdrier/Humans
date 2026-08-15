@@ -1,6 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;

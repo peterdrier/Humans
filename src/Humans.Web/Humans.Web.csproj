@@ -14,6 +14,7 @@
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
+    <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <ProjectReference Include="..\Sections\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Sections\Humans.Cantina\Humans.Cantina.csproj" />
