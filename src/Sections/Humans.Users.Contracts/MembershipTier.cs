@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Membership tier indicating the level of organizational involvement.

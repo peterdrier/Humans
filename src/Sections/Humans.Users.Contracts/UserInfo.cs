@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -246,7 +245,7 @@ public sealed record UserInfo(
     /// address sync actually targets. That target mirrors
     /// <c>GoogleWorkspaceSyncService.TryGetGoogleEmail</c>: the verified
     /// <see cref="UserEmailInfo.IsGoogle"/> row, else the verified provider (OAuth) fallback row
-    /// (covers ~pre-#687 users with no IsGoogle row). <see cref="Humans.Domain.Enums.GoogleEmailStatus.Unknown"/>
+    /// (covers ~pre-#687 users with no IsGoogle row). <see cref="GoogleEmailStatus.Unknown"/>
     /// when there is no such address. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c>
     /// column (nobodies-collective/Humans#687); a rejection no longer survives switching Google address.
     /// </summary>

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 
 namespace Humans.Users.Contracts;
 
@@ -23,7 +22,9 @@ namespace Humans.Users.Contracts;
 /// The contract is "do the thing", never "give me the rows" (design §15 step 6b):
 /// the old job body reached across seven sections' contracts from Base.
 /// </remarks>
-public interface INonCompliantMemberSuspension : IOrchestrator
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IOrchestrator".
+// Lost on the implementing class: HUM0026 and HUM0027. See Humans.Users.Contracts.csproj.
+public interface INonCompliantMemberSuspension
 {
     /// <summary>
     /// Suspends every member who is now non-compliant and runs each suspension's

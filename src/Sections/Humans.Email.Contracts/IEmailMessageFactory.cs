@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Email.Contracts;

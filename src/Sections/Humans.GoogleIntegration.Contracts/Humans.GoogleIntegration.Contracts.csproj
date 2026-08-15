@@ -40,26 +40,28 @@
     the section project, which references this leaf; the tables, columns and migrations are
     untouched (namespace-only change, verified: has-pending-model-changes reports none).
 
-    SyncAction is the one member of that set that did NOT move — it stays in Humans.Domain.Enums.
-    It is a parameter type of IGoogleGroupSync.ReconcileOneAsync, which HangfireGoogleGroupSyncScheduler
-    enqueues and schedules; Hangfire serializes parameter types as assembly-qualified names, so moving
-    it would break every queued or retry-delayed scoped group-sync job across the deploy. Reverted on
-    the Codex P1 raised against peterdrier/Humans#1310. See the remarks on the enum itself.
+    SyncAction lagged the rest of that set by one lane and is here now (G5 lane 3b). Lane 4b-2j
+    moved it and was reverted on a Codex P1 against peterdrier/Humans#1310, on the grounds that
+    it is a parameter type of IGoogleGroupSync.ReconcileOneAsync, which
+    HangfireGoogleGroupSyncScheduler enqueues and schedules, and Hangfire serializes parameter
+    types as assembly-qualified names. Peter's ruling, 2026-08-15: that premise is dead.
+    ReconcileOneAsync is fire-and-forget/delayed and never a recurring job, so no recurring-job
+    id is affected and RecurringJobExtensions needed no 'retired' entry; the only exposure is a
+    job already queued at the moment of deploy, which fails visibly into Hangfire's Failed list
+    and re-converges on the next reconciliation. See the remarks on the enum itself.
 
-    Still references Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and, for
-    exactly two remaining types, Humans.Domain:
-      - GoogleSyncSource — stays in Humans.Domain.Enums because Humans.AuditLog.Contracts names
-        it in IAuditLogService's signature and Base's AuditEvent names it too; Base and another
-        leaf cannot reach this one.
-      - GoogleEmailStatus — one of the four enums the G5 end-state design rides into
-        Humans.Users.Contracts with UserInfo (lane 3d); named here in a <see cref> only.
-    That is the whole of the Humans.Domain edge now, and it dies in lane 3d.
-    Acyclic: Humans.Domain names only Humans.Interfaces.
+    References Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and nothing else.
+    The old Humans.Domain edge is gone with the project itself (lane 3b):
+      - GoogleSyncSource — did not come here. It keeps the Humans.Domain.Enums namespace inside
+        the Humans.Interfaces assembly, because Humans.AuditLog.Contracts names it in
+        IAuditLogService's signature and Base's AuditEvent names it too; Base and another leaf
+        cannot reach this one, so a shared home below both is the only place it fits.
+      - GoogleEmailStatus — went to Humans.Users.Contracts with the rest of the UserInfo object
+        graph. It was named here in a <see cref> only, so no reference was needed.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,16 +29,23 @@
     NonCompliantMemberSuspension) and already referenced this leaf, so it costs zero csproj
     edits here or there; putting it on Humans.Teams would have forced a new Users → Teams edge.
 
-    References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and
-    Humans.Domain — the latter for GoogleEmailStatus alone since lane 3a-1 took SystemTeamType
-    and DomainConstants to Base. GoogleEmailStatus rides to Humans.Users.Contracts in lane 3d,
-    and this ProjectReference dies with it. Acyclic: Humans.Domain names only Humans.Interfaces.
+    References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and — new at
+    G5 lane 3b (nobodies-collective/Humans#866) — Humans.Users.Contracts, for GoogleEmailStatus
+    alone. That enum was the last thing keeping the old Humans.Domain edge alive here (lane
+    3a-1 had already taken SystemTeamType and DomainConstants to Base); lane 3b emptied and
+    deleted Humans.Domain and sent GoogleEmailStatus to its owner. Same single-enum dependency,
+    repointed — not a new coupling to Users' service surface.
+
+    Acyclic: Humans.Users.Contracts holds exactly one ProjectReference of its own
+    (Humans.Onboarding.Contracts, which holds none), so the chain terminates in two hops. Note
+    that Base references Humans.Users.Contracts, so nothing in that project may ever reference
+    this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
-using Humans.Domain.Attributes;
-using Humans.Domain.Enums;
 
 namespace Humans.Users.Contracts;
 

@@ -23,15 +23,14 @@
     (AdultPlayspacePolicy, KidsVisitingPolicy, ElectricalGrid, PerformanceSpaceStatus,
     SoundZone, SpaceSize) plus the CampLink value object.
 
-    References Humans.Interfaces (IApplicationService) and Humans.Domain — the latter now for
-    exactly one type, YesNoMaybe, a generic tri-state with no section owner that CampReadModels
-    names four times. That edge dies when YesNoMaybe gets its phase-3a home in Base. Acyclic:
-    Humans.Domain names only Humans.Interfaces.
+    References Humans.Interfaces (IApplicationService) and nothing else. The one type that used
+    to force a separate Humans.Domain reference — YesNoMaybe, a generic tri-state with no
+    section owner that CampReadModels names four times — reached its Base home in lane 3a-1 and
+    the reference died with the Humans.Domain project itself in lane 3b.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

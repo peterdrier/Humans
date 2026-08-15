@@ -21,15 +21,24 @@
     with it because its only consumer is Humans.UI's StatusBadgeExtensions, and Base can name a
     leaf but not a section project.
 
-    References Humans.Interfaces (IApplicationService) and Humans.Domain, the latter now for
-    MembershipTier alone — the design doc's "UserInfo object graph" ruling sends that one to
-    Humans.Users.Contracts in lane 3d, and this edge dies with it. Same pair
-    Humans.Campaigns.Contracts takes. Acyclic: Humans.Domain names only Humans.Interfaces.
+    References Humans.Interfaces (IApplicationService) and — new at G5 lane 3b
+    (nobodies-collective/Humans#866) — Humans.Users.Contracts, for MembershipTier alone.
+    That enum was the last thing keeping the old Humans.Domain edge alive here; lane 3b
+    emptied and deleted that project, sending MembershipTier to Humans.Users.Contracts per
+    the design doc's "UserInfo object graph" ruling. So this is the same single-enum
+    dependency it always was, repointed at the enum's new owner, not a new coupling to
+    Users' service surface.
+
+    This leaf-to-leaf edge is disclosed and acyclic. Humans.Users.Contracts holds exactly one
+    ProjectReference of its own (Humans.Onboarding.Contracts, which holds none), so the
+    chain from here terminates in two hops and cannot reach back. Note that Base references
+    Humans.Users.Contracts — that is fine in this direction, but it means nothing in
+    Humans.Users.Contracts may ever reference this project.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

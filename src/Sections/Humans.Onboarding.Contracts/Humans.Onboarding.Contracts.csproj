@@ -25,8 +25,22 @@
     reads and their DTOs, the consent-check clear/flag pair, the widget's next-document
     resolver and the session-state seam.
 
-    References nothing at all - every member is primitives, Guids and this project's own
-    two types - so it sits below Humans.Interfaces and the graph stays acyclic.
+    ZERO ProjectReference, AND THAT IS LOAD-BEARING — DO NOT ADD ONE. Every member is
+    primitives, Guids and this project's own types, so it sits below Humans.Interfaces and
+    the graph stays acyclic.
+
+    The part that is not obvious: Humans.Users.Contracts references THIS project (for
+    OnboardingResult), and Base references Humans.Users.Contracts, so Base reaches here.
+    Humans.Users.Contracts is allowed exactly one reference and only because the chain
+    terminates HERE. Add any ProjectReference to this file and you extend that chain past
+    its terminator; add one that leads back toward Base — Humans.Interfaces looks harmless
+    and is the likely first offender — and you close a cycle from three hops away, in a
+    project nobody was looking at. The build will not stop you today: Humans.Interfaces has
+    no project references of its own yet, so the cycle only becomes real when 4b-iii moves
+    HumansControllerBase into Base. G5 lane 3b, nobodies-collective/Humans#866.
+
+    If a type here ever genuinely needs something from another project, move the type out
+    instead of adding the reference.
   -->
 
 </Project>

@@ -55,9 +55,19 @@ public class EnumStringStabilityTests
     /// no persisted string moved.
     ///
     /// G5 lane 4b-2l moved an eighth — <c>AuditAction</c> to <c>Humans.AuditLog.Contracts</c> —
-    /// on the same terms. <c>EmailOutboxStatus</c> deliberately stayed in <c>Humans.Domain.Enums</c>:
-    /// Campaigns' <c>campaign_grants</c> and Surveys' <c>survey_invitations</c> persist it too, so
-    /// it fails the "who writes it to a table" test for a single owner (design §15 step 5, Email).
+    /// on the same terms.
+    ///
+    /// G5 lane 3b emptied and deleted <c>src/Humans.Domain</c>. Four of the rows below moved with
+    /// it: <c>MembershipTier</c>, <c>ConsentCheckStatus</c> and <c>MessageCategory</c> to
+    /// <c>Humans.Users.Contracts</c>, and <c>SyncAction</c> to
+    /// <c>Humans.GoogleIntegration.Contracts</c> beside its <c>GoogleResourceType</c> and
+    /// <c>DrivePermissionLevel</c> siblings. Member names are unchanged in every case, so no
+    /// persisted string moved and no migration is involved — which is exactly what the rows below
+    /// assert. <c>SystemTeamType</c> and <c>EmailOutboxStatus</c> keep the
+    /// <c>Humans.Domain.Enums</c> namespace and now live in the <c>Humans.Interfaces</c> assembly:
+    /// <c>EmailOutboxStatus</c> because Campaigns' <c>campaign_grants</c> and Surveys'
+    /// <c>survey_invitations</c> persist it alongside Email's own outbox, so it fails the "who
+    /// writes it to a table" test for a single owner (design §15 step 5, Email).
     /// </remarks>
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {

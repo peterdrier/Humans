@@ -18,16 +18,29 @@
     surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,
     the repository and the entity.
 
-    References Humans.Interfaces (IApplicationService), Humans.Domain (MembershipTier,
-    MessageCategory and EmailOutboxStatus — Base vocabulary the DTOs name, Campaigns'
-    rule), and Humans.Events.Contracts (EventStatus, named by EventLifecycleNotification).
-    All three sit below Humans.Application, so the graph stays acyclic.
+    References Humans.Interfaces (IApplicationService, and EmailOutboxStatus which stayed
+    there because three sections persist it), Humans.Events.Contracts (EventStatus, named by
+    EventLifecycleNotification), and — new at G5 lane 3b (nobodies-collective/Humans#866) —
+    Humans.Users.Contracts, for MembershipTier and MessageCategory.
+
+    That third edge was NOT disclosed by the phase-3 recon, which predicted only Governance
+    and Teams would gain one; it is the same mechanical consequence, found by the compiler.
+    Both enums used to sit in Humans.Domain, which lane 3b emptied and deleted; both are
+    Users' own vocabulary (MessageCategory is the communication-preference axis, MembershipTier
+    the membership one) and both are named here by IEmailMessageFactory's audience parameters
+    and EmailMessage's Category. This is the enums following their owner, not Email taking a
+    dependency on Users' services.
+
+    All three leaf-to-leaf edges are acyclic. Humans.Events.Contracts has zero
+    ProjectReference; Humans.Users.Contracts has exactly one, to the equally
+    zero-reference Humans.Onboarding.Contracts. Both chains terminate. Note that Base
+    references Humans.Users.Contracts, so nothing in that project may ever reference this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

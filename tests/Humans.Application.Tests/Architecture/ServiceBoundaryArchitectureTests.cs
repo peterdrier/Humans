@@ -70,6 +70,40 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Shifts.Data.IVolunteerTrackingRepository")] = "Shifts",
         };
 
+    /// <summary>
+    /// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866). These eight interfaces
+    /// are application service boundaries by name and would be marked, but cannot be.
+    /// </summary>
+    /// <remarks>
+    /// <c>IApplicationService</c> and <c>IOrchestrator</c> live in <c>Humans.Interfaces</c>
+    /// (Base). Base references <c>Humans.Users.Contracts</c> — <c>HumansControllerBase</c>
+    /// injects <c>IUserServiceRead</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
+    /// that leaf must hold no reference back, or 4b-iii closes an assembly cycle when
+    /// <c>HumansControllerBase</c> moves into Base. Peter's ruling: the migration outranks the
+    /// marker. The markers were dropped and each declaration carries a COVERAGE REDUCED comment.
+    ///
+    /// Listed by name rather than excluding the whole assembly ON PURPOSE: a NEW unmarked
+    /// I*Service on that leaf still fails this test. The exclusion covers exactly the interfaces
+    /// that lost a marker they used to carry, and nothing else. <c>INonCompliantMemberSuspension</c>
+    /// also lost <c>IOrchestrator</c> but is absent here because the name predicate below never
+    /// matched it.
+    ///
+    /// Exit condition: delete this list when the leaf can name the markers again — either
+    /// because Base stops referencing it, or because the markers move somewhere it may
+    /// reference. Re-add the inheritance in the same commit.
+    /// </remarks>
+    private static readonly HashSet<string> MarkersDroppedForBaseCycle =
+    [
+        "Humans.Users.Contracts.IAccountProvisioningService",
+        "Humans.Users.Contracts.ICommunicationPreferenceService",
+        "Humans.Users.Contracts.IContactFieldService",
+        "Humans.Users.Contracts.IHumanLifecycleService",
+        "Humans.Users.Contracts.IProfileEditorService",
+        "Humans.Users.Contracts.IUserEmailService",
+        "Humans.Users.Contracts.IUserParticipationBackfillService",
+        "Humans.Users.Contracts.IUserService",
+    ];
+
     [HumansFact]
     public void Application_boundary_interfaces_are_marked_as_application_services()
     {
@@ -78,6 +112,7 @@ public class ServiceBoundaryArchitectureTests
             .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
             .Where(t => !typeof(IApplicationService).IsAssignableFrom(t))
             .Where(t => !typeof(IOrchestrator).IsAssignableFrom(t))
+            .Where(t => !MarkersDroppedForBaseCycle.Contains(t.FullName ?? string.Empty))
             .Select(t => t.FullName)
             .Order(StringComparer.Ordinal)
             .ToList();

@@ -24,7 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
@@ -49,6 +48,13 @@
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <!--
+      Stateless drives Application's state machine (Domain/Application.cs). It used to arrive
+      transitively through Humans.Domain, which declared it; G5 lane 3b deleted that project,
+      so the dependency is now declared where it is actually used. Nothing else in the
+      solution names Stateless.
+    -->
+    <PackageReference Include="Stateless" />
   </ItemGroup>
 
   <ItemGroup>

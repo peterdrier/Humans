@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Humans.UI.Models.Tables;

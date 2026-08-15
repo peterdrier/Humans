@@ -36,7 +36,7 @@
 
       IUserService and its command/result records.  Peter's ruling was "public on
       Humans.Users, not in the leaf", with the eleven write-calling section projects
-      taking a ProjectReference on the section. That is unreachable alongside the §I
+      taking a project reference on the section. That is unreachable alongside the §I
       ruling that AccountDeletionService, ExternalLoginService and
       UserParticipationBackfillService stay in Humans.Application as orchestrators: those
       three plus HumanLifecycleService and three Humans.Infrastructure jobs inject
@@ -44,7 +44,7 @@
       approved surface is unchanged — IUserService is public either way — only the
       assembly moved, which is design §15 step 5b's own rule ("a consumer in Base forces
       Humans.<Section>.Contracts"). It also means no consumer needed a new
-      ProjectReference at all.
+      project reference at all.
 
     Still NOT here, and staying internal to the section: IAccountMergeService,
     IDuplicateAccountService, IUnsubscribeService, IUnsubscribeTokenProvider,
@@ -56,17 +56,65 @@
     (Humans.Users.Services.UserInfoFactory) and the record keeps a primitive-only
     Create for Base and the test projects.
 
-    References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudgetAttribute,
-    GrandfatheredAttribute), Humans.Domain (the shared enums the projections name) and
-    Humans.Onboarding.Contracts (OnboardingResult, returned by
-    IUserService.ApplyProfileOnboardingMutationAsync — leaf-to-leaf, and
-    Humans.Onboarding.Contracts has no project references at all, so it cannot cycle).
-    Acyclic: Humans.Domain names only Humans.Interfaces.
+    ONE project reference, AND IT MUST NEVER GROW. Base (Humans.Interfaces, becoming
+    Humans.Base at 4b-iv) references THIS project, because HumansControllerBase injects
+    IUserServiceRead and Humans.UI names the User entity. So anything reachable from here is
+    reachable from Base, and a reference added here to any project that has references of its
+    own is a cycle the moment 4b-iii moves HumansControllerBase/ApiControllerBase into Base.
+    That cycle is not live today — Humans.Interfaces still has zero project references of its
+    own — so a green build proves nothing about this rule. The invariant is textual, not a
+    build outcome.
+
+    THE RULE: this project may reference only a leaf that itself has zero project references.
+    Such a chain terminates, so it cannot cycle no matter what Base does. The single surviving
+    reference, Humans.Onboarding.Contracts, satisfies it: that leaf has zero project references
+    and its csproj now says in terms that it must stay that way. Base -> Users.Contracts ->
+    Onboarding.Contracts -> nothing.
+
+    Why OnboardingResult was not moved to close it out. It is the onboarding funnel's own
+    result vocabulary, returned by IOnboardingIntake.RejectSignupAsync,
+    IAccountDeletionService's two methods, IHumanLifecycleService's three and
+    IUserService.ApplyProfileOnboardingMutationAsync. Pulling it here would force
+    Humans.Onboarding.Contracts to reference this project to keep its own signature — trading
+    one acyclic edge for a worse one and taking the zero-reference property off the leaf that
+    is load-bearing for it. Duplicating it (Humans.Auth.Contracts.RoleAssignmentResult's
+    shape) would put a third copy of a two-property record in the graph and grow this
+    project's public surface, which needs Peter. Neither is worth it: the edge is provably
+    harmless and the flat "zero references" phrasing of the G5 end-state design is the thing
+    that is imprecise, not this csproj. State the rule above, not the count.
+
+    G5 lane 3b (nobodies-collective/Humans#866) removed the other two:
+
+      Humans.Interfaces — was here for four markers/attributes. All six usages are gone:
+      IApplicationService dropped from 7 interfaces (IAccountProvisioningService,
+      ICommunicationPreferenceService, IContactFieldService, IProfileEditorService,
+      IUserEmailService, IUserParticipationBackfillService, IUserService), IOrchestrator from
+      2 (IHumanLifecycleService, INonCompliantMemberSuspension), IInvalidator and
+      [Grandfathered("HUM0028")] from IUserInfoInvalidator, and [ExpiresOn] from
+      User.NormalizedEmail. Each site carries a COVERAGE REDUCED comment naming what stopped
+      being enforced; the losses are HUM0012/HUM0017/HUM0027 on the seven service classes,
+      HUM0026/HUM0027 on the two orchestrators, the InvalidatorInterfaceRatchetAnalyzer count
+      and HUM0028 bookkeeping, and HUM0010/HUM0011's 2026-09-01 deadline on
+      nobodies-collective/Humans#635. Peter's ruling: the migration outranks the analyzers.
+      MarkdownContentAttribute was the fifth user; it is now a deliberate internal twin in
+      this project (see MarkdownContentAttribute.cs) rather than a move, because eight
+      section projects apply the Humans.Interfaces original.
+
+      Humans.Domain — the whole project is gone. Its last five enums moved to their owners:
+      ConsentCheckStatus, GoogleEmailStatus, MembershipTier and MessageCategory here (they
+      are Users' own vocabulary, carried on UserInfo/ProfileInfo/CommunicationPreference),
+      and SyncAction to Humans.GoogleIntegration.Contracts. No member was renamed, so nothing
+      persisted moved and there is no migration.
+
+    THREE leaves gain an edge to this project as a consequence, all acyclic under the same
+    rule — this project is itself terminal-but-one and none of them is reachable from it:
+    Humans.Governance.Contracts (MembershipTier), Humans.Teams.Contracts (GoogleEmailStatus)
+    and Humans.Email.Contracts (MembershipTier + MessageCategory). The phase-3 recon
+    predicted only the first two; the third was found by the compiler. Same shape, same
+    reasoning — an enum's consumers follow it to its owner.
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
   </ItemGroup>
 

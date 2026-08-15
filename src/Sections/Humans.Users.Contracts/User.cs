@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
-using Humans.Domain.Enums;
 
 namespace Humans.Users.Contracts;
 
@@ -56,7 +55,16 @@ public class User : IdentityUser<Guid>
     /// <inheritdoc />
 #pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailService for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
-    [Humans.Domain.Architecture.ExpiresOn("2026-09-01", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailService.")]
+    // COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped
+    // [Humans.Domain.Architecture.ExpiresOn("2026-09-01", reason: "Issue #635 — Identity shadow
+    // column; application reads should go through User.Email / IUserEmailService.")].
+    // ExpiresOnAttribute lives in Humans.Interfaces and this leaf must reach zero
+    // <ProjectReference> so Base may reference it. Lost: HUM0010 (usage sites) and HUM0011
+    // (declaration site), which would have escalated from warning to error on 2026-09-01 and
+    // forced nobodies-collective/Humans#635 to be dealt with rather than drift.
+    // The [Obsolete] below still carries the deprecation signal and the issue link; only the
+    // dated escalation is gone. Restore the attribute when Base is referenceable from this leaf
+    // again, or delete NormalizedEmail outright per #635.
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();

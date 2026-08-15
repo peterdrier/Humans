@@ -1,6 +1,4 @@
-using Humans.Application.Interfaces;
 using Humans.Onboarding.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -14,7 +12,9 @@ namespace Humans.Users.Contracts;
 /// next several PRs and per-PR budget churn is not useful while that is in
 /// flight. Owner re-adds [SurfaceBudget(N)] once the merged surface stabilizes.
 /// </remarks>
-public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped IApplicationService.
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface IUserService : IUserServiceRead, IUserMerge
 {
     /// <summary>
     /// Declare that the user is not attending this year's event. Upserts a

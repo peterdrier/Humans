@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;

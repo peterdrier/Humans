@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;

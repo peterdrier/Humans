@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;

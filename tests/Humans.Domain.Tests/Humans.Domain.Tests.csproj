@@ -1,22 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    NAME IS STALE. src/Humans.Domain was deleted by G5 lane 3b
+    (nobodies-collective/Humans#866) once its last five enums moved onto owning leaves, so
+    this project no longer tests a project called Humans.Domain. It was left named
+    Humans.Domain.Tests deliberately: renaming it also touches Humans.slnx, the
+    <InternalsVisibleTo Include="Humans.Domain.Tests" /> in Humans.Users.csproj, this
+    directory's stryker-config.json and CI job names, none of which belong in a lane whose
+    job is the dependency graph. Rename it alongside the Humans.Interfaces -> Humans.Base
+    rename in lane 4b-iv, where the same set of files is already open.
+
+    What it actually covers now: the shared vocabulary that lives in Humans.Interfaces
+    (RoleNames, EmailNormalization, IbanFormatter, IbanValidator, SystemTeamType,
+    EmailOutboxStatus), plus EnumStringStabilityTests, which is deliberately central.
+  -->
+
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
     <!--
-      Temporary, and the condition that removes it: ContactFieldTests and ProfileTests
-      exercise entities that moved into Humans.Users at G5 lane 2 PR B. Both files are in
-      the 43-file set lane 2 phase 3 moves to tests/Humans.Users.Tests.
+      EnumStringStabilityTests guards persisted enum strings across every section that has
+      one. The rows stay in one file rather than splitting per section (see the remarks on
+      that class), so this project declares a ProjectReference per destination assembly —
+      explicitly, never transitively, so the guard survives a change to any one of those
+      projects' own reference sets. Lanes 4b-2k and 4b-2l set that pattern; lane 3b adds
+      Humans.Users.Contracts (MembershipTier, ConsentCheckStatus, MessageCategory,
+      ContactFieldType, ContactFieldVisibility) and Humans.GoogleIntegration.Contracts
+      (SyncAction, SyncMode, SyncServiceType, GoogleResourceType, DrivePermissionLevel),
+      both of which previously resolved only by luck through Humans.Users.
     -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
-    <!--
-      EnumStringStabilityTests guards seven enums that G5 lane 4b-2k moved onto these two
-      leaves, and AuditAction, which 4b-2l moved onto the third. Declared explicitly rather
-      than left to resolve transitively through Humans.Users, so the guard survives a change
-      to that project's reference set.
-    -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

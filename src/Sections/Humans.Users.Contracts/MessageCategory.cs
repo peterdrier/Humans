@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Categories of system communications for preference management.

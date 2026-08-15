@@ -6,7 +6,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />

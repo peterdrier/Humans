@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;

@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -24,7 +22,9 @@ public enum TokenValidationStatus
 /// <summary>
 /// Manages per-user communication preferences and unsubscribe tokens.
 /// </summary>
-public interface ICommunicationPreferenceService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface ICommunicationPreferenceService
 {
     /// <summary>
     /// Returns all preferences for a user, creating defaults for any missing categories.

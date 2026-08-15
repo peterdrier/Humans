@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Status of a user's Google email for Google Workspace sync operations.

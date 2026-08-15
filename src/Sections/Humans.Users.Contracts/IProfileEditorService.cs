@@ -1,11 +1,12 @@
-using Humans.Application.Interfaces;
 
 namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Coordinates profile edit form saves around the Users-owned storage mutation.
 /// </summary>
-public interface IProfileEditorService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface IProfileEditorService
 {
     /// <summary>
     /// Validates the cross-field invariants as a service-side backstop ("Other"

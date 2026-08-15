@@ -135,7 +135,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <summary>
     /// Enqueues <see cref="GoogleSyncOutboxEventTypes.AddUserToTeamResources"/> events
     /// for all teams the given user currently belongs to, bypassing the
-    /// <see cref="GoogleEmailStatus.Rejected"/> guard so an admin can force a
+    /// <c>GoogleEmailStatus.Rejected</c> (Humans.Users.Contracts) guard so an admin can force a
     /// re-attempt after fixing the user's email. Returns the number of events enqueued.
     /// </summary>
     Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default);

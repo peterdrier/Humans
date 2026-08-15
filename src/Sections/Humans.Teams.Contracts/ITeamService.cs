@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;

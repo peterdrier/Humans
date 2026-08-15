@@ -106,6 +106,36 @@ Two constraints on the leaf unwind (Codex P2s on peterdrier/Humans#1293, both co
   home to its owning section when nobodies-collective/Humans#1044 slices its field out of
   the `UserInfo`/`ProfileInfo` graph.
 
+  **Landed, and it was nine types, not four** (G5 lane 3b). PR #1313 had already brought
+  `ParticipationStatus`, `ContactSource`, `ParticipationSource` and `LanguageProficiency`
+  onto the leaf — all four are named by public leaf types (`EventParticipation`, `User`,
+  `ProfileLanguage`), so they could not have lived anywhere else either. Lane 3b moved the
+  four above and added a fifth item this bullet missed: `MarkdownContentAttribute`, applied
+  to `Profile.MarkdownBio`. That one is a deliberate **internal twin** in the leaf rather
+  than a move, because eight section projects apply the `Humans.Interfaces` original — see
+  `src/Sections/Humans.Users.Contracts/MarkdownContentAttribute.cs`. `SyncAction`, the last
+  enum left in `Humans.Domain`, went to `Humans.GoogleIntegration.Contracts` instead, and
+  `src/Humans.Domain` was deleted.
+
+  Three leaves gained a `→ Users.Contracts` edge as a result, all acyclic:
+  `Humans.Governance.Contracts` (`MembershipTier`), `Humans.Teams.Contracts`
+  (`GoogleEmailStatus`) and — not predicted anywhere, found by the compiler —
+  `Humans.Email.Contracts` (`MembershipTier` + `MessageCategory`).
+
+  **The "zero-reference" phrasing is the wrong invariant and should be retired.**
+  `Users.Contracts` finished lane 3b at **one** `<ProjectReference>`, to
+  `Humans.Onboarding.Contracts`, for `OnboardingResult` — which is the onboarding funnel's
+  own vocabulary and cannot be pulled onto the Users leaf without forcing
+  `Onboarding.Contracts` to reference back. What actually prevents the cycle is not a count:
+
+  > A leaf may reference Base and any leaf that itself has zero `<ProjectReference>`.
+  > `Humans.Users.Contracts` may reference **only** the latter, because Base references it.
+
+  Such a chain terminates, so it cannot cycle whatever Base later references. Both terminal
+  leaves — `Humans.Onboarding.Contracts` and `Humans.Events.Contracts` — now carry a csproj
+  comment saying their zero-reference state is load-bearing, because nothing in the build
+  will catch a violation until 4b-iii moves `HumansControllerBase` into Base.
+
 ## Humans.UI retirement (a 4b lane)
 
 `Humans.UI` (~71 files) splits three ways — full verification in the infra/UI appendix:

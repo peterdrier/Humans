@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Status of the consent check performed by a Consent Coordinator during onboarding.

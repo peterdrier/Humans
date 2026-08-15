@@ -1,6 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Architecture;
-
 using System.Runtime.CompilerServices;
 
 namespace Humans.Users.Contracts;
@@ -24,12 +21,19 @@ namespace Humans.Users.Contracts;
 /// <c>IUserInfoSliceRefresher</c> — they are not part of the cross-section
 /// contract and must not be added here.
 /// </remarks>
-[Grandfathered(
-    ruleId: "HUM0028",
-    justification: "Pre-existing user-info cache flushed cross-section; remains until UserService's caching decorator owns invalidation end-to-end.",
-    since: "2026-05-27",
-    issueRef: "nobodies-collective/Humans#805")]
-public interface IUserInfoInvalidator : IInvalidator
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866).
+// This type carried [Grandfathered(ruleId: "HUM0028", since: "2026-05-27",
+// issueRef: "nobodies-collective/Humans#805")] and derived from IInvalidator.
+// Both live in Humans.Interfaces, and this project must reach zero
+// <ProjectReference> so Base can reference it (design §15 step 5b). The debt is
+// unchanged and still tracked by nobodies-collective/Humans#805: a pre-existing
+// user-info cache flushed cross-section, to be retired once UserService's
+// caching decorator owns invalidation end-to-end.
+// Restore both when Humans.Interfaces (Base) folds into a project this leaf may
+// reference again, or when #805 lands and the debt disappears.
+// Lost: HUM0028 grandfather bookkeeping, and InvalidatorInterfaceRatchetAnalyzer
+// no longer counts this interface (it keys on IInvalidator).
+public interface IUserInfoInvalidator
 {
     Task InvalidateAsync(
         Guid userId,

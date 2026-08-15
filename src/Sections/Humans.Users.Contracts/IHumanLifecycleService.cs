@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Onboarding.Contracts;
 
 namespace Humans.Users.Contracts;
@@ -14,7 +13,12 @@ namespace Humans.Users.Contracts;
 /// workflow stage, not by dependency shape (see umbrella issue
 /// nobodies-collective#563).
 /// </summary>
-public interface IHumanLifecycleService : IOrchestrator
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IOrchestrator".
+// The marker lives in Humans.Interfaces and this leaf must reach zero <ProjectReference>.
+// Lost on the implementing class: HUM0026 (orchestrator injects a repository/DbContext) and
+// HUM0027 (role-axis exclusivity) — OrchestratorRepositoryInjectionAnalyzer keys on IOrchestrator,
+// so it now sees nothing here. Restore when Base is referenceable from this leaf again.
+public interface IHumanLifecycleService
 {
     /// <summary>
     /// Suspends a human (admin-initiated). Sets <c>State = AdminSuspended</c> on

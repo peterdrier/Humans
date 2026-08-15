@@ -1,12 +1,12 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 
 namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Service for managing contact fields with visibility controls.
 /// </summary>
-public interface IContactFieldService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface IContactFieldService
 {
     /// <summary>
     /// Gets contact fields visible to the viewer for a given profile owner.

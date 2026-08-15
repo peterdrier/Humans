@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Users.Contracts;
@@ -7,7 +5,9 @@ namespace Humans.Users.Contracts;
 /// <summary>
 /// Service for managing user email addresses.
 /// </summary>
-public interface IUserEmailService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface IUserEmailService
 {
     /// <summary>
     /// Gets all emails for a user, ordered by display order.

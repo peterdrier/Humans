@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Domain.Enums;
 

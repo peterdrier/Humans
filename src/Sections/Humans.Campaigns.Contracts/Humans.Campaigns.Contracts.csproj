@@ -15,16 +15,17 @@
     twenty. Campaign/code CRUD, wave sending, the resend and retry paths and the whole admin
     page surface have no consumer outside the section and stay internal to Humans.Campaigns.
 
-    References Humans.Interfaces and Humans.Domain — both below Humans.Application, so this
-    cannot cycle. Humans.Domain is here because EmailOutboxStatus, the Email section's enum,
-    appears in CampaignGrantSummary and UpdateGrantEmailStatusAsync: the delivery state is
+    References Humans.Interfaces and nothing else — it is below Humans.Application, so this
+    cannot cycle. EmailOutboxStatus, the Email section's enum, appears in CampaignGrantSummary
+    and UpdateGrantEmailStatusAsync; it keeps the Humans.Domain.Enums namespace but lives in
+    the Humans.Interfaces assembly since G5 lane 3a-1, so the separate Humans.Domain reference
+    went with that project when lane 3b deleted it. The delivery state is
     Base vocabulary the section re-exports rather than owns, so it does not move onto the
     leaf the way Budget's own enums did.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 
 namespace Humans.Users.Contracts;
 
@@ -8,7 +6,12 @@ namespace Humans.Users.Contracts;
 /// Looks up existing accounts by email across all UserEmails for dedup,
 /// creates User + UserEmail when no match exists.
 /// </summary>
-public interface IAccountProvisioningService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// The marker lives in Humans.Interfaces and this leaf must reach zero <ProjectReference>
+// so Base may reference it. Lost on the implementing class: HUM0012 (service location),
+// HUM0017 (cross-section repository injection), HUM0027 (role-axis exclusivity).
+// Restore the inheritance when Base is referenceable from this leaf again.
+public interface IAccountProvisioningService
 {
     /// <summary>
     /// Finds an existing User by email (checking both User.Email and all UserEmail records)

@@ -1,7 +1,8 @@
-using Humans.Application.Interfaces;
 namespace Humans.Users.Contracts;
 
-public interface IUserParticipationBackfillService : IApplicationService
+// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
+// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+public interface IUserParticipationBackfillService
 {
     Task<int> GetDefaultYearAsync(CancellationToken ct = default);
     Task<ParticipationBackfillResult> BackfillFromCsvAsync(int year, string? csvData, CancellationToken ct = default);
