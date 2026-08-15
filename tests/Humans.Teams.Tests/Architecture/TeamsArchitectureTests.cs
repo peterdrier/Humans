@@ -85,6 +85,9 @@ public class TeamsArchitectureTests
             typeof(DashboardService).Assembly,                            // Humans.Application
         };
 
+        typeof(DashboardService).Assembly.GetName().Name.Should().Be("Humans.Application",
+            because: "an anchor whose type leaves this assembly would silently drop Humans.Application out of this sweep instead of failing");
+
         var violations = new List<string>();
         foreach (var assembly in assembliesToScan)
         {

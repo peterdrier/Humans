@@ -35,7 +35,15 @@ public class StripeConnectorArchitectureTests
     [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToStripeNet()
     {
-        var applicationAssembly = typeof(Humans.Application.CacheKeys).Assembly;
+        // Anchored on a type that stays in Humans.Application. It used to read
+        // typeof(Humans.Application.CacheKeys).Assembly, which G5 lane 3a-1 moved to
+        // Humans.Interfaces with its namespace preserved — the assertion would have
+        // silently started measuring a different (and vacuously clean) assembly.
+        // DashboardService is a concrete Humans.Application service with no scheduled
+        // move in phase 3.
+        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
+        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
+            because: "an anchor whose type leaves this assembly would silently retarget this test onto the wrong assembly instead of failing");
 
         var referenced = applicationAssembly.GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)

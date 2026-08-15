@@ -231,8 +231,13 @@ public class ServiceBoundaryArchitectureTests
     // Humans.Application.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
     // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
     // Humans.Interfaces has no EF reference, so it declares no entity type to expose.
-    private static IEnumerable<Type> ApplicationInterfaceTypes() =>
-        typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly.GetTypes()
+    private static IEnumerable<Type> ApplicationInterfaceTypes()
+    {
+        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
+        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
+            because: "an anchor whose type leaves this assembly would silently drop Humans.Application.Interfaces.* interfaces out of this sweep instead of failing");
+
+        return applicationAssembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
             .Concat(SectionAssemblies()
@@ -241,6 +246,7 @@ public class ServiceBoundaryArchitectureTests
             .Concat(SectionContractsAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsInterface));
+    }
 
     /// <summary>
     /// Every G5 section assembly, via the same discovery the runtime uses, so this file
