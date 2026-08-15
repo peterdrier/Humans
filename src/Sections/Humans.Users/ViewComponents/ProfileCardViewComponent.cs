@@ -9,7 +9,6 @@ using Humans.UI.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.ViewComponents;

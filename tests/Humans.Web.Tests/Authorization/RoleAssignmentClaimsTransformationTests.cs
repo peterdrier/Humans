@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

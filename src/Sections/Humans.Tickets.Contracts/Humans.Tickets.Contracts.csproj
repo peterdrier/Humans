@@ -16,9 +16,12 @@
 
     Three of the members here exist so that Tickets is the application's only door to
     ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and
-    GateVendorCheckInJob's calls off the Base vendor port (ITicketVendorService), which
-    after this lane has exactly two injection sites — Humans.Tickets and Shell's
-    TicketVendorHealthCheck. TicketDiscountCodeRequest / TicketDiscountKind are the
+    GateVendorCheckInJob's calls off the vendor port (ITicketVendorService), which has
+    exactly two injection sites — Humans.Tickets and Shell's TicketVendorHealthCheck.
+    The port itself is deliberately NOT here: it sits in Humans.Tickets/Contracts/ since
+    G5 lane 4b-2g (nobodies-collective/Humans#866), because no Base consumer names it and
+    Humans.TicketTailor references Humans.Tickets directly to implement it.
+    TicketDiscountCodeRequest / TicketDiscountKind are the
     section's own boundary vocabulary, mapped to the port's DiscountCodeSpec /
     DiscountType inside the section (Finance's CreditorLedgerLine shape): the leaf must
     never name the port's types, or the 2027 vendor swap reaches the callers.

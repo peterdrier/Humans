@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Auth.Domain;
 using NodaTime;
 using Humans.Domain.Attributes;

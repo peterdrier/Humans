@@ -9,20 +9,30 @@
     reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    Framework-free by construction (Microsoft.NET.Sdk, Humans.Interfaces + NodaTime): the one
+    Framework-free by construction (Microsoft.NET.Sdk; no FrameworkReference): the one
     piece of Auth's public surface that needs ASP.NET — RoleAssignmentOperationRequirement,
     an IAuthorizationRequirement Shell's UsersAdminController passes to
     IAuthorizationService.AuthorizeAsync — sits in Humans.Auth's own Contracts/ *folder*
     instead. Tickets was the first section to ship both halves; the split is what each may
     name (template step 5b).
 
-    Auth is a *horizontal* section, so this leaf references no vertical section's leaf. That
-    is why AssignRoleAsync/EndRoleAsync return the section's own RoleAssignmentResult rather
-    than Humans.Onboarding.Contracts.OnboardingResult, which they returned in Base.
+    AssignRoleAsync/EndRoleAsync return the section's own RoleAssignmentResult rather than
+    Humans.Onboarding.Contracts.OnboardingResult, which they returned in Base.
+
+    Humans.Users.Contracts is the one leaf-to-leaf reference here, added with IMagicLinkService
+    at nobodies-collective/Humans#866 G5 lane 4b-2i. It is forced, not chosen: two of that
+    interface's members return Humans.Users.Contracts.User, and its Base consumer
+    (Humans.Application's ExternalLoginService, which calls FindUserByVerifiedEmailAsync) cannot
+    reference the Humans.Auth *section* project — design §15 step 5b's "a consumer in Base forces
+    Humans.<Section>.Contracts", the same shape that put IUserService on the Users leaf. It is
+    the third instance of the leaf-to-leaf edge the 2026-08-14 Base-floor decision lists for
+    unwinding (Email.Contracts → Events.Contracts, Teams.Contracts → Auth.Contracts); it unwinds
+    when User stops being the return type, not before.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

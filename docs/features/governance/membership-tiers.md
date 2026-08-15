@@ -5,8 +5,8 @@
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs
-  src/Humans.Domain/Constants/MembershipStatusLabels.cs
-  src/Humans.Domain/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
+  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
 -->
 <!-- freshness:flag-on-change
   Tier definitions, term expiry rules, system-team mapping per tier, and tier-application flow — review when MembershipTier enum, term calculator, or governance services change.

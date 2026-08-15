@@ -6,7 +6,6 @@ using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Services;
 
 namespace Humans.Users.Services;

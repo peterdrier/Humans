@@ -11,7 +11,7 @@
   src/Humans.Web/Controllers/UsersAdminController.cs
   src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
   src/Sections/Humans.Notifications/Controllers/NotificationsController.cs
-  src/Humans.Application/Services/AuditLog/**
+  src/Sections/Humans.AuditLog/Services/**
   src/Sections/Humans.Notifications/Services/**
   src/Humans.Application/Services/Users/AccountMergeService.cs
   src/Humans.Application/Services/Users/DuplicateAccountService.cs

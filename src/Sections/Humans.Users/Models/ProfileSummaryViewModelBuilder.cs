@@ -2,9 +2,9 @@ using Humans.Teams.Contracts;
 using Humans.Application;
 using Humans.UI.Helpers;
 using Humans.Camps.Contracts;
-using Humans.Application.Models;
 using Humans.Users.Contracts;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
 internal static class ProfileSummaryViewModelBuilder

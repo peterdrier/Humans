@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;

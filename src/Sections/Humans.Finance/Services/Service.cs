@@ -1,9 +1,8 @@
 using Humans.Application;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using System.Text.Json;

@@ -1,6 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Domain.Enums;
 using Humans.Integration.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -19,22 +22,16 @@ namespace Humans.Integration.Tests.Controllers;
 /// start tag (G5-SECTION-TEMPLATE.md step 12, Debug's case).
 /// </para>
 /// <para>
-/// The other half this test exists for is the section's <em>controller</em>. It stayed on
-/// Base's <c>IAuditViewerService</c> — the name-resolving read path could not follow the
-/// section out, because it injects Users', Teams' and Google Integration's read surfaces and
-/// a horizontal section may not reference a vertical. So the page is an internal controller in
-/// one assembly, routed by <c>SectionControllerFeatureProvider</c>, over an orchestrator in
-/// another, with its policy still in Shell's <c>AuthorizationPolicyExtensions</c> (step 6's
-/// asymmetry). One authorized GET and one unauthorized GET is what proves those three halves
-/// still meet.
+/// The other half this test exists for is the section's <em>controller</em>. Since G5 lane
+/// 4b-2h (nobodies-collective/Humans#866) it runs over <c>IAuditViewerService</c> in its own
+/// assembly, but its policy is still in Shell's <c>AuthorizationPolicyExtensions</c> (step 6's
+/// asymmetry): an internal controller routed by <c>SectionControllerFeatureProvider</c>, gated
+/// from Shell. One authorized GET and one unauthorized GET is what proves those halves meet.
 /// </para>
 /// <para>
 /// The three Google-sync pages this file used to cover — <c>CheckDriveActivity</c>,
 /// <c>Resource/{id}</c> and <c>Human/{id}</c> — now live in <c>Humans.Monitor</c> and are
-/// covered by <c>MonitorPageRenderTests</c>. Two of them injected GoogleIntegration services
-/// directly, which is the same horizontal-to-vertical reach described above, one level up:
-/// <c>AuditLogArchitectureTests.SectionReferencesNoVerticalSection</c> is what forced the
-/// split once GoogleIntegration became its own assembly.
+/// covered by <c>MonitorPageRenderTests</c>.
 /// </para>
 /// </remarks>
 public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -87,20 +84,117 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
             "the BoardOrAdmin policy in Shell must still gate the section's controller");
     }
 
+    /// <summary>
+    /// Every assembly that renders <c>&lt;vc:audit-log&gt;</c>, proved by seeded content
+    /// rather than by absence of a literal tag.
+    /// </summary>
+    /// <remarks>
+    /// <c>AuditLogViewComponent</c> moved from <c>Humans.UI</c> into <c>Humans.AuditLog</c> in
+    /// G5 lane 4b-2h (nobodies-collective/Humans#866), so each consuming assembly now needs
+    /// <c>@addTagHelper *, Humans.AuditLog</c> in its own <c>_ViewImports.cshtml</c>. Missing
+    /// that line is silent: the element ships as inert literal markup with a green build.
+    /// <para>
+    /// Asserting only <c>NotContain("&lt;vc:")</c> proves nothing — a page whose audit widget
+    /// never ran passes it too. So this seeds a real audit row whose description is a unique
+    /// marker and asserts the marker reaches the HTML, which can only happen if the tag helper
+    /// bound, the component resolved <c>IAuditViewerService</c> from the section's own
+    /// registration, and <c>Views/Shared/Components/AuditLog/*</c> resolved from the section
+    /// assembly.
+    /// </para>
+    /// </remarks>
     [HumansFact(Timeout = 120000)]
-    public async Task The_shared_audit_log_view_component_still_renders_from_Humans_UI()
+    public async Task The_audit_log_view_component_binds_and_renders_in_every_consuming_assembly()
     {
-        // AuditLogViewComponent and AuditEvent stayed in Humans.UI / Humans.Application when
-        // the section moved, so every <vc:audit-log> call site was untouched. This asserts
-        // that from the busiest of them — a component that failed to resolve would render as
-        // inert markup rather than throwing.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync($"/Users/Admin/{adminId}", ct);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // ShiftSignupBailed is one of the few actions whose Description is rendered as a tail
+        // (AuditEventTextualizer.ShouldRenderDescriptionTail), which is what lets a unique
+        // marker travel all the way from the row to the HTML.
+        var marker = $"vc-binding-probe-{Guid.NewGuid():N}";
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogAsync(
+                AuditAction.ShiftSignupBailed,
+                entityType: "User",
+                entityId: adminId,
+                description: marker,
+                actorUserId: adminId);
+        }
 
-        var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().NotContain("<vc:audit-log", "the audit history widget must still bind");
+        // Humans.Users — UsersAdmin/AdminDetail, the busiest call site — and Humans.Web —
+        // WidgetGallery, Shell's own. Both render the widget for the signed-in human with no
+        // extra fixtures, so both can carry the marker assertion.
+        foreach (var url in new[] { $"/Users/Admin/{adminId}", "/WidgetGallery" })
+        {
+            var response = await Client.GetAsync(url, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+            var html = await response.Content.ReadAsStringAsync(ct);
+            html.Should().Contain(marker,
+                $"GET {url}: the seeded audit row must reach the page — an unbound <vc:audit-log> renders nothing");
+            html.Should().NotContain("<vc:audit-log",
+                $"GET {url}: the audit history widget must bind, not ship as literal markup");
+            html.Should().NotContain("audit-log-view-component",
+                $"GET {url}: a ReSharper-rewritten vc tag is inert markup too");
+        }
+    }
+
+    /// <summary>
+    /// Every <c>&lt;vc:audit-log&gt;</c> call site in the tree sits under a
+    /// <c>_ViewImports.cshtml</c> chain that binds <c>Humans.AuditLog</c>'s tag helpers.
+    /// </summary>
+    /// <remarks>
+    /// The render test above covers the two call sites that need no fixtures. The other three
+    /// — Teams' <c>TeamAdmin/Members</c>, Store's <c>StoreAdmin/CatalogEdit</c> and Tickets'
+    /// <c>TicketTransferAdmin/Detail</c> — render the widget only for a seeded team, product or
+    /// transfer request, so this covers them structurally instead, and covers whatever call
+    /// site is added next. A Roslyn analyzer cannot see <c>.cshtml</c>, which is why this is a
+    /// test (peters-hard-rules.md prefers analyzers where they can reach).
+    /// </remarks>
+    [HumansFact]
+    public void Every_audit_log_call_site_sits_under_a_view_imports_that_binds_it()
+    {
+        const string Directive = "@addTagHelper *, Humans.AuditLog";
+        var src = Path.Combine(FindRepoRoot(), "src");
+
+        var callSites = Directory
+            .EnumerateFiles(src, "*.cshtml", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                     && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(f => File.ReadAllText(f).Contains("<vc:audit-log", StringComparison.Ordinal))
+            .ToList();
+
+        callSites.Should().NotBeEmpty("the component would otherwise be dead");
+
+        var unbound = callSites.Where(f => !BindsAuditLog(f, src, Directive)).ToList();
+
+        unbound.Should().BeEmpty(
+            "a <vc:audit-log> whose assembly never opens Humans.AuditLog's tag helpers ships as "
+            + "inert literal markup with a green build and no runtime error");
+    }
+
+    // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
+    private static bool BindsAuditLog(string viewPath, string srcRoot, string directive)
+    {
+        for (var dir = new DirectoryInfo(Path.GetDirectoryName(viewPath)!);
+             dir is not null && dir.FullName.StartsWith(srcRoot, StringComparison.Ordinal);
+             dir = dir.Parent)
+        {
+            var imports = Path.Combine(dir.FullName, "_ViewImports.cshtml");
+            if (File.Exists(imports)
+                && File.ReadAllText(imports).Contains(directive, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))
+            dir = dir.Parent;
+        return dir?.FullName ?? AppContext.BaseDirectory;
     }
 }

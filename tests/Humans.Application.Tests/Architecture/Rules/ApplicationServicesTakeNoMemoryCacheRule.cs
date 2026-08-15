@@ -1,6 +1,5 @@
 using Humans.Application.Architecture;
 using AwesomeAssertions;
-using Humans.Application.Services.AuditLog;
 using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -33,6 +32,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 ///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
 ///   <item><c>Humans.TicketTailor.Services.TicketTailorService</c> — vendor event-summary cache</item>
+///   <item><c>Humans.Auth.Services.MagicLinkRateLimiter</c> — magic-link replay + signup-cooldown state</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -95,7 +95,17 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // rule after Development's: the code is unchanged and used to sit in
         // Humans.Infrastructure/Services, which this sweep covers neither before nor after — it
         // entered scope at the TicketTailor adapter's carve into its own section.
-        SectionType("Humans.TicketTailor.Services.TicketTailorService")
+        SectionType("Humans.TicketTailor.Services.TicketTailorService"),
+        // CacheKeys.MagicLinkUsed(token) and CacheKeys.MagicLinkSignupRateLimit(email) — not a
+        // read cache at all, but the two pieces of short-TTL sign-in state that have to survive
+        // between HTTP requests: single-use consumption of a login token (15 min) and the 60-second
+        // signup-send cooldown. §15's repository/decorator options do not apply because there is
+        // nothing to read; the cache *is* the state, and Auth owns no table for it. Fourth sighting
+        // of Guide's rule after Development's and TicketTailor's: the code is byte-identical and
+        // used to sit in Humans.Infrastructure/Services/Auth, which this sweep covers neither
+        // before nor after — it entered scope when the magic-link path moved into Humans.Auth
+        // (nobodies-collective/Humans#866 G5 lane 4b-2i).
+        SectionType("Humans.Auth.Services.MagicLinkRateLimiter")
     ];
 
     /// <summary>

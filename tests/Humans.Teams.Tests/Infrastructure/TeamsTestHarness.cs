@@ -3,7 +3,6 @@ using Humans.Auth.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
@@ -24,6 +23,7 @@ using Humans.GoogleIntegration.Data;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Tests.Infrastructure;
 
 /// <summary>

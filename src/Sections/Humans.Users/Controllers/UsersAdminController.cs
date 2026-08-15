@@ -7,7 +7,6 @@ using Humans.Auth.Contracts;
 using Humans.Users.Authorization;
 using Humans.Application.Interfaces.Admin;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;

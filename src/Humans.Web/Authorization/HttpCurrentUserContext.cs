@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using System.Security.Claims;
-using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Web.Authorization;
 

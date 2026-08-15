@@ -2,7 +2,6 @@
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.TicketTailor/**
-  src/Humans.Application/Interfaces/TicketVendor/**
   src/Humans.Domain/Constants/TicketConstants.cs
 -->
 <!-- freshness:flag-on-change
@@ -181,10 +180,14 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 **Vendor connectors — their own section, `Humans.TicketTailor`:**
 Ticketing is three things, and conflating them is what a vendor change punishes. The **section**
 (`Humans.Tickets`) is the application's only door to ticketing. The **port**
-(`ITicketVendorService`, `Humans.Application/Interfaces/TicketVendor/`) is the vendor-agnostic
-contract, sitting in Base beside `IStripeService`. The **adapter** (`Humans.TicketTailor`) is one
-implementation of it. When the 2027 vendor lands, the adapter project is deleted and
-`Humans.<NewVendor>` is added; nothing in `Humans.Tickets`, in Base or in any consumer changes.
+(`ITicketVendorService`, `Humans.Tickets/Contracts/`) is the vendor-agnostic contract, owned by
+this section since G5 lane 4b-2g (nobodies-collective/Humans#866) — it used to sit in Base. The
+**adapter** (`Humans.TicketTailor`) is one implementation of it, and takes a direct
+`ProjectReference` on `Humans.Tickets` to name the port. The port is deliberately **not** on the
+`Humans.Tickets.Contracts` leaf: no Base consumer names it, and the leaf must keep the vendor's
+vocabulary away from other sections (they use `ITicketDiscountCodes` / `ITicketVendorMirror`).
+When the 2027 vendor lands, the adapter project is deleted and `Humans.<NewVendor>` is added;
+nothing in `Humans.Tickets`, in Base or in any consumer changes.
 
 - `TicketTailorService` — production HTTP client; bound when the host environment is Production.
 - `StubTicketVendorService` — deterministic in-memory fixture; bound everywhere else. The stub fills in placeholder `EventId`/`ApiKey` so `TicketVendorSettings.IsConfigured` returns true even without env vars.
@@ -227,7 +230,7 @@ read/write through `ITicketRepository`; neither `TicketQueryService.cs` nor `Tic
 - `tests/Humans.Tickets.Tests/Architecture/TicketQueryArchitectureTests.cs` — sealed inner + decorator, the decorator implements `ITicketService` / `ITicketServiceRead` / `ITicketCacheInvalidator` and is the only implementation of the invalidator, and `ITicketServiceRead` exposes no entity types.
 - `tests/Humans.Tickets.Tests/Architecture/TicketSyncArchitectureTests.cs` — `TicketSyncService`'s constructor takes no store abstraction.
 - `tests/Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests.cs` — **the one that matters for the vendor swap**: only `Humans.Tickets` and Shell's health check inject `ITicketVendorService`, every implementation of it lives in `Humans.TicketTailor`, and the Tickets leaf names none of the port's vocabulary.
-- `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins the port in `Humans.Application.Interfaces.TicketVendor`, no HTTP/vendor-SDK type in its signatures, and the two adapters in `Humans.TicketTailor.Services`.
+- `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins the port in `Humans.Tickets.Contracts` (the `Humans.Tickets` assembly, not the leaf), no HTTP/vendor-SDK type in its signatures, and the two adapters in `Humans.TicketTailor.Services`.
 - `tests/Humans.Integration.Tests/Controllers/TicketsPageRenderTests.cs` — the §15 step 12 render check: every admin page, the transfer wizard's copy in English and Spanish, the Shell access-matrix widget invoked by name, and the volunteer's `302 → /Account/AccessDenied`.
 
 ### Repositories

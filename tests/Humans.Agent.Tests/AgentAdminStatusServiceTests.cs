@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Agent.Services;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

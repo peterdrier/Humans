@@ -1,6 +1,5 @@
 using Humans.Application.Constants;
 using Humans.Agent.Data;
-using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

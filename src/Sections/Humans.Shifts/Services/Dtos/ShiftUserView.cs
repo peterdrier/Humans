@@ -4,6 +4,7 @@ using Humans.Domain.Enums;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>

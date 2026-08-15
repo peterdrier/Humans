@@ -16,12 +16,17 @@
     flat projections those signatures name. Everything else — the directory, detail, admin
     list, roster, join-request, role-management and early-entry DTOs — is internal.
 
+    G5 lane 4b-2k brought this section's own vocabulary home from Humans.Domain:
+    TeamMemberRole, RolePeriod, TeamJoinRequestStatus, SlotPriority, CallToActionStyle and
+    the CallToAction value object all live here now, because the leaf's own signatures name
+    them (Budget's rule). Measured, not assumed: CallToAction/CallToActionStyle/SlotPriority
+    were filed under Camps and Shifts in the #866 appendix and have no consumer outside Teams.
+
     References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and
-    Humans.Domain (TeamMemberRole, SystemTeamType, GoogleEmailStatus, RolePeriod,
-    SlotPriority, CallToAction, DomainConstants — vocabulary this section persists but which
-    twenty Base/Shell/section files already spell from Humans.Domain.Enums), the same pair
-    Humans.Campaigns.Contracts and Humans.Governance.Contracts take. Acyclic:
-    Humans.Domain names only Humans.Interfaces.
+    Humans.Domain, the latter now for three types only — SystemTeamType, GoogleEmailStatus and
+    DomainConstants, none of them Teams' to move (SystemTeamType is phase 3a's, GoogleEmailStatus
+    rides to Humans.Users.Contracts in lane 3d). Same pair Humans.Campaigns.Contracts and
+    Humans.Governance.Contracts take. Acyclic: Humans.Domain names only Humans.Interfaces.
   -->
 
   <ItemGroup>

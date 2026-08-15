@@ -1,8 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/**
   src/Sections/Humans.Holded.Contracts/**
-  src/Humans.Application/Interfaces/Holded/**
-  src/Humans.Infrastructure/Services/Holded/**
   src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
   src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
 -->
@@ -11,8 +9,8 @@
 
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,
 plus the sync that maintains it and the `/Holded` admin screen. Every cross-section ledger
-read is served from this cache — zero Holded calls per page view. The HTTP connector itself
-stays in Base ([`docs/sections/Holded.md`](../../../../docs/sections/Holded.md)).
+read is served from this cache — zero Holded calls per page view. The HTTP connector belongs
+to this section too and has its own doc ([`Holded-connector.md`](Holded-connector.md)).
 
 ## Concepts
 

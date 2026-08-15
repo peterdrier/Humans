@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Authorization;
-using Humans.Camps.Contracts;
 using Humans.Camps.Data;
 using Humans.Camps.Models;
 using Humans.Camps.Services;

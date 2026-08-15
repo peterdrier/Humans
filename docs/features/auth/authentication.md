@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
-  src/Humans.Application/Services/Auth/**
   src/Humans.Application/Services/Users/**
   src/Humans.Web/Authorization/**
   src/Humans.UI/Authorization/**

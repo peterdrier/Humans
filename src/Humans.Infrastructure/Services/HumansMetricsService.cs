@@ -8,7 +8,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;

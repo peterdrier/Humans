@@ -1,9 +1,6 @@
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Services.Auth;
 using Humans.Auth.Contracts;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Services.Auth;
 using Humans.Web.Authorization;
 
 namespace Humans.Web.Extensions.Sections;
@@ -26,15 +23,9 @@ internal static class AuthSectionExtensions
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 
-        // The magic-link sign-in path. MagicLinkService calls no repository and injects
-        // Humans.Email.Contracts, so it is a cross-section orchestrator that a *horizontal*
-        // section may not host (peters-hard-rules.md) — it stayed in Humans.Application with
-        // its Infrastructure-owned token/url builder and memory-cache-backed rate limiter,
-        // and AccountController stayed in Shell with it. Same split as AuditLog's
-        // AuditViewerService.
-        services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
-        services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
-        services.AddScoped<IMagicLinkService, MagicLinkService>();
+        // The magic-link sign-in path (IMagicLinkService + IMagicLinkUrlBuilder +
+        // IMagicLinkRateLimiter) left this file for Humans.Auth's Section.Register at
+        // nobodies-collective/Humans#866 G5 lane 4b-2i. AccountController stayed here.
 
         return services;
     }

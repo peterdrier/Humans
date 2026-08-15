@@ -16,8 +16,14 @@
     section's internal Domain/ because UserApplicationSnapshot names it and so do a dozen Base
     and Shell read paths (design §15 step 5, Budget's rule).
 
-    References Humans.Interfaces (IApplicationService) and Humans.Domain (MembershipTier,
-    MembershipStatus — Profiles' vocabulary this section re-exports), the same pair
+    G5 lane 4b-2k added MembershipStatus and MembershipStatusLabels here. MembershipStatus is
+    named by this leaf's own MembershipSnapshot (Budget's rule); MembershipStatusLabels came
+    with it because its only consumer is Humans.UI's StatusBadgeExtensions, and Base can name a
+    leaf but not a section project.
+
+    References Humans.Interfaces (IApplicationService) and Humans.Domain, the latter now for
+    MembershipTier alone — the design doc's "UserInfo object graph" ruling sends that one to
+    Humans.Users.Contracts in lane 3d, and this edge dies with it. Same pair
     Humans.Campaigns.Contracts takes. Acyclic: Humans.Domain names only Humans.Interfaces.
   -->
 

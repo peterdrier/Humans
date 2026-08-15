@@ -1,5 +1,4 @@
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Notifications.Services;
 

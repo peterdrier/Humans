@@ -8,7 +8,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;

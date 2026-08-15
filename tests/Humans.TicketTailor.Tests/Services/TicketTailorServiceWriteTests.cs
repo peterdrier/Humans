@@ -3,7 +3,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Humans.TicketTailor.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

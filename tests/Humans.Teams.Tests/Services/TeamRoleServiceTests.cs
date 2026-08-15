@@ -24,7 +24,6 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.GoogleIntegration.Services;
-using Humans.Application.Interfaces.Auth;
 
 using Humans.GoogleIntegration.Data;
 using Humans.Shifts.Data;

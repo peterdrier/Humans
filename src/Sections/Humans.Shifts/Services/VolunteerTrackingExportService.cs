@@ -17,7 +17,7 @@ namespace Humans.Shifts.Services;
 /// Composes the repo read (confirmed shifts in range), the event time-zone lookup
 /// (via <see cref="IShiftManagementService.GetByIdAsync"/>), and per-user
 /// <see cref="UserInfo"/> resolution. Trusts the repo's status filter — no
-/// re-check on <see cref="Humans.Domain.Enums.SignupStatus"/>.
+/// re-check on <see cref="SignupStatus"/>.
 /// </summary>
 internal sealed class VolunteerTrackingExportService(
     IShiftManagementRepository shiftManagementRepository,

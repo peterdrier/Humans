@@ -1,7 +1,5 @@
-using Humans.Camps.Contracts;
 using Humans.Camps.Domain;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Camps.Services;

@@ -3,6 +3,7 @@ using Humans.Domain.Enums;
 using Humans.UI.Models;
 using Humans.Users.Contracts;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
 internal static class AdminHumanListViewModelBuilder

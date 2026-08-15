@@ -43,6 +43,13 @@ public class MonitorArchitectureTests
         sectionRefs.Should().BeEquivalentTo(
             [
                 "Humans.AuditLog.Contracts",
+                // Not a fifth coupling either — MonitorController has always injected
+                // IAuditViewerService and bound AuditEvent. Those types left Humans.Application
+                // for the AuditLog section's own Contracts/ folder in G5 lane 4b-2h
+                // (nobodies-collective/Humans#866), which is the first time this shows up as an
+                // assembly reference. It is the section project rather than the leaf because no
+                // Base project names them, and AuditLog does not reference Monitor — no cycle.
+                "Humans.AuditLog",
                 "Humans.GoogleIntegration.Contracts",
                 "Humans.SystemSettings.Contracts",
                 // Not a fourth coupling — MonitorController and DriveActivityMonitorService have
@@ -52,8 +59,8 @@ public class MonitorArchitectureTests
                 // User/UserInfo as sanctioned shared contracts and lane 4 settles where they live.
                 "Humans.Users.Contracts",
             ],
-            because: "Monitor consumes AuditLog, GoogleIntegration and SystemSettings through "
-                     + "their leaves, plus the sanctioned User/UserInfo contracts, and nothing else");
+            because: "Monitor consumes AuditLog, GoogleIntegration and SystemSettings, plus the "
+                     + "sanctioned User/UserInfo contracts, and nothing else");
     }
 
     [HumansFact]

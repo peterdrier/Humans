@@ -13,6 +13,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>

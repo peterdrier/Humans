@@ -1,5 +1,4 @@
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using NodaTime;

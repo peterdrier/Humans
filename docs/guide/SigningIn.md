@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
-  src/Humans.Application/Services/Auth/MagicLinkService.cs
+  src/Sections/Humans.Auth/Services/MagicLinkService.cs
   src/Humans.Web/Controllers/GuestController.cs
 -->
 <!-- freshness:flag-on-change

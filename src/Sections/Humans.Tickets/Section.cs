@@ -25,7 +25,8 @@ namespace Humans.Tickets;
 /// <c>UseHumansRecurringJobs</c> roll-call and there is no discovery seam for them yet, so
 /// they stay in <c>Humans.Infrastructure/Jobs</c> and reach the section through the
 /// contracts leaf (design §15.6b). Shell's <c>TicketVendorHealthCheck</c> is the same
-/// shape, and it probes the Base vendor port deliberately.
+/// shape, and it probes this section's vendor port deliberately — it is the one injection
+/// site of <c>ITicketVendorService</c> outside <c>Humans.Tickets</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

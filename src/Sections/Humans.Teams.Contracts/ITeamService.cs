@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Teams.Contracts;

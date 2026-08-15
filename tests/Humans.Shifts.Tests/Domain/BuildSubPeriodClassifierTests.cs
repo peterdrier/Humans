@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Xunit;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Domain;
 
 public class BuildSubPeriodClassifierTests

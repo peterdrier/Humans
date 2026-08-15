@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Humans.Web.Extensions;
 
 namespace Humans.Application.Tests.Architecture;
@@ -41,7 +41,10 @@ public class TicketVendorPortArchitectureTests
     public void OnlyTicketsAndTheHealthCheckInjectTheVendorPort()
     {
         var assemblies = SectionDiscoveryExtensions.SectionAssemblies()
-            .Append(typeof(ITicketVendorService).Assembly)                       // Humans.Application
+            // Anchored on a Base type, not on the port: since G5 lane 4b-2g the port is
+            // declared in Humans.Tickets, which SectionAssemblies() already returns —
+            // anchoring on it would silently drop Humans.Application out of the sweep.
+            .Append(typeof(CacheKeys).Assembly)                                  // Humans.Application
             .Append(Assembly.Load("Humans.Infrastructure"))
             .Append(Assembly.Load("Humans.Web"))
             .Distinct()
@@ -84,13 +87,16 @@ public class TicketVendorPortArchitectureTests
     public void TheTicketsLeafDoesNotNameThePortsVocabulary()
     {
         var leaf = Assembly.Load("Humans.Tickets.Contracts");
-        var portNamespace = typeof(ITicketVendorService).Namespace!;
+        // By assembly, not by namespace: since G5 lane 4b-2g the port sits in
+        // Humans.Tickets/Contracts/ and shares the *namespace* Humans.Tickets.Contracts
+        // with this leaf, so a namespace comparison would flag every leaf type.
+        var portAssembly = typeof(ITicketVendorService).Assembly;
 
         var offenders = leaf.GetExportedTypes()
             .SelectMany(t => t.GetMethods().SelectMany(m =>
                 m.GetParameters().Select(p => p.ParameterType).Append(m.ReturnType)))
             .SelectMany(Flatten)
-            .Where(t => string.Equals(t.Namespace, portNamespace, StringComparison.Ordinal))
+            .Where(t => t.Assembly == portAssembly)
             .Select(t => t.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();

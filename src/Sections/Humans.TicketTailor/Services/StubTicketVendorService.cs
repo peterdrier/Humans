@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using NodaTime;
 
 namespace Humans.TicketTailor.Services;

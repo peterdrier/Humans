@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.UI.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
@@ -7,7 +8,6 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Web.Infrastructure;
