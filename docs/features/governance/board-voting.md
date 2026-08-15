@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Humans.Domain/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
 -->
 <!-- freshness:flag-on-change
   Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or GovernanceBoardVotingController actions change.

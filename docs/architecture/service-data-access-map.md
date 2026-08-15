@@ -74,13 +74,14 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > (`src/Sections/Humans.Tickets.Contracts`), and the TicketTailor vendor
 > adapter (`src/Sections/Humans.TicketTailor`, the sole implementation of
 > the vendor port) — see [Tickets](#tickets). AuditLog is the first
-> *horizontal* section to go to G5, and only the table-owning half moved:
-> `AuditLogService`/`AuditLogRepository`/`AuditLogDbContext` are now in
+> *horizontal* section to go to G5. The table-owning half moved first:
+> `AuditLogService`/`AuditLogRepository`/`AuditLogDbContext` are in
 > `src/Sections/Humans.AuditLog` (+ a `Humans.AuditLog.Contracts` leaf for
-> `IAuditLogService`), but `AuditViewerService` — which reads
+> `IAuditLogService`). `AuditViewerService` — which reads `IUserServiceRead`,
 > `ITeamServiceRead` and `ITeamResourceService` — stayed in
-> `src/Humans.Application/Services/AuditLog/` because peters-hard-rules.md
-> forbids a horizontal section from referencing a vertical one; see
+> `src/Humans.Application/Services/AuditLog/` for one batch and then followed
+> in G5 lane 4b-2h (Peter's 2026-08-14 Base-floor decision), landing in
+> `src/Sections/Humans.AuditLog/{Contracts,Services,ViewComponents}/`; see
 > [AuditLog](#auditlog). None of these three moves changed table ownership —
 > same DbSets, new project. Separately, **#992 dropped all 54 cross-section
 > EF foreign-key constraints** and **#996 stripped the last 11 cross-section
@@ -2681,12 +2682,12 @@ Project: `src/Sections/Humans.AuditLog` — moved from
 `src/Humans.Application/Services/AuditLog/` into its own project (G5,
 nobodies-collective/Humans#866, PR #1280 "G5 batch #3", 2026-08-13);
 services under `Services/`, repository under `Data/`. `AuditLog` is the
-**first horizontal section** to go to G5, and the hard rules split it
-rather than moving it whole: everything table-owning moved (repository,
-service, controller, views) plus a `src/Sections/Humans.AuditLog.Contracts`
-leaf carrying `IAuditLogService` and `AuditLogEntrySnapshot` (~130
-consumer files, mostly in Base, hence a leaf project rather than a
-`Contracts/` folder). `AuditViewerService` did **not** move — see below.
+**first horizontal section** to go to G5, and it moved in two steps:
+everything table-owning first (repository, service, controller, views) plus
+a `src/Sections/Humans.AuditLog.Contracts` leaf carrying `IAuditLogService`
+and `AuditLogEntrySnapshot` (~130 consumer files, mostly in Base, hence a
+leaf project rather than a `Contracts/` folder), then the read+render path
+in G5 lane 4b-2h — see below.
 **DbContext:** `AuditLogDbContext` — **peeled** (nobodies-collective/Humans#858).
 `AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns
@@ -2704,23 +2705,30 @@ Cross-section calls via `IUserServiceRead` (migrated to the read-split
 surface). Implements `IUserDataContributor`.
 No `IMemoryCache`.
 
-### AuditViewerService (Scoped) — stayed in `src/Humans.Application/Services/AuditLog/`
+### AuditViewerService (Scoped) — `src/Sections/Humans.AuditLog/Services/`
 
 No repository. Read-only view assembler over `IAuditLogService`,
 `IUserServiceRead`, `ITeamServiceRead`, `ITeamResourceService`. No DB
-access, no cache.
+access, no cache. `internal sealed`; its interface, `AuditEvent` and
+`AuditEventPage` sit in the project's `Contracts/` folder.
 
-> **Change this sweep (#1280 — G5 batch #3):** `AuditLogService` and
+> **Change this sweep (G5 lane 4b-2h, nobodies-collective/Humans#866):**
+> `AuditViewerService`, `IAuditViewerService`, `AuditEvent`,
+> `AuditEventPage`, `AuditEventTextualizer` and `AuditLogViewComponent`
+> moved into `src/Sections/Humans.AuditLog`, registered from the section's
+> own `Section.Register`. The section now takes `Humans.Teams.Contracts`,
+> `Humans.GoogleIntegration.Contracts` and `Humans.Users.Contracts`.
+> `AuditLogArchitectureTests.SectionReferencesNoVerticalSection`, which
+> pinned the old placement, was retired in the same PR — Peter's 2026-08-14
+> Base-floor decision inverted its premise. Consequence: `Humans.Web`,
+> `Humans.Users`, `Humans.Teams`, `Humans.Store` and `Humans.Tickets` each
+> gained a `ProjectReference` and an `@addTagHelper *, Humans.AuditLog`
+> line for `<vc:audit-log>`.
+>
+> **Prior sweep (#1280 — G5 batch #3):** `AuditLogService` and
 > `AuditLogRepository` moved to `src/Sections/Humans.AuditLog`;
-> `AuditViewerService` did not follow. It injects `ITeamServiceRead`
-> (Teams) and `ITeamResourceService` (Google Integration) alongside
-> `IAuditLogService`, making it a cross-section orchestrator — and
-> peters-hard-rules.md forbids a horizontal section (AuditLog) from
-> referencing a vertical one. It stays in `Humans.Application`, registered
-> from Shell. `AuditLogArchitectureTests.SectionReferencesNoVerticalSection`
-> pins this at the assembly level. Consequence: `Humans.UI`'s
-> `AuditLogViewComponent` and every `<vc:audit-log>` call site are
-> untouched by the move.
+> `AuditViewerService` did not follow at the time, on the reading that a
+> horizontal section may not reference a vertical.
 >
 > **Prior sweep (#1157):** migrated off `ITeamService` /
 > `Team` entities onto `ITeamServiceRead` — team names are stitched by

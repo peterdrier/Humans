@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Humans.UI.Models.Tables;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Web.Tests.Models.Tables;
 
 public class EnumBadgeMapTests

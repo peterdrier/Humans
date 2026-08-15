@@ -1,7 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Services.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
@@ -47,13 +45,9 @@ public static class InfrastructureServiceCollectionExtensions
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
         services.AddAuthSection();
-        // AuditLog's read+render owner. It resolves actor/subject/team display names
-        // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes
-        // it a cross-section orchestrator rather than part of the horizontal AuditLog
-        // section (peters-hard-rules.md: a horizontal may not reference a vertical), so it
-        // stays in Humans.Application and is registered here — Governance's rule, that the
-        // section owning the file is not always the section owning the line.
-        services.AddScoped<IAuditViewerService, AuditViewerService>();
+        // AuditLog's read+render owner (IAuditViewerService) is registered by
+        // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
+        // (nobodies-collective/Humans#866).
         services.AddAdminSection();
         services.AddHoldedConnector(configuration);
 

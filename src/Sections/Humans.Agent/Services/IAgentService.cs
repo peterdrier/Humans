@@ -1,5 +1,4 @@
 using Humans.Gdpr.Contracts;
-using Humans.Application.Models;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Agent.Domain;

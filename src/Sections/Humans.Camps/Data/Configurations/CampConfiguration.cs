@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Humans.Domain.Entities;
-using Humans.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

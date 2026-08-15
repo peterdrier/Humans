@@ -29,6 +29,9 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
+    <!-- AgentToolDispatcher injects IAuditViewerService, which moved out of Humans.Application
+         into the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- The agent's user snapshot lists the caller's still-open feedback reports.
          Contracts/ is a folder on Humans.Feedback (its other consumers are all in Shell),
          so the reference is to the section project — acyclic, and the assembly boundary

@@ -18,6 +18,7 @@ using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 
+using Humans.Teams.Contracts;
 namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>

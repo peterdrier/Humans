@@ -630,17 +630,23 @@ Git Bash.)
      Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
      `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
      it to a table*, not who named it (proven: Email).
-   - **…and a fourth answer, which is forced rather than chosen: the enum stays in
-     `Humans.Domain.Enums` because a `Humans.UI` partial renders it.** Email's rule keeps an
-     enum in Base when another section *persists* it. Teams persists `TeamMemberRole`,
-     `SystemTeamType` and `TeamJoinRequestStatus` alone, so that test says "move" — but
-     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and `Humans.UI` cannot
-     reference a section leaf at any price (that is the registry-inversion rule, step 5b). A
-     Shell renderer can be rebound; a `Humans.UI` one cannot. All three stayed in Base with
-     their `EnumStringStabilityTests` rows, the leaf took `Humans.Domain` alongside
-     `Humans.Interfaces` (Campaigns' reference, here for the section's *own* vocabulary), and
-     ~30 consumer files needed no `using` change at all. **Ask who renders it, not only who
-     writes it** (proven: Teams).
+   - **…and a fourth answer that was asserted, believed for three lanes, and is wrong:
+     "the enum stays in `Humans.Domain.Enums` because a `Humans.UI` partial renders it".**
+     The original claim ran: Email's rule keeps an enum in Base when another section
+     *persists* it; Teams persists `TeamMemberRole`, `SystemTeamType` and
+     `TeamJoinRequestStatus` alone, so that test says "move" — but
+     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and "`Humans.UI` cannot
+     reference a section leaf at any price". **Re-measured by G5 lane 4b-2k and false.**
+     `Humans.UI` references `Humans.Application`, and `Humans.Application` declares direct
+     `ProjectReference`s on `Humans.Camps.Contracts`, `Humans.Governance.Contracts`,
+     `Humans.Shifts.Contracts` and `Humans.Teams.Contracts`. Base *is* allowed to name a leaf —
+     that is the whole reason leaves exist (§15.5b); what it may not name is a section
+     **project**. `TeamMemberRole`, `TeamJoinRequestStatus` and `RolePeriod` moved onto
+     `Humans.Teams.Contracts` with `_RoleBadge.cshtml` needing one `@using` line and nothing
+     else. `SystemTeamType` stayed, for the unrelated reason that it has no single section
+     owner (phase 3a's file). **Ask who renders it and then check the renderer's project
+     graph — a rendering consumer in `Humans.UI` is a `using` line, not a blocker**
+     (proven: Teams, reversed by 4b-2k).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
@@ -680,23 +686,28 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
-   - **A *horizontal* section's read+render layer may not be the section's at all, and
-     leaving it in Base is the cheap answer as well as the correct one.** Every other rule
-     here asks where a type's consumers are. This one asks what the type *injects*:
+   - **A horizontal section's read+render layer belongs to the section, and the leaves it
+     needs come with it — this bullet used to say the opposite, and cost a lane to reverse.**
      `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
-     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` (which is
-     `Humans.Teams.Contracts` since Teams' G5) and `ITeamResourceService` — a horizontal
-     referencing three verticals, which `peters-hard-rules.md` forbids at any size. It is an
-     orchestrator by the hard rules' own definition (it calls no repository), so it stayed in
-     `Humans.Application` with its `AuditEvent` DTO and its verb table, registered from
-     Shell. The section kept the append path and the raw entry queries on its leaf. **The
-     move got cheaper, not more expensive, for splitting it**: `Humans.UI`'s
-     `AuditLogViewComponent` injects that interface and binds that DTO, and `Humans.UI`
-     cannot reference a section at any price (Teams' hard floor), so the alternative was
-     dragging a ten-call-site shared widget out of Base to satisfy a file's name. Pin the
-     result with an assembly-level test — `GetReferencedAssemblies()` naming no vertical
-     section — because nothing else stops the next lane from adding the reference
-     (proven: AuditLog).
+     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` and
+     `ITeamResourceService`. That was read as "a horizontal referencing three verticals,
+     forbidden at any size", and the type was parked in `Humans.Application` with its
+     `AuditEvent` DTO and verb table, registered from Shell, pinned by an assembly-level
+     `GetReferencedAssemblies()` test. **Peter reversed it in the Base-floor decision of
+     2026-08-14**: a former Base resident that names another section's read interface moves
+     to its section, and Base gets no `Humans.Teams.Contracts` reference to keep it. A
+     section taking another section's *contracts leaf* is sanctioned at end state; what is
+     forbidden is a cycle, and there is none — Teams references `Humans.AuditLog`, AuditLog
+     references `Humans.Teams.Contracts`, and the leaf reaches nothing. G5 lane 4b-2h moved
+     the interface, the DTO, the verb table and `AuditLogViewComponent` into
+     `src/Sections/Humans.AuditLog`, and **retired the pinning test**, whose premise the
+     decision had inverted.
+     - The widget is the expensive half, not the cheap one: a `<vc:>` component that leaves
+       `Humans.UI` needs `@addTagHelper *, Humans.<Section>` in **every** consuming
+       assembly's `_ViewImports.cshtml` plus a `ProjectReference`, and a missing line is
+       silent — inert literal markup, green build, no log line. Prove each call site with a
+       render test that asserts *seeded content*, never merely `NotContain("<vc:")`
+       (proven: AuditLog, five consumers).
    - **…and the horizontal rule bites a second time at the *type* level, which is not the same
      search as the reference one.** The bullet above asks what a horizontal's services
      *inject*. This asks what its leaf's signatures *name*:

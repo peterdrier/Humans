@@ -1,7 +1,6 @@
 using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Services.AuditLog;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 

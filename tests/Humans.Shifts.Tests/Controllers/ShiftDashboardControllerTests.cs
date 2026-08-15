@@ -3,6 +3,7 @@ using Humans.Domain.Enums;
 using Humans.Shifts.Models;
 using NodaTime;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>

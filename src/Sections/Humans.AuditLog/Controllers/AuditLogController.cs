@@ -1,7 +1,7 @@
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Models;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
@@ -10,16 +10,17 @@ using Humans.Users.Contracts;
 namespace Humans.AuditLog.Controllers;
 
 /// <summary>
-/// The general audit browser. Reaches no section: <see cref="IAuditViewerService"/> is the
-/// Base orchestrator that resolves actor, subject and team display names, and it stayed in
-/// <c>Humans.Application</c> at AuditLog's own G5 for exactly that reason.
+/// The general audit browser, over the section's own <see cref="IAuditViewerService"/> —
+/// which resolves actor, subject and team display names, and moved here from
+/// <c>Humans.Application</c> in G5 lane 4b-2h (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
-/// The Google-sync audit views and the Drive-activity scan that used to live here moved to
-/// <c>Humans.Monitor</c>: two of them injected GoogleIntegration services, and AuditLog is a
-/// *horizontal* — <c>peters-hard-rules.md</c> forbids a horizontal from referencing a vertical
-/// section. <c>AuditLogArchitectureTests.SectionReferencesNoVerticalSection</c> is what holds
-/// that line.
+/// The Google-sync audit views and the Drive-activity scan that used to live here are in
+/// <c>Humans.Monitor</c>, carved out when AuditLog was still forbidden from naming a vertical
+/// section. That constraint was lifted by Peter's 2026-08-14 Base-floor decision, and
+/// <c>AuditLogArchitectureTests.SectionReferencesNoVerticalSection</c> was retired with it;
+/// the Monitor split stands on its own merits (a distinct read model and a job) rather than on
+/// that rule.
 /// </remarks>
 [Route("AuditLog")]
 internal sealed class AuditLogController(

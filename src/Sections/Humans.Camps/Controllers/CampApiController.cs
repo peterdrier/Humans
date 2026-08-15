@@ -1,4 +1,3 @@
-using Humans.Camps.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;

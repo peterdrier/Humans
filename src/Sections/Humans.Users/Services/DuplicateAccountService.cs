@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.Services;
 
 // Detects duplicate accounts (same email across multiple User records). Resolution

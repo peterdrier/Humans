@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Camps.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 

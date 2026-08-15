@@ -16,6 +16,7 @@ using Humans.UI.Authorization;
 using Humans.UI.Models;
 using Humans.Users.Contracts;
 
+using Humans.Governance.Contracts;
 namespace Humans.Web.Controllers;
 
 /// <summary>

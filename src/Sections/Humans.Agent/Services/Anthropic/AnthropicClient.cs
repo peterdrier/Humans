@@ -5,7 +5,6 @@ using Anthropic.Models.Messages;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;

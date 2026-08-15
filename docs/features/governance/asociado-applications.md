@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Humans.Domain/TermExpiryCalculator.cs
+  src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
 -->
 <!-- freshness:flag-on-change
   Tier application state machine, approval effects, and renewal flow — review when Application entity or governance/application controllers change.

@@ -16,14 +16,17 @@
     signatures name. The directory, detail, admin, roster, join-request, role-management,
     compliance, image and early-entry DTOs are internal to the section.
 
-    The five camp enums live here rather than in the section's internal Domain/ because the
+    The camp enums live here rather than in the section's internal Domain/ because the
     leaf's own records name them (Budget's rule). Teams' hard floor does not apply: no
     Humans.UI partial renders any of them — _CampCard.cshtml is the section's own view.
+    G5 lane 4b-2k brought the last six of them home from Humans.Domain.Enums
+    (AdultPlayspacePolicy, KidsVisitingPolicy, ElectricalGrid, PerformanceSpaceStatus,
+    SoundZone, SpaceSize) plus the CampLink value object.
 
-    References Humans.Interfaces (IApplicationService) and Humans.Domain (the shared camp
-    facility enums — SoundZone, SpaceSize, ElectricalGrid, YesNoMaybe and friends — which stay
-    Base vocabulary because Shell and other sections spell them). Acyclic: Humans.Domain names
-    only Humans.Interfaces.
+    References Humans.Interfaces (IApplicationService) and Humans.Domain — the latter now for
+    exactly one type, YesNoMaybe, a generic tri-state with no section owner that CampReadModels
+    names four times. That edge dies when YesNoMaybe gets its phase-3a home in Base. Acyclic:
+    Humans.Domain names only Humans.Interfaces.
   -->
 
   <ItemGroup>

@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 namespace Humans.UI.Models;
 
 /// <summary>

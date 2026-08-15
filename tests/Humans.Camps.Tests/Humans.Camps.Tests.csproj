@@ -23,7 +23,6 @@
   <ItemGroup>
     <!-- The section's own layers; the move renamed all of them at once. -->
     <Using Include="Humans.Application" />
-    <Using Include="Humans.Domain.ValueObjects" />
     <Using Include="Humans.Camps" />
     <Using Include="Humans.Camps.Contracts" />
     <Using Include="Humans.Camps.Controllers" />

@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using NodaTime;
 using NodaTime.Testing;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Domain;
 
 public class ShiftSignupTests

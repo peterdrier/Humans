@@ -4,7 +4,6 @@ using Humans.Teams.Services;
 using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 using Humans.UI.Models;

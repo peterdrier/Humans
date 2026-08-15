@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.ViewComponents;
 
 /// <summary>

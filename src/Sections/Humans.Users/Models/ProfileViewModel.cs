@@ -383,7 +383,7 @@ internal sealed class ProfileViewModel
     /// the viewer does not have coordinator access. Source: <c>FacilitatedMessageSent</c>
     /// audit entries where <c>EntityId == UserId</c>.
     /// </summary>
-    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>? SentMessages { get; set; }
+    public IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>? SentMessages { get; set; }
 
     /// <summary>
     /// Whether the viewer can see the "Sent messages" panel.
