@@ -26,4 +26,40 @@
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 
+  <!--
+    The architecture attributes are linked in as a *name oracle* so each
+    analyzer can say typeof(XAttribute).FullName instead of repeating a
+    metadata-name string literal that drifts silently when the namespace
+    moves (nobodies-collective/Humans#1057). Two of the three consumers
+    early-return on an unresolved lookup, so the drift stopped enforcement
+    with no error, no warning and nothing in the build log.
+
+    A ProjectReference cannot replace this: src/Directory.Build.props gives
+    every project under src/ a ProjectReference on Humans.Analyzers with
+    OutputItemType="Analyzer", so the reverse edge would close a project
+    cycle; and Roslyn loads an analyzer's dependency closure into the
+    compiler process, which is what EnforceExtendedAnalyzerRules exists to
+    prevent. The compiled copies here never enter an analyzed compilation —
+    the reference above carries ReferenceOutputAssembly="false" — so they
+    cannot make the real attribute types ambiguous.
+
+    ImplicitUsings is disabled in this project; the linked sources rely on
+    an implicit `using System;` in their owning project, which the Using
+    item below restores here without editing them.
+  -->
+  <ItemGroup>
+    <Using Include="System" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Humans.Interfaces\Architecture\GrandfatheredAttribute.cs"
+             Link="Architecture\GrandfatheredAttribute.cs" />
+    <Compile Include="..\Humans.Interfaces\Architecture\SurfaceBudgetAttribute.cs"
+             Link="Architecture\SurfaceBudgetAttribute.cs" />
+    <Compile Include="..\Humans.Interfaces\Architecture\ExternalWriteAttribute.cs"
+             Link="Architecture\ExternalWriteAttribute.cs" />
+    <Compile Include="..\Humans.Interfaces\Architecture\ExpiresOnAttribute.cs"
+             Link="Architecture\ExpiresOnAttribute.cs" />
+  </ItemGroup>
+
 </Project>

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using Humans.Application.Architecture;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -11,8 +12,15 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
     public const string OverBudgetDiagnosticId = "HUM0015";
     public const string SlackDiagnosticId = "HUM0016";
 
-    private const string SurfaceBudgetAttributeFullName =
-        "Humans.Application.Architecture.SurfaceBudgetAttribute";
+    /// <summary>
+    /// Derived from the attribute class (linked into this project by
+    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
+    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
+    /// nothing, so a stale literal would retire HUM0015/HUM0016 silently.
+    /// See nobodies-collective/Humans#1057.
+    /// </summary>
+    private static readonly string SurfaceBudgetAttributeFullName =
+        typeof(SurfaceBudgetAttribute).FullName!;
 
     private static readonly LocalizableString OverBudgetTitle =
         "Type surface exceeds budget";

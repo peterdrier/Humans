@@ -19,4 +19,24 @@
     <ProjectReference Include="..\..\src\Humans.Analyzers\Humans.Analyzers.csproj" />
   </ItemGroup>
 
+  <!--
+    The production architecture-attribute sources, embedded verbatim so
+    ArchitectureAttributeIdentityTests can drive the *real* attribute through
+    the real analyzer instead of an inline stub that agrees with itself.
+    A stub cannot fail when the analyzer's lookup drifts off the real class —
+    which is how HUM0015/HUM0016 and HUM0033 could have been retired silently
+    (nobodies-collective/Humans#1057). Paths are literal on purpose: if the
+    attributes move, this is a build error, not a quietly-skipped test.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\GrandfatheredAttribute.cs"
+                      LogicalName="ProductionAttributes.GrandfatheredAttribute.cs" />
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\SurfaceBudgetAttribute.cs"
+                      LogicalName="ProductionAttributes.SurfaceBudgetAttribute.cs" />
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\ExternalWriteAttribute.cs"
+                      LogicalName="ProductionAttributes.ExternalWriteAttribute.cs" />
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\ExpiresOnAttribute.cs"
+                      LogicalName="ProductionAttributes.ExpiresOnAttribute.cs" />
+  </ItemGroup>
+
 </Project>

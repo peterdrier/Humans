@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Internal;
@@ -26,7 +27,13 @@ namespace Humans.Analyzers.Internal;
 /// </remarks>
 internal static class GrandfatheredCheck
 {
-    public const string AttributeFullName = "Humans.Application.Architecture.GrandfatheredAttribute";
+    /// <summary>
+    /// Metadata name the attribute is resolved by, derived from the class
+    /// itself (linked into this project by <c>Humans.Analyzers.csproj</c>) so
+    /// a namespace move carries the constant with it. Never re-inline this as
+    /// a literal — see nobodies-collective/Humans#1057.
+    /// </summary>
+    public static readonly string AttributeFullName = typeof(GrandfatheredAttribute).FullName!;
 
     /// <summary>
     /// Resolves the <see cref="GrandfatheredAttribute"/> symbol from the
