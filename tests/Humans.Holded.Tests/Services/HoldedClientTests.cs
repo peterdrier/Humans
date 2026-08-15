@@ -95,6 +95,24 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
+    {
+        // The message becomes the outbox LastError, the audit description and the finance-admin
+        // card. A 4xx on a contact upsert can echo the IBAN we just sent
+        // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body.
+        var body = """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body));
+        var client = Make(handler);
+
+        var act = async () => await client.GetPurchaseDocumentAsync("doc-1", Xunit.TestContext.Current.CancellationToken);
+
+        var ex = await act.Should().ThrowAsync<HoldedPermanentException>();
+        ex.Which.Message.Should().NotContain("ES9121000418450200051332");
+        ex.Which.Message.Should().Contain("ES91****332");
+        ex.Which.ResponseBody.Should().Be(body);
+    }
+
+    [HumansFact]
     public async Task GetPurchaseDocumentAsync_500Throws_HoldedTransient()
     {
         var handler = new StubHandler(_ => Respond(HttpStatusCode.ServiceUnavailable, ""));

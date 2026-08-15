@@ -33,6 +33,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IHoldedClient _holdedClient;
     private readonly IHoldedFinanceService _holdedFinance;
     private readonly IFileStorage _fileStorage;
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock;
     private readonly ExpenseReportService _sut;
 
@@ -60,6 +61,9 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService = Substitute.For<IBudgetServiceRead>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
+        // The drain now self-guards on the API key instead of the job doing it, so every test
+        // that expects a push has to say the client is configured.
+        _holdedClient.IsConfigured.Returns(true);
         _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
 
@@ -87,7 +91,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IAuditLogService>(),
+            _auditLog,
             _holdedClient,
             _holdedFinance,
             _clock,
@@ -115,6 +119,49 @@ public class ExpenseReportServiceHoldedOutboxTests
         Lines = new List<ExpenseLineDto>(),
     };
 
+    /// <summary>A two-line report whose attachments carry the given push stamps — the shape the
+    /// attachment-idempotency tests need.</summary>
+    private static ExpenseReportDto MakeReportWithAttachments(
+        string? holdedDocId, Instant? alreadyPushed, Instant? notYetPushed)
+    {
+        var report = MakeReport(holdedDocId);
+        return report with
+        {
+            Lines =
+            [
+                MakeLineWithAttachment(report.Id, "first.pdf", 0, alreadyPushed),
+                MakeLineWithAttachment(report.Id, "second.pdf", 1, notYetPushed),
+            ],
+        };
+    }
+
+    private static ExpenseLineDto MakeLineWithAttachment(
+        Guid reportId, string fileName, int sortOrder, Instant? holdedUploadedAt)
+    {
+        var attachmentId = Guid.NewGuid();
+        return new ExpenseLineDto
+        {
+            Id = Guid.NewGuid(),
+            ExpenseReportId = reportId,
+            Description = fileName,
+            Amount = 10m,
+            LineType = ExpenseLineType.Receipt,
+            SortOrder = sortOrder,
+            AttachmentId = attachmentId,
+            Attachment = new ExpenseAttachmentDto
+            {
+                Id = attachmentId,
+                OriginalFileName = fileName,
+                Extension = ".pdf",
+                ContentType = "application/pdf",
+                SizeBytes = 3,
+                UploadedByUserId = SubmitterId,
+                UploadedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+                HoldedUploadedAt = holdedUploadedAt,
+            },
+        };
+    }
+
     // Replaces UserInfoStubHelpers.ToUserInfo(), which reads through an in-memory
     // UsersDbContext a section test project cannot see. Only the no-argument shape was
     // ever used here, and it is two lines.
@@ -135,7 +182,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansFact]
     public async Task EmptyQueue_NoClientCalls()
     {
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
@@ -153,7 +200,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
         const string holdedDocId = "holded-doc-999";
 
-        _repo.GetUnprocessedOutboxAsync(100, Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), 100, Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -188,7 +235,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -218,7 +265,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -272,7 +319,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
         const string holdedDocId = "holded-doc-with-attachments";
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -319,7 +366,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -361,7 +408,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -389,7 +436,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var report = MakeReport(holdedDocId: "doc-prev-retry");
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -414,7 +461,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var report = MakeReport(holdedDocId: "holded-existing-doc");
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.UpdateIncomingDocTag);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -436,7 +483,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var report = MakeReport();
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -446,11 +493,253 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).IncrementOutboxRetryAsync(
-            outboxEvent.Id, "timeout", Arg.Any<CancellationToken>());
+            outboxEvent.Id, "timeout", Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs()
             .MarkOutboxFailedPermanentlyAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0, 2)]
+    [Xunit.InlineData(1, 4)]
+    [Xunit.InlineData(3, 16)]
+    public async Task TransientException_BacksOffExponentially(int retryCount, int expectedMinutes)
+    {
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        outboxEvent.RetryCount = retryCount;
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).IncrementOutboxRetryAsync(
+            outboxEvent.Id, "timeout",
+            Now + Duration.FromMinutes(expectedMinutes),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task TransientException_OnTheTenthAttempt_IsWrittenOffRatherThanRetriedForever()
+    {
+        // Nine failures already recorded; this one spends the budget. Writing it off — rather than
+        // letting a RetryCount filter drop it out of the drain — is what puts it on the
+        // /Expenses/Review banner instead of stranding it invisibly.
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        outboxEvent.RetryCount = 9;
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).MarkOutboxFailedPermanentlyAsync(
+            outboxEvent.Id,
+            Arg.Is<string>(s => s.Contains("10 attempts") && s.Contains("timeout")),
+            Now, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs()
+            .IncrementOutboxRetryAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
+            Arg.Any<string>(), Arg.Any<string>(), null, null);
+    }
+
+    [HumansFact]
+    public async Task NoApiKeyConfigured_DrainDoesNotTouchTheQueue()
+    {
+        // Every call would 401 — a permanent error — so draining would write off the whole queue.
+        _holdedClient.IsConfigured.Returns(false);
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceiveWithAnyArgs()
+            .GetUnprocessedOutboxAsync(default, 0, Arg.Any<CancellationToken>());
+    }
+
+    // ─── attachment idempotency ───────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task AlreadyUploadedAttachments_AreNotSentAgainOnARerun()
+    {
+        // A re-run after a partial failure (or a finance-admin re-queue) must not add a second
+        // copy of every earlier file to the doc Holded already has.
+        var report = MakeReportWithAttachments(
+            holdedDocId: "holded-doc-1",
+            alreadyPushed: Now - Duration.FromHours(1),
+            notYetPushed: null);
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).UploadAttachmentAsync(
+            "holded-doc-1",
+            Arg.Is<HoldedAttachmentInput>(a => a.FileName == "second.pdf"),
+            Arg.Any<CancellationToken>());
+        await _holdedClient.DidNotReceive().UploadAttachmentAsync(
+            Arg.Any<string>(),
+            Arg.Is<HoldedAttachmentInput>(a => a.FileName == "first.pdf"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EachUpload_IsRecordedSoTheNextRunCanSkipIt()
+    {
+        var report = MakeReportWithAttachments(
+            holdedDocId: "holded-doc-1", alreadyPushed: null, notYetPushed: null);
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(2).MarkAttachmentPushedAsync(
+            Arg.Any<Guid>(), Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SuccessfulPush_IsRecordedInTheAuditLog()
+    {
+        // The outbox columns are not readable outside the database and do not survive row
+        // cleanup; the audit entry is what keeps the push on the report's history.
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-doc-42");
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
+            Arg.Is<string>(s => s.Contains("holded-doc-42")), Arg.Any<string>(), null, null);
+    }
+
+    // ─── sync state reported to finance ───────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_ReportsQueued_ForAFreshEvent()
+    {
+        var report = MakeReport();
+        _repo.GetLatestOutboxForReportAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc));
+
+        var timeline = await _sut.GetHoldedTimelineAsync(report, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.SyncState.Should().Be(ExpenseHoldedSyncState.Queued);
+        timeline.CanRetry.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_ReportsRetrying_WithTheErrorAndNextAttempt()
+    {
+        var report = MakeReport();
+        var ev = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        ev.RetryCount = 3;
+        ev.LastError = "timeout";
+        ev.NextRetryAt = Now + Duration.FromMinutes(16);
+        _repo.GetLatestOutboxForReportAsync(report.Id, Arg.Any<CancellationToken>()).Returns(ev);
+
+        var timeline = await _sut.GetHoldedTimelineAsync(report, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.SyncState.Should().Be(ExpenseHoldedSyncState.Retrying);
+        timeline.RetryCount.Should().Be(3);
+        timeline.LastError.Should().Be("timeout");
+        timeline.NextRetryAt.Should().Be(Now + Duration.FromMinutes(16));
+        // A finance admin who has fixed the cause should not have to wait out the backoff.
+        timeline.CanRetry.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_ReportsFailed_EvenThoughAWriteOffAlsoSetsProcessedAt()
+    {
+        var report = MakeReport();
+        var ev = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        ev.FailedPermanently = true;
+        ev.ProcessedAt = Now;
+        ev.LastError = "400 Bad Request";
+        _repo.GetLatestOutboxForReportAsync(report.Id, Arg.Any<CancellationToken>()).Returns(ev);
+
+        var timeline = await _sut.GetHoldedTimelineAsync(report, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.SyncState.Should().Be(ExpenseHoldedSyncState.Failed);
+        timeline.CanRetry.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_ReportsNotConfigured_RatherThanQueued_WhenThereIsNoApiKey()
+    {
+        // Otherwise a PR-preview environment shows "Queued" forever for a queue nothing drains.
+        _holdedClient.IsConfigured.Returns(false);
+        var report = MakeReport();
+        _repo.GetLatestOutboxForReportAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc));
+
+        var timeline = await _sut.GetHoldedTimelineAsync(report, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.SyncState.Should().Be(ExpenseHoldedSyncState.NotConfigured);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_ReportsNotQueued_WhenNoPushWasEverQueued()
+    {
+        var timeline = await _sut.GetHoldedTimelineAsync(MakeReport(), Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.SyncState.Should().Be(ExpenseHoldedSyncState.NotQueued);
+        timeline.CanRetry.Should().BeFalse();
+    }
+
+    // ─── manual re-queue ──────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task RequeueHoldedPushWithResultAsync_RequeuesAndAudits()
+    {
+        var reportId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _repo.RequeueOutboxForReportAsync(reportId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _sut.RequeueHoldedPushWithResultAsync(
+            reportId, actorId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ExpenseHoldedRequeued, Arg.Any<string>(), reportId,
+            Arg.Any<string>(), actorId, null, null);
+    }
+
+    [HumansFact]
+    public async Task RequeueHoldedPushWithResultAsync_Fails_WhenThereIsNothingStuck()
+    {
+        var reportId = Guid.NewGuid();
+        _repo.RequeueOutboxForReportAsync(reportId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.RequeueHoldedPushWithResultAsync(
+            reportId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _auditLog.DidNotReceiveWithAnyArgs()
+            .LogAsync(default, null!, default, null!, Guid.Empty, null, null);
     }
 
     [HumansFact]
@@ -461,7 +750,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var report = MakeReport();
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -483,7 +772,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var report = MakeReport();
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
@@ -499,7 +788,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(Guid.Empty, null!, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
     }
 
     // ─── IBAN never logged ────────────────────────────────────────────────────
@@ -526,7 +815,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
-        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);

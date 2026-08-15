@@ -63,8 +63,9 @@ public class ExpensesArchitectureTests
         // stays in Humans.Infrastructure because recurring jobs have no discovery seam yet
         // (§15 step 6b). IExpenseReportServiceRead — and the DTO graph it returns
         // (ExpenseReportDto/ExpenseLineDto/ExpenseAttachmentDto/ExpenseHoldedTimeline/
-        // ExpenseAttachmentDownload) plus the two enums that graph exposes
-        // (ExpenseReportStatus/ExpenseLineType) — were promoted for the admin dashboard tile
+        // ExpenseAttachmentDownload) plus the enums that graph exposes
+        // (ExpenseReportStatus/ExpenseLineType, and ExpenseHoldedSyncState which
+        // ExpenseHoldedTimeline carries) — were promoted for the admin dashboard tile
         // (nobodies-collective/Humans#1264 tile wave, Peter-approved).
         var contractTypes = typeof(IExpenseReportBackgroundProcessor).Assembly.GetExportedTypes()
             .Select(t => t.Name)
@@ -80,6 +81,7 @@ public class ExpensesArchitectureTests
             "ExpenseAttachmentDto",
             "ExpenseAttachmentDownload",
             "ExpenseHoldedTimeline",
+            "ExpenseHoldedSyncState",
             "ExpenseReportStatus",
             "ExpenseLineType",
         ]);

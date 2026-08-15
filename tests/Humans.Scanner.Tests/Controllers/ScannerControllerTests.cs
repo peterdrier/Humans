@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
+using Humans.Calendar.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;

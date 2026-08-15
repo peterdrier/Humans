@@ -65,6 +65,10 @@ public sealed class ExpenseReportServiceTests
     {
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
+        // The drain self-guards on the API key now (the job used to), so the substitute has to
+        // claim a key or DrainHoldedOutboxAsync returns before touching anything.
+        _holdedClient.IsConfigured.Returns(true);
+
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetServiceRead>();
         _teamService = Substitute.For<ITeamService>();

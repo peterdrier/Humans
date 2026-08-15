@@ -19,11 +19,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@Localizer["Governance_Title"]</h1>
-    @* AccessMatrixViewComponent stays in Shell — it reads AccessMatrixDefinitions and
-       SectionHelpContent, ~900 lines naming every section's roles, routes and FAQ, which
-       Shell's agent preloader reads too. A section _ViewImports cannot @addTagHelper
-       Humans.Web, so the widget is invoked by name across application parts (§15 step 6). *@
-    @await Component.InvokeAsync("AccessMatrix", new { section = "Governance" })
+    <vc:access-matrix section="Governance" />
 </div>
 
 <div class="row mb-4">

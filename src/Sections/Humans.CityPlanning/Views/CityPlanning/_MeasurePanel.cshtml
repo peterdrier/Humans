@@ -1,9 +1,3 @@
-@* <vc:access-matrix> is unavailable here: AccessMatrixViewComponent lives in
-   Humans.Web (it reads AccessMatrixDefinitions and SectionHelpContent, two Shell-owned
-   registries that name every section), and a section _ViewImports cannot
-   @addTagHelper Humans.Web — the element would render as inert literal markup.
-   Component.InvokeAsync resolves the component by NAME across application parts, so
-   the widget stays where it belongs and this view still gets it. *@
 @model CityPlanningMeasurePanelViewModel
 @{
     var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
@@ -11,7 +5,7 @@
 
 <div class="card shadow-sm">
     <div class="card-body py-2 px-3 d-flex flex-column gap-1">
-        @await Component.InvokeAsync("AccessMatrix", new { section = Model.AccessMatrixSection })
+        <vc:access-matrix section="@Model.AccessMatrixSection" />
         <div class="d-flex gap-1">
             <button type="button" id="measure-btn" class="btn btn-outline-secondary btn-sm flex-grow-1" title="@Localizer["CityPlanning_MeasureButton"]" aria-pressed="false">
                 <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]

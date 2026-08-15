@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.ICalFeed;
+using Humans.Calendar.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;

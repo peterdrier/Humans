@@ -22,5 +22,7 @@ internal sealed class HoldedExpenseOutboxEventConfiguration
 
         b.HasIndex(x => x.ExpenseReportId);
         b.HasIndex(x => new { x.ProcessedAt, x.FailedPermanently });
+        // The drain now also filters on RetryCount and NextRetryAt; both ride along on the
+        // existing (ProcessedAt, FailedPermanently) index at this scale (a few hundred rows).
     }
 }

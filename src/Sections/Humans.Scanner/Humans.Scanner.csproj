@@ -43,6 +43,13 @@
     -->
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!--
+      Calendar: the ticket card reads the Human's shift commitments through
+      IICalFeedService. Calendar's Contracts/ is a folder, not a leaf, so the reference is
+      to the section project — acyclic, Calendar names nothing in Scanner
+      (nobodies-collective/Humans#866, G5 lane 4b-2c).
+    -->
+    <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
   </ItemGroup>
 
   <ItemGroup>

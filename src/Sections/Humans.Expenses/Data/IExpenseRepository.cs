@@ -78,8 +78,32 @@ internal interface IExpenseRepository : IRepository
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
     // Outbox
+    /// <summary>
+    /// The drain batch: unprocessed, not written off, and past its backoff. Events still inside
+    /// their <c>NextRetryAt</c> window are held back rather than re-hitting Holded every minute.
+    /// </summary>
     Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
-        int limit, CancellationToken ct = default);
+        NodaTime.Instant now, int limit, CancellationToken ct = default);
+    /// <summary>
+    /// The report's most recent outbox event, or null if a push was never queued. Drives the
+    /// Holded sync card on <c>/Expenses/{id}</c>.
+    /// </summary>
+    Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
+        Guid reportId, CancellationToken ct = default);
+    /// <summary>Written-off events across all reports — the <c>/Expenses/Review</c> banner count.</summary>
+    Task<int> CountFailedOutboxAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Puts the report's failed or backing-off events back at the front of the drain: clears the
+    /// write-off, the error, the backoff, and the retry budget. Returns false when the report has
+    /// no event in either state. Idempotent — a healthy or already-pushed report is a no-op.
+    /// </summary>
+    Task<bool> RequeueOutboxForReportAsync(Guid reportId, CancellationToken ct = default);
+    /// <summary>
+    /// Records that the file reached the report's Holded document, so a later re-run skips it
+    /// instead of uploading a second copy to the same doc.
+    /// </summary>
+    Task MarkAttachmentPushedAsync(
+        Guid attachmentId, NodaTime.Instant pushedAt, CancellationToken ct = default);
     /// <summary>
     /// Persists the freshly-issued Holded document id on the report. Caller
     /// invokes this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>
@@ -100,8 +124,10 @@ internal interface IExpenseRepository : IRepository
     Task SetHoldedContactLinkAsync(
         Guid reportId, string holdedContactId, int? supplierAccountNum,
         NodaTime.Instant updatedAt, CancellationToken ct = default);
+    /// <summary>Records a transient failure and holds the event until <paramref name="nextRetryAt"/>.</summary>
     Task IncrementOutboxRetryAsync(
-        Guid outboxEventId, string error, CancellationToken ct = default);
+        Guid outboxEventId, string error, NodaTime.Instant nextRetryAt,
+        CancellationToken ct = default);
     Task MarkOutboxFailedPermanentlyAsync(
         Guid outboxEventId, string error,
         NodaTime.Instant processedAt, CancellationToken ct = default);

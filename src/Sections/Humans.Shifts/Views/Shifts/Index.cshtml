@@ -64,12 +64,7 @@
         </ul>
         <div class="d-flex gap-2">
             @* Hide the info button but keep the modal in the DOM for the "Learn more" button *@
-            @* <vc:access-matrix> is unavailable here: AccessMatrixViewComponent reads Shell-owned
-   registries naming every section, so it stays in Humans.Web and the section cannot
-   bind its tag helper. Resolved by name across application parts instead — it throws
-   rather than degrading, so ShiftsPageRenderTests asserting a 200 is the proof
-   (design §15 step 6, CityPlanning's rule). *@
-            <span class="shifts-hidden-info-btn">@await Component.InvokeAsync("AccessMatrix", new { section = "Shifts" })</span>
+            <span class="shifts-hidden-info-btn"><vc:access-matrix section="Shifts" /></span>
             <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning btn-sm" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             <a asp-action="Settings" class="btn btn-outline-secondary btn-sm" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         </div>

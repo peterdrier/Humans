@@ -8,10 +8,10 @@
    DataAnnotationLocalizerProvider resolves; and the widget's Consents step renders
    Consent's copy through Consent's own _ConsentReviewBody partial.
 
-   The review pages' three <vc:> elements resolve as follows: <vc:human> is already in
-   Humans.UI, while <vc:profile-card> and <vc:access-matrix> read Shell-owned registries
-   and stay there — both are invoked by name instead (design §15 step 6, CityPlanning's
-   and Governance's cases). Guarded by OnboardingPageRenderTests (step 12). *@
+   The review pages' three <vc:> elements resolve as follows: <vc:human> and
+   <vc:access-matrix> are both in Humans.UI and bind through the @addTagHelper below;
+   <vc:profile-card> still reads a Shell-owned registry and stays there, invoked by name
+   (design §15 step 6). Guarded by OnboardingPageRenderTests (step 12). *@
 @using Humans.Application.DTOs
 @using Humans.Application.Extensions
 @using Humans.Consent

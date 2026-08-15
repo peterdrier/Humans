@@ -12,8 +12,7 @@ namespace Humans.Shifts.ViewComponents;
 /// </summary>
 /// <remarks>
 /// Stays in Shell and is invoked by name from <c>Humans.Onboarding</c>'s
-/// <c>Views/OnboardingWidget/Shifts.cshtml</c>, the same call CityPlanning makes for
-/// <c>&lt;vc:access-matrix&gt;</c>: everything below the first line of this method is
+/// <c>Views/OnboardingWidget/Shifts.cshtml</c>: everything below the first line of this method is
 /// Shifts' presentation — <see cref="ShiftBrowseMapper"/> (internal to Shell),
 /// <see cref="ShiftBrowseViewModel"/>, <see cref="RotaShiftGroup"/> and the
 /// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials — and Shifts has not gone

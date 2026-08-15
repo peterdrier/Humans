@@ -12,7 +12,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>@SharedLocalizer["Teams_Title"]</h1>
         <div class="d-flex gap-2">
-            @await Component.InvokeAsync("AccessMatrix", new { section = "Teams" })
+            <vc:access-matrix section="Teams" />
             <a asp-action="MyTeams" class="btn btn-outline-secondary">@Localizer["MyTeams_Title"]</a>
             <a asp-controller="Profile" asp-action="Search" class="btn btn-outline-secondary"><i class="fa-solid fa-search"></i></a>
             <a asp-action="Roster" class="btn btn-outline-secondary">@SharedLocalizer["Nav_Roster"]</a>

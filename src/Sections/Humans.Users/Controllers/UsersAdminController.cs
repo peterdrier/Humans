@@ -12,7 +12,6 @@ using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;

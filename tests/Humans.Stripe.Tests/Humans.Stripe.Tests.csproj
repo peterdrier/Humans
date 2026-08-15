@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Stripe\Humans.Stripe.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The signature sanity test signs a payload by hand and feeds it to Stripe.NET's
+      EventUtility, so this project names the SDK directly. It is the only test project
+      that may (G5-SECTION-TEMPLATE.md step 8).
+    -->
+    <PackageReference Include="Stripe.net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The connector builds a StripeService over IOptions and an ILogger. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
