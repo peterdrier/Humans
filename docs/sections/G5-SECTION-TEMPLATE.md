@@ -1126,15 +1126,14 @@ Git Bash.)
      former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
      fetched — otherwise the component re-queries and the move quietly doubles a page's reads
      (proven: Onboarding).
-   - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
-     it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
-     live in the section — HUM0034 fails the build for a public section type, and the section's
-     `IHubContext<TheHub>` injection needs the type visible to it either way. Apply the same test
-     as the filter base: `CityPlanningHub` relays a connection id, a display name and a lat/lng
-     and names no City Planning type at all, so it went to `Humans.UI/Hubs` and both Shell's
-     `MapHub` and the section's `IHubContext<…>` resolve it. A hub whose signatures *do* name
-     section types would stay in Shell with a contract in between, the way a health check does
-     (proven: CityPlanning; nothing has hit the second case yet).
+   - **A SignalR hub goes under the owning section's `Contracts/`.** `Program.cs`'s
+     `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so the hub must be `public`, and the
+     section's own `IHubContext<TheHub>` injection needs it visible too. HUM0034's `Contracts/`
+     carve-out is exactly that split — a deliberate surface Shell and the section both depend on —
+     so `CityPlanningHub` lives at `Humans.CityPlanning/Contracts/CityPlanningHub.cs` (G5 lane
+     4b-ii). It sat in `Humans.UI/Hubs` until then, on the reading that a section type could not be
+     public at all; that was wrong, and Shell is not an option in the other direction because the
+     section names the type and a section may not reference Shell (proven: CityPlanning).
    - **The third case: the component belongs to the section, and moving it in needs a feature
      provider Shell did not have.** Gate's rule moves a section-neutral component *down* to
      `Humans.UI`; City Planning's leaves a registry-reading one in Shell and invokes it by

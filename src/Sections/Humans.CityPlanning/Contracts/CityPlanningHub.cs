@@ -1,21 +1,22 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.Hubs;
+namespace Humans.CityPlanning.Contracts;
 
 /// <summary>
-/// Live cursor presence for the barrio and container maps. In Humans.UI rather than the
-/// City Planning section for the same reason <c>ApiKeyAuthFilterBase</c> is: Shell's
-/// <c>app.MapHub&lt;CityPlanningHub&gt;("/hubs/city-planning")</c> names the concrete type,
-/// and a type in a <c>[assembly: Section("…")]</c> assembly cannot be public (HUM0034).
-/// It names no City Planning vocabulary at all — it relays a connection id, a display name
-/// and a lat/lng — so the move is the Gate <c>&lt;vc:human-search&gt;</c> shape, not a
-/// promotion of section types into Base. The section injects
-/// <c>IHubContext&lt;CityPlanningHub&gt;</c> to broadcast polygon saves.
+/// Live cursor presence for the barrio and container maps. Owned by the City Planning
+/// section since G5 lane 4b-ii (nobodies-collective/Humans#866); it used to sit in
+/// <c>Humans.UI</c> because the hub has to be <c>public</c> — Shell's
+/// <c>app.MapHub&lt;CityPlanningHub&gt;("/hubs/city-planning")</c> names the concrete type —
+/// and a <c>[assembly: Section("…")]</c> assembly is internal by default (HUM0034).
+/// <c>Contracts/</c> is the carve-out that rule exists for: a deliberate surface Shell and
+/// this section's own <c>CityPlanningApiController</c> (<c>IHubContext&lt;CityPlanningHub&gt;</c>,
+/// to broadcast polygon saves) both depend on. Base could never own it once
+/// <c>Humans.UI</c> retires, because the section names the type and a section may not
+/// reference Shell.
 /// </summary>
 [Authorize]
 public sealed class CityPlanningHub(IUserServiceRead userService, UserManager<User> userManager) : Hub

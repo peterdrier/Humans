@@ -48,7 +48,16 @@ public class CityPlanningArchitectureTests
             .ToList();
 
         publicTypes.Should().BeEquivalentTo(
-            ["Humans.CityPlanning.CityPlanningResource", "Humans.CityPlanning.Section"]);
+        [
+            "Humans.CityPlanning.CityPlanningResource",
+            // The barrio map's live-cursor hub (G5 lane 4b-ii). Shell's
+            // app.MapHub<CityPlanningHub>("/hubs/city-planning") names the concrete type, so it
+            // cannot be internal; Contracts/ is the carve-out for exactly that — a surface Shell
+            // and this section's own CityPlanningApiController (IHubContext<CityPlanningHub>)
+            // both depend on deliberately.
+            "Humans.CityPlanning.Contracts.CityPlanningHub",
+            "Humans.CityPlanning.Section",
+        ]);
     }
 
     [HumansFact]

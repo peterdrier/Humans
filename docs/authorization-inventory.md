@@ -438,7 +438,7 @@ Views express authorization four ways today:
 | 138 | `authorize-policy="AppAccess"` | Budget nav link |
 | 141 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
 
-### Login Partial (`_LoginPartial.cshtml`, now `src/Humans.UI/Views/Shared/_LoginPartial.cshtml`)
+### Login Partial (`_LoginPartial.cshtml`, now `src/Humans.Web/Views/Shared/_LoginPartial.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|

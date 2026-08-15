@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Admin/**
-  src/Humans.UI/Views/Shared/_AdminLayout.cshtml
+  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
   src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml

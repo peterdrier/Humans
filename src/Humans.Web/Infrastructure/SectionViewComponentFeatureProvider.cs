@@ -25,7 +25,7 @@ namespace Humans.Web.Infrastructure;
 /// </para>
 /// <para>
 /// First needed by Notifications, whose bell is chrome rendered from Shell's
-/// <c>_Layout</c> and <c>Humans.UI</c>'s <c>_AdminLayout</c>. Leaving the component in
+/// <c>_Layout</c> and <c>_AdminLayout</c>. Leaving the component in
 /// Shell would have split the section's 38-key resource set, since its markup renders
 /// two of them (design §15 step 3b).
 /// </para>

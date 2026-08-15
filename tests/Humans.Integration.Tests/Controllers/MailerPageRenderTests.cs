@@ -24,8 +24,9 @@ namespace Humans.Integration.Tests.Controllers;
 /// The second thing the move touches is view lookup: the controller names its views by
 /// absolute path (<c>~/Views/Mailer/Admin/Index.cshtml</c>), which now resolves against the
 /// section assembly's compiled views rather than Shell's, and <c>_ViewStart</c>'s
-/// <c>Layout = "_AdminLayout"</c> resolves back into <c>Humans.UI</c> across application
-/// parts. Both fail at request time rather than at build.
+/// <c>Layout = "_AdminLayout"</c> resolves back into <c>Humans.Web</c> across application
+/// parts (it was <c>Humans.UI</c> until G5 lane 4b-ii). Both fail at request time rather
+/// than at build.
 /// </para>
 /// <para>
 /// MailerLite itself is <see cref="StubMailerLiteService"/> — the pages are a diff against a
@@ -65,7 +66,7 @@ public class MailerPageRenderTests(HumansTestDatabase database) : IntegrationTes
             html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten <vc:> element");
 
-            // _ViewStart's Layout = "_AdminLayout" resolves into Humans.UI across
+            // _ViewStart's Layout = "_AdminLayout" resolves into Humans.Web across
             // application parts; a miss throws, so reaching the admin chrome is the proof.
             html.Should().Contain("admin-shell", $"GET {url} did not render inside _AdminLayout");
         }

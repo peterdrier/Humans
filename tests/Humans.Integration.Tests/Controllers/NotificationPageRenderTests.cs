@@ -32,7 +32,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// </description></item>
 /// <item><description>
 /// Two of those keys are on the notification bell, which is section-owned but rendered from
-/// Shell's <c>_Layout</c> and <c>Humans.UI</c>'s <c>_AdminLayout</c>. The component is
+/// Shell's <c>_Layout</c> and <c>_AdminLayout</c>. The component is
 /// <c>internal</c>, so MVC only finds it through
 /// <c>Humans.Web/Infrastructure/SectionViewComponentFeatureProvider</c>; without that,
 /// <c>Component.InvokeAsync("NotificationBell")</c> throws on every authenticated page. That
