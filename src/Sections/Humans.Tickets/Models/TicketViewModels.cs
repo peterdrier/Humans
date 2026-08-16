@@ -183,7 +183,7 @@ internal sealed class TicketTypeSalesRow
     public string TicketTypeName { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int TicketsSold { get; set; }
-    public decimal GrossRevenue { get; set; }
+    public decimal FaceValue { get; set; }
 }
 
 internal sealed class WeeklySalesRow

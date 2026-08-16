@@ -160,7 +160,7 @@
                             <th>Ticket Type</th>
                             <th class="text-end">Price</th>
                             <th class="text-end">Tickets</th>
-                            <th class="text-end">Gross Revenue</th>
+                            <th class="text-end">Face Value</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -170,7 +170,7 @@
                                 <td>@type.TicketTypeName</td>
                                 <td class="text-end">@Model.Currency @type.Price.ToString("N2")</td>
                                 <td class="text-end">@type.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@Model.Currency @type.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @type.FaceValue.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -179,10 +179,17 @@
                             <td>Total</td>
                             <td></td>
                             <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.Currency @Model.ByTicketType.Sum(t => t.GrossRevenue).ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
+                <div class="px-3 py-2">
+                    <small class="text-muted">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Face value is the listed ticket price — order-level discounts and donations are excluded,
+                        so totals here won't match Gross Revenue in the tables above.
+                    </small>
+                </div>
             }
             else
             {

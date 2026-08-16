@@ -99,7 +99,11 @@ internal sealed class TicketTypeSalesAggregate
     public string TicketTypeName { get; init; } = string.Empty;
     public decimal Price { get; init; }
     public int TicketsSold { get; init; }
-    public decimal GrossRevenue { get; init; }
+
+    /// <summary>Sum of listed ticket prices — not order revenue (order-level
+    /// discounts and donations are excluded), so it won't reconcile with
+    /// the weekly/quarterly GrossRevenue figures.</summary>
+    public decimal FaceValue { get; init; }
 }
 
 /// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>

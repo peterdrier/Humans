@@ -188,24 +188,24 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByTicketType.Should().HaveCount(3);
 
-        // Ordered by gross revenue descending.
+        // Ordered by face value descending.
         var vip = result.ByTicketType[0];
         vip.TicketTypeName.Should().Be("VIP");
         vip.Price.Should().Be(420m);
         vip.TicketsSold.Should().Be(1);
-        vip.GrossRevenue.Should().Be(420m);
+        vip.FaceValue.Should().Be(420m);
 
         var fullWeek = result.ByTicketType[1];
         fullWeek.TicketTypeName.Should().Be("Full Week");
         fullWeek.Price.Should().Be(100m);
         fullWeek.TicketsSold.Should().Be(2);
-        fullWeek.GrossRevenue.Should().Be(200m);
+        fullWeek.FaceValue.Should().Be(200m);
 
         var earlyBird = result.ByTicketType[2];
         earlyBird.TicketTypeName.Should().Be("Full Week");
         earlyBird.Price.Should().Be(80m);
         earlyBird.TicketsSold.Should().Be(1);
-        earlyBird.GrossRevenue.Should().Be(80m);
+        earlyBird.FaceValue.Should().Be(80m);
     }
 
     [HumansFact]
@@ -258,7 +258,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         row.TicketTypeName.Should().Be("Full Week");
         row.Price.Should().Be(100m);
         row.TicketsSold.Should().Be(1);
-        row.GrossRevenue.Should().Be(100m);
+        row.FaceValue.Should().Be(100m);
     }
 
     [HumansFact]

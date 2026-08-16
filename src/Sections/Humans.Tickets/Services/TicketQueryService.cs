@@ -368,9 +368,9 @@ internal sealed class TicketQueryService(
                 TicketTypeName = g.Key.TicketTypeName,
                 Price = g.Key.Price,
                 TicketsSold = g.Count(),
-                GrossRevenue = g.Sum(a => a.Price),
+                FaceValue = g.Sum(a => a.Price),
             })
-            .OrderByDescending(t => t.GrossRevenue)
+            .OrderByDescending(t => t.FaceValue)
             .ToList();
 
         return new TicketSalesAggregates

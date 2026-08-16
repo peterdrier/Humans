@@ -253,7 +253,7 @@ internal sealed class TicketController(
                 TicketTypeName = t.TicketTypeName,
                 Price = t.Price,
                 TicketsSold = t.TicketsSold,
-                GrossRevenue = t.GrossRevenue,
+                FaceValue = t.FaceValue,
             }).ToList(),
         };
 
