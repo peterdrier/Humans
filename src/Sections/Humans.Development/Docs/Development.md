@@ -24,9 +24,9 @@ This section owns no entities and no tables. Everything it creates belongs to an
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/dev/login/{persona}` | GET | Anonymous | Seed (idempotently) and sign in as a named persona; `guest` mints a fresh profileless account per click |
+| `/dev/login/{persona}` | GET | Anonymous | Seed (idempotently) and sign in as a named persona; `guest` mints a fresh profileless account per click. The `admin` persona 404s outside a dev host |
 | `/dev/login/users` | GET | Anonymous | User chooser - first 100 humans by burner name, ephemeral guests filtered out |
-| `/dev/login/users/{id}` | GET | Anonymous | Sign in as an existing user by id |
+| `/dev/login/users/{id}` | GET | Anonymous | Sign in as an existing user by id; 404s outside a dev host when that human holds an active Admin assignment |
 | `/dev/seed/budget` | POST | `FinanceAdminOrAdmin` | Budget demo data, via `IBudgetDemoSeeder` on Budget's contracts leaf |
 | `/dev/seed/camp-roles` | POST | `CampAdminOrAdmin` | Five system camp-role definitions |
 | `/dev/seed/dashboard` | POST | `ShiftDashboardAccess` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
@@ -50,6 +50,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.
 - **`Section.Register` fails closed.** `ISection.Register` takes no `IHostEnvironment`, so it reads `HostDefaults.EnvironmentKey` from the configuration Shell hands it. An environment name it cannot read registers *nothing* - the failure lands as dev login 404ing in the test host, not as dev seeders reaching Production. Pinned by `DevelopmentArchitectureTests`.
 - **The dashboard seed is stricter than the rest**: `IsDevelopment()` **and** `DevAuth:Enabled`. QA, preview and production cannot invoke it regardless of role. (`src/Sections/Humans.Shifts/Docs/Shifts.md` states the same invariant from the other side; `DevSeedControllerTests` covers both branches.)
+- **Dev login never yields an Admin session outside a dev host.** A "dev host" is `Development` or the in-process `Testing` integration host - QA and previews run `Staging` with `DevAuth:Enabled` on and real Google Workspace data, so an anonymous URL that mints Admin there is a live privilege escalation. Both doors are shut: the `admin` persona (matched by resolving the slug back through `DevPersonaSeeder.RoleNameFromSlug`, before any seeding runs) and impersonation of any human with an active `RoleNames.Admin` assignment (`IRoleAssignmentService.IsUserAdminAsync`). `_DevLoginPanel` renders `DevLoginController.PersonasFor(env)` so the button and the route share one predicate. Covered by `DevLoginControllerTests`.
 - **Every write goes through the owning section's service.** No `DbContext`, no repository, no cross-section table access - `DevelopmentArchitectureTests.SectionTakesNoDbContextOrRepository` asserts it on the constructors.
 - **Persona seeding is idempotent and repairs.** `EnsurePersonaAsync` returns the existing user when there is one, and `EnsureActiveAsync` runs on *every* sign-in: it submits any missing required consents through the canonical consent path and lifts a consent suspension, because personas hold governance roles and the nightly `SuspendNonCompliantMembersJob` suspends them otherwise (nobodies-collective/Humans#867).
 - **The `no-name` persona is re-blanked on every sign-in** so the onboarding name gate (#812) re-triggers each time.
@@ -60,6 +61,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - A non-privileged authenticated human cannot invoke any `/dev/seed/*` action: `302 -> /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, app-wide - not a bare `403`). Pinned by `DevelopmentPageRenderTests`.
 - No type in the section may take `IStringLocalizer<T>` for **any** `T`. The section carries no resource set, no `Development_*` key and no `Enum_Development*` key: every string is English developer copy. Adding localized copy must start by carving a resource set. Enforced by `DevelopmentArchitectureTests`.
 - The seeders must not be reachable from production code paths. They are `internal` to this assembly and registered only outside Production.
+- No anonymous visitor to a deployed host may reach an Admin session through `/dev/login/*`, with `DevAuth:Enabled` on or off: `GET /dev/login/admin` and `GET /dev/login/users/{id}` for an active Admin both `404`. `Development` and `Testing` are the only environments that allow either.
 
 ## Triggers
 

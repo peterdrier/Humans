@@ -696,7 +696,7 @@ internal sealed class DevPersonaSeeder(
     /// <summary>
     /// Resolves a persona slug back to a RoleNames constant, or null for "volunteer".
     /// </summary>
-    private static string? RoleNameFromSlug(string slug)
+    internal static string? RoleNameFromSlug(string slug)
     {
         if (string.Equals(slug, "volunteer", StringComparison.OrdinalIgnoreCase))
             return null;

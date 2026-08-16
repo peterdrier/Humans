@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using Humans.Application.Configuration;
+using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Development.Services;
 using Humans.Domain.Constants;
@@ -18,6 +19,7 @@ internal sealed class DevLoginController(
     SignInManager<User> signInManager,
     IUserEmailService userEmailService,
     DevPersonaSeeder personaSeeder,
+    IRoleAssignmentService roleAssignmentService,
     IWebHostEnvironment env,
     IConfiguration config,
     ConfigurationRegistry configRegistry,
@@ -28,6 +30,16 @@ internal sealed class DevLoginController(
     // Shell's view named the type directly; the markup moved instead (step 3b), so the persona
     // list never leaves the section.
     internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
+
+    /// <summary>
+    /// The personas offered in <paramref name="environment"/>. Admin is dropped outside a dev
+    /// host — see <see cref="AdminSignInAllowed"/>. Used by the panel so the buttons and the
+    /// route agree on one predicate.
+    /// </summary>
+    internal static IEnumerable<DevPersonaInfo> PersonasFor(IWebHostEnvironment environment) =>
+        AdminSignInAllowed(environment)
+            ? AllPersonas
+            : AllPersonas.Where(p => !IsAdminPersona(p));
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
 
@@ -40,6 +52,11 @@ internal sealed class DevLoginController(
         var info = AllPersonas.FirstOrDefault(p =>
             string.Equals(p.Slug, persona, StringComparison.OrdinalIgnoreCase));
         if (info is null)
+            return NotFound();
+
+        // Before any seeding: an Admin session must never be minted off an anonymous URL
+        // outside a dev host.
+        if (IsAdminPersona(info) && !AdminSignInAllowed(env))
             return NotFound();
 
         // Guest: fresh profileless user per click so parallel testers don't collide.
@@ -119,6 +136,10 @@ internal sealed class DevLoginController(
         if (user is null)
             return NotFound();
 
+        // Impersonating a real Admin is the same hole as the Admin persona.
+        if (!AdminSignInAllowed(env) && await roleAssignmentService.IsUserAdminAsync(id))
+            return NotFound();
+
         await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
@@ -158,6 +179,20 @@ internal sealed class DevLoginController(
     }
 
     // --- Static helpers ---
+
+    /// <summary>
+    /// Whether this host may hand out an Admin session through dev login. Deployed hosts run
+    /// Staging (QA, previews) or Production with real Google Workspace data, and QA keeps
+    /// <c>DevAuth:Enabled</c> on — so anonymous Admin there is a live privilege escalation.
+    /// "Testing" is the in-process integration host, the same discriminator Program.cs uses.
+    /// </summary>
+    private static bool AdminSignInAllowed(IWebHostEnvironment environment) =>
+        environment.IsDevelopment() || environment.IsEnvironment("Testing");
+
+    /// <summary>The persona whose seeded governance role is <see cref="RoleNames.Admin"/>.</summary>
+    private static bool IsAdminPersona(DevPersonaInfo persona) =>
+        string.Equals(
+            DevPersonaSeeder.RoleNameFromSlug(persona.Slug), RoleNames.Admin, StringComparison.Ordinal);
 
     private static List<DevPersonaInfo> BuildPersonaList()
     {
