@@ -30,8 +30,7 @@
     4b-2k: it existed for the section's persisted-string enums (SignupStatus, ShiftPeriod,
     ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy), and those now live here, in
     Humans.Shifts.Contracts, because this leaf's own signatures name them (Budget's rule).
-    Their EnumStringStabilityTests rows still live in tests/Humans.Domain.Tests — that
-    project reaches them through its existing project graph.
+    Their EnumStringStabilityTests rows live in tests/Humans.Shifts.Tests/Enums.
 
     No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
     VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every

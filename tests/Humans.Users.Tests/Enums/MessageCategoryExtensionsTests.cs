@@ -1,9 +1,8 @@
 using AwesomeAssertions;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 using Xunit;
 
-namespace Humans.Domain.Tests.Enums;
+namespace Humans.Users.Tests.Enums;
 
 public class MessageCategoryExtensionsTests
 {

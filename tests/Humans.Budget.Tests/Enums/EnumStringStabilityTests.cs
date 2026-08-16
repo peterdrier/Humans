@@ -5,8 +5,8 @@ using Xunit;
 namespace Humans.Budget.Tests.Enums;
 
 /// <summary>
-/// Budget's half of the string-stored-enum guard. The rest live in
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c>; these two moved out with the
+/// Budget's half of the string-stored-enum guard. The rest live in the test project of the
+/// section that owns each enum; these two moved out with the
 /// section because <see cref="BudgetYearStatus"/> and <see cref="ExpenditureType"/> now sit
 /// on Budget's contracts leaf, where <c>Humans.Domain.Tests</c> cannot name them
 /// (nobodies-collective/Humans#866).
