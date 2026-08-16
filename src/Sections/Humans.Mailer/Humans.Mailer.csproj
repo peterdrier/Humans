@@ -45,6 +45,10 @@
       the MailerLite client need arrives through the framework reference Sdk.Razor already
       adds (design §15 step 1). No EF Core either — the section owns no tables.
     -->
+    <!-- Contracts/MailerAudienceSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob,
+         since G5 lane 5b-5. Package, not project, so no cycle is possible; it was already
+         arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

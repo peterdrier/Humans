@@ -1,9 +1,8 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Surveys.Contracts;
 using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Surveys.Contracts;
 
 /// <summary>
 /// Daily job that sends the one-time 7-day reminder to survey invitees who haven't completed.
@@ -11,9 +10,10 @@ namespace Humans.Infrastructure.Jobs;
 /// <remarks>
 /// Delegates entirely to <see cref="ISurveyReminderSender.SendDueRemindersAsync"/> — the job never
 /// touches a section DbContext or any repository directly
-/// (design-rules §2c: jobs call services). It reaches Surveys through the section's contracts leaf
-/// because recurring jobs are still named by concrete type in Shell's roll-call and stay in Base
-/// (design §15.6b).
+/// (design-rules §2c: jobs call services). Moved out of <c>Humans.Infrastructure/Jobs</c> at G5
+/// lane 5b-5 (nobodies-collective/Humans#866); it sits under <c>Contracts/</c> because Shell
+/// names the concrete type at registration and HUM0034 makes every other public type in a
+/// section an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendSurveyReminderJob(

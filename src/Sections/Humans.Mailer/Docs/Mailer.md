@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Mailer/**
   src/Sections/Humans.Mailer.Contracts/**
-  src/Humans.Infrastructure/Jobs/MailerAudienceSyncJob.cs
   tests/Humans.Mailer.Tests/**
 -->
 <!-- freshness:flag-on-change
@@ -90,7 +89,7 @@ All routes are `AdminOnly`.
 **Status:** (G5) Own project — `src/Sections/Humans.Mailer` (+ `Humans.Mailer.Contracts`), moved 2026-08-11 (nobodies-collective/Humans#866). Born §15-compliant on 2026-05-12; outbound + audience framework added 2026-05-14.
 
 - Everything lives in `src/Sections/Humans.Mailer/`: `Services/` (the two orchestrators, the four interfaces and the internal DTOs), `Services/Audiences/`, `Services/MailerLite/` (the client, its two JSON converters and `MailerLiteOptions`), `Controllers/`, `Models/` and `Views/`. The section takes **no `Humans.Infrastructure` reference** — it owns no tables, and the client needs only `IHttpClientFactory` from the ASP.NET shared framework — so `MailerArchitectureTests.SectionAssembly_DoesNotReferenceEFCore` now covers the whole assembly rather than two named services.
-- **Cross-section surface** — `Humans.Mailer.Contracts.IMailerAudienceSync`, one method returning `int`. `MailerAudienceSyncJob` stays in `Humans.Infrastructure/Jobs/` (no `ISection` seam for jobs yet, design §15 step 6b) and is the only consumer; a Base consumer is what forces a leaf *project* rather than a `Contracts/` folder. Nothing else — the dashboard stats, the import plan/apply pair and the whole `IMailerLiteService` surface are internal.
+- **Cross-section surface** — `Humans.Mailer.Contracts.IMailerAudienceSync`, one method returning `int`. `MailerAudienceSyncJob` — its only consumer — moved into this project's `Contracts/` folder at G5 lane 5b-5, leaving only its DI registration and roll-call entry in Shell (no `ISection` seam for jobs yet, design §15 step 6b). With no Base consumer left, the leaf *project* is no longer forced; whether it folds into a `Contracts/` folder is Peter's call. Nothing else — the dashboard stats, the import plan/apply pair and the whole `IMailerLiteService` surface are internal.
 - **No resource set** — the two admin pages are English operator copy with no `Localizer[…]` call. `MailerArchitectureTests.SectionTypesTakeNoStringLocalizer` is what makes adding copy fail the build rather than silently resolving against a `SharedResource` the RCL cannot see.
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at 500 users. `MailerLiteClient` is a Singleton holding its own subscriber/group snapshot, refreshed only on demand.
 - **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketServiceRead`, `IShiftView`, `IAuditLogService`.

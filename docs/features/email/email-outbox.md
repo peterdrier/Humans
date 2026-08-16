@@ -1,8 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Email/**
   src/Sections/Humans.Email.Contracts/**
-  src/Humans.Infrastructure/Jobs/ProcessEmailOutboxJob.cs
-  src/Humans.Infrastructure/Jobs/CleanupEmailOutboxJob.cs
+  src/Sections/Humans.Email/Contracts/ProcessEmailOutboxJob.cs
+  src/Sections/Humans.Email/Contracts/CleanupEmailOutboxJob.cs
   src/Sections/Humans.SystemSettings/Domain/SystemSetting.cs
   src/Sections/Humans.SystemSettings.Contracts/SystemSettingKeys.cs
 -->

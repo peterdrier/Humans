@@ -22,9 +22,10 @@ namespace Humans.Expenses;
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
 /// Holded section, which registers it; Expenses consumes it through
 /// <c>Humans.Holded.Contracts</c> (memory/architecture/vendor-connectors-own-sections.md).
-/// Nor is <c>HoldedExpenseOutboxJob</c>: Hangfire serializes the declaring type name of a
-/// scheduled job, so it stays in <c>Humans.Infrastructure/Jobs</c> and reaches the section
-/// through <c>IExpenseReportBackgroundProcessor</c> (design §15.6b).
+/// Nor is <c>HoldedExpenseOutboxJob</c>: recurring jobs are named by concrete type in Shell's
+/// roll-call, so the registration stays there (design §15.6b). The job itself is this
+/// section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and drives <c>IExpenseReportBackgroundProcessor</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

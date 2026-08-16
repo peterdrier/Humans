@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Expenses/**
   src/Sections/Humans.Expenses.Contracts/**
-  src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
   src/Sections/Humans.Finance.Contracts/**
 -->
 <!-- freshness:flag-on-change
@@ -169,7 +168,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 **Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
 **Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866), with the cross-section leaf `Humans.Expenses.Contracts`.
 
-- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the internal read surface (`[SurfaceBudget(8)]`); `IExpenseReportService` adds the mutations. The only public surface is `Section` plus the contracts leaf's `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`), which is how `HoldedExpenseOutboxJob` — still in `Humans.Infrastructure/Jobs`, because recurring jobs are named by concrete type in Shell's roll-call — reaches the section.
+- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the internal read surface (`[SurfaceBudget(8)]`); `IExpenseReportService` adds the mutations. The only public surface is `Section` plus the contracts leaf's `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`), which is how `HoldedExpenseOutboxJob` reaches the section. The job moved into this project's `Contracts/` folder at G5 lane 5b-5; only its DI registration and roll-call entry stay in Shell, because recurring jobs are named by concrete type there.
 - `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
 - **DbContext** — `ExpensesDbContext` (`src/Sections/Humans.Expenses/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Data/Migrations/` (baseline `20260715101338_BaselineExpenses`). Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. It also registers the section's `ExpenseReportStatus` badge colours into `EnumBadgeMap` rather than Base holding a literal row per section enum.

@@ -3242,10 +3242,13 @@ All other view components read via owning services post-§15 audit.
 `NobodiesEmailBadgeViewComponent` cache populator was retired along with
 the `NobodiesTeamEmails_All` key.
 
-### Background Jobs (Infrastructure)
+### Background Jobs
 
-Jobs live in `Humans.Infrastructure.Jobs` and may use repositories
-directly. Mutation-heavy logic funnels into services even from jobs
+Every recurring job now lives in its owning section's `Contracts/` folder —
+`src/Humans.Infrastructure/Jobs/` was emptied and deleted at G5 lane 5b-5
+(nobodies-collective/Humans#866). Only the DI registration and the roll-call
+entry are Shell's, because `UseHumansRecurringJobs` names each job by concrete
+type. Mutation-heavy logic funnels into services even from jobs
 (e.g. `CleanupNotificationsJob` calls `INotificationRepository` via
 `NotificationService`; `LegalDocumentSyncService` runs via Hangfire and
 goes through its own repository). Specific jobs and their tables vary;

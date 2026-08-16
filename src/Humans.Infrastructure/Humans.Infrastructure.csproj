@@ -34,35 +34,16 @@
     <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
-      Expenses' contracts leaf: HoldedExpenseOutboxJob calls IExpenseReportBackgroundProcessor.
-      The job stays here because recurring jobs are named by concrete type in Shell's
-      UseHumansRecurringJobs roll-call (design §15.6b). The leaf references Humans.Interfaces
-      only, so Base depending on it does not cycle
-      (memory/architecture/section-project-cycle-fix.md).
-    -->
-    <ProjectReference Include="..\Sections\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
-    <!--
-      Consent's and Governance's leaves both survive the G5 jobs move for SendReConsentReminderJob
-      and HumansMetricsService; SyncLegalDocumentsJob, SuspendNonCompliantMembersJob and
-      TermRenewalReminderJob left for their sections at lane 5b-4
-      (nobodies-collective/Humans#866), and Humans.Notifications.Contracts came out entirely in
-      the same move — TermRenewalReminderJob was its only consumer here.
+      Consent's and Governance's leaves survive for HumansMetricsService alone, which reads
+      ILegalDocumentSyncServiceRead and IMembershipCalculatorRead for the metrics snapshot.
+      SendReConsentReminderJob was the other consumer of both and left for Humans.Consent at
+      G5 lane 5b-5 (nobodies-collective/Humans#866); SyncLegalDocumentsJob,
+      SuspendNonCompliantMembersJob and TermRenewalReminderJob had already gone at lane 5b-4.
     -->
     <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
-    <!--
-      Holded's contracts leaf: HoldedSyncJob is the Hangfire shim over IHoldedNightlySync, and
-      HoldedExpenseOutboxJob reads HoldedClientOptions.ApiKey to decide whether to drain. Both
-      jobs stay here for the same reason as the rest — Hangfire serializes the declaring type
-      name — while the connector itself now lives in Humans.Holded (G5 lane 4b-2f).
-    -->
-    <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <!--
       GoogleIntegration's contracts leaf survives the G5 jobs move for HumansMetricsService
