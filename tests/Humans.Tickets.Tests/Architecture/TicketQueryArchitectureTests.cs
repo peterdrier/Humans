@@ -46,7 +46,9 @@ public class TicketQueryArchitectureTests
     {
         typeof(ITicketServiceRead).IsAssignableFrom(typeof(CachingTicketQueryService))
             .Should().BeTrue();
-    }    [HumansFact]
+    }
+
+    [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketCacheInvalidator()
     {
         typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(CachingTicketQueryService))

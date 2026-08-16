@@ -20,7 +20,8 @@ namespace Humans.Campaigns.Tests.Architecture;
 /// asserted on the constructor instead, which is stronger and survives the move.
 /// </remarks>
 public class CampaignsArchitectureTests
-{    [HumansFact]
+{
+    [HumansFact]
     public void CampaignRepository_UsesDbContextFactory()
     {
         var ctor = typeof(CampaignRepository).GetConstructors().Single();
@@ -56,4 +57,5 @@ public class CampaignsArchitectureTests
 
         consumers.Where(c => !allowed.Contains(c)).Should().BeEmpty(
             because: "every read/write to the campaign* tables must go through CampaignService");
-    }}
+    }
+}

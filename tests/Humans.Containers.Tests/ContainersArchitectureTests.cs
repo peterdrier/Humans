@@ -24,10 +24,11 @@ public class ContainersArchitectureTests
                 because: "every container action is camp-scoped and authorized per resource");
     }
 
-    [HumansFact]
+    /// <summary>
     /// The section's own DI registrations. Since G5 these come from
     /// <see cref="Section.Register"/> rather than a Shell extension method.
     /// </summary>
+    [HumansFact]
     private static ServiceCollection Registrations()
     {
         var services = new ServiceCollection();

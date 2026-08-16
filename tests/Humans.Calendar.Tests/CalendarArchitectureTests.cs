@@ -25,7 +25,8 @@ namespace Humans.Calendar.Tests;
 /// assertions carry over unchanged.
 /// </remarks>
 public class CalendarArchitectureTests
-{    /// <summary>
+{
+    /// <summary>
     /// Pins the set of types that may inject <see cref="ICalendarRepository"/>: the owning
     /// service and the repository implementation. A new consumer taking the repository directly
     /// would bypass the service layer and the single-writer rule for the <c>calendar_*</c> tables.
@@ -47,7 +48,9 @@ public class CalendarArchitectureTests
 
         consumers.Where(c => !allowed.Contains(c)).Should().BeEmpty(
             because: "every read/write to the calendar_* tables must go through CalendarService");
-    }    [HumansFact]
+    }
+
+    [HumansFact]
     public void CachingCalendarService_ImplementsReadAndWriteSurfaces()
     {
         typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarServiceRead>(
