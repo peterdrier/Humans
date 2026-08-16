@@ -91,7 +91,7 @@
       2 (IHumanLifecycleService, INonCompliantMemberSuspension), IInvalidator and
       [Grandfathered("HUM0028")] from IUserInfoInvalidator, and [ExpiresOn] from
       User.NormalizedEmail. Each site carries a COVERAGE REDUCED comment naming what stopped
-      being enforced; the losses are HUM0012/HUM0017/HUM0027 on the seven service classes,
+      being enforced; the losses are HUM0027 on the seven service classes,
       HUM0026/HUM0027 on the two orchestrators, the InvalidatorInterfaceRatchetAnalyzer count
       and HUM0028 bookkeeping, and HUM0010/HUM0011's 2026-09-01 deadline on
       nobodies-collective/Humans#635. Peter's ruling: the migration outranks the analyzers.

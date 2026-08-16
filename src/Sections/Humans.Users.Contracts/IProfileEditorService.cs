@@ -5,7 +5,7 @@ namespace Humans.Users.Contracts;
 /// Coordinates profile edit form saves around the Users-owned storage mutation.
 /// </summary>
 // COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
 public interface IProfileEditorService
 {
     /// <summary>

@@ -15,7 +15,6 @@ A Peter-applied `[DontFix("reason", since)]` on a class is the **single** sancti
 
 **How to apply:** When an analyzer fires, the answer is to fix the architecture, not to disable the analyzer. Concrete examples of "fix the architecture":
 
-- The `[Section(...)]` attribute on a type is mistagged — retag it.
 - The interface's `[SurfaceBudget]` is too low for the legitimate surface area — raise the budget (the rule against raising is about papering over creep, not refusing to size a budget correctly for a real refactor).
 - A service is in the wrong namespace/folder for its section — move it (e.g. `memory/architecture/team-resources-google-integration-section.md`).
 - An interface does not expose a method it structurally should — add it (within budget).

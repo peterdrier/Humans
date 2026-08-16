@@ -173,7 +173,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **A choice option's `Value` must be non-empty.** `AnswerState.IsAnswered` (`SurveyWizardFlow.cs`) counts an answer only when the option value is non-empty, and `SurveyQuestionOption.Value` defaults to `string.Empty` — an option saved with a blank `Value` makes a required question unsubmittable and cannot be named by a `ShowIf` clause.
 - **Options carry no free-text flag.** `SurveyQuestionOption` is `Order` + `Value` + `Label` only, so "Other — please specify" is authored as a separate optional `ShortText` question gated by `ShowIf` on the `other` option value.
 - **The anonymity chooser pre-selects Identified.** The answer view model defaults `Anonymity` to `ResponseAnonymity.Identified` and `Survey/Intro.cshtml` marks that radio `checked`; the unlinked tiers are opt-in per respondent.
-- **Single-repo ownership.** Only `SurveyRepository` touches the six `survey_*` tables (`[Section("Survey")]`); a `survey_*` table appears in no other repository.
+- **Single-repo ownership.** Only `SurveyRepository` touches the six `survey_*` tables; a `survey_*` table appears in no other repository.
 - **Cross-domain refs are bare `Guid` FK columns** — no navigation properties, no `[Obsolete]` navs, and no cross-section EF FK constraints. Display data (creator/respondent names, recipient languages/emails) is stitched into DTOs by the service via `I…ServiceRead` interfaces.
 
 ## Negative Access Rules
@@ -220,7 +220,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (the clean `FeedbackReport.AgentConversationId` precedent / `memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints** — Survey was born clean rather than inheriting the `[Obsolete]`-nav pattern `Issue`/`Feedback`/`Camp` originally shipped with (all three have since stripped those navs too — nobodies-collective/Humans#1188 for Issues, #996 for Feedback). The service resolves display data via the cross-section read interfaces and returns DTOs.
 - **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketServiceRead`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider`).
-- **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape and the `ISurveyRepository` consumer allow-list. Build-time analyzers HUM0017/HUM0025 enforce single-owner table access and no cross-section repository injection.
+- **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape and the `ISurveyRepository` consumer allow-list. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal.
 
 ### Cross-section read interface
 

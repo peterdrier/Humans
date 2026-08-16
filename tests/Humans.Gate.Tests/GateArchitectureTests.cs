@@ -35,7 +35,7 @@ public class GateArchitectureTests
         // the carve took nothing and Finance's no-Resources shape applies (§15 step 3b).
         //
         // Both controllers are internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
+        // which relaxes MVC's IsPublic check for discovered section assemblies
         // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
         // many words: do not "fix" a 404 by making the controller public).
         //

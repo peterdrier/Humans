@@ -133,11 +133,9 @@ visibility flip in one diff is unreviewable.
         lane, a file-move lane and a presentation lane before anyone starts.** The cost is
         the build/test loop over ~250 changed files, not the thinking. Do the read-boundary
         lane first regardless: a move commit that also splits a 50-member interface across
-        73 files is unreviewable, and it is the lane where **HUM0032 still works** — the
-        analyzer derives both sections from `Humans.Application.Services.{A}` /
-        `Humans.Application.Interfaces.{B}` namespaces, neither of which survives the move,
-        so a split done *after* the move gets no over-injection check at all (proven:
-        Shifts, ~130 consumer files; HUM0032 caught a real one on the first build).
+        73 files is unreviewable (proven: Shifts, ~130 consumer files; HUM0032 caught a real
+        one on the first build). HUM0032 works either side of the move now — it resolves both
+        sections from the assembly name, falling back to the namespace.
       - **…and the read-boundary lane's first pass is "who is bypassing the boundary DTO the
         section already ships?", not "what should the leaf carry?"** Shifts had shipped
         `IBurnSettingsService` → `BurnSettingsInfo` a year earlier precisely so nothing
@@ -224,7 +222,7 @@ Git Bash.)
 
 1. [ ] `src/Sections/Humans.<Section>/Humans.<Section>.csproj` — `Microsoft.NET.Sdk.Razor`
    **when the section has controllers or views**, plain `Microsoft.NET.Sdk` when it has neither
-   (SystemSettings): discovery keys off `[assembly: Section("…")]`, not off being an MVC
+   (SystemSettings): discovery keys off `Section.cs : ISection`, not off being an MVC
    application part. **There is a third shape: plain `Microsoft.NET.Sdk` *plus*
    `<FrameworkReference Include="Microsoft.AspNetCore.App" />`, with no `AddRazorSupportForMvc`,
    no `<Using>` group and no `Humans.UI` reference** — for a section that renders nothing but
@@ -280,8 +278,11 @@ Git Bash.)
      none — `Microsoft.AspNetCore.DataProtection` and friends arrive through the framework
      reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
      `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
-2. [ ] Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/
-   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`.
+2. [ ] Move the vertical, folders as layers: `Contracts/ Interfaces/ Domain/ Data/ Services/
+   Controllers/ Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/`
+   + `Section.cs`. **`Contracts/` is the public folder and `Interfaces/` is the internal one** —
+   that pair is the whole accessibility convention, and HUM0034 enforces it. Ship only the
+   folders the section has.
    **A controller that names its views by absolute path pins the folder layout** — an RCL's
    compiled view paths are project-relative, so `View("~/Views/Mailer/Admin/Index.cshtml")`
    keeps resolving only if `Views/Mailer/Admin/` moves verbatim rather than being tidied into
@@ -578,10 +579,13 @@ Git Bash.)
      both directions in the section's architecture tests; they are four lines over a
      `ConfigurationBuilder().AddInMemoryCollection(...)` (proven: Development).
 
-4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
-   the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
-   `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
-   substitute anything. Delete any per-type `[Section("…")]` the section carried.
+4b. [ ] **Nothing to declare — step 4's `Section : ISection` is the whole marker.** Discovery,
+   controller/view-component routing and the analyzers all key on it, and the section's *name*
+   is the assembly name minus `Humans.` (`Humans.Store.Contracts` is still section Store). The
+   `[assembly: Section("…")]` this step used to ask for was retired in
+   nobodies-collective/Humans#1064. Add `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]`
+   in `Properties/AssemblyInfo.cs` if the section's tests substitute anything; otherwise the
+   file need not exist.
 5. [ ] Everything else `internal` — **except `<Section>Resource`** (step 3b) — and internal types
    drop the section prefix: `Repository`, `Service`, entities, EF configurations, view models.
    Controllers, `<Section>DbContext`, `I<Section>Repository` and `Contracts/` types keep it, each
@@ -685,7 +689,7 @@ Git Bash.)
        into `AuditEntityTypes` (proven: Calendar).
    - **The keystone analyzer (nobodies-collective/Humans#1013) has landed, so this is a build
      gate, not a convention — and it collapses the move commit and the visibility commit into
-     one.** HUM0034 fails the build for any public type in a `[assembly: Section("…")]` assembly
+     one.** HUM0034 fails the build for any public type in a section assembly
      that is not `Section`, `<Section>Resource`, a generated migration, or under `Contracts/`.
      A move-only commit therefore does not compile, and "renames in a separate commit after the
      move compiles" no longer describes a reachable state for the visibility half. Split what is
@@ -693,10 +697,17 @@ Git Bash.)
      and say in the PR why the first two are one (proven: Agent, A4b, ~60 files internalised in
      the move commit). Nested `public` members of an already-internal type are flagged too, which
      `internal sealed` at the top level does not cover.
-5b. [ ] `Contracts/` holds **everything consumed from outside the section** — read *or* write
-   (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
-   per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
-   (proven: Store).
+5b. [ ] `Contracts/` holds **everything consumed from outside the section**. May be empty for a
+   leaf section; ship the folder with a `README.md` saying why (proven: Store).
+   - **A `.Contracts` *assembly* exists only to break a reference cycle.** A `Contracts/` folder
+     in `Humans.<Section>` is the default — every extra assembly is build and deploy cost we pay
+     dozens of times a day. Sections may reference each other directly when it is acyclic
+     (Peter, nobodies-collective/Humans#1064).
+   - **The cross-section contract is `I<Section>ServiceRead`; a write contract is the
+     exception.** HUM0032 fails a cross-section injection of a write-capable `I*Service` that
+     has a read base, so the consumer either takes the read interface or the class carries
+     `[CrossSectionWrite("what it writes and why")]`. Prefer neither: when another section needs
+     a write, pull in *this* section's view component and let it write its own data.
    - **A horizontal section's read+render layer belongs to the section, and the leaves it
      needs come with it — this bullet used to say the opposite, and cost a lane to reverse.**
      `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
@@ -1074,7 +1085,7 @@ Git Bash.)
      service has a `Contracts/` interface. **That is a dependency defect to fix, not a
      choice** — and while it holds, the component must be invoked by name, never with
      `<vc:…>`. HUM0034's carve-out is not the contracts *leaf* — read
-     `src/Humans.Analyzers/SectionPublicSurfaceAnalyzer.cs`, `IsUnderContracts`: it matches a
+     `src/Humans.Analyzers/Internal/Rules/PublicSurfaceRule.cs`, `IsUnderContracts`: it matches a
      namespace segment **or file-path segment** named `Contracts`, so a `Contracts/` folder
      inside the section project qualifies, and the section project is `Sdk.Razor` with the
      ASP.NET framework reference, so it can host an MVC `ViewComponent`. When the component
@@ -1145,7 +1156,7 @@ Git Bash.)
      `Humans.Web/Infrastructure/SectionViewComponentFeatureProvider`: a second
      `IApplicationFeatureProvider<ViewComponentFeature>` pass (the base one is not virtual and
      `ViewComponentConventions` is internal to MVC) that adds non-public components from
-     assemblies carrying `[assembly: Section("…")]`. Write it once; every later section with a
+     discovered section assemblies. Write it once; every later section with a
      view component inherits it. Second, **every `<vc:…>` call site in Shell must become
      `@await Component.InvokeAsync("Name")`** — the tag helper is generated at compile time
      from *public* types in referenced assemblies, so it cannot see the section's. Shell's
@@ -1623,12 +1634,12 @@ Git Bash.)
       `I<Section>Service` stays behind and inherits the leaf half — walk its bases and the
       members come back. It does nothing for an interface with no Base-side deriving type:
       `ApplicationInterfaceTypes()` enumerated `Humans.Application.Interfaces.*` plus
-      `SectionAssemblies()`, and a contracts leaf is in neither — it carries no
-      `[assembly: Section("…")]`, by design, because it is not an application part. So
+      `SectionAssemblies()`, and a contracts leaf is in neither — it declares no
+      `Section : ISection`, by design, because it is not an application part. So
       `IAccountProvisioningService`, whose `FindOrCreateUserByEmailAsync` returns a record
       wrapping the `User` entity, simply stopped being scanned the moment Users' leaf was
       carved, and its baseline row read as *fixed*. **Add a third clause enumerating
-      `Humans.*.Contracts` from `DependencyContext` — a leaf cannot be found by `[Section]`,
+      `Humans.*.Contracts` from `DependencyContext` — a leaf is not a discovered section,
       so it needs its own discovery.** Widening it surfaced exactly one row across all
       twenty-one existing leaves, which is the usual answer and is why nobody had noticed
       (proven: Users, lane 2 PR A).

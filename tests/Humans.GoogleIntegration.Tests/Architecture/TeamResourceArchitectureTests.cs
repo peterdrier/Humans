@@ -20,8 +20,8 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 ///     <see cref="ITeamResourceService"/> in <c>Humans.GoogleIntegration.Services</c>
 ///     owns business rules + persistence orchestration. The service was
 ///     relocated from <c>Services.Teams</c> to <c>Services.GoogleIntegration</c>
-///     so HUM0017 sees its <see cref="IGoogleResourceRepository"/> injection
-///     as intra-section (see
+///     so it sits in the same section as the <see cref="IGoogleResourceRepository"/>
+///     it injects (see
 ///     <c>memory/architecture/team-resources-google-integration-section.md</c>).
 ///   </description></item>
 ///   <item><description>

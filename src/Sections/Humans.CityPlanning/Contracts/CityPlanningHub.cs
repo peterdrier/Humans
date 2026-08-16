@@ -11,7 +11,7 @@ namespace Humans.CityPlanning.Contracts;
 /// section since G5 lane 4b-ii (nobodies-collective/Humans#866); it used to sit in
 /// <c>Humans.UI</c> because the hub has to be <c>public</c> — Shell's
 /// <c>app.MapHub&lt;CityPlanningHub&gt;("/hubs/city-planning")</c> names the concrete type —
-/// and a <c>[assembly: Section("…")]</c> assembly is internal by default (HUM0034).
+/// and a section is internal by default (HUM0034).
 /// <c>Contracts/</c> is the carve-out that rule exists for: a deliberate surface Shell and
 /// this section's own <c>CityPlanningApiController</c> (<c>IHubContext&lt;CityPlanningHub&gt;</c>,
 /// to broadcast polygon saves) both depend on. Base could never own it once

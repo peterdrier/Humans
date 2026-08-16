@@ -39,8 +39,8 @@ public class TeamPageArchitectureTests
     [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
-        // Orchestrator-no-repository guard. No universal enforcer covers this yet
-        // (A2 deferred); HUM0017 only catches cross-section repository injection.
+        // Orchestrator-no-repository guard. HUM0026 covers IOrchestrator implementers;
+        // this class is not one.
         var ctor = typeof(TeamPageService).GetConstructors().Single();
         var repoParam = ctor.GetParameters()
             .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));

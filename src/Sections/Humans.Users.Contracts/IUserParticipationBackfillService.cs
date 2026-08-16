@@ -1,7 +1,7 @@
 namespace Humans.Users.Contracts;
 
 // COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
-// Lost on the implementing class: HUM0012, HUM0017, HUM0027. See Humans.Users.Contracts.csproj.
+// Lost on the implementing class: HUM0027 (role-axis exclusivity). See Humans.Users.Contracts.csproj.
 public interface IUserParticipationBackfillService
 {
     Task<int> GetDefaultYearAsync(CancellationToken ct = default);

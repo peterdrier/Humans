@@ -32,7 +32,7 @@ public class DevelopmentArchitectureTests
     public void SectionControllersAreInternal()
     {
         // Shell registers SectionControllerFeatureProvider, which relaxes MVC's IsPublic check
-        // for assemblies carrying [assembly: Section("…")]
+        // for discovered section assemblies
         // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
         // many words: do not "fix" a 404 by making the controller public).
         var controllers = typeof(Section).Assembly.GetTypes()

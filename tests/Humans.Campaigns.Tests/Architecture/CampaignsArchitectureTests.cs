@@ -30,7 +30,7 @@ public class CampaignsArchitectureTests
         // Finance and Gate are the other two).
         //
         // CampaignController is internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
+        // which relaxes MVC's IsPublic check for discovered section assemblies
         // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
         // many words: do not "fix" a 404 by making the controller public).
         //

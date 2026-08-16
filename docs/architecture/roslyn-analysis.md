@@ -13,7 +13,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set — 29 live rules: `HUM0001`–`HUM0003`, `HUM0005`–`HUM0020`, `HUM0025`–`HUM0034`, catalogued in [`code-analysis.md`](code-analysis.md). **Retired ids are never reassigned:** `HUM0004` (Profile.IsSuspended write guard, dropped with the column in nobodies-collective/Humans#1217), `HUM0022`/`HUM0023` (the per-section Notification and Event DbSet-write analyzers, subsumed by the universal `HUM0025`), and `HUM0021`/`HUM0024` (retired in nobodies-collective/Humans#1278). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0035`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set — 25 live rules: `HUM0001`–`HUM0003`, `HUM0005`–`HUM0011`, `HUM0014`–`HUM0016`, `HUM0019`–`HUM0020`, `HUM0025`–`HUM0028`, `HUM0030`–`HUM0035`, catalogued in [`code-analysis.md`](code-analysis.md). **Retired ids are never reassigned:** `HUM0004` (Profile.IsSuspended write guard, dropped with the column in nobodies-collective/Humans#1217), `HUM0017`/`HUM0018` (cross-section repository injection and "cannot determine the section", retired in nobodies-collective/Humans#1064 — the assembly boundary makes the first a compile error and `[Section]` no longer exists to be missing), `HUM0022`/`HUM0023` (the per-section Notification and Event DbSet-write analyzers, subsumed by the universal `HUM0025`), `HUM0021`/`HUM0024` (retired in nobodies-collective/Humans#1278), and `HUM0012`/`HUM0013`/`HUM0029` (all keyed on a `Humans.Application.*` namespace layout the section assemblies replaced). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0036`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 
@@ -33,16 +33,18 @@ and the 5 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
 outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
 
-**Scope every new analyzer through `Internal/AssemblyScope.cs`, never through a
-hardcoded assembly-name set.** A G5 section project is a separate assembly
-(`Humans.<Section>`), so a rule keyed on the literal names
-`Humans.Application` / `Humans.Web` / `Humans.Infrastructure` / `Humans.Domain`
-goes *silent* inside every section that has moved — the split would then reduce
-enforcement rather than preserve it. `AssemblyScope` recognises a section by its
-`[assembly: Section("…")]` marker and folds it into the right predicate
-(`IsApplicationOrWeb`, `IsApplicationWebOrInfrastructure`, …). Section-aware
-rules that need the section *name* use `Internal/Sections.cs`, which resolves it
-from the namespace segment or, for a section project, from that same marker.
+**Don't scope a new analyzer by assembly name.** `src/Directory.Build.props`
+already attaches the analyzer to every `src/` project and nothing else, so a rule
+runs where it should by construction; a literal-name gate only makes it go silent
+in whichever assembly the code moves to next. Where a rule genuinely applies to
+sections only, `Internal/AssemblyScope.IsSection` answers it — an assembly is a
+section when it declares `<AssemblyName>.Section : ISection`. For the section
+*name*, `Internal/Sections.cs` strips the `Humans.` prefix and any `.Contracts`
+suffix off the assembly name.
+
+**Prefer adding a rule to `SectionRulesAnalyzer` over writing a new analyzer
+class.** One file per rule under `Internal/Rules/`, listed in the analyzer's class
+comment, so a section's rules are readable in one place.
 
 ---
 
@@ -258,8 +260,8 @@ have the supporting machinery. Each notes the missing piece.
   but the rule is "no `.Include()` whose target navigation crosses a section
   boundary" — requires a section-ownership map for entity types. Half the
   prerequisite has since landed: `Internal/Sections.cs` resolves a *type's*
-  section from its namespace segment or, for a G5 section project, from its
-  assembly's `[Section("…")]` marker, and `Internal/SectionDbContexts.cs`
+  section from its assembly name or, failing that, its namespace segment, and
+  `Internal/SectionDbContexts.cs`
   enumerates the DbSets on every application context. What is still missing is
   the entity→section direction — `Sections.cs` keys on service/interface
   namespaces, not on `Humans.Domain` entity types. HUM0024 used to derive entity

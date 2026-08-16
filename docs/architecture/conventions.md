@@ -168,7 +168,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 
 **Conventions:**
 
-- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.UI` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider` off the `[assembly: Section("…")]` marker.
+- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.UI` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
 - Invocation: `<vc:{kebab-name} param="…">` tag helper or `@await Component.InvokeAsync("{Name}", new { param = value })`

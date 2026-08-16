@@ -26,7 +26,7 @@ namespace Humans.Debug.Controllers;
 /// </summary>
 /// <remarks>
 /// Internal, and routed anyway: Shell registers <c>SectionControllerFeatureProvider</c>, which
-/// relaxes MVC's <c>IsPublic</c> check for assemblies carrying <c>[assembly: Section("…")]</c>
+/// relaxes MVC's <c>IsPublic</c> check for discovered section assemblies
 /// (memory/architecture/section-controllers-need-feature-provider.md — do not "fix" a 404 by
 /// making this public).
 /// </remarks>

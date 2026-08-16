@@ -20,10 +20,8 @@ public class AccountDeletionArchitectureTests
     [HumansFact]
     public void AccountDeletionService_HasNoRepositoryConstructorParameter()
     {
-        // Orchestrator-no-repository guard. No universal enforcer covers this yet
-        // (A2 orchestrator-no-repository analyzer is deferred); HUM0017 only catches
-        // cross-section repository injection, not a same-section repo injected into
-        // an orchestrator. Kept until A2 lands (matches Onboarding/HumanLifecycle).
+        // Orchestrator-no-repository guard. HUM0026 covers IOrchestrator implementers;
+        // this class is not one. Kept until it is (matches Onboarding/HumanLifecycle).
         var ctor = typeof(AccountDeletionService).GetConstructors().Single();
         ctor.GetParameters()
             .Should().NotContain(

@@ -42,8 +42,8 @@ public class MembershipCalculatorArchitectureTests
     {
         // The orchestrator owns no tables; it must not inject any
         // IXxxRepository either. All cross-section reads go through
-        // service interfaces per design-rules §9. No universal enforcer covers
-        // this yet (A2 deferred); HUM0017 only catches cross-section repos.
+        // service interfaces per design-rules §9. HUM0026 covers IOrchestrator
+        // implementers; this class is not one.
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters()
             .Should().NotContain(

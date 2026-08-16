@@ -9,7 +9,7 @@ is simply not added to the application part's controller feature. **Nothing says
 green with zero warnings, the type exists, the `[Route]` attribute is right there, and the URL 404s.
 
 `SectionControllerFeatureProvider` (`src/Humans.Web/Infrastructure/`) relaxes exactly that one check
-for assemblies carrying `[assembly: Section("…")]`, and is registered once in Shell for all sections.
+for discovered section assemblies, and is registered once in Shell for all sections.
 
 **Why:** without it, "public means `Section` or `Contracts/`" needs a controllers-shaped carve-out in
 all ~35 sections — and then a section's controllers, its action-parameter view models and everything
@@ -18,11 +18,12 @@ Ten lines in Shell buy the rule back. Measured, not assumed: all 20 Store contro
 tests failed on the first internalisation attempt (nobodies-collective/Humans#866, PR
 peterdrier/Humans#1223).
 
-**How to apply:** when adding a section project, the marker in `Properties/AssemblyInfo.cs` is what
-turns discovery on — `[assembly: Section("<Section>")]` serves the analyzers, DI discovery *and*
-controller discovery, so there is nothing per-section to register. If a section route 404s while the
-controller is clearly present, check the assembly marker first, then that Shell still adds the
-feature provider to `AddControllersWithViews`. Do not "fix" it by making the controller `public`.
+**How to apply:** `Section.cs : ISection` is what turns discovery on — it serves the analyzers, DI
+discovery *and* controller discovery, so there is nothing per-section to register. If a section route
+404s while the controller is clearly present, check that the section is in Shell's discovered list,
+then that Shell still adds the feature provider to `AddControllersWithViews`. Do not "fix" it by
+making the controller `public` — a public constructor cannot take an internal service (CS0051), so
+that fix cascades until the section's whole service layer is public.
 
 The same silent-failure class as a missing section `Views/_ViewImports.cshtml` — both are caught only
 by actually rendering the page, which is why `docs/sections/G5-SECTION-TEMPLATE.md` step 12

@@ -2,6 +2,14 @@
 
 **Pilot section: Store.** Design only — no code changed by this doc.
 
+> **The `[assembly: Section("…")]` marker this doc designs no longer exists**
+> (nobodies-collective/Humans#1064). A section is an assembly declaring
+> `<AssemblyName>.Section : ISection`, and its name is the assembly name minus `Humans.` and any
+> `.Contracts` suffix — so §1, §6, §10 and §12's marker mechanics are history. Everything else
+> here stands. The live version is [`docs/sections/G5-SECTION-TEMPLATE.md`](../../sections/G5-SECTION-TEMPLATE.md)
+> for the recipe and [`docs/architecture/code-analysis.md`](../../architecture/code-analysis.md)
+> for the analyzers.
+
 #866's *policy* is settled and is not revisited here: `internal` by default with the public
 surface confined to `Contracts/`; cross-section deps are assembly references and cycles are
 compile errors; `<Section>.Contracts` carved only when the build forces it; primitives-only
@@ -1003,6 +1011,11 @@ deviation from an omission.
 ---
 
 ## 10. The enforcement apparatus after G5
+
+> **Superseded by nobodies-collective/Humans#1064** (see the banner at the top). The layer
+> predicates this section builds on (`IsApplicationOrWeb`, `IsLayerOrSection`, …) are gone —
+> `src/Directory.Build.props` already scopes the analyzers to `src/`. HUM0017 and HUM0018 are
+> retired, and the surviving section rules are consolidated in `SectionRulesAnalyzer`.
 
 ### `AssemblyScope` — the trap
 

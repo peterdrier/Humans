@@ -3,7 +3,7 @@
   <!--
     Microsoft.NET.Sdk, not Sdk.Razor: SystemSettings has no controllers and no views,
     so AddRazorSupportForMvc and the Sdk.Web <Using> items Sdk.Razor does not inherit
-    would both be dead weight. Section discovery keys off [assembly: Section("…")],
+    would both be dead weight. Section discovery keys off Section.cs : ISection,
     not off being an MVC application part (design §15 step 1, amended here).
   -->
 

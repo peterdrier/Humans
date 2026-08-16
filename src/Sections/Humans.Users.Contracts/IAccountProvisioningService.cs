@@ -8,8 +8,7 @@ namespace Humans.Users.Contracts;
 /// </summary>
 // COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped ": IApplicationService".
 // The marker lives in Humans.Interfaces and this leaf must reach zero <ProjectReference>
-// so Base may reference it. Lost on the implementing class: HUM0012 (service location),
-// HUM0017 (cross-section repository injection), HUM0027 (role-axis exclusivity).
+// so Base may reference it. Lost on the implementing class: HUM0027 (role-axis exclusivity).
 // Restore the inheritance when Base is referenceable from this leaf again.
 public interface IAccountProvisioningService
 {

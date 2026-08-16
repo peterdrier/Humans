@@ -26,8 +26,8 @@ public class ContainersArchitectureTests
         // nothing in Base needs to see this surface and no downward carve is required.
         //
         // Everything else is internal, including the controller: Shell registers
-        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
-        // carrying [assembly: Section("…")], so internal controllers still route
+        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for discovered
+        // section assemblies, so internal controllers still route
         // (memory/architecture/section-controllers-need-feature-provider.md — which says in
         // as many words: do not "fix" a 404 by making the controller public).
         //
