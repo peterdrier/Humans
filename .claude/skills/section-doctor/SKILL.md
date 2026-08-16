@@ -62,6 +62,9 @@ Take today's section (or `--section`). Sections are `src/Sections/` projects onl
 
 ## Phase 3: Deep assessment
 
+Start `dotnet build Humans.slnx -v quiet` (background) immediately — reforge scores need a
+built solution, and the build doubles as the strike phase's baseline.
+
 Inhale the section front to back — this is the once-per-cycle expensive judgment. Dispatch
 parallel background lanes where useful; **every subagent gets an explicit model, tagged in name
 and description** (sonnet for mechanical scanning, opus-tier only where judgment earns it):
@@ -104,7 +107,8 @@ assessment-only PR, note it in the plan.
 
 ## Phase 5: Bookkeeping
 
-In the same worktree/PR: `health.md` history row; tick today's plan row; append
+In the same worktree/PR: `health.md` history row; tick today's plan row (if a plan exists —
+`--section` runs have none); append
 `docs/health/log.md` (`| date | section | what ran | outcome | PR |`); overwrite
 `docs/health/last-report.md` (assessment summary, worked, skipped + why); update this run's row
 in `docs/architecture/maintenance-log.md` per `maintenance-log-update`.
@@ -170,3 +174,9 @@ push.
 ## Lessons
 
 (Phase 8 appends dated one-liners here.)
+
+- 2026-08-16: resx/XML edits must be structure-aware (python/XML tooling), never line-based sed
+  — neutral resx was one-line-per-entry but all 5 language variants were multi-line; sed
+  corrupted them and only the build caught it.
+- 2026-08-16: keep a by-hand read of the section's auth paths in the assessment — the doc-code
+  contradiction on phase gating was invisible to grep and to every lane.
