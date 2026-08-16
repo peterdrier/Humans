@@ -19,9 +19,11 @@
     <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="HtmlSanitizer" />
-    <PackageReference Include="Markdig" />
-  </ItemGroup>
+  <!--
+    HtmlSanitizer and Markdig left with Extensions/HtmlHelperExtensions.cs in G5 lane
+    4b-iii A (nobodies-collective/Humans#866) and are now declared on Humans.Interfaces.
+    Nothing left in this project names either package: SanitizedMarkdown's signature is
+    string -> IHtmlContent, so the views here that render it need no package of their own.
+  -->
 
 </Project>
