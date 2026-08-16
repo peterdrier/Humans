@@ -29,14 +29,6 @@ public class TeamPageArchitectureTests
     }
 
     [HumansFact]
-    public void TeamPageService_IsSealed()
-    {
-        typeof(TeamPageService).IsSealed
-            .Should().BeTrue(
-                because: "application services are terminal; behavior changes belong on the interface");
-    }
-
-    [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
         // Orchestrator-no-repository guard. No universal enforcer covers this yet

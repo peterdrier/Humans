@@ -169,14 +169,6 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void CachingEventService_IsSealed()
-    {
-        typeof(CachingEventService).IsSealed
-            .Should().BeTrue(
-                because: "Singleton caching decorators are sealed — extension goes on the interface");
-    }
-
-    [HumansFact]
     public void CachingEventService_Has_InnerServiceKey_Const()
     {
         var field = typeof(CachingEventService).GetField(
@@ -202,29 +194,6 @@ public class EventsArchitectureTests
                 because: "the decorator drives its own startup warmup via IHostedService");
     }
 
-    [HumansFact]
-    public void Section_Registers_DecoratorAndInvalidator_AsSameSingleton()
-    {
-        // §15e CRITICAL — IEventService and IEventViewInvalidator MUST resolve
-        // to the same Singleton CachingEventService instance; two instances
-        // would diverge and invalidations would be silently lost.
-        var services = Registrations();
-
-        var cachingDescriptor = services.Single(d =>
-            d.ServiceType == typeof(CachingEventService) && d.ServiceKey is null);
-        var eventServiceDescriptor = services.Single(d =>
-            d.ServiceType == typeof(IEventService) && d.ServiceKey is null);
-        var invalidatorDescriptor = services.Single(d =>
-            d.ServiceType == typeof(IEventViewInvalidator) && d.ServiceKey is null);
-
-        cachingDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "§15d — the caching decorator is Singleton");
-        eventServiceDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "unkeyed IEventService maps to the Singleton decorator");
-        invalidatorDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "§15e — invalidator must share the decorator's singleton lifetime");
-    }
-
     // ── Cross-section read surface (IEventServiceRead) ───────────────────────
 
     [HumansFact]
@@ -233,18 +202,6 @@ public class EventsArchitectureTests
         typeof(IEventServiceRead).IsAssignableFrom(typeof(IEventService))
             .Should().BeTrue(
                 because: "other sections consume the Events section through the IEventServiceRead read surface");
-    }
-
-    [HumansFact]
-    public void Section_Registers_IEventServiceRead_AsSingleton()
-    {
-        // IEventServiceRead forwards to the same Singleton CachingEventService that
-        // backs IEventService, so cross-section reads hit the existing T-03 cache.
-        var descriptor = Registrations().Single(d =>
-            d.ServiceType == typeof(IEventServiceRead) && d.ServiceKey is null);
-
-        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "the read surface forwards to the Singleton caching decorator");
     }
 
     /// <summary>

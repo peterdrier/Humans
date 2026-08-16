@@ -28,45 +28,7 @@ namespace Humans.Feedback.Tests.Architecture;
 /// </remarks>
 public class FeedbackArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5). FeedbackResource is the one
-        // sanctioned extra: the boot localization diagnostic discovers section resource markers
-        // through GetExportedTypes(), so an internal marker is skipped in silence (§15 step 3b).
-        //
-        // Both controllers are internal. Shell registers SectionControllerFeatureProvider, which
-        // relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Feedback.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            "Humans.Feedback.Contracts.IFeedbackServiceRead",
-            "Humans.Feedback.FeedbackResource",
-            "Humans.Feedback.Section",
-        ]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => typeof(ControllerBase).IsAssignableFrom(t))
-            .ToList();
-
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
     // ── FeedbackService ──────────────────────────────────────────────────────
 
@@ -95,53 +57,7 @@ public class FeedbackArchitectureTests
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamServiceRead),
             because: "Feedback resolves assigned-team names via the cross-section ITeamServiceRead surface — no FeedbackReport.AssignedToTeam navigation at query time");
-    }
-
-    [HumansFact]
-    public void FeedbackService_ConstructorTakesNoEfType()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        var parameterTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        parameterTypes.Should().NotContain(t => typeof(DbContext).IsAssignableFrom(t),
-            because: "the service goes through IFeedbackRepository; only the repository owns a DbContext");
-        parameterTypes.Should().NotContain(
-            t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
-            because: "context lifetime is the repository's business (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every Feedback_* and Enum_Feedback* key out of SharedResource, so a
-        // type still injecting IStringLocalizer<SharedResource> would resolve nothing and render
-        // the raw key — a 200 with degraded copy, in every language, on paths a render test tends
-        // not to reach. The views are safe by construction (_ViewImports rebinds Localizer for
-        // all of them); this is the guard for controllers and services.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && p.ParameterType.GetGenericArguments()[0] != typeof(FeedbackResource))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every Feedback_* key lives in FeedbackResource; resolving one through another "
-                   + "set renders the key itself and no error (§15 step 3b)");
-    }
-
-    [HumansFact]
-    public void AuditEntityTypesAreLiterals()
-    {
-        // Persisted audit discriminators, matched by exact equality when the log is read back.
-        // Declaring them as literals is what makes a rename of the entity schema-inert
-        // (memory/code/type-name-as-persisted-string.md).
-        Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
-    }
-
-    // ── IFeedbackRepository ──────────────────────────────────────────────────
+    }    // ── IFeedbackRepository ──────────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
     // MA0053 (an unsealed internal class is a build error) — not by

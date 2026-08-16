@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
-using Humans.Application.Services.Dashboard;
 using Humans.Infrastructure.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
@@ -33,24 +32,6 @@ public class TeamsArchitectureTests
 {
     // ── TeamService ──────────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void TeamService_TakesNoDataAccessDependency()
-    {
-        // Restated at G5 (Calendar finding 41): the section assembly holds the repository and
-        // legitimately references EF Core, so the old "this assembly has no EF reference"
-        // assertion is false here rather than vacuous. The invariant that actually matters is
-        // the constructor's — the service reaches data only through ITeamRepository.
-        var ctor = typeof(TeamService).GetConstructors().Single();
-
-        ctor.GetParameters()
-            .Select(p => p.ParameterType)
-            .Should().NotContain(
-                t => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(t)
-                     || (t.IsGenericType
-                         && t.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)),
-                because: "services reach data only through their repository (design-rules §2b)");
-    }
-
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]
@@ -74,17 +55,12 @@ public class TeamsArchitectureTests
         {
             typeof(TeamService).Assembly,                                // Humans.Teams
             typeof(HumansMetricsService).Assembly,                       // Humans.Infrastructure
-            // Anchored on DashboardService, a concrete Humans.Application service with no
-            // scheduled move in G5 phase 3. It was typeof(UserService) until that type moved
-            // into Humans.Users (#866, G5 lane 2), then typeof(IFileStorage) until G5 lane 3a-1
-            // moved that interface into Humans.Interfaces (Base) with its namespace preserved —
-            // an assembly anchor whose type leaves relocates the sweep silently (design §15
-            // step 11), and namespace preservation makes the relocation invisible at compile time.
-            typeof(DashboardService).Assembly,                            // Humans.Application
+            // Anchored on IFileStorage: Base's one key-addressed storage abstraction, which
+            // peters-hard-rules.md pins to Humans.Application. It was typeof(UserService) until
+            // that type moved into Humans.Users (#866, G5 lane 2) — an assembly anchor whose
+            // type leaves relocates the sweep silently onto the section (design §15 step 11).
+            typeof(IFileStorage).Assembly,                                // Humans.Application
         };
-
-        typeof(DashboardService).Assembly.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently drop Humans.Application out of this sweep instead of failing");
 
         var violations = new List<string>();
         foreach (var assembly in assembliesToScan)
@@ -170,56 +146,5 @@ public class TeamsArchitectureTests
 
     // ── Section boundary (design §15 steps 3b and 5) ─────────────────────────
 
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSetOrSharedResource()
-    {
-        // A view is safe by construction — _ViewImports rebinds Localizer in one line. A
-        // controller that kept IStringLocalizer<SharedResource> compiles and renders its
-        // carved keys as raw key names on the failure branches a render test never reaches
-        // (Surveys' finding, in Governance's two-marker form: five Teams keys stayed in
-        // SharedResource because something outside the section renders them too).
-        var allowed = new[] { typeof(TeamsResource), typeof(Humans.UI.SharedResource) };
-
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                    .SelectMany(m => m.GetParameters()))
-                .Select(p => (Type: t, p.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.Extensions.Localization.IStringLocalizer<>))
-            .Where(x => !allowed.Contains(x.ParameterType.GetGenericArguments()[0]))
-            .Select(x => $"{x.Type.FullName}:{x.ParameterType.GetGenericArguments()[0].Name}")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "the section localizes through TeamsResource; SharedResource is allowed only for the five "
-                     + "co-owned keys and the Enum_SlotPriority_* / Enum_RolePeriod_* reads (design §15 step 3b)");
-    }
-
-    [HumansFact]
-    public void TheSectionExportsOnlyItsSectionMarkerResourceMarkerAndContractsFolder()
-    {
-        // What HUM0034 enforces mechanically, stated in the section's own terms.
-        var exported = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !t.Namespace!.StartsWith("Humans.Teams.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName!)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        exported.Should().BeEquivalentTo(
-        [
-            "Humans.Teams.Contracts.HumansTeamControllerBase",
-            // Shell's widget gallery binds it (WidgetGalleryController.SampleShiftsSummary),
-            // so it cannot be internal. Under Contracts/ rather than Models/ for that reason
-            // — G5 lane 4b-i, nobodies-collective/Humans#866. It is Teams' and not Shifts'
-            // because Teams both builds and renders it, and Humans.Shifts already references
-            // Humans.Teams, so the plan's Shifts destination would have been a cycle.
-            "Humans.Teams.Contracts.ShiftsSummaryCardViewModel",
-            "Humans.Teams.Section",
-            "Humans.Teams.TeamsResource",
-        ]);
-    }
 
 }

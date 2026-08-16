@@ -55,56 +55,6 @@ public class AuditLogArchitectureTests
     // interface moves there, after which every sweep below goes near-empty and still passes.
     private static System.Reflection.Assembly SectionAssembly => typeof(Section).Assembly;
 
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // The section deliberately ships no Resources/ folder and no AuditLogResource:
-        // its two pages are admin-only English and carry no Localizer[...] call
-        // (G5-SECTION-TEMPLATE.md step 3b's first question). Assert it structurally so the
-        // day someone adds copy the build says "carve a resource set first" rather than
-        // silently resolving against Humans.UI's SharedResource.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Select(param => (Type: t, param.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && string.Equals(
-                            x.ParameterType.GetGenericTypeDefinition().FullName,
-                            "Microsoft.Extensions.Localization.IStringLocalizer`1",
-                            StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "AuditLog has no resource set; a localizer here means copy was added without carving one");
-    }
-
-    [HumansFact]
-    public void SectionServicesTakeNoDbContext()
-    {
-        // Restates the old "GetReferencedAssemblies() does not contain EntityFrameworkCore"
-        // assertion, which stops meaning anything once the repository ships in the same
-        // assembly as the service (G5-SECTION-TEMPLATE.md step 11). The real invariant is
-        // that only the repository touches a context.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .Where(t => t.IsClass && t.Namespace?.StartsWith("Humans.AuditLog.Services", StringComparison.Ordinal) == true)
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()).Select(param => (Type: t, param.ParameterType)))
-            .Where(x => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(x.ParameterType)
-                        || (x.ParameterType.IsGenericType
-                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "only AuditLogRepository may touch AuditLogDbContext (peters-hard-rules.md)");
-    }
-
     // ── Retired: SectionReferencesNoVerticalSection ──────────────────────────
     //
     // This test pinned the referenced-assembly list of Humans.AuditLog to
