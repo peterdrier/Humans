@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
 
-public class ApplicationServiceDbContextInjectionAnalyzerTests
+public class DbContextOwnershipRuleTests
 {
     // UsersDbContext lives in Humans.Infrastructure; the IRepository marker
     // lives in Humans.Application. The analyzer keys off these full names and
@@ -52,7 +52,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
         """;
 
     private static bool IsHum0009(Diagnostic d) =>
-        string.Equals(d.Id, ApplicationServiceDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
+        string.Equals(d.Id, "HUM0009", StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_error_on_non_repository_class_using_UsersDbContext()
@@ -71,7 +71,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -97,7 +97,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -123,7 +123,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -146,7 +146,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -169,7 +169,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -192,7 +192,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -214,7 +214,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -236,7 +236,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -265,7 +265,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -296,7 +296,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -328,7 +328,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -357,7 +357,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 

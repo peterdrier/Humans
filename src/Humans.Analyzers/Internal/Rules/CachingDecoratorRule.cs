@@ -4,15 +4,14 @@ using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Humans.Analyzers;
+namespace Humans.Analyzers.Internal.Rules;
 
 /// <summary>
 /// HUM0020 - Caching decorators resolve cache misses and warm paths through
 /// their keyed inner application service, not by injecting or calling
 /// repositories directly.
 /// </summary>
-[DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
+internal static class CachingDecoratorRule
 {
     public const string DiagnosticId = "HUM0020";
 
@@ -38,16 +37,7 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
             "boundaries, orchestration, and cache-invalidation behavior. Existing violators carry " +
             "[Grandfathered(\"HUM0020\", ...)] until their warm paths are migrated.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
-
-    public override void Initialize(AnalysisContext context)
-    {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-        context.RegisterCompilationStartAction(OnCompilationStart);
-    }
-
-    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    public static void Register(CompilationStartAnalysisContext context)
     {
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
         if (repositoryMarker is null)

@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace Humans.Analyzers;
+namespace Humans.Analyzers.Internal.Rules;
 
 /// <summary>
 /// HUM0025 — a DbSet table must be referenced by exactly one repository.
@@ -52,8 +52,7 @@ namespace Humans.Analyzers;
 /// application DbContext and repository implementation are visible.
 /// </para>
 /// </remarks>
-[DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class SingleRepositoryPerTableAnalyzer : DiagnosticAnalyzer
+internal static class TableOwnershipRule
 {
     public const string DiagnosticId = "HUM0025";
 
@@ -85,16 +84,7 @@ public sealed class SingleRepositoryPerTableAnalyzer : DiagnosticAnalyzer
         // every repository's DbSet references across the compilation are collected.
         customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
-
-    public override void Initialize(AnalysisContext context)
-    {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-        context.RegisterCompilationStartAction(OnCompilationStart);
-    }
-
-    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    public static void Register(CompilationStartAnalysisContext context)
     {
         // Since the per-section split (nobodies-collective/Humans#858) tables are
         // spread across every application context; DbSet access is matched on any of

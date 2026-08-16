@@ -4,7 +4,7 @@ using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Humans.Analyzers;
+namespace Humans.Analyzers.Internal.Rules;
 
 /// <summary>
 /// HUM0009 — Only repository classes (transitive implementers of
@@ -22,8 +22,7 @@ namespace Humans.Analyzers;
 /// they are unresolvable there, and Web's analysis only sees
 /// types declared in Web (controllers).
 /// </remarks>
-[DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAnalyzer
+internal static class DbContextOwnershipRule
 {
     public const string DiagnosticId = "HUM0009";
 
@@ -47,8 +46,6 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
             "[Grandfathered(\"HUM0009\", …)] which downgrades this diagnostic to a warning for the tagged " +
             "class only — the attribute is a TODO for migration, not a permanent exemption.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
-
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
     private const string DesignTimeDbContextFactoryFullName =
         "Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory`1";
@@ -56,14 +53,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         "Microsoft.Extensions.Hosting.IHostedLifecycleService";
     private const string InfrastructureHostingNamespace = "Humans.Infrastructure.Hosting";
 
-    public override void Initialize(AnalysisContext context)
-    {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-        context.RegisterCompilationStartAction(OnCompilationStart);
-    }
-
-    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    public static void Register(CompilationStartAnalysisContext context)
     {
         // Since the per-section split (nobodies-collective/Humans#858) the persistence
         // boundary is every application context, matched structurally via

@@ -2,7 +2,7 @@ using AwesomeAssertions;
 
 namespace Humans.Analyzers.Tests;
 
-public class ControllerDbContextInjectionAnalyzerTests
+public class ControllerDbContextRuleTests
 {
     private const string Stubs = """
         namespace Microsoft.AspNetCore.Mvc
@@ -32,7 +32,7 @@ public class ControllerDbContextInjectionAnalyzerTests
         """;
 
     private static bool IsHum0008(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, ControllerDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
+        string.Equals(d.Id, "HUM0008", StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_when_controller_injects_UsersDbContext()
@@ -51,7 +51,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -75,7 +75,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -99,7 +99,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -123,7 +123,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -148,7 +148,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -172,7 +172,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -201,7 +201,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 
@@ -228,7 +228,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Web",
             source);
 

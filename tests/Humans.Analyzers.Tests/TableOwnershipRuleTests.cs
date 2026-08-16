@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
 
-public sealed class SingleRepositoryPerTableAnalyzerTests
+public sealed class TableOwnershipRuleTests
 {
     // A minimal UsersDbContext with three DbSets — Events and AuditLogEntries
     // declared directly, Users inherited from a base context (mirrors the real
@@ -78,10 +78,10 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
         """;
 
     private static bool IsHum0025(Diagnostic d) =>
-        string.Equals(d.Id, SingleRepositoryPerTableAnalyzer.DiagnosticId, StringComparison.Ordinal);
+        string.Equals(d.Id, "HUM0025", StringComparison.Ordinal);
 
     private static Task<System.Collections.Immutable.ImmutableArray<Diagnostic>> RunAsync(string source) =>
-        AnalyzerTestHarness.RunAsync(new SingleRepositoryPerTableAnalyzer(), "Humans.Infrastructure", source);
+        AnalyzerTestHarness.RunAsync(new SectionRulesAnalyzer(), "Humans.Infrastructure", source);
 
     [HumansFact]
     public async Task Fires_at_each_site_when_two_repositories_reference_the_same_dbset()

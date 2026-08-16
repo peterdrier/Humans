@@ -15,7 +15,18 @@ namespace Humans.Analyzers;
 /// internal, except what the framework silently drops when they are not.</description></item>
 /// <item><term>HUM0035</term><description>A repository never lives under
 /// <c>Contracts/</c> — persistence is not a section's public surface.</description></item>
+/// <item><term>HUM0008</term><description>A controller never injects a
+/// DbContext.</description></item>
+/// <item><term>HUM0009</term><description>Only a repository uses a
+/// DbContext.</description></item>
+/// <item><term>HUM0025</term><description>A table belongs to exactly one
+/// repository.</description></item>
+/// <item><term>HUM0020</term><description>A caching decorator calls the inner service, not
+/// the repository.</description></item>
 /// </list>
+///
+/// The first two are about a section's shape and self-gate on its entry point. The rest
+/// hold everywhere our code touches persistence, including what is left in Base.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
@@ -24,6 +35,10 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
     [
         PublicSurfaceRule.Rule,
         RepositoryPlacementRule.Rule,
+        ControllerDbContextRule.Rule,
+        DbContextOwnershipRule.Rule,
+        TableOwnershipRule.Rule,
+        CachingDecoratorRule.Rule,
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -35,8 +50,11 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        // Both checks are about a section's shape, so they self-gate on the section entry
-        // point rather than on an assembly name.
+        ControllerDbContextRule.Register(context);
+        DbContextOwnershipRule.Register(context);
+        TableOwnershipRule.Register(context);
+        CachingDecoratorRule.Register(context);
+
         if (!AssemblyScope.IsSection(context.Compilation.Assembly))
             return;
 

@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
 
-public class CachingDecoratorRepositoryAnalyzerTests
+public class CachingDecoratorRuleTests
 {
     private const string Stubs = """
         namespace Humans.Application.Interfaces.Repositories
@@ -41,7 +41,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
         """;
 
     private static bool IsHum0020(Diagnostic d) =>
-        string.Equals(d.Id, CachingDecoratorRepositoryAnalyzer.DiagnosticId, StringComparison.Ordinal);
+        string.Equals(d.Id, "HUM0020", StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_error_on_repository_constructor_parameter_in_caching_decorator()
@@ -58,7 +58,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -85,7 +85,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -110,7 +110,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -132,7 +132,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -154,7 +154,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -176,7 +176,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -200,7 +200,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -222,7 +222,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
@@ -252,7 +252,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Teams",
             source);
 
@@ -281,7 +281,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
             """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
+            new SectionRulesAnalyzer(),
             "Humans.Infrastructure",
             source);
 
