@@ -1,25 +1,16 @@
 using AwesomeAssertions;
 using EmailProvisioningService = Humans.GoogleIntegration.Services.EmailProvisioningService;
 using GoogleGroupSyncService = Humans.GoogleIntegration.Services.GoogleGroupSyncService;
-using GoogleWorkspaceSyncService = Humans.GoogleIntegration.Services.GoogleWorkspaceSyncService;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Google
-/// Integration section — migration tracked under issues #554, #574, #575.
-///
-/// <para>
-/// Scope: <see cref="EmailProvisioningService"/> and
-/// <see cref="GoogleWorkspaceSyncService"/>. <see cref="EmailProvisioningService"/>
-/// landed under issue #289; <see cref="GoogleWorkspaceSyncService"/> migrated
-/// under §15 Part 2b (issue #575, 2026-04-23) — the largest §15 move of the
-/// campaign. Assertions below pin the Application-layer location, DbContext
-/// avoidance, and Google SDK avoidance so a regression cannot silently
-/// re-introduce them.
-/// </para>
+/// Three checks on two of the section's services. Neither may take Identity's
+/// <c>UserManager</c> — changing a user is the user section's job, through its own service —
+/// and the group sync may not name a Google SDK type, which is what keeps the SDK behind the
+/// connector interfaces.
 /// </summary>
 public class GoogleIntegrationArchitectureTests
 {

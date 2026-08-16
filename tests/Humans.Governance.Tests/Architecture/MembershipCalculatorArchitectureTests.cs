@@ -6,7 +6,7 @@ using Humans.Governance.Services;
 namespace Humans.Governance.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests pinning DI-cycle guards and sealing for
+/// Architecture tests pinning the DI-cycle guards for
 /// <see cref="MembershipCalculator"/>. The calculator routes team + role reads
 /// through <c>IMembershipQuery</c> to break the circular DI graph caused by
 /// <c>ISystemTeamSync</c>.

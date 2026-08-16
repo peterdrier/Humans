@@ -13,8 +13,7 @@ namespace Humans.Campaigns.Tests.Architecture;
 /// <c>CampaignService_DoesNotReferenceEntityFrameworkCore</c> test is gone: it asserted that
 /// <c>Humans.Application</c> carries no EF reference, and the section assembly holds the
 /// repository and legitimately does — so over there the assertion is either false or vacuous.
-/// The invariant it was reaching for (the service never touches a <c>DbContext</c>) is
-/// asserted on the constructor instead, which is stronger and survives the move.
+/// Keeping the service off the DbSets is HUM0025's job now.
 /// </remarks>
 public class CampaignsArchitectureTests
 {

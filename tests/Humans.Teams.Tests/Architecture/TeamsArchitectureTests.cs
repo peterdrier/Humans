@@ -10,18 +10,10 @@ using TeamService = Humans.Teams.Services.TeamService;
 namespace Humans.Teams.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Teams
-/// section — migrated per issue #540 (§15 Part 1 — TeamService core).
-/// Pins the invariants:
-/// <list type="bullet">
-/// <item><description><c>TeamService</c> lives in <c>Humans.Teams.Services</c>.</description></item>
-/// <item><description><c>TeamService</c> never injects <c>DbContext</c> — all data access flows through <see cref="ITeamRepository"/>.</description></item>
-/// <item><description><c>TeamService</c> never imports <c>Microsoft.EntityFrameworkCore</c> (structurally enforced by the project reference graph — this test acts as a defence-in-depth).</description></item>
-/// <item><description><see cref="ITeamRepository"/> lives in <c>Humans.Teams.Data</c> and has a sealed EF-backed implementation.</description></item>
-/// </list>
-/// Teams uses the §15 caching decorator pattern: <see cref="CachingTeamService"/>
-/// wraps the keyed inner <see cref="ITeamService"/> and exposes the read split
-/// via <see cref="ITeamServiceRead"/>.
+/// What is left of the Teams §15 checks (issue #540). The read split is the subject:
+/// <see cref="ITeamService"/> inherits <see cref="ITeamServiceRead"/>, the caching decorator
+/// implements both, and the two resolve to the same singleton — so a reader and a writer can
+/// never end up looking at different caches. Plus the repository implements its own interface.
 /// </summary>
 public class TeamsArchitectureTests
 {

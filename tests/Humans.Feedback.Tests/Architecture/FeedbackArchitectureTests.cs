@@ -17,13 +17,6 @@ namespace Humans.Feedback.Tests.Architecture;
 /// <see cref="IFeedbackRepository"/> and invalidates the nav-badge cache via
 /// <see cref="INavBadgeCacheInvalidator"/> after successful writes.
 /// </summary>
-/// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/FeedbackArchitectureTests.cs</c>. Its
-/// store-parameter check is widened here to cover <c>DbContext</c> and
-/// <c>IDbContextFactory&lt;&gt;</c> as well: the section assembly holds the repository and
-/// legitimately references EF, so "the service never touches a context" has to be asserted on
-/// the constructor rather than inferred from the assembly's references (§15 step 11).
-/// </remarks>
 public class FeedbackArchitectureTests
 {
     // ── FeedbackService ──────────────────────────────────────────────────────
