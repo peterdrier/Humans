@@ -25,10 +25,12 @@ under `src/Sections/` and can be reviewed as a unit.
 4. **Toolbox in:** section-align, audit-surface, section-read-split, trim-tests, simplify,
    reuse-review (run against the section's own surface, not a diff), the refactor-swarm per-lane
    process (`.codex/skills/humans-refactor`), debt-sweep (absorbed — its ledger becomes a planner
-   input), nav-audit (as a per-section slice). **Out:** freshness-sweep, resharper, nuget-*,
-   triage-as-process (its issue outputs are planner signals). **refactor-swarm** becomes the
-   wrapper that runs multiple section-doctor lanes in parallel, especially for coordinated
-   cross-section changes.
+   input), nav-audit (as a per-section slice), resharper (absorbed as a per-section InspectCode
+   lane — 2026-08-16 retro; the weekly repo-wide `/resharper` retires once rotation covers every
+   section), test-site/run (runtime verification of UI strikes). **Out:** freshness-sweep,
+   nuget-*, triage-as-process (its issue outputs are planner and run-day inputs).
+   **refactor-swarm** becomes the wrapper that runs multiple section-doctor lanes in parallel,
+   especially for coordinated cross-section changes.
 5. **All surfaces in scope:** code, tests, docs, comments, GUI/nav, translations. Standing theme:
    AI-slop removal. Hard constraint granting the latitude: **business functionality does not
    change.**
@@ -145,16 +147,23 @@ The plan is advisory — run-day findings can extend a section's stay.
 - **2 Plan check** — read `docs/health/plan.md`; replan per the rules above if needed; take
   today's section.
 - **3 Deep assessment** (the expensive judgment, once per section per cycle) — inhale the section
-  front to back. Parallel subagent lanes where useful (models explicit + tagged): code/arch lane
-  (audit-surface posture, smells, reforge), tests lane (good/bad/ugly triage; Stryker if budget
-  allows), docs lane (section `Docs/*.md` + `docs/guide/<Section>.md` vs code — do the business
-  docs match what the code does), surface lane (slop: comments, verbosity, dead strings,
-  translations, nav dead-ends). Write the refreshed scorecard + **ideal shape** + ranked
-  opportunities into `health.md`.
-- **4 Strike** — work the ranked list top-down within budget. Each item names its play: a toolbox
-  skill run scoped to the section, or a direct fix. One item / tight cluster per commit; build +
-  targeted tests per item; full `dotnet test Humans.slnx -v quiet` before each push; push every
-  3–5 items. Budget checks are real `date` reads, never estimates. Non-mechanical changes
+  front to back, baseline build first (reforge needs it). Parallel subagent lanes where useful
+  (models explicit + tagged): code/arch lane (audit-surface posture with per-method caller
+  counts, smells, reforge, reuse-review checklist, flow-trace simplification pass), tests lane
+  (good/bad/ugly triage; **section-scoped Stryker kicked off in background**; the **invariant
+  coverage matrix** — every invariant/negative rule/trigger in the section doc mapped to a
+  pinning test), InspectCode lane (`jb inspectcode` scoped to the section), docs lane (section
+  `Docs/*.md` + `docs/guide/<Section>.md` vs code; trigger-glob verification), surface lane
+  (slop: comments, verbosity, dead strings, translations, nav dead-ends), inbox (section-tagged
+  debt-ledger items, open GitHub issues, in-app issues). Write the refreshed scorecard +
+  **ideal shape** + ranked opportunities into `health.md`.
+- **4 Strike** — work the ranked list top-down within budget, and **drain it** — stopping early
+  with strikeable items remaining is a failure mode (2026-08-16 retro: the shakedown stopped at
+  40 of 150 minutes). Each item names its play: a toolbox skill run scoped to the section, or a
+  direct fix. One item / tight cluster per commit; build + targeted tests per item; full
+  `dotnet test Humans.slnx -v quiet` before each push; push every 3–5 items. Budget checks are
+  real `date` reads, never estimates. Doc fixes sweep the claim across `docs/guide/` and sibling
+  docs; UI-affecting strikes get runtime verification in the running app. Non-mechanical changes
   (deletions beyond dead code, structural moves) get a second-opinion reviewer subagent
   (opus-tier, score-blind, default-reject — refactor-swarm posture).
 - **5 Bookkeeping** — update `health.md` history row, tick the plan, append `log.md`, overwrite
@@ -202,6 +211,8 @@ At cutover:
 - [ ] Retire `/debt-sweep` (skill + maintenance-log row marked absorbed; `debt-ledger.yml`
       survives as a planner input and strike source)
 - [ ] Retire standalone `/nav-audit` (absorbed as the per-section nav slice)
+- [ ] Retire the weekly repo-wide `/resharper` process (absorbed as the per-section InspectCode
+      lane) once rotation has covered every section
 - [ ] Demote `section-align`, `audit-surface`, `section-read-split`, `trim-tests`, `simplify`,
       `reuse-review` descriptions to note they are section-doctor plays (kept invocable)
 - [ ] Repoint `refactor-swarm` at section-doctor lanes

@@ -69,14 +69,26 @@ Inhale the section front to back — this is the once-per-cycle expensive judgme
 parallel background lanes where useful; **every subagent gets an explicit model, tagged in name
 and description** (sonnet for mechanical scanning, opus-tier only where judgment earns it):
 
-- **Code/arch lane** — audit-surface posture on the section's services/interfaces; smells against
-  `peters-hard-rules.md` + `design-rules.md`; reforge surface + internal score; dead surface.
-- **Tests lane** — good/bad/ugly triage of the section's tests (slop, redundancy, gaps against
-  the invariants doc); Stryker only if budget clearly allows.
+- **Code/arch lane** — audit-surface posture on the section's services/interfaces with
+  per-method external-caller counts (reforge makes this cheap); smells against
+  `peters-hard-rules.md` + `design-rules.md`; reforge surface + internal score; dead surface;
+  reuse-review's unnecessary-surface checklist against the section's own Contracts;
+  a flow-trace simplification pass — walk each service/repository flow asking "is there a
+  simpler shape" (overlapping methods, pass-throughs, duplicated pipelines).
+- **Tests lane** — good/bad/ugly triage of the section's tests (slop, redundancy); **kick off
+  section-scoped Stryker in the background at lane start** — score goes in the scorecard,
+  surviving mutants seed test strikes; build the **invariant coverage matrix**: every
+  invariant, negative access rule, and trigger in the section doc mapped to a pinning test —
+  each gap is a ranked opportunity.
+- **InspectCode lane** — `jb inspectcode` scoped to the section's project(s) (see `/resharper`
+  for invocation); Tier 1/2 findings become strike items.
 - **Docs lane** — the section's `Docs/*.md` and `docs/guide/<Section>.md` vs code: do the
-  business docs match what the code actually does.
+  business docs match what the code actually does; verify the section doc's
+  `freshness:triggers` globs still resolve.
 - **Surface lane** — AI slop: wasteful comments, 500-words-that-should-be-50 docs/messages,
   dead resources, missing translations, per-section nav quality (dead ends, missing backlinks).
+- **Inbox** — section-tagged items in `docs/architecture/debt-ledger.yml`, open GitHub issues,
+  and in-app issues: work or rank them; off-section finds go to the debt inbox.
 
 Then, from the whole picture, write the **ideal shape**: what this section would be if rewritten
 from scratch today (`/simplify` with a magic wand), and rank the concrete moves toward it by
@@ -85,8 +97,9 @@ history rows, prune older).
 
 ## Phase 4: Strike
 
-Work the ranked list top-down until budget exhausted. Budget checks are real `date` reads between
-items, never estimates. Per item (one item or tight cluster per commit):
+Work the ranked list top-down until budget exhausted. **Drain the list — stopping early with
+strikeable items remaining is a failure mode, not a judgment call.** Budget checks are real
+`date` reads between items, never estimates. Per item (one item or tight cluster per commit):
 
 1. Pick the play: a toolbox skill scoped to the section — `section-align`, `trim-tests`,
    `simplify`, `section-read-split`, `reuse-review` (against the section's own surface),
@@ -96,7 +109,12 @@ items, never estimates. Per item (one item or tight cluster per commit):
 4. Non-mechanical changes (deletions beyond plainly-dead code, structural moves) → second-opinion
    reviewer subagent, opus-tier, score-blind, default-reject: "name the concept that improved in
    one sentence." Reject → rework once; second reject → revert, record.
-5. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet` before each push;
+5. **Doc fixes sweep the claim**: a wrong statement fixed in one doc must be grepped across
+   `docs/guide/`, other section docs, and the access matrix — it rarely lives in one file.
+6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
+   (`dotnet run` + browser/test-site) before the PR — a green build does not prove a cshtml/JS
+   change works.
+7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet` before each push;
    push every 3–5 items.
 
 **Skip-and-queue classes** (never block the loop): schema/EF changes of any kind, public/interface
@@ -180,3 +198,7 @@ push.
   corrupted them and only the build caught it.
 - 2026-08-16: keep a by-hand read of the section's auth paths in the assessment — the doc-code
   contradiction on phase gating was invisible to grep and to every lane.
+- 2026-08-16 (retro round 2, Peter): the shakedown run stopped at 40 of 150 minutes with
+  strikeable items still ranked — hence the drain-the-list rule; and absorbed abilities were
+  going unused (Stryker, InspectCode, invariant matrix, claim sweep, runtime verify, inbox) —
+  hence the expanded lanes above.
