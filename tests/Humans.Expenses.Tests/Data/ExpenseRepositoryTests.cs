@@ -156,7 +156,7 @@ public class ExpenseRepositoryTests
         await Seed(r);
         var outboxId = Guid.NewGuid();
 
-        var ok = await _sut.ApproveAsync(r.Id, Guid.NewGuid(), null,
+        var ok = await _sut.ApproveAsync(r.Id, Guid.NewGuid(), null, null,
             Instant.FromUtc(2026, 5, 3, 12, 0), outboxId, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 

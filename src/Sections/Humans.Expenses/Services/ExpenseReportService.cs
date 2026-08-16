@@ -102,7 +102,7 @@ internal sealed class ExpenseReportService(
             memberRegisteredTotal = memberReports
                 .Where(r => r.HoldedDocId is not null
                          && r.Status is ExpenseReportStatus.Approved)
-                .Sum(r => r.Total);
+                .Sum(r => r.Payable);
 
             owed = status?.OwedToMember ?? 0m;
             totalPaid = status?.TotalPaid ?? 0m;
@@ -679,7 +679,8 @@ internal sealed class ExpenseReportService(
     }
 
     internal async Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default)
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
@@ -687,23 +688,30 @@ internal sealed class ExpenseReportService(
         await RequireCoordinatorForCategoryAsync(report.BudgetCategoryId, coordinatorUserId, ct);
 
         var now = clock.GetCurrentInstant();
-        var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, now, ct);
+        var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
         if (!ok) return false;
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
             AuditEntityTypes.Report, reportId,
-            "Coordinator endorsed expense report.",
+            "Coordinator endorsed expense report." + MaxAmountDetail(maxAmount),
             coordinatorUserId);
 
         return true;
     }
 
+    /// <summary>Audit-detail suffix for a cap set on this decision; empty when none was set.</summary>
+    private static string MaxAmountDetail(decimal? maxAmount) =>
+        maxAmount is { } cap
+            ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
+            : "";
+
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default) =>
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default) =>
         RunMutationAsync(async () =>
         {
-            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, ct);
+            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, ct);
             return endorsed
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not endorse the report. It may no longer be in Submitted status.");
@@ -743,7 +751,7 @@ internal sealed class ExpenseReportService(
         }, "Error coordinator-rejecting expense report {ReportId}", "Rejection failed", reportId);
 
     internal async Task<bool> ApproveAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
@@ -751,13 +759,14 @@ internal sealed class ExpenseReportService(
 
         var outboxEventId = Guid.NewGuid();
         var now = clock.GetCurrentInstant();
-        var ok = await repo.ApproveAsync(reportId, actorUserId, overrideCategoryId, now, outboxEventId, ct);
+        var ok = await repo.ApproveAsync(
+            reportId, actorUserId, overrideCategoryId, maxAmount, now, outboxEventId, ct);
         if (!ok) return false;
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseApprove,
             AuditEntityTypes.Report, reportId,
-            "Finance approved expense report.",
+            "Finance approved expense report." + MaxAmountDetail(maxAmount),
             actorUserId);
 
         if (overrideCategoryId.HasValue && overrideCategoryId.Value != report.BudgetCategoryId)
@@ -773,11 +782,11 @@ internal sealed class ExpenseReportService(
     }
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default) =>
         RunMutationAsync(async () =>
         {
-            var approved = await ApproveAsync(reportId, actorUserId, overrideCategoryId, ct);
+            var approved = await ApproveAsync(reportId, actorUserId, overrideCategoryId, maxAmount, ct);
             return approved
                 ? ExpenseMutationResult.Success
                 : ExpenseMutationResult.Failure("Could not approve the report. It may not be in an approvable status.");
@@ -1033,21 +1042,36 @@ internal sealed class ExpenseReportService(
         // the category has no active mapping; the doc still creates, just unbooked.
         var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
 
+        var docLines = report.Lines
+            .OrderBy(l => l.SortOrder)
+            .Select(l => new HoldedPurchaseDocumentLineInput
+            {
+                Description = l.Description,
+                Amount = l.Amount,
+                AccountId = holdedAccountId,
+            })
+            .ToList();
+
+        // The receipts are booked in full and a negative line brings the doc down to the authorized
+        // cap, so the payable matches what was approved without rewriting the receipt lines.
+        if (report.Payable < report.Total)
+        {
+            docLines.Add(new HoldedPurchaseDocumentLineInput
+            {
+                Description =
+                    $"Authorized maximum €{report.Payable.ToString("0.00", CultureInfo.InvariantCulture)} — adjustment",
+                Amount = report.Payable - report.Total,
+                AccountId = holdedAccountId,
+            });
+        }
+
         var input = new HoldedPurchaseDocumentInput
         {
             ContactId = holdedContactId,
             ContactName = submitterName,
             Date = report.SubmittedAt ?? report.CreatedAt,
             Description = report.Note ?? "",
-            Lines = report.Lines
-                .OrderBy(l => l.SortOrder)
-                .Select(l => new HoldedPurchaseDocumentLineInput
-                {
-                    Description = l.Description,
-                    Amount = l.Amount,
-                    AccountId = holdedAccountId,
-                })
-                .ToList(),
+            Lines = docLines,
         };
 
         // 2. Create the purchase doc (idempotent on HoldedDocId).

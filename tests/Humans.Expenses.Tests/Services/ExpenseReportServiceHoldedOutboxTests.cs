@@ -280,6 +280,70 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task CreateIncomingDoc_CappedReport_AppendsNegativeAdjustmentLine()
+    {
+        // The receipts book in full and a negative line brings the doc down to the authorized cap,
+        // so what Holded owes the member matches what was approved.
+        var report = MakeReport() with
+        {
+            Total = 100m,
+            MaxAmount = 60m,
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+            },
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+            .Returns("holded-acc-629001");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-capped");
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i =>
+                i.Lines.Count == 2 &&
+                i.Lines[1].Amount == -40m &&
+                string.Equals(i.Lines[1].Description, "Authorized maximum €60.00 — adjustment", StringComparison.Ordinal) &&
+                string.Equals(i.Lines[1].AccountId, "holded-acc-629001", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_CapAtOrAboveTheTotal_HasNoAdjustmentLine()
+    {
+        var report = MakeReport() with
+        {
+            Total = 100m,
+            MaxAmount = 100m,
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+            },
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-uncapped");
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i => i.Lines.Count == 1),
+            Arg.Any<CancellationToken>());
+    }
+
     // ─── CreateIncomingDoc with attachments ───────────────────────────────────
 
     [HumansFact]
