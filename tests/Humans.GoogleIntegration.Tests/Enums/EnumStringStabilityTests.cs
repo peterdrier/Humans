@@ -6,7 +6,8 @@ namespace Humans.GoogleIntegration.Tests.Enums;
 
 /// <summary>
 /// GoogleIntegration's share of the string-stored-enum guard, moved out of
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that project was retired —
+/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that orphaned project's rows
+/// were distributed to their owners —
 /// <see cref="GoogleResourceType"/>, <see cref="SyncMode"/>, <see cref="SyncServiceType"/>,
 /// <see cref="SyncAction"/> and <see cref="DrivePermissionLevel"/> live on
 /// <c>Humans.GoogleIntegration.Contracts</c>, so the guard belongs to the section that owns them

@@ -6,7 +6,8 @@ namespace Humans.Shifts.Tests.Enums;
 
 /// <summary>
 /// Shifts' share of the string-stored-enum guard, moved out of
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that project was retired —
+/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that orphaned project's rows
+/// were distributed to their owners —
 /// <see cref="ShiftPriority"/>, <see cref="SignupPolicy"/>, <see cref="SignupStatus"/> and
 /// <see cref="RotaPeriod"/> live on <c>Humans.Shifts.Contracts</c>, so the guard belongs to the
 /// section that owns them (nobodies-collective/Humans#866).

@@ -6,7 +6,8 @@ namespace Humans.AuditLog.Tests.Enums;
 
 /// <summary>
 /// AuditLog's share of the string-stored-enum guard, moved out of
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that project was retired —
+/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that orphaned project's rows
+/// were distributed to their owners —
 /// <see cref="AuditAction"/> lives on <c>Humans.AuditLog.Contracts</c>, so the guard belongs to
 /// the section that owns it (nobodies-collective/Humans#866).
 /// </summary>
