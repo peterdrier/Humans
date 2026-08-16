@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;

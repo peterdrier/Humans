@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Admin;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using NodaTime;
@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Services;
 
-public sealed class AdminDatabaseDiagnosticsService(
+internal sealed class AdminDatabaseDiagnosticsService(
     IAdminDatabaseDiagnosticsRepository repository,
     IUserServiceRead userService,
     ITicketServiceRead ticketQueryService) : IAdminDatabaseDiagnosticsService

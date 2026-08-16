@@ -38,6 +38,21 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// The admin diagnostics pair. Registered here rather than in Web because both types are
+    /// internal to this assembly — the repository so no section can inject it, the service
+    /// because a public class cannot take an internal constructor parameter. Consumers bind
+    /// <see cref="Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService"/>.
+    /// </summary>
+    public static IServiceCollection AddAdminDatabaseDiagnostics(this IServiceCollection services)
+    {
+        services.AddSingleton<Repositories.Admin.IAdminDatabaseDiagnosticsRepository,
+            Repositories.Admin.AdminDatabaseDiagnosticsRepository>();
+        services.AddScoped<Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService,
+            Services.AdminDatabaseDiagnosticsService>();
+        return services;
+    }
+
     /// <summary>Typed wrapper so Web never references SystemDbContext directly.</summary>
     public static IDataProtectionBuilder PersistKeysToSystemDbContext(this IDataProtectionBuilder builder) =>
         builder.PersistKeysToDbContext<SystemDbContext>();

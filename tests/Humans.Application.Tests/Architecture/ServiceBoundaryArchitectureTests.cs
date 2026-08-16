@@ -5,6 +5,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
+using Humans.Infrastructure.Repositories.Admin;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
