@@ -11,6 +11,8 @@
       Using Microsoft.AspNetCore.{Http,Routing} and Microsoft.Extensions.Logging — same.
       ProjectReference Humans.Application — measured dead before the move (phase4-recon §1.1)
                                             and nothing that moved names an Application type.
+      PackageReference HtmlSanitizer + Markdig — left with Extensions/HtmlHelperExtensions.cs
+                                            at lane 4b-iii A, already on Humans.Interfaces.
   -->
 
 </Project>

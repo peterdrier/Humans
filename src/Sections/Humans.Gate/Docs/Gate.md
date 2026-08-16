@@ -1,7 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gate/**
-  src/Humans.Infrastructure/Jobs/GateRetentionJob.cs
-  src/Humans.Infrastructure/Jobs/GateVendorCheckInJob.cs
 -->
 <!-- freshness:flag-on-change
   Admission verdict precedence, server-authoritative dedupe, the attendance-gateway posture,
@@ -233,13 +231,16 @@ nobodies-collective/Humans#933.)
 (G5). Everything in it is `internal` except `Section`; there is no `GateResource` because the
 kiosk carries no resource keys (every string is inline English by design — a staff-facing,
 single-locale terminal). `Humans.Gate.Contracts` is a separate leaf project holding one
-interface, `IGateScanRetention`, because its consumer (`GateRetentionJob`) is in Base.
+interface, `IGateScanRetention`. It was carved out because its consumer `GateRetentionJob` was
+in Base; that job came home at G5 lane 5b-3, so the leaf now has no consumer outside
+`Humans.Gate` and is a candidate for folding into `Contracts/` and deleting.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor` and `IGateScanRetention`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
-**Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit). Both stay
-in `Humans.Infrastructure/Jobs` — recurring jobs are named by concrete type in Shell's roll-call
-and Hangfire serializes the enqueued method reference, so neither has a discovery seam yet.
+**Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit), both in
+`Humans.Gate/Contracts/` since G5 lane 5b-3. Their *registration* stays in Shell — recurring jobs
+are named by concrete type in the roll-call and Hangfire serializes the enqueued method
+reference, so neither has a discovery seam yet.
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.
 **Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the

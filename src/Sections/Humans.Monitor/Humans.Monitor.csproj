@@ -29,8 +29,9 @@
       shape. DriveActivityMonitorService reads Google through GoogleIntegration's connector
       abstraction and writes through IAuditLogService; neither needs Infrastructure.
 
-      Monitor is the *consumer* end of every edge it has — nothing in the repo references it
-      except DriveActivityMonitorJob, through Humans.Monitor.Contracts. That is what makes
+      Monitor is the *consumer* end of every edge it has — its only inbound reference is
+      Shell naming DriveActivityMonitorJob, which now lives in this project's Contracts/
+      folder (G5 jobs move, nobodies-collective/Humans#866). That is what makes
       Monitor -> GoogleIntegration + AuditLog legal where AuditLog -> GoogleIntegration was
       not: AuditLog is a horizontal (peters-hard-rules.md), and Monitor is not.
       MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes pins it.
@@ -54,7 +55,12 @@
       the build with NU1010 under Central Package Management. Everything the controller needs
       arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
       No EF Core either — the section owns no tables.
+
+      Hangfire.Core arrives with DriveActivityMonitorJob (G5 jobs move): the job carries
+      [DisableConcurrentExecution]. Package, not project — no cycle is possible, and it was
+      already coming in transitively through Humans.Application.
     -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

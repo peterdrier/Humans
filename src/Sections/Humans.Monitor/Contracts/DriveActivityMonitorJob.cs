@@ -2,14 +2,20 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Monitor.Contracts;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Monitor.Contracts;
 
 /// <summary>
 /// Periodic job that checks Google Drive Activity API for permission changes
 /// not initiated by the system's service account and logs anomalies to the audit log.
 /// </summary>
+/// <remarks>
+/// Owner re-measured at the G5 jobs move (nobodies-collective/Humans#866): the only service
+/// this job drives is <c>IDriveActivityMonitorService</c>, which Monitor owns — so Monitor,
+/// not GoogleIntegration. Public and under <c>Contracts/</c> because Shell names the concrete
+/// type at two sites (<c>AddScoped</c> and the recurring roll-call) and HUM0034 allows a
+/// section's public types only there.
+/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class DriveActivityMonitorJob(
     IDriveActivityMonitorService monitorService,

@@ -7,7 +7,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Application.Interfaces.GoogleIntegration;

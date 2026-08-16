@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/**
   src/Sections/Humans.Monitor.Contracts/**
-  src/Humans.Infrastructure/Jobs/DriveActivityMonitorJob.cs
 -->
 <!-- freshness:flag-on-change
   Monitor's reference set is its whole reason to exist — review MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes when any ProjectReference is added.
@@ -70,10 +69,13 @@ registration moves into the section, policy registration does not).
   `Humans.AuditLog.Contracts` + `Humans.SystemSettings.Contracts` (GoogleIntegration is still
   Base-resident and arrives via `Humans.Application`). Every name added there is a section
   Monitor now couples to.
-- **Nothing depends on Monitor except the job.** Its whole outward surface is
+- **Nothing depends on Monitor except Shell naming the job.** Its whole outward surface is
   `Humans.Monitor.Contracts` — `IDriveActivityMonitorService`, one method, returning `int` —
-  consumed by `DriveActivityMonitorJob`, which stays in `Humans.Infrastructure/Jobs` because
-  there is no `ISection`-style discovery seam for recurring jobs (template step 6b).
+  consumed by `DriveActivityMonitorJob`, which lives in `Contracts/` inside this project since
+  the G5 jobs move (nobodies-collective/Humans#866). It is `public` there because Shell names
+  the concrete type in `AddScoped` and in the recurring roll-call — there is still no
+  `ISection`-style discovery seam for recurring jobs (template step 6b) — and HUM0034 allows a
+  section's public types only under `Contracts/`.
 - **The scan is best-effort and never throws to its caller.** `CheckDriveActivity` catches,
   logs at Error, and shows the operator an error banner; the recurring job records a failed run.
 - **No resource set.** One admin-only English page.
@@ -102,7 +104,7 @@ registration moves into the section, policy registration does not).
 | out | AuditLog | `IAuditLogService` (write), `IAuditViewerService` (read) |
 | out | SystemSettings | `ISystemSettingsService` (last-run marker) |
 | out | Users | `IUserServiceRead` (resolve Google actors to humans) |
-| in | — | `DriveActivityMonitorJob` only, via `Humans.Monitor.Contracts` |
+| in | — | none; Shell names `DriveActivityMonitorJob`, which is in this project |
 
 ## Architecture status
 

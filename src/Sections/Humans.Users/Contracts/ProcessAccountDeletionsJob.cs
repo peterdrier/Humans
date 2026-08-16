@@ -5,10 +5,9 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Background job that processes scheduled account deletions.
@@ -25,6 +24,11 @@ namespace Humans.Infrastructure.Jobs;
 /// doesn't stop the run. Candidate enumeration stays on
 /// <see cref="IUserService"/> because <c>DeletionScheduledFor</c> is a User
 /// column (owning-section rule).
+///
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
+/// (nobodies-collective/Humans#866). It sits under <c>Contracts/</c> because Shell
+/// names the concrete type at registration and HUM0034 makes every other public
+/// type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessAccountDeletionsJob(

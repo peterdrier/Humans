@@ -29,7 +29,8 @@ public class MonitorArchitectureTests
         // added here is a section Monitor now couples to.
         //
         // Its own outward surface is Humans.Monitor.Contracts — one interface, one method,
-        // consumed by DriveActivityMonitorJob in Base (G5-SECTION-TEMPLATE.md step 6b).
+        // consumed by DriveActivityMonitorJob, which moved into this project's Contracts/
+        // folder at the G5 jobs move (nobodies-collective/Humans#866).
         var sectionRefs = SectionAssembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)

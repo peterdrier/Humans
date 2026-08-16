@@ -16,9 +16,13 @@ namespace Humans.Consent;
 /// </summary>
 /// <remarks>
 /// The two Hangfire jobs the old extension registered (<c>SyncLegalDocumentsJob</c>,
-/// <c>SendReConsentReminderJob</c>) stay in Shell's
+/// <c>SendReConsentReminderJob</c>) are still <em>registered</em> in Shell's
 /// <c>InfrastructureServiceCollectionExtensions</c> beside the other moved-out sections':
-/// there is no <c>ISection</c>-style discovery seam for jobs (design §15 step 6b).
+/// there is no <c>ISection</c>-style discovery seam for jobs (design §15 step 6b). The
+/// registration site is not the job's home, though — <c>SyncLegalDocumentsJob</c> itself
+/// moved into this project's <c>Contracts/</c> folder at G5 lane 5b-4
+/// (nobodies-collective/Humans#866); <c>SendReConsentReminderJob</c> is still in
+/// <c>Humans.Infrastructure</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

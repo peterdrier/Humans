@@ -4,7 +4,7 @@ using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Hangfire.Common;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Jobs;
+using Humans.Gate.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
