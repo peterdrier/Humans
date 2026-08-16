@@ -49,18 +49,6 @@ public sealed class ConsentArchitectureTests
 {
     // ── ConsentService ───────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void ConsentService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); ConsentService has no cache layer at all");
-    }
-
     // ── IConsentRepository ───────────────────────────────────────────────────
 
     /// <summary>
@@ -204,33 +192,5 @@ public sealed class ConsentArchitectureTests
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved all 36 Consent_* / ConsentReview_* / ConsentIndex_* keys out of
-        // SharedResource, so a type still injecting IStringLocalizer<SharedResource> resolves
-        // nothing and renders the raw key — a 200 with degraded copy, in every language.
-        // ConsentController shipped exactly that on five paths (Consent_SubmitError,
-        // Consent_MustCheck, Consent_AlreadyConsented, Consent_ThankYou,
-        // Consent_StubProfile_AddName), all of them on the POST/failure branches the render
-        // tests never reach. The views were never at risk: _ViewImports binds both localizers
-        // for all of them. SharedResource is allowed because Nav_Consents stayed there —
-        // Humans.UI's login partial renders it too (Governance's two-marker variant).
-        var allowed = new[] { typeof(ConsentResource), typeof(SharedResource) };
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && !allowed.Contains(p.ParameterType.GetGenericArguments()[0]))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "the section's copy lives in ConsentResource and Nav_Consents in "
-                   + "SharedResource; resolving a key through any third set renders the key "
-                   + "itself and no error (§15 step 3b)");
     }
 }

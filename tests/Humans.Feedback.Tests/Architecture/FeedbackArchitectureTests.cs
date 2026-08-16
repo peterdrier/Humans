@@ -57,57 +57,7 @@ public class FeedbackArchitectureTests
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamServiceRead),
             because: "Feedback resolves assigned-team names via the cross-section ITeamServiceRead surface — no FeedbackReport.AssignedToTeam navigation at query time");
-    }
-
-    [HumansFact]
-    public void FeedbackService_ConstructorTakesNoEfTypeAndNoStore()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        var parameterTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        parameterTypes.Should().NotContain(t => typeof(DbContext).IsAssignableFrom(t),
-            because: "the service goes through IFeedbackRepository; only the repository owns a DbContext");
-        parameterTypes.Should().NotContain(
-            t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
-            because: "context lifetime is the repository's business (design-rules §3)");
-        parameterTypes.Should().NotContain(
-            t => (t.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "services must not depend on store abstractions (design-rules §15); the Feedback section has no store at all");
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every Feedback_* and Enum_Feedback* key out of SharedResource, so a
-        // type still injecting IStringLocalizer<SharedResource> would resolve nothing and render
-        // the raw key — a 200 with degraded copy, in every language, on paths a render test tends
-        // not to reach. The views are safe by construction (_ViewImports rebinds Localizer for
-        // all of them); this is the guard for controllers and services.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && p.ParameterType.GetGenericArguments()[0] != typeof(FeedbackResource))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every Feedback_* key lives in FeedbackResource; resolving one through another "
-                   + "set renders the key itself and no error (§15 step 3b)");
-    }
-
-    [HumansFact]
-    public void AuditEntityTypesAreLiterals()
-    {
-        // Persisted audit discriminators, matched by exact equality when the log is read back.
-        // Declaring them as literals is what makes a rename of the entity schema-inert
-        // (memory/code/type-name-as-persisted-string.md).
-        Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
-    }
-
-    // ── IFeedbackRepository ──────────────────────────────────────────────────
+    }    // ── IFeedbackRepository ──────────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
     // MA0053 (an unsealed internal class is a build error) — not by

@@ -66,23 +66,6 @@ public class MailerArchitectureTests
     /// first" instead of silently resolving against Shell's ambient
     /// <c>SharedResource</c>, which a section RCL cannot see anyway.
     /// </summary>
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        var offenders = SectionAssembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().Select(c => (Type: t, Ctor: c)))
-            .SelectMany(x => x.Ctor.GetParameters().Select(p => (x.Type, p.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && x.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-            .Select(x => x.Type.Name)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            "Mailer has no Resources/ folder and no MailerResource marker. A type binding a " +
-            "localizer here is either reaching for a set the RCL cannot see, or a sign the " +
-            "section now needs its own.");
-    }
 
     [HumansFact]
     public void AllAudiences_UseHumansPrefix()

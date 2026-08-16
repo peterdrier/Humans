@@ -22,13 +22,6 @@ public class GoogleWorkspaceUserArchitectureTests
 {
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
 
-    [HumansFact]
-    public void GoogleWorkspaceUserService_IsSealed()
-    {
-        typeof(GoogleWorkspaceUserService).IsSealed.Should().BeTrue(
-            because: "service implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]

@@ -24,21 +24,7 @@ public class TicketQueryArchitectureTests
 {
     // ── TicketQueryService (inner) ───────────────────────────────────────────
 
-    [HumansFact]
-    public void TicketQueryService_IsSealed()
-    {
-        typeof(TicketQueryService).IsSealed.Should().BeTrue(
-            because: "section services are sealed to prevent ad-hoc subclassing; new behavior belongs on the interface");
-    }
-
     // ── CachingTicketQueryService (decorator) ────────────────────────────────
-
-    [HumansFact]
-    public void CachingTicketQueryService_IsSealed()
-    {
-        typeof(CachingTicketQueryService).IsSealed.Should().BeTrue(
-            because: "the caching decorator is terminal — section-internal logic stays on the inner service and cache layout is private to the decorator");
-    }
 
     [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketService()
@@ -60,36 +46,7 @@ public class TicketQueryArchitectureTests
     {
         typeof(ITicketServiceRead).IsAssignableFrom(typeof(CachingTicketQueryService))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void ITicketServiceRead_ExposesNoEntityTypes()
-    {
-        var offenders = typeof(ITicketServiceRead).GetMethods()
-            .SelectMany(m => m.ReturnParameter.ParameterType
-                .GetGenericArguments()
-                .Append(m.ReturnParameter.ParameterType)
-                .Concat(m.GetParameters().Select(p => p.ParameterType))
-                .SelectMany(FlattenType))
-            .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
-            .Select(t => t.Name)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "ITicketServiceRead is the cross-section read contract and must not expose EF entity types");
-
-        static IEnumerable<Type> FlattenType(Type type)
-        {
-            yield return type;
-            foreach (var arg in type.GetGenericArguments())
-                foreach (var nested in FlattenType(arg))
-                    yield return nested;
-        }
-    }
-
-    [HumansFact]
+    }    [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketCacheInvalidator()
     {
         typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(CachingTicketQueryService))

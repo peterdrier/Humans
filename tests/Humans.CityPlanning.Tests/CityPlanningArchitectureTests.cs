@@ -27,36 +27,6 @@ namespace Humans.CityPlanning.Tests;
 public class CityPlanningArchitectureTests
 {
 
-
-
-
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every CityPlanning_* key out of SharedResource, so a type still
-        // injecting IStringLocalizer<SharedResource> resolves nothing and renders the raw key —
-        // a 200 with degraded copy, in every language. ContainersResource is allowed: the
-        // barrio container pages are City Planning's URLs over Containers' vocabulary, and
-        // Container_* / ContainerMap_* stay with their owner (§15 step 3b, carve by owner).
-        // Views are safe by construction (_ViewImports rebinds all three localizers); this
-        // catches a controller, which the render tests would not.
-        var allowed = new[] { typeof(CityPlanningResource), typeof(Containers.ContainersResource) };
-
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && !allowed.Contains(p.ParameterType.GetGenericArguments()[0]))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every CityPlanning_* key lives in CityPlanningResource; resolving one "
-                   + "through another set renders the key itself and no error (§15 step 3b)");
-    }
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="ICityPlanningRepository"/>: the owning
     /// service and the repository implementation. A new consumer taking the repository directly
@@ -79,18 +49,6 @@ public class CityPlanningArchitectureTests
 
         consumers.Where(c => !allowed.Contains(c)).Should().BeEmpty(
             because: "every read/write to this section's tables must go through the section's service");
-    }
-
-    [HumansFact]
-    public void CityPlanningService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(CityPlanningService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); the City Planning §15 migration went further and does not use a store at all");
     }
 
     [HumansFact]

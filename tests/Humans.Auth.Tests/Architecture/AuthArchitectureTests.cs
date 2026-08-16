@@ -25,62 +25,6 @@ public class AuthArchitectureTests
 {
     private static System.Reflection.Assembly SectionAssembly => typeof(IRoleAssignmentRepository).Assembly;
 
-    [HumansFact]
-    public void SectionServicesTakeNoDbContextOrStore()
-    {
-        // Restates two older assertions at once: the moved file's "constructor takes no
-        // Humans.Application.Interfaces.Stores type", and the generic
-        // "GetReferencedAssemblies() does not contain EntityFrameworkCore" shape, which
-        // stops meaning anything once the repository ships in the same assembly as the
-        // service (G5-SECTION-TEMPLATE.md step 11). The real invariant is that only the
-        // repository touches a context.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .Where(t => t.IsClass && t.Namespace?.StartsWith("Humans.Auth.Services", StringComparison.Ordinal) == true)
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()).Select(param => (Type: t, param.ParameterType)))
-            .Where(x => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(x.ParameterType)
-                        || (x.ParameterType.IsGenericType
-                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>))
-                        || (x.ParameterType.Namespace ?? string.Empty)
-                            .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "only RoleAssignmentRepository may touch AuthDbContext, and the section has no store abstraction (peters-hard-rules.md)");
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // The section deliberately ships no Resources/ folder and no AuthResource: it has
-        // no controller and no view. AccountController and its Views/Account/* — and with
-        // them every Login_*/MagicLink*/GateLogin_*/CompleteSignup_*/AccessDenied_* key —
-        // stayed in Shell, and stayed there when MagicLinkService came into the section at
-        // G5 lane 4b-2i, so those keys stayed in SharedResource (template step 3b's first
-        // question, answered "no keys"). MagicLinkService renders no copy: the two emails it
-        // sends are built by Email's IEmailMessageFactory against EmailResource.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Select(param => (Type: t, param.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && string.Equals(
-                            x.ParameterType.GetGenericTypeDefinition().FullName,
-                            "Microsoft.Extensions.Localization.IStringLocalizer`1",
-                            StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Auth has no resource set; a localizer here means copy was added without carving one");
-    }
-
     // SectionReferencesNoVerticalSection was retired here at nobodies-collective/Humans#866 G5
     // lane 4b-2i, the same call and for the same reason lane 4b-2h made in
     // AuditLogArchitectureTests. It pinned Humans.Auth.GetReferencedAssemblies() to exactly

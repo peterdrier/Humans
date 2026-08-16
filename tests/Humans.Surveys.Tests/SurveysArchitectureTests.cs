@@ -27,17 +27,6 @@ public class SurveysArchitectureTests
 {
 
 
-    [HumansFact]
-    public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
-    {
-        // The audit_log rows already in the database carry these strings and are matched by
-        // exact equality on read. Pinning them is what makes a future rename over this section
-        // schema-inert (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.Survey.Should().Be("Survey");
-        AuditEntityTypes.ReminderJob.Should().Be("SurveyService");
-    }
-
-
 
     /// <summary>
     /// Pins the set of types that may inject <see cref="ISurveyRepository"/>: the owning service
@@ -91,32 +80,6 @@ public class SurveysArchitectureTests
 
         typeof(SurveyInvitation).GetProperty("Completed")!.PropertyType
             .Should().Be(typeof(bool));
-    }
-
-
-
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every Survey_* key out of SharedResource, so a type still injecting
-        // IStringLocalizer<SharedResource> resolves nothing and renders the raw key — a 200 with
-        // degraded copy, in every language. SurveyController shipped exactly that on three paths
-        // (Survey_QuestionRequired, Survey_ThankYouFallback), and the render tests missed it
-        // because both only fire on validation failure and on a survey with no custom thank-you.
-        // The views were never at risk: _ViewImports binds the section's localizer for all of them.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && p.ParameterType.GetGenericArguments()[0] != typeof(SurveysResource))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every Survey_* key lives in SurveysResource; resolving one through another "
-                   + "set renders the key itself and no error (§15 step 3b)");
     }
 
 

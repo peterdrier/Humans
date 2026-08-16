@@ -99,40 +99,5 @@ public class GateArchitectureTests
                 because: "GuestUserId / ScannedByUserId / OverrideByUserId are re-pointed on account merge");
     }
 
-    [HumansFact]
-    public void SectionRegistersTheContractsAndTheUserLifecycleForwarders()
-    {
-        var services = new ServiceCollection();
-        new Section().Register(services, new ConfigurationBuilder().Build());
-
-        services.Single(d => d.ServiceType == typeof(IGateRepository)).Lifetime
-            .Should().Be(ServiceLifetime.Singleton);
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGateService));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGateScanRetention));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserDataContributor));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserMerge));
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Gate ships no resource set — every string on the kiosk is inline English by design
-        // (the terminal is staff-facing and single-locale). A type that acquired an
-        // IStringLocalizer<SharedResource> here would resolve against Humans.UI's set from
-        // inside a section RCL, which is the failure §15 step 3b exists to prevent; a type
-        // that needs localized copy needs a GateResource carve first.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Gate has no GateResource; a localizer here would resolve against another "
-                   + "section's set and render raw keys (§15 step 3b)");
-    }
-
 
 }

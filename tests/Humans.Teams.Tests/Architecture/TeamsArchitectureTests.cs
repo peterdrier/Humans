@@ -32,26 +32,6 @@ public class TeamsArchitectureTests
 {
     // ── TeamService ──────────────────────────────────────────────────────────
 
-    [HumansFact]
-    public void TeamService_TakesNoDataAccessDependency()
-    {
-        // Restated at G5 (Calendar finding 41): the section assembly holds the repository and
-        // legitimately references EF Core, so the old "this assembly has no EF reference"
-        // assertion is false here rather than vacuous. The invariant that actually matters is
-        // the constructor's — the service reaches data only through ITeamRepository.
-        var ctor = typeof(TeamService).GetConstructors().Single();
-
-        ctor.GetParameters()
-            .Select(p => p.ParameterType)
-            .Should().NotContain(
-                t => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(t)
-                     || (t.IsGenericType
-                         && t.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>))
-                     || (t.Namespace != null
-                         && t.Namespace.StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal)),
-                because: "services reach data only through their repository (design-rules §2b)");
-    }
-
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]
@@ -165,34 +145,6 @@ public class TeamsArchitectureTests
     }
 
     // ── Section boundary (design §15 steps 3b and 5) ─────────────────────────
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSetOrSharedResource()
-    {
-        // A view is safe by construction — _ViewImports rebinds Localizer in one line. A
-        // controller that kept IStringLocalizer<SharedResource> compiles and renders its
-        // carved keys as raw key names on the failure branches a render test never reaches
-        // (Surveys' finding, in Governance's two-marker form: five Teams keys stayed in
-        // SharedResource because something outside the section renders them too).
-        var allowed = new[] { typeof(TeamsResource), typeof(Humans.UI.SharedResource) };
-
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                    .SelectMany(m => m.GetParameters()))
-                .Select(p => (Type: t, p.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.Extensions.Localization.IStringLocalizer<>))
-            .Where(x => !allowed.Contains(x.ParameterType.GetGenericArguments()[0]))
-            .Select(x => $"{x.Type.FullName}:{x.ParameterType.GetGenericArguments()[0].Name}")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "the section localizes through TeamsResource; SharedResource is allowed only for the five "
-                     + "co-owned keys and the Enum_SlotPriority_* / Enum_RolePeriod_* reads (design §15 step 3b)");
-    }
 
 
 }

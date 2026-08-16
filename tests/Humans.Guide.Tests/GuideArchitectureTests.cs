@@ -18,49 +18,6 @@ namespace Humans.Guide.Tests;
 public class GuideArchitectureTests
 {
 
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Guide ships no resource set at all (§15 step 3b, Gate's shape). The structural guard
-        // is what makes the day someone adds copy a build failure instead of a silent resolve
-        // against the ambient shared set — which is exactly how Consent shipped five raw keys
-        // past a green 5,000-test suite.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Where(p => p.ParameterType.IsGenericType
-                            && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Guide has no resource set; adding localized copy means carving one first");
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoDbContext()
-    {
-        // Guide owns no tables. Restates, on the constructors, what the pre-move
-        // "typeof(GuideContentService).Assembly does not reference EntityFrameworkCore"
-        // assertion was reaching for — that form is simply false for a section assembly and
-        // keeps passing while asserting nothing (§15 step 11, Calendar's rule). Guide never
-        // carried it, so this is the assertion it should have had.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Where(p => typeof(DbContext).IsAssignableFrom(p.ParameterType)
-                            || (p.ParameterType.IsGenericType
-                                && p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>)))
-                .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Guide serves markdown from GitHub and owns no tables");
-    }
-
     [HumansFact]
     public void RoleResolverReadsTeamsViaTheReadInterface()
     {

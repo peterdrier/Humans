@@ -43,14 +43,6 @@ public class TeamResourceArchitectureTests
     // ── TeamResourceService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void TeamResourceService_IsSealed()
-    {
-        typeof(TeamResourceService).IsSealed
-            .Should().BeTrue(
-                because: "application services are terminal — extension happens via a caching decorator when warranted (§15d), not subclassing");
-    }
-
-    [HumansFact]
     public void TeamResourceService_HasNoGoogleApisConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();

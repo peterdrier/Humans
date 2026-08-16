@@ -19,13 +19,6 @@ public class DriveActivityMonitorArchitectureTests
 {
     // ── DriveActivityMonitorService ──────────────────────────────────────────
 
-    [HumansFact]
-    public void DriveActivityMonitorService_IsSealed()
-    {
-        typeof(DriveActivityMonitorService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
-
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]

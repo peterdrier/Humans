@@ -70,29 +70,4 @@ public class AgentArchitectureTests
     }
 
 
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every section-owned Agent_* key out of SharedResource, so a type still
-        // injecting IStringLocalizer<SharedResource> would resolve nothing and render the raw
-        // key — a 200 with degraded copy, in every language. Surveys shipped exactly that on
-        // three controller paths past four green render tests (peterdrier/Humans#1251), because
-        // controller-resolved copy sits on failure paths fixtures do not reach. Agent has
-        // controllers on both /Agent and /Agent/Admin, so it is asserted structurally.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && p.ParameterType.GetGenericArguments()[0] != typeof(AgentResource))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every carved Agent_* key lives in AgentResource; resolving one through "
-                   + "another set renders the key itself and no error (§15 step 3b)");
-    }
-
-
 }

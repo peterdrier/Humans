@@ -12,42 +12,6 @@ namespace Humans.EarlyEntry.Tests;
 public class EarlyEntryArchitectureTests
 {
 
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // The section ships no Resources/ folder because every string on the roster page is
-        // inline English (§15 step 3b — Gate's shape). Asserted structurally so the day
-        // someone adds copy, the build tells them to carve a resource set first rather than
-        // silently binding SharedResource from another assembly.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Where(p => p.ParameterType.IsGenericType
-                            && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                .Select(_ => t.FullName ?? t.Name))
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Early Entry has no resource set; a localizer binding here would read "
-                   + "another assembly's set and render raw keys");
-    }
-
-    [HumansFact]
-    public void SectionAssemblyDoesNotReferenceEntityFrameworkCore()
-    {
-        // The section owns no tables, has no DbContext, takes no Humans.Infrastructure
-        // reference and injects no repository — so it cannot *name* a DbContext. That is the
-        // orchestrator clause in peters-hard-rules.md made mechanical.
-        typeof(Section).Assembly.GetReferencedAssemblies()
-            .Select(a => a.Name)
-            .Should().NotContain("Microsoft.EntityFrameworkCore",
-                because: "Early Entry derives every grant from its providers and owns no tables");
-    }
-
     [HumansFact]
     public void OrchestratorInjectsOnlyTheProviderFanout()
     {

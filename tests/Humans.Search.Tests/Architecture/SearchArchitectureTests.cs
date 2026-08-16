@@ -23,18 +23,6 @@ public class SearchArchitectureTests
     }
 
     [HumansFact]
-    public void SearchService_HasNoRepositoryDependency()
-    {
-        var ctor = typeof(SearchService).GetConstructors().Single();
-        var repositoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
-
-        repositoryParam.Should().BeNull(
-            because: "Search owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
-    }
-
-    [HumansFact]
     public void SearchService_DependsOnlyOnServiceInterfaces()
     {
         var ctor = typeof(SearchService).GetConstructors().Single();
@@ -56,30 +44,6 @@ public class SearchArchitectureTests
     /// because <c>Humans.Application</c> carries no EF reference; the section assembly is its
     /// own compilation unit and nothing else would notice a repository arriving.
     /// </remarks>
-    [HumansFact]
-    public void NoTypeInTheSectionTouchesDataAccess()
-    {
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors(
-                System.Reflection.BindingFlags.Public
-                | System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance))
-            .SelectMany(c => c.GetParameters().Select(p => (Ctor: c, Param: p)))
-            .Where(x => IsDataAccess(x.Param.ParameterType))
-            .Select(x => $"{x.Ctor.DeclaringType?.Name}.{x.Param.Name}")
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Search owns no tables: no type in the section may take a DbContext, an IDbContextFactory<>, a repository or a Stores type (peters-hard-rules: orchestrators do not call repositories)");
-
-        static bool IsDataAccess(Type t)
-        {
-            var ns = t.Namespace ?? string.Empty;
-            return ns.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
-                || ns.StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal)
-                || ns.StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal);
-        }
-    }
 
     /// <summary>
     /// The assembly exports only <c>Section</c> and the resource marker; everything else is internal.

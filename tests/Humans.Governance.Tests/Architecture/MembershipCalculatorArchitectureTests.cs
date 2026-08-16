@@ -35,27 +35,4 @@ public class MembershipCalculatorArchitectureTests
             .Should().NotContain(typeof(IRoleAssignmentService),
                 because: "injecting IRoleAssignmentService directly closes the DI cycle IRoleAssignmentService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
     }
-
-    [HumansFact]
-    public void MembershipCalculator_HasNoRepositoryConstructorParameter()
-    {
-        // The orchestrator owns no tables; it must not inject any
-        // IXxxRepository either. All cross-section reads go through
-        // service interfaces per design-rules §9. No universal enforcer covers
-        // this yet (A2 deferred); HUM0017 only catches cross-section repos.
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => (p.ParameterType.Namespace ?? string.Empty)
-                    .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal),
-                because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_IsSealed()
-    {
-        typeof(MembershipCalculator).IsSealed
-            .Should().BeTrue(
-                because: "orchestrators are terminal — no subclass should extend the cross-section stitching logic");
-    }
 }

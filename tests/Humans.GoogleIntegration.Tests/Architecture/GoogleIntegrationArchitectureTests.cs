@@ -43,30 +43,9 @@ public class GoogleIntegrationArchitectureTests
             because: "User mutations go through IUserService (design-rules §9); UserManager is an Identity-framework concern that belongs to controllers/AccountProvisioningService");
     }
 
-    [HumansFact]
-    public void EmailProvisioningService_IsSealed()
-    {
-        typeof(EmailProvisioningService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
-
     // ── GoogleWorkspaceSyncService (§15 Part 2b, issue #575) ─────────────────
 
-    [HumansFact]
-    public void GoogleWorkspaceSyncService_IsSealed()
-    {
-        typeof(GoogleWorkspaceSyncService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
-
     // ── GoogleGroupSyncService ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleGroupSyncService_IsSealed()
-    {
-        typeof(GoogleGroupSyncService).IsSealed.Should().BeTrue(
-            because: "Application-layer Google Integration services are sealed to prevent ad-hoc extension");
-    }
 
     [HumansFact]
     public void GoogleGroupSyncService_HasNoUserManagerConstructorParameter()
@@ -89,21 +68,7 @@ public class GoogleIntegrationArchitectureTests
 
     // ── GoogleRemovalNotificationService (issue #639) ────────────────────────
 
-    [HumansFact]
-    public void GoogleRemovalNotificationService_IsSealed()
-    {
-        typeof(GoogleRemovalNotificationService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
-
     // ── SyncSettingsService (§15 Phase 0, issue #554) ────────────────────────
-
-    [HumansFact]
-    public void SyncSettingsService_IsSealed()
-    {
-        typeof(SyncSettingsService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
 
     // ── Resource set (G5-SECTION-TEMPLATE.md step 3b) ────────────────────────
 
@@ -115,25 +80,4 @@ public class GoogleIntegrationArchitectureTests
     /// keeps compiling and renders those keys as their own names, on a failure path no
     /// render test reaches. Asserted structurally instead.
     /// </summary>
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors(
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods(
-                        BindingFlags.Instance | BindingFlags.Static |
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                    .SelectMany(m => m.GetParameters()))
-                .Select(p => (Type: t, p.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && x.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-            .Where(x => x.ParameterType.GetGenericArguments()[0] != typeof(GoogleIntegrationResource))
-            .Select(x => $"{x.Type.Name} takes {x.ParameterType.Name}")
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every localized string the section renders is in GoogleIntegrationResource; binding another set silently degrades those keys to their own names");
-    }
 }

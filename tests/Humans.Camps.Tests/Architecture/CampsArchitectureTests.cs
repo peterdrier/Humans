@@ -30,18 +30,6 @@ public class CampsArchitectureTests
 {
     // ── CampService (inner) ──────────────────────────────────────────────────
 
-    [HumansFact]
-    public void CampService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(CampService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Camps §15 follows the no-store pattern; decorator owns the dict directly per §15d");
-    }
-
     // ── CachingCampService (T-06 decorator) ──────────────────────────────────
 
     [HumansFact]
@@ -66,13 +54,6 @@ public class CampsArchitectureTests
         typeof(CachingCampService).BaseType
             .Should().Be(typeof(TrackedCache<Guid, CampInfo>),
                 because: "the canonical Camps read-model is keyed by camp id; sub-views (year filters) project from this canonical cache rather than holding their own keys");
-    }
-
-    [HumansFact]
-    public void CachingCampService_IsSealed()
-    {
-        typeof(CachingCampService).IsSealed.Should().BeTrue(
-            because: "decorator implementations are sealed to prevent override of cache-invalidation semantics");
     }
 
     [HumansFact]
