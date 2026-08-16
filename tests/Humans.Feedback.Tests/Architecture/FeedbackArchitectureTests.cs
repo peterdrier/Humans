@@ -57,7 +57,18 @@ public class FeedbackArchitectureTests
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamServiceRead),
             because: "Feedback resolves assigned-team names via the cross-section ITeamServiceRead surface — no FeedbackReport.AssignedToTeam navigation at query time");
-    }    // ── IFeedbackRepository ──────────────────────────────────────────────────
+    }
+
+    [HumansFact]
+    public void AuditEntityTypesAreLiterals()
+    {
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
+        // (memory/code/type-name-as-persisted-string.md).
+        Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
+    }
+
+    // ── IFeedbackRepository ──────────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
     // MA0053 (an unsealed internal class is a build error) — not by

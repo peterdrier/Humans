@@ -82,5 +82,13 @@ public class SurveysArchitectureTests
             .Should().Be(typeof(bool));
     }
 
-
+    [HumansFact]
+    public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
+    {
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
+        // (memory/code/type-name-as-persisted-string.md).
+        AuditEntityTypes.Survey.Should().Be("Survey");
+        AuditEntityTypes.ReminderJob.Should().Be("SurveyService");
+    }
 }

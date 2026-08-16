@@ -54,7 +54,18 @@ public class IssuesArchitectureTests
             because: "Issues resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(IRoleAssignmentService),
             because: "Issues fans out comment notifications to section role-holders via IRoleAssignmentService.GetActiveUserIdsInRoleAsync — no direct query on the role_assignments table");
-    }    // ── IIssuesRepository ────────────────────────────────────────────────────
+    }
+
+    [HumansFact]
+    public void AuditEntityTypesAreLiterals()
+    {
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
+        // (memory/code/type-name-as-persisted-string.md).
+        AuditEntityTypes.Issue.Should().Be("Issue");
+    }
+
+    // ── IIssuesRepository ────────────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus
     // MA0053 (an unsealed internal class is a build error) — not by

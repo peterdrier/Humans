@@ -24,11 +24,21 @@ public class ContainersArchitectureTests
                 because: "every container action is camp-scoped and authorized per resource");
     }
 
+    [HumansFact]
+    public void AuditEntityTypes_AreLiterals_NotNameof()
+    {
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
+        // (memory/code/type-name-as-persisted-string.md).
+        AuditEntityTypes.Container.Should().Be("Container");
+        AuditEntityTypes.ContainerPlacement.Should().Be("ContainerPlacement");
+        AuditEntityTypes.Camp.Should().Be("Camp");
+    }
+
     /// <summary>
     /// The section's own DI registrations. Since G5 these come from
     /// <see cref="Section.Register"/> rather than a Shell extension method.
     /// </summary>
-    [HumansFact]
     private static ServiceCollection Registrations()
     {
         var services = new ServiceCollection();
