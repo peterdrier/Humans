@@ -194,22 +194,5 @@ public class TeamsArchitectureTests
                      + "co-owned keys and the Enum_SlotPriority_* / Enum_RolePeriod_* reads (design §15 step 3b)");
     }
 
-    [HumansFact]
-    public void TheSectionExportsOnlyItsSectionMarkerResourceMarkerAndContractsFolder()
-    {
-        // What HUM0034 enforces mechanically, stated in the section's own terms.
-        var exported = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !t.Namespace!.StartsWith("Humans.Teams.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName!)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        exported.Should().BeEquivalentTo(
-        [
-            "Humans.Teams.Contracts.HumansTeamControllerBase",
-            "Humans.Teams.Section",
-            "Humans.Teams.TeamsResource",
-        ]);
-    }
 
 }

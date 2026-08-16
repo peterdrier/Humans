@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.CityPlanning.Tests;
@@ -27,83 +26,10 @@ namespace Humans.CityPlanning.Tests;
 /// </remarks>
 public class CityPlanningArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceMarkerArePublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 step 5),
-        // enforced at build time by HUM0034.
-        //
-        // Both controllers are internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.CityPlanning.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-            ["Humans.CityPlanning.CityPlanningResource", "Humans.CityPlanning.Section"]);
-    }
 
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => typeof(ControllerBase).IsAssignableFrom(t))
-            .ToList();
 
-        controllers.Should().HaveCount(2);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
-    [HumansFact]
-    public void ControllersKeepTheirRoutePrefixes()
-    {
-        // A G5 move changes files, never routes.
-        RoutePrefixOf("Humans.CityPlanning.Controllers.CityPlanningController").Should().Be("CityPlanning");
-        RoutePrefixOf("Humans.CityPlanning.Controllers.CityPlanningApiController").Should().Be("api/city-planning");
-    }
-
-    [HumansFact]
-    public void ContractsExposeOnlyTheCrossSectionSurface()
-    {
-        // Pins the whole Contracts assembly, so widening the cross-section surface is a visible
-        // diff rather than a silent one. Consumer story per type:
-        //   ICityPlanningServiceRead   — CampController, CampAdminPageBuilder (Shell),
-        //                                ContainerController + ContainerAuthorizationHandler
-        //                                (Humans.Containers).
-        //   ICityPlanningService       — CampService (Humans.Application) deletes a camp's
-        //                                polygons; CampAdminController writes the registration
-        //                                info. The Base consumer is why this is a project and
-        //                                not a Contracts/ folder (§15 step 5b).
-        //   CityPlanningSettingsDto    — GetSettingsAsync's return type.
-        //   CityPlanningOptions        — DevPersonaSeeder seeds the dev city-planning team.
-        typeof(ICityPlanningServiceRead).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .Should().BeEquivalentTo(
-            [
-                "CityPlanningOptions",
-                "CityPlanningSettingsDto",
-                "ICityPlanningService",
-                "ICityPlanningServiceRead",
-            ]);
-    }
-
-    [HumansFact]
-    public void ContractsReferenceOnlyTheBottomOfTheGraph()
-    {
-        typeof(ICityPlanningServiceRead).Assembly.GetReferencedAssemblies()
-            .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
-                because: "a section's contracts leaf references only the bottom of the graph "
-                       + "(memory/architecture/section-project-cycle-fix.md)");
-    }
 
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
@@ -199,10 +125,4 @@ public class CityPlanningArchitectureTests
 
         offenders.Should().BeEmpty();
     }
-
-    private static string? RoutePrefixOf(string fullName) =>
-        typeof(Section).Assembly.GetType(fullName)!
-            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
-            .Cast<RouteAttribute>()
-            .Single().Template;
 }

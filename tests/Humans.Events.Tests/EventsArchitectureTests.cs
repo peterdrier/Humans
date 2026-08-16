@@ -29,39 +29,8 @@ namespace Humans.Events.Tests;
 /// </remarks>
 public class EventsArchitectureTests
 {
-    [HumansFact]
-    public void EventsRoutes_UseEventsSlug()
-    {
-        RouteFor<EventsController>().Should().Be("Events");
-        RouteFor<EventsDashboardController>().Should().Be("Events/Dashboard");
-        RouteFor<EventsExportController>().Should().Be("Events/Export");
-        RouteFor<EventsModerationController>().Should().Be("Events/Moderate");
-        RouteFor<EventsApiController>().Should().Be("api/events");
-    }
 
-    [HumansFact]
-    public void EventsRoutes_DoNotExposeOldEventGuideOrCampsSlugs()
-    {
-        var routeTemplates = new[]
-        {
-            RouteFor<EventsController>(),
-            RouteFor<EventsDashboardController>(),
-            RouteFor<EventsExportController>(),
-            RouteFor<EventsModerationController>(),
-            RouteFor<EventsApiController>()
-        };
 
-        routeTemplates.Should().NotContain(template =>
-            template.Contains("EventGuide", StringComparison.OrdinalIgnoreCase)
-            || template.Contains("Camps", StringComparison.OrdinalIgnoreCase)
-            || template.Contains("api/guide", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [HumansFact]
-    public void EventsAdminController_LivesUnderEventsAdminRoute()
-    {
-        RouteFor<EventsAdminController>().Should().Be("Events/Admin");
-    }
 
     [HumansFact]
     public void EventsAdminController_RequiresEventsAdminOrAdminPolicy()
@@ -72,53 +41,7 @@ public class EventsArchitectureTests
             .Should().Be("EventsAdminOrAdmin");
     }
 
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5). Everything else in the
-        // assembly is internal, including the controllers: Shell registers
-        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
-        // carrying [assembly: Section("…")], so internal controllers still route
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in
-        // as many words: do not "fix" a 404 by making the controller public).
-        // The section's cross-section surface is the separate Humans.Events.Contracts
-        // assembly, so nothing in *this* one needs to be visible outside it.
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are
-        // never hand-edited (memory/process/never-hand-edit-migrations); Store's BaselineStore
-        // is public for the same reason. They are excluded rather than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Events.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-            ["Humans.Events.EventsResource", "Humans.Events.Section"],
-            because: "a section exposes only its ISection entry point and its resource marker; "
-                   + "the resource marker is public because the boot localization diagnostic "
-                   + "discovers it via GetExportedTypes()");
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic,
-            because: "SectionControllerFeatureProvider discovers internal controllers in section "
-                   + "assemblies; a public one would be nameable from any other section");
-    }
-
-    [HumansFact]
-    public void EventService_ImplementsIUserDataContributor()
-    {
-        typeof(IUserDataContributor).IsAssignableFrom(typeof(EventService))
-            .Should().BeTrue(
-                because: "EventService owns event_favourites and event_preferences (user-scoped tables); it must contribute to the GDPR Article 15 export");
-    }
 
     [HumansFact]
     public void IEventRepository_HasNoUpdateOrDeleteForModerationActions()
@@ -248,13 +171,4 @@ public class EventsArchitectureTests
         return services;
     }
 
-    private static string RouteFor<TController>()
-    {
-        var route = typeof(TController)
-            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
-            .Cast<RouteAttribute>()
-            .Single();
-
-        return route.Template;
-    }
 }

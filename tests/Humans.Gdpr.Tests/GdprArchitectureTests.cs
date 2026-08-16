@@ -13,21 +13,6 @@ namespace Humans.Gdpr.Tests;
 /// </summary>
 public class GdprArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionIsPublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 step 5),
-        // enforced at build time by HUM0034. Gdpr's whole outward surface lives on the
-        // separate Humans.Gdpr.Contracts leaf, it owns no tables so there are no
-        // migrations, and it ships no resource set — so Section is the only public type
-        // in the section assembly.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(["Humans.Gdpr.Section"]);
-    }
 
     [HumansFact]
     public void SectionHasNoControllers()

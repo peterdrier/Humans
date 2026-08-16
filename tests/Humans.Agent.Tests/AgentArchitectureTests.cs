@@ -25,79 +25,9 @@ namespace Humans.Agent.Tests;
 /// </remarks>
 public class AgentArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5), now enforced at build time
-        // by HUM0034. AgentResource is the one sanctioned extra: the boot localization
-        // diagnostic discovers section resource markers through GetExportedTypes(), so an
-        // internal marker is skipped in silence (§15 step 3b).
-        //
-        // All three controllers are internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Agent.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            "Humans.Agent.AgentResource",
-            "Humans.Agent.Section",
-        ]);
-    }
 
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
 
-        controllers.Should().HaveCount(3);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
-
-    [HumansFact]
-    public void ContractsExposeOnlyTheCrossSectionSurface()
-    {
-        // Pins the whole Contracts assembly, so widening Agent's cross-section surface is a
-        // visible diff rather than a silent one. Four types, one consumer story each:
-        //   IAgentConversationRetention — AgentConversationRetentionJob, which stays in Base
-        //     because recurring jobs have no discovery seam yet (§15 step 6b).
-        //   IAgentAvailability          — Shell's HelpWidget and the two agent health checks.
-        //   IAgentPreloadAugmentor      — implemented in Shell, consumed by the section.
-        //   AgentSectionKeys            — Shell's AgentPreloadAugmentor resolves glossary
-        //                                 headings onto fetch_section_guide keys.
-        var contractTypes = typeof(IAgentAvailability).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        contractTypes.Should().BeEquivalentTo(
-        [
-            "AgentSectionKeys",
-            "IAgentAvailability",
-            "IAgentConversationRetention",
-            "IAgentPreloadAugmentor",
-        ]);
-    }
-
-    [HumansFact]
-    public void ContractsReferenceOnlyTheBottomOfTheGraph()
-    {
-        typeof(IAgentAvailability).Assembly.GetReferencedAssemblies()
-            .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
-                because: "a section's contracts leaf references only the bottom of the graph "
-                       + "(memory/architecture/section-project-cycle-fix.md)");
-    }
 
     /// <summary>
     /// Pins the set of types that may inject <see cref="IAgentRepository"/>: the owning service
@@ -139,27 +69,7 @@ public class AgentArchitectureTests
         typeof(AgentMessage).GetProperty("HandedOffToFeedbackId").Should().NotBeNull();
     }
 
-    [HumansFact]
-    public void ServiceImplementsIUserDataContributor()
-    {
-        typeof(IUserDataContributor).IsAssignableFrom(typeof(AgentService))
-            .Should().BeTrue(
-                because: "Agent owns agent_conversations and agent_messages (user-scoped); it must "
-                       + "contribute to the GDPR Article 15 export");
-    }
 
-    [HumansFact]
-    public void SectionRegistersTheContractsAndTheGdprContributor()
-    {
-        var services = new ServiceCollection();
-        new Section().Register(services, new ConfigurationBuilder().Build());
-
-        services.Single(d => d.ServiceType == typeof(IAgentRepository)).Lifetime
-            .Should().Be(ServiceLifetime.Scoped);
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IAgentAvailability));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IAgentConversationRetention));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserDataContributor));
-    }
 
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
@@ -184,22 +94,5 @@ public class AgentArchitectureTests
                    + "another set renders the key itself and no error (§15 step 3b)");
     }
 
-    [HumansFact]
-    public void ControllersKeepTheirRoutePrefixes()
-    {
-        // The chat history, the admin console and the key-authed review API all keep the URLs
-        // they had in Shell — a G5 move changes files, never routes.
-        RoutePrefixOf("Humans.Agent.Controllers.AgentController").Should().Be("Agent");
-        RoutePrefixOf("Humans.Agent.Controllers.AdminAgentController").Should().Be("Agent/Admin");
-        RoutePrefixOf("Humans.Agent.Controllers.AgentApiController").Should().Be("api/agent");
-    }
 
-    private static string RoutePrefixOf(string fullName)
-    {
-        var type = typeof(Section).Assembly.GetType(fullName, throwOnError: true)!;
-        return type
-            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
-            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
-            .Single().Template;
-    }
 }

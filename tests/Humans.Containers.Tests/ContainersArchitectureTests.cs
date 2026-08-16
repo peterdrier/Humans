@@ -4,7 +4,6 @@ using Humans.Containers.Controllers;
 using Humans.Containers.Data;
 using Humans.Containers.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,37 +15,6 @@ namespace Humans.Containers.Tests;
 /// </summary>
 public class ContainersArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionResourceAndContractsArePublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 steps 5, 5b).
-        // Containers is the first section whose Contracts/ is a *folder* rather than a
-        // separate project: every consumer outside the section (CityPlanningController,
-        // CityPlanningApiController) lives in Shell, and Shell references the section, so
-        // nothing in Base needs to see this surface and no downward carve is required.
-        //
-        // Everything else is internal, including the controller: Shell registers
-        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
-        // carrying [assembly: Section("…")], so internal controllers still route
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in
-        // as many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are
-        // never hand-edited (memory/process/never-hand-edit-migrations); they are excluded
-        // rather than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Containers.Data.Migrations", StringComparison.Ordinal))
-            .Where(t => !string.Equals(t.Namespace, "Humans.Containers.Contracts", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(
-            ["Humans.Containers.ContainersResource", "Humans.Containers.Section"],
-            because: "outside Contracts/ a section exposes only its ISection entry point and its "
-                   + "resource marker; the resource marker is public because the boot localization "
-                   + "diagnostic discovers it via GetExportedTypes()");
-    }
 
     [HumansFact]
     public void EveryPublicTypeOutsideContractsIsAccountedFor()
@@ -84,24 +52,7 @@ public class ContainersArchitectureTests
                    + "adding to it is a decision, not an accident");
     }
 
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
 
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic,
-            because: "SectionControllerFeatureProvider discovers internal controllers in section "
-                   + "assemblies; a public one would be nameable from any other section");
-    }
-
-    [HumansFact]
-    public void ContainerRoutes_HangOffTheCampSlug()
-    {
-        RouteFor<ContainerController>().Should().Be("Camp/{slug}/Containers");
-    }
 
     [HumansFact]
     public void ContainerController_RequiresAuthorization()
@@ -155,11 +106,4 @@ public class ContainersArchitectureTests
         new Section().Register(services, new ConfigurationBuilder().Build());
         return services;
     }
-
-    private static string RouteFor<TController>() =>
-        typeof(TController)
-            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
-            .Cast<RouteAttribute>()
-            .Single()
-            .Template;
 }

@@ -105,19 +105,6 @@ public class OnboardingArchitectureTests
     /// HUM0034 is the build gate; this states the intent in the section's own terms so a new
     /// public type has to justify itself as a contract rather than slip in as surface.
     /// </summary>
-    [HumansFact]
-    public void OnlySectionMarkersArePublic()
-    {
-        var exported = typeof(OnboardingResource).Assembly
-            .GetExportedTypes()
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        exported.Should().BeEquivalentTo(
-            ["OnboardingProgressBannerViewComponent", "OnboardingResource", "Section"],
-            because: "the cross-section surface lives in Humans.Onboarding.Contracts; the section itself exports only its DI entry point, its resource marker, and the types the framework requires to be public to function — Razor's compile-time discovery only sees public view components, so an internal one renders as inert markup (HUM0034)");
-    }
 
     /// <summary>
     /// The leaf is deliberately narrow — two intake writes, the widget-step read and the

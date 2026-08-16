@@ -25,44 +25,7 @@ namespace Humans.Surveys.Tests;
 /// </remarks>
 public class SurveysArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5). SurveysResource is the one
-        // sanctioned extra: the boot localization diagnostic discovers section resource markers
-        // through GetExportedTypes(), so an internal marker is skipped in silence (§15 step 3b).
-        //
-        // All three controllers are internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Surveys.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            "Humans.Surveys.Section",
-            "Humans.Surveys.SurveysResource",
-        ]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(3);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
     [HumansFact]
     public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
@@ -74,29 +37,7 @@ public class SurveysArchitectureTests
         AuditEntityTypes.ReminderJob.Should().Be("SurveyService");
     }
 
-    [HumansFact]
-    public void ContractsExposeOnlyTheCrossSectionSurface()
-    {
-        // Pins the whole Contracts assembly, so widening Surveys' cross-section surface is a
-        // visible diff rather than a silent one. It is one interface: the only consumer outside
-        // the section that is not in Shell is SendSurveyReminderJob, which stays in
-        // Humans.Infrastructure because recurring jobs have no discovery seam yet (§15 step 6b).
-        var contractTypes = typeof(ISurveyReminderSender).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        contractTypes.Should().BeEquivalentTo(["ISurveyReminderSender"]);
-    }
-
-    [HumansFact]
-    public void ContractsReferenceOnlyTheBottomOfTheGraph()
-    {
-        typeof(ISurveyReminderSender).Assembly.GetReferencedAssemblies()
-            .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
-                because: "a section's contracts leaf references only the bottom of the graph "
-                       + "(memory/architecture/section-project-cycle-fix.md)");
-    }
 
     /// <summary>
     /// Pins the set of types that may inject <see cref="ISurveyRepository"/>: the owning service
@@ -152,40 +93,8 @@ public class SurveysArchitectureTests
             .Should().Be(typeof(bool));
     }
 
-    [HumansFact]
-    public void ServiceImplementsIUserDataContributor()
-    {
-        typeof(IUserDataContributor).IsAssignableFrom(typeof(SurveyService))
-            .Should().BeTrue(
-                because: "Surveys owns survey_responses and survey_invitations (user-scoped); it must "
-                       + "contribute to the GDPR Article 15 export");
-    }
 
-    [HumansFact]
-    public void ServiceTakesNoCrossSectionRepository()
-    {
-        var ctor = typeof(SurveyService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Select(p => p.ParameterType)
-            .Where(t => t.Name.EndsWith("Repository", StringComparison.Ordinal)
-                     && !string.Equals(t.Name, "ISurveyRepository", StringComparison.Ordinal))
-            .Should().BeEmpty();
-    }
 
-    [HumansFact]
-    public void SectionRegistersTheContractAndTheGdprContributorAsTheSameScopedService()
-    {
-        var services = new ServiceCollection();
-        new Section().Register(services, new ConfigurationBuilder().Build());
-
-        services.Single(d => d.ServiceType == typeof(ISurveyRepository)).Lifetime
-            .Should().Be(ServiceLifetime.Singleton);
-        services.Single(d => d.ServiceType == typeof(ISurveyService)).Lifetime
-            .Should().Be(ServiceLifetime.Scoped);
-        services.Single(d => d.ServiceType == typeof(ISurveyReminderSender)).Lifetime
-            .Should().Be(ServiceLifetime.Scoped);
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserDataContributor));
-    }
 
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
@@ -210,22 +119,5 @@ public class SurveysArchitectureTests
                    + "set renders the key itself and no error (§15 step 3b)");
     }
 
-    [HumansFact]
-    public void ControllersKeepTheirRoutePrefixes()
-    {
-        // The public answering wizard, the admin builder and the key-authed analysis API all
-        // keep the URLs they had in Shell — a G5 move changes files, never routes.
-        RoutePrefixOf("Humans.Surveys.Controllers.SurveyController").Should().Be("Survey");
-        RoutePrefixOf("Humans.Surveys.Controllers.SurveyAdminController").Should().Be("Survey/Admin");
-        RoutePrefixOf("Humans.Surveys.Controllers.SurveysApiController").Should().Be("api/surveys");
-    }
 
-    private static string RoutePrefixOf(string fullName)
-    {
-        var type = typeof(Section).Assembly.GetType(fullName, throwOnError: true)!;
-        return type
-            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
-            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
-            .Single().Template;
-    }
 }

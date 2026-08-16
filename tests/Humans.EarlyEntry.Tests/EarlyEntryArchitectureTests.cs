@@ -11,43 +11,7 @@ namespace Humans.EarlyEntry.Tests;
 /// </summary>
 public class EarlyEntryArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndContractsArePublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 step 5),
-        // enforced at build time by HUM0034. There is no resource marker — the roster page's
-        // copy is inline English — and no migrations, because the section owns no tables.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            "Humans.EarlyEntry.Contracts.EarlyEntryGrant",
-            "Humans.EarlyEntry.Contracts.EarlyEntryRosterRow",
-            "Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator",
-            "Humans.EarlyEntry.Contracts.IEarlyEntryProvider",
-            "Humans.EarlyEntry.Contracts.IEarlyEntryService",
-            "Humans.EarlyEntry.Contracts.UserEarlyEntry",
-            "Humans.EarlyEntry.Section",
-        ]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        // Shell registers SectionControllerFeatureProvider, which relaxes MVC's IsPublic check
-        // for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(1);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
     [HumansFact]
     public void SectionTypesTakeNoStringLocalizer()

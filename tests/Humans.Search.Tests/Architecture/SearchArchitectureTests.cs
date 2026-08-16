@@ -91,14 +91,4 @@ public class SearchArchitectureTests
     /// latter public only because the boot localization diagnostic reads
     /// <c>GetExportedTypes()</c>.
     /// </remarks>
-    [HumansFact]
-    public void TheSectionExportsOnlyItsSectionAndResourceMarkers()
-    {
-        var exported = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        exported.Should().Equal("Humans.Search.SearchResource", "Humans.Search.Section");
-    }
 }

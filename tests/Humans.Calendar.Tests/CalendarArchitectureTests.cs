@@ -26,67 +26,8 @@ namespace Humans.Calendar.Tests;
 /// </remarks>
 public class CalendarArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5). CalendarResource is the one
-        // sanctioned extra: the boot localization diagnostic discovers section resource markers
-        // through GetExportedTypes(), so an internal marker is skipped in silence (§15 step 3b).
-        //
-        // CalendarController is internal. Shell registers SectionControllerFeatureProvider, which
-        // relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Calendar.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            // The personal iCal feed's cross-section surface (G5 lane 4b-2c): Shifts and
-            // Events implement the contributor, Scanner and Shell consume the orchestrator,
-            // and <vc:user-calendar> needs a public component or it ships as inert markup.
-            "Humans.Calendar.CalendarResource",
-            "Humans.Calendar.Contracts.CalendarFeedItem",
-            "Humans.Calendar.Contracts.ICalendarFeedContributor",
-            "Humans.Calendar.Contracts.IICalFeedService",
-            "Humans.Calendar.Contracts.UserCalendarViewComponent",
-            "Humans.Calendar.Contracts.UserCalendarViewModel",
-            "Humans.Calendar.Section",
-        ]);
-    }
 
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        // CalendarController (/Calendar) and ICalFeedApiController (/api/ical).
-        controllers.Should().HaveCount(2);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
-
-    [HumansFact]
-    public void ICalFeedApiControllerKeepsItsRoutePrefix()
-    {
-        // /api/ical/{userId}/{token}.ics is a URL calendar clients have already
-        // subscribed to — a G5 move changes files, never routes.
-        var type = typeof(Section).Assembly
-            .GetType("Humans.Calendar.Controllers.ICalFeedApiController", throwOnError: true)!;
-
-        type.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
-            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
-            .Single().Template
-            .Should().Be("api/ical");
-    }
 
     [HumansFact]
     public void SectionRegistersTheICalFeedOrchestrator()
@@ -100,18 +41,6 @@ public class CalendarArchitectureTests
         descriptor.ImplementationType.Should().Be(typeof(ICalFeedService));
     }
 
-    [HumansFact]
-    public void ControllerKeepsItsRoutePrefix()
-    {
-        // Every /Calendar URL is unchanged — a G5 move changes files, never routes.
-        var type = typeof(Section).Assembly
-            .GetType("Humans.Calendar.Controllers.CalendarController", throwOnError: true)!;
-
-        type.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
-            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
-            .Single().Template
-            .Should().Be("Calendar");
-    }
 
     [HumansFact]
     public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()

@@ -28,45 +28,7 @@ namespace Humans.Feedback.Tests.Architecture;
 /// </remarks>
 public class FeedbackArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5). FeedbackResource is the one
-        // sanctioned extra: the boot localization diagnostic discovers section resource markers
-        // through GetExportedTypes(), so an internal marker is skipped in silence (§15 step 3b).
-        //
-        // Both controllers are internal. Shell registers SectionControllerFeatureProvider, which
-        // relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Feedback.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(
-        [
-            "Humans.Feedback.Contracts.IFeedbackServiceRead",
-            "Humans.Feedback.FeedbackResource",
-            "Humans.Feedback.Section",
-        ]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => typeof(ControllerBase).IsAssignableFrom(t))
-            .ToList();
-
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
     // ── FeedbackService ──────────────────────────────────────────────────────
 

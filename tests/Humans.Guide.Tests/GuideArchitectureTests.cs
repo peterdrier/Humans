@@ -17,35 +17,7 @@ namespace Humans.Guide.Tests;
 /// </remarks>
 public class GuideArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionIsPublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5), enforced at build time by
-        // HUM0034. Guide has no <Section>Resource — its four views carry no Localizer[…] call
-        // and SharedResource has no Guide_* key — and Contracts/ is an empty folder, because
-        // nothing outside the section reads a guide page. No migrations either: no tables.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
 
-        publicTypes.Should().BeEquivalentTo(["Humans.Guide.Section"]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        // Shell registers SectionControllerFeatureProvider, which relaxes MVC's IsPublic check
-        // for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(1);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
 
     [HumansFact]
     public void SectionTypesTakeNoStringLocalizer()

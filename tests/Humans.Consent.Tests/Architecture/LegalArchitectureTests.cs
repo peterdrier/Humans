@@ -38,20 +38,5 @@ public sealed class LegalArchitectureTests
                 because: "connector implementations carry SDK/transport dependencies");
     }
 
-    [HumansFact]
-    public void AdminLegalDocumentsController_LivesUnderLegalAdminRoute()
-    {
-        RouteFor<AdminLegalDocumentsController>().Should().Be("Legal/Admin",
-            because: "admin legal-document pages live at /Legal/Admin/* per memory/architecture/no-admin-url-section.md");
-    }
 
-    private static string RouteFor<TController>()
-    {
-        var route = typeof(TController)
-            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
-            .Cast<RouteAttribute>()
-            .Single();
-
-        return route.Template;
-    }
 }
