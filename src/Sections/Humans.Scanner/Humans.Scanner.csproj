@@ -31,7 +31,6 @@
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <!--
       Tickets: the leaf for TicketStubInfo, and the section project for the
       <vc:ticket-stub> tag helper — the component is public under Humans.Tickets/Contracts/

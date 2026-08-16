@@ -5,7 +5,6 @@
     <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
     <Project Path="src/Humans.Application/Humans.Application.csproj" />
     <Project Path="src/Humans.Infrastructure/Humans.Infrastructure.csproj" />
-    <Project Path="src/Humans.UI/Humans.UI.csproj" />
     <Project Path="src/Humans.Web/Humans.Web.csproj" />
   </Folder>
   <Folder Name="/src/Sections/">

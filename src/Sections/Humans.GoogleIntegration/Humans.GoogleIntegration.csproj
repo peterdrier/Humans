@@ -45,7 +45,6 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />

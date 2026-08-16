@@ -27,7 +27,6 @@
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <!-- Tickets' contracts leaf: the meter provider surfaces a failed ticket sync to Admin. -->

@@ -45,7 +45,6 @@
     -->
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!--
       Outbound section references, all through leaves and all acyclic — none of these

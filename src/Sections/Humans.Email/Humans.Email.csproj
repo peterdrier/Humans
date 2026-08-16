@@ -25,7 +25,6 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <!--
       The outbox drain mirrors a campaign grant's delivery status, and the pause flag is a

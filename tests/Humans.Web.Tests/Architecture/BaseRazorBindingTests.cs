@@ -72,12 +72,14 @@ public class BaseRazorBindingTests
     }
 
     /// <summary>
-    /// No <c>_ViewImports</c> still opens <c>Humans.UI</c>. The assembly survives lane 4b-iii B
-    /// as an empty shell until lane 5d deletes it, and an empty assembly resolves fine — a
-    /// leftover directive contributes zero tag helpers and says nothing about it.
+    /// No <c>_ViewImports</c> still opens <c>Humans.UI</c>. Lane 5d deleted the project, and
+    /// deleting it did NOT turn a leftover directive into a build error — Razor silently
+    /// ignores <c>@addTagHelper *, X</c> for an assembly it cannot resolve (measured: adding
+    /// the directive back builds with 0 warnings, 0 errors). So the compiler never covers this
+    /// and the sweep stays.
     /// </summary>
     [HumansFact]
-    public void NoViewImportsStillBindsTheEmptiedHumansUiAssembly()
+    public void NoViewImportsStillBindsTheDeletedHumansUiAssembly()
     {
         var stale = RazorFiles(SrcRoot())
             .Where(f => string.Equals(Path.GetFileName(f), "_ViewImports.cshtml", StringComparison.Ordinal))
@@ -85,8 +87,8 @@ public class BaseRazorBindingTests
             .ToList();
 
         stale.Should().BeEmpty(
-            "Humans.UI holds no tag helpers or view components after G5 lane 4b-iii B; a directive "
-            + "still naming it binds nothing and hides that the real one is missing");
+            "Humans.UI no longer exists after G5 lane 5d; a directive still naming it resolves to "
+            + "nothing in silence and hides that the real one is missing");
     }
 
     // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.

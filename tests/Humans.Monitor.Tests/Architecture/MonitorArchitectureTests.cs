@@ -35,7 +35,7 @@ public class MonitorArchitectureTests
             .Select(a => a.Name ?? string.Empty)
             .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
             .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.UI" or "Humans.Analyzers"
+                                 or "Humans.Infrastructure" or "Humans.Analyzers"
                                  or "Humans.Monitor.Contracts"))
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();

@@ -26,7 +26,6 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, which moved out of Humans.UI
