@@ -62,9 +62,6 @@ public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
         // Section assemblies count as production (nobodies-collective/Humans#866). The
         // hardcoded four-name set this replaced named none of them, so this rule went
         // silent inside every section that moved.
-        if (!AssemblyScope.IsProduction(context.Compilation.Assembly))
-            return;
-
         var targets = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         foreach (var name in TargetTypeMetadataNames)
         {

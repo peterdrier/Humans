@@ -12,10 +12,11 @@ internal static class AnalyzerTestHarness
     /// <summary>
     /// Compiles <paramref name="source"/> as a synthetic assembly named
     /// <paramref name="assemblyName"/>, then runs <paramref name="analyzer"/> against it.
-    /// Tests typically use assembly names that match real production names
-    /// ("Humans.Application", "Humans.Web", "Humans.Infrastructure", or any other name
-    /// for the negative "scope excludes this assembly" cases) to exercise the
-    /// AssemblyScope guard in each analyzer.
+    /// The name is documentation for the reader in most tests — no rule scopes itself by
+    /// assembly any more (<c>src/Directory.Build.props</c> decides what gets analyzed at
+    /// all). It is load-bearing only where a rule asks whether the compilation is a
+    /// section, which <c>AssemblyScope.IsSection</c> answers by looking up
+    /// <c>&lt;assemblyName&gt;.Section</c>; those tests declare that entry point in source.
     /// </summary>
     /// <param name="referencedSource">
     /// Optional: compiled into its own assembly and added as a reference, rather than

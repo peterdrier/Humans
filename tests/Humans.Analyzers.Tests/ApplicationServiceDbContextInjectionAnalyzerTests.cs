@@ -365,27 +365,4 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             IsHum0009(d) && d.GetMessage().Contains("SystemSettingsDbContext", StringComparison.Ordinal));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Infrastructure_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Infrastructure.Jobs
-            {
-                public sealed class SomeJob
-                {
-                    public SomeJob(Humans.Infrastructure.Data.UsersDbContext dbContext)
-                    {
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ApplicationServiceDbContextInjectionAnalyzer(),
-            "Humans.Application",
-            source);
-
-        diagnostics.Where(IsHum0009).Should().BeEmpty();
-    }
 }

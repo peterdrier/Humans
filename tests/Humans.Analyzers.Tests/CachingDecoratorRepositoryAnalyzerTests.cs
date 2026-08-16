@@ -229,28 +229,6 @@ public class CachingDecoratorRepositoryAnalyzerTests
         diagnostics.Where(IsHum0020).Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_infrastructure_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Infrastructure.Services.Teams
-            {
-                public sealed class CachingTeamService(
-                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
-                {
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CachingDecoratorRepositoryAnalyzer(),
-            "Humans.Application",
-            source);
-
-        diagnostics.Where(IsHum0020).Should().BeEmpty();
-    }
-
     /// <summary>
     /// The regression test for the namespace filter that silently switched this rule off.
     /// Every one of the 11 caching decorators lives in a section project

@@ -101,9 +101,6 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
     {
         // Request-scoped tokens exist wherever controller actions live: the Web
         // assembly and every section assembly (G5).
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
-            return;
-
         var externalWrite = context.Compilation.GetTypeByMetadataName(ExternalWriteAttributeFullName);
         if (externalWrite is null)
             return;

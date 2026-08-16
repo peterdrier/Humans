@@ -96,9 +96,6 @@ public sealed class SingleRepositoryPerTableAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Infrastructure))
-            return;
-
         // Since the per-section split (nobodies-collective/Humans#858) tables are
         // spread across every application context; DbSet access is matched on any of
         // them via SectionDbContexts, which finds contexts structurally (declared in

@@ -328,29 +328,4 @@ public class EmailMutationPathsAnalyzerTests
         diagnostics.Should().ContainSingle(d => IsHum0006(d));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_scope_assemblies()
-    {
-        var source = InterfaceStubs + """
-
-            namespace Some.Domain.Code
-            {
-                public class Caller
-                {
-                    public async System.Threading.Tasks.Task Run(
-                        Humans.Users.Contracts.IUserEmailService svc)
-                    {
-                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new EmailMutationPathsAnalyzer(),
-            "Humans.Domain",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
 }

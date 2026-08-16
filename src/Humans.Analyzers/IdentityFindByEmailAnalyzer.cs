@@ -51,9 +51,6 @@ public sealed class IdentityFindByEmailAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsApplicationOrWeb(context.Compilation.Assembly))
-            return;
-
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
     }
 

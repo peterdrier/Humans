@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Immutable;
 using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
@@ -6,13 +7,26 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0014 — No class in <c>Humans.Web</c> may inject a repository directly.
-/// Web depends on application services; services depend on repositories.
+/// HUM0014 — an MVC surface (controller or view component) must not inject a repository.
+/// It calls the section's application service; the service owns the repository
+/// (peters-hard-rules: "Controllers … can not call repositories").
 /// </summary>
 /// <remarks>
-/// Runs in <c>Humans.Web</c> only. Replaces the reflection test
-/// <c>ServiceBoundaryArchitectureTests.Web_classes_do_not_inject_repositories</c>
-/// with compile-time enforcement.
+/// <para>
+/// The subject used to be "every class in <c>Humans.Web</c>", which worked while Shell was
+/// the only Web layer. A section assembly holds all three layers at once
+/// (nobodies-collective/Humans#866), so the subject is stated structurally instead —
+/// matched the way MVC itself matches them, so the rule covers exactly what the framework
+/// exposes and nothing that merely looks like it (nobodies-collective/Humans#1064).
+/// </para>
+/// <para>
+/// The wider rule — "only an <c>IApplicationService</c> implementer may hold a repository"
+/// — is the one this should eventually be, and it is blocked, not undesirable:
+/// <c>Humans.Users.Contracts</c> dropped <c>IApplicationService</c> from seven interfaces
+/// to keep its zero-reference property (G5 lane 3b, "the migration outranks the
+/// analyzers"), so those seven services could not satisfy it today. Revisit when that
+/// leaf can reference Base again.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
@@ -20,13 +34,17 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "HUM0014";
 
     private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";
+    private const string ViewComponentNameSuffix = "ViewComponent";
+    private const string ViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.ViewComponentAttribute";
+    private const string NonViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.NonViewComponentAttribute";
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
-        "Web class injects a repository directly";
+        "MVC surface injects a repository directly";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' injects '{1}'. Web depends on application services, not persistence repositories.";
+        "'{0}' injects '{1}'. A controller or view component calls the section's application "
+        + "service; the service owns the repository.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -36,10 +54,9 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "Classes in Humans.Web (controllers, view components, filters, etc.) must call " +
-            "application services, never repositories directly. Repositories are the persistence " +
-            "boundary owned by Application/Infrastructure; reaching past services collapses the " +
-            "layer (design-rules §2b, §3).");
+            "A repository is the persistence boundary its own section's application service " +
+            "owns. Controllers and view components call the service; reaching past it to the " +
+            "repository collapses the layer (design-rules §2b, §3).");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -52,38 +69,31 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
-            return;
-
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
         if (repositoryMarker is null)
             return;
 
+        var viewComponentAttr = context.Compilation.GetTypeByMetadataName(ViewComponentAttributeFullName);
+        var nonViewComponentAttr = context.Compilation.GetTypeByMetadataName(NonViewComponentAttributeFullName);
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
-        // In Humans.Web every class is Web-layer, so assembly identity is the whole test.
-        // A section assembly holds all three layers at once (nobodies-collective/Humans#866),
-        // so there the subject has to be identified structurally — otherwise the section's
-        // own service, whose entire job is to hold the repository, trips the rule.
-        var controllersOnly = !string.Equals(
-            context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal);
-
         context.RegisterSymbolAction(
-            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr, controllersOnly),
+            c => AnalyzeNamedType(c, repositoryMarker, viewComponentAttr, nonViewComponentAttr, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
     private static void AnalyzeNamedType(
         SymbolAnalysisContext context,
         INamedTypeSymbol repositoryMarker,
-        INamedTypeSymbol? grandfatheredAttr,
-        bool controllersOnly)
+        INamedTypeSymbol? viewComponentAttr,
+        INamedTypeSymbol? nonViewComponentAttr,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsAbstract)
             return;
 
-        if (controllersOnly && !type.InheritsFromOrEquals(ControllerBaseFullName))
+        if (!IsMvcSurface(type, viewComponentAttr, nonViewComponentAttr))
             return;
 
         // The grandfather decision is made on the containing class, not the
@@ -94,7 +104,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         {
             foreach (var parameter in ctor.Parameters)
             {
-                if (!ImplementsRepositoryMarker(parameter.Type, repositoryMarker))
+                if (!Implements(parameter.Type, repositoryMarker))
                     continue;
 
                 context.ReportDiagnostic(Diagnostic.Create(
@@ -108,17 +118,42 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool ImplementsRepositoryMarker(ITypeSymbol type, INamedTypeSymbol repositoryMarker)
+    /// <summary>
+    /// A controller or a view component, matched the way MVC matches them —
+    /// <c>ControllerBase</c> inheritance, and
+    /// <c>ViewComponentConventions.IsComponent</c>'s name-or-attribute test minus
+    /// <c>[NonViewComponent]</c>.
+    /// </summary>
+    private static bool IsMvcSurface(
+        INamedTypeSymbol type,
+        INamedTypeSymbol? viewComponentAttr,
+        INamedTypeSymbol? nonViewComponentAttr)
+    {
+        if (type.InheritsFromOrEquals(ControllerBaseFullName))
+            return true;
+
+        if (type.IsGenericType || HasAttribute(type, nonViewComponentAttr))
+            return false;
+
+        return type.Name.EndsWith(ViewComponentNameSuffix, System.StringComparison.Ordinal)
+            || HasAttribute(type, viewComponentAttr);
+    }
+
+    private static bool HasAttribute(INamedTypeSymbol type, INamedTypeSymbol? attribute) =>
+        attribute is not null
+        && type.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attribute));
+
+    private static bool Implements(ITypeSymbol type, INamedTypeSymbol marker)
     {
         if (type is not INamedTypeSymbol named)
             return false;
 
-        if (SymbolEqualityComparer.Default.Equals(named, repositoryMarker))
+        if (SymbolEqualityComparer.Default.Equals(named, marker))
             return true;
 
         foreach (var iface in named.AllInterfaces)
         {
-            if (SymbolEqualityComparer.Default.Equals(iface, repositoryMarker))
+            if (SymbolEqualityComparer.Default.Equals(iface, marker))
                 return true;
         }
         return false;

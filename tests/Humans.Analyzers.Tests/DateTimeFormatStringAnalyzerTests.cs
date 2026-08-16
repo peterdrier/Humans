@@ -136,17 +136,4 @@ public sealed class DateTimeFormatStringAnalyzerTests
         diagnostics.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_production_assemblies()
-    {
-        var source = """
-            using System;
-            namespace Whatever
-            {
-                public class C { public string F(DateTime d) => d.ToString("d MMMM yyyy"); }
-            }
-            """;
-        var diagnostics = await AnalyzerTestHarness.RunAsync(new DateTimeFormatStringAnalyzer(), "SomeTestAssembly", source);
-        diagnostics.Should().BeEmpty();
-    }
 }

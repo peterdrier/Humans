@@ -231,29 +231,4 @@ public class ControllerBusinessLogicAnalyzerTests
         diagnostics.Where(IsHum0031).Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Web_assembly()
-    {
-        var source = Stubs + $$"""
-
-            namespace Humans.Application.Services
-            {
-                public sealed class BigController : Microsoft.AspNetCore.Mvc.Controller
-                {
-                    public int Index()
-                    {
-                        {{Statements(ControllerBusinessLogicAnalyzer.MaxStatements + 1)}}
-                        return 0;
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerBusinessLogicAnalyzer(),
-            "Humans.Application",
-            source);
-
-        diagnostics.Where(IsHum0031).Should().BeEmpty();
-    }
 }

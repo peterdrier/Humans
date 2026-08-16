@@ -105,29 +105,4 @@ public class IdentityFindByEmailAnalyzerTests
         diagnostics.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web()
-    {
-        var source = Stub + """
-
-            namespace Some.Infra.Code
-            {
-                public class Caller
-                {
-                    public async System.Threading.Tasks.Task Run(
-                        Microsoft.AspNetCore.Identity.UserManager<Humans.Users.Contracts.User> mgr)
-                    {
-                        var u = await mgr.FindByEmailAsync("x@y");
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new IdentityFindByEmailAnalyzer(),
-            "Humans.Infrastructure",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
 }

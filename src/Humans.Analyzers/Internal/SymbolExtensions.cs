@@ -24,6 +24,26 @@ internal static class SymbolExtensions
         return false;
     }
 
+    /// <summary>
+    /// True when the code doing the read/write is inside the entity that declares
+    /// <paramref name="property"/> (or a type deriving from it) — <c>User</c>'s own
+    /// <c>get =&gt; base.Email</c> / <c>set =&gt; base.Email = value</c> overrides and the
+    /// derivations built on them.
+    /// </summary>
+    /// <remarks>
+    /// The Identity-column rules police callers reaching past <c>IUserEmailService</c>.
+    /// The entity that defines the derived behaviour is not a caller — it is the
+    /// definition, and forwarding to <c>base</c> is the only way to express it. Matched
+    /// on the declaring type rather than on where the file sits, so the carve-out travels
+    /// with the entity wherever it lives (nobodies-collective/Humans#1064).
+    /// </remarks>
+    public static bool IsInsideDeclaringEntity(this ISymbol? containingSymbol, IPropertySymbol property)
+    {
+        var declaringType = property.ContainingType?.ToDisplayString();
+        return declaringType is not null
+            && containingSymbol?.ContainingType.InheritsFromOrEquals(declaringType) == true;
+    }
+
     public static INamedTypeSymbol? ContainingTopLevelType(this ISymbol symbol)
     {
         var t = symbol.ContainingType;

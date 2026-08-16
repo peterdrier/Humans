@@ -359,35 +359,4 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
         diagnostics.Should().OnlyContain(d => d.GetMessage().Contains("Users"));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_infrastructure_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Infrastructure.Repositories.Events
-            {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
-                {
-                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
-                        ctx.Events.Add(new Humans.Domain.Entities.Event());
-                }
-            }
-
-            namespace Humans.Infrastructure.Repositories.AuditLog
-            {
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
-                {
-                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
-                        ctx.Events.Add(new Humans.Domain.Entities.Event());
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new SingleRepositoryPerTableAnalyzer(),
-            "Humans.Application",
-            source);
-
-        diagnostics.Where(IsHum0025).Should().BeEmpty();
-    }
 }

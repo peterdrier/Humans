@@ -89,9 +89,6 @@ public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
-            return;
-
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterSyntaxNodeAction(

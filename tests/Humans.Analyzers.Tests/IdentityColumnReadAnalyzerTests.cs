@@ -101,28 +101,6 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web()
-    {
-        var source = DomainStub + """
-
-            namespace Some.Infra.Code
-            {
-                public class Reader
-                {
-                    public string? Get(Humans.Users.Contracts.User u) => u.Email;
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new IdentityColumnReadAnalyzer(),
-            "Humans.Infrastructure",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Does_not_fire_on_UserInfo_Email_read()
     {
         // UserInfo (DTO) has its own `Email` property — reads of that are

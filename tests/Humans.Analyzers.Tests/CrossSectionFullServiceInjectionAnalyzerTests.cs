@@ -308,25 +308,4 @@ public class CrossSectionFullServiceInjectionAnalyzerTests
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Application_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Application.Services.Expenses
-            {
-                public sealed class ExpenseSummaryService(Humans.Application.Interfaces.Teams.ITeamService teams)
-                {
-                    public System.Threading.Tasks.Task<int> CountAsync() => teams.GetTeamCountAsync();
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new CrossSectionFullServiceInjectionAnalyzer(),
-            "Humans.Web",
-            source);
-
-        diagnostics.Where(IsHum0032).Should().BeEmpty();
-    }
 }

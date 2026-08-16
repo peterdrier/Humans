@@ -87,9 +87,6 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
         // allowlisted callers are in Application — neither is excluded from the scope,
         // instead the type-name guard below admits them. Web stays in scope so a
         // controller reaching for the primitive directly still fails the build.
-        if (!AssemblyScope.IsApplicationWebOrInfrastructure(context.Compilation.Assembly))
-            return;
-
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
     }
 

@@ -71,9 +71,6 @@ public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Application))
-            return;
-
         var invalidatorMarker = context.Compilation.GetTypeByMetadataName(InvalidatorMarkerFullName);
         if (invalidatorMarker is null)
             return;

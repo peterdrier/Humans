@@ -218,10 +218,15 @@ public class ArchitectureAttributeIdentityTests
                 public interface ICampRepository : IRepository { }
             }
 
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public abstract class ControllerBase { }
+            }
+
             namespace Humans.Web.Controllers
             {
                 [{{ns}}.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
-                public sealed class CampsController
+                public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(
                         Humans.Application.Interfaces.Repositories.ICampRepository repo) { }

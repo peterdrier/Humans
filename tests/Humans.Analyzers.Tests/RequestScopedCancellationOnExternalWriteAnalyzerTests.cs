@@ -211,20 +211,6 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_the_web_assembly()
-    {
-        var diagnostics = await RunAsync(
-            Controller("""
-                    [Microsoft.AspNetCore.Mvc.HttpPost]
-                    public System.Threading.Tasks.Task Execute() =>
-                        _sync.SyncAsync(HttpContext.RequestAborted);
-            """),
-            assemblyName: "Humans.Application");
-
-        diagnostics.Should().NotContain(d => IsHum0033(d));
-    }
-
-    [HumansFact]
     public async Task Fires_inside_a_section_assembly()
     {
         // The Section : ISection entry point is what makes AssemblyScope.IsSection

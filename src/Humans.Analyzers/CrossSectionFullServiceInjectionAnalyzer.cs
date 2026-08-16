@@ -74,9 +74,6 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Application))
-            return;
-
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterSymbolStartAction(

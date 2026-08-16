@@ -65,9 +65,6 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Infrastructure))
-            return;
-
         // Since the per-section split (nobodies-collective/Humans#858) the persistence
         // boundary is every application context, matched structurally via
         // SectionDbContexts (derives from EF's DbContext) rather than by name or

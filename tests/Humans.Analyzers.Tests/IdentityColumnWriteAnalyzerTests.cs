@@ -97,28 +97,6 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web()
-    {
-        var source = DomainStub + """
-
-            namespace Some.Infra.Code
-            {
-                public class Writer
-                {
-                    public void Set(Humans.Users.Contracts.User u) => u.Email = "x";
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new IdentityColumnWriteAnalyzer(),
-            "Humans.Infrastructure",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Does_not_fire_on_non_Identity_property_on_User()
     {
         var source = DomainStub + """

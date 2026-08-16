@@ -49,9 +49,6 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Infrastructure))
-            return;
-
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
         if (repositoryMarker is null)
             return;

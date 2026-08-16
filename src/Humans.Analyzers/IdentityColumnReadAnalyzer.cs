@@ -68,9 +68,6 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsApplicationOrWeb(context.Compilation.Assembly))
-            return;
-
         // PropertyReference fires for direct reads (`user.Email`), reads inside
         // property patterns (`is { Email: ... }`), and reads inside switch
         // arm patterns. Subpattern operations always wrap a PropertyReference
@@ -91,6 +88,11 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
         // section assembly holds all three layers at once; see HUM0002 for the same carve-out
         // and AssemblyScope.IsInSectionDataLayer for why (nobodies-collective/Humans#866).
         if (context.ContainingSymbol is { } owner && AssemblyScope.IsInSectionDataLayer(owner))
+            return;
+
+        // User's own overrides read base — the entity that declares the derived behaviour
+        // is the rule's subject matter, not a caller reaching past it.
+        if (context.ContainingSymbol.IsInsideDeclaringEntity(prop))
             return;
 
         var declaring = prop.ContainingType;

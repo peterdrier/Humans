@@ -236,27 +236,4 @@ public class ControllerDbContextInjectionAnalyzerTests
             IsHum0008(d) && d.GetMessage().Contains("SystemSettingsDbContext", StringComparison.Ordinal));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Web_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Web.Controllers
-            {
-                public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
-                {
-                    public ReportsController(Humans.Infrastructure.Data.UsersDbContext dbContext)
-                    {
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ControllerDbContextInjectionAnalyzer(),
-            "Humans.Application",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
 }

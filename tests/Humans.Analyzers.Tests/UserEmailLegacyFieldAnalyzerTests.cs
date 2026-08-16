@@ -115,28 +115,6 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web_assemblies()
-    {
-        var source = DomainStub + """
-
-            namespace Some.Domain.Code
-            {
-                public class Reader
-                {
-                    public bool Check(Humans.Users.Contracts.UserEmail email) => email.IsOAuth;
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new UserEmailLegacyFieldAnalyzer(),
-            "Humans.Domain",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Does_not_fire_on_unrelated_property_with_same_name_on_other_type()
     {
         var source = """

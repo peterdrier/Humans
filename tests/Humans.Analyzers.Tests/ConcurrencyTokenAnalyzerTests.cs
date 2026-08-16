@@ -177,29 +177,6 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_production_assemblies()
-    {
-        var source = EfStub + """
-
-            namespace Humans.Analyzers.Tests
-            {
-                public class TestOnly
-                {
-                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder builder) =>
-                        builder.IsRowVersion();
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new ConcurrencyTokenAnalyzer(),
-            "Humans.Analyzers.Tests",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Downgrades_EF_call_to_warning_when_class_has_Grandfathered_for_HUM0007()
     {
         var source = EfStub + GrandfatheredStub + """
