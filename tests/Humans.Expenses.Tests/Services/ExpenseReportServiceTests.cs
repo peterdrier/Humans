@@ -1157,7 +1157,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_WithoutAMaxAmount_KeepsTheCoordinatorsCap()
+    public async Task ApproveAsync_WithABlankMaxAmount_ClearsTheCoordinatorsCap()
     {
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
@@ -1170,7 +1170,7 @@ public sealed class ExpenseReportServiceTests
         await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
-        loaded!.MaxAmount.Should().Be(40m);
+        loaded!.MaxAmount.Should().BeNull();
     }
 
     [HumansFact]

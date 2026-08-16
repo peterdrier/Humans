@@ -225,7 +225,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
-        if (maxAmount is { } cap) r.MaxAmount = cap;
+        // Blank form field = null = no cap; the input is prefilled with the current cap.
+        r.MaxAmount = maxAmount;
         r.Status = ExpenseReportStatus.CoordinatorEndorsed;
         r.CoordinatorEndorsedByUserId = actorUserId;
         r.CoordinatorEndorsedAt = endorsedAt;
@@ -267,7 +268,9 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         r.ApprovedAt = approvedAt;
         r.UpdatedAt = approvedAt;
         if (overrideCategoryId is { } cat) r.BudgetCategoryId = cat;
-        if (maxAmount is { } cap) r.MaxAmount = cap;
+        // Blank form field = null = no cap; the input is prefilled with the current cap,
+        // so blanking it must clear a coordinator-set cap, not silently keep it.
+        r.MaxAmount = maxAmount;
 
         ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
         {
