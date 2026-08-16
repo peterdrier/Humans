@@ -3,7 +3,9 @@ using Humans.Consent.Data;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
+using Humans.UI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
@@ -185,5 +187,29 @@ public sealed class ConsentArchitectureTests
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    {
+        // This section keeps its own translation file. A type that asks for a third
+        // one gets nothing back and shows people the key name instead of the text.
+        // ConsentController shipped exactly that on five paths, all of them behind a
+        // form submission no page test goes through. SharedResource is fine — the
+        // Nav_Consents link stayed there and the login partial renders it.
+        var allowed = new[] { typeof(ConsentResource), typeof(SharedResource) };
+        var offenders = typeof(Section).Assembly.GetTypes()
+            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
+                .Where(p => p.ParameterType.IsGenericType
+                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
+                         && !allowed.Contains(p.ParameterType.GetGenericArguments()[0]))
+                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "the section's copy lives in ConsentResource and Nav_Consents in "
+                   + "SharedResource; resolving a key through any third set renders the key "
+                   + "itself and no error");
     }
 }

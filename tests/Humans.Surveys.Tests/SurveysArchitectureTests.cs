@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Surveys.Tests;
 
@@ -81,5 +82,26 @@ public class SurveysArchitectureTests
         // (memory/code/type-name-as-persisted-string.md).
         AuditEntityTypes.Survey.Should().Be("Survey");
         AuditEntityTypes.ReminderJob.Should().Be("SurveyService");
+    }
+
+    [HumansFact]
+    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    {
+        // This section keeps its own translation file. A type that asks for the shared
+        // one gets nothing back and shows people the key name instead of the text.
+        // SurveyController shipped exactly that bug: it only showed up when a form
+        // failed validation, which no page test goes through.
+        var offenders = typeof(Section).Assembly.GetTypes()
+            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
+                .Where(p => p.ParameterType.IsGenericType
+                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
+                         && p.ParameterType.GetGenericArguments()[0] != typeof(SurveysResource))
+                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "every Survey_* key lives in SurveysResource; resolving one through another "
+                   + "set renders the key itself and no error");
     }
 }

@@ -42,6 +42,18 @@ public class ContainersArchitectureTests
         AuditEntityTypes.Camp.Should().Be("Camp");
     }
 
+    [HumansFact]
+    public void Section_RegistersItsOwnAuthorizationHandler()
+    {
+        // Every container permission check runs through this handler. Drop the
+        // registration and each one fails, so every container page returns 403 —
+        // with the whole suite still green, because no test drives those URLs and
+        // the handler's own tests build it by hand.
+        Registrations().Should().ContainSingle(d =>
+            d.ServiceType == typeof(IAuthorizationHandler)
+            && d.ImplementationType!.Name == "ContainerAuthorizationHandler");
+    }
+
     /// <summary>
     /// The section's own DI registrations. Since G5 these come from
     /// <see cref="Section.Register"/> rather than a Shell extension method.
