@@ -13,7 +13,7 @@ using NSubstitute;
 
 namespace Humans.Containers.Tests;
 
-public sealed class ContainerImageServiceTests
+public sealed class ServiceImageTests
 {
     private readonly IFileStorage _fileStorage;
     private readonly Service _sut;
@@ -25,7 +25,7 @@ public sealed class ContainerImageServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-    public ContainerImageServiceTests()
+    public ServiceImageTests()
     {
         _fileStorage = Substitute.For<IFileStorage>();
         var repo = new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));

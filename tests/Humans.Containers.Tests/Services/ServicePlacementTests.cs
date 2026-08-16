@@ -12,7 +12,7 @@ using NSubstitute;
 
 namespace Humans.Containers.Tests;
 
-public sealed class ContainerPlacementServiceTests
+public sealed class ServicePlacementTests
 {
     private const int Year = 2026;
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
@@ -26,7 +26,7 @@ public sealed class ContainerPlacementServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-    public ContainerPlacementServiceTests()
+    public ServicePlacementTests()
     {
         var repo = new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new Service(
