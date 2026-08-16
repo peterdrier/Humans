@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using Humans.Events.Contracts;
-using Humans.Web.Helpers;
-using Humans.Web.Models.Events;
+using Humans.Events.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using NodaTime;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Events.ViewComponents;
 
 /// <summary>
 /// Renders a compact card of approved events with the Browse-style per-row
@@ -17,7 +17,9 @@ namespace Humans.Web.ViewComponents;
 /// at the call site (logged-in Humans users); returns empty content when the Events feature
 /// is disabled or there are no approved events in scope so the card auto-hides.
 /// </summary>
-public class EventsCardViewComponent(
+// Public, not internal: Razor's build-time tag-helper discovery only sees public view
+// components, so an internal one renders <vc:events-card> as inert markup.
+public sealed class EventsCardViewComponent(
     IEventServiceRead events,
     IConfiguration configuration,
     ILogger<EventsCardViewComponent> logger) : ViewComponent

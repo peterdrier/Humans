@@ -1,16 +1,16 @@
-namespace Humans.Web.Models.Events;
+namespace Humans.Events.Models;
 
 /// <summary>
 /// Compact list of approved events rendered by <c>EventsCardViewComponent</c> —
 /// a camp's events on the camp detail page, or a user's submitted events on
 /// their profile. Auth-gated; approved events only.
 /// </summary>
-public class EventsCardViewModel
+internal sealed class EventsCardViewModel
 {
     public List<EventsCardRow> Rows { get; set; } = [];
 }
 
-public class EventsCardRow
+internal sealed class EventsCardRow
 {
     public Guid EventId { get; set; }
     public string Title { get; set; } = string.Empty;

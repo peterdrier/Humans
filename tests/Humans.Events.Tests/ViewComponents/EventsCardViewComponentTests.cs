@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Events.Contracts;
-using Humans.Web.Models.Events;
-using Humans.Web.ViewComponents;
+using Humans.Events.Models;
+using Humans.Events.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Application.Tests.ViewComponents;
+namespace Humans.Events.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="EventsCardViewComponent"/>: it renders the approved events

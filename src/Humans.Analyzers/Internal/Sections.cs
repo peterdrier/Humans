@@ -50,10 +50,9 @@ internal static class Sections
     /// so a type left in a Base assembly falls through to namespace resolution.
     /// </summary>
     /// <remarks>
-    /// A <c>.Contracts</c> assembly declares no <c>ISection</c> entry point of its own,
-    /// so it is matched by name; every other candidate has to pass
-    /// <see cref="AssemblyScope.IsSection"/>, which is what keeps <c>Humans.Application</c>
-    /// and <c>Humans.UI</c> from reading as sections called "Application" and "UI".
+    /// A <c>.Contracts</c> assembly declares no <c>ISection</c>, so it is matched by name;
+    /// everything else must pass <see cref="AssemblyScope.IsSection"/>, which keeps
+    /// <c>Humans.Application</c> and <c>Humans.UI</c> from reading as sections.
     /// </remarks>
     public static string? FromAssembly(IAssemblySymbol? assembly)
     {

@@ -31,11 +31,9 @@ internal static class SymbolExtensions
     /// derivations built on them.
     /// </summary>
     /// <remarks>
-    /// The Identity-column rules police callers reaching past <c>IUserEmailService</c>.
-    /// The entity that defines the derived behaviour is not a caller — it is the
-    /// definition, and forwarding to <c>base</c> is the only way to express it. Matched
-    /// on the declaring type rather than on where the file sits, so the carve-out travels
-    /// with the entity wherever it lives (nobodies-collective/Humans#1064).
+    /// Those rules police callers reaching past <c>IUserEmailService</c>. The entity that
+    /// defines the derived behaviour is not a caller, and forwarding to <c>base</c> is the
+    /// only way to write one.
     /// </remarks>
     public static bool IsInsideDeclaringEntity(this ISymbol? containingSymbol, IPropertySymbol property)
     {

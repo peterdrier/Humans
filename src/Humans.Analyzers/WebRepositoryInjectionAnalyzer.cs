@@ -10,13 +10,10 @@ namespace Humans.Analyzers;
 /// application service (peters-hard-rules: "Controllers … can not call repositories").
 /// </summary>
 /// <remarks>
-/// The subject used to be "every class in <c>Humans.Web</c>", which worked while Shell was
-/// the only Web layer; a section assembly holds all three layers at once
-/// (nobodies-collective/Humans#866), so it is the controller itself now, matched by
-/// <c>ControllerBase</c> the way MVC matches one. Deliberately no wider than that: who
-/// else inside a section holds its own repository is how the sausage is made, and the
-/// cross-section case the rule was really built for is closed by the compiler now that a
-/// section's repositories are <c>internal</c> to it (nobodies-collective/Humans#1064).
+/// The subject was every class in <c>Humans.Web</c>; it is the controller itself now,
+/// matched by <c>ControllerBase</c>. Deliberately no wider — who else inside a section
+/// holds its own repository is that section's business, and cross-section access is
+/// already impossible now that repositories are <c>internal</c>.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer

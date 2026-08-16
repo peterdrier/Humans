@@ -9,12 +9,9 @@ namespace Humans.Web.Tests.Infrastructure;
 /// at the same 42 assemblies (nobodies-collective/Humans#1064).
 /// </summary>
 /// <remarks>
-/// Discovery walks every exported type looking for <see cref="ISection"/>; the analyzer
-/// cannot afford that per compilation and does an O(1) metadata lookup of
-/// <c>Humans.&lt;Section&gt;.Section</c> instead. The two agree only while every section
-/// puts its entry point in its assembly's root namespace under that name. Move one and the
-/// analyzer stops seeing that project as a section — 22 rules go quiet inside it with a
-/// green build, the exact silent-drop this test exists to make loud.
+/// Discovery scans for <see cref="ISection"/>; the analyzer looks up
+/// <c>Humans.&lt;Section&gt;.Section</c> by name. Move an entry point and the analyzer stops
+/// seeing that project as a section, with a green build — this makes that loud.
 /// </remarks>
 public sealed class SectionEntryPointConventionTests
 {

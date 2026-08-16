@@ -20,11 +20,8 @@ internal static class AssemblyScope
     /// <c>Section : ISection</c> entry point that boot discovery registers.
     /// </summary>
     /// <remarks>
-    /// Looked up by metadata name (<c>Humans.&lt;Section&gt;.Section</c>) rather than by
-    /// walking every declared type, so the check stays O(1) per compilation. The name is
-    /// not the test — implementing <c>ISection</c> is — but the lookup has to start
-    /// somewhere, and <c>SectionEntryPointConventionTests</c> asserts all 42 sections put
-    /// their entry point where this expects it, so the two cannot drift apart silently.
+    /// Looked up by metadata name so the check stays O(1) per compilation;
+    /// <c>SectionEntryPointConventionTests</c> pins every section to that location.
     /// </remarks>
     public static bool IsSection(IAssemblySymbol assembly)
     {
