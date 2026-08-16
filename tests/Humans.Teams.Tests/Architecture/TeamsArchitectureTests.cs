@@ -1,9 +1,5 @@
-using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces;
-using Humans.Infrastructure.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
@@ -41,66 +37,8 @@ public class TeamsArchitectureTests
             .Should().BeTrue();
     }
 
-    [HumansFact]
-    public void ITeamRepository_InjectedOnlyInsideTeamsSection()
-    {
-        // Scans Application + Infrastructure + Web for any non-Teams class that
-        // injects ITeamRepository directly. NOT covered by the universal analyzers:
-        // HUM0017 (CrossSectionRepositoryInjectionAnalyzer) is Application-only and
-        // only fires on IApplicationService implementers; HUM0014 is Web-only;
-        // HUM0020 only covers caching decorators. A non-decorator Infrastructure
-        // class injecting ITeamRepository would otherwise go uncaught — this test
-        // pins that scope.
-        var assembliesToScan = new[]
-        {
-            typeof(TeamService).Assembly,                                // Humans.Teams
-            typeof(HumansMetricsService).Assembly,                       // Humans.Infrastructure
-            // Anchored on IFileStorage: Base's one key-addressed storage abstraction, which
-            // peters-hard-rules.md pins to Humans.Application. It was typeof(UserService) until
-            // that type moved into Humans.Users (#866, G5 lane 2) — an assembly anchor whose
-            // type leaves relocates the sweep silently onto the section (design §15 step 11).
-            typeof(IFileStorage).Assembly,                                // Humans.Application
-        };
-
-        var violations = new List<string>();
-        foreach (var assembly in assembliesToScan)
-        {
-            foreach (var type in assembly.GetTypes()
-                         .Where(t => t.IsClass && !t.IsAbstract))
-            {
-                if (IsTeamsSectionType(type))
-                    continue;
-
-                foreach (var ctor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    foreach (var parameter in ctor.GetParameters())
-                    {
-                        if (parameter.ParameterType == typeof(ITeamRepository))
-                        {
-                            violations.Add($"{type.FullName}:{parameter.ParameterType.Name}");
-                        }
-                    }
-                }
-            }
-        }
-
-        violations.Should().BeEmpty(
-            because: "non-Teams sections must read teams via ITeamService (cache-backed), not ITeamRepository (DB-direct). " +
-                     "T-02 (docs/plans/2026-05-16-cache-migration.md) removes the last bypass; this test pins the rule.");
-    }
-
-    private static bool IsTeamsSectionType(Type type)
-    {
-        var ns = type.Namespace;
-        if (ns is null)
-            return false;
-
-        // Teams section homes for production code that legitimately injects ITeamRepository:
-        //   - Humans.Teams.Services.*   (TeamService and helpers)
-        //   - Humans.Teams.Data.* (the EF impl itself)
-        return ns.StartsWith("Humans.Teams.Services", StringComparison.Ordinal)
-            || ns.StartsWith("Humans.Teams.Data", StringComparison.Ordinal);
-    }
+    // Cross-section injection of ITeamRepository is structurally impossible: the
+    // interface is internal to Humans.Teams, so no other assembly can name it.
 
     // ── ITeamServiceRead split (memory/architecture/section-read-write-split.md) ──
 
@@ -143,8 +81,4 @@ public class TeamsArchitectureTests
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
     }
-
-    // ── Section boundary (design §15 steps 3b and 5) ─────────────────────────
-
-
 }
