@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.EarlyEntry.Tests;
 
@@ -11,6 +10,17 @@ namespace Humans.EarlyEntry.Tests;
 /// </summary>
 public class EarlyEntryArchitectureTests
 {
+    [HumansFact]
+    public void SectionAssemblyDoesNotReferenceEntityFrameworkCore()
+    {
+        // Early Entry owns no tables — every grant is derived from its providers.
+        // Without an EF reference it can't even name a DbContext. Checking the reference
+        // catches the section gaining one; a constructor check would not.
+        typeof(Section).Assembly.GetReferencedAssemblies()
+            .Select(a => a.Name)
+            .Should().NotContain("Microsoft.EntityFrameworkCore",
+                because: "Early Entry derives every grant from its providers and owns no tables");
+    }
 
     [HumansFact]
     public void OrchestratorInjectsOnlyTheProviderFanout()

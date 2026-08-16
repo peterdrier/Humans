@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
-using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests;
@@ -13,6 +12,17 @@ namespace Humans.Cantina.Tests;
 /// </summary>
 public class CantinaArchitectureTests
 {
+    [HumansFact]
+    public void SectionAssemblyDoesNotReferenceEntityFrameworkCore()
+    {
+        // Cantina owns no tables — it reads everything through other sections' services.
+        // Without an EF reference it can't even name a DbContext. Checking the reference
+        // catches the section gaining one; a constructor check would not.
+        typeof(Section).Assembly.GetReferencedAssemblies()
+            .Select(a => a.Name)
+            .Should().NotContain("Microsoft.EntityFrameworkCore",
+                because: "Cantina composes over other sections' services and owns no tables");
+    }
 
     [HumansFact]
     public void RosterServiceReadsOtherSectionsThroughReadInterfaces()

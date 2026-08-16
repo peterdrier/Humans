@@ -2,13 +2,11 @@ using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
@@ -27,10 +25,6 @@ namespace Humans.Gate.Tests;
 /// </remarks>
 public class GateArchitectureTests
 {
-
-
-
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="IGateRepository"/>: the owning service
     /// and the repository implementation. A new consumer taking the repository directly would
@@ -99,5 +93,15 @@ public class GateArchitectureTests
                 because: "GuestUserId / ScannedByUserId / OverrideByUserId are re-pointed on account merge");
     }
 
+    [HumansFact]
+    public void SectionRegistersTheUserMergeForwarder()
+    {
+        // When two accounts are merged, Gate has to move its scan rows over to the
+        // surviving user. That only happens if this registration is present — drop it
+        // and the rows silently keep pointing at the account that went away.
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
 
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserMerge));
+    }
 }

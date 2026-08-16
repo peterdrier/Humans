@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Search.Services;
 
 namespace Humans.Search.Tests.Architecture;
@@ -34,25 +35,27 @@ public class SearchArchitectureTests
             because: "every SearchService dependency must be an interface to preserve its orchestrator shape");
     }
 
-    /// <summary>
-    /// No type anywhere in the section assembly takes an EF or repository dependency.
-    /// </summary>
-    /// <remarks>
-    /// The two tests above are about one constructor. An orchestrator section's claim is wider
-    /// than that — it owns no tables at all — so the sweep is over every type in the assembly
-    /// (Onboarding's restatement of Calendar's rule). Before the move this was implicitly true
-    /// because <c>Humans.Application</c> carries no EF reference; the section assembly is its
-    /// own compilation unit and nothing else would notice a repository arriving.
-    /// </remarks>
+    [HumansFact]
+    public void NoTypeInTheSectionTouchesDataAccess()
+    {
+        // Search owns no tables of its own — it asks other sections for their data.
+        // The test above only looks at one constructor; this looks at every type in
+        // the section, so a database dependency can't slip in through a new class.
+        var offenders = typeof(Section).Assembly.GetTypes()
+            .SelectMany(t => t.GetConstructors(
+                System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Instance))
+            .SelectMany(c => c.GetParameters().Select(p => (Ctor: c, Param: p)))
+            .Where(x => IsDataAccess(x.Param.ParameterType))
+            .Select(x => $"{x.Ctor.DeclaringType?.Name}.{x.Param.Name}")
+            .ToList();
 
-    /// <summary>
-    /// The assembly exports only <c>Section</c> and the resource marker; everything else is internal.
-    /// </summary>
-    /// <remarks>
-    /// States in the section's own terms what HUM0034 enforces mechanically, and what
-    /// <c>Contracts/README.md</c> explains in prose: nothing outside the section names a Search
-    /// type, so the only public surface is the DI entry point and the resource marker — the
-    /// latter public only because the boot localization diagnostic reads
-    /// <c>GetExportedTypes()</c>.
-    /// </remarks>
+        offenders.Should().BeEmpty(
+            because: "Search owns no tables: no type in the section may take a DbContext, an IDbContextFactory<> or a repository (peters-hard-rules: orchestrators do not call repositories)");
+
+        static bool IsDataAccess(Type t) =>
+            (t.Namespace ?? string.Empty).StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
+            || typeof(IRepository).IsAssignableFrom(t);
+    }
 }

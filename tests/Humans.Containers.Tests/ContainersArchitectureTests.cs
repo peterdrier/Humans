@@ -1,9 +1,8 @@
 using AwesomeAssertions;
-using Humans.Containers.Contracts;
 using Humans.Containers.Controllers;
-using Humans.Containers.Data;
 using Humans.Containers.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +14,14 @@ namespace Humans.Containers.Tests;
 /// </summary>
 public class ContainersArchitectureTests
 {
+    [HumansFact]
+    public void ContainerRoutes_HangOffTheCampSlug()
+    {
+        // Container pages always live under a camp: /Camp/{slug}/Containers.
+        // Change the route and every link and bookmark breaks.
+        // No page-render test visits these URLs, so this is the only check.
+        RouteFor<ContainerController>().Should().Be("Camp/{slug}/Containers");
+    }
 
     [HumansFact]
     public void ContainerController_RequiresAuthorization()
@@ -45,4 +52,11 @@ public class ContainersArchitectureTests
         new Section().Register(services, new ConfigurationBuilder().Build());
         return services;
     }
+
+    private static string RouteFor<TController>() =>
+        typeof(TController)
+            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .Cast<RouteAttribute>()
+            .Single()
+            .Template;
 }

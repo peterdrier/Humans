@@ -62,4 +62,24 @@ public class MonitorArchitectureTests
             because: "Monitor consumes AuditLog, GoogleIntegration and SystemSettings, plus the "
                      + "sanctioned User/UserInfo contracts, and nothing else");
     }
+
+    [HumansFact]
+    public void SectionOwnsNoDbContext()
+    {
+        // Monitor has no tables. It reads Google through GoogleIntegration and writes
+        // through the audit log. A DbContext turning up in any constructor here means
+        // the section quietly grew a database, which nothing else would catch.
+        var offenders = SectionAssembly
+            .GetTypes()
+            .SelectMany(t => t.GetConstructors()
+                .SelectMany(c => c.GetParameters())
+                .Select(param => (Type: t, param.ParameterType)))
+            .Where(x => x.ParameterType.FullName?.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal) == true)
+            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "Monitor owns no tables; a DbContext here means a table arrived without a section doc");
+    }
 }
