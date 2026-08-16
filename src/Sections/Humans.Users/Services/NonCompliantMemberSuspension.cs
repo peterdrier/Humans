@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -31,6 +32,7 @@ namespace Humans.Users.Services;
 /// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
+[CrossSectionWrite("Suspension removes the user from their team Google resources.")]
 internal sealed class NonCompliantMemberSuspension(
     IUserService userService,
     ITeamServiceRead teamService,

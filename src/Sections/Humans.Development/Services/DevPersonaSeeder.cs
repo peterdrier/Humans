@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
@@ -35,6 +36,7 @@ namespace Humans.Development.Services;
 /// team, role assignments, sample contact fields) also go through section
 /// ownership services, so this seeder no longer depends on DbContext writes.
 /// </summary>
+[CrossSectionWrite("Dev seeding creates teams, memberships and profiles.")]
 internal sealed class DevPersonaSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,

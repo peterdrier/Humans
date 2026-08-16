@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -22,6 +23,7 @@ namespace Humans.GoogleIntegration.Services;
 /// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
 /// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
 /// </summary>
+[CrossSectionWrite("Admin sync writes Google email status and group prefixes.")]
 internal sealed class GoogleAdminService(
     IGoogleWorkspaceUserService workspaceUserService,
     IGoogleSyncService googleSyncService,

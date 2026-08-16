@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
@@ -13,6 +14,7 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Services;
 
+[CrossSectionWrite("Ticket import writes participation onto the imported attendee's user.")]
 internal sealed class AttendeeContactImportService(
     ITicketRepository ticketRepository,
     IUserEmailService userEmails,

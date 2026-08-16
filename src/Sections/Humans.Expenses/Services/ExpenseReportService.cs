@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -28,6 +29,7 @@ namespace Humans.Expenses.Services;
 /// <see cref="IExpenseRepository"/>, audit logging, IBAN snapshots, and
 /// cross-section reads via interfaces — never imports EF Core directly.
 /// </summary>
+[CrossSectionWrite("Writes the reimbursement IBAN onto the claimant profile.")]
 internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,

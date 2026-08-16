@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Governance.Domain;
@@ -26,6 +27,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Governance.Services;
 
+[CrossSectionWrite("Approval sets the applicant membership tier.")]
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,

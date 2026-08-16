@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.UI.Models;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
@@ -45,6 +46,7 @@ namespace Humans.Users.Controllers;
 
 [Authorize]
 [Route("Profile")]
+[CrossSectionWrite("Profile submits and edits the member tier application.")]
 internal sealed class ProfileController(
     IUserService userService,
     UserManager<User> userManager,

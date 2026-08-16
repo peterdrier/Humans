@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.Configuration;
@@ -18,6 +19,7 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
+[CrossSectionWrite("Group sync writes Google email status back to the user.")]
 internal sealed class GoogleGroupSyncService(
     IEnumerable<IGoogleGroupMembershipSource> sources,
     IGoogleGroupMembershipClient membershipClient,

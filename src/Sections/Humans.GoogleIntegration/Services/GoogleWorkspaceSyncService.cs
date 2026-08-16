@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
@@ -25,6 +26,7 @@ namespace Humans.GoogleIntegration.Services;
 /// <see cref="IGoogleSyncService"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
 /// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
 /// </summary>
+[CrossSectionWrite("Workspace sync writes Google email status back to the user.")]
 internal sealed class GoogleWorkspaceSyncService(
     IGoogleGroupProvisioningClient groupProvisioning,
     IGoogleDrivePermissionsClient drivePermissions,

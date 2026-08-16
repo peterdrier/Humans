@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.CityPlanning.Contracts;
 using Humans.UI.Controllers;
@@ -15,6 +16,7 @@ namespace Humans.Camps.Controllers;
 [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
+[CrossSectionWrite("Camp admin edits the camp's city-planning registration.")]
 internal sealed class CampAdminController(
     ICampService campService,
     ICampRoleService campRoleService,

@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
@@ -27,6 +28,7 @@ namespace Humans.Gate.Services;
 /// back leaderboard/settings. The cutoff is always evaluated against the server
 /// clock (<see cref="IClock"/>), never a device clock.
 /// </summary>
+[CrossSectionWrite("A gate scan records participation for the scanned user.")]
 internal sealed class GateService(
     IGateRepository repository,
     ITicketServiceRead tickets,

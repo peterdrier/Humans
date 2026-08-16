@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.UI.Controllers;
 using System.Globalization;
 using System.Text.Json;
@@ -26,6 +27,7 @@ namespace Humans.Shifts.Controllers;
 
 [Authorize]
 [Route("Shifts")]
+[CrossSectionWrite("Rotates the user iCal token from the shifts calendar page.")]
 internal sealed class ShiftsController(
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,

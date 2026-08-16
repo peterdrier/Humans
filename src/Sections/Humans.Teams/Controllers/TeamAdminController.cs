@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,7 @@ namespace Humans.Teams.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}")]
+[CrossSectionWrite("Triggers a single-resource Google sync from the team admin page.")]
 internal sealed class TeamAdminController(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,

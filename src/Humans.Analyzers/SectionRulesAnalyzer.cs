@@ -23,6 +23,8 @@ namespace Humans.Analyzers;
 /// repository.</description></item>
 /// <item><term>HUM0020</term><description>A caching decorator calls the inner service, not
 /// the repository.</description></item>
+/// <item><term>HUM0032</term><description>Cross-section injection takes the read
+/// interface unless the class is marked [CrossSectionWrite].</description></item>
 /// </list>
 ///
 /// The first two are about a section's shape and self-gate on its entry point. The rest
@@ -39,6 +41,7 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
         DbContextOwnershipRule.Rule,
         TableOwnershipRule.Rule,
         CachingDecoratorRule.Rule,
+        CrossSectionReadRule.Rule,
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -54,6 +57,7 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
         DbContextOwnershipRule.Register(context);
         TableOwnershipRule.Register(context);
         CachingDecoratorRule.Register(context);
+        CrossSectionReadRule.Register(context);
 
         if (!AssemblyScope.IsSection(context.Compilation.Assembly))
             return;

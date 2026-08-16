@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,7 @@ namespace Humans.Consent.Services;
 /// directly after each successful repository write instead of relying on a
 /// cross-cutting SaveChanges interceptor (nobodies-collective/Humans#751).
 /// </summary>
+[CrossSectionWrite("Reads only; GetTeamsWithParentsAsync is not on ITeamServiceRead yet.")]
 internal sealed partial class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
     IGitHubLegalDocumentConnector gitHub,
