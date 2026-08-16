@@ -589,6 +589,23 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<PaidAttendeeTypePriceRow>> GetPaidAttendeeTypePriceRowsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Where(a =>
+                a.TicketOrder.PaymentStatus == TicketPaymentStatus.Paid &&
+                (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+            .Select(a => new PaidAttendeeTypePriceRow
+            {
+                TicketTypeName = a.TicketTypeName,
+                Price = a.Price,
+            })
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(
         CancellationToken ct = default)
     {

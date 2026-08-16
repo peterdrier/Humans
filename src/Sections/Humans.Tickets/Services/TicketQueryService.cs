@@ -359,10 +359,25 @@ internal sealed class TicketQueryService(
             })
             .ToList();
 
+        var attendees = await ticketRepository.GetPaidAttendeeTypePriceRowsAsync();
+
+        var byTicketType = attendees
+            .GroupBy(a => (a.TicketTypeName, a.Price))
+            .Select(g => new TicketTypeSalesAggregate
+            {
+                TicketTypeName = g.Key.TicketTypeName,
+                Price = g.Key.Price,
+                TicketsSold = g.Count(),
+                GrossRevenue = g.Sum(a => a.Price),
+            })
+            .OrderByDescending(t => t.GrossRevenue)
+            .ToList();
+
         return new TicketSalesAggregates
         {
             WeeklySales = weeklySales,
             QuarterlySales = quarterlySales,
+            ByTicketType = byTicketType,
         };
     }
 

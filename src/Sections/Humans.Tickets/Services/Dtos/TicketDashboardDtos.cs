@@ -67,6 +67,7 @@ internal sealed class TicketSalesAggregates
 {
     public List<WeeklySalesAggregate> WeeklySales { get; init; } = [];
     public List<QuarterlySalesAggregate> QuarterlySales { get; init; } = [];
+    public List<TicketTypeSalesAggregate> ByTicketType { get; init; } = [];
 }
 
 internal sealed class WeeklySalesAggregate
@@ -91,6 +92,14 @@ internal sealed class QuarterlySalesAggregate
     public decimal Donations { get; init; }
     public decimal VatAmount { get; init; }
     public decimal VipDonations { get; init; }
+}
+
+internal sealed class TicketTypeSalesAggregate
+{
+    public string TicketTypeName { get; init; } = string.Empty;
+    public decimal Price { get; init; }
+    public int TicketsSold { get; init; }
+    public decimal GrossRevenue { get; init; }
 }
 
 /// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>
@@ -268,6 +277,16 @@ internal sealed class PaidOrderSalesRow
     public decimal VatAmount { get; init; }
     public int AttendeeCount { get; init; }
     public decimal VipDonations { get; init; }
+}
+
+/// <summary>
+/// Narrow per-attendee projection used to aggregate sales by ticket type and
+/// price. One row per Valid/CheckedIn attendee on a paid order.
+/// </summary>
+internal sealed class PaidAttendeeTypePriceRow
+{
+    public string TicketTypeName { get; init; } = string.Empty;
+    public decimal Price { get; init; }
 }
 
 /// <summary>
