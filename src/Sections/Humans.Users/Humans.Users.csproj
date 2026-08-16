@@ -19,11 +19,6 @@
     <!-- Same shape, same expiry: Shell-level tests over the moved controllers. -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
-      Same shape, same expiry: ContactFieldTests and ProfileTests are two of the 43 test files
-      lane 2 phase 3 moves into tests/Humans.Users.Tests.
-    -->
-    <InternalsVisibleTo Include="Humans.Domain.Tests" />
-    <!--
       Three unmoved sections' harnesses seed this section's rows through an in-memory
       UsersDbContext (Teams' two-way pattern, design §15 step 8). Each drops out at the lane
       that stops its harness building another section's context directly.
