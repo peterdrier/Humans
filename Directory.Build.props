@@ -91,8 +91,13 @@
     <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200;HUM_USER_NORMALIZEDEMAIL</NoWarn>
   </PropertyGroup>
 
-  <!-- Embed git commit hash into InformationalVersion at build time (skip when already set via -p:SourceRevisionId) -->
-  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation" Condition="'$(SourceRevisionId)' == ''">
+  <!--
+    Humans.Web is the only assembly that displays the revision at runtime. Resolving it
+    for every class library and test project runs a git process per project and makes
+    no-change solution builds needlessly expensive.
+  -->
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation"
+          Condition="'$(SourceRevisionId)' == '' and '$(MSBuildProjectName)' == 'Humans.Web'">
     <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardErrorImportance="low">
       <Output TaskParameter="ConsoleOutput" PropertyName="SourceRevisionId" />
     </Exec>
