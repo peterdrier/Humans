@@ -3,8 +3,9 @@
   <!--
     Notifications' cross-section surface, carved into its own leaf project because most of
     its consumers are still in Base: eleven Humans.Application services emit through
-    INotificationEmitter, AccountMergeService and GoogleResourceReconciliationJob take
-    INotificationService, ConsentService and HumanLifecycleService auto-resolve through
+    INotificationEmitter, AccountMergeService takes INotificationService (as does
+    GoogleResourceReconciliationJob, from Humans.GoogleIntegration since the G5 jobs move),
+    ConsentService and HumanLifecycleService auto-resolve through
     INotificationAutoResolve. A Contracts/ *folder* inside Humans.Notifications would
     therefore make Base reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).

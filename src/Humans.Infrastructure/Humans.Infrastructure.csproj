@@ -60,8 +60,13 @@
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!--
+      GoogleIntegration's contracts leaf survives the G5 jobs move for HumansMetricsService
+      alone; the three Google jobs that also used it went to their sections
+      (nobodies-collective/Humans#866). Humans.Monitor.Contracts came out in the same move —
+      DriveActivityMonitorJob was its only consumer here.
+    -->
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Monitor.Contracts\Humans.Monitor.Contracts.csproj" />
     <!--
       Tickets' contracts leaf: AdminDatabaseDiagnosticsService reads the order projection,
       TicketSyncJob drives ITicketSync, and GateVendorCheckInJob mirrors a gate admission

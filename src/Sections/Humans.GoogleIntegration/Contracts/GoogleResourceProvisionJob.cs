@@ -1,12 +1,17 @@
-using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Background job that provisions Google Drive resources.
 /// </summary>
+/// <remarks>
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at the G5 jobs move
+/// (nobodies-collective/Humans#866). It has no enqueue site anywhere in <c>src/</c> — see the
+/// 2026-08-05 debt-ledger entry, which is still open on "wire it or delete it". The move keeps
+/// it exactly as dead as it was; it does not settle that question.
+/// </remarks>
 public class GoogleResourceProvisionJob(
     IGoogleSyncService googleService,
     IHumansMetrics metrics,

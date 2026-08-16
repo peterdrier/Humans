@@ -4,8 +4,10 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Email.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Infrastructure.Jobs;
 using Humans.Issues.Contracts;
+using Humans.Monitor.Contracts;
 using Humans.Notifications.Contracts;
 
 namespace Humans.Web.Extensions;

@@ -6,8 +6,8 @@
     the Shifts services, GoogleIntegration's TeamResourceService / GoogleAdminService /
     GoogleGroupSyncService / GoogleWorkspaceSyncService, AccountDeletionService and
     DuplicateAccountService all read through ITeamServiceRead or ITeamService, and
-    HumansMetricsService, SystemTeamSyncJob, SuspendNonCompliantMembersJob and
-    ProcessGoogleSyncOutboxJob do the same from Humans.Infrastructure. A Contracts/ *folder*
+    HumansMetricsService, SystemTeamSyncJob and SuspendNonCompliantMembersJob do the same
+    from Humans.Infrastructure. A Contracts/ *folder*
     inside Humans.Teams would therefore make Base reference a section and cycle
     (design §15.5b, memory/architecture/section-project-cycle-fix.md).
 
