@@ -37,7 +37,7 @@ Google Group membership is reconciled as expected state from application-owned s
 
 ## Reconciliation Modes
 
-`ReconcileAllAsync` is the daily, hourly system-team-sync, and bulk preview/execute path. It loads every source claim, hydrates expected users once for the pass, records per-group errors, and schedules the capped scoped retry path for groups that fail during Execute.
+`ReconcileAllAsync` is the daily, hourly teams-system-sync, and bulk preview/execute path. It loads every source claim, hydrates expected users once for the pass, records per-group errors, and schedules the capped scoped retry path for groups that fail during Execute.
 
 `ReconcileOneAsync` is the scoped path used by per-row Execute and queued Hangfire requests after team membership or Google-email changes. On Google API failure during Execute, it schedules delayed retries for the same group key, capped at five scoped retry attempts.
 

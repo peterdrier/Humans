@@ -66,7 +66,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();
         services.AddScoped<CleanupIssuesJob>();
-        // Added at G5 lane 5b-1: "cleanup-notifications" is in UseHumansRecurringJobs' roll-call
+        // Added at G5 lane 5b-1: "notifications-cleanup" is in UseHumansRecurringJobs' roll-call
         // but CleanupNotificationsJob had no DI registration anywhere, so Hangfire's
         // AspNetCoreJobActivator (GetRequiredService by concrete type) threw on every daily tick.
         services.AddScoped<CleanupNotificationsJob>();
@@ -80,6 +80,11 @@ public static class InfrastructureServiceCollectionExtensions
         // drain is Expenses' body and is unchanged.
         services.AddScoped<HoldedSyncJob>();
         services.AddScoped<HoldedExpenseOutboxJob>();
+        // Same miss as CleanupNotificationsJob above: the job was in the roll-call from the day
+        // it shipped but was never registered, so the nightly purge threw instead of running and
+        // no agent conversation has ever been deleted. A test now fails if a roll-call job has
+        // no registration (Humans.Integration.Tests DiResolutionSmokeTests).
+        services.AddScoped<AgentConversationRetentionJob>();
 
         // ActiveTeamsCacheInvalidator used to be registered here as a Base collaborator Teams'
         // section file registered on the way past. G5 lane 3a-1 re-measured that: its six

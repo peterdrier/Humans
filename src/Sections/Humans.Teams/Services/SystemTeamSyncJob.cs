@@ -31,7 +31,7 @@ namespace Humans.Teams.Services;
 /// eligibility inputs and downstream effects, consumed through their contracts leaves.
 /// <para>
 /// <c>ISystemTeamSync</c> deliberately did NOT move: it is the type Hangfire serializes for
-/// the <c>system-team-sync</c> recurring job (<c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;</c>),
+/// the <c>teams-system-sync</c> recurring job (<c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;</c>),
 /// so its assembly-qualified name is pinned. The implementation is resolved from DI at
 /// execution time and is free to live here.
 /// </para>

@@ -190,7 +190,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 - When a survey is created / updated / opened / closed, an audit entry is written via `IAuditLogService.LogAsync` (`AuditAction.SurveyCreated` / `SurveyUpdated` / `SurveyOpened` / `SurveyClosed`).
 - When invitations are sent, net-new `SurveyInvitation` rows are created, each email is queued via `IEmailService.SendAsync` with `IEmailMessageFactory.SurveyInvitation` in the recipient's preferred language (`SentAt`+`LatestEmailStatus=Queued`; `Failed` on a synchronous throw), and one `AuditAction.SurveyInvitesSent` entry is logged.
-- When the daily `survey-reminder` recurring job (`SendSurveyReminderJob`, cron `0 9 * * *`) runs, `SurveyService.SendDueRemindersAsync` queues one `IEmailMessageFactory.SurveyReminder` per due invitee, stamps `ReminderSentAt`, and logs `AuditAction.SurveyReminderSent` (job actor). The job touches no repository.
+- When the daily `surveys-reminder` recurring job (`SendSurveyReminderJob`, cron `0 9 * * *`) runs, `SurveyService.SendDueRemindersAsync` queues one `IEmailMessageFactory.SurveyReminder` per due invitee, stamps `ReminderSentAt`, and logs `AuditAction.SurveyReminderSent` (job actor). The job touches no repository.
 - When a response is submitted, the response + answers are written in one save; `Invitation.Completed` is flipped for Identified/CompletionTracked. **No audit entry** is written for the submission.
 - When the invited wizard advances past the intro, `Invitation.Started` is set; on the public path, `Survey.PublicStartedCount` is incremented.
 - When the GDPR export runs, `SurveyService` (as `IUserDataContributor`) contributes the user's **Identified** responses under `GdprExportSections.SurveyResponses`.
