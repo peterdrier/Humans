@@ -5,8 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Issues.Data;
 using Humans.Issues.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 using IssuesService = Humans.Issues.Services.IssuesService;
 
 namespace Humans.Issues.Tests.Architecture;

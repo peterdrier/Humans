@@ -1,9 +1,6 @@
 using AwesomeAssertions;
-using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
-using Humans.Campaigns.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Campaigns.Tests.Architecture;
 

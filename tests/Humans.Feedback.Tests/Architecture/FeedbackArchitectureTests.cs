@@ -4,9 +4,7 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Feedback.Data;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
 
 namespace Humans.Feedback.Tests.Architecture;
@@ -28,8 +26,6 @@ namespace Humans.Feedback.Tests.Architecture;
 /// </remarks>
 public class FeedbackArchitectureTests
 {
-
-
     // ── FeedbackService ──────────────────────────────────────────────────────
 
     // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.

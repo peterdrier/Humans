@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Guide.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Guide.Tests;
 
@@ -17,7 +15,6 @@ namespace Humans.Guide.Tests;
 /// </remarks>
 public class GuideArchitectureTests
 {
-
     [HumansFact]
     public void RoleResolverReadsTeamsViaTheReadInterface()
     {

@@ -1,14 +1,9 @@
 using System.Reflection;
 using Humans.Consent.Data;
-using Humans.Consent.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
-using Humans.UI;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Consent.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
@@ -47,8 +42,6 @@ namespace Humans.Consent.Tests.Architecture;
 /// </summary>
 public sealed class ConsentArchitectureTests
 {
-    // ── ConsentService ───────────────────────────────────────────────────────
-
     // ── IConsentRepository ───────────────────────────────────────────────────
 
     /// <summary>

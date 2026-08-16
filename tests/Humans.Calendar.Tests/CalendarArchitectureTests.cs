@@ -5,9 +5,6 @@ using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Calendar.Tests;
 

@@ -11,7 +11,6 @@ namespace Humans.Users.Tests.Architecture;
 /// </summary>
 public class HumanLifecycleArchitectureTests
 {
-
     [HumansFact]
     public void HumanLifecycleService_DependsOnlyOnServiceInterfaces()
     {

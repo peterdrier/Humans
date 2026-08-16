@@ -3,7 +3,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Email.Tests;
 
@@ -90,6 +89,4 @@ public class EmailArchitectureTests
             .Should().Be("Humans.Email.Services");
         typeof(IEmailBodyComposer).IsPublic.Should().BeFalse();
     }
-
-    // ── IEmailService surface (issue #712) ──────────────────────────────────
 }

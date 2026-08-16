@@ -22,8 +22,6 @@ namespace Humans.Tickets.Tests.Architecture;
 /// </summary>
 public class TicketQueryArchitectureTests
 {
-    // ── TicketQueryService (inner) ───────────────────────────────────────────
-
     // ── CachingTicketQueryService (decorator) ────────────────────────────────
 
     [HumansFact]
@@ -109,5 +107,4 @@ public class TicketQueryArchitectureTests
         paramTypes.Should().Contain(typeof(ITicketCacheInvalidator),
             because: "TicketSyncService drives InvalidateAll (post-sync) and InvalidateAfterUserMerge (ReassignAsync) — it must take the seam through DI so the decorator owns cache eviction");
     }
-
 }

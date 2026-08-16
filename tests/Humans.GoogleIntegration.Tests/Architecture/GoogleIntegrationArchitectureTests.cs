@@ -1,15 +1,9 @@
 using AwesomeAssertions;
 using EmailProvisioningService = Humans.GoogleIntegration.Services.EmailProvisioningService;
 using GoogleGroupSyncService = Humans.GoogleIntegration.Services.GoogleGroupSyncService;
-using GoogleRemovalNotificationService = Humans.GoogleIntegration.Services.GoogleRemovalNotificationService;
 using GoogleWorkspaceSyncService = Humans.GoogleIntegration.Services.GoogleWorkspaceSyncService;
-using SyncSettingsService = Humans.GoogleIntegration.Services.SyncSettingsService;
 using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using System.Reflection;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;
 
@@ -43,8 +37,6 @@ public class GoogleIntegrationArchitectureTests
             because: "User mutations go through IUserService (design-rules §9); UserManager is an Identity-framework concern that belongs to controllers/AccountProvisioningService");
     }
 
-    // ── GoogleWorkspaceSyncService (§15 Part 2b, issue #575) ─────────────────
-
     // ── GoogleGroupSyncService ──────────────────────────────────────────────
 
     [HumansFact]
@@ -65,19 +57,4 @@ public class GoogleIntegrationArchitectureTests
         // in Humans.Application. The section owns the Google.Apis.* packages now, so the
         // statement moved down to the type (G5-SECTION-TEMPLATE.md step 11).
         GoogleSdkContainment.AssertNamesNoGoogleSdkType(typeof(GoogleGroupSyncService));
-
-    // ── GoogleRemovalNotificationService (issue #639) ────────────────────────
-
-    // ── SyncSettingsService (§15 Phase 0, issue #554) ────────────────────────
-
-    // ── Resource set (G5-SECTION-TEMPLATE.md step 3b) ────────────────────────
-
-    /// <summary>
-    /// The section carved the three <c>GoogleAccounts_*</c> keys out of
-    /// <c>SharedResource</c> at its G5 move. <c>Views/_ViewImports.cshtml</c> rebinds
-    /// <c>Localizer</c> for every view in one line, so the views are safe by construction —
-    /// a controller or service that still takes <c>IStringLocalizer&lt;SharedResource&gt;</c>
-    /// keeps compiling and renders those keys as their own names, on a failure path no
-    /// render test reaches. Asserted structurally instead.
-    /// </summary>
 }

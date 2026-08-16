@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Xunit;
 using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
-using ShiftViewService = Humans.Shifts.Services.ShiftViewService;
 using VolunteerTrackingService = Humans.Shifts.Services.VolunteerTrackingService;
 
 namespace Humans.Shifts.Tests.Architecture;
@@ -23,8 +22,6 @@ public class ShiftViewArchitectureTests
         typeof(ShiftManagementService),
         typeof(VolunteerTrackingService)
     ];
-
-    // ── ShiftViewService (inner, Scoped) ─────────────────────────────────────
 
     // ── CachingShiftViewService (Singleton decorator) ────────────────────────
 

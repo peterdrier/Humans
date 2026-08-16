@@ -1,7 +1,4 @@
 using AwesomeAssertions;
-using Humans.Gdpr.Contracts;
-using Humans.Gdpr.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Gdpr.Tests;
 

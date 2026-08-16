@@ -1,11 +1,6 @@
-using Humans.Auth.Contracts;
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests;
 
@@ -25,14 +20,10 @@ namespace Humans.Notifications.Tests;
 /// </summary>
 public class NotificationsArchitectureTests
 {
-    private static IEnumerable<Type> SectionTypes =>
-        typeof(Section).Assembly.GetTypes().Where(t => !t.IsNested);
-
     // ── NotificationService ──────────────────────────────────────────────────
 
     // The DbContext-constructor-parameter check is covered by the generic
     // ApplicationServicesTakeNoDbContextRule for every Application service.
-    // Service-namespace check covered by HUM0012.
 
     [HumansFact]
     public void NotificationService_TakesRecipientResolver_NotDbContext()
@@ -64,10 +55,6 @@ public class NotificationsArchitectureTests
         paramTypes.Should().Contain(typeof(INotificationRepository));
         paramTypes.Should().Contain(p => p.Name == "IUserServiceRead");
     }
-
-    // ── NotificationMeterProvider ────────────────────────────────────────────
-
-    // ── Section boundary (G5) ────────────────────────────────────────────────
 
     // ── INotificationRepository ──────────────────────────────────────────────
 

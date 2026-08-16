@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Mailer.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Mailer.Tests.Architecture;
 
@@ -57,15 +56,6 @@ public class MailerArchitectureTests
         SectionAssembly.GetReferencedAssemblies()
             .Should().NotContain(a => string.Equals(a.Name, "Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
     }
-
-    /// <summary>
-    /// Mailer ships no resource set at all — its two admin pages are English operator copy
-    /// with not one <c>Localizer[…]</c> call — so the guard is Gate's stricter form: no type
-    /// in the section may take <see cref="IStringLocalizer{T}"/> for <em>any</em>
-    /// <c>T</c>. The day someone adds localized copy, the build says "carve a resource set
-    /// first" instead of silently resolving against Shell's ambient
-    /// <c>SharedResource</c>, which a section RCL cannot see anyway.
-    /// </summary>
 
     [HumansFact]
     public void AllAudiences_UseHumansPrefix()

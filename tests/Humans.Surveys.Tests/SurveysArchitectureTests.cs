@@ -1,13 +1,7 @@
 using AwesomeAssertions;
-using Humans.Gdpr.Contracts;
-using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Tests;
 
@@ -25,9 +19,6 @@ namespace Humans.Surveys.Tests;
 /// </remarks>
 public class SurveysArchitectureTests
 {
-
-
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="ISurveyRepository"/>: the owning service
     /// and the repository implementation. A new consumer taking the repository directly would

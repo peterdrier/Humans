@@ -1,9 +1,7 @@
-using System.Reflection;
 using AwesomeAssertions;
 using GoogleWorkspaceUserService = Humans.GoogleIntegration.Services.GoogleWorkspaceUserService;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;
@@ -20,8 +18,6 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 /// </summary>
 public class GoogleWorkspaceUserArchitectureTests
 {
-    // ── GoogleWorkspaceUserService ───────────────────────────────────────────
-
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]

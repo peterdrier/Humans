@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Monitor.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Monitor.Services;
@@ -17,8 +16,6 @@ namespace Humans.Monitor.Tests.Architecture;
 /// </summary>
 public class DriveActivityMonitorArchitectureTests
 {
-    // ── DriveActivityMonitorService ──────────────────────────────────────────
-
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]
@@ -94,5 +91,4 @@ public class DriveActivityMonitorArchitectureTests
             }
         }
     }
-
 }

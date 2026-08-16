@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Auth.Data;
 using Humans.Auth.Services;
 
 namespace Humans.Auth.Tests.Architecture;
@@ -23,8 +22,6 @@ namespace Humans.Auth.Tests.Architecture;
 /// </remarks>
 public class AuthArchitectureTests
 {
-    private static System.Reflection.Assembly SectionAssembly => typeof(IRoleAssignmentRepository).Assembly;
-
     // SectionReferencesNoVerticalSection was retired here at nobodies-collective/Humans#866 G5
     // lane 4b-2i, the same call and for the same reason lane 4b-2h made in
     // AuditLogArchitectureTests. It pinned Humans.Auth.GetReferencedAssemblies() to exactly
@@ -46,10 +43,10 @@ public class AuthArchitectureTests
     [HumansFact]
     public void ContractsLeafNamesNoAspNetType()
     {
-        // The leaf is framework-free by construction so Base consumers can name it without
-        // dragging ASP.NET in; the one piece of Auth's public surface that needs
-        // Microsoft.AspNetCore.Authorization (RoleAssignmentOperationRequirement) lives in
-        // Humans.Auth's own Contracts/ *folder* instead — Tickets' both-halves split.
+        // Nothing in the project setup keeps ASP.NET out of this contracts project — the
+        // framework reference reaches it anyway through Humans.Interfaces, so it would
+        // compile against ASP.NET types happily. This test is the only thing stopping it,
+        // which is what lets anything in Base name the leaf without dragging ASP.NET in.
         var leafRefs = typeof(Contracts.IRoleAssignmentService).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
@@ -57,7 +54,7 @@ public class AuthArchitectureTests
             .ToList();
 
         leafRefs.Should().BeEmpty(
-            because: "Humans.Auth.Contracts is a framework-free leaf (Microsoft.NET.Sdk)");
+            because: "Humans.Auth.Contracts must stay free of ASP.NET types");
     }
 
     // --- The two rules that followed MagicLinkService in from Humans.Application.Tests. ---

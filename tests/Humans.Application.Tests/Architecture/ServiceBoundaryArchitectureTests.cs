@@ -1,4 +1,3 @@
-using Humans.Teams.Data;
 using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
@@ -7,7 +6,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Architecture;
 

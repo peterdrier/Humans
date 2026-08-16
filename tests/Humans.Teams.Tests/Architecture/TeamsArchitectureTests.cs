@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
@@ -26,8 +25,6 @@ namespace Humans.Teams.Tests;
 /// </summary>
 public class TeamsArchitectureTests
 {
-    // ── TeamService ──────────────────────────────────────────────────────────
-
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]

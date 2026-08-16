@@ -28,8 +28,6 @@ namespace Humans.Camps.Tests.Architecture;
 /// </summary>
 public class CampsArchitectureTests
 {
-    // ── CampService (inner) ──────────────────────────────────────────────────
-
     // ── CachingCampService (T-06 decorator) ──────────────────────────────────
 
     [HumansFact]

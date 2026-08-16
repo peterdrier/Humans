@@ -1,13 +1,6 @@
 using AwesomeAssertions;
-using Humans.Agent.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Domain;
-using Humans.Agent.Services;
-using Humans.Gdpr.Contracts;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Humans.Users.Contracts;
 
 namespace Humans.Agent.Tests;
 
@@ -25,10 +18,6 @@ namespace Humans.Agent.Tests;
 /// </remarks>
 public class AgentArchitectureTests
 {
-
-
-
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="IAgentRepository"/>: the owning service
     /// and the repository implementation. A new consumer taking the repository directly would
@@ -68,6 +57,4 @@ public class AgentArchitectureTests
         typeof(AgentConversation).GetProperty("UserId").Should().NotBeNull();
         typeof(AgentMessage).GetProperty("HandedOffToFeedbackId").Should().NotBeNull();
     }
-
-
 }

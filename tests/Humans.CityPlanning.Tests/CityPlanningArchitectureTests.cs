@@ -1,8 +1,5 @@
 using AwesomeAssertions;
-using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
-using Humans.CityPlanning.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -26,7 +23,6 @@ namespace Humans.CityPlanning.Tests;
 /// </remarks>
 public class CityPlanningArchitectureTests
 {
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="ICityPlanningRepository"/>: the owning
     /// service and the repository implementation. A new consumer taking the repository directly
