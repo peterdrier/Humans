@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.CityPlanning.Data;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -78,5 +79,19 @@ public class CityPlanningArchitectureTests
             .ToList();
 
         offenders.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void ApiControllerKeepsItsRoutePrefix()
+    {
+        // The city-planning JavaScript hard-codes this URL (main.js and container-map/api.js
+        // both fetch /api/city-planning/...). Change the prefix and the maps silently stop
+        // loading. The page controller's own prefix is covered by the render tests, which
+        // request /CityPlanning URLs; nothing requests the API one.
+        typeof(Section).Assembly.GetType("Humans.CityPlanning.Controllers.CityPlanningApiController")!
+            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .Cast<RouteAttribute>()
+            .Single().Template
+            .Should().Be("api/city-planning");
     }
 }

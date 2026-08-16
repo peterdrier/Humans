@@ -27,6 +27,8 @@ public static class RecurringJobExtensions
         var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
         var jobs = BuildRollCall(app.Configuration, registry);
 
+        var allScheduled = true;
+
         foreach (var job in jobs)
         {
             try
@@ -45,14 +47,28 @@ public static class RecurringJobExtensions
             catch (Exception ex)
             {
                 // Don't let a stale distributed lock prevent the app from starting.
-                // Existing job registrations in the DB will continue running.
+                allScheduled = false;
                 logger.LogWarning(ex, "Failed to register recurring job '{JobId}' — will retry on next restart", job.Id);
             }
         }
 
         // Must run after the loop above: renaming a job id means writing the new entry
         // first and then sweeping the old one away.
-        RemoveJobsMissingFromRollCall(jobs, logger);
+        //
+        // Only sweep when every job was written. If one failed, its old entry is still the
+        // only working copy of that schedule, and we can't tell which stored id belongs to
+        // the job that failed — removing it would stop the job until a later restart
+        // happens to succeed. Skipping a sweep just leaves a dead entry around one more
+        // boot, which is harmless.
+        if (allScheduled)
+        {
+            RemoveJobsMissingFromRollCall(jobs, logger);
+        }
+        else
+        {
+            logger.LogWarning(
+                "Skipped sweeping unknown recurring jobs because at least one schedule failed to register");
+        }
     }
 
     /// <summary>
