@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
+using Humans.Camps.Resources;
 using Humans.Camps.Services;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
@@ -31,7 +32,8 @@ public class CampControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
-    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
     [HumansFact]
     public async Task Index_BuildsPublicDirectory_FromCachedCampInfoRead()
@@ -214,7 +216,8 @@ public class CampControllerTests
             _authorization,
             _clock,
             NullLogger<CampController>.Instance,
-            _localizer);
+            _campsLocalizer,
+            _sharedLocalizer);
 
         var services = new ServiceCollection();
         services.AddLogging();

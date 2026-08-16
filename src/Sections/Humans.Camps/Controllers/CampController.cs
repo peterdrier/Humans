@@ -10,6 +10,7 @@ using Humans.Application;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Camps.Resources;
 using Humans.Camps.Services;
 using Humans.UI;
 
@@ -31,7 +32,8 @@ internal sealed class CampController(
     IAuthorizationService authorizationService,
     IClock clock,
     ILogger<CampController> logger,
-    IStringLocalizer<SharedResource> localizer)
+    IStringLocalizer<CampsResource> campsLocalizer,
+    IStringLocalizer<SharedResource> sharedLocalizer)
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
     private readonly ICampService _campService = campService;
@@ -311,16 +313,16 @@ internal sealed class CampController(
 
             if (result.RateLimited)
             {
-                SetError(localizer["Camp_Contact_RateLimited"].Value);
+                SetError(campsLocalizer["Camp_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(localizer["Camp_Contact_Success"].Value, campDisplayName));
+            SetSuccess(string.Format(campsLocalizer["Camp_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
-            SetError(localizer["Common_Error"].Value);
+            SetError(sharedLocalizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -1314,7 +1316,7 @@ internal sealed class CampController(
         if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
-                localizer["Validation_PhoneE164", "Contact Phone"].Value);
+                sharedLocalizer["Validation_PhoneE164", "Contact Phone"].Value);
         }
     }
 
