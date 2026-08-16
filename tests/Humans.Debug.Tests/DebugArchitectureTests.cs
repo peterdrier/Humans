@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Debug.Tests;
 
@@ -44,9 +42,9 @@ public class DebugArchitectureTests
         // Everything the diagnostics pages read is a singleton some other section already
         // registered. If a registration shows up here, Debug has grown a service of its own
         // and that is worth a second look rather than a green build.
-        var services = new ServiceCollection();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
 
-        new Section().Register(services, new ConfigurationBuilder().Build());
+        new Section().Register(services, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
 
         services.Should().BeEmpty();
     }

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.TicketTailor.Services;
 
 namespace Humans.TicketTailor.Tests.Architecture;
 

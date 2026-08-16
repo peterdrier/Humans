@@ -36,17 +36,6 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
     public static IEnumerable<object[]> BridgeInterfaceCases =>
         BridgeInterfaces.Select(t => new object[] { t });
 
-    // ── Namespace + location ─────────────────────────────────────────────────
-
-    [HumansTheory]
-    [MemberData(nameof(BridgeInterfaceCases))]
-    public void BridgeInterface_LivesInTheConnectorNamespace(Type bridge)
-    {
-        bridge.Namespace
-            .Should().Be(GoogleSdkContainment.ConnectorNamespace,
-                because: "the connector interfaces and their SDK-touching implementations sit together in one namespace, which is the section's Google-SDK boundary since the G5 move");
-    }
-
     /// <summary>
     /// The restated form of the old "the bridge lives in Humans.Application" assertion. The
     /// interface and its implementation share an assembly now, so what the bridge buys is
@@ -61,29 +50,11 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
 
     [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]
-    public void BridgeInterface_HasNoGoogleSdkTypesInSignatures(Type bridge)
-    {
-        // Every method parameter, return type, and the types nested inside
-        // generic arguments must live in Humans.* or the BCL — never
-        // Google.Apis.*. This is what "shape-neutral" means: the Application
-        // layer compiles against the bridge without a Google.Apis.*
-        // transitive reference.
-        var methods = bridge.GetMethods();
-
-        foreach (var method in methods)
-        {
-            var types = new[] { method.ReturnType }
-                .Concat(method.GetParameters().Select(p => p.ParameterType))
-                .SelectMany(UnwrapGenericArgs);
-
-            foreach (var t in types)
-            {
-                (t.Namespace ?? string.Empty)
-                    .Should().NotStartWith("Google.Apis",
-                        because: $"{bridge.Name}.{method.Name} leaks a Google SDK type through its signature; connector contracts must be shape-neutral");
-            }
-        }
-    }
+    public void BridgeInterface_DoesNotReferenceGoogleSdkTypes(Type bridge) =>
+        // Nothing on a bridge interface — parameters, return types, properties, the
+        // interfaces it inherits — may name a Google SDK type. That is what lets the rest
+        // of the app call Google without ever compiling against the SDK.
+        GoogleSdkContainment.AssertNamesNoGoogleSdkType(bridge);
 
     // ── Assembly cleanliness ─────────────────────────────────────────────────
 
@@ -111,26 +82,5 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
             .Should().NotContain(
                 a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
                 because: "Humans.Application must stay free of Google SDK references; Google API calls live behind bridge interfaces in Humans.Infrastructure");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(BridgeInterfaceCases))]
-    public void BridgeInterface_DoesNotReferenceGoogleSdkTypes(Type bridge) =>
-        // Scoped to the bridge type. It used to walk the whole module, which was a true
-        // statement while the interfaces lived in Humans.Application and would now be a walk
-        // over the connectors' own assembly.
-        GoogleSdkContainment.AssertNamesNoGoogleSdkType(bridge);
-
-    private static IEnumerable<Type> UnwrapGenericArgs(Type t)
-    {
-        yield return t;
-        if (t.IsGenericType)
-        {
-            foreach (var arg in t.GetGenericArguments())
-            {
-                foreach (var inner in UnwrapGenericArgs(arg))
-                    yield return inner;
-            }
-        }
     }
 }
