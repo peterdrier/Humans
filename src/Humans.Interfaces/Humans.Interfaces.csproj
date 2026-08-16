@@ -1,4 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!--
+      G5 lane 4b-iii B. MVC views/partials/view components, not Blazor components — the same
+      pair Humans.UI carried, moved verbatim with the Razor half of that project. Razor binds
+      tag helpers, view components and SharedResource by ASSEMBLY name, so those files could
+      only follow their namespace down here once this project could compile .cshtml.
+    -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
 
   <!--
     Lowest-level project: system marker interfaces, architecture attributes, and
@@ -48,6 +58,15 @@
     Razor file binds by ASSEMBLY name (tag helpers, view components, views, SharedResource
     and its resx set); lane B takes those with the SDK change.
 
+    G5 lane 4b-iii B then brought that Razor half down and emptied Humans.UI: the four
+    TagHelpers/, the five ViewComponents/ and their four Views/Shared/Components/**/Default.cshtml,
+    the ten Views/Shared/ partials, Views/_ViewImports.cshtml, TranslationsGalleryViewModel
+    (it takes IStringLocalizer<SharedResource>, so it could only follow the resx) and
+    Resources/ — SharedResource.cs beside its seven .resx files, folder layout untouched.
+    Namespaces are still Humans.UI.*, so no `using`, `@using` or analyzer constant moved; the
+    48 `@addTagHelper *, Humans.UI` directives under src/ became `*, Humans.Interfaces`
+    because that directive names an ASSEMBLY, not a namespace.
+
     G5 lane 3a-2 followed with the AddSectionDbContext cluster: the generic registration seam
     (SectionDbContextServiceCollectionExtensions), SectionDbContextRegistration,
     SectionMigrationRunner, DatabaseMigrationHostedService, PreMigrationSnapshot,
@@ -66,15 +85,18 @@
     are internal and were already visible to these two test assemblies from there.
   -->
   <!--
-    Microsoft.NET.Sdk.Web puts these in ImplicitUsings; Microsoft.NET.Sdk does not. Declaring
-    them keeps the files G5 lane 4b-iii A moved out of Humans.UI (which declared the same items
-    for the same reason) byte-identical to their originals — DateTimeDisplayExtensions names
-    IHttpContextAccessor and ISession, HumansControllerBase names ILoggerFactory, and none of
-    them carries a using of its own. Microsoft.AspNetCore.Routing, the third item Humans.UI
-    declares, is not needed by anything that moved.
+    Microsoft.NET.Sdk.Web puts these in ImplicitUsings; neither Microsoft.NET.Sdk nor
+    Microsoft.NET.Sdk.Razor does. Declaring them keeps the files G5 lanes 4b-iii A and B moved
+    out of Humans.UI (which declared the same three items for the same reason) byte-identical to
+    their originals — DateTimeDisplayExtensions names IHttpContextAccessor and ISession,
+    HumansControllerBase names ILoggerFactory, NonceTagHelper and AuthorizeViewTagHelper name
+    IHttpContextAccessor and ILogger, Views/Shared/_Pager.cshtml calls Context.GetRouteData(),
+    and none of them carries a using of its own. Global usings reach Razor-generated code too,
+    since it compiles in this same compilation.
   -->
   <ItemGroup>
     <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
@@ -94,14 +116,13 @@
     <InternalsVisibleTo Include="Humans.Infrastructure" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      G5 lane 4b-iii A. HumanSearchPickerViewModel.SelectedBurnerName has an `internal`
-      setter on purpose — no caller may supply a name, only the component may resolve one
-      from SelectedUserId. The model came down here; its one privileged writer,
-      HumanSearchViewComponent, is bound by ASSEMBLY name from Razor and so stays in
-      Humans.UI until lane B. This entry preserves the invariant across that one-lane split.
-      DELETE IT when Humans.UI dies (lane 5d) — the writer lands in this assembly.
+      Lane 4b-iii A's `InternalsVisibleTo Humans.UI` is GONE, one lane earlier than it said:
+      it existed only because HumanSearchPickerViewModel.SelectedBurnerName has an `internal`
+      setter (no caller may supply a name, only the component may resolve one from
+      SelectedUserId) and its one privileged writer, HumanSearchViewComponent, was still in
+      Humans.UI. Lane B brought that writer into this assembly, so the invariant now holds
+      without a grant.
     -->
-    <InternalsVisibleTo Include="Humans.UI" />
   </ItemGroup>
 
   <ItemGroup>
@@ -124,8 +145,10 @@
 
     <!--
       Added by G5 lane 3a-1 (nobodies-collective/Humans#866), each forced by exactly one
-      arrival. Keep this list minimal — 26 .Contracts leaves reference this project and
-      inherit whatever lands here.
+      arrival. The real invariant is the ProjectReference rule at the top of this file, not a
+      package count: 26 .Contracts leaves reference this project, so an external package landing
+      here reaches all of them, but per Peter's ruling of 2026-08-15 that is allowed and only a
+      Humans.* ProjectReference is not. Add a package because an arrival names it, and say which.
         CsvHelper — Csv/HumansCsv.cs, the single CSV seam (memory/code/csv-use-csvhelper.md).
         Serilog   — Logging/{CurrentUserEnricher,PiiRedactionEnricher,InMemoryLogSink}.cs,
                     which implement Serilog.Core.ILogEventEnricher / ILogEventSink.
