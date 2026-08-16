@@ -17,8 +17,9 @@ namespace Humans.Stripe.Tests.Architecture;
 /// sections' own repository paths.
 /// </para>
 /// <para>
-/// These tests fail loudly if a future change pulls <c>Stripe.net</c> into the Application
-/// or Web assemblies, or leaks SDK types onto the <see cref="IStripeService"/> surface.
+/// Two tests remain: one fails if <c>Stripe.net</c> is pulled into the Application assembly,
+/// the other if an SDK type appears on the <see cref="IStripeService"/> surface. The Web
+/// assembly is no longer checked — see the COVERAGE REDUCED note below.
 /// </para>
 /// </summary>
 public class StripeConnectorArchitectureTests

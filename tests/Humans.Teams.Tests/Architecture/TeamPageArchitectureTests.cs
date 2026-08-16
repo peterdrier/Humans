@@ -16,7 +16,7 @@ namespace Humans.Teams.Tests;
 /// TeamPageService owns no tables — it composes across <see cref="ITeamService"/>,
 /// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
 /// and <see cref="IUserService"/>. No repository is needed; the tests below
-/// guard that it never regains a <c>DbContext</c> dependency.
+/// guard that it never takes one.
 /// </para>
 /// </summary>
 public class TeamPageArchitectureTests
