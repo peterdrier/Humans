@@ -71,7 +71,7 @@ internal sealed class ProfileController(
     IStringLocalizer<SharedResource> localizer,
     ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
-    ICampaignService campaignService,
+    ICampaignServiceRead campaignService,
     ICampServiceRead campService,
     IEmailOutboxServiceRead emailOutboxService,
     IClock clock,

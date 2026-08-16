@@ -89,7 +89,7 @@ public record TeamActiveMemberSnapshot(
 /// <summary>
 /// One active team membership of a user, flattened so cross-section callers can read the
 /// team's identity without the <c>TeamMember</c> entity or its <c>Team</c> navigation.
-/// Returned by <see cref="ITeamService.GetUserTeamMembershipsAsync"/> — the projection the
+/// Returned by <see cref="ITeamServiceRead.GetUserTeamMembershipsAsync"/> — the projection the
 /// Teams-internal <c>GetUserTeamsAsync</c> hands its own callers as entities.
 /// </summary>
 public sealed record UserTeamMembershipInfo(
@@ -111,13 +111,6 @@ public sealed record UserTeamMembershipInfo(
 public interface ITeamService : ITeamServiceRead, IApplicationService
 {
 
-    /// <summary>
-    /// Checks if a user is a coordinator of a team.
-    /// </summary>
-    Task<bool> IsUserCoordinatorOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sets <c>Team.GoogleGroupPrefix</c> to <paramref name="prefix"/> (may be
@@ -265,25 +258,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     /// <summary>Deletes every early-entry grant belonging to a user (right-to-erasure).</summary>
     Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// The user's active team memberships as flat rows — the cross-section projection of the
-    /// Teams-internal <c>GetUserTeamsAsync</c>, which returns <c>TeamMember</c> entities.
-    /// Same data source and same active-only filter; the team's name and slug are stitched in
-    /// so the caller never navigates <c>TeamMember.Team</c>.
-    /// </summary>
-    Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Loads the teams for the requested IDs <b>and</b> any referenced parent teams, so the
-    /// caller can resolve the "department" (parent or self) for each team via dictionary
-    /// lookups. Returned teams are not active-filtered — other sections' rows may still
-    /// reference deactivated teams and the caller still needs the name. Cross-section
-    /// projection of the Teams-internal <c>GetByIdsWithParentsAsync</c>.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
 }
 
 public sealed record TeamRoleDefinitionSnapshot(

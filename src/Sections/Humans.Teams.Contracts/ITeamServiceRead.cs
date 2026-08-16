@@ -43,4 +43,31 @@ public interface ITeamServiceRead
     Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a user is a coordinator of a team.
+    /// </summary>
+    Task<bool> IsUserCoordinatorOfTeamAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The user's active team memberships as flat rows — the cross-section projection of the
+    /// Teams-internal <c>GetUserTeamsAsync</c>, which returns <c>TeamMember</c> entities.
+    /// Same data source and same active-only filter; the team's name and slug are stitched in
+    /// so the caller never navigates <c>TeamMember.Team</c>.
+    /// </summary>
+    Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads the teams for the requested IDs <b>and</b> any referenced parent teams, so the
+    /// caller can resolve the "department" (parent or self) for each team via dictionary
+    /// lookups. Returned teams are not active-filtered — other sections' rows may still
+    /// reference deactivated teams and the caller still needs the name.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default);
 }

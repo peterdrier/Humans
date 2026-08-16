@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
@@ -29,7 +28,6 @@ namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 [Route("Users/Admin")]
-[CrossSectionWrite("Reads only; GetAllGrantsForUserAsync is not on ICampaignServiceRead yet.")]
 internal sealed class UsersAdminController(
     IUserService userService,
     IUserEmailService userEmailService,
@@ -37,7 +35,7 @@ internal sealed class UsersAdminController(
     IRoleAssignmentService roleAssignmentService,
     IApplicationServiceRead applicationDecisionService,
     IConsentServiceRead consentService,
-    ICampaignService campaignService,
+    ICampaignServiceRead campaignService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IAuditLogService auditLogService,
