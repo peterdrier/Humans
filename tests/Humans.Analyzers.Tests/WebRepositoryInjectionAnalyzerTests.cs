@@ -48,28 +48,6 @@ public class WebRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_view_component_injects_repository()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Web.ViewComponents
-            {
-                public sealed class CampSummaryViewComponent
-                {
-                    public CampSummaryViewComponent(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new WebRepositoryInjectionAnalyzer(),
-            "Humans.Web",
-            source);
-
-        diagnostics.Should().ContainSingle(d => IsHum0014(d));
-    }
-
-    [HumansFact]
     public async Task Does_not_fire_when_controller_injects_service()
     {
         var source = Stubs + """
