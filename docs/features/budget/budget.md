@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Budget/**
   src/Sections/Humans.Budget.Contracts/**
-  src/Humans.Infrastructure/Jobs/TicketingBudgetSyncJob.cs
 -->
 <!-- freshness:flag-on-change
   Budget hierarchy, audit log, ticketing projection sync, finance vs coordinator vs public visibility tiers, or implementation phase status may have changed.

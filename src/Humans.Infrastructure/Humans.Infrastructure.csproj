@@ -41,11 +41,9 @@
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Sections\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
     <!--
       Holded's contracts leaf: HoldedSyncJob is the Hangfire shim over IHoldedNightlySync, and
       HoldedExpenseOutboxJob reads HoldedClientOptions.ApiKey to decide whether to drain. Both
@@ -68,9 +66,10 @@
     -->
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <!--
-      Tickets' contracts leaf: AdminDatabaseDiagnosticsService reads the order projection,
-      TicketSyncJob drives ITicketSync, and GateVendorCheckInJob mirrors a gate admission
-      back to the vendor through ITicketVendorMirror rather than naming the vendor port.
+      Tickets' contracts leaf: AdminDatabaseDiagnosticsService reads the order projection.
+      That is the last consumer here — TicketSyncJob and GateVendorCheckInJob left for
+      Humans.Tickets and Humans.Gate at G5 lane 5b-3 (nobodies-collective/Humans#866), and
+      Humans.Budget.Contracts / Humans.Gate.Contracts came out entirely in the same move.
     -->
     <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

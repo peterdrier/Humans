@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Gate.Contracts;
 
 /// <summary>
 /// Best-effort mirror of a gate admit to the ticket vendor. Goes through Tickets'
@@ -26,6 +26,14 @@ namespace Humans.Infrastructure.Jobs;
 /// Gated behind <c>Gate:VendorMirrorEnabled</c> (default off). NB the vendor API key must have
 /// Event-manager (or Admin) scope — an Order-manager key 403s on <c>/v1/check_ins</c>.
 /// </summary>
+/// <remarks>
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-3
+/// (nobodies-collective/Humans#866). Gate, not Tickets: both enqueue sites are Gate
+/// controllers, and it calls into Tickets through the public
+/// <see cref="Humans.Tickets.Contracts.ITicketVendorMirror"/>. It sits under
+/// <c>Contracts/</c> because Shell names the concrete type at registration and HUM0034 makes
+/// every other public type in a section assembly an error.
+/// </remarks>
 [AutomaticRetry(Attempts = 0)]
 public sealed class GateVendorCheckInJob(
     ITicketVendorMirror vendor,

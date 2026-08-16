@@ -3,12 +3,15 @@ using Hangfire.Storage;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Budget.Contracts;
 using Humans.Email.Contracts;
+using Humans.Gate.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Infrastructure.Jobs;
 using Humans.Issues.Contracts;
 using Humans.Monitor.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Web.Extensions;
 

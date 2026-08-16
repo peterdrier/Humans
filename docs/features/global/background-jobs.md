@@ -1,4 +1,5 @@
 <!-- freshness:triggers
+  src/Humans.Web/Extensions/RecurringJobExtensions.cs
   src/Humans.Infrastructure/Jobs/**
 -->
 <!-- freshness:flag-on-change

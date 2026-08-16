@@ -30,6 +30,14 @@
     <ProjectReference Include="..\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!--
+      Tickets' contracts leaf: GateVendorCheckInJob mirrors a gate admit back to the vendor
+      through ITicketVendorMirror rather than naming the vendor port. Added at G5 lane 5b-3
+      with the job (nobodies-collective/Humans#866) — Base used to carry this edge. The leaf
+      references Humans.Interfaces only, so it cannot cycle
+      (memory/architecture/section-project-cycle-fix.md).
+    -->
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
@@ -39,7 +47,8 @@
       the build with NU1010 under Central Package Management. Identity's IPasswordHasher (the
       staff-PIN hasher) and IMemoryCache arrive through the framework reference Sdk.Razor
       already adds (design §15 step 1).
-      Hangfire is the vendor check-in mirror enqueue; the job itself stays in Base (§15.6b).
+      Hangfire is the vendor check-in mirror: both the enqueue sites and, since G5 lane 5b-3,
+      the two jobs themselves (Contracts/GateRetentionJob, Contracts/GateVendorCheckInJob).
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
