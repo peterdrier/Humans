@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Extensions/RecurringJobExtensions.cs
   src/Humans.Infrastructure/Jobs/**
+  src/Sections/**/Contracts/*Job.cs
 -->
 <!-- freshness:flag-on-change
   Job catalog, schedules, sync-mode gating, and per-job process descriptions — review whenever a job is added, removed, renamed, or has its schedule/behavior changed.

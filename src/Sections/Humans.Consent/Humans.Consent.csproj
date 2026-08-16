@@ -53,6 +53,10 @@
          is shaped by this section's {name}.md / {name}-{lang}.md convention and has no
          consumer outside it, so it moved in whole (design §15.5b, Agent's rule). -->
     <PackageReference Include="Octokit" />
+    <!-- Contracts/SyncLegalDocumentsJob.cs — [DisableConcurrentExecution] and IRecurringJob,
+         since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
+         arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

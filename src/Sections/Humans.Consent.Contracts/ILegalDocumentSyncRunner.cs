@@ -11,7 +11,10 @@ namespace Humans.Consent.Contracts;
 /// and mail each of them. It named <c>LegalDocument</c> and <c>IConsentRepository</c>
 /// directly to do it, and both turn internal at the move — so there is no version of this
 /// that compiles as "give me the rows". The contract is "do the thing" (design §15 step 6b,
-/// Email's rule); what stays in Base is the try/catch and <c>RecordJobRun</c>.
+/// Email's rule); what the job keeps is the try/catch and <c>RecordJobRun</c>. The job itself
+/// followed into <c>Humans.Consent/Contracts/</c> at G5 lane 5b-4
+/// (nobodies-collective/Humans#866), so this interface no longer crosses an assembly boundary
+/// — it is kept rather than folded in, matching lane 5b-1's call on the same shape.
 /// </remarks>
 public interface ILegalDocumentSyncRunner : IApplicationService
 {

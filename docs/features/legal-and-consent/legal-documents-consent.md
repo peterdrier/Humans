@@ -2,7 +2,6 @@
   src/Sections/Humans.Consent/**
   src/Sections/Humans.Consent.Contracts/**
   src/Humans.Domain/Constants/SystemTeamIds.cs
-  src/Humans.Infrastructure/Jobs/SyncLegalDocumentsJob.cs
   src/Humans.Infrastructure/Jobs/SendReConsentReminderJob.cs
 -->
 <!-- freshness:flag-on-change

@@ -38,6 +38,12 @@ namespace Humans.Users;
 /// <c>UserService</c> registered keyed with a Scoped unwrap so the decorator can open a scope
 /// per call.
 /// </para>
+/// <para>
+/// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
+/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866) but are
+/// still <em>registered</em> from Shell's <c>AdminSectionExtensions</c>: there is no
+/// <c>ISection</c>-style discovery seam for jobs (design §15 step 6b).
+/// </para>
 /// </remarks>
 public sealed class Section : ISection
 {

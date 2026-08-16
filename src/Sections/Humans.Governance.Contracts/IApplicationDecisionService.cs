@@ -7,8 +7,10 @@ namespace Humans.Governance.Contracts;
 /// <summary>
 /// The write half of the tier-application lifecycle that lives outside the section: the
 /// profile-setup submit path (Shell's <c>ProfileController</c>, which renders the same
-/// application form during onboarding) and the term-renewal reminder job (Base's
-/// <c>TermRenewalReminderJob</c>).
+/// application form during onboarding). The term-renewal reminder job also drives the three
+/// renewal members, but is no longer outside the section: <c>TermRenewalReminderJob</c> moved
+/// from <c>Humans.Infrastructure/Jobs</c> into <c>Humans.Governance/Contracts/</c> at G5
+/// lane 5b-4 (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
 /// The rest of the lifecycle — approve, reject, withdraw, board voting, the admin list and
