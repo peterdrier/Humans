@@ -40,13 +40,27 @@ Glob/Grep to `$WORKTREE`.
 
 ## Phase 2: Plan check
 
-Read `docs/health/plan.md`. Replan when: no plan, plan exhausted, `--replan`, or a merged change
-since the plan's anchor materially reshapes an upcoming scheduled section (move/rename/major
-feature — routine churn is not staleness).
+**Find the live plan state first.** The previous run's PR may still be open (runs never merge),
+so the newest plan/log/queue may exist only on that PR branch, not on `origin/main`. Discover:
+
+```bash
+gh pr list --repo peterdrier/Humans --state open --json number,headRefName \
+  --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
+```
+
+(`--search "head:..."` matches exact branch names, not prefixes — don't use it.) If an open run
+branch exists, fetch it and read `docs/health/*` from its tip; else read `origin/main`'s copy.
+Carry that state forward in this run's commits so plan/log history never forks.
+
+Replan when: no plan, plan exhausted, `--replan`, or a merged change since the plan's anchor
+materially reshapes an upcoming scheduled section (move/rename/major feature — routine churn is
+not staleness).
 
 **Replanning** (mid-level signals only — no deep reading):
 
-1. `reforge surface-score --format compact` for size + deltas.
+1. `dotnet build Humans.slnx -v quiet` first — an unbuilt solution silently under-reports
+   Reforge scores — then `reforge surface-score --format compact` for size + deltas. (The build
+   also serves Phase 3/4.)
 2. Last-assessed dates from every `src/Sections/Humans.*/Docs/health.md`. First cycle:
    never-assessed first, score descending (seed last-served from the Section Refactor History
    table in `docs/architecture/maintenance-log.md`). After the first full cycle: rank primarily
@@ -129,7 +143,8 @@ In the same worktree/PR: `health.md` history row; tick today's plan row (if a pl
 `--section` runs have none); append
 `docs/health/log.md` (`| date | section | what ran | outcome | PR |`); overwrite
 `docs/health/last-report.md` (assessment summary, worked, skipped + why); update this run's row
-in `docs/architecture/maintenance-log.md` per `maintenance-log-update`.
+in `docs/architecture/maintenance-log.md` per `maintenance-log-update`. PR-reference cells are
+written as `pending` here — Phase 7 backfills them once the PR number exists.
 
 ## Phase 6: Retro + self-amend
 
@@ -140,7 +155,8 @@ was wasted motion, what did the assessment miss that striking revealed. Then:
 - **Judgment lessons** (rubric axes, thresholds, play choices) → the Needs-Peter block.
 - **Durable project rules** → `memory/<bucket>/<name>.md` atom + INDEX line, same commit.
 
-Commit all Phase 5 + 6 edits before Phase 7 pushes — nothing lands after the final push.
+Commit all Phase 5 + 6 edits before Phase 7 pushes — the only thing that lands after is
+Phase 7's own PR-number backfill commit.
 
 ## Phase 7: PR
 
@@ -153,6 +169,9 @@ Body: assessment summary, worked/skipped bullets, and a **`## Needs Peter`** blo
 numbered, answerable in a word or two. **The PR body is the authoritative queue while the PR is
 open** (resume reads it from there); mirror the block into `docs/health/plan.md` (committed
 before the push) so merged runs carry it forward. One PR per run; never merge.
+
+Then backfill the real PR number over every `pending` reference (log row, health history row,
+plan mirror), commit, push again.
 
 ## Phase 8: Inline round (interactive runs only)
 
@@ -169,15 +188,25 @@ this; `resume` covers it. Unanswered items carry forward — never re-asked.
 `resume` gathers the queue from both places an item can live, then works it. No new assessment
 or strike work.
 
-1. **Open runs:** `gh pr list --repo peterdrier/Humans --state open --search "head:section-doctor/"`
-   — each PR body's `## Needs Peter` block (authoritative for unmerged runs; their plan.md
+1. **Open runs:** discover by branch-name prefix — `--search "head:..."` matches exact names,
+   not prefixes:
+   ```bash
+   gh pr list --repo peterdrier/Humans --state open --json number,headRefName \
+     --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
+   ```
+   Each PR body's `## Needs Peter` block (authoritative for unmerged runs; their plan.md
    entries only exist on the PR branch).
 2. **Merged runs:** unticked `## Needs Peter` entries in `docs/health/plan.md` on `origin/main`.
 
-Present the open items inline; apply each answer as commits on that item's PR branch (reuse its
-worktree, or recreate from the branch — merged items get a fresh worktree off `origin/main`);
-tick the queue entry where it lives (PR body edit for open PRs, plan.md commit for merged);
-push.
+Present the open items inline, then apply each answer:
+
+- **Open-PR item** — commits on that item's PR branch (reuse its worktree, or recreate from the
+  branch). Tick the item in **both** places: the PR body *and* the branch's `docs/health/plan.md`
+  mirror — an unticked mirror would resurface as a merged-queue item after the PR lands and get
+  re-asked or applied twice. Push.
+- **Merged item** — fresh worktree + branch off `origin/main`, apply the answer, tick the plan.md
+  entry, push, **open its own PR** (an answer pushed to a branch with no PR is stranded), tear
+  the worktree down.
 
 ## Standing constraints
 
@@ -187,7 +216,8 @@ push.
 - Public-surface additions need Peter; dead-surface deletion is the job (reviewer-gated).
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - Touches only: the section's files (+ callers where a play requires), `docs/health/*`, the
-  section's `health.md`, this skill's files, `memory/`.
+  section's `health.md`, `docs/architecture/maintenance-log.md` (Phase 5 row),
+  `docs/architecture/debt-ledger.yml` (off-section debt inbox), this skill's files, `memory/`.
 
 ## Lessons
 

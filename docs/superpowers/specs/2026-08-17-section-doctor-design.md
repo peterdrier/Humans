@@ -144,8 +144,12 @@ The plan is advisory — run-day findings can extend a section's stay.
 - **1 Worktree** — `git fetch origin main`; worktree at `.worktrees/section-doctor-<TS>`, branch
   `section-doctor/<TS>` off `origin/main`. Scope frozen at branch point. All Glob/Grep scoped to
   the worktree.
-- **2 Plan check** — read `docs/health/plan.md`; replan per the rules above if needed; take
-  today's section.
+- **2 Plan check** — find the live plan state first: the previous run's PR may still be open, so
+  the newest plan/log/queue may exist only on that branch — discover open `section-doctor/*`
+  branches by `headRefName` prefix (GitHub's `head:` search qualifier matches exact names, not
+  prefixes), read `docs/health/*` from the newest tip, else from `origin/main`. Replan per the
+  rules above if needed (building first — an unbuilt solution under-reports reforge scores);
+  take today's section.
 - **3 Deep assessment** (the expensive judgment, once per section per cycle) — inhale the section
   front to back, baseline build first (reforge needs it). Parallel subagent lanes where useful
   (models explicit + tagged): code/arch lane (audit-surface posture with per-method caller
@@ -174,7 +178,8 @@ The plan is advisory — run-day findings can extend a section's stay.
   the Phase 7 push — nothing lands after it.
 - **7 PR** — one PR per run to `peterdrier/Humans:main`. Body: assessment summary, worked/skipped,
   **Needs Peter** block — authoritative while the PR is open — mirrored into `plan.md` for
-  carry-forward after merge. Never merges.
+  carry-forward after merge. After creation, the real PR number is backfilled over the
+  bookkeeping rows' `pending` placeholders in one more commit + push. Never merges.
 - **8 Inline round (interactive runs only)** — if Peter is present, present the Needs-Peter items
   inline (debt-sweep Phase 7 doctrine: terse, numbered, no AskUserQuestion) and apply answers
   now. Unattended runs skip this; `resume` covers it.
@@ -184,11 +189,13 @@ The plan is advisory — run-day findings can extend a section's stay.
 ## Resume mode
 
 `/section-doctor resume`: gather the queue from both places an item can live — `## Needs Peter`
-blocks in open `section-doctor/*` PR bodies (authoritative for unmerged runs, whose `plan.md`
-entries exist only on the PR branch) and unticked entries in `plan.md` on `origin/main` (merged
-runs). Present the items inline, apply Peter's answers as commits on each item's PR branch
-(re-using its worktree or recreating it; merged items get a fresh worktree), tick each entry
-where it lives, push. No new assessment work.
+blocks in open `section-doctor/*` PR bodies (discovered by `headRefName` prefix; authoritative
+for unmerged runs, whose `plan.md` entries exist only on the PR branch) and unticked entries in
+`plan.md` on `origin/main` (merged runs). Present the items inline, then apply: open-PR items
+as commits on that PR branch, ticking **both** the PR body and the branch's `plan.md` mirror
+(an unticked mirror would resurface after merge and be re-applied); merged items in a fresh
+worktree that ends in **its own PR** (an answer pushed with no PR is stranded) plus teardown.
+No new assessment work.
 
 ## Standing constraints
 
