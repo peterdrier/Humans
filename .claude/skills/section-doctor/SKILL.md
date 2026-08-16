@@ -106,9 +106,21 @@ assessment-only PR, note it in the plan.
 
 In the same worktree/PR: `health.md` history row; tick today's plan row; append
 `docs/health/log.md` (`| date | section | what ran | outcome | PR |`); overwrite
-`docs/health/last-report.md` (assessment summary, worked, skipped + why, retro, self-amendments).
+`docs/health/last-report.md` (assessment summary, worked, skipped + why); update this run's row
+in `docs/architecture/maintenance-log.md` per `maintenance-log-update`.
 
-## Phase 6: PR
+## Phase 6: Retro + self-amend
+
+Three questions, answered honestly in `last-report.md`: what did the plan/rubric get wrong, what
+was wasted motion, what did the assessment miss that striking revealed. Then:
+
+- **Mechanical lessons** → edit this skill's files now (dated one-liners in Lessons below).
+- **Judgment lessons** (rubric axes, thresholds, play choices) → the Needs-Peter block.
+- **Durable project rules** → `memory/<bucket>/<name>.md` atom + INDEX line, same commit.
+
+Commit all Phase 5 + 6 edits before Phase 7 pushes — nothing lands after the final push.
+
+## Phase 7: PR
 
 ```bash
 git push -u origin section-doctor/$TS
@@ -116,34 +128,34 @@ gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <h
 ```
 
 Body: assessment summary, worked/skipped bullets, and a **`## Needs Peter`** block — terse,
-numbered, answerable in a word or two. Mirror that block into `docs/health/plan.md` (committed
-before the push). One PR per run; never merge.
+numbered, answerable in a word or two. **The PR body is the authoritative queue while the PR is
+open** (resume reads it from there); mirror the block into `docs/health/plan.md` (committed
+before the push) so merged runs carry it forward. One PR per run; never merge.
 
-## Phase 7: Inline round (interactive runs only)
+## Phase 8: Inline round (interactive runs only)
 
 If Peter is present, present the Needs-Peter items inline now (terse, numbered, plain prose —
 never AskUserQuestion) and apply answers as new commits + push. Unattended morning runs skip
-this; `resume` covers it. Unanswered items carry forward in the plan doc — never re-asked.
-
-## Phase 8: Retro + self-amend
-
-Three questions, answered honestly in `last-report.md`: what did the plan/rubric get wrong, what
-was wasted motion, what did the assessment miss that striking revealed. Then:
-
-- **Mechanical lessons** → edit this skill's files now, same PR (dated one-liners).
-- **Judgment lessons** (rubric axes, thresholds, play choices) → Needs-Peter block.
-- **Durable project rules** → `memory/<bucket>/<name>.md` atom + INDEX line, same commit.
+this; `resume` covers it. Unanswered items carry forward — never re-asked.
 
 ## Phase 9: Teardown
 
-`cd $REPO_ROOT && git worktree remove $WORKTREE` (never `rm -rf`). Update
-`docs/architecture/maintenance-log.md` per `maintenance-log-update`.
+`cd $REPO_ROOT && git worktree remove $WORKTREE` (never `rm -rf`).
 
 ## Resume mode
 
-`resume`: read `## Needs Peter` in `docs/health/plan.md`; present open items inline; apply each
-answer as commits on that item's PR branch (reuse its worktree, or recreate from the branch);
-tick the queue entries in plan.md; push. No new assessment or strike work.
+`resume` gathers the queue from both places an item can live, then works it. No new assessment
+or strike work.
+
+1. **Open runs:** `gh pr list --repo peterdrier/Humans --state open --search "head:section-doctor/"`
+   — each PR body's `## Needs Peter` block (authoritative for unmerged runs; their plan.md
+   entries only exist on the PR branch).
+2. **Merged runs:** unticked `## Needs Peter` entries in `docs/health/plan.md` on `origin/main`.
+
+Present the open items inline; apply each answer as commits on that item's PR branch (reuse its
+worktree, or recreate from the branch — merged items get a fresh worktree off `origin/main`);
+tick the queue entry where it lives (PR body edit for open PRs, plan.md commit for merged);
+push.
 
 ## Standing constraints
 

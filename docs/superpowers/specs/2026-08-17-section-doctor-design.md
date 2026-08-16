@@ -158,23 +158,28 @@ The plan is advisory — run-day findings can extend a section's stay.
   (deletions beyond dead code, structural moves) get a second-opinion reviewer subagent
   (opus-tier, score-blind, default-reject — refactor-swarm posture).
 - **5 Bookkeeping** — update `health.md` history row, tick the plan, append `log.md`, overwrite
-  `last-report.md`.
+  `last-report.md`, update the run's maintenance-log row (all in the worktree, same PR).
 - **6 Retro + self-amend** — what was planned vs. what helped, wasted motion, rubric misses.
   Mechanical lessons → edit the skill's own files now, same PR. Judgment lessons → Needs-Peter
-  queue. Durable rules → `memory/` atom + INDEX line.
+  queue. Durable rules → `memory/` atom + INDEX line. All Phase 5–6 edits are committed before
+  the Phase 7 push — nothing lands after it.
 - **7 PR** — one PR per run to `peterdrier/Humans:main`. Body: assessment summary, worked/skipped,
-  **Needs Peter** block (mirrored into `plan.md`). Never merges.
+  **Needs Peter** block — authoritative while the PR is open — mirrored into `plan.md` for
+  carry-forward after merge. Never merges.
 - **8 Inline round (interactive runs only)** — if Peter is present, present the Needs-Peter items
   inline (debt-sweep Phase 7 doctrine: terse, numbered, no AskUserQuestion) and apply answers
   now. Unattended runs skip this; `resume` covers it.
-- **9 Teardown** — `git worktree remove` (never `rm -rf`). Update
-  `docs/architecture/maintenance-log.md` per `maintenance-log-update`.
+- **9 Teardown** — `git worktree remove` (never `rm -rf`). (The maintenance-log update happens
+  in Phase 5, inside the worktree — never in the main checkout after teardown.)
 
 ## Resume mode
 
-`/section-doctor resume`: read the Needs-Peter queue from `plan.md`, present the open items
-inline, apply Peter's answers as commits on each item's PR branch (re-using its worktree or
-recreating it from the branch), tick the queue entries, push. No new assessment work.
+`/section-doctor resume`: gather the queue from both places an item can live — `## Needs Peter`
+blocks in open `section-doctor/*` PR bodies (authoritative for unmerged runs, whose `plan.md`
+entries exist only on the PR branch) and unticked entries in `plan.md` on `origin/main` (merged
+runs). Present the items inline, apply Peter's answers as commits on each item's PR branch
+(re-using its worktree or recreating it; merged items get a fresh worktree), tick each entry
+where it lives, push. No new assessment work.
 
 ## Standing constraints
 
