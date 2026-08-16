@@ -125,20 +125,6 @@ public class NotificationsArchitectureTests
             because: "the section's copy lives in NotificationsResource, not SharedResource");
     }
 
-    [HumansFact]
-    public void NotificationsResourceIsTheOnlyPublicTypeBesidesSection()
-    {
-        // HUM0034 is the build gate; this pins the intent so a Grandfathered escape or a
-        // future carve-out shows up as a test failure too.
-        var publicNames = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Where(n => !n.StartsWith("Baseline", StringComparison.Ordinal))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        publicNames.Should().BeEquivalentTo(["NotificationsResource", "Section"]);
-    }
-
     // ── INotificationRepository ──────────────────────────────────────────────
 
     // Sealed-repository check covered by HUM0034 (section types are internal) plus

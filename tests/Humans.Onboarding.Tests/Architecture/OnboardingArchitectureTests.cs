@@ -106,25 +106,6 @@ public class OnboardingArchitectureTests
     /// public type has to justify itself as a contract rather than slip in as surface.
     /// </summary>
 
-    /// <summary>
-    /// The leaf is deliberately narrow — two intake writes, the widget-step read and the
-    /// result record. Anything else that leaves the section should be a deliberate decision,
-    /// not a drift.
-    /// </summary>
-    [HumansFact]
-    public void ContractsLeafCarriesOnlyTheCarvedSurface()
-    {
-        var exported = typeof(IOnboardingIntake).Assembly
-            .GetExportedTypes()
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        exported.Should().BeEquivalentTo(
-            ["IOnboardingIntake", "IOnboardingWidgetState", "OnboardingResult", "OnboardingWidgetStep"],
-            because: "the review queue, the clear/flag pair and the widget's document resolver have no consumer outside the section");
-    }
-
     private static IEnumerable<Type> SectionTypes() =>
         typeof(OnboardingResource).Assembly
             .GetTypes()

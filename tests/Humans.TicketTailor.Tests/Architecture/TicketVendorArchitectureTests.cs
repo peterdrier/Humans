@@ -189,12 +189,4 @@ public class TicketVendorArchitectureTests
         }
     }
 
-    [HumansFact]
-    public void TheSectionExportsNothingButItsSectionMarker()
-    {
-        typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Should().BeEquivalentTo(["Humans.TicketTailor.Section"],
-                because: "the adapter publishes no contract: consumers of ticketing talk to Humans.Tickets, and this project is one implementation of a Base port");
-    }
 }

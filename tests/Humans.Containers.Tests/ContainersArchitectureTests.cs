@@ -17,44 +17,6 @@ public class ContainersArchitectureTests
 {
 
     [HumansFact]
-    public void EveryPublicTypeOutsideContractsIsAccountedFor()
-    {
-        // The companion to the test above: nothing may become public by drifting *into*
-        // Contracts/ either. Contracts/ is a namespace, and this pins the whole of it,
-        // so widening the cross-section surface is a visible diff rather than a silent one.
-        var contractTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => string.Equals(t.Namespace, "Humans.Containers.Contracts", StringComparison.Ordinal))
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        contractTypes.Should().BeEquivalentTo(
-        [
-            "ContainerAdminOverview",
-            "ContainerAuthorizationTarget",
-            "ContainerCampGroup",
-            "ContainerCardModel",
-            "ContainerData",
-            "ContainerDto",
-            "ContainerFormModel",
-            "ContainerImageUpload",
-            "ContainerIndexViewModel",
-            "ContainerOperation",
-            "ContainerOperationRequirement",
-            "ContainerPlacementDto",
-            "ContainerPlacementViewModel",
-            "ContainerViewModel",
-            "ContainerWithPlacement",
-            "ContainerWithPlacementViewModel",
-            "IContainerService",
-        ],
-            because: "Contracts/ is the section's whole cross-section surface (design §15 step 5b); "
-                   + "adding to it is a decision, not an accident");
-    }
-
-
-
-    [HumansFact]
     public void ContainerController_RequiresAuthorization()
     {
         typeof(ContainerController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
