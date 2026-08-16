@@ -1,4 +1,3 @@
-using Humans.Domain.Attributes;
 using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Shifts.Data;
@@ -12,7 +11,6 @@ namespace Humans.Shifts.Data;
 /// <c>volunteer_build_statuses</c> and <c>general_availability</c>. All methods
 /// return materialized lists / nullable rows - no IQueryable leaks.
 /// </summary>
-[Section("Shifts")]
 internal interface IVolunteerTrackingRepository : IRepository
 {
     /// <summary>

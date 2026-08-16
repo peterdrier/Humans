@@ -3,7 +3,6 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Domain;
@@ -29,7 +28,6 @@ namespace Humans.Tickets.Data;
 /// method.
 /// </para>
 /// </remarks>
-[Section("Tickets")]
 internal interface ITicketRepository : IRepository
 {
     // ── TicketSyncState (singleton row, Id == 1) ─────────────────────────────

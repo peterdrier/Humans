@@ -1,5 +1,5 @@
 using System.Reflection;
-using Humans.Domain.Attributes;
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -20,7 +20,7 @@ namespace Humans.Web.Infrastructure;
 /// <c>ViewComponentFeatureProvider.PopulateFeature</c> is not virtual and
 /// <c>ViewComponentConventions</c> is internal to MVC — so this runs as a second pass
 /// after the default provider and adds only what that one skipped: non-public types in
-/// assemblies carrying <c>[assembly: Section("…")]</c>. Every other condition mirrors
+/// assemblies declaring an <c>ISection</c> entry point. Every other condition mirrors
 /// <c>ViewComponentConventions.IsComponent</c>.
 /// </para>
 /// <para>
@@ -54,7 +54,7 @@ internal sealed class SectionViewComponentFeatureProvider
         if (typeInfo.IsPublic)
             return false;
 
-        if (typeInfo.Assembly.GetCustomAttribute<SectionAttribute>() is null)
+        if (!SectionDiscoveryExtensions.IsSectionAssembly(typeInfo.Assembly))
             return false;
 
         if (!typeInfo.IsClass || typeInfo.IsAbstract || typeInfo.ContainsGenericParameters)

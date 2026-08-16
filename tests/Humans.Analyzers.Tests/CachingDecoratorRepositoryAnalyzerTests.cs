@@ -25,23 +25,18 @@ public class CachingDecoratorRepositoryAnalyzerTests
         }
         """;
 
-    // Assembly attributes must precede every namespace/type declaration (CS1730), so this
-    // goes first in any source that needs the compilation to be recognised as a section by
-    // AssemblyScope.IsSection.
-    private const string SectionAssemblyAttribute = """
-        [assembly: Humans.Domain.Attributes.Section("Teams")]
-
-        """;
-
-    private const string SectionAttributeStub = """
-        namespace Humans.Domain.Attributes
+    // What makes a compilation a section to AssemblyScope.IsSection: the
+    // Section : ISection entry point in the assembly's root namespace, exactly as boot
+    // discovery finds it. Paired with the "Humans.Teams" assembly name below.
+    private const string SectionEntryPoint = """
+        namespace Humans.Application.Interfaces
         {
-            [System.AttributeUsage(System.AttributeTargets.Assembly | System.AttributeTargets.Interface | System.AttributeTargets.Class)]
-            public sealed class SectionAttribute : System.Attribute
-            {
-                public SectionAttribute(string name) { Name = name; }
-                public string Name { get; }
-            }
+            public interface ISection { }
+        }
+
+        namespace Humans.Teams
+        {
+            public sealed class Section : Humans.Application.Interfaces.ISection { }
         }
         """;
 
@@ -267,7 +262,7 @@ public class CachingDecoratorRepositoryAnalyzerTests
     [HumansFact]
     public async Task Fires_on_repository_in_section_project_caching_decorator()
     {
-        var source = SectionAssemblyAttribute + SectionAttributeStub + Stubs + """
+        var source = SectionEntryPoint + Stubs + """
 
             namespace Humans.Teams.Services
             {

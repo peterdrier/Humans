@@ -24,7 +24,7 @@ internal sealed record DevelopmentBudgetSeedResult(
 
 internal sealed class DevelopmentBudgetSeeder(
     IBudgetService budgetService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITeamSeeding teamSeeding,
     ICampServiceRead campService,
     IClock clock,

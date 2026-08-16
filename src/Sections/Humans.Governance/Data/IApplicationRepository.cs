@@ -5,7 +5,6 @@ using Humans.Governance.Domain;
 using NodaTime;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
-using Humans.Domain.Attributes;
 
 namespace Humans.Governance.Data;
 
@@ -20,7 +19,6 @@ namespace Humans.Governance.Data;
 /// but never cross-domain navs — those are FK-only after the migration.
 /// See <c>docs/architecture/design-rules.md</c> §3 for the canonical shape.
 /// </remarks>
-[Section("Governance")]
 internal interface IApplicationRepository : IRepository
 {
     /// <summary>

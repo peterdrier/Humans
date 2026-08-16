@@ -9,12 +9,10 @@ namespace Humans.Analyzers.Internal;
 /// projects, not to generated compilations.
 /// </summary>
 /// <remarks>
-/// Section projects (nobodies-collective/Humans#866, G5) carry
-/// <c>[assembly: Section("…")]</c> and are recognised by that marker rather than by
-/// name. Keying on the three literal names alone would silently switch 22 of the 27
-/// rules off inside the section that just moved, which would make the split *reduce*
-/// enforcement — the exact inversion of its purpose. The marker also says what the
-/// project is, where a "starts with Humans." prefix rule would only guess.
+/// A section project (nobodies-collective/Humans#866, G5) is recognised by its
+/// <c>ISection</c> entry point. Keying on the three literal layer names alone would
+/// silently switch 22 of the 27 rules off inside the section that just moved, which
+/// would make the split *reduce* enforcement — the exact inversion of its purpose.
 /// </remarks>
 internal static class AssemblyScope
 {
@@ -23,7 +21,8 @@ internal static class AssemblyScope
     public const string Infrastructure = "Humans.Infrastructure";
     public const string Domain = "Humans.Domain";
 
-    private const string SectionAttributeName = "SectionAttribute";
+    private const string ISectionFullName = "Humans.Application.Interfaces.ISection";
+    private const string SectionEntryPointTypeName = "Section";
 
     public static bool IsApplicationOrWeb(IAssemblySymbol assembly) =>
         assembly.Name is Application or Web || IsSection(assembly);
@@ -59,13 +58,25 @@ internal static class AssemblyScope
         string.Equals(assembly.Name, layer, System.StringComparison.Ordinal) || IsSection(assembly);
 
     /// <summary>
-    /// True for a section assembly — one carrying <c>[assembly: Section("…")]</c>.
-    /// A single metadata read, where scanning for <c>ISection</c> implementations
-    /// would cost a full declared-type walk per compilation.
+    /// True for a section assembly — one whose root namespace declares the
+    /// <c>Section : ISection</c> entry point that boot discovery registers.
     /// </summary>
-    public static bool IsSection(IAssemblySymbol assembly) =>
-        assembly.GetAttributes().Any(a =>
-            string.Equals(a.AttributeClass?.Name, SectionAttributeName, System.StringComparison.Ordinal));
+    /// <remarks>
+    /// Looked up by metadata name (<c>Humans.&lt;Section&gt;.Section</c>) rather than by
+    /// walking every declared type, so the check stays O(1) per compilation. The name is
+    /// not the test — implementing <c>ISection</c> is — but the lookup has to start
+    /// somewhere, and <c>SectionEntryPointConventionTests</c> asserts all 42 sections put
+    /// their entry point where this expects it, so the two cannot drift apart silently.
+    /// </remarks>
+    public static bool IsSection(IAssemblySymbol assembly)
+    {
+        var entryPoint = assembly.GetTypeByMetadataName($"{assembly.Name}.{SectionEntryPointTypeName}");
+        if (entryPoint is not { TypeKind: TypeKind.Class, IsAbstract: false })
+            return false;
+
+        return entryPoint.AllInterfaces.Any(i =>
+            string.Equals(i.ToDisplayString(), ISectionFullName, System.StringComparison.Ordinal));
+    }
 
     /// <summary>
     /// True when <paramref name="symbol"/> is declared in a section's <c>Data/</c> folder —

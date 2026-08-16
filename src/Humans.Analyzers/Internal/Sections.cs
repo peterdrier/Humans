@@ -3,20 +3,23 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Internal;
 
 /// <summary>
-/// Shared namespace→section resolution for section-aware analyzers
-/// (HUM0017, HUM0032). A type's section is the first namespace segment after
-/// a well-known prefix, folded per
-/// <c>memory/architecture/users-profiles-one-section.md</c>.
+/// Shared section resolution for section-aware analyzers (HUM0032). A section
+/// project's types take their section from the assembly name; what is left in
+/// <c>Humans.Application</c> takes it from the namespace segment after a
+/// well-known prefix.
 /// </summary>
 internal static class Sections
 {
     public const string ServiceNamespacePrefix = "Humans.Application.Services.";
     public const string InterfaceNamespacePrefix = "Humans.Application.Interfaces.";
 
+    private const string AssemblyPrefix = "Humans.";
+    private const string ContractsSuffix = ".Contracts";
+
     /// <summary>
-    /// Returns the folded section segment of
-    /// <c>{prefix}{Section}[.*]</c> for <paramref name="type"/>, or null when
-    /// the type is not declared under <paramref name="namespacePrefix"/>.
+    /// Returns the section segment of <c>{prefix}{Section}[.*]</c> for
+    /// <paramref name="type"/>, or null when the type is not declared under
+    /// <paramref name="namespacePrefix"/>.
     /// </summary>
     public static string? FromNamespace(INamedTypeSymbol type, string namespacePrefix)
     {
@@ -29,57 +32,41 @@ internal static class Sections
             return null;
 
         var dot = ns.IndexOf('.', startIndex);
-        var raw = dot < 0 ? ns.Substring(startIndex) : ns.Substring(startIndex, dot - startIndex);
-        return Fold(raw);
+        return dot < 0 ? ns.Substring(startIndex) : ns.Substring(startIndex, dot - startIndex);
     }
 
     /// <summary>
-    /// The section a type belongs to: its namespace segment under
-    /// <paramref name="namespacePrefix"/>, or — for a type in a section project
-    /// (nobodies-collective/Humans#866) — the name on its assembly's
-    /// <c>[Section("…")]</c>.
+    /// The section a type belongs to: its assembly's, or — for what is left in
+    /// <c>Humans.Application</c> — its namespace segment under
+    /// <paramref name="namespacePrefix"/>.
+    /// </summary>
+    public static string? Of(INamedTypeSymbol type, string namespacePrefix) =>
+        FromAssembly(type.ContainingAssembly) ?? FromNamespace(type, namespacePrefix);
+
+    /// <summary>
+    /// A section assembly's section: its name without the <c>Humans.</c> prefix, and
+    /// without the <c>.Contracts</c> suffix — <c>Humans.Camps</c> and
+    /// <c>Humans.Camps.Contracts</c> are both section Camps. Null for everything else,
+    /// so a type left in a Base assembly falls through to namespace resolution.
     /// </summary>
     /// <remarks>
-    /// A section's own types live under <c>Humans.&lt;Section&gt;.*</c>, not under the
-    /// Base prefixes, so namespace resolution alone returns null for every one of them —
-    /// and a section-aware analyzer that exits on null stops inspecting the section
-    /// entirely.
+    /// A <c>.Contracts</c> assembly declares no <c>ISection</c> entry point of its own,
+    /// so it is matched by name; every other candidate has to pass
+    /// <see cref="AssemblyScope.IsSection"/>, which is what keeps <c>Humans.Application</c>
+    /// and <c>Humans.UI</c> from reading as sections called "Application" and "UI".
     /// </remarks>
-    public static string? Of(INamedTypeSymbol type, string namespacePrefix, INamedTypeSymbol? sectionAttr) =>
-        FromNamespace(type, namespacePrefix) ?? FromAssembly(type.ContainingAssembly, sectionAttr);
-
-    /// <summary>The section name on an assembly's <c>[Section("…")]</c>, if it has one.</summary>
-    public static string? FromAssembly(IAssemblySymbol? assembly, INamedTypeSymbol? sectionAttr)
+    public static string? FromAssembly(IAssemblySymbol? assembly)
     {
-        if (sectionAttr is null)
+        var name = assembly?.Name;
+        if (name is null || !name.StartsWith(AssemblyPrefix, System.StringComparison.Ordinal))
             return null;
 
-        foreach (var attr in assembly?.GetAttributes() ?? default)
+        if (name.EndsWith(ContractsSuffix, System.StringComparison.Ordinal))
         {
-            if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, sectionAttr))
-                continue;
-            if (attr.ConstructorArguments.Length == 0)
-                continue;
-            return Fold(attr.ConstructorArguments[0].Value as string);
+            var length = name.Length - AssemblyPrefix.Length - ContractsSuffix.Length;
+            return length > 0 ? name.Substring(AssemblyPrefix.Length, length) : null;
         }
-        return null;
-    }
 
-    /// <summary>
-    /// Mirrors <c>ServiceBoundaryArchitectureTests.ServiceSection</c>: the
-    /// Users + Profiles ownership merger means <c>Users</c>, <c>Profile</c>,
-    /// and <c>Profiles</c> all resolve to the unified <c>"Humans"</c> section,
-    /// which section-aware analyzers treat as a single intra-section domain.
-    /// Per <c>memory/architecture/users-profiles-one-section.md</c>.
-    /// </summary>
-    public static string? Fold(string? raw)
-    {
-        if (raw is null)
-            return null;
-        return raw switch
-        {
-            "Users" or "Profile" or "Profiles" => "Humans",
-            _ => raw,
-        };
+        return AssemblyScope.IsSection(assembly!) ? name.Substring(AssemblyPrefix.Length) : null;
     }
 }

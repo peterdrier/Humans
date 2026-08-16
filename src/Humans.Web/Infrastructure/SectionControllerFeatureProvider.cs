@@ -1,5 +1,5 @@
 using System.Reflection;
-using Humans.Domain.Attributes;
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -19,8 +19,8 @@ namespace Humans.Web.Infrastructure;
 /// with no exceptions — that is what makes the compiler the boundary. Without this the
 /// rule would have to carve out controllers in all ~35 sections, and a section's
 /// controllers, its action-parameter view models and everything those touch would be
-/// nameable from any other section. Scoped to assemblies carrying
-/// <c>[assembly: Section("…")]</c>, the same marker the analyzers and DI discovery use.
+/// nameable from any other section. Scoped to assemblies declaring an
+/// <c>ISection</c> entry point, the same test the analyzers and DI discovery use.
 /// </remarks>
 internal sealed class SectionControllerFeatureProvider : ControllerFeatureProvider
 {
@@ -33,7 +33,7 @@ internal sealed class SectionControllerFeatureProvider : ControllerFeatureProvid
 
         // Only relax the public check, and only for section assemblies. Every other
         // condition below mirrors ControllerFeatureProvider.IsController.
-        if (typeInfo.Assembly.GetCustomAttribute<SectionAttribute>() is null)
+        if (!SectionDiscoveryExtensions.IsSectionAssembly(typeInfo.Assembly))
             return false;
 
         if (!typeInfo.IsClass || typeInfo.IsAbstract || typeInfo.ContainsGenericParameters)

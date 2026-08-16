@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Domain.Attributes;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
@@ -23,7 +22,6 @@ namespace Humans.GoogleIntegration.Data;
 ///
 /// Registered as Singleton via <c>IDbContextFactory&lt;GoogleIntegrationDbContext&gt;</c>.
 /// </remarks>
-[Section("GoogleIntegration")]
 internal interface IGoogleSyncOutboxRepository : IRepository
 {
     // ==========================================================================

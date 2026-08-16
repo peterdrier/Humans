@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 
@@ -22,7 +21,6 @@ namespace Humans.GoogleIntegration.Data;
 /// the service layer via <see cref="Teams.ITeamService"/>
 /// per design-rules §2c/§6.
 /// </remarks>
-[Section("GoogleIntegration")]
 internal interface IGoogleResourceRepository : IRepository
 {
     // ==========================================================================

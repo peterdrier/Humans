@@ -3,7 +3,6 @@ using Humans.Camps.Domain;
 
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Camps.Data;
 
@@ -22,7 +21,6 @@ namespace Humans.Camps.Data;
 /// application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
-[Section("Camps")]
 internal partial interface ICampRepository : IRepository
 {
     // ==========================================================================

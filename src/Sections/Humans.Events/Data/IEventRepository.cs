@@ -1,6 +1,5 @@
 using Humans.Events.Services.Dtos;
 using Humans.Events.Domain;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Events.Contracts;
 
@@ -18,7 +17,6 @@ namespace Humans.Events.Data;
 /// (memory/architecture/no-cross-section-ef-joins.md).
 /// </para>
 /// </summary>
-[Section("Events")]
 internal interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────

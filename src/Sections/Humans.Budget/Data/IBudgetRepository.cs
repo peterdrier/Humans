@@ -1,7 +1,6 @@
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
 using NodaTime;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces.Repositories;
 
 namespace Humans.Budget.Data;
@@ -29,7 +28,6 @@ namespace Humans.Budget.Data;
 /// both commit inside the same <c>SaveChanges</c>.
 /// </para>
 /// </remarks>
-[Section("Budget")]
 internal interface IBudgetRepository : IRepository
 {
     // ==========================================================================

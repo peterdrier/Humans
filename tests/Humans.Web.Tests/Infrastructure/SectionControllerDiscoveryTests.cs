@@ -54,9 +54,9 @@ public sealed class SectionControllerDiscoveryTests
     [HumansFact]
     public void InternalControllersOutsideASectionAreStillNotDiscovered()
     {
-        // The provider relaxes IsPublic *only* for assemblies carrying [assembly: Section("…")].
-        // If that narrowing ever regressed, every internal class ending in "Controller"
-        // anywhere would become routable.
+        // The provider relaxes IsPublic *only* for assemblies declaring an ISection entry
+        // point. If that narrowing ever regressed, every internal class ending in
+        // "Controller" anywhere would become routable.
         var provider = new SectionControllerFeatureProvider();
         var feature = new ControllerFeature();
 
@@ -65,7 +65,7 @@ public sealed class SectionControllerDiscoveryTests
             feature);
 
         feature.Controllers.Should().NotContain(typeof(NotASectionController).GetTypeInfo(),
-            because: "this test assembly carries no [assembly: Section(…)] marker");
+            because: "this test assembly declares no ISection entry point");
     }
 
     private static IReadOnlyList<Type> DiscoverControllers(IEnumerable<Assembly> assemblies)

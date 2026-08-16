@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
-using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -12,7 +11,6 @@ namespace Humans.Campaigns.Data;
 /// <c>campaign_codes</c>, and <c>campaign_grants</c>. The only non-test file
 /// that writes to these DbSets after the Campaigns migration lands.
 /// </summary>
-[Section("Campaigns")]
 internal interface ICampaignRepository : IRepository
 {
     // ==========================================================================

@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Attributes;
 using Humans.Gate.Domain;
 using NodaTime;
 
@@ -10,7 +9,6 @@ namespace Humans.Gate.Data;
 /// The only type permitted to read or write them, per the one-table-one-repository
 /// hard rule.
 /// </summary>
-[Section("Gate")]
 internal interface IGateRepository : IRepository
 {
     /// <summary>The prior admit recorded for this dedupe key (normalized barcode), or null if none — used both for the duplicate pre-check and to show "already admitted at / by" on a duplicate scan.</summary>

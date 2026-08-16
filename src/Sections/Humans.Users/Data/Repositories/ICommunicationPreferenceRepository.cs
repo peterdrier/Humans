@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 
@@ -11,7 +10,6 @@ namespace Humans.Users.Data.Repositories;
 /// Repository for the <c>communication_preferences</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-[Section("Humans")]
 internal interface ICommunicationPreferenceRepository : IRepository
 {
     /// <summary>

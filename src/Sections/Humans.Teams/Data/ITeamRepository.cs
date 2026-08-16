@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;
@@ -25,7 +24,6 @@ namespace Humans.Teams.Data;
 /// <see cref="Users.IUserService"/>. See design-rules §6.
 /// </para>
 /// </summary>
-[Section("Teams")]
 internal interface ITeamRepository : IRepository
 {
     // ==========================================================================

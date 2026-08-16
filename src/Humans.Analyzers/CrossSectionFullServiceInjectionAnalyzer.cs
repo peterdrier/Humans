@@ -28,18 +28,17 @@ namespace Humans.Analyzers;
 /// </list>
 /// </summary>
 /// <remarks>
-/// Runs in <c>Humans.Application</c> only. Caller section comes from the
-/// <c>Services.{Section}</c> namespace, dependency section from the
-/// <c>Interfaces.{Section}</c> namespace, both folded via
-/// <see cref="Sections.Fold"/> (Users/Profile/Profiles are one section).
-/// Every future read-split automatically arms this rule for its section.
+/// Caller and dependency sections both come from their assembly (a section
+/// project's name is its section), falling back to the <c>Services.{Section}</c>
+/// and <c>Interfaces.{Section}</c> namespaces for what is left in
+/// <c>Humans.Application</c>. Every future read-split automatically arms this
+/// rule for its section.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0032";
 
-    private const string SectionAttributeFullName = "Humans.Domain.Attributes.SectionAttribute";
     private const string ReadInterfaceSuffix = "ServiceRead";
 
     private static readonly LocalizableString Title =
@@ -79,13 +78,9 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
             return;
 
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
-        // Nullable on purpose: without it section resolution falls back to namespaces,
-        // which is exactly the pre-#866 behaviour. Returning early instead would switch
-        // the whole rule off for any compilation that does not reference Humans.Domain.
-        var sectionAttr = context.Compilation.GetTypeByMetadataName(SectionAttributeFullName);
 
         context.RegisterSymbolStartAction(
-            ctx => OnSymbolStart(ctx, grandfatheredAttr, sectionAttr),
+            ctx => OnSymbolStart(ctx, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
@@ -121,20 +116,17 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
 
     private static void OnSymbolStart(
         SymbolStartAnalysisContext context,
-        INamedTypeSymbol? grandfatheredAttr,
-        INamedTypeSymbol? sectionAttr)
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsAbstract)
             return;
 
-        // A section project's service lives under Humans.<Section>.Services, not the Base
-        // prefix, so the namespace lookup alone would skip every moved section.
-        var callerSection = Sections.Of(type, Sections.ServiceNamespacePrefix, sectionAttr);
+        var callerSection = Sections.Of(type, Sections.ServiceNamespacePrefix);
         if (callerSection is null)
             return;
 
-        var candidates = BuildCandidates(type, callerSection, sectionAttr);
+        var candidates = BuildCandidates(type, callerSection);
         if (candidates.Count == 0)
             return;
 
@@ -157,8 +149,7 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
 
     private static List<Candidate> BuildCandidates(
         INamedTypeSymbol type,
-        string callerSection,
-        INamedTypeSymbol? sectionAttr)
+        string callerSection)
     {
         var candidates = new List<Candidate>();
 
@@ -178,7 +169,7 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
                 if (readBases.Count == 0)
                     continue;
 
-                var dependencySection = Sections.Of(fullInterface, Sections.InterfaceNamespacePrefix, sectionAttr);
+                var dependencySection = Sections.Of(fullInterface, Sections.InterfaceNamespacePrefix);
                 if (dependencySection is null
                     || string.Equals(dependencySection, callerSection, System.StringComparison.Ordinal))
                     continue;

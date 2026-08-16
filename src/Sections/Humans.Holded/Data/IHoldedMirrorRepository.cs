@@ -1,11 +1,9 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Attributes;
 using Humans.Holded.Domain;
 using NodaTime;
 
 namespace Humans.Holded.Data;
 
-[Section("Holded")]
 internal interface IHoldedMirrorRepository : IRepository
 {
     // Ledger mirror

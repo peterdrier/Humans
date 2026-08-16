@@ -1,13 +1,11 @@
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Enums;
-using Humans.Domain.Attributes;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Data;
 
-[Section("Expenses")]
 
 internal interface IExpenseRepository : IRepository
 {

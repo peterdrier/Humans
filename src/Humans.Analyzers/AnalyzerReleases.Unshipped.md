@@ -15,8 +15,6 @@ HUM0011 | Humans.Architecture   | Warning  | Declaration decorated with [Expires
 HUM0014 | Humans.Architecture   | Error    | Class in Humans.Web injects a repository directly (must go through an application service)
 HUM0015 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods
 HUM0016 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack — decrement budget)
-HUM0017 | Humans.Architecture   | Warning  | Application service injects a repository whose [Section] differs from the service's namespace section
-HUM0018 | Humans.Architecture   | Warning  | Section-aware analyzer (e.g. HUM0017) cannot determine the section of a type — missing [Section] or unsection'd namespace
 HUM0019 | Humans.Architecture   | Warning  | Read of Identity-derived User column (Email/NormalizedEmail/UserName/NormalizedUserName) from Application or Web
 HUM0020 | Humans.Architecture   | Error    | Caching decorator references a repository directly instead of routing through the keyed inner service
 HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read or written) by more than one repository — a table must belong to exactly one repository (downgrades to Warning for repos carrying [Grandfathered("HUM0025", ..., scope: "<DbSet>")])
@@ -27,4 +25,3 @@ HUM0030 | Humans.Architecture   | Error    | Date/time format-string literal use
 HUM0031 | Humans.Architecture   | Error    | Controller method exceeds the business-logic thresholds (statements > 40 or cyclomatic complexity > 15) — move the logic into the section's application service (downgrades to Warning for methods carrying [Grandfathered("HUM0031", ...)])
 HUM0032 | Humans.Architecture   | Error    | Cross-section caller injects a full I*Service but only uses members of its I*ServiceRead base — inject the read interface instead (downgrades to Warning for classes carrying [Grandfathered("HUM0032", ...)])
 HUM0033 | Humans.Architecture   | Error    | State-changing controller action ([HttpPost]/[HttpPut]/[HttpDelete]/[HttpPatch]) passes a request-scoped cancellation token (HttpContext.RequestAborted or the action's own CancellationToken parameter) to a method marked [ExternalWrite] (downgrades to Warning for actions carrying [Grandfathered("HUM0033", ...)])
-HUM0034 | Humans.Architecture   | Error    | Public type in a [assembly: Section("…")] assembly that is not the Section entry point, the <Section>Resource marker, an EF migration, a framework-required-public type (view component, tag helper), or under Contracts/ (downgrades to Warning for types carrying [Grandfathered("HUM0034", ...)])

@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Attributes;
 using Humans.Surveys.Domain;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -19,7 +18,6 @@ namespace Humans.Surveys.Data;
 /// application service stitches display data via <c>IUserServiceRead</c>/<c>ITeamServiceRead</c>.
 /// Declared <c>partial</c>; each phase extends it with that phase's reads/writes.
 /// </remarks>
-[Section("Surveys")]
 internal partial interface ISurveyRepository : IRepository
 {
     /// <summary>Loads a survey with its questions (ordered) and their options (ordered). Null if not found. Read-only.</summary>
