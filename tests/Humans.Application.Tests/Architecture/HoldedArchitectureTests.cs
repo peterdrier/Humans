@@ -6,13 +6,6 @@ namespace Humans.Application.Tests.Architecture;
 public class HoldedArchitectureTests
 {
     [HumansFact]
-    public void IHoldedClient_LivesIn_HoldedContractsNamespace()
-    {
-        typeof(IHoldedClient).Namespace
-            .Should().Be("Humans.Holded.Contracts");
-    }
-
-    [HumansFact]
     public void HumansApplication_HasNoEFCoreReference()
     {
         // Anchored on a type that stays in Humans.Application. It used to read

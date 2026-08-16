@@ -1,4 +1,3 @@
-using Humans.Teams.Data;
 using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
@@ -8,7 +7,6 @@ using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Infrastructure.Repositories.Admin;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -88,6 +86,10 @@ public class ServiceBoundaryArchitectureTests
     /// that lost a marker they used to carry, and nothing else. <c>INonCompliantMemberSuspension</c>
     /// also lost <c>IOrchestrator</c> but is absent here because the name predicate below never
     /// matched it.
+    ///
+    /// <c>IHumanLifecycleService</c> stays listed because this test inspects interfaces, but its
+    /// analyzer coverage is back: <c>HumanLifecycleService</c> carries <c>IOrchestrator</c> and
+    /// HUM0026/HUM0027 key on the implementing class.
     ///
     /// Exit condition: delete this list when the leaf can name the markers again — either
     /// because Base stops referencing it, or because the markers move somewhere it may

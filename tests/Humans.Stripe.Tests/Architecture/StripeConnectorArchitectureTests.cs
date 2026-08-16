@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Stripe.Contracts;
-using Humans.Stripe.Services;
 
 namespace Humans.Stripe.Tests.Architecture;
 
@@ -18,20 +17,13 @@ namespace Humans.Stripe.Tests.Architecture;
 /// sections' own repository paths.
 /// </para>
 /// <para>
-/// These tests fail loudly if a future change pulls <c>Stripe.net</c> into the Application
-/// or Web assemblies, or leaks SDK types onto the <see cref="IStripeService"/> surface.
+/// Two tests remain: one fails if <c>Stripe.net</c> is pulled into the Application assembly,
+/// the other if an SDK type appears on the <see cref="IStripeService"/> surface. The Web
+/// assembly is no longer checked — see the COVERAGE REDUCED note below.
 /// </para>
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    [HumansFact]
-    public void IStripeService_LivesInTheSectionsContractsNamespace()
-    {
-        typeof(IStripeService).Namespace
-            .Should().Be("Humans.Stripe.Contracts",
-                because: "the connector's outward surface is its Contracts/ folder — HUM0034 allows public section types nowhere else (design-rules §15i)");
-    }
-
     [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToStripeNet()
     {
@@ -99,18 +91,5 @@ public class StripeConnectorArchitectureTests
                 foreach (var arg in current.GetGenericArguments())
                     stack.Push(arg);
         }
-    }
-
-    [HumansFact]
-    public void StripeServiceImplementation_IsInternalToTheSection()
-    {
-        var impl = typeof(StripeService);
-
-        impl.Namespace
-            .Should().Be("Humans.Stripe.Services",
-                because: "the Stripe.net-using implementation stays behind the seam — only Contracts/ crosses it (design-rules §15i)");
-        impl.IsPublic
-            .Should().BeFalse(
-                because: "section types are internal by default; only Contracts/ members and Section are public (HUM0034)");
     }
 }

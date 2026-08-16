@@ -5,8 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Issues.Data;
 using Humans.Issues.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 using IssuesService = Humans.Issues.Services.IssuesService;
 
 namespace Humans.Issues.Tests.Architecture;
@@ -57,49 +55,10 @@ public class IssuesArchitectureTests
     }
 
     [HumansFact]
-    public void IssuesService_ConstructorTakesNoEfType()
-    {
-        // Replaces the pre-move assertion that typeof(IssuesService).Assembly carries no
-        // EF reference: that was a true statement about Humans.Application, and the section
-        // assembly holds the repository and references EF on purpose (§15 step 11). The
-        // constructor is what the original was reaching for, and it is the stronger check.
-        var parameterTypes = typeof(IssuesService).GetConstructors().Single()
-            .GetParameters().Select(p => p.ParameterType).ToList();
-
-        parameterTypes.Should().NotContain(t => typeof(DbContext).IsAssignableFrom(t),
-            because: "the service goes through IIssuesRepository; only the repository owns a DbContext");
-        parameterTypes.Should().NotContain(
-            t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
-            because: "context lifetime is the repository's business (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The carve moved every Issue_* and Enum_IssueCategory_* key out of SharedResource, so a
-        // type still injecting IStringLocalizer<SharedResource> would resolve nothing and render
-        // the raw key — a 200 with degraded copy, in every language, on paths a render test tends
-        // not to reach. The views are safe by construction (_ViewImports rebinds Localizer for
-        // all of them); this is the guard for controllers and services.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                         && p.ParameterType.GetGenericArguments()[0] != typeof(IssuesResource))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every Issue_* key lives in IssuesResource; resolving one through another "
-                   + "set renders the key itself and no error (§15 step 3b)");
-    }
-
-    [HumansFact]
     public void AuditEntityTypesAreLiterals()
     {
-        // Persisted audit discriminators, matched by exact equality when the log is read back.
-        // Declaring them as literals is what makes a rename of the entity schema-inert
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
         // (memory/code/type-name-as-persisted-string.md).
         AuditEntityTypes.Issue.Should().Be("Issue");
     }

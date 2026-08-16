@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
-using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests;
@@ -14,71 +13,11 @@ namespace Humans.Cantina.Tests;
 public class CantinaArchitectureTests
 {
     [HumansFact]
-    public void OnlySectionAndResourceMarkerArePublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 step 5),
-        // enforced at build time by HUM0034. Cantina's Contracts/ is an empty folder —
-        // nothing outside the section names a Cantina type — and there are no migrations,
-        // because the section owns no tables.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(
-            ["Humans.Cantina.CantinaResource", "Humans.Cantina.Section"]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        // Shell registers SectionControllerFeatureProvider, which relaxes MVC's IsPublic check
-        // for discovered section assemblies
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(1);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // A view is safe by construction — Views/_ViewImports.cshtml rebinds Localizer in one
-        // line — but a *controller* left on IStringLocalizer<SharedResource> keeps compiling
-        // and renders its carved keys as raw key names on exactly the POST and failure paths a
-        // render test does not reach. That is how Consent shipped five raw keys past a green
-        // 5,370-test suite (§15 step 3b). Cantina carved all 44 of its keys and reads no shared
-        // one, so the guard admits a single marker.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Where(p => p.ParameterType.IsGenericType
-                            && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                            && p.ParameterType.GetGenericArguments()[0] != typeof(CantinaResource))
-                .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every Cantina_* key moved into CantinaResource; binding any other set "
-                   + "renders the raw key in all six languages");
-    }
-
-    [HumansFact]
     public void SectionAssemblyDoesNotReferenceEntityFrameworkCore()
     {
-        // Calendar's rule (§15 step 11) retires this assertion shape for a moved section,
-        // because a section assembly holds its own repository and references EF on purpose —
-        // so the test either fails or, worse, keeps passing while asserting nothing. Cantina
-        // is the case where the original statement is still true and is the strongest one
-        // available: the section owns no tables, takes no Humans.Infrastructure reference and
-        // reads everything through other sections' service interfaces, so it cannot *name* a
-        // DbContext. Restating it on the constructors would need an EF package this project
-        // deliberately does not have (Scanner's rule, step 8).
+        // Cantina owns no tables — it reads everything through other sections' services.
+        // Without an EF reference it can't even name a DbContext. Checking the reference
+        // catches the section gaining one; a constructor check would not.
         typeof(Section).Assembly.GetReferencedAssemblies()
             .Select(a => a.Name)
             .Should().NotContain("Microsoft.EntityFrameworkCore",

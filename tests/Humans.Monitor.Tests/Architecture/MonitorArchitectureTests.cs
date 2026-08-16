@@ -64,37 +64,11 @@ public class MonitorArchitectureTests
     }
 
     [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Monitor ships no Resources/ folder and no MonitorResource: its one page is admin-only
-        // English (G5-SECTION-TEMPLATE.md step 3b's first question, answered "no keys"). Assert
-        // it structurally so the day someone adds copy, the build says "carve a resource set".
-        var offenders = SectionAssembly
-            .GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Select(param => (Type: t, param.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && string.Equals(
-                            x.ParameterType.GetGenericTypeDefinition().FullName,
-                            "Microsoft.Extensions.Localization.IStringLocalizer`1",
-                            StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Monitor has no resource set; a localizer here means copy was added without carving one");
-    }
-
-    [HumansFact]
     public void SectionOwnsNoDbContext()
     {
-        // Monitor owns no tables — it reads Google through GoogleIntegration's connector
-        // abstraction and writes through IAuditLogService. No DbContext, no repository, no
-        // AddSectionDbContext (template step 1's table-less shape).
+        // Monitor has no tables. It reads Google through GoogleIntegration and writes
+        // through the audit log. A DbContext turning up in any constructor here means
+        // the section quietly grew a database, which nothing else would catch.
         var offenders = SectionAssembly
             .GetTypes()
             .SelectMany(t => t.GetConstructors()

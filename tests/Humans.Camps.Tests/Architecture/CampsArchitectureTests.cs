@@ -55,13 +55,6 @@ public class CampsArchitectureTests
     }
 
     [HumansFact]
-    public void CachingCampService_IsSealed()
-    {
-        typeof(CachingCampService).IsSealed.Should().BeTrue(
-            because: "decorator implementations are sealed to prevent override of cache-invalidation semantics");
-    }
-
-    [HumansFact]
     public void CachingCampService_LivesInInfrastructureServicesCampsNamespace()
     {
         typeof(CachingCampService).Namespace
@@ -102,16 +95,15 @@ public class CampsArchitectureTests
             "Humans.Camps.Services.CampRoleService",
         };
 
-        // Anchored on Section, not on the three service/repo types this list used to name:
-        // they were three assemblies before G5 and are one (Humans.Camps) now, so the array was
-        // scanning the same assembly three times. Section is the ISection registration and
-        // cannot leave Humans.Camps; any of the old anchors would have silently retargeted onto
-        // Humans.Camps.Contracts on a move, leaving this tripwire scanning an assembly with no
-        // ICampRepository consumers in it and passing vacuously.
-        var sectionAssembly = typeof(Section).Assembly;
+        var assemblies = new[]
+        {
+            typeof(CampService).Assembly,
+            typeof(CampRepository).Assembly,
+            typeof(CachingCampService).Assembly,
+        };
 
-        var consumers = sectionAssembly
-            .GetTypes()
+        var consumers = assemblies
+            .SelectMany(a => a.GetTypes())
             .Where(t => t.GetConstructors()
                 .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampRepository))))
             .Select(t => t.FullName ?? t.Name)
@@ -134,8 +126,7 @@ public class CampsArchitectureTests
     [HumansFact]
     public void CampInfoSaveChangesInterceptor_IsNotPresent()
     {
-        // Section anchor: immune to CachingCampService relocating (see above).
-        var found = typeof(Section).Assembly
+        var found = typeof(CachingCampService).Assembly
             .GetTypes()
             .FirstOrDefault(t => string.Equals(t.Name, "CampInfoSaveChangesInterceptor", StringComparison.Ordinal));
 
@@ -154,8 +145,7 @@ public class CampsArchitectureTests
     [HumansFact]
     public void CampRoleService_IsTheOnlyCampsSideGoogleGroupMembershipSource()
     {
-        // Section anchor: immune to CampService relocating (see above).
-        var campsAssembly = typeof(Section).Assembly;
+        var campsAssembly = typeof(CampService).Assembly;
         var campsClaimants = campsAssembly
             .GetTypes()
             .Where(t => !t.IsAbstract

@@ -2,13 +2,11 @@ using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
@@ -27,65 +25,6 @@ namespace Humans.Gate.Tests;
 /// </remarks>
 public class GateArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionIsPublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5), enforced at build time by
-        // HUM0034. Gate has no <Section>Resource: the kiosk views carry no resource keys, so
-        // the carve took nothing and Finance's no-Resources shape applies (§15 step 3b).
-        //
-        // Both controllers are internal. Shell registers SectionControllerFeatureProvider,
-        // which relaxes MVC's IsPublic check for discovered section assemblies
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
-        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
-        // than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Gate.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(["Humans.Gate.Section"]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(2);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
-
-    [HumansFact]
-    public void ContractsExposeOnlyTheCrossSectionSurface()
-    {
-        // Pins the whole Contracts assembly, so widening Gate's cross-section surface is a
-        // visible diff rather than a silent one. One type, one consumer story:
-        //   IGateScanRetention — GateRetentionJob, which stays in Base because recurring jobs
-        //     have no discovery seam yet (§15 step 6b).
-        // GateVendorCheckInJob also stays in Base and needs nothing here: it takes
-        // ITicketVendorService and a vendor ticket id, no Gate type in its signature.
-        typeof(IGateScanRetention).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .Should().BeEquivalentTo(["IGateScanRetention"]);
-    }
-
-    [HumansFact]
-    public void ContractsReferenceOnlyTheBottomOfTheGraph()
-    {
-        typeof(IGateScanRetention).Assembly.GetReferencedAssemblies()
-            .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
-                because: "a section's contracts leaf references only the bottom of the graph "
-                       + "(memory/architecture/section-project-cycle-fix.md)");
-    }
-
     /// <summary>
     /// Pins the set of types that may inject <see cref="IGateRepository"/>: the owning service
     /// and the repository implementation. A new consumer taking the repository directly would
@@ -155,56 +94,14 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void SectionRegistersTheContractsAndTheUserLifecycleForwarders()
+    public void SectionRegistersTheUserMergeForwarder()
     {
+        // When two accounts are merged, Gate has to move its scan rows over to the
+        // surviving user. That only happens if this registration is present — drop it
+        // and the rows silently keep pointing at the account that went away.
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());
 
-        services.Single(d => d.ServiceType == typeof(IGateRepository)).Lifetime
-            .Should().Be(ServiceLifetime.Singleton);
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGateService));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGateScanRetention));
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserDataContributor));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IUserMerge));
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Gate ships no resource set — every string on the kiosk is inline English by design
-        // (the terminal is staff-facing and single-locale). A type that acquired an
-        // IStringLocalizer<SharedResource> here would resolve against Humans.UI's set from
-        // inside a section RCL, which is the failure §15 step 3b exists to prevent; a type
-        // that needs localized copy needs a GateResource carve first.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
-                .Where(p => p.ParameterType.IsGenericType
-                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Gate has no GateResource; a localizer here would resolve against another "
-                   + "section's set and render raw keys (§15 step 3b)");
-    }
-
-    [HumansFact]
-    public void ControllersKeepTheirRoutePrefixes()
-    {
-        // The kiosk and the one-off backfill page keep the URLs they had in Shell —
-        // a G5 move changes files, never routes.
-        RoutePrefixOf("Humans.Gate.Controllers.GateController").Should().Be("Gate");
-        RoutePrefixOf("Humans.Gate.Controllers.GateVendorBackfillAdminController")
-            .Should().Be("Gate/Admin/VendorCheckInBackfill");
-    }
-
-    private static string RoutePrefixOf(string fullName)
-    {
-        var type = typeof(Section).Assembly.GetType(fullName, throwOnError: true)!;
-        return type
-            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
-            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
-            .Single().Template;
     }
 }

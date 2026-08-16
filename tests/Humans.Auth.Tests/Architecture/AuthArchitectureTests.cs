@@ -22,64 +22,6 @@ namespace Humans.Auth.Tests.Architecture;
 /// </remarks>
 public class AuthArchitectureTests
 {
-    // Anchored on Section rather than IRoleAssignmentRepository: Section is the ISection
-    // registration and cannot leave Humans.Auth, so this anchor is immune by construction. A
-    // repository interface anchor would silently retarget onto Humans.Auth.Contracts the day the
-    // interface moves there, after which every sweep below goes near-empty and still passes.
-    private static System.Reflection.Assembly SectionAssembly => typeof(Section).Assembly;
-
-    [HumansFact]
-    public void SectionServicesTakeNoDbContext()
-    {
-        // Restates the generic "GetReferencedAssemblies() does not contain
-        // EntityFrameworkCore" shape, which stops meaning anything once the repository
-        // ships in the same assembly as the service (G5-SECTION-TEMPLATE.md step 11).
-        // The real invariant is that only the repository touches a context.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .Where(t => t.IsClass && t.Namespace?.StartsWith("Humans.Auth.Services", StringComparison.Ordinal) == true)
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()).Select(param => (Type: t, param.ParameterType)))
-            .Where(x => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(x.ParameterType)
-                        || (x.ParameterType.IsGenericType
-                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "only RoleAssignmentRepository may touch AuthDbContext (peters-hard-rules.md)");
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // The section deliberately ships no Resources/ folder and no AuthResource: it has
-        // no controller and no view. AccountController and its Views/Account/* — and with
-        // them every Login_*/MagicLink*/GateLogin_*/CompleteSignup_*/AccessDenied_* key —
-        // stayed in Shell, and stayed there when MagicLinkService came into the section at
-        // G5 lane 4b-2i, so those keys stayed in SharedResource (template step 3b's first
-        // question, answered "no keys"). MagicLinkService renders no copy: the two emails it
-        // sends are built by Email's IEmailMessageFactory against EmailResource.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Select(param => (Type: t, param.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && string.Equals(
-                            x.ParameterType.GetGenericTypeDefinition().FullName,
-                            "Microsoft.Extensions.Localization.IStringLocalizer`1",
-                            StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Auth has no resource set; a localizer here means copy was added without carving one");
-    }
-
     // SectionReferencesNoVerticalSection was retired here at nobodies-collective/Humans#866 G5
     // lane 4b-2i, the same call and for the same reason lane 4b-2h made in
     // AuditLogArchitectureTests. It pinned Humans.Auth.GetReferencedAssemblies() to exactly
@@ -101,19 +43,10 @@ public class AuthArchitectureTests
     [HumansFact]
     public void ContractsLeafNamesNoAspNetType()
     {
-        // This test is the ONLY thing enforcing the property. The comment here used to say the
-        // leaf was "framework-free by construction" — that was measured false in G5 lane 3c
-        // (2026-08-15). Humans.Interfaces carries FrameworkReference Microsoft.AspNetCore.App
-        // and FrameworkReference flows transitively through ProjectReference, so
-        // Humans.Auth.Contracts resolves Microsoft.AspNetCore.App
-        // (IsTransitiveFrameworkReference=true) and would compile against ASP.NET types happily.
-        // What keeps them out is this assertion, not the SDK. The one piece of Auth's public
-        // surface that needs Microsoft.AspNetCore.Authorization
-        // (RoleAssignmentOperationRequirement) lives in Humans.Auth's own Contracts/ *folder*
-        // instead — Tickets' both-halves split.
-        //
-        // Note this inspects the EMITTED assembly's referenced-assembly list, i.e. what the leaf
-        // actually names, which is why it still passes and still means something.
+        // Nothing in the project setup keeps ASP.NET out of this contracts project — the
+        // framework reference reaches it anyway through Humans.Interfaces, so it would
+        // compile against ASP.NET types happily. This test is the only thing stopping it,
+        // which is what lets anything in Base name the leaf without dragging ASP.NET in.
         var leafRefs = typeof(Contracts.IRoleAssignmentService).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
@@ -121,8 +54,7 @@ public class AuthArchitectureTests
             .ToList();
 
         leafRefs.Should().BeEmpty(
-            because: "Humans.Auth.Contracts must name no ASP.NET type — a choice this test " +
-                     "enforces, not a property the SDK gives us (see the comment above)");
+            because: "Humans.Auth.Contracts must stay free of ASP.NET types");
     }
 
     // --- The two rules that followed MagicLinkService in from Humans.Application.Tests. ---

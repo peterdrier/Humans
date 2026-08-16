@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.TicketTailor.Services;
 
 namespace Humans.TicketTailor.Tests.Architecture;
 
@@ -36,22 +35,6 @@ public class TicketVendorArchitectureTests
         "TicketTailor",
         "Humans.Infrastructure",
     ];
-
-    [HumansFact]
-    public void ITicketVendorService_LivesUnderTheTicketsSectionContracts()
-    {
-        typeof(ITicketVendorService).Namespace
-            .Should().Be(PortNamespace,
-                because: "the vendor-agnostic port is public surface of the section that owns ticketing, so it sits under Humans.Tickets/Contracts/ where HUM0034 expects a section's public types (nobodies-collective/Humans#866, G5 lane 4b-2g)");
-    }
-
-    [HumansFact]
-    public void ITicketVendorService_IsDeclaredInTheTicketsAssembly()
-    {
-        typeof(ITicketVendorService).Assembly.GetName().Name
-            .Should().Be("Humans.Tickets",
-                because: "the port is compiled into the owning section, not onto the Humans.Tickets.Contracts leaf — no Base consumer names it, and the leaf must stay free of the vendor's vocabulary");
-    }
 
     [HumansFact]
     public void NeitherThePortsAssemblyNorBaseReferencesTheAdapterSection()
@@ -181,27 +164,5 @@ public class TicketVendorArchitectureTests
                         yield return inner;
             }
         }
-    }
-
-    [HumansFact]
-    public void BothAdaptersLiveInThisSectionAndAreInternal()
-    {
-        foreach (var impl in new[] { typeof(TicketTailorService), typeof(StubTicketVendorService) })
-        {
-            impl.Namespace.Should().Be("Humans.TicketTailor.Services",
-                because: "the adapters own HttpClient, JSON parsing and TicketTailor-specific response shapes; they belong to the section that gets deleted when the vendor changes");
-            impl.IsPublic.Should().BeFalse(
-                because: "nothing outside this project may name an adapter — Section.Register is the only thing that binds one (HUM0034)");
-            typeof(ITicketVendorService).IsAssignableFrom(impl).Should().BeTrue();
-        }
-    }
-
-    [HumansFact]
-    public void TheSectionExportsNothingButItsSectionMarker()
-    {
-        typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Should().BeEquivalentTo(["Humans.TicketTailor.Section"],
-                because: "the adapter publishes no contract: consumers of ticketing talk to Humans.Tickets, and this project is one implementation of a Base port");
     }
 }

@@ -38,7 +38,7 @@ Several system operations need to run automatically without user interaction: sy
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
 | MailerAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Registered only when `MailerLite:AudienceSyncCron` is set to a cron expression — the setting ships empty, so by default this job does not run at all and syncing is on-demand via the `/Mailer/Admin` "Push Now" button |
 
-> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`system-team-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired — their Hangfire entries are explicitly removed on startup (`send-admin-daily-digest` / `send-board-daily-digest`) and the job types no longer exist.
+> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 
 ## Job Details
 
@@ -173,7 +173,7 @@ See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-rig
 
 **Purpose**: Maintain automatic membership for the three system teams based on eligibility criteria. Also syncs Google Shared Drive and Group permissions for each membership change.
 
-**Schedule**: Hourly (Hangfire recurring job `system-team-sync`). Can also be triggered manually from the Admin dashboard via "Sync System Teams" button.
+**Schedule**: Hourly (Hangfire recurring job `teams-system-sync`). Can also be triggered manually from the Admin dashboard via "Sync System Teams" button.
 
 **Inline Triggers**: After the name-only access switch, the consent-write and CC-clear paths no longer fire a per-user Volunteers sync — admission is reconciled by the scheduled `SyncVolunteersTeamAsync` pass (eventually consistent), and access never depended on Volunteers membership. `SyncVolunteersMembershipForUserAsync(userId)` (single-user, no effect on other members) remains available and is still triggered by per-user lifecycle events (e.g. role/lead changes via the other system-team paths).
 
@@ -262,12 +262,14 @@ builder.Services.AddScoped<SystemTeamSyncJob>();
 builder.Services.AddScoped<SyncLegalDocumentsJob>();
 // ... etc
 
-// Schedule recurring jobs
-RecurringJob.AddOrUpdate<SystemTeamSyncJob>(
-    "system-team-sync",
-    job => job.ExecuteAsync(CancellationToken.None),
-    Cron.Hourly);
+// Schedule recurring jobs — one line per job in RecurringJobExtensions.BuildRollCall,
+// which is the whole list of jobs the app knows how to run.
+Add<SyncLegalDocumentsJob>("consent-legal-document-sync", "0 4 * * *");
 ```
+
+Job ids are section-first (`consent-legal-document-sync`, `issues-cleanup`, `tickets-vendor-sync`) so the owning section is obvious from the id alone.
+
+Startup schedules every job in the roll-call and then deletes any stored Hangfire schedule whose id is not in it. Renaming or deleting a job therefore needs nothing beyond editing the roll-call — the old entry goes away on the next boot, taking its dashboard history with it. An opt-in job keeps its place in the roll-call even when its schedule is switched off, so turning one off never gets it swept away.
 
 ### Dashboard
 - URL: `/hangfire`

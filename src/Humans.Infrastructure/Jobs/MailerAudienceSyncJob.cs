@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Interfaces;
 using Humans.Mailer.Contracts;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,7 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class MailerAudienceSyncJob(IMailerAudienceSync sync, ILogger<MailerAudienceSyncJob> logger)
+    : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken ct = default)
     {

@@ -61,7 +61,7 @@ public sealed class Section : ISection
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         // The system-team reconciler. Its interface stays in Humans.Application because
-        // Hangfire serializes ISystemTeamSync as the "system-team-sync" recurring job's
+        // Hangfire serializes ISystemTeamSync as the "teams-system-sync" recurring job's
         // target type; the implementation is resolved from DI at execution time (lane 4b-2e).
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 

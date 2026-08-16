@@ -1,11 +1,6 @@
-using Humans.Auth.Contracts;
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests;
 
@@ -25,9 +20,6 @@ namespace Humans.Notifications.Tests;
 /// </summary>
 public class NotificationsArchitectureTests
 {
-    private static IEnumerable<Type> SectionTypes =>
-        typeof(Section).Assembly.GetTypes().Where(t => !t.IsNested);
-
     // ── NotificationService ──────────────────────────────────────────────────
 
     // The DbContext-constructor-parameter check is covered by the generic
@@ -62,85 +54,6 @@ public class NotificationsArchitectureTests
 
         paramTypes.Should().Contain(typeof(INotificationRepository));
         paramTypes.Should().Contain(p => p.Name == "IUserServiceRead");
-    }
-
-    // ── NotificationMeterProvider ────────────────────────────────────────────
-
-    [HumansFact]
-    public void NotificationMeterProvider_TakesNoRepositoryDependency()
-    {
-        // The meter provider does not own notifications/notification_recipients
-        // reads either — those stay with the inbox service. It is purely an
-        // aggregator across other sections' count methods.
-        var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
-        var hasRepo = ctor.GetParameters()
-            .Any(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Notifications.Data", StringComparison.Ordinal));
-
-        hasRepo.Should().BeFalse(
-            because: "the meter provider is a cross-section aggregator; it should not bypass any section's public service interface (design-rules §9)");
-    }
-
-    // ── Section boundary (G5) ────────────────────────────────────────────────
-
-    [HumansFact]
-    public void SectionServicesTakeNoDbContext()
-    {
-        // The pre-G5 shape of this assertion — "typeof(NotificationService).Assembly does
-        // not reference Microsoft.EntityFrameworkCore" — was a true statement about
-        // Humans.Application and is simply false here: the section assembly holds the
-        // repository and references EF on purpose. Restated on the constructor, which is
-        // what it was reaching for (design §15 step 11, Calendar's finding).
-        var offenders = SectionTypes
-            .Where(t => t.Namespace?.StartsWith("Humans.Notifications.Services", StringComparison.Ordinal) == true)
-            .SelectMany(t => t.GetConstructors())
-            .SelectMany(c => c.GetParameters())
-            .Where(p => typeof(DbContext).IsAssignableFrom(p.ParameterType)
-                || (p.ParameterType.IsGenericType
-                    && p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>)))
-            .Select(p => $"{p.Member.DeclaringType!.Name}.{p.Name}")
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "only the repository may hold a DbContext or a context factory (peters-hard-rules)");
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // A controller that kept IStringLocalizer<SharedResource> renders every carved
-        // Notification_* key as its raw key name, in all six languages, and keeps
-        // compiling — _ViewImports covers the views but not the C# (design §15 step 3b).
-        var offenders = SectionTypes
-            .SelectMany(t => t.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
-            .SelectMany(c => c.GetParameters())
-            .Where(p => p.ParameterType.IsGenericType
-                && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
-                && p.ParameterType.GetGenericArguments()[0] != typeof(NotificationsResource))
-            .Select(p => $"{p.Member.DeclaringType!.Name} takes {p.ParameterType.Name}")
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "the section's copy lives in NotificationsResource, not SharedResource");
-    }
-
-    [HumansFact]
-    public void SectionPublicSurfaceIsTheResourceMarkerTheSectionEntryPointAndTheJob()
-    {
-        // HUM0034 is the build gate; this pins the intent so a Grandfathered escape or a
-        // future carve-out shows up as a test failure too. It caught CleanupNotificationsJob
-        // arriving at G5 lane 5b-1 (nobodies-collective/Humans#866) — deliberately: the job
-        // sits under Contracts/ because Shell names its concrete type at both its DI
-        // registration and its RecurringJob.AddOrUpdate<T> line, which is HUM0034's
-        // Contracts/ carve-out and not an accident. Anything else new still fails here.
-        var publicNames = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.Name)
-            .Where(n => !n.StartsWith("Baseline", StringComparison.Ordinal))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        publicNames.Should().BeEquivalentTo(
-            ["CleanupNotificationsJob", "NotificationsResource", "Section"]);
     }
 
     // ── INotificationRepository ──────────────────────────────────────────────

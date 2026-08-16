@@ -1,12 +1,9 @@
 using System.Reflection;
 using Humans.Consent.Data;
-using Humans.Consent.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
-using Humans.UI;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Consent.Services;
+using Humans.UI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -195,15 +192,11 @@ public sealed class ConsentArchitectureTests
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
     {
-        // The carve moved all 36 Consent_* / ConsentReview_* / ConsentIndex_* keys out of
-        // SharedResource, so a type still injecting IStringLocalizer<SharedResource> resolves
-        // nothing and renders the raw key — a 200 with degraded copy, in every language.
-        // ConsentController shipped exactly that on five paths (Consent_SubmitError,
-        // Consent_MustCheck, Consent_AlreadyConsented, Consent_ThankYou,
-        // Consent_StubProfile_AddName), all of them on the POST/failure branches the render
-        // tests never reach. The views were never at risk: _ViewImports binds both localizers
-        // for all of them. SharedResource is allowed because Nav_Consents stayed there —
-        // Humans.UI's login partial renders it too (Governance's two-marker variant).
+        // This section keeps its own translation file. A type that asks for a third
+        // one gets nothing back and shows people the key name instead of the text.
+        // ConsentController shipped exactly that on five paths, all of them behind a
+        // form submission no page test goes through. SharedResource is fine — the
+        // Nav_Consents link stayed there and the login partial renders it.
         var allowed = new[] { typeof(ConsentResource), typeof(SharedResource) };
         var offenders = typeof(Section).Assembly.GetTypes()
             .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
@@ -217,6 +210,6 @@ public sealed class ConsentArchitectureTests
         offenders.Should().BeEmpty(
             because: "the section's copy lives in ConsentResource and Nav_Consents in "
                    + "SharedResource; resolving a key through any third set renders the key "
-                   + "itself and no error (§15 step 3b)");
+                   + "itself and no error");
     }
 }

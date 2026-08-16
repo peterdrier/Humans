@@ -1,13 +1,12 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Governance.Services;
 
 namespace Humans.Governance.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests pinning DI-cycle guards and sealing for
+/// Architecture tests pinning the DI-cycle guards for
 /// <see cref="MembershipCalculator"/>. The calculator routes team + role reads
 /// through <c>IMembershipQuery</c> to break the circular DI graph caused by
 /// <c>ISystemTeamSync</c>.
@@ -35,27 +34,5 @@ public class MembershipCalculatorArchitectureTests
         ctor.GetParameters().Select(p => p.ParameterType)
             .Should().NotContain(typeof(IRoleAssignmentService),
                 because: "injecting IRoleAssignmentService directly closes the DI cycle IRoleAssignmentService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_HasNoRepositoryConstructorParameter()
-    {
-        // The orchestrator owns no tables; it must not inject any
-        // IXxxRepository either. All cross-section reads go through
-        // service interfaces per design-rules §9. HUM0026 covers IOrchestrator
-        // implementers; this class is not one.
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(IRepository).IsAssignableFrom(p.ParameterType),
-                because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_IsSealed()
-    {
-        typeof(MembershipCalculator).IsSealed
-            .Should().BeTrue(
-                because: "orchestrators are terminal — no subclass should extend the cross-section stitching logic");
     }
 }

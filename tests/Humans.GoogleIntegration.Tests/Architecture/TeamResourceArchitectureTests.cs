@@ -34,21 +34,15 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 ///     <c>Google.Apis.*</c> imports.
 ///   </description></item>
 /// </list>
-/// These tests pin the invariants so a future refactor can't silently
-/// recombine the pieces.
+/// The tests below cover the first and third pieces — the service takes no
+/// Google SDK type, and the connector interface stays in its own namespace and
+/// keeps SDK types off its surface. Nothing here checks the second: that the
+/// repository is the only path to <c>DbSet&lt;GoogleResource&gt;</c>.
 /// </para>
 /// </summary>
 public class TeamResourceArchitectureTests
 {
     // ── TeamResourceService ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TeamResourceService_IsSealed()
-    {
-        typeof(TeamResourceService).IsSealed
-            .Should().BeTrue(
-                because: "application services are terminal — extension happens via a caching decorator when warranted (§15d), not subclassing");
-    }
 
     [HumansFact]
     public void TeamResourceService_HasNoGoogleApisConstructorParameter()

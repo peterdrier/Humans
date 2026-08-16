@@ -134,7 +134,7 @@ Uses the existing `AuditLogEntry` entity. No new tables or migrations required.
 ### Schedule
 ```
 Cron: Hourly
-Job ID: drive-activity-monitor
+Job ID: monitor-drive-activity
 ```
 
 ### Lookback Window

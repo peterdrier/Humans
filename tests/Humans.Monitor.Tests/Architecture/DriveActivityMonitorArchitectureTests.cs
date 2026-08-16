@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Monitor.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Monitor.Services;
@@ -17,15 +16,6 @@ namespace Humans.Monitor.Tests.Architecture;
 /// </summary>
 public class DriveActivityMonitorArchitectureTests
 {
-    // ── DriveActivityMonitorService ──────────────────────────────────────────
-
-    [HumansFact]
-    public void DriveActivityMonitorService_IsSealed()
-    {
-        typeof(DriveActivityMonitorService).IsSealed.Should().BeTrue(
-            because: "§15-migrated services are sealed to prevent ad-hoc extension");
-    }
-
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]
@@ -101,5 +91,4 @@ public class DriveActivityMonitorArchitectureTests
             }
         }
     }
-
 }

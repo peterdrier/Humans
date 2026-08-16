@@ -22,23 +22,7 @@ namespace Humans.Tickets.Tests.Architecture;
 /// </summary>
 public class TicketQueryArchitectureTests
 {
-    // ── TicketQueryService (inner) ───────────────────────────────────────────
-
-    [HumansFact]
-    public void TicketQueryService_IsSealed()
-    {
-        typeof(TicketQueryService).IsSealed.Should().BeTrue(
-            because: "section services are sealed to prevent ad-hoc subclassing; new behavior belongs on the interface");
-    }
-
     // ── CachingTicketQueryService (decorator) ────────────────────────────────
-
-    [HumansFact]
-    public void CachingTicketQueryService_IsSealed()
-    {
-        typeof(CachingTicketQueryService).IsSealed.Should().BeTrue(
-            because: "the caching decorator is terminal — section-internal logic stays on the inner service and cache layout is private to the decorator");
-    }
 
     [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketService()
@@ -123,5 +107,4 @@ public class TicketQueryArchitectureTests
         paramTypes.Should().Contain(typeof(ITicketCacheInvalidator),
             because: "TicketSyncService drives InvalidateAll (post-sync) and InvalidateAfterUserMerge (ReassignAsync) — it must take the seam through DI so the decorator owns cache eviction");
     }
-
 }

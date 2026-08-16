@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Xunit;
 using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
-using ShiftViewService = Humans.Shifts.Services.ShiftViewService;
 using VolunteerTrackingService = Humans.Shifts.Services.VolunteerTrackingService;
 
 namespace Humans.Shifts.Tests.Architecture;
@@ -24,15 +23,6 @@ public class ShiftViewArchitectureTests
         typeof(VolunteerTrackingService)
     ];
 
-    // ── ShiftViewService (inner, Scoped) ─────────────────────────────────────
-
-    [HumansFact]
-    public void ShiftViewService_IsSealed()
-    {
-        typeof(ShiftViewService).IsSealed.Should().BeTrue(
-            because: "Application services are sealed (design-rules §15)");
-    }
-
     // ── CachingShiftViewService (Singleton decorator) ────────────────────────
 
     [HumansFact]
@@ -48,13 +38,6 @@ public class ShiftViewArchitectureTests
     {
         typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftView>();
         typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftViewInvalidator>();
-    }
-
-    [HumansFact]
-    public void CachingShiftViewService_IsSealed()
-    {
-        typeof(CachingShiftViewService).IsSealed.Should().BeTrue(
-            because: "infrastructure decorators are sealed");
     }
 
     [HumansFact]

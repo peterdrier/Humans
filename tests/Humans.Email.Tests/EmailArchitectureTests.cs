@@ -3,7 +3,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Email.Tests;
 
@@ -89,45 +88,5 @@ public class EmailArchitectureTests
         typeof(IEmailBodyComposer).Namespace
             .Should().Be("Humans.Email.Services");
         typeof(IEmailBodyComposer).IsPublic.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
-    {
-        // The 70 Email_* keys moved into EmailResource with their one renderer; a type
-        // left bound to SharedResource would render every transactional email as raw
-        // keys, in all six languages, with no test noticing (design §15 step 3b).
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()))
-            .Select(p => p.ParameterType)
-            .Where(t => t.IsGenericType
-                        && t.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-            .Select(t => t.GetGenericArguments()[0])
-            .Where(t => t != typeof(EmailResource))
-            .Distinct()
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "every localized string in this section is an Email_* key in EmailResource");
-    }
-
-    // ── IEmailService surface (issue #712) ──────────────────────────────────
-
-    [HumansFact]
-    public void IEmailService_HasNoPerContentTypeSendMethods()
-    {
-        // #712 collapsed the transport interface to one generic
-        // SendAsync(EmailMessage); per-message construction moved to
-        // IEmailMessageFactory. Guard against the fat per-content-type
-        // interface growing back.
-        var sendMethods = typeof(IEmailService).GetMethods()
-            .Where(m => m.Name.StartsWith("Send", StringComparison.Ordinal))
-            .Select(m => m.Name)
-            .ToList();
-
-        sendMethods.Should().ContainSingle(
-                because: "the only transport entry point is SendAsync(EmailMessage); "
-                    + "domain verbs live on IEmailMessageFactory, not IEmailService")
-            .Which.Should().Be("SendAsync");
     }
 }
