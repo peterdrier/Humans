@@ -49,26 +49,19 @@ public class DevelopmentArchitectureTests
         var offenders = typeof(Section).Assembly.GetTypes()
             .SelectMany(t => t.GetConstructors()
                 .SelectMany(c => c.GetParameters())
-                .Where(p => IsForbiddenDataDependency(p.ParameterType))
+                .Where(p => p.ParameterType.Name.EndsWith("DbContext", StringComparison.Ordinal)
+                            || p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal)
+                            || (p.ParameterType.IsGenericType
+                                && string.Equals(p.ParameterType.GetGenericTypeDefinition().Name, "IDbContextFactory`1",
+                                    StringComparison.Ordinal))
+                            || string.Equals(p.ParameterType.Namespace, "Humans.Application.Interfaces.Stores",
+                                StringComparison.Ordinal))
                 .Select(p => $"{t.FullName}({p.ParameterType.Name})"))
             .Order(StringComparer.Ordinal)
             .ToList();
 
         offenders.Should().BeEmpty(
             because: "the dev seeders write through the owning sections' services, never their data");
-    }
-
-    private static bool IsForbiddenDataDependency(Type type)
-    {
-        if (type.Name.EndsWith("DbContext", StringComparison.Ordinal)
-            || type.Name.EndsWith("Repository", StringComparison.Ordinal))
-            return true;
-
-        if (type.IsGenericType
-            && string.Equals(type.GetGenericTypeDefinition().Name, "IDbContextFactory`1", StringComparison.Ordinal))
-            return true;
-
-        return string.Equals(type.Namespace, "Humans.Application.Interfaces.Stores", StringComparison.Ordinal);
     }
 
     [HumansFact]

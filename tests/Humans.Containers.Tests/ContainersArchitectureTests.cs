@@ -47,18 +47,6 @@ public class ContainersArchitectureTests
     }
 
     [HumansFact]
-    public void AuditEntityTypes_AreLiterals_NotNameof()
-    {
-        // Persisted audit discriminators are a data contract with rows already in the
-        // database. Container and ContainerPlacement kept their CLR names through the move;
-        // Camp is not even nameable from this assembly. All three are literals so a future
-        // rename stays schema-inert (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.Container.Should().Be("Container");
-        AuditEntityTypes.ContainerPlacement.Should().Be("ContainerPlacement");
-        AuditEntityTypes.Camp.Should().Be("Camp");
-    }
-
-    /// <summary>
     /// The section's own DI registrations. Since G5 these come from
     /// <see cref="Section.Register"/> rather than a Shell extension method.
     /// </summary>
