@@ -48,7 +48,7 @@
         "src/Sections/Humans.Auth/**",
         "src/Sections/Humans.Auth.Contracts/**",
         "src/Humans.Web/Authorization/**",
-        "src/Humans.UI/Authorization/**"
+        "src/Humans.Interfaces/Authorization/**"
       ],
       "symbols": [
         "RoleAssignment*",
@@ -696,14 +696,14 @@
         "src/Sections/Humans.Stripe/Services/StripeService.cs",
         "src/Sections/Humans.Stripe/Services/StripeStartupSmokeService.cs",
         "src/Humans.Web/Controllers/LogApiController.cs",
-        "src/Humans.UI/Controllers/ApiControllerBase.cs",
+        "src/Humans.Interfaces/Controllers/ApiControllerBase.cs",
         "src/Sections/Humans.Scanner/**",
         "src/Sections/Humans.Guide/**",
         "src/Humans.Web/Controllers/TimezoneApiController.cs",
         "src/Humans.Web/Controllers/WelcomeController.cs",
         "src/Humans.Web/Controllers/WidgetGalleryController.cs",
         "src/Humans.Web/Extensions/**",
-        "src/Humans.UI/Extensions/**",
+        "src/Humans.Interfaces/Extensions/**",
         "src/Humans.Web/ExceptionHandlers/**",
         "src/Humans.Web/Filters/**",
         "src/Humans.Web/Helpers/**",
@@ -711,11 +711,11 @@
         "src/Humans.Web/Health/GitHubHealthCheck.cs",
         "src/Humans.Web/Infrastructure/**",
         "src/Humans.Web/Middleware/**",
-        "src/Humans.UI/Models/AccessMatrixDefinitions.cs",
+        "src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs",
         "src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs",
-        "src/Humans.UI/Models/PagedListViewModel.cs",
-        "src/Humans.UI/Models/PagerViewModel.cs",
-        "src/Humans.UI/Models/SectionHelpViewModel.cs",
+        "src/Humans.Interfaces/Models/PagedListViewModel.cs",
+        "src/Humans.Interfaces/Models/PagerViewModel.cs",
+        "src/Humans.Interfaces/Models/SectionHelpViewModel.cs",
         "src/Humans.Web/Models/StaffViewModels.cs"
       ],
       "symbols": [

@@ -6,11 +6,16 @@
     shape interfaces may carry default-implemented members when a rule must have a
     single home across both implementers (IBurnSettingsInfo's early-entry clock) —
     so a little behaviour lives here, deliberately, not just declarations.
-    THE ONE INVARIANT: never a ProjectReference on another Humans.* project — this
-    project stays the bottom of the graph. That is now load-bearing in a way it was
-    not when the rule was written for Humans.Domain (deleted in G5 lane 3b): Base is
-    about to reference Humans.Users.Contracts at 4b-iii, so a reference added here can
-    close an assembly cycle through that leaf.
+    THE ONE INVARIANT, restated for what it always meant: Base must stay the bottom of
+    the graph, so every project it references must sit on a chain that TERMINATES.
+    G5 lane 4b-iii A added the first and so far only ProjectReference —
+    Humans.Users.Contracts — and the chain is
+      Humans.Interfaces -> Humans.Users.Contracts -> Humans.Onboarding.Contracts -> nothing.
+    A terminating chain cannot cycle, which is why lanes 3b (#1316) and 3c (#1318) spent
+    themselves making Humans.Users.Contracts terminal before this reference was allowed.
+    Do NOT add a reference to anything that is not on such a chain, and do NOT add an
+    outbound reference to Humans.Users.Contracts or Humans.Onboarding.Contracts — either
+    closes an assembly cycle through Base.
 
     EXTERNAL DEPENDENCIES ARE UNRESTRICTED — Peter's ruling, 2026-08-15. Base may take
     any NuGet package or shared framework it needs; only Humans.* ProjectReferences are
@@ -32,8 +37,16 @@
     metering trio, the Serilog enrichers/sink, the GitHub markdown connectors, the role and
     team constants, and four enums. Every one kept its original namespace, so no `using`,
     `_ViewImports`, `<Using Include>` or analyzer full-name constant changed anywhere in the
-    repo. The rename of this project to Humans.Base is a later lane. Still zero
-    ProjectReference elements — check that before adding one.
+    repo. The rename of this project to Humans.Base is a later lane.
+
+    G5 lane 4b-iii A brought the non-Razor half of Humans.UI down here: Authorization/
+    (PolicyNames, RoleChecks, ShiftRoleChecks), Constants/TempDataKeys, Controllers/
+    (HumansControllerBase, ApiControllerBase), the eight Extensions/, Filters/
+    ApiKeyAuthFilterBase, Helpers/LanguageCatalog, twelve Models/ view models and
+    Models/Tables/. Namespaces are still Humans.UI.* on purpose — every `using`,
+    `@using` and `_ViewImports` in the repo is unchanged. Humans.UI keeps everything a
+    Razor file binds by ASSEMBLY name (tag helpers, view components, views, SharedResource
+    and its resx set); lane B takes those with the SDK change.
 
     G5 lane 3a-2 followed with the AddSectionDbContext cluster: the generic registration seam
     (SectionDbContextServiceCollectionExtensions), SectionDbContextRegistration,
@@ -52,6 +65,19 @@
     MarkWarmedForTesting, LoggerTimingExtensions.SelectLogLevel and TrackedLock.WaitToLogLevel
     are internal and were already visible to these two test assemblies from there.
   -->
+  <!--
+    Microsoft.NET.Sdk.Web puts these in ImplicitUsings; Microsoft.NET.Sdk does not. Declaring
+    them keeps the files G5 lane 4b-iii A moved out of Humans.UI (which declared the same items
+    for the same reason) byte-identical to their originals — DateTimeDisplayExtensions names
+    IHttpContextAccessor and ISession, HumansControllerBase names ILoggerFactory, and none of
+    them carries a using of its own. Microsoft.AspNetCore.Routing, the third item Humans.UI
+    declares, is not needed by anything that moved.
+  -->
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
@@ -67,6 +93,15 @@
     -->
     <InternalsVisibleTo Include="Humans.Infrastructure" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      G5 lane 4b-iii A. HumanSearchPickerViewModel.SelectedBurnerName has an `internal`
+      setter on purpose — no caller may supply a name, only the component may resolve one
+      from SelectedUserId. The model came down here; its one privileged writer,
+      HumanSearchViewComponent, is bound by ASSEMBLY name from Razor and so stays in
+      Humans.UI until lane B. This entry preserves the invariant across that one-lane split.
+      DELETE IT when Humans.UI dies (lane 5d) — the writer lands in this assembly.
+    -->
+    <InternalsVisibleTo Include="Humans.UI" />
   </ItemGroup>
 
   <ItemGroup>
@@ -113,11 +148,29 @@
                                                            interceptor base and the migration runner.
         Npgsql.EntityFrameworkCore.PostgreSQL            — UseNpgsql / NpgsqlDataSource.
         Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime   — UseNodaTime on the Npgsql builder.
-      Still zero ProjectReference elements — check that before adding one.
     -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+
+    <!--
+      Added by G5 lane 4b-iii A with Extensions/HtmlHelperExtensions.cs, the single
+      Html.SanitizedMarkdown seam that ~25 section views render through. Markdig parses,
+      HtmlSanitizer scrubs; nothing else in this project names either package.
+    -->
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <!--
+    THE ONLY ProjectReference this project has, and it may not gain a second one that is
+    not on a terminating chain — see the invariant at the top of this file.
+    Forced by six arrivals from Humans.UI in G5 lane 4b-iii A: HumansControllerBase and
+    ApiControllerBase (User, IUserService), RoleChecks, SearchResultMappingExtensions and
+    PersonSearchOrderingExtensions.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
