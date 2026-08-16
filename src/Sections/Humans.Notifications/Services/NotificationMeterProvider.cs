@@ -8,6 +8,7 @@ using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Notifications.Contracts;
@@ -43,7 +44,7 @@ internal sealed class NotificationMeterProvider(
     IApplicationServiceRead applicationDecisionService,
     ICampServiceRead campService,
     IMemoryCache cache,
-    ILogger<NotificationMeterProvider> logger)
+    ILogger<NotificationMeterProvider> logger) : IOrchestrator
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 

@@ -13,7 +13,7 @@ namespace Humans.Governance.Services;
 /// The members declared directly here (status/role computation used in-section)
 /// are not part of the cross-section read surface.
 /// </remarks>
-internal interface IMembershipCalculator : IMembershipCalculatorRead, IApplicationService
+internal interface IMembershipCalculator : IMembershipCalculatorRead, IOrchestrator
 {
     /// <summary>
     /// Computes the current membership status for a user.

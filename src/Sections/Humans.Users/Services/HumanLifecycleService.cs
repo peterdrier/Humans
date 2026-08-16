@@ -16,7 +16,7 @@ internal sealed class HumanLifecycleService(
     INotificationAutoResolve notificationAutoResolve,
     IAuditLogService auditLogService,
     IHumansMetrics metrics,
-    ILogger<HumanLifecycleService> logger) : IHumanLifecycleService
+    ILogger<HumanLifecycleService> logger) : IHumanLifecycleService, IOrchestrator
 {
     public async Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default)

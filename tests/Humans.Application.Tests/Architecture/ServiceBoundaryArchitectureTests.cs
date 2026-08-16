@@ -88,6 +88,10 @@ public class ServiceBoundaryArchitectureTests
     /// also lost <c>IOrchestrator</c> but is absent here because the name predicate below never
     /// matched it.
     ///
+    /// <c>IHumanLifecycleService</c> stays listed because this test inspects interfaces, but its
+    /// analyzer coverage is back: <c>HumanLifecycleService</c> carries <c>IOrchestrator</c> and
+    /// HUM0026/HUM0027 key on the implementing class.
+    ///
     /// Exit condition: delete this list when the leaf can name the markers again — either
     /// because Base stops referencing it, or because the markers move somewhere it may
     /// reference. Re-add the inheritance in the same commit.
