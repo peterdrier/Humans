@@ -130,12 +130,6 @@ internal sealed class Service(
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
     }
 
-    public async Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
-    {
-        var placement = await repo.GetPlacementAsync(containerId, year, ct);
-        return placement is null ? null : ToPlacementDto(placement);
-    }
-
     public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
     {
         var placements = await repo.GetPlacementsByYearAsync(year, ct);
