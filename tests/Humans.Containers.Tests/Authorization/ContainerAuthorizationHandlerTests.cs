@@ -4,6 +4,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
@@ -56,6 +57,66 @@ public sealed class ContainerAuthorizationHandlerTests
             ContainerOperationRequirement.Place);
 
         result.Should().BeFalse();
+        await _campService.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Manage_CampLead_AllowedEvenWhenPlacementIsClosed()
+    {
+        // Container CRUD (Manage) is not phase-gated; only Place is.
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+            .Returns([CreateCampInfo(year: 2027, isLead: true)]);
+
+        var result = await EvaluateAsync(
+            CreateUserWithId(LeadUserId),
+            ContainerOperationRequirement.Manage);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Manage_LeadOfAnotherCamp_Denied()
+    {
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: true));
+        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+            .Returns([CreateCampInfo(year: 2027, isLead: false)]);
+
+        var result = await EvaluateAsync(
+            CreateUserWithId(LeadUserId),
+            ContainerOperationRequirement.Manage);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Manage_CampAdmin_AllowedWithoutCampLookup()
+    {
+        var admin = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Role, RoleNames.CampAdmin)
+        ], "TestAuth"));
+
+        var result = await EvaluateAsync(admin, ContainerOperationRequirement.Manage);
+
+        result.Should().BeTrue();
+        await _campService.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Manage_CityPlanningTeamMember_AllowedWithoutLeadCheck()
+    {
+        _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await EvaluateAsync(
+            CreateUserWithId(LeadUserId),
+            ContainerOperationRequirement.Manage);
+
+        result.Should().BeTrue();
         await _campService.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
