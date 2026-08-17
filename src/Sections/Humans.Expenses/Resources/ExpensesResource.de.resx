@@ -64,6 +64,7 @@
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Abrechnung</value></data>
+  <data name="Expenses_ColSubject" xml:space="preserve"><value>Betreff</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Eingereicht von</value></data>
   <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Koordinator-Warteschlange</value></data>
@@ -74,6 +75,7 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Was das Kollektiv dir schuldet</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dir geschuldet (Holded-Saldo)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Position</value></data>
+  <data name="Expenses_MaxAmount" xml:space="preserve"><value>Höchstbetrag</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Meine Spesenabrechnungen</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Neue Abrechnung</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Es gibt derzeit kein aktives Budgetjahr. Spesenabrechnungen können erst eingereicht werden, wenn ein Budgetjahr aktiviert ist.</value></data>

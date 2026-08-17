@@ -981,7 +981,7 @@ public sealed class ExpenseReportServiceTests
 
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var ok = await _sut.CoordinatorEndorseAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+        var ok = await _sut.CoordinatorEndorseAsync(reportId, coordinator, null, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
@@ -1002,7 +1002,7 @@ public sealed class ExpenseReportServiceTests
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
-        var act = async () => await _sut.CoordinatorEndorseAsync(reportId, nonCoordinator, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await _sut.CoordinatorEndorseAsync(reportId, nonCoordinator, null, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
@@ -1016,7 +1016,7 @@ public sealed class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        await _sut.CoordinatorEndorseAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, null, Xunit.TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseEndorse,
@@ -1035,7 +1035,7 @@ public sealed class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.ErrorMessage.Should().BeNull();
@@ -1055,7 +1055,7 @@ public sealed class ExpenseReportServiceTests
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not a coordinator");
@@ -1124,6 +1124,56 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task CoordinatorEndorseAsync_PersistsTheAuthorizedMaximum()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, 40m, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.MaxAmount.Should().Be(40m);
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_MaxAmountOverridesTheCoordinatorsCap()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, 40m, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, 25m, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.MaxAmount.Should().Be(25m);
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_WithABlankMaxAmount_ClearsTheCoordinatorsCap()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, 40m, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.MaxAmount.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_FlipsToApproved_AndAudits()
     {
         var (_, category) = SetupActiveYear();
@@ -1132,7 +1182,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
-        var ok = await _sut.ApproveAsync(reportId, actor, null, Xunit.TestContext.Current.CancellationToken);
+        var ok = await _sut.ApproveAsync(reportId, actor, null, null, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
@@ -1157,7 +1207,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
-        await _sut.ApproveAsync(reportId, actor, overrideCatId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.ApproveAsync(reportId, actor, overrideCatId, null, Xunit.TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.ExpenseApprove,
@@ -1178,7 +1228,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
-        var result = await _sut.ApproveWithResultAsync(reportId, actor, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.ApproveWithResultAsync(reportId, actor, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.ErrorMessage.Should().BeNull();
@@ -1189,7 +1239,7 @@ public sealed class ExpenseReportServiceTests
     [HumansFact]
     public async Task ApproveWithResultAsync_ReturnsFailure_WhenReportMissing()
     {
-        var result = await _sut.ApproveWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.ApproveWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Could not approve");
@@ -1324,6 +1374,30 @@ public sealed class ExpenseReportServiceTests
         timeline.RegisteredInHolded.Should().BeTrue();
         timeline.OwedToMember.Should().Be(200m);
         timeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesThePayableNotTheReceiptsTotal()
+    {
+        // The seeded report has a 50 € line capped at 30 €, so a 30 € creditor balance is fully
+        // explained by this report — counting the receipts total would leave 20 € as "other".
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id, maxAmount: 30m);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
+
+        report!.Total.Should().Be(50m);
+        timeline!.MemberRegisteredTotal.Should().Be(30m);
+        timeline.OtherAmount.Should().Be(0m);
     }
 
     [HumansFact]
@@ -1517,7 +1591,8 @@ public sealed class ExpenseReportServiceTests
     /// Seeds a report all the way through Draft → line → attachment → Submit → Approve
     /// using the real sut + expenseRepo, so the outbox event row is written.
     /// </summary>
-    private async Task<Guid> SeedApprovedReportWithAttachmentAsync(Guid submitterId, Guid categoryId)
+    private async Task<Guid> SeedApprovedReportWithAttachmentAsync(
+        Guid submitterId, Guid categoryId, decimal? maxAmount = null)
     {
         var reportId = await _sut.CreateDraftAsync(submitterId, categoryId, "outbox test note", Xunit.TestContext.Current.CancellationToken);
         var lineId = await _sut.AddLineAsync(reportId, submitterId, "Test line", 50m, ct: Xunit.TestContext.Current.CancellationToken);
@@ -1529,7 +1604,7 @@ public sealed class ExpenseReportServiceTests
         var submitted = await _sut.SubmitAsync(reportId, submitterId, Xunit.TestContext.Current.CancellationToken);
         if (!submitted) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: SubmitAsync returned false");
 
-        var approved = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        var approved = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, maxAmount, Xunit.TestContext.Current.CancellationToken);
         if (!approved) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: ApproveAsync returned false");
 
         return reportId;

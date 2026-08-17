@@ -64,6 +64,7 @@
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Submitted</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Report</value></data>
+  <data name="Expenses_ColSubject" xml:space="preserve"><value>Subject</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Submitted</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Submitted by</value></data>
   <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Coordinator queue</value></data>
@@ -74,6 +75,7 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>What the collective owes you</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Owed to you (Holded balance)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Item</value></data>
+  <data name="Expenses_MaxAmount" xml:space="preserve"><value>Max amount</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>My Expense Reports</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>New Report</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>There is no active budget year at the moment. Expense reports cannot be filed until a budget year is activated.</value></data>
