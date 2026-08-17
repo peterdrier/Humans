@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Guide.Services;
 
@@ -197,5 +198,75 @@ public class GuideMarkdownPreprocessorTests
 
         result.Should().Contain("[Coordinator](Glossary.md#coordinator)");
         result.Should().Contain("(Camp Coordinator)");
+    }
+
+    [HumansFact]
+    public void Wrap_EveryRoleHeadingInShippedContent_LandsInsideARoleDiv()
+    {
+        var guideDir = Path.Combine(LocateRepoRoot(), "docs", "guide");
+        var unwrapped = new List<string>();
+
+        foreach (var file in Directory.GetFiles(guideDir, "*.md"))
+        {
+            var markdown = File.ReadAllText(file);
+            var wrapped = Preprocessor.Wrap(markdown);
+
+            foreach (var heading in RoleHeadings(markdown))
+            {
+                if (!IsInsideRoleDiv(wrapped, heading))
+                {
+                    unwrapped.Add($"{Path.GetFileName(file)}: {heading}");
+                }
+            }
+        }
+
+        unwrapped.Should().BeEmpty(
+            "an 'As a …' heading the preprocessor leaves unwrapped is served to every visitor, "
+            + "anonymous included — GuideFilter can only strip blocks that carry a data-guide-role div");
+    }
+
+    private static readonly Regex AnyRoleHeading = new(
+        @"^##\s+As\s+an?\s",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(250));
+
+    private static IEnumerable<string> RoleHeadings(string markdown) =>
+        markdown.Split('\n')
+            .Select(l => l.TrimEnd('\r'))
+            .Where(l => AnyRoleHeading.IsMatch(l));
+
+    private static bool IsInsideRoleDiv(string wrapped, string heading)
+    {
+        var at = wrapped.IndexOf(heading, StringComparison.Ordinal);
+        if (at < 0)
+        {
+            return false;
+        }
+
+        var before = wrapped[..at];
+        return CountOccurrences(before, "<div data-guide-role=") > CountOccurrences(before, "</div>");
+    }
+
+    private static int CountOccurrences(string haystack, string needle)
+    {
+        var count = 0;
+        var at = haystack.IndexOf(needle, StringComparison.Ordinal);
+        while (at >= 0)
+        {
+            count++;
+            at = haystack.IndexOf(needle, at + needle.Length, StringComparison.Ordinal);
+        }
+        return count;
+    }
+
+    private static string LocateRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))
+        {
+            dir = dir.Parent;
+        }
+        return dir?.FullName ?? throw new InvalidOperationException(
+            "Could not locate repository root (no Humans.slnx above " + AppContext.BaseDirectory + ").");
     }
 }

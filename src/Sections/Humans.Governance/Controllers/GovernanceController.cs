@@ -4,7 +4,6 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Extensions;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;

@@ -2,10 +2,10 @@ namespace Humans.Agent.Contracts;
 
 /// <summary>
 /// Deletes agent conversations past the configured retention window and records the run for
-/// the admin status panel. Implemented by the section; called by
-/// <c>AgentConversationRetentionJob</c>, which stays in <c>Humans.Infrastructure/Jobs</c>
-/// because recurring jobs are named by concrete type in Shell's roll-call and have no
-/// discovery seam yet (design §15.6b).
+/// the admin status panel. Implemented by the section and called by
+/// <c>AgentConversationRetentionJob</c>, which moved from <c>Humans.Infrastructure/Jobs</c>
+/// into <c>Humans.Agent/Contracts/</c> at G5 lane 5b-5 (nobodies-collective/Humans#866), so
+/// both halves are now this section's.
 /// </summary>
 /// <remarks>
 /// The job used to take <c>IAgentRepository</c>, <c>IAgentSettingsService</c> and

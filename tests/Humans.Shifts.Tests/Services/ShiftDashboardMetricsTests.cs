@@ -4,14 +4,11 @@ using Humans.Auth.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.DTOs;
-using Humans.Application.Enums;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Domain.Enums;
@@ -22,6 +19,8 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+
+using Humans.Shifts.Models;
 
 namespace Humans.Shifts.Tests.Services;
 

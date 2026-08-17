@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
 
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services.Dtos;
 using Humans.UI.Constants;
 using Humans.Tickets.Controllers;

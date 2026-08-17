@@ -1,0 +1,87 @@
+using Humans.Governance.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Web.Services.Dashboard;
+
+/// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
+public sealed class AdminDashboardService(
+    IUserServiceRead userService,
+    IMembershipCalculatorRead membershipCalculator,
+    IApplicationServiceRead applicationDecisionService,
+    IBurnSettingsService burnSettings,
+    IShiftView shiftView) : IAdminDashboardService
+{
+    public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
+    {
+        var snapshot = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUserIds = snapshot.Select(u => u.Id).ToList();
+        var totalMembers = allUserIds.Count;
+        var partition = await membershipCalculator.PartitionUsersAsync(allUserIds, ct);
+
+        var pendingApplications =
+            await applicationDecisionService.GetPendingApplicationCountAsync(ct);
+        var appStats = await applicationDecisionService.GetAdminStatsAsync(ct);
+
+        // Language distribution chart: Active âˆª MissingConsents (pending-deletion split off earlier).
+        var approvedNotSuspended = new HashSet<Guid>(
+            partition.Active.Concat(partition.MissingConsents));
+        var languageDistribution = snapshot
+            .Where(u => approvedNotSuspended.Contains(u.Id))
+            .GroupBy(u => u.PreferredLanguage, StringComparer.Ordinal)
+            .Select(g => new LanguageCount(g.Key, g.Count()))
+            .OrderByDescending(l => l.Count)
+            .ToList();
+
+        var setMembership = await BuildSetMembershipAsync(snapshot, ct);
+
+        return new AdminDashboardData(
+            totalMembers,
+            partition.IncompleteSignup.Count,
+            partition.PendingApproval.Count,
+            partition.Active.Count,
+            partition.MissingConsents.Count,
+            partition.Suspended.Count,
+            partition.PendingDeletion.Count,
+            pendingApplications,
+            appStats.Total,
+            appStats.Approved,
+            appStats.Rejected,
+            appStats.ColaboradorApplied,
+            appStats.AsociadoApplied,
+            languageDistribution,
+            setMembership);
+    }
+
+    // No local cache: GetAllUserInfosAsync is already cache-served (CachingUserService,
+    // write-through), so this count stays fresh-on-write. See viewcomponent-no-cache.md.
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    {
+        var count = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
+        return count;
+    }
+
+    private async Task<UserSetMembership> BuildSetMembershipAsync(
+        IReadOnlyCollection<UserInfo> snapshot,
+        CancellationToken ct)
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeYear = activeEvent?.Year ?? 0;
+        var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
+
+        var counts = new Dictionary<int, int>(capacity: 16);
+        foreach (var u in snapshot)
+        {
+            var mask = 0;
+            if (u.HasRequiredNameFields) mask |= UserSetMembership.ProfileBit;
+            if (activeYear > 0 && u.HasTicketForYear(activeYear)) mask |= UserSetMembership.TicketBit;
+            if (shiftViews[u.Id].HasShift) mask |= UserSetMembership.ShiftBit;
+            // Explicit opt-in only: tri-state MarketingOptedOut == false (not null, not true).
+            if (u.MarketingOptedOut == false) mask |= UserSetMembership.MarketingBit;
+
+            counts[mask] = counts.GetValueOrDefault(mask) + 1;
+        }
+
+        return new UserSetMembership(counts);
+    }
+}

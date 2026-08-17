@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
 using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;

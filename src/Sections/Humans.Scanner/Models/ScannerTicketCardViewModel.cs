@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.Calendar.Contracts;
 using NodaTime;

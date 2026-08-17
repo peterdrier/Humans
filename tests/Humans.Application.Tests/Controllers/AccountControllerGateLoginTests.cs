@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Infrastructure;

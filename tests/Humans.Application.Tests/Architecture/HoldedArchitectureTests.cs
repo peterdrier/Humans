@@ -5,24 +5,11 @@ namespace Humans.Application.Tests.Architecture;
 
 public class HoldedArchitectureTests
 {
-    [HumansFact]
-    public void HumansApplication_HasNoEFCoreReference()
-    {
-        // Anchored on a type that stays in Humans.Application. It used to read
-        // typeof(IHoldedClient).Assembly, which G5 lane 4b-2f moved to Humans.Holded.Contracts,
-        // then typeof(CacheKeys).Assembly, which G5 lane 3a-1 moved to Humans.Interfaces with
-        // its namespace preserved — both moves would have silently retargeted this assertion
-        // onto the wrong assembly instead of failing. DashboardService is a concrete
-        // Humans.Application service with no scheduled move in phase 3.
-        var asm = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
-        asm.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently retarget this test onto the wrong assembly instead of failing");
-
-        asm.GetReferencedAssemblies()
-            .Should().NotContain(a => a.Name == "Microsoft.EntityFrameworkCore",
-                "Humans.Application must not depend on EF Core");
-    }
-
+    // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 5c): HumansApplication_HasNoEFCoreReference
+    // is gone. It asserted the hub held no EF Core reference; G5 lane 5c emptied Humans.Application of
+    // every type, so the assertion had nothing left to measure. Base is not a successor anchor — it
+    // took EF Core at lane 3a-2 with the AddSectionDbContext cluster. The rule that still holds is
+    // per-section and lives in ApplicationServicesTakeNoDbContextRule.
     [HumansFact]
     public void HoldedExceptions_AreClassified_TransientOrPermanent()
     {

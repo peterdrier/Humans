@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.Events.Domain;
 using Humans.Events.Controllers;
 using Humans.Events.Models;

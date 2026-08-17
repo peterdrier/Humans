@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;

@@ -15,7 +15,6 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.Web.Controllers;
@@ -33,6 +32,8 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+
+using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 

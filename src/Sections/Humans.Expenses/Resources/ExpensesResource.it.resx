@@ -64,6 +64,7 @@
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentata</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Ritirata</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Nota</value></data>
+  <data name="Expenses_ColSubject" xml:space="preserve"><value>Oggetto</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentata</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentata da</value></data>
   <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Coda del coordinatore</value></data>
@@ -74,6 +75,7 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dovuto a te (saldo Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>
+  <data name="Expenses_MaxAmount" xml:space="preserve"><value>Importo massimo</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Le mie note spese</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuova nota</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Al momento non c'è alcun anno di budget attivo. Le note spese non possono essere presentate finché un anno di budget non viene attivato.</value></data>

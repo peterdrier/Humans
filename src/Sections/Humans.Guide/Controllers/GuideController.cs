@@ -39,13 +39,10 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
 
     private async Task<IActionResult> RenderAsync(string requestedStem, CancellationToken cancellationToken)
     {
-        var canonical = GuideFiles.All.FirstOrDefault(s =>
-            s.Equals(requestedStem, StringComparison.OrdinalIgnoreCase));
-
-        if (canonical is null)
+        if (!GuideFiles.TryCanonical(requestedStem, out var canonical))
         {
             Response.StatusCode = StatusCodes.Status404NotFound;
-            return View("NotFound", BuildSidebar(null));
+            return View("NotFound");
         }
 
         string rendered;
@@ -56,7 +53,7 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
         catch (GuideContentUnavailableException)
         {
             Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            return View("Unavailable", BuildSidebar(canonical));
+            return View("Unavailable");
         }
 
         var roleContext = await roles.ResolveAsync(User, cancellationToken);

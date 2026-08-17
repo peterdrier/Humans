@@ -53,11 +53,20 @@
                     <dt class="col-sm-4">Category</dt>
                     <dd class="col-sm-8">@Model.CategoryDisplayName</dd>
 
-                    <dt class="col-sm-4">Note</dt>
+                    <dt class="col-sm-4">Subject</dt>
                     <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
 
-                    <dt class="col-sm-4">Total</dt>
-                    <dd class="col-sm-8 fw-semibold">@r.Total.ToEuro()</dd>
+                    <dt class="col-sm-4">Receipts total</dt>
+                    <dd class="col-sm-8">@r.Total.ToEuro()</dd>
+
+                    @if (r.MaxAmount is { } cap)
+                    {
+                        <dt class="col-sm-4">Authorized maximum</dt>
+                        <dd class="col-sm-8">@cap.ToEuro()</dd>
+                    }
+
+                    <dt class="col-sm-4">Payable</dt>
+                    <dd class="col-sm-8 fw-semibold">@r.Payable.ToEuro()</dd>
 
                     <dt class="col-sm-4">Created</dt>
                     <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Users.Services;
 using Humans.Users.Contracts;

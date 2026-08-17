@@ -1,9 +1,19 @@
 #!/bin/bash
 # Freshness check: service-data-access-map
 #
-# Verifies that every service class under src/Humans.Application/Services/
-# appears as a `### <ServiceName>` heading (or row) in
+# Verifies that every service class under src/Sections/*/Services/ and the
+# cross-section orchestrators in src/Humans.Web/Services/ appear as a
+# `### <ServiceName>` heading (or row) in
 # docs/architecture/service-data-access-map.md.
+#
+# Humans.Application, which this check used to walk, was emptied and
+# dereferenced at G5 lane 5c (nobodies-collective/Humans#866).
+#
+# The service population comes from lib-service-classes.sh, which derives it
+# from class declarations that implement an IApplicationService-derived
+# interface. It used to come from `.cs` basenames, which counted interfaces,
+# DTOs and options as required headings and collapsed the five sections whose
+# service class is named `Service`.
 
 set -euo pipefail
 
@@ -14,28 +24,38 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# Skip non-service helpers (no repository / DI surface, intentionally absent).
-SKIP_NAMES="GuideFilter GuideRolePrivilegeMap"
+# shellcheck source=lib-service-classes.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib-service-classes.sh"
 
-ALL_FILES=$(find src/Humans.Application/Services -name "*.cs" -type f \
-  | sed 's|.*/||;s|\.cs$||' | sort -u)
+# Skip non-service helpers (no repository / DI surface, intentionally absent).
+export SKIP_NAMES="GuideFilter GuideRolePrivilegeMap"
+# Stub* are the development-environment fallbacks registered when Google/vendor
+# credentials are absent; the map documents the production implementation.
+# Caching decorators ARE documented here (unlike the dependency graph), so they
+# are not skipped.
+export SKIP_PREFIXES="Stub"
 
 MISSING=""
 MISS_COUNT=0
 TOTAL=0
-for NAME in $ALL_FILES; do
-  if echo "$SKIP_NAMES" | grep -qw "$NAME"; then
-    continue
-  fi
+while IFS='|' read -r PRIMARY NAMES FILE; do
+  [ -z "$PRIMARY" ] && continue
   TOTAL=$((TOTAL + 1))
-  # Match either `### <Name>` (heading) or any other mention of the bare name
-  # as a token boundary. We require an H3 to enforce per-service narrative.
-  if ! grep -qE "^### ${NAME}( |\$)" "$DOC"; then
-    MISSING="${MISSING}${NAME}
+  # Require an H3 under one of the names the doc may key this service by, to
+  # enforce a per-service narrative.
+  FOUND=false
+  for NAME in $(echo "$NAMES" | tr ',' ' '); do
+    if grep -qE "^### ${NAME}( |\$)" "$DOC"; then
+      FOUND=true
+      break
+    fi
+  done
+  if ! $FOUND; then
+    MISSING="${MISSING}${PRIMARY} (${FILE})
 "
     MISS_COUNT=$((MISS_COUNT + 1))
   fi
-done
+done <<< "$(service_classes)"
 
 if [ "$MISS_COUNT" -gt 0 ]; then
   echo "[service-data-access-map] missing $MISS_COUNT/$TOTAL service H3 headings:"

@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Issues.Data;
 using Humans.Issues.Services;
 using IssuesService = Humans.Issues.Services.IssuesService;

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.CityPlanning.Services;
 
 using Humans.CityPlanning.Data;

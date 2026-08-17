@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Enums;
 using Humans.UI.ViewComponents;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;

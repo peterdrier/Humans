@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
 using Humans.UI.Authorization;

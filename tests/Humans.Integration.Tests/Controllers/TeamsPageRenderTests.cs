@@ -20,7 +20,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
 /// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. The section's
 /// views open with four of them (<c>human</c>, <c>human-search</c>, <c>audit-log</c> and
-/// <c>access-matrix</c>), all four bound through <c>@@addTagHelper *, Humans.UI</c>.
+/// <c>access-matrix</c>), all four bound through <c>@@addTagHelper *, Humans.Interfaces</c>.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved 193 keys across thirteen prefixes out of <c>SharedResource</c>. A key
@@ -100,7 +100,7 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     {
         // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
         // so the call site is <vc:access-matrix section="Teams" /> bound through
-        // @addTagHelper *, Humans.UI. An unbound <vc:> ships as inert literal markup with a
+        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships as inert literal markup with a
         // green build and no log line, so the emitted modal id is the proof — not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

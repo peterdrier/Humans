@@ -2,7 +2,6 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -541,7 +540,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Endorse")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Endorse(Guid id)
+    public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -553,7 +552,13 @@ internal sealed class ExpensesController(
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id);
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid maximum amount.");
+            return RedirectToAction(nameof(Coordinator));
+        }
+
+        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id, input.MaxAmount);
         SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
         return RedirectToAction(nameof(Coordinator));
@@ -623,7 +628,14 @@ internal sealed class ExpensesController(
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid approval input.");
+            return RedirectToAction(nameof(Review));
+        }
+
+        var result = await service.ApproveWithResultAsync(
+            id, user.Id, input.OverrideCategoryId, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
         return RedirectToAction(nameof(Review));

@@ -1,5 +1,4 @@
 using Humans.Notifications.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.Notifications.Models;

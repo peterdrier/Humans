@@ -5,8 +5,11 @@
     consumers are still in Base: DashboardService and AdminDashboardService build the
     home and admin dashboards off IShiftView and IShiftManagementServiceRead,
     AccountDeletionService cancels signups and drops volunteer profiles,
-    UserParticipationBackfillService and SuspendNonCompliantMembersJob read the active
-    burn, and ShiftVolunteerSearchBuilder / the Shell authorization handlers read the
+    UserParticipationBackfillService reads the active burn (SuspendNonCompliantMembersJob
+    used to read it here too; its body became NonCompliantMemberSuspension inside
+    Humans.Users at G5 lane 4b-2d and the job itself followed at lane 5b-4,
+    nobodies-collective/Humans#866), and ShiftVolunteerSearchBuilder / the Shell
+    authorization handlers read the
     coordinator surface. A Contracts/ *folder* inside Humans.Shifts would therefore make
     Base reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).

@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Repositories;
@@ -12,7 +11,6 @@ using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Models;

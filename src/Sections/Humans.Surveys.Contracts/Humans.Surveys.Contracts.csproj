@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Surveys' cross-section surface, carved into its own leaf project because its only
-    consumer outside the section is still in Base: SendSurveyReminderJob
-    (Humans.Infrastructure/Jobs), which stays there because recurring jobs are named by
-    concrete type in Shell's UseHumansRecurringJobs roll-call and there is no discovery
-    seam for them yet (design §15.6b). A Contracts/ *folder* inside Humans.Surveys would
-    therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    Surveys' cross-section surface. The leaf existed as its own project because its only
+    consumer outside the section sat in Base: SendSurveyReminderJob in
+    Humans.Infrastructure/Jobs. **That is no longer true** — the job moved into
+    Humans.Surveys/Contracts/ at G5 lane 5b-5 (nobodies-collective/Humans#866), and
+    ISurveyReminderSender now has no consumer outside this section at all. Shell names only
+    the job's concrete type, which is a Humans.Surveys type. Left standing deliberately:
+    collapsing a leaf or shrinking interface surface is Peter's call, not a job move's side
+    effect (lane 5b-1's open item 24 answered "leave" on the four in the same position).
 
     It holds exactly one interface. Nothing else Surveys exposes has a consumer outside
     the section — the three controllers, the DI registration and the section's own tests

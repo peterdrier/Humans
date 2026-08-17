@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using Humans.Surveys.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Filters;

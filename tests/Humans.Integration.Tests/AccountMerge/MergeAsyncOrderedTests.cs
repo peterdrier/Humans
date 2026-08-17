@@ -1,7 +1,6 @@
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;

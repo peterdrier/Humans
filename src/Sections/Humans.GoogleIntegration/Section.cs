@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
@@ -34,9 +33,9 @@ namespace Humans.GoogleIntegration;
 /// configuration keys the guard does (Email's split, G5-SECTION-TEMPLATE.md step 4).
 /// </para>
 /// <para>
-/// The recurring jobs stay in <c>Humans.Infrastructure/Jobs</c> and are registered from Shell
-/// with the rest of the roll-call: <c>UseHumansRecurringJobs</c> names them by concrete type
-/// and there is no <c>ISection</c>-style discovery seam for jobs yet (step 6b).
+/// The recurring jobs live in this project's <c>Contracts/</c> folder but are registered from
+/// Shell with the rest of the roll-call: <c>UseHumansRecurringJobs</c> names them by concrete
+/// type and there is no <c>ISection</c>-style discovery seam for jobs yet (step 6b).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

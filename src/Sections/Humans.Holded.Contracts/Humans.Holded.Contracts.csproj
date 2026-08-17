@@ -2,9 +2,13 @@
 
   <!--
     Holded's cross-section surface, carved into its own leaf project for the same reason
-    Humans.Finance.Contracts was: HoldedSyncJob (Humans.Infrastructure/Jobs) consumes
-    IHoldedService, so a Contracts/ *folder* inside Humans.Holded would make Base reference
-    a section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    Humans.Finance.Contracts was. HoldedSyncJob used to be the Base consumer named here; it
+    moved into Humans.Holded/Contracts/ at G5 lane 5b-5 (nobodies-collective/Humans#866),
+    and re-deriving the census there leaves two section consumers — Humans.Finance and
+    Humans.Expenses, both reaching the Holded API client and its DTOs from their own
+    services. A Contracts/ *folder* inside Humans.Holded would make each of them reference
+    a section project instead of a leaf (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md), so this project stays.
     References Humans.Interfaces only — the bottom of the graph.
   -->
 

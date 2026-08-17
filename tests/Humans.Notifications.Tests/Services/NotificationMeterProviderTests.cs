@@ -10,7 +10,6 @@ using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
-using Humans.Application.Interfaces.Users;
 using static Humans.Notifications.Tests.NotificationTestFixtures;
 using Humans.Domain.Constants;
 using Humans.Notifications.Domain;

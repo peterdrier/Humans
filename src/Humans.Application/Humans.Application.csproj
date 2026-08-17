@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    EMPTY as of G5 lane 5c (nobodies-collective/Humans#866): this project compiles no source
+    file. Every reference and comment below describes a type that has already left. The
+    project, and the ProjectReference lines other csprojs still carry to it, come out at
+    lane 5b-7 — the delete is that lane's verification step, so nothing here is load-bearing.
+  -->
+
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />

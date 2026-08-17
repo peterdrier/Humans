@@ -1,7 +1,11 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Teams.Contracts;
+using Humans.Guide.Controllers;
 using Humans.Guide.Services;
+using Humans.UI.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Guide.Tests;
 
@@ -39,5 +43,52 @@ public class GuideArchitectureTests
 
         typeof(Section).Assembly.GetTypes()
             .Should().NotContain(t => t.Name == "IGuideContentSource");
+    }
+
+    [HumansFact]
+    public void RefreshIsAdminOnly_AndReadingIsAnonymous()
+    {
+        // The section doc's routing table and its "non-Admin users cannot trigger
+        // POST /Guide/Refresh" negative access rule, pinned. Nothing else exercises the
+        // endpoint, so without this the attribute could be dropped silently.
+        Action(nameof(GuideController.Refresh))
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
+            .Cast<AuthorizeAttribute>()
+            .Should().ContainSingle(a => a.Policy == PolicyNames.AdminOnly);
+
+        foreach (var read in new[] { nameof(GuideController.Index), nameof(GuideController.Document) })
+        {
+            Action(read).GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: false)
+                .Should().ContainSingle(because: $"{read} serves the public guide");
+        }
+    }
+
+    private static MethodInfo Action(string name) =>
+        typeof(GuideController).GetMethod(name)
+        ?? throw new InvalidOperationException($"GuideController.{name} not found.");
+
+    [HumansFact]
+    public void EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists()
+    {
+        // GuideFiles is the whole routing and fetch surface: a page added to docs/guide
+        // without an entry 404s in-app, and an entry with no file fails its GitHub fetch on
+        // every refresh. Neither shows up until someone visits the page.
+        var onDisk = Directory
+            .GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md")
+            .Select(Path.GetFileNameWithoutExtension)
+            .ToHashSet(StringComparer.Ordinal);
+
+        GuideFiles.All.Should().BeEquivalentTo(onDisk);
+    }
+
+    private static string LocateRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))
+        {
+            dir = dir.Parent;
+        }
+        return dir?.FullName ?? throw new InvalidOperationException(
+            "Could not locate repository root (no Humans.slnx above " + AppContext.BaseDirectory + ").");
     }
 }

@@ -116,10 +116,12 @@ public class GdprExportDependencyInjectionTests
         // assemblies come from SectionDiscoveryExtensions — the same discovery the
         // runtime uses, so a section that moves cannot silently drop out of this
         // sweep the way it would with a hard-coded assembly list (design §10).
-        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.SystemDbContext).Assembly;
+        // Humans.Infrastructure was the first entry until G5 lane 5b-6 deleted it; its residue
+        // (and, at 5c, Dashboard's) lands in Humans.Web, so the host assembly takes its place.
+        var hostAssembly = typeof(Web.Extensions.InfrastructureServiceCollectionExtensions).Assembly;
         var applicationAssembly = typeof(Humans.Users.Services.UserService).Assembly;
 
-        var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
+        var foundContributors = new[] { hostAssembly, applicationAssembly }
             .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())
             .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })

@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;

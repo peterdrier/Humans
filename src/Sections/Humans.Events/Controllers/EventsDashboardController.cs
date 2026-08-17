@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Events.Contracts;
 using Humans.Users.Contracts;

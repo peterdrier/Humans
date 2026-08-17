@@ -1,27 +1,11 @@
 using System.Security.Claims;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 
 namespace Humans.Guide.Services;
 
 internal sealed class GuideRoleResolver(ITeamServiceRead teamService) : IGuideRoleResolver
 {
-    private static readonly IReadOnlyList<string> KnownRoles =
-    [
-        RoleNames.Admin,
-        RoleNames.Board,
-        RoleNames.TeamsAdmin,
-        RoleNames.CampAdmin,
-        RoleNames.TicketAdmin,
-        RoleNames.NoInfoAdmin,
-        RoleNames.FeedbackAdmin,
-        RoleNames.HumanAdmin,
-        RoleNames.FinanceAdmin,
-        RoleNames.ConsentCoordinator,
-        RoleNames.VolunteerCoordinator
-    ];
-
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -32,7 +16,7 @@ internal sealed class GuideRoleResolver(ITeamServiceRead teamService) : IGuideRo
         }
 
         var systemRoles = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var role in KnownRoles)
+        foreach (var role in GuideRolePrivilegeMap.MappedRoles)
         {
             if (user.IsInRole(role))
             {

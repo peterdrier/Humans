@@ -9,7 +9,6 @@ using NodaTime;
 using Humans.Application;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Camps.Resources;
 using Humans.Camps.Services;
 using Humans.UI;

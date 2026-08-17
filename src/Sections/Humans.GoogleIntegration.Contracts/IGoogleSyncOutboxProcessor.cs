@@ -7,8 +7,9 @@ namespace Humans.GoogleIntegration.Contracts;
 /// classification included.
 /// </summary>
 /// <remarks>
-/// Here rather than internal because <c>ProcessGoogleSyncOutboxJob</c> lives in
-/// <c>Humans.Infrastructure/Jobs</c> — recurring jobs are named by concrete type in Shell's
+/// Here rather than internal because <c>ProcessGoogleSyncOutboxJob</c> sits in the section's
+/// <c>Contracts/</c> folder — a separate assembly from this leaf — where it has to be public
+/// itself, since recurring jobs are named by concrete type in Shell's
 /// <c>UseHumansRecurringJobs</c> roll-call and have no discovery seam yet
 /// (G5-SECTION-TEMPLATE.md step 6b). The job used to inject
 /// <c>IGoogleSyncOutboxRepository</c> and <c>IGoogleResourceRepository</c> and run the drain

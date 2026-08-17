@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Expenses' cross-section surface, carved into its own leaf project because one of its
-    consumers is still in Base: HoldedExpenseOutboxJob (Humans.Infrastructure/Jobs), which
-    stays there because recurring jobs are named by concrete type in Shell's
-    UseHumansRecurringJobs roll-call and there is no discovery seam for them yet
-    (design §15.6b). A Contracts/ *folder* inside Humans.Expenses would therefore make Base
-    reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    Expenses' cross-section surface. The leaf existed as its own project because one of its
+    consumers sat in Base: HoldedExpenseOutboxJob in Humans.Infrastructure/Jobs. **That is
+    no longer true** — the job moved into Humans.Expenses/Contracts/ at G5 lane 5b-5
+    (nobodies-collective/Humans#866), and the only consumer left outside the section is
+    Shell's AdminController, reading IExpenseReportServiceRead for the admin dashboard tile.
+    Shell references Humans.Expenses directly, so a Contracts/ *folder* would now serve it.
+    Left standing deliberately: collapsing a leaf is Peter's call, not a job move's side
+    effect.
 
     Now also carries IExpenseReportServiceRead, its DTO graph (ExpenseReportDto,
     ExpenseLineDto, ExpenseAttachmentDto, ExpenseHoldedTimeline, ExpenseAttachmentDownload)

@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Services.Users;
+using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;
 using Humans.Users.Authorization;
@@ -37,6 +39,12 @@ namespace Humans.Users;
 /// Singleton resolved six ways, an <c>AddHostedService</c> for its startup warm, and the inner
 /// <c>UserService</c> registered keyed with a Scoped unwrap so the decorator can open a scope
 /// per call.
+/// </para>
+/// <para>
+/// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
+/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866) but are
+/// still <em>registered</em> from Shell's <c>AdminSectionExtensions</c>: there is no
+/// <c>ISection</c>-style discovery seam for jobs (design §15 step 6b).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -136,5 +144,14 @@ public sealed class Section : ISection
         // section, and every outbound edge is another section's leaf.
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
+
+        // The last three Users services to leave Base, at G5 lane 5c. Same shape as the pair
+        // above: no repository, so orchestrators by the hard rules' definition, but what they
+        // orchestrate is this section and every outbound edge is another section's leaf.
+        // ExternalLoginService keeps its Humans.Application.Services.Users namespace —
+        // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
     }
 }

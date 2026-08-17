@@ -2,6 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Finance\Humans.Finance.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,7 +5,6 @@ using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Budget.Data;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Budget.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;

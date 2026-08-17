@@ -1,7 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Data;

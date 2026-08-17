@@ -1,10 +1,8 @@
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;

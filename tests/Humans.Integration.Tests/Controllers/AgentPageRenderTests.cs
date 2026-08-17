@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

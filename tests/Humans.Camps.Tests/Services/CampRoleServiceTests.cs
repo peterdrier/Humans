@@ -3,7 +3,6 @@ using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
 using Humans.Camps.Tests.Infrastructure;
 using Humans.Domain.Enums;

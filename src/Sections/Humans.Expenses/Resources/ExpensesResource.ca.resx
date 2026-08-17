@@ -64,6 +64,7 @@
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Informe</value></data>
+  <data name="Expenses_ColSubject" xml:space="preserve"><value>Assumpte</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentat per</value></data>
   <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Cua del coordinador</value></data>
@@ -74,6 +75,7 @@
   <data name="Expenses_IouHeader" xml:space="preserve"><value>El que el col·lectiu et deu</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Deute amb tu (saldo de Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
+  <data name="Expenses_MaxAmount" xml:space="preserve"><value>Import màxim</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Els meus informes de despeses</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nou informe</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>De moment no hi ha cap any pressupostari actiu. No es poden presentar informes de despeses fins que no s'activi un any pressupostari.</value></data>

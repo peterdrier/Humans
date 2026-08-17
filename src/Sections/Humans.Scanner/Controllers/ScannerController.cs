@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Consent.Contracts;
 using Humans.EarlyEntry.Contracts;
@@ -6,7 +5,6 @@ using Humans.Events.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Authorization;

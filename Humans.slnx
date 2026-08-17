@@ -4,8 +4,6 @@
     <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
     <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
     <Project Path="src/Humans.Application/Humans.Application.csproj" />
-    <Project Path="src/Humans.Infrastructure/Humans.Infrastructure.csproj" />
-    <Project Path="src/Humans.UI/Humans.UI.csproj" />
     <Project Path="src/Humans.Web/Humans.Web.csproj" />
   </Folder>
   <Folder Name="/src/Sections/">
@@ -45,7 +43,6 @@
     <Project Path="src/Sections/Humans.Finance/Humans.Finance.csproj" />
     <Project Path="src/Sections/Humans.Finance.Contracts/Humans.Finance.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Gate/Humans.Gate.csproj" />
-    <Project Path="src/Sections/Humans.Gate.Contracts/Humans.Gate.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Gdpr/Humans.Gdpr.csproj" />
     <Project Path="src/Sections/Humans.Gdpr.Contracts/Humans.Gdpr.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Governance/Humans.Governance.csproj" />
@@ -56,9 +53,7 @@
     <Project Path="src/Sections/Humans.Issues/Humans.Issues.csproj" />
     <Project Path="src/Sections/Humans.Issues.Contracts/Humans.Issues.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Mailer/Humans.Mailer.csproj" />
-    <Project Path="src/Sections/Humans.Mailer.Contracts/Humans.Mailer.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
-    <Project Path="src/Sections/Humans.Monitor.Contracts/Humans.Monitor.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
     <Project Path="src/Sections/Humans.Notifications.Contracts/Humans.Notifications.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Scanner/Humans.Scanner.csproj" />

@@ -5,16 +5,13 @@ using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Camps.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -31,10 +28,10 @@ namespace Humans.Teams.Services;
 /// exist solely to let this job reach in from Base. The other sections it names are
 /// eligibility inputs and downstream effects, consumed through their contracts leaves.
 /// <para>
-/// <c>ISystemTeamSync</c> deliberately did NOT move: it is the type Hangfire serializes for
-/// the <c>teams-system-sync</c> recurring job (<c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;</c>),
-/// so its assembly-qualified name is pinned. The implementation is resolved from DI at
-/// execution time and is free to live here.
+/// <c>ISystemTeamSync</c> caught up at G5 lane 5c and now sits on <c>Humans.Teams.Contracts</c>.
+/// It had stayed in <c>Humans.Application</c> on the belief that Hangfire pinned its
+/// assembly-qualified name; <c>RecurringJob.AddOrUpdate&lt;T&gt;(id, …)</c> is keyed on the id and
+/// rewrites the stored type string at every startup, so nothing was pinned.
 /// </para>
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

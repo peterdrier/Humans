@@ -1,45 +1,30 @@
 using System.Reflection;
-using AwesomeAssertions;
-using Humans.Application.Services.Dashboard;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 
 /// <summary>
-/// The assembly set the generic Application service rules sweep: Humans.Application itself,
-/// reached through an anchor type, plus every G5 section assembly.
+/// The assembly set the generic Application service rules sweep: every G5 section assembly.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The anchor keeps escaping. <c>AuditLogService</c> was the original; when it moved to its own
+/// The anchor kept escaping. <c>AuditLogService</c> was the original; when it moved to its own
 /// section project, <c>typeof(...).Assembly</c> silently became that section's assembly and the
 /// rules stopped scanning Humans.Application at all. Its replacement, <c>DontFixAttribute</c>,
 /// had already left for <c>Humans.Interfaces</c> by the time it was written, so the rules named
-/// for Humans.Application had in fact never scanned it. Four such silent anchor drifts have now
-/// happened in this repo (nobodies-collective/Humans#866), every one of them keeping the test
-/// green while covering less — the §10 silent-drop shape.
+/// for Humans.Application had in fact never scanned it. Four such silent anchor drifts happened
+/// (nobodies-collective/Humans#866), every one keeping the test green while covering less.
 /// </para>
 /// <para>
-/// So the anchor lives here once rather than once per rule, and <see cref="Assemblies"/> asserts
-/// the identity it depends on instead of assuming it. A future move of
-/// <see cref="DashboardService"/> fails loudly and names its own fix.
+/// COVERAGE REDUCED (G5 lane 5c): the Humans.Application half of this set is gone, because the
+/// assembly holds no types. Two services left the sweep with it — <c>DashboardService</c> and
+/// <c>AdminDashboardService</c>, now <c>Humans.Web.Services.Dashboard</c>, which is neither a
+/// section assembly nor a <c>*.Services</c> namespace the rules' filter matches. Restoring them
+/// means widening the filter, which the batch's ruling 1 defers to a post-migration pass.
 /// </para>
 /// </remarks>
 internal static class ApplicationSweepScope
 {
-    /// <summary>
-    /// Humans.Application (via <see cref="DashboardService"/>) followed by every section assembly.
-    /// </summary>
-    public static IEnumerable<Assembly> Assemblies()
-    {
-        var anchor = typeof(DashboardService).Assembly;
-
-        anchor.GetName().Name.Should().Be(
-            "Humans.Application",
-            because: "these rules exist to sweep Humans.Application; if the anchor type has moved " +
-                     "out, they would silently scan the section it moved to instead. Re-anchor on a " +
-                     "type that is still in Humans.Application");
-
-        return new[] { anchor }
-            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
-    }
+    /// <summary>Every G5 section assembly, via the same discovery the runtime uses.</summary>
+    public static IEnumerable<Assembly> Assemblies() =>
+        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies();
 }

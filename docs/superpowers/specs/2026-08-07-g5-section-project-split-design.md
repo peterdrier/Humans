@@ -257,8 +257,12 @@ As shipped:
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<StoreResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.UI
+@addTagHelper *, Humans.Interfaces
 ```
+
+(`@addTagHelper` names an assembly, not a namespace. G5 lane 4b-iii B moved Base's tag helpers and
+view components from `Humans.UI` to `Humans.Interfaces` with every namespace kept — so the `@using`
+lines above are unchanged and only this one directive moved.)
 
 The extra `@using` lines over the predicted set are the section's own layer namespaces — a
 consequence of §6a's layer-as-folder move, since the host's file listed `Humans.Web.Models` but the

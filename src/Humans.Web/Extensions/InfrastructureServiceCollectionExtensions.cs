@@ -1,24 +1,41 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Agent.Jobs;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Budget.Contracts;
+using Humans.Budget.Jobs;
+using Humans.Consent.Contracts;
+using Humans.Consent.Jobs;
+using Humans.Expenses.Contracts;
+using Humans.Expenses.Jobs;
+using Humans.Gate.Contracts;
+using Humans.Gate.Jobs;
+using Humans.Governance.Contracts;
+using Humans.Governance.Jobs;
+using Humans.Holded.Contracts;
+using Humans.Holded.Jobs;
+using Humans.Mailer.Contracts;
+using Humans.Mailer.Jobs;
+using Humans.Surveys.Contracts;
+using Humans.Surveys.Jobs;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Jobs;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Issues.Contracts;
+using Humans.Issues.Jobs;
 using Humans.Notifications.Contracts;
+using Humans.Notifications.Jobs;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Users.Contracts;
-using Humans.Application.Services.Users.AccountLifecycle;
-using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Services.Dashboard;
+using Humans.Web.Services.Dashboard;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Web.Extensions;
 
@@ -58,8 +75,8 @@ public static class InfrastructureServiceCollectionExtensions
         // the job *type* to Humans.Infrastructure, and G5 lane 5b-1 re-measured the "Hangfire
         // serializes the declaring assembly" claim and found it false: AddOrUpdate<T>(id, …)
         // rewrites the stored type string at every startup, so the job id is the stable key.
-        // CleanupIssuesJob moved to Humans.Issues/Contracts/ on that finding; the rest still
-        // reach their section through its contracts leaf and are yet to move.
+        // Every job named below now lives in its own section's Jobs/ folder — G5 lane
+        // 5b-5 emptied src/Humans.Infrastructure/Jobs/ (nobodies-collective/Humans#866).
         services.AddScoped<SendSurveyReminderJob>();
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
@@ -74,10 +91,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
-        // Both Holded jobs are Hangfire-serialized by concrete type and so stay in Base; the
-        // connector itself (client, options, call log) is registered by Humans.Holded's Section.cs
-        // since G5 lane 4b-2f. HoldedSyncJob is a shim over IHoldedNightlySync; the expense-outbox
-        // drain is Expenses' body and is unchanged.
+        // The two Holded-facing jobs are owned by different sections: HoldedSyncJob is Holded's
+        // shim over IHoldedNightlySync, the expense-outbox drain is Expenses'. The connector
+        // itself (client, options, call log) is registered by Humans.Holded's Section.cs since
+        // G5 lane 4b-2f.
         services.AddScoped<HoldedSyncJob>();
         services.AddScoped<HoldedExpenseOutboxJob>();
         // Same miss as CleanupNotificationsJob above: the job was in the roll-call from the day
@@ -93,8 +110,8 @@ public static class InfrastructureServiceCollectionExtensions
         // unreachable from Web. Both the type and its registration are now Teams' (Section.cs).
         //
         // SystemTeamSyncJob left this list the same way at G5 lane 4b-2e — system-team
-        // membership is a Teams invariant. Only ISystemTeamSync stayed in Humans.Application,
-        // because Hangfire serializes it as the recurring job's target type.
+        // membership is a Teams invariant. Its interface followed at lane 5c and now lives on
+        // Humans.Teams.Contracts.
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
@@ -126,28 +143,16 @@ public static class InfrastructureServiceCollectionExtensions
         // SectionHelpContent); the section consumes it through the contracts leaf.
         services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
-        // Users' CSV participation backfill. Its registration sat in the Tickets section file
-        // because /Tickets/ParticipationBackfill is the only page that drives it, but the
-        // service is Humans.Application.Services.Users' and reads only IUserService /
-        // IShiftManagementService — the section that owns the file is not always the section
-        // that owns the line (memory/architecture/governance-scope.md's rule, Governance
-        // finding 94).
-        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
-
-        // The three Users/Profiles services that stayed behind when the section moved into
-        // its own project (nobodies-collective/Humans#866, G5 lane 2). All three inject no
-        // repository and call across sections, which by peters-hard-rules.md makes them
-        // orchestrators that cannot live inside the section they orchestrate:
-        //   AccountDeletionService  — Teams, RoleAssignments, Shifts, Tickets, AuditLog, Email.
-        //   ExternalLoginService    — IMagicLinkService, Auth's orchestrator, still in Base.
-        // UserParticipationBackfillService is the third and is registered just above.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
-        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        // AccountDeletionService, ExternalLoginService and UserParticipationBackfillService
+        // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate
+        // Users' own section and every outbound edge is another section's leaf, so they now
+        // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
+        // HumanLifecycleService.
 
         // Dashboard's two aggregators. They were registered inside AddUsersSection and are
-        // not Users' — they read every section's services and own no table — so they stayed
-        // in Base when the section moved (Governance's rule: the section that owns the file
-        // is not always the section that owns the line).
+        // not Users' — they read every section's services and own no table — so they moved
+        // here with the rest of the cluster at G5 lane 5c (Governance's rule: the section
+        // that owns the file is not always the section that owns the line).
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 

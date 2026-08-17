@@ -6,11 +6,10 @@ using NSubstitute.ExceptionExtensions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Users.Contracts;
+using Humans.Users.Jobs;
 
 namespace Humans.Application.Tests.Jobs;
 

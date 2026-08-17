@@ -2,7 +2,6 @@ using Humans.Application;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;

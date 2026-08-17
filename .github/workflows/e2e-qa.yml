@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# QA only ever runs the newest main deploy, so an e2e run against a superseded
+# sha is testing an environment that no longer exists — cancel it.
+concurrency:
+  group: e2e-qa
+  cancel-in-progress: true
+
 jobs:
   e2e:
     if: github.repository == 'peterdrier/Humans'

@@ -1,5 +1,4 @@
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;

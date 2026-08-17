@@ -16,6 +16,11 @@
       It drops out when the harness stops building the other section's context directly.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>

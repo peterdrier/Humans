@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;

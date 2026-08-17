@@ -9,7 +9,6 @@ using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;

@@ -166,7 +166,7 @@ internal static class PillCounts
 {
     public static async ValueTask<int?> ReviewQueue(IServiceProvider sp)
     {
-        var adminDashboard = sp.GetRequiredService<Application.Interfaces.Dashboard.IAdminDashboardService>();
+        var adminDashboard = sp.GetRequiredService<Services.Dashboard.IAdminDashboardService>();
         var count = await adminDashboard.GetPendingReviewCountAsync();
         return count > 0 ? count : null;
     }

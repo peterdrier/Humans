@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Users;
 using Humans.Development.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

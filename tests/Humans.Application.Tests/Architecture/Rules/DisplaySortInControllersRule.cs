@@ -80,19 +80,10 @@ public class DisplaySortInControllersRule
     /// </remarks>
     private static IEnumerable<string> RepositoryFiles(string repoRoot)
     {
-        // Base's repository folder is allowed to be absent: G5 drains it section by section and
-        // it legitimately disappears when the last one leaves. src/Sections below is the
-        // opposite — it is the destination, so its absence means the layout moved and the sweep
-        // would otherwise report success by scanning nothing.
-        var baseRepos = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Repositories");
-        if (Directory.Exists(baseRepos))
-        {
-            foreach (var path in Directory.EnumerateFiles(baseRepos, "*.cs", SearchOption.AllDirectories))
-            {
-                yield return path;
-            }
-        }
-
+        // Base's repository folder was scanned here until G5 lane 5b-6: the drain finished, the
+        // last repository left, and src/Humans.Infrastructure was deleted. src/Sections below is
+        // the destination, so its absence means the layout moved and the sweep would otherwise
+        // report success by scanning nothing.
         var sections = Path.Combine(repoRoot, "src", "Sections");
         if (!Directory.Exists(sections))
         {

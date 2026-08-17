@@ -81,7 +81,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     {
         // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
         // <vc:access-matrix section="CityPlanningBarrioMap" /> binds through the section's
-        // @addTagHelper *, Humans.UI. An unbound <vc:> ships inert with a green build, so the
+        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships inert with a green build, so the
         // emitted modal id is what proves it bound.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

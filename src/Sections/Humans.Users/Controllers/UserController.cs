@@ -2,7 +2,6 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.UI.Authorization;

@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Application;
 using Humans.Domain.Enums;
 using NSubstitute;

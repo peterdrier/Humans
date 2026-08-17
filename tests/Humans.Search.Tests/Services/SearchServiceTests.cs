@@ -1,10 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;

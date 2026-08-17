@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;

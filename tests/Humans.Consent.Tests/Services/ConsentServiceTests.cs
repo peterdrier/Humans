@@ -14,9 +14,10 @@ using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Consent.Tests.Services;
 

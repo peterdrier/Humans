@@ -1,6 +1,5 @@
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;

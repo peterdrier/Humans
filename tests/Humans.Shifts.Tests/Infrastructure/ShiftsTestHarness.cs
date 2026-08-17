@@ -1,7 +1,6 @@
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Application;
 using Humans.EarlyEntry.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Domain.Enums;

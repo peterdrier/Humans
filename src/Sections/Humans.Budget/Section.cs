@@ -16,10 +16,12 @@ namespace Humans.Budget;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketingBudgetSyncJob</c> is <em>not</em> registered here: recurring jobs are named
-/// by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no
-/// discovery seam for them yet, so it stays in <c>Humans.Infrastructure/Jobs</c> and
-/// reaches the section through <see cref="ITicketingBudgetService"/> (design §15.6b).
+/// <c>TicketingBudgetSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5
+/// lane 5b-3 (nobodies-collective/Humans#866) — the plan had guessed Tickets, but both its
+/// collaborators are Budget's and the rows it writes are budget line items. It is still
+/// <em>not</em> registered here: recurring jobs are named by concrete type in Shell's
+/// <c>UseHumansRecurringJobs</c> roll-call and there is no discovery seam for them yet, so
+/// the registration stays in Shell (design §15.6b).
 /// </remarks>
 public sealed class Section : ISection
 {

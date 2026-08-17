@@ -35,10 +35,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
@@ -61,6 +61,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      SystemTeamSyncJob's [DisableConcurrentExecution]. It arrived transitively through
+      Humans.Infrastructure until G5 lane 5b-6 deleted that project; declaring it makes it
+      honest (lane 5b-1's precedent on Email/Notifications/Issues). Package, not project.
+    -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

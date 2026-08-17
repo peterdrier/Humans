@@ -45,6 +45,7 @@ else
                 <tr>
                     <th>Report</th>
                     <th>Submitter</th>
+                    <th>Subject</th>
                     <th>Total</th>
                     <th>Status</th>
                     <th>Submitted</th>
@@ -61,7 +62,15 @@ else
                             </a>
                         </td>
                         <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                        <td>@r.Total.ToEuro()</td>
+                        <td>@(r.Note is { Length: > 60 } n ? n[..60] + "…" : r.Note)</td>
+                        @* Capped reports pay the cap, not the receipts total — show both so the difference is visible. *@
+                        <td>
+                            @r.Payable.ToEuro()
+                            @if (r.Payable < r.Total)
+                            {
+                                <span class="text-muted small ms-1"><s>@r.Total.ToEuro()</s></span>
+                            }
+                        </td>
                         <td>
                             <span class="badge @badgeClass(r.Status)">@r.Status</span>
                         </td>
@@ -113,8 +122,15 @@ else
                         </div>
                         <div class="modal-body">
                             <p class="mb-3">
-                                Total: <strong>@r.Total.ToEuro()</strong>
+                                Receipts total: <strong>@r.Total.ToEuro()</strong>
                             </p>
+                            <div class="mb-3">
+                                <label class="form-label">Max amount (optional)</label>
+                                <input type="number" class="form-control" name="MaxAmount"
+                                       step="0.01" min="0.01" value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                       placeholder="Leave blank for no cap">
+                                <div class="form-text">Caps the payout below the receipts total. Overrides the coordinator's cap.</div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Category override (optional)</label>
                                 <input type="text" class="form-control" name="OverrideCategoryId"

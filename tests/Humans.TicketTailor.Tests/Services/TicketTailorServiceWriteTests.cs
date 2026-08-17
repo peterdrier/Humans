@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.TicketTailor.Services;
 using Microsoft.Extensions.Caching.Memory;

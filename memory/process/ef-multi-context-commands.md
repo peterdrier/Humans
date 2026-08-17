@@ -13,13 +13,14 @@ There is no main pile: `HumansDbContext` and its root chain were deleted at peel
 (design doc §10.3). Users/Profiles is a section project like any other since G5 lane 2
 (`UsersDbContext`, `src/Sections/Humans.Users/Data/Migrations/`).
 
-**Section still in Humans.Infrastructure** — context AND output dir (the section's
-migrations live in their own folder with their own `<Section>DbContextModelSnapshot.cs`):
+**The platform context, hosted in Humans.Web** — context AND output dir (it lives in its own
+folder with its own `SystemDbContextModelSnapshot.cs`). `src/Humans.Infrastructure` was the
+host until G5 lane 5b-6 deleted it:
 
 ```bash
-dotnet ef migrations add <Name> --context SystemSettingsDbContext \
-  --output-dir Migrations/SystemSettings \
-  --project src/Humans.Infrastructure --startup-project src/Humans.Web
+dotnet ef migrations add <Name> --context SystemDbContext \
+  --output-dir Migrations/System \
+  --project src/Humans.Web --startup-project src/Humans.Web
 ```
 
 **Section at G5, in its own project** — `--project` is the section, and the output dir is the
@@ -44,8 +45,8 @@ dotnet ef migrations has-pending-model-changes --context <C> \
   first. Which context owns the table is the section boundary question; see the design doc
   `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` §3 for the partition map.
 - `--startup-project src/Humans.Web` never changes. `--project` is the project that *contains
-  the context*: `src/Humans.Infrastructure` for everything not yet at G5, `src/Sections/Humans.<Section>`
-  after. The runtime and design-time `MigrationsAssembly` both derive from the context's own
+  the context*: `src/Sections/Humans.<Section>` for a section, `src/Humans.Web` for the
+  platform context. The runtime and design-time `MigrationsAssembly` both derive from the context's own
   assembly, so they cannot disagree with where you generated.
 - A schema change in a peeled section touches ONLY that section's migration folder and snapshot.
   If `git status` shows another section's `*DbContextModelSnapshot.cs` changed after a section

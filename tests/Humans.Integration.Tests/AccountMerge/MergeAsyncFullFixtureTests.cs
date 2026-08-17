@@ -5,7 +5,6 @@ using Humans.AuditLog.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;

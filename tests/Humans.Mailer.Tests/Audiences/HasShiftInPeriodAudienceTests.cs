@@ -1,7 +1,6 @@
 using Humans.Application;
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
 using Humans.Mailer.Tests.Infrastructure;
 using Humans.Domain.Enums;

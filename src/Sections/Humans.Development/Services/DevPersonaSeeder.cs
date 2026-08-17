@@ -2,16 +2,13 @@ using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 
 using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;

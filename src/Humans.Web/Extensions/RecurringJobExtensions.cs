@@ -2,11 +2,39 @@ using Hangfire;
 using Hangfire.Storage;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Agent.Contracts;
+using Humans.Agent.Jobs;
+using Humans.Budget.Contracts;
+using Humans.Budget.Jobs;
+using Humans.Consent.Contracts;
+using Humans.Consent.Jobs;
 using Humans.Email.Contracts;
-using Humans.Infrastructure.Jobs;
+using Humans.Email.Jobs;
+using Humans.Expenses.Contracts;
+using Humans.Expenses.Jobs;
+using Humans.Gate.Contracts;
+using Humans.Gate.Jobs;
+using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Jobs;
+using Humans.Governance.Contracts;
+using Humans.Governance.Jobs;
+using Humans.Holded.Contracts;
+using Humans.Holded.Jobs;
 using Humans.Issues.Contracts;
+using Humans.Issues.Jobs;
+using Humans.Mailer.Contracts;
+using Humans.Mailer.Jobs;
+using Humans.Monitor.Contracts;
+using Humans.Monitor.Jobs;
 using Humans.Notifications.Contracts;
+using Humans.Notifications.Jobs;
+using Humans.Surveys.Contracts;
+using Humans.Surveys.Jobs;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Jobs;
+using Humans.Users.Contracts;
+using Humans.Users.Jobs;
 
 namespace Humans.Web.Extensions;
 
@@ -98,7 +126,8 @@ public static class RecurringJobExtensions
 
         // Teams' system-team sweep is the one job scheduled against an interface rather than a
         // concrete type — ISystemTeamSync returns a report, so it can't implement IRecurringJob.
-        // Hangfire resolves the implementation (Humans.Teams' SystemTeamSyncJob) from DI.
+        // Hangfire resolves the implementation (Humans.Teams' SystemTeamSyncJob) from DI, and
+        // the interface itself moved to Humans.Teams.Contracts at G5 lane 5c.
         void AddSystemTeamSync(string id, string cron) =>
             jobs.Add(new ScheduledJob(id, typeof(ISystemTeamSync), cron,
                 () => RecurringJob.AddOrUpdate<ISystemTeamSync>(id, job => job.ExecuteAsync(CancellationToken.None), cron)));

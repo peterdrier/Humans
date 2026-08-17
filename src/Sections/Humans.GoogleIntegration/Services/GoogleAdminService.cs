@@ -1,11 +1,9 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.DTOs;
 using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;

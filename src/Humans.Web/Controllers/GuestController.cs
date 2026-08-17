@@ -5,7 +5,6 @@ using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using NodaTime;

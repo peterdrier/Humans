@@ -3,7 +3,6 @@ using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.AuditLog.Data;
-using Humans.Application.Interfaces.Users;
 using Humans.AuditLog.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;

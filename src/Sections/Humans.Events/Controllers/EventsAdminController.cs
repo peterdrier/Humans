@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Users.Contracts;
 

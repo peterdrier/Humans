@@ -1,9 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Domain.Constants;
+
+using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.ViewComponents;
 

@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Agent.Models;

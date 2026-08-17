@@ -20,8 +20,6 @@ using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
 using TeamService = Humans.Teams.Services.TeamService;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.GoogleIntegration.Services;
 
 using Humans.GoogleIntegration.Data;

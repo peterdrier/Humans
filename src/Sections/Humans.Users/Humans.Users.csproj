@@ -68,10 +68,9 @@
       which left in lane 4b-2l for the same reason. MembershipStatus is Governance's and sits
       on its leaf.
     -->
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Humans.Users type. Note the reverse direction is sanctioned and
@@ -135,6 +134,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Contracts/ProcessAccountDeletionsJob.cs and Contracts/SuspendNonCompliantMembersJob.cs —
+         [DisableConcurrentExecution] and IRecurringJob, since G5 lane 5b-4. Package, not
+         project, so no cycle is possible; it was already arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <!-- Helpers/ProfilePictureProcessor.cs — profile-picture resize/orient on upload. -->
     <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />

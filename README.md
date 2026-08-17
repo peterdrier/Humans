@@ -72,13 +72,14 @@ This starts:
 ```
 humans/
 ├── src/
-│   ├── Humans.Domain/           # Entities, enums, value objects
-│   ├── Humans.Application/      # Use cases, DTOs, interfaces
-│   ├── Humans.Infrastructure/   # EF Core, external services
-│   └── Humans.Web/              # ASP.NET Core, controllers, views
+│   ├── Humans.Interfaces/       # Base — primitives, shared contracts, EF/hosting seam
+│   ├── Humans.Application/      # The shrinking hub: use cases, DTOs, interfaces
+│   ├── Humans.UI/               # Shared Razor components
+│   ├── Sections/                # Humans.<Section>[.Contracts] — one project per section
+│   └── Humans.Web/              # ASP.NET Core host: controllers, views, composition root
 ├── tests/
-│   ├── Humans.Domain.Tests/
 │   ├── Humans.Application.Tests/
+│   ├── Humans.<Section>.Tests/
 │   └── Humans.Integration.Tests/
 └── docker-compose.yml
 ```

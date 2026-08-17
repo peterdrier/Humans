@@ -1,5 +1,4 @@
 using Humans.Application.Csv;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Models;

@@ -1,6 +1,5 @@
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 

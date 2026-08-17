@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

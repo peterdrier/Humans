@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Finance's cross-section surface, carved into its own leaf project because two of its
-    consumers are still in Base: ExpenseReportService (Humans.Application) and
-    HoldedSyncJob (Humans.Infrastructure/Jobs), so a Contracts/ *folder* inside
-    Humans.Finance would make Base reference a section and cycle (design §15.5b,
+    Finance's cross-section surface, carved into its own leaf project because it has
+    consumers outside the section. Re-derived at G5 lane 5b-5
+    (nobodies-collective/Humans#866), all three are now sections rather than Base:
+    Humans.Holded (HoldedNightlySync, HoldedController), Humans.Expenses
+    (ExpenseReportService, ExpensesController — it left Humans.Application at its own G5)
+    and Humans.Budget (BudgetAdminController). A Contracts/ *folder* inside Humans.Finance
+    would make each of them reference a section project instead of a leaf (design §15.5b,
     memory/architecture/section-project-cycle-fix.md). References Humans.Interfaces only —
-    the bottom of the graph — so Humans.Application can reference it freely.
+    the bottom of the graph — so anything above may reference it freely.
 
     That constraint is also why CreditorLedgerLine lives here rather than the Holded
     connector's HoldedLedgerLineDto: the connector stays in Base, this project cannot

@@ -1,6 +1,5 @@
 using Humans.Email.Contracts;
 using Humans.Email.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.UI.Authorization;

@@ -183,6 +183,71 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         sourceStillHasEmail.Should().BeTrue("merge has not been accepted yet — source data must be intact.");
     }
 
+    /// <summary>
+    /// An Admin sees the manual-verify control on a target's email grid, and using it marks
+    /// the pending row verified.
+    /// </summary>
+    /// <remarks>
+    /// issue-659's positive case, ported from <c>tests/e2e/profile.spec.ts</c>. Both ends are
+    /// <c>AdminOnly</c> — <c>Emails.cshtml</c>'s <c>canManuallyVerify</c> and
+    /// <c>AdminVerifyEmail</c> itself — while the page around them is reachable by HumanAdmin
+    /// and Board through <c>UserEmailOperations.Edit</c>. So no other role can stand in, and
+    /// nobodies-collective/Humans#1332 leaves the E2E suite without an Admin persona. The
+    /// negative half (a non-admin POST is rejected) stays in Playwright, where a volunteer
+    /// still serves.
+    /// </remarks>
+    [HumansFact(Timeout = 30_000)]
+    public async Task AdminManualVerify_MarksAPendingEmailVerified()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var pendingEmail = $"pending-{Guid.NewGuid():N}@x.test";
+        Guid targetUserId;
+        Guid emailId;
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            targetUserId = await SeedBareUserAsync(scope, $"verifytarget-{Guid.NewGuid():N}@x.test");
+
+            // Added, not verified: AddEmailAsync issues a token and leaves the row pending,
+            // which is the state the manual-verify control exists for.
+            var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
+            var addResult = await userEmailService.AddEmailAsync(targetUserId, pendingEmail, ct);
+            addResult.IsConflict.Should().BeFalse("the seeded address belongs to nobody else");
+            emailId = addResult.EmailId;
+        }
+
+        // Antiforgery first: the cookie is emitted on the first GET only, so harvesting it
+        // after another GET of the same page finds no Set-Cookie header.
+        var (token, cookie) = await GetAntiforgeryAsync($"/Profile/{targetUserId}/Admin/Emails");
+
+        // The button is rendered only where the AdminOnly gate succeeds — a HumanAdmin reaches
+        // this same page and does not get it.
+        var grid = await Client.GetAsync($"/Profile/{targetUserId}/Admin/Emails", ct);
+        grid.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await grid.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("Admin/Emails/Verify",
+            "an Admin must be offered the manual-verify form on a pending row");
+
+        var resp = await PostFormWithAntiforgeryAsync(
+            $"/Profile/{targetUserId}/Admin/Emails/Verify",
+            token,
+            cookie,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["emailId"] = emailId.ToString() });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Found, "the action redirects back to the grid");
+        resp.Headers.Location!.OriginalString.Should().NotContain("AccessDenied");
+
+        await using var assertScope = Factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        var verified = await db.Set<UserEmail>()
+            .AsNoTracking()
+            .Where(e => e.Id == emailId)
+            .Select(e => e.IsVerified)
+            .SingleAsync(ct);
+        verified.Should().BeTrue("the manual-verify POST must flip the pending row");
+    }
+
     [HumansFact(Timeout = 30_000)]
     public async Task AdminLinkRoute_DoesNotExist()
     {

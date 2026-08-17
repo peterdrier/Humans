@@ -2,10 +2,7 @@ using Humans.Governance.Contracts;
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Dashboard;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +12,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+
+using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Tests.Controllers;
 

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;

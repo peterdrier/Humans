@@ -1,14 +1,11 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
 using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;

@@ -2,7 +2,6 @@ using Humans.Application.Csv;
 using Humans.Application.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Events.Filters;

@@ -1,8 +1,6 @@
-using Humans.Application.DTOs;
 using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Controllers;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;

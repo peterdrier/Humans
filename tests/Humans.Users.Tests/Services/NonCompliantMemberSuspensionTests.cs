@@ -13,7 +13,6 @@ using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

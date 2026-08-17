@@ -4,10 +4,11 @@ using NodaTime;
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// The three legal-document reads that happen outside the section: Governance's
-/// <c>MembershipCalculator</c> asks which versions a team requires,
-/// <c>SendReConsentReminderJob</c> asks for the required version set, and
+/// The three legal-document reads, two of which happen outside the section: Governance's
+/// <c>MembershipCalculator</c> asks which versions a team requires and
 /// <c>HumansMetricsService</c> asks how many active+required documents exist.
+/// <c>SendReConsentReminderJob</c>, which asks for the required version set, came home to
+/// this section at G5 lane 5b-5 (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
 /// Carved from the call sites rather than from the interface (Notifications' rule, design

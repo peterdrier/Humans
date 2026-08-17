@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Data;
@@ -11,7 +10,6 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;

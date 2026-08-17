@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
+using Humans.UI.Authorization;
+using Humans.Web.ViewComponents;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -41,6 +43,10 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
 
     [GeneratedRegex("<partial\\s+name=\"(?<name>[^\"]+)\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex PartialTag();
+
+    /// <summary>The sidebar's active-item marker — <c>class="active"</c> on the anchor itself.</summary>
+    [GeneratedRegex("<a class=\"active\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex ActiveSidebarLink();
 
     /// <summary>Body class set only by <c>_AdminLayout</c>; the member <c>_Layout</c> has no such class.</summary>
     private const string AdminShellMarker = "admin-shell";
@@ -117,6 +123,119 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
             // survives into the body as literal markup the browser drops.
             html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered ({site})");
             html.Should().NotContain("<partial ", $"GET {url} left a <partial> tag helper unbound ({site})");
+        }
+    }
+
+    /// <summary>
+    /// The sidebar shows a full Admin every group in the tree, and every item gated on
+    /// <c>AdminOnly</c>.
+    /// </summary>
+    /// <remarks>
+    /// This was the <c>admin</c> row of <c>tests/e2e/admin-shell.spec.ts</c>'s visibility
+    /// matrix until nobodies-collective/Humans#1332 made <c>/dev/login/admin</c> a 404
+    /// outside a dev host, which leaves the E2E suite — it runs against QA, a Staging
+    /// host — with no way to mint the session. The narrower roles keep their rows there;
+    /// the widest one only exists here.
+    /// <para>
+    /// Derived from <see cref="AdminNavTree.Groups"/> rather than a pinned list, so a group
+    /// or an <c>AdminOnly</c> item added later is covered without touching this file. Only
+    /// <c>AdminOnly</c> items are asserted individually: every other item carries a policy
+    /// whose satisfaction this test would have to re-derive, and re-deriving the view
+    /// component's own filter proves nothing.
+    /// </para>
+    /// </remarks>
+    [HumansFact(Timeout = 180000)]
+    public async Task The_sidebar_shows_an_admin_every_group_and_every_admin_only_item()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/Admin", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+
+        foreach (var group in AdminNavTree.Groups)
+        {
+            html.Should().Contain($"data-group=\"{group.Label}\"",
+                $"an Admin must see the '{group.Label}' sidebar group");
+        }
+
+        var adminOnlyItems = AdminNavTree.Groups
+            .SelectMany(g => g.Items)
+            .Where(i => string.Equals(i.Policy, PolicyNames.AdminOnly, StringComparison.Ordinal))
+            .ToList();
+
+        adminOnlyItems.Should().NotBeEmpty("the tree's AdminOnly items are what this test covers");
+
+        foreach (var item in adminOnlyItems)
+        {
+            html.Should().Contain($"<span>{item.Label}</span>",
+                $"an Admin must see the AdminOnly item '{item.Label}' — the sidebar renders each "
+                + "item label in its own span");
+        }
+    }
+
+    /// <summary>
+    /// The dashboard's two <c>AdminOnly</c> panels render for a full Admin.
+    /// </summary>
+    /// <remarks>
+    /// The feedback tile and the recent-activity card carry
+    /// <c>authorize-policy="AdminOnly"</c> (nobodies-collective/Humans#977): every other
+    /// admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
+    /// assert them once #1332 took the admin one away, and a tile that silently stops
+    /// rendering looks identical to one the viewer was never entitled to.
+    /// Filed here because this is the suite's only <c>/Admin</c> render.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_admin_dashboard_renders_its_admin_only_panels()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/Admin", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("Open feedback", "_DashboardStats' AdminOnly tile must render for an Admin");
+        html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
+
+        // The tag helper strips the attribute when it lets an element through; an element
+        // that keeps it never went through AuthorizeTagHelper at all.
+        html.Should().NotContain("authorize-policy", "an unbound authorize-policy leaves the element visible to everyone");
+    }
+
+    /// <summary>
+    /// The breadcrumb names the group and the item, and exactly one sidebar link is active.
+    /// </summary>
+    /// <remarks>
+    /// Regression guard for ddfdb6c1, where the active-item match was on controller alone:
+    /// every item under <c>controller=Debug</c> lit up at once. Ported from
+    /// <c>tests/e2e/admin-shell.spec.ts</c> with the persona (see the sidebar test above);
+    /// <c>/Debug/Logs</c> is <c>AdminOnly</c>, so there is no other role to port it to.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_breadcrumb_and_the_active_sidebar_link_name_one_page()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        foreach (var (url, group, item) in new[]
+                 {
+                     ("/Debug/Logs", "Diagnostics", "Logs"),
+                     ("/Debug/DbStats", "Diagnostics", "DB stats"),
+                 })
+        {
+            var response = await Client.GetAsync(url, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+            var html = await response.Content.ReadAsStringAsync(ct);
+
+            html.Should().Contain($"<span>{group}</span>", $"GET {url}'s breadcrumb must name its group");
+            html.Should().Contain($"<span class=\"here\">{item}</span>",
+                $"GET {url}'s breadcrumb must end on its own item");
+
+            ActiveSidebarLink().Matches(html).Count.Should().Be(1,
+                $"GET {url} lit more than one sidebar link — the ddfdb6c1 shape, where the active "
+                + "match was on controller alone and every item under it went active together");
         }
     }
 

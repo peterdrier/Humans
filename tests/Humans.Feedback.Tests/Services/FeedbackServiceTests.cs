@@ -5,7 +5,6 @@ using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Application;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;

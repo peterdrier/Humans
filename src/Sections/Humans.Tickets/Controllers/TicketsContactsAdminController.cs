@@ -1,7 +1,6 @@
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Tickets.Models;

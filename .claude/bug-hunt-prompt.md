@@ -280,7 +280,7 @@ Find catch blocks that don't log the exception. Every catch block should either:
 **Where to look:**
 - Controllers (especially ones handling form submissions)
 - Infrastructure services (Google API calls, email sending, Hangfire jobs)
-- Background jobs in `src/Humans.Infrastructure/Jobs/`
+- Background jobs in `src/Sections/**/Contracts/*Job.cs`
 
 **How to fix:**
 - Add `ILogger<ClassName>` to constructor if not present
@@ -294,13 +294,13 @@ The app syncs membership data with Google Workspace (Groups, Drive, Gmail). Sync
 **How to find them:**
 1. **API format mismatches** — search `src/Humans.Infrastructure/Services/Google*/` for API calls. Verify request/response format expectations match the API spec (e.g., requesting JSON format explicitly, handling pagination)
 2. **Email normalization** — search for email comparisons or lookups. `@googlemail.com` and `@gmail.com` are the same mailbox but different strings. Verify normalization happens before comparison or storage.
-3. **Reconciliation persistence** — search background jobs in `src/Humans.Infrastructure/Jobs/` that compare expected vs actual state. Verify they actually persist fixes (`SaveChangesAsync`) after detecting drift, and that they don't silently skip errors.
+3. **Reconciliation persistence** — search background jobs in `src/Sections/**/Contracts/*Job.cs` that compare expected vs actual state. Verify they actually persist fixes (`SaveChangesAsync`) after detecting drift, and that they don't silently skip errors.
 4. **Stale external credentials** — search for service account authentication. Verify tokens are refreshed, not cached indefinitely.
 5. **Permission model mismatches** — Google Shared Drive permissions cascade (inherited vs direct). Verify the code only manages direct permissions and excludes inherited ones from drift detection.
 
 **Where to look:**
 - `src/Humans.Infrastructure/Services/Google*/` — all Google API wrappers
-- `src/Humans.Infrastructure/Jobs/` — sync and reconciliation jobs
+- `src/Sections/**/Contracts/*Job.cs` — sync and reconciliation jobs
 - `src/Humans.Infrastructure/Services/*SyncService*` — sync orchestration
 
 **How to fix:**

@@ -3,6 +3,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Gate\Humans.Gate.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>

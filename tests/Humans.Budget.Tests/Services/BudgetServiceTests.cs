@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Users;
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;

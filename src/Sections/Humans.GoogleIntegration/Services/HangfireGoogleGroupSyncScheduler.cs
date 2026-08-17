@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Hangfire;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;

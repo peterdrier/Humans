@@ -129,7 +129,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
 
         html.Should().Contain("Who Should Apply?");            // Governance_WhoShouldApply
         // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
-        // <vc:access-matrix section="Governance" /> binds through @addTagHelper *, Humans.UI.
+        // <vc:access-matrix section="Governance" /> binds through @addTagHelper *, Humans.Interfaces.
         // An unbound <vc:> ships as inert literal markup with a green build and no log line, so
         // the emitted modal id is the proof — the 200 alone is not.
         html.Should().Contain("sectionHelp-Governance",

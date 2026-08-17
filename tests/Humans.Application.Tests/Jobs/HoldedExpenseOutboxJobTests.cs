@@ -1,5 +1,5 @@
 using Humans.Expenses.Contracts;
-using Humans.Infrastructure.Jobs;
+using Humans.Expenses.Jobs;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Jobs;
