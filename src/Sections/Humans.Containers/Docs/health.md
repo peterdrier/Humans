@@ -26,9 +26,8 @@ warranted; remaining value is small-grain (test gaps, the phase-gate policy ques
 
 ## Opportunities (ranked by value)
 
-1. **Phase-gate policy decision** (queued for Peter): should camp-lead container CRUD be gated by
-   the placement phase like placements are? Doc and a stale comment said yes; code deliberately
-   says no. Doc now matches code; if the answer is "gate it", that's a behavior change → issue.
+1. ~~Phase-gate policy decision~~ — resolved 2026-08-16: current behavior (lead CRUD year-round,
+   only map placement phase-gated) is intended. Peter: re-evaluate for next year in December 2026.
 2. Test gaps: placement image replace/remove branches of `UpdatePlacementNotesAsync`; image
    content-type and oversize rejections (only extension rejection is covered).
 3. Two sidebar button `title` tooltips in `container-map/sidebar.js` are hardcoded English
