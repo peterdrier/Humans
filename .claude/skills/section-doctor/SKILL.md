@@ -48,10 +48,9 @@ gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headR
   --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
 ```
 
-(`--limit` is mandatory here — `gh pr list` fetches only 30 by default and the prefix filter runs
-client-side in `--jq`, so an older open run silently drops out of the result without it.)
-
-(`--search "head:..."` matches exact branch names, not prefixes — don't use it.) If an open run
+(`--limit` is mandatory — `gh pr list` fetches only 30 by default and the prefix filter runs
+client-side in `--jq`, so an older open run silently drops out without it. `--search "head:..."`
+matches exact branch names, not prefixes — don't use it.) If an open run
 branch exists, fetch it and read `docs/health/*` from its tip; else read `origin/main`'s copy.
 Carry that state forward in this run's commits so plan/log history never forks.
 
