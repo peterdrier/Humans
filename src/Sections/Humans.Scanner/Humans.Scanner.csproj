@@ -30,7 +30,10 @@
       below — it arrived transitively through Humans.Application until G5 lane 5c.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Tickets: the leaf for TicketStubInfo, and the section project for the
       <vc:ticket-stub> tag helper — the component is public under Humans.Tickets/Contracts/
@@ -49,10 +52,6 @@
       (nobodies-collective/Humans#866, G5 lane 4b-2c).
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
-    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -17,6 +17,14 @@ namespace Humans.UI.Models;
 /// has a second consumer outside the section: <c>SharedResourceParityTests</c> asserts
 /// translation parity through this same enumeration. Taking it into the section would have
 /// turned it internal and stranded that test (step 6's "names no section vocabulary" test).
+///
+/// G5 lane 4b-iii A took the other twelve <c>Humans.UI/Models</c> view models down to
+/// <c>Humans.Interfaces</c> and left this one behind, re-measured rather than assumed:
+/// <c>Build</c> takes <c>IStringLocalizer&lt;SharedResource&gt;</c>, and
+/// <c>SharedResource</c> plus its seven resx files are bound by ASSEMBLY, not namespace —
+/// moving them is lane B's, with the SDK change. Base referencing <c>Humans.UI</c> to reach
+/// <c>SharedResource</c> would close an assembly cycle. This file follows
+/// <c>SharedResource</c> in lane B.
 /// </remarks>
 public sealed record TranslationsGalleryViewModel(
     IReadOnlyList<string> Languages,

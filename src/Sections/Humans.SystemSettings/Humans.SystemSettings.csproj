@@ -4,12 +4,12 @@
     Microsoft.NET.Sdk, not Sdk.Razor: SystemSettings has no controllers and no views,
     so AddRazorSupportForMvc and the Sdk.Web <Using> items Sdk.Razor does not inherit
     would both be dead weight. Section discovery keys off Section.cs : ISection,
-    not off being an MVC application part (design Â§15 step 1, amended here).
+    not off being an MVC application part (design §15 step 1, amended here).
   -->
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.SystemSettings.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

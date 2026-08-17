@@ -16,7 +16,7 @@
       (G5-SECTION-TEMPLATE.md step 8).
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -38,20 +38,19 @@
       edges acyclic at the assembly level (that leaf's csproj comment has the full argument).
 
       Humans.Infrastructure is here for AddSectionDbContext, RepositoryBase and
-      GoogleWorkspaceSettings â€” the credential-bearing settings type Shell's
+      GoogleWorkspaceSettings — the credential-bearing settings type Shell's
       GoogleWorkspaceHealthCheck also binds, so it stays in Base (Email's EmailSettings case,
       G5-SECTION-TEMPLATE.md step 4).
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -79,7 +78,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

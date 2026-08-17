@@ -16,6 +16,7 @@ internal static class ExpenseReportMapper
         PayeeName = r.PayeeName,
         PayeeIban = r.PayeeIban,
         Total = r.Total,
+        MaxAmount = r.MaxAmount,
         SubmittedAt = r.SubmittedAt,
         CoordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
         CoordinatorEndorsedAt = r.CoordinatorEndorsedAt,

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Tickets.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -24,21 +24,24 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, which moved out of Humans.UI
          into the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
-      Outbound section references, all through leaves and all acyclic â€” none of these
+      Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Tickets type.
-        Budget    â€” TicketQueryService reports ticketing actuals into the budget grid.
-        Campaigns â€” TicketSyncService marks grants redeemed; TicketQueryService builds
+        Budget    — TicketQueryService reports ticketing actuals into the budget grid.
+        Campaigns — TicketSyncService marks grants redeemed; TicketQueryService builds
                     the code-tracking dashboard; CampaignService now asks *this* section
                     for codes through Humans.Tickets.Contracts.ITicketDiscountCodes.
-        Email     â€” the transfer wizard's three notification templates (primitives only).
-        Gdpr      â€” TicketQueryService is an Article 15 contributor.
+        Email     — the transfer wizard's three notification templates (primitives only).
+        Gdpr      — TicketQueryService is an Article 15 contributor.
     -->
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
@@ -47,13 +50,9 @@
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
       Stripe fee enrichment on TicketOrder, through Humans.Stripe.Contracts. Direct
-      section reference, acyclic â€” Humans.Stripe references no section.
+      section reference, acyclic — Humans.Stripe references no section.
     -->
     <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
-    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -65,7 +64,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

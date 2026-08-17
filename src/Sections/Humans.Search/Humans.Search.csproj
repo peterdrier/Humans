@@ -27,11 +27,10 @@
       repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the
       Data-and-DbContext steps are skipped wholesale). The orchestrator fans out over
       IUserServiceRead / ITeamServiceRead / ICampServiceRead / IShiftManagementService, all
-      contracts-leaf interfaces registered by their own owners, plus IEventServiceRead off
-      the Events leaf. Scanner's, Cantina's, Mailer's and Onboarding's shape.
+      on their owners' contracts leaves, plus IEventServiceRead off the Events leaf.
+      Scanner's, Cantina's, Mailer's and Onboarding's shape.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />

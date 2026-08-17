@@ -20,6 +20,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 - A **HoldedExpenseOutboxEvent** is an async task queued when a report is approved or its category tag changes — drained by `HoldedExpenseOutboxJob` to create/update Holded purchase documents.
 - **Payment is external.** There is no SEPA-file generation in the app. Once a report is `Approved` (and booked into Holded as a payable), the treasurer pays the member's creditor account outside the app (bank/Holded). The app only *shows* the ledger: paid/owed is derived from the member's Holded daybook lines (Finance section) via `IHoldedFinanceService.GetCreditorStatusAsync` (balance ≥ 0 = settled).
 - **IBAN** — snapshotted from `Profile.Iban` at submit time into `ExpenseReport.PayeeIban`. Raw IBAN appears only in Holded API request bodies. All log/audit/error output goes through `IbanFormatter.Mask`.
+- **Payable vs Total.** `Total` is the receipts total; `MaxAmount` is an optional cap a decider authorizes. `ExpenseReportDto.Payable` = `min(Total, MaxAmount)` and is the only amount payment math may use.
 
 ## Data Model
 
@@ -34,10 +35,11 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | BudgetCategoryId | Guid | FK → Budget.BudgetCategory (cross-domain, scalar only) |
 | BudgetYearId | Guid | FK → Budget.BudgetYear (cross-domain, scalar only) |
 | Status | ExpenseReportStatus | see enum below |
-| Note | string? | optional submitter note |
+| Note | string? | optional submitter-written **Subject**; becomes the Holded document `Description` |
 | PayeeName | string | snapshotted at submit |
 | PayeeIban | string | snapshotted at submit; MUST be masked in all log/audit output |
-| Total | decimal | sum of line amounts |
+| Total | decimal | sum of line amounts — the receipts total, not what is paid |
+| MaxAmount | decimal? | payout cap authorized by a decider; null = uncapped |
 | SubmittedAt | Instant? | |
 | CoordinatorEndorsedByUserId | Guid? | scalar FK |
 | CoordinatorEndorsedAt | Instant? | |
@@ -123,6 +125,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved. `Approved` is terminal for the report — paid/unpaid is read from the member's Holded creditor ledger, never stamped on the report. Terminal alternate: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.
 - A report cannot be submitted without at least one line. Every **Receipt** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
 - Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
+- Only the deciders set `MaxAmount` — the coordinator on Endorse, a finance admin on Approve. Each decision form is prefilled with the current cap and its submitted value replaces it outright: blank clears the cap (the approve form's "Leave blank for no cap" is literal). The submitter can never set or see a cap input, and neither decider path may lower it below 0.01 or above 1,000,000. A cap is recorded in the decision's own `ExpenseEndorse` / `ExpenseApprove` audit entry, not a separate action.
+- Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review and coordinator queues, and the detail view all read the payable; `Total` renders only as the receipts total.
+- A capped report pushes to Holded with one extra negative line ("Authorized maximum €X — adjustment", amount `MaxAmount − Total`, same account as the receipt lines) so the purchase document totals the payable. No adjustment line when the report is uncapped or the cap is at or above `Total`.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
 - The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report, and the Set/Change IBAN buttons render only for the submitter (the `Iban` action Forbids everyone else).
 - `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
@@ -138,6 +143,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - Regular members **cannot** see other users' expense reports or attachments.
 - Regular members **cannot** approve, reject, or endorse (unless they are a coordinator for the relevant category).
 - Coordinators **cannot** approve — that requires FinanceAdmin/Admin.
+- Submitters **cannot** set `MaxAmount` — there is no submitter-facing input and no service path that accepts one outside Endorse/Approve.
 - FinanceAdmin **cannot** reveal a raw IBAN on the admin user page — that action is Admin-only.
 - No role **can** transition a report backwards in the state machine (e.g., un-approve, un-submit).
 - No code path **may** log or emit a raw IBAN in logs, audit entries, or error messages — only masked form via `IbanFormatter.Mask`.
@@ -145,7 +151,8 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Triggers
 
 - On **submit**: `Profile.Iban` and the profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written.
-- On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written.
+- On **endorse**: any max amount the coordinator supplied is stored on the report and named in the `ExpenseEndorse` audit entry.
+- On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written, naming any max amount the finance admin supplied (which overrides the coordinator's).
 - On **category override**: `HoldedExpenseOutboxEvent` (UpdateIncomingDocTag) queued. Audit entry `ExpenseCategoryOverride` written.
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
 - On **Holded push success**: audit entry `ExpenseHoldedPushed` written (actor: the job). On **write-off**: `ExpenseHoldedFailed`. On **finance re-queue**: `ExpenseHoldedRequeued` (actor: the admin). These carry the push history past outbox-row cleanup — the outbox columns themselves are not readable outside the database.

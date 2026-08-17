@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Feedback.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
@@ -40,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

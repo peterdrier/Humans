@@ -52,7 +52,7 @@ internal static class Sections
     /// <remarks>
     /// A <c>.Contracts</c> assembly declares no <c>ISection</c>, so it is matched by name;
     /// everything else must pass <see cref="AssemblyScope.IsSection"/>, which keeps
-    /// <c>Humans.Application</c> and <c>Humans.UI</c> from reading as sections.
+    /// <c>Humans.Application</c> and <c>Humans.Interfaces</c> from reading as sections.
     /// </remarks>
     public static string? FromAssembly(IAssemblySymbol? assembly)
     {

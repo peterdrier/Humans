@@ -13,6 +13,14 @@ on:
   # Preview-DB provisioning stays main-only — see preview-db.yml.
   pull_request:
 
+# Cancel superseded runs on the same PR — agent-driven PRs push in bursts and
+# the stale runs just burn runner time and queue depth. Pushes to main are
+# never cancelled and never coalesced: each gets a unique group via run_id,
+# because every main commit deploys to QA and e2e-qa waits on its exact sha.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOTNET_VERSION: '10.0.x'
   # The per-section DbContexts (nobodies-collective/Humans#858) in one
@@ -20,10 +28,11 @@ env:
   # project (nobodies-collective/Humans#866, G5) owns its migrations, so
   # `--project` is no longer the same for every context. There is no main
   # pile since peel 15 deleted HumansDbContext and its historical chain;
-  # every context is a section context. Both `has-pending-model-changes`
-  # loops and the from-scratch baseline apply iterate this list. A new
-  # section adds its pair here and nowhere else in this file; a G5 move
-  # edits its pair's project here.
+  # every context is a section context. detect-migration-changes maps the
+  # run's changed files against this list; the `has-pending-model-changes`
+  # loops and the from-scratch baseline apply iterate only the affected
+  # pairs. A new section adds its pair here and nowhere else in this file;
+  # a G5 move edits its pair's project here.
   SECTION_DB_CONTEXTS: >-
     UsersDbContext:src/Sections/Humans.Users
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
@@ -57,6 +66,10 @@ env:
 
 jobs:
   build:
+    # needs the cheap detect job (~15s) so the EF chain verify below can skip
+    # entirely — or check only the affected contexts — instead of spending
+    # ~80s spawning `dotnet ef` once per context on every run.
+    needs: detect-migration-changes
     runs-on: ubuntu-latest
 
     steps:
@@ -66,6 +79,13 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
+        restore-keys: nuget-${{ runner.os }}-
 
     - name: Restore dependencies
       run: dotnet restore Humans.slnx
@@ -95,10 +115,13 @@ jobs:
       # model). Exits non-zero if a snapshot doesn't match the live model —
       # which is exactly what happens when two branches each add a migration
       # off the same tip and one merges before the other. One check per
-      # context since the per-section split (nobodies-collective/Humans#858).
+      # AFFECTED context since the per-section split (#858): each `dotnet ef`
+      # spawn costs ~2.5s, so checking all 29 contexts on every run cost ~80s
+      # when ~99% of runs touch no migration-relevant path at all.
+      if: needs.detect-migration-changes.outputs.contexts != ''
       run: |
         dotnet tool install --global dotnet-ef --version 10.0.*
-        for pair in $SECTION_DB_CONTEXTS; do
+        for pair in ${{ needs.detect-migration-changes.outputs.contexts }}; do
           dotnet ef migrations has-pending-model-changes \
             --context "${pair%%:*}" \
             --project "${pair#*:}" \
@@ -115,35 +138,77 @@ jobs:
         retention-days: 5
 
   detect-migration-changes:
-    # Decides whether the Layer 2 verify-migrations-apply job runs. Cheap
-    # GitHub-hosted job so the heavy self-hosted job stays idle on PRs that
-    # don't touch migration-relevant code.
+    # Maps the run's changed files to the affected `context:project` pairs.
+    # An empty `contexts` output skips both EF check layers: the chain verify
+    # in the build job and the self-hosted verify-migrations-apply job. Cheap
+    # GitHub-hosted job so the heavy work stays idle on runs that don't touch
+    # migration-relevant code.
     runs-on: ubuntu-latest
     outputs:
-      migrations: ${{ steps.filter.outputs.migrations }}
+      contexts: ${{ steps.affected.outputs.contexts }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          list-files: shell
           filters: |
             migrations:
               - 'src/Humans.Web/Migrations/**'
+              # SystemDbContext + its factory live here (not under Migrations/**);
+              # a DbSet added there must trigger the System checks.
+              - 'src/Humans.Web/Infrastructure/Data/**'
               - 'src/Humans.Domain/**'
+              # Shared leaf: enums here are EF-mapped by section configurations
+              # (e.g. Teams maps SystemTeamType with HasConversion<string> and
+              # seeds rows via HasData keyed on the member names), so a rename
+              # is real model drift in any context -> maps to ALL pairs below.
+              - 'src/Humans.Interfaces/**'
               # A G5 section owns its migrations, DbContext, EF configurations and
               # entities (nobodies-collective/Humans#866). Globbed, not listed per
               # section, so a section that moves is covered without a workflow edit —
               # Store's Data/Migrations/** had been unwatched since the pilot.
               - 'src/Sections/*/Data/**'
               - 'src/Sections/*/Domain/**'
-              # Users is the one section whose entities are not under Domain/: User :
-              # IdentityUser<Guid> is named by Humans.UI, which cannot reference a section,
-              # so all nine sit public on the contracts leaf (#866, G5 lane 2). Without this
-              # line a bare column-mapped property added to User skips the from-scratch
-              # apply check — Data/** still catches the DbContext and configurations, so the
-              # hole is entity-only edits. Delete this line when the entities are internalised.
-              - 'src/Sections/Humans.Users.Contracts/**'
+              # Contracts leaves hold EF-mapped types too: Users' entities sit
+              # public on its leaf (#866, G5 lane 2 — User : IdentityUser<Guid>
+              # is named by Base), and any leaf enum consumed by its section's
+              # entities with HasConversion<string> + HasData is model-relevant.
+              # Each leaf maps to its owning section's pair below.
+              - 'src/Sections/*.Contracts/**'
+              # Central package manifest: an EF Core / Npgsql / Identity /
+              # DataProtection bump can change model-building conventions or
+              # framework-owned schema, which is snapshot drift no source path
+              # reflects -> maps to ALL pairs. Over-triggers on non-EF bumps,
+              # but the file only changes when package versions do.
+              - 'Directory.Packages.props'
               - '.github/workflows/build.yml'
+
+      - name: Map changed files to affected DB contexts
+        id: affected
+        if: steps.filter.outputs.migrations == 'true'
+        run: |
+          # Changed file -> owning project dir -> pair from SECTION_DB_CONTEXTS.
+          # A .Contracts leaf maps to its owning section; the shared leaves
+          # (Humans.Domain, Humans.Interfaces) and this workflow can affect
+          # any context -> all pairs.
+          all=false
+          declare -A hit
+          for f in ${{ steps.filter.outputs.migrations_files }}; do
+            case "$f" in
+              src/Humans.Domain/*|src/Humans.Interfaces/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
+              src/Sections/*) proj="$(echo "$f" | cut -d/ -f3)"; hit["src/Sections/${proj%.Contracts}"]=1 ;;
+              src/Humans.Web/*) hit[src/Humans.Web]=1 ;;
+            esac
+          done
+          contexts=""
+          for pair in $SECTION_DB_CONTEXTS; do
+            if [ "$all" = true ] || [ -n "${hit[${pair#*:}]:-}" ]; then
+              contexts="$contexts $pair"
+            fi
+          done
+          echo "Affected contexts:${contexts:- (none)}"
+          echo "contexts=$contexts" >> "$GITHUB_OUTPUT"
 
   verify-migrations-apply:
     # Layer 2 EF migration check (nobodies-collective/Humans#590): apply every
@@ -161,7 +226,7 @@ jobs:
     # is unaffected because this job only `needs:` the cheap
     # detect-migration-changes job, not the main build/test job.
     needs: detect-migration-changes
-    if: needs.detect-migration-changes.outputs.migrations == 'true'
+    if: needs.detect-migration-changes.outputs.contexts != ''
     runs-on: [self-hosted, devbox]
 
     steps:
@@ -225,11 +290,11 @@ jobs:
 
       - name: Apply per-section baselines from scratch
         run: |
-          # Each context against its own empty database — the real-up baselines
-          # execute for real via the CLI (nobodies-collective/Humans#858). No
-          # main-pile replay: the historical chain was deleted at peel 15.
+          # Each affected context against its own empty database — the real-up
+          # baselines execute for real via the CLI (nobodies-collective/Humans#858).
+          # No main-pile replay: the historical chain was deleted at peel 15.
           set -euo pipefail
-          for pair in $SECTION_DB_CONTEXTS; do
+          for pair in ${{ needs.detect-migration-changes.outputs.contexts }}; do
             ctx="${pair%%:*}"
             db="humans_$(echo "$ctx" | tr '[:upper:]' '[:lower:]')"
             docker exec "${{ steps.pg.outputs.container }}" \
@@ -249,7 +314,7 @@ jobs:
           # Belt-and-suspenders: Layer 1 already runs this in the build job,
           # but re-checking after a real apply guards against any state the
           # apply step might have observed differently from a static check.
-          for pair in $SECTION_DB_CONTEXTS; do
+          for pair in ${{ needs.detect-migration-changes.outputs.contexts }}; do
             dotnet ef migrations has-pending-model-changes \
               --context "${pair%%:*}" \
               --project "${pair#*:}" \
@@ -275,11 +340,23 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
+        restore-keys: nuget-${{ runner.os }}-
+
     - name: Restore dependencies
       run: dotnet restore Humans.slnx
 
     - name: Check formatting
-      run: dotnet format Humans.slnx --verify-no-changes --verbosity diagnostic --exclude src/Humans.Web/Migrations/
+      # Whitespace only. The style and analyzer passes `dotnet format` would
+      # also run are already enforced by the build job: EnforceCodeStyleInBuild
+      # + TreatWarningsAsErrors surface every warning-or-higher rule as a build
+      # error there, and the full three-pass format check spent ~200s per run
+      # re-running the same analysis for no additional signal.
+      run: dotnet format whitespace Humans.slnx --verify-no-changes --no-restore --exclude src/Humans.Web/Migrations/
 
     - name: Forbid RS0030 suppressions in test code
       # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]

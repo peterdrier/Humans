@@ -14,14 +14,19 @@ namespace Humans.Expenses.Tests.Models;
 /// </summary>
 public class ExpenseDetailViewModelTests
 {
-    private static ExpenseReportDto Report(string payeeName = "Ada Lovelace", string payeeIban = "ES9121000418450200051332") =>
+    private static ExpenseReportDto Report(
+        string payeeName = "Ada Lovelace",
+        string payeeIban = "ES9121000418450200051332",
+        decimal total = 23m,
+        decimal? maxAmount = null) =>
         new()
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = Guid.NewGuid(),
             BudgetYearId = Guid.NewGuid(),
             BudgetCategoryId = Guid.NewGuid(),
-            Total = 23m,
+            Total = total,
+            MaxAmount = maxAmount,
             Status = ExpenseReportStatus.Submitted,
             PayeeName = payeeName,
             PayeeIban = payeeIban,
@@ -87,5 +92,23 @@ public class ExpenseDetailViewModelTests
         // The Iban action Forbids non-submitters, so offering them the button is a guaranteed 403.
         Vm(Report(), isSubmitter: true, isFinanceAdmin: false).CanEditIban.Should().BeTrue();
         Vm(Report(), isSubmitter: false, isFinanceAdmin: true).CanEditIban.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void An_uncapped_report_pays_its_receipts_total()
+    {
+        Report(total: 100m, maxAmount: null).Payable.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public void A_cap_above_the_receipts_total_does_not_raise_the_payout()
+    {
+        Report(total: 100m, maxAmount: 150m).Payable.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public void A_cap_below_the_receipts_total_is_what_gets_paid()
+    {
+        Report(total: 100m, maxAmount: 60m).Payable.Should().Be(60m);
     }
 }

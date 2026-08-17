@@ -145,7 +145,7 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
     /// <summary>
     /// AccessMatrixViewComponent moved into <c>Humans.UI</c> (nobodies-collective/Humans#1056),
     /// so <c>/Shifts</c> carries <c>&lt;vc:access-matrix section="Shifts" /&gt;</c> bound through
-    /// <c>@@addTagHelper *, Humans.UI</c>. The blanket <c>NotContain("&lt;vc:")</c> above cannot
+    /// <c>@@addTagHelper *, Humans.Interfaces</c>. The blanket <c>NotContain("&lt;vc:")</c> above cannot
     /// see a Razor comment being stripped instead of a tag binding, and the page also hard-codes
     /// <c>data-bs-target="#sectionHelp-Shifts"</c> on its "Learn more" button — so the proof has
     /// to be the <c>id=</c> attribute only the component emits.

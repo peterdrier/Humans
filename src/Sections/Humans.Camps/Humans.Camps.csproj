@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Camps.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -42,10 +42,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       CampService clears a deleted camp's polygons through Lazy<ICityPlanningService>. The
       other direction goes through Humans.Camps.Contracts, never this project, which is what
@@ -54,7 +58,7 @@
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <!--
       Camp/Details.cshtml renders the placement-phase block with CityPlanning's own copy, so
-      it binds IStringLocalizer<CityPlanningResource> â€” a section *resource marker*, which is a
+      it binds IStringLocalizer<CityPlanningResource> — a section *resource marker*, which is a
       section type rather than a leaf one (Budget's rule: the consumer takes the section
       project). Acyclic for the same reason as the leaf reference above: CityPlanning reaches
       Camps only through Humans.Camps.Contracts.
@@ -62,11 +66,6 @@
     <ProjectReference Include="..\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -77,7 +76,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.AuditLog.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -23,13 +23,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       Gdpr: AuditLogService is an Article 15 contributor because audit rows carry an actor id.
 
-      Teams / GoogleIntegration / Users contracts leaves: AuditViewerService â€” the section's
-      read+render owner â€” resolves actor, subject, team and Google-resource display names
+      Teams / GoogleIntegration / Users contracts leaves: AuditViewerService — the section's
+      read+render owner — resolves actor, subject, team and Google-resource display names
       through ITeamServiceRead, ITeamResourceService and IUserServiceRead. It moved here from
       Humans.Application in G5 lane 4b-2h under Peter's 2026-08-14 Base-floor decision: a
       former Base resident that names another section's read interface moves to its own
@@ -51,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

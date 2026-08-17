@@ -16,10 +16,9 @@ using Humans.Mailer.Contracts;
 using Humans.Monitor.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Surveys.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
-
-using Humans.Teams.Contracts;
 
 namespace Humans.Web.Extensions;
 

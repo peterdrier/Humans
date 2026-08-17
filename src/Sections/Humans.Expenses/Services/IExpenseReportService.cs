@@ -53,15 +53,18 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid submitterUserId, string? iban, CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> caps what this report pays out; null leaves it uncapped.</summary>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default);
 
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set.</summary>
     Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> FinanceRejectWithResultAsync(

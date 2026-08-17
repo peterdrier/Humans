@@ -218,12 +218,15 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid actorUserId, Instant endorsedAt, CancellationToken ct = default)
+        Guid reportId, Guid actorUserId, decimal? maxAmount,
+        Instant endorsedAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
+        // Blank form field = null = no cap; the input is prefilled with the current cap.
+        r.MaxAmount = maxAmount;
         r.Status = ExpenseReportStatus.CoordinatorEndorsed;
         r.CoordinatorEndorsedByUserId = actorUserId;
         r.CoordinatorEndorsedAt = endorsedAt;
@@ -250,7 +253,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<bool> ApproveAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         Instant approvedAt, Guid outboxEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -265,6 +268,9 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         r.ApprovedAt = approvedAt;
         r.UpdatedAt = approvedAt;
         if (overrideCategoryId is { } cat) r.BudgetCategoryId = cat;
+        // Blank form field = null = no cap; the input is prefilled with the current cap,
+        // so blanking it must clear a coordinator-set cap, not silently keep it.
+        r.MaxAmount = maxAmount;
 
         ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
         {

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Consent.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -23,14 +23,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Both go through the other section's leaf, never its project, so the graph stays
       acyclic: ConsentService resolves required teams and completion through
       IMembershipCalculatorRead, and auto-resolves an AccessSuspended notification through
       INotificationAutoResolve. Humans.Governance references Humans.Consent back (for
-      ConsentResource, step 3b), which is fine â€” Humans.Governance.Contracts names no
+      ConsentResource, step 3b), which is fine — Humans.Governance.Contracts names no
       Consent type.
     -->
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
@@ -44,16 +45,14 @@
       _ConsentReviewBody partial the widget's Consents step renders.
     -->
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Octokit: the GitHub content API behind IGitHubLegalDocumentConnector. The connector
          is shaped by this section's {name}.md / {name}-{lang}.md convention and has no
-         consumer outside it, so it moved in whole (design Â§15.5b, Agent's rule). -->
+         consumer outside it, so it moved in whole (design §15.5b, Agent's rule). -->
     <PackageReference Include="Octokit" />
-    <!-- Contracts/SyncLegalDocumentsJob.cs â€” [DisableConcurrentExecution] and IRecurringJob,
+    <!-- Contracts/SyncLegalDocumentsJob.cs — [DisableConcurrentExecution] and IRecurringJob,
          since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
          arriving transitively. -->
     <PackageReference Include="Hangfire.Core" />
@@ -64,7 +63,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 
