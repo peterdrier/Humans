@@ -37,8 +37,25 @@ jobs:
           for i in $(seq 1 60); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
-              echo "Deploy confirmed after ~$((i * 5))s"
-              echo "found=true" >> "$GITHUB_OUTPUT"
+              echo "$SHORT_SHA live after ~$((i * 5))s — settling before Playwright starts..."
+              # A commit burst redeploys QA again within seconds of this first match: a
+              # failing run of auth.setup.ts's "admin" persona was observed where
+              # /api/version cycled through two OTHER shas during this same wait loop,
+              # and the target sha had been live for only ~4s — one poll cycle —
+              # before Playwright hit it with 128 tests across 4 workers. Re-check
+              # after a settle pause: gives a freshly-restarted container a beat to
+              # finish startup (migrations/DI/JIT) before load hits it, and catches an
+              # immediate superseding redeploy before we burn a full run testing a
+              # target that's already stale.
+              sleep 10
+              RECHECK=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
+              if [ "$RECHECK" = "$SHORT_SHA" ] || [ "$RECHECK" = "$FULL_SHA" ]; then
+                echo "Deploy confirmed stable after ~$((i * 5 + 10))s"
+                echo "found=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Superseded by $RECHECK during the settle pause — a newer push landed and gets its own run; skipping"
+              echo "found=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
