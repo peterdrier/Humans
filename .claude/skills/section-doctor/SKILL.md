@@ -252,11 +252,13 @@ Present the open items inline, then apply each answer:
   One at a time per worktree.
 - 2026-08-17: commit messages via Bash must use `git commit -F <file>`; PowerShell here-string
   syntax (`@'…'@`) silently becomes part of the subject line under Git Bash.
-- 2026-08-17: four dispatched lanes (tests/Stryker, InspectCode, docs, reviewer) all failed to
-  return inside a 2.5h run, twice for the reviewer. Don't let a lane block a strike: give each a
-  deadline, work the ranked list meanwhile, and when the reviewer gate does not report, either
-  work its checklist yourself and **say so in the PR** or hold the item — never imply a review
-  happened.
+- 2026-08-17: every dispatched lane missed the run window, and the Phase 4.4 reviewer gate could
+  not be obtained **at all** — four attempts across three agents (two `general-purpose` opus, one
+  `feature-dev:code-reviewer` opus), briefs shortened each time down to "reply with exactly three
+  lines", every one idling without an answer. Don't let a lane block a strike: give each a
+  deadline and work the ranked list meanwhile. When the gate does not report, work its checklist
+  on the main thread and **label it self-review in the PR and the Needs-Peter queue** — never
+  imply a review happened, and don't spend the run re-spawning reviewers.
 - 2026-08-17: lanes that report *after* the PR opens are still worth working — the run's PR is
   open, so take a second pass and commit to it rather than dropping the findings. The tests lane's
   invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole

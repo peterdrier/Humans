@@ -75,9 +75,17 @@ PR was opened, and a second pass worked what they found:
   disk, and every Board/Admin filter test also contained a `boardadmin` block, so the superset
   promotion masked `IsCoordinatorVisible`'s own Board/Admin grant. All three now covered.
 - **Still missing: no mutation score** (Stryker never reported; its unvalidated config was
-  deleted rather than committed), **no InspectCode pass**, and **no independent second opinion**
-  on the `TryCanonical` consolidation — the second reviewer went idle without answering a direct
-  request for its verdict. I worked its checklist myself and flagged that in the PR.
+  deleted rather than committed), **no InspectCode pass** (the lane confirmed `jb` works and ran
+  clean once, then re-ran for freshness and never sent final findings), and **no independent
+  second opinion** on the `TryCanonical` consolidation. That gate was attempted four times across
+  three agents — two `general-purpose` opus reviewers and one `feature-dev:code-reviewer` opus —
+  each given a progressively shorter brief, down to "reply with exactly three lines, and say
+  REJECT/insufficient-analysis if you did not finish". Every one went idle without answering,
+  including after a direct follow-up. I worked the checklist myself and flagged it in the PR.
+
+  Worth treating as a finding about the harness rather than the task: a gate that cannot be
+  obtained is not a gate. Either the skill needs a fallback the main thread can execute and
+  label honestly (what I did), or the reviewer step needs to stop being a subagent.
 
 ## Retro
 
