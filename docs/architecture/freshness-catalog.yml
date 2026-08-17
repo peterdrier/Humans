@@ -73,7 +73,9 @@ mechanical:
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
-      - "src/Humans.UI/Authorization/**/*.cs"
+      # RoleChecks / ShiftRoleChecks / PolicyNames moved with the rest of Humans.UI
+      # into Humans.Interfaces at G5 lane 5d; the old glob matched nothing.
+      - "src/Humans.Interfaces/Authorization/**/*.cs"
       # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
@@ -84,9 +86,9 @@ mechanical:
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
 
-      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.UI/Authorization/
-      (RoleChecks / PolicyNames), AND every src/Sections/*/ project (its Controllers/ and
-      Authorization/ folders).
+      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Interfaces/Authorization/
+      (RoleChecks / ShiftRoleChecks / PolicyNames), AND every src/Sections/*/ project (its
+      Controllers/ and Authorization/ folders).
       Most controllers and eight sections' resource handlers now live in section
       projects; an earlier revision of this doc silently omitted them. Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
@@ -222,8 +224,12 @@ mechanical:
   - id: data-model-index
     target: docs/architecture/data-model.md
     triggers:
-      - "src/Humans.Domain/Entities/**/*.cs"
-      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+      # Humans.Domain and Humans.Infrastructure were deleted across G5, so their
+      # Entities/ and Data/Configurations/ globs matched nothing. What survives of
+      # the platform side is SystemDbContext (DataProtectionKeys), which the doc
+      # lists and which now lives in Shell; section-owned entities and
+      # configurations are covered by the two src/Sections globs below.
+      - "src/Humans.Web/Infrastructure/Data/**/*.cs"
       # G5 sections own their entities and EF configurations outright (24 Domain/
       # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
       # Without these, this entry reported "not dirty" on 2026-08-13 while 39
@@ -248,8 +254,11 @@ mechanical:
   - id: guid-reservations
     target: docs/guid-reservations.md
     triggers:
-      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
-      - "src/Humans.Domain/Constants/**/*.cs"
+      # SystemTeamIds / SystemUserIds followed the rest of Humans.Domain/Constants
+      # into Humans.Interfaces at G5 lane 3a-1. The old Humans.Domain and
+      # Humans.Infrastructure globs matched nothing once those projects were deleted;
+      # no seed GUID lives outside this folder and the section Data/ tree below.
+      - "src/Humans.Interfaces/Constants/**/*.cs"
       # Section-owned configurations carry their own HasData seed GUIDs. Whole
       # Data/ tree — some configurations sit directly under Data/ rather than
       # Data/Configurations/. Same false-clean as data-model-index above.
@@ -258,11 +267,11 @@ mechanical:
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
-      Walk src/Humans.Domain/Constants/, src/Humans.Infrastructure/Data/Configurations/,
-      AND the whole src/Sections/*/Data/ tree — G5 sections carry their own EF
-      configurations and therefore their own HasData seed GUIDs, so scanning only
-      the two root directories can omit the very section-owned GUID that fired
-      this entry (blocks 0001/Teams and 0026/Events already live in sections).
+      Walk src/Humans.Interfaces/Constants/ AND the whole src/Sections/*/Data/ tree —
+      G5 sections carry their own EF configurations and therefore their own HasData
+      seed GUIDs, so scanning only the Base constants folder can omit the very
+      section-owned GUID that fired this entry (blocks 0001/Teams and 0026/Events
+      already live in sections).
       Search Data/ recursively, not just Data/Configurations/: several sections
       keep configuration classes directly under Data/ (Consent, Email).
       Find every deterministic GUID literal (`new Guid("0000...")`, `Guid.Parse(...)`,
