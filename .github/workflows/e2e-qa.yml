@@ -38,20 +38,21 @@ jobs:
           # target sha: a failing run of auth.setup.ts's "admin" persona was observed where
           # /api/version cycled through two OTHER shas within this same wait loop, and the
           # target sha had been live for only ~4s — one poll cycle — before Playwright hit
-          # it with 128 tests across 4 workers. Require two CONSECUTIVE matching polls
-          # (10s apart) before declaring the deploy ready, instead of exiting on the first
-          # sight — this gives a freshly-restarted container a beat to finish startup
-          # (migrations/DI/JIT) before load hits it. A transient probe failure or a reading
-          # of some other sha (older or newer — /api/version doesn't tell us which) just
-          # resets the streak and keeps polling within the existing budget below, rather
-          # than guessing at what a single differing reading means.
+          # it with 128 tests across 4 workers. Require three CONSECUTIVE matching polls,
+          # 5s apart (the loop's existing cadence — ~10-14s of confirmed stability),
+          # before declaring the deploy ready, instead of exiting on the first sight — this
+          # gives a freshly-restarted container a beat to finish startup (migrations/DI/JIT)
+          # before load hits it. A transient probe failure or a reading of some other sha
+          # (older or newer — /api/version doesn't tell us which) just resets the streak and
+          # keeps polling within the existing budget below, rather than guessing at what a
+          # single differing reading means.
           CONSECUTIVE=0
           for i in $(seq 1 60); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
               CONSECUTIVE=$((CONSECUTIVE + 1))
-              echo "Attempt $i: deployed=$DEPLOYED matches (stable for $CONSECUTIVE/2 checks)"
-              if [ "$CONSECUTIVE" -ge 2 ]; then
+              echo "Attempt $i: deployed=$DEPLOYED matches (stable for $CONSECUTIVE/3 checks)"
+              if [ "$CONSECUTIVE" -ge 3 ]; then
                 echo "Deploy confirmed stable after ~$((i * 5))s"
                 echo "found=true" >> "$GITHUB_OUTPUT"
                 exit 0
