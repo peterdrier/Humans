@@ -44,13 +44,16 @@ Glob/Grep to `$WORKTREE`.
 so the newest plan/log/queue may exist only on that PR branch, not on `origin/main`. Discover:
 
 ```bash
-gh pr list --repo peterdrier/Humans --state open --json number,headRefName \
+gh pr list --repo peterdrier/Humans --state open --json number,headRefName,title \
   --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
 ```
 
 (`--search "head:..."` matches exact branch names, not prefixes — don't use it.) If an open run
 branch exists, fetch it and read `docs/health/*` from its tip; else read `origin/main`'s copy.
 Carry that state forward in this run's commits so plan/log history never forks.
+
+Keep this result — the **blocked set** is the sections named by those open PRs' titles
+(`doctor(<Section>): …`), and section selection below must respect it.
 
 Replan when: no plan, plan exhausted, `--replan`, or a merged change since the plan's anchor
 materially reshapes an upcoming scheduled section (move/rename/major feature — routine churn is
@@ -70,9 +73,20 @@ not staleness).
 4. Skip sections with in-flight or imminently-planned feature work (check the active sprint plan).
 
 Write the 5–7 day table + anchor to `docs/health/plan.md`. Consecutive days for one section are
-allowed. The plan is advisory — today's findings may extend a section's stay.
+allowed, but only pay off once the prior day's PR has merged — an unmerged run branches off
+`origin/main` and cannot see yesterday's strikes. The plan is advisory — today's findings may
+extend a section's stay.
 
 Take today's section (or `--section`). Sections are `src/Sections/` projects only.
+
+**Never work a section in the blocked set.** A section with an open section-doctor PR has
+unmerged strikes that today's run cannot see — re-doctoring it duplicates work and produces
+conflicting PRs. Walk the plan top-down and take the first unblocked row; log the skipped
+row in `docs/health/log.md` (`skipped — open PR #N`) and leave its plan row unticked so it
+comes back around. If every planned section is blocked, do no strike work: stop here, report
+that all planned sections have open PRs (list them), and exit before Phase 3. A `--section`
+naming a blocked section stops the same way — merge the open PR first, or use `resume` to
+work its Needs-Peter queue.
 
 ## Phase 3: Deep assessment
 
@@ -90,8 +104,12 @@ and description** (sonnet for mechanical scanning, opus-tier only where judgment
   a flow-trace simplification pass — walk each service/repository flow asking "is there a
   simpler shape" (overlapping methods, pass-throughs, duplicated pipelines).
 - **Tests lane** — good/bad/ugly triage of the section's tests (slop, redundancy); **kick off
-  section-scoped Stryker in the background at lane start** — score goes in the scorecard,
-  surviving mutants seed test strikes; build the **invariant coverage matrix**: every
+  section-scoped Stryker in the background at lane start** (`dotnet tool restore` first —
+  Stryker is a manifest-local tool, see `docs/testing/mutation-testing.md`) — score goes in the
+  scorecard, surviving mutants seed test strikes. **Stryker is never a blocker**: if the restore
+  or the run fails, write `n/a (<reason>)` in the scorecard's mutation cell, carry on with the
+  rest of the lane, and note it in the retro — do not retry, reconfigure, or install anything
+  globally; build the **invariant coverage matrix**: every
   invariant, negative access rule, and trigger in the section doc mapped to a pinning test —
   each gap is a ranked opportunity.
 - **InspectCode lane** — `jb inspectcode` scoped to the section's project(s) (see `/resharper`
