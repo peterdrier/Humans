@@ -176,6 +176,12 @@ jobs:
               # entities with HasConversion<string> + HasData is model-relevant.
               # Each leaf maps to its owning section's pair below.
               - 'src/Sections/*.Contracts/**'
+              # Central package manifest: an EF Core / Npgsql / Identity /
+              # DataProtection bump can change model-building conventions or
+              # framework-owned schema, which is snapshot drift no source path
+              # reflects -> maps to ALL pairs. Over-triggers on non-EF bumps,
+              # but the file only changes when package versions do.
+              - 'Directory.Packages.props'
               - '.github/workflows/build.yml'
 
       - name: Map changed files to affected DB contexts
@@ -190,7 +196,7 @@ jobs:
           declare -A hit
           for f in ${{ steps.filter.outputs.migrations_files }}; do
             case "$f" in
-              src/Humans.Domain/*|src/Humans.Interfaces/*|.github/workflows/build.yml) all=true ;;
+              src/Humans.Domain/*|src/Humans.Interfaces/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
               src/Sections/*) proj="$(echo "$f" | cut -d/ -f3)"; hit["src/Sections/${proj%.Contracts}"]=1 ;;
               src/Humans.Infrastructure/*) hit[src/Humans.Infrastructure]=1 ;;
             esac
