@@ -100,9 +100,9 @@ Two terminal cases, both before Phase 3 and neither doing strike work:
   open PRs are already the record, an empty run is not worth a PR, and a half-written worktree
   left behind is worse than no record at all.
 
-Rows skipped for blocking on a run that *does* proceed are recorded the normal way — a
-`skipped — open PR #N` line in Phase 5's `docs/health/log.md` update, committed with the rest of
-that run's bookkeeping — and left unticked so the date scan returns to them.
+Rows skipped for blocking on a run that *does* proceed go in that run's `last-report.md` under
+items skipped (`<section> — open PR #N`) — **never as extra `log.md` lines**: `log.md` is one line
+per run and a skip is not a run. Leave the rows unticked so the date scan returns to them.
 
 A `--section` naming a blocked section stops like the all-blocked case — merge the open PR first,
 or use `resume` to work its Needs-Peter queue.
