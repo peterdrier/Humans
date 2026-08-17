@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -120,6 +121,21 @@ public sealed class ServiceImageTests
         await _sut.DeleteAsync(container.Id, actorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main.jpg", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("Dollar $ name")]
+    [InlineData("<script>")]
+    [InlineData("a > b")]
+    public async Task CreateAsync_RejectsNameWithTokenSignificantCharacters(string name)
+    {
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: name,
+            Description: null), ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must not contain*");
     }
 
     [HumansFact]

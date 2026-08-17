@@ -27,7 +27,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 |----------|------|-------|
 | Id | Guid | PK |
 | CampId | Guid | **Non-null**. Bare FK (no nav) — Camp lives in a different section (no-cross-section-ef-joins). |
-| Name | string | max 256; required |
+| Name | string | max 256; required; must not contain `<`, `>` or `$` (names travel into JS/HTML on the map pages — enforced in `Service.ValidateName` + form model) |
 | Description | string? | max 2000 |
 | ImageStoragePath | string? | max 512; relative path from `wwwroot/` |
 | ImageContentType | string? | max 64 |
