@@ -155,21 +155,27 @@ jobs:
           filters: |
             migrations:
               - 'src/Humans.Infrastructure/Migrations/**'
+              # SystemDbContext + its factory live here (not under Migrations/**);
+              # a DbSet added there must trigger the System checks.
+              - 'src/Humans.Infrastructure/Data/**'
               - 'src/Humans.Domain/**'
+              # Shared leaf: enums here are EF-mapped by section configurations
+              # (e.g. Teams maps SystemTeamType with HasConversion<string> and
+              # seeds rows via HasData keyed on the member names), so a rename
+              # is real model drift in any context -> maps to ALL pairs below.
+              - 'src/Humans.Interfaces/**'
               # A G5 section owns its migrations, DbContext, EF configurations and
               # entities (nobodies-collective/Humans#866). Globbed, not listed per
               # section, so a section that moves is covered without a workflow edit —
               # Store's Data/Migrations/** had been unwatched since the pilot.
               - 'src/Sections/*/Data/**'
               - 'src/Sections/*/Domain/**'
-              # Users is the one section whose entities are not under Domain/: User :
-              # IdentityUser<Guid> is named by Base (Humans.Interfaces), which references no
-              # section other than this leaf,
-              # so all nine sit public on the contracts leaf (#866, G5 lane 2). Without this
-              # line a bare column-mapped property added to User skips the from-scratch
-              # apply check — Data/** still catches the DbContext and configurations, so the
-              # hole is entity-only edits. Delete this line when the entities are internalised.
-              - 'src/Sections/Humans.Users.Contracts/**'
+              # Contracts leaves hold EF-mapped types too: Users' entities sit
+              # public on its leaf (#866, G5 lane 2 — User : IdentityUser<Guid>
+              # is named by Base), and any leaf enum consumed by its section's
+              # entities with HasConversion<string> + HasData is model-relevant.
+              # Each leaf maps to its owning section's pair below.
+              - 'src/Sections/*.Contracts/**'
               - '.github/workflows/build.yml'
 
       - name: Map changed files to affected DB contexts
@@ -177,14 +183,15 @@ jobs:
         if: steps.filter.outputs.migrations == 'true'
         run: |
           # Changed file -> owning project dir -> pair from SECTION_DB_CONTEXTS.
-          # Humans.Domain and this workflow can affect any context -> all pairs.
+          # A .Contracts leaf maps to its owning section; the shared leaves
+          # (Humans.Domain, Humans.Interfaces) and this workflow can affect
+          # any context -> all pairs.
           all=false
           declare -A hit
           for f in ${{ steps.filter.outputs.migrations_files }}; do
             case "$f" in
-              src/Humans.Domain/*|.github/workflows/build.yml) all=true ;;
-              src/Sections/Humans.Users.Contracts/*) hit[src/Sections/Humans.Users]=1 ;;
-              src/Sections/*) hit["src/Sections/$(echo "$f" | cut -d/ -f3)"]=1 ;;
+              src/Humans.Domain/*|src/Humans.Interfaces/*|.github/workflows/build.yml) all=true ;;
+              src/Sections/*) proj="$(echo "$f" | cut -d/ -f3)"; hit["src/Sections/${proj%.Contracts}"]=1 ;;
               src/Humans.Infrastructure/*) hit[src/Humans.Infrastructure]=1 ;;
             esac
           done
