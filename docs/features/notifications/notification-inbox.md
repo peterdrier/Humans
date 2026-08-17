@@ -2,7 +2,7 @@
   src/Sections/Humans.Notifications/**
   src/Sections/Humans.Notifications.Contracts/**
   src/Humans.Domain/Entities/CommunicationPreference.cs
-  src/Sections/Humans.Notifications/Contracts/CleanupNotificationsJob.cs
+  src/Sections/Humans.Notifications/Jobs/CleanupNotificationsJob.cs
 -->
 <!-- freshness:flag-on-change
   Notification entities, dispatch methods, source list, resolution semantics, or InboxEnabled suppression may have shifted.

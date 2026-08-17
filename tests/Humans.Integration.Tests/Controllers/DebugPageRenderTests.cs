@@ -87,6 +87,31 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         }
     }
 
+    /// <summary>
+    /// <c>/Debug/Maintenance</c>'s only control posts to a real action.
+    /// </summary>
+    /// <remarks>
+    /// The page-render sweep above matches the heading, which a page that lost its form still
+    /// carries. This was <c>tests/e2e/admin-shell.spec.ts</c>'s check until
+    /// nobodies-collective/Humans#1332 left the E2E suite with no Admin persona;
+    /// <c>/Debug/*</c> is <c>AdminOnly</c>, so there is no other role to port it to.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_maintenance_page_renders_its_clear_hangfire_locks_form()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var html = await (await Client.GetAsync("/Debug/Maintenance", ct)).Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("ClearHangfireLocks",
+            "asp-action must resolve to an href — a pair that routes nowhere renders a form "
+            + "that posts to the current page instead");
+        html.Should().Contain("Clear Hangfire Locks", "the page's only control must render");
+        html.Should().Contain("__RequestVerificationToken",
+            "the form posts, so it must carry its antiforgery token");
+    }
+
     [HumansFact(Timeout = 120000)]
     public async Task The_two_reflection_galleries_render_their_rows_from_both_sides_of_the_move()
     {

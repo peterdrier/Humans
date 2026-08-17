@@ -1,4 +1,5 @@
 using Humans.Email.Contracts;
+using Humans.Email.Jobs;
 using Humans.Infrastructure.Configuration;
 
 namespace Humans.Web.Extensions.Infrastructure;
@@ -13,7 +14,7 @@ namespace Humans.Web.Extensions.Infrastructure;
 ///
 /// <para>
 /// The three Hangfire registrations below still live here, but the <em>types</em> they name
-/// moved into <c>Humans.Email/Contracts/</c> at G5 lane 5b-1
+/// moved into <c>Humans.Email/Jobs/</c> at G5 lane 5b-1
 /// (nobodies-collective/Humans#866). Only the registration stayed: Shell references every
 /// section, so naming a section's concrete type here is free, and a section has no
 /// <c>ISection</c> discovery seam for recurring jobs yet.

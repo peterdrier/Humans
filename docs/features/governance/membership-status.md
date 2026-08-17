@@ -4,7 +4,7 @@
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
-  src/Sections/Humans.Users/Contracts/SuspendNonCompliantMembersJob.cs
+  src/Sections/Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs
 -->
 <!-- freshness:flag-on-change
   The 6-bucket partition logic, priority order, or consent check rule may have changed; re-verify the table and state diagram.
