@@ -1,6 +1,3 @@
-using System.Reflection;
-using AwesomeAssertions;
-using Humans.Application;
 using Xunit;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
@@ -12,11 +9,9 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 /// <summary>
 /// Architecture tests for the §15 Part 2a Google Workspace SDK bridge
 /// interfaces (issue #574). These bridges gate every
-/// <c>Google.Apis.*</c> call made by <c>GoogleWorkspaceSyncService</c>, which
-/// moves into the Application layer in Part 2b (#575). The tests below are
-/// the compile-time guarantee that the bridge surface stays shape-neutral
-/// and that the Application assembly does not drift back into a Google SDK
-/// dependency.
+/// <c>Google.Apis.*</c> call made by <c>GoogleWorkspaceSyncService</c>. The tests below are
+/// the compile-time guarantee that the bridge surface stays shape-neutral and that the
+/// section's own service layer names no SDK type.
 /// </summary>
 public class GoogleWorkspaceSyncBridgeArchitectureTests
 {
@@ -58,29 +53,13 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
 
     // ── Assembly cleanliness ─────────────────────────────────────────────────
 
-    [HumansFact]
-    public void HumansApplication_HasNoGoogleApisAssemblyReference()
-    {
-        // Structural guarantee: the Application csproj does not
-        // (transitively) reference any Google.Apis.* assembly. Without this,
-        // the whole point of the bridge collapses — a service could grab
-        // an SDK type anyway.
-        // Loaded by name rather than anchored on a typeof: the connectors moved into the
-        // section at G5, so a type anchor would otherwise have relocated this sweep wholesale
-        // onto Humans.GoogleIntegration - which does reference the SDK - and either failed or,
-        // written as a "does not contain", passed while covering nothing
-        // (G5-SECTION-TEMPLATE.md step 11). The previous anchor was UserInfo, on the reasoning
-        // that the cross-section read model could not leave Base; it left for
-        // Humans.Users.Contracts at lane 2 (nobodies-collective/Humans#866) and the guard below
-        // caught it. Naming the assembly directly retires the whole anchor-drift failure mode:
-        // there is no type left to follow somewhere else.
-        var applicationAssembly = Assembly.Load(new AssemblyName("Humans.Application"));
-
-        var referenced = applicationAssembly.GetReferencedAssemblies();
-
-        referenced
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references; Google API calls live behind bridge interfaces in Humans.Infrastructure");
-    }
+    // COVERAGE REDUCED (G5 lane 5c, nobodies-collective/Humans#866):
+    // HumansApplication_HasNoGoogleApisAssemblyReference was deleted here. It loaded
+    // Humans.Application by name and asserted it referenced no Google.Apis.* assembly.
+    // Structure subsumes it: that project compiles no source file and no project references
+    // it any more, so there is no service left that could reach an SDK type, and the
+    // Assembly.Load could not resolve once this test project stopped referencing the hub.
+    // The invariant that still bites is asserted above —
+    // SectionServiceLayer_NamesNoGoogleSdkType covers the section's service namespace and
+    // BridgeInterface_DoesNotReferenceGoogleSdkTypes covers the bridge surface.
 }

@@ -20,13 +20,12 @@
       case). Stripe fee values land on Tickets' TicketOrder and Store's Payment, both
       written through those sections' own repositories.
 
-      Humans.Application is referenced for IApplicationService's sibling usings:
-      Humans.Application.Extensions (ILogger.TimeOperation) and
-      Humans.Application.Configuration.GitHubSettings, which the webhook registrar reads
-      to sweep endpoints for closed PRs.
+      Base carries IApplicationService's sibling usings: Humans.Application.Extensions
+      (ILogger.TimeOperation) and Humans.Application.Configuration.GitHubSettings, which the
+      webhook registrar reads to sweep endpoints for closed PRs. Those namespaces stayed put
+      when G5 lane 3a-1 moved the files, so only the hub ProjectReference went away.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

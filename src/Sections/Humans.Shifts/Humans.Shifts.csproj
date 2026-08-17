@@ -43,8 +43,9 @@
       their namespaces unchanged, and lane 3b deleted the Humans.Domain project. Their
       EnumStringStabilityTests rows are unaffected (Teams' rule, design §15 step 5).
     -->
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Humans.Shifts type (they may name Humans.Shifts.Contracts, which is
@@ -93,6 +94,9 @@
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
+    <!-- VolunteerBuildStatusConfiguration's JSON column converter. Arrived transitively
+         through Humans.Application until G5 lane 5c dropped that reference. -->
+    <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
   </ItemGroup>

@@ -18,13 +18,12 @@
       No Humans.Infrastructure and no Humans.UI reference: Gdpr owns no tables, so there is
       no DbContext, no repository and no AddSectionDbContext call, and it has no views. The
       orchestrator injects IEnumerable<IUserDataContributor> from its own leaf, IClock and
-      ILogger — nothing else. Humans.Application is here for one extension method
-      (NodaTimeFormattingExtensions.ToIso8601) and for nothing else, so it is not referenced
-      either. (Humans.Domain, the other project this note used to name, no longer exists —
-      deleted in G5 lane 3b.)
+      ILogger — nothing else. The one Humans.Application type it names,
+      NodaTimeFormattingExtensions.ToIso8601, ships from Base, so the hub ProjectReference
+      went away at G5 lane 5c. (Humans.Domain, the other project this note used to name, no
+      longer exists — deleted in G5 lane 3b.)
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 

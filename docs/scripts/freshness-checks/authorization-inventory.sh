@@ -5,7 +5,7 @@
 # 1. Every controller file from src/Humans.Web/Controllers/ (the doc must
 #    mention the filename — e.g. `AdminController` — at least once).
 # 2. Every AuthorizationHandler<...> subclass from src/Humans.Web/Authorization
-#    and src/Humans.Application/Authorization.
+#    and each section's own src/Sections/*/Authorization/.
 # 3. Has at least as many "| ... | Action |" rows as there are [Authorize]
 #    occurrences on action-level attributes in controllers (loose floor; the
 #    doc may consolidate multi-action attribute groups into one row).
@@ -37,9 +37,9 @@ for CTRL in $CONTROLLERS; do
 done
 
 # 2. AuthorizationHandler subclasses.
-HANDLERS=$(grep -lE 'AuthorizationHandler<' \
-    src/Humans.Web/Authorization/Requirements/*.cs \
-    src/Humans.Application/Authorization/*.cs 2>/dev/null \
+HANDLERS=$(grep -rlE 'AuthorizationHandler<' \
+    src/Humans.Web/Authorization/Requirements/ \
+    src/Sections/*/Authorization/ 2>/dev/null \
   | sed 's|.*/||;s|\.cs$||' | sort -u)
 
 MISSING_HND=""

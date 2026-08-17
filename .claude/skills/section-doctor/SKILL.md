@@ -101,6 +101,12 @@ and description** (sonnet for mechanical scanning, opus-tier only where judgment
   `freshness:triggers` globs still resolve.
 - **Surface lane** — AI slop: wasteful comments, 500-words-that-should-be-50 docs/messages,
   dead resources, missing translations, per-section nav quality (dead ends, missing backlinks).
+- **Content lane** (only where the section consumes authored content — markdown, resx, templates,
+  seed data): run the **real shipped content** through the section's **real pipeline** and assert
+  the section doc's invariants over the result. Code-reading lanes cannot see a defect whose
+  trigger is the shape of an input file. Where the pipeline fails *open* (an unrecognised input
+  is passed through rather than rejected), that check belongs in the repo as a test over the
+  production content, not just in the run.
 - **Inbox** — section-tagged items in `docs/architecture/debt-ledger.yml`, open GitHub issues,
   and in-app issues: work or rank them; off-section finds go to the debt inbox.
 
@@ -232,3 +238,29 @@ Present the open items inline, then apply each answer:
   strikeable items still ranked — hence the drain-the-list rule; and absorbed abilities were
   going unused (Stryker, InspectCode, invariant matrix, claim sweep, runtime verify, inbox) —
   hence the expanded lanes above.
+- 2026-08-17: **for a section whose input is content, run the real shipped content through the
+  real pipeline during the assessment.** Guide's two defects (an admin block served to anonymous;
+  two admin roles locked out of their own blocks) were both invisible to grep, to unit tests and
+  to every code-reading lane — they only appeared when the 28 real `docs/guide/*.md` files went
+  through the actual renderer and filter. Add a lane that feeds production content to the section.
+- 2026-08-17: **a low reforge score is not evidence the section is healthy.** Guide scores 8, the
+  lowest of any section, and was failing open on access control. The replan rubric ranks by score
+  growth and staleness; nothing in it would ever have surfaced Guide. Treat the score as a measure
+  of structure only, never of correctness.
+- 2026-08-17: never run `dotnet build` and `dotnet test` against the same worktree concurrently —
+  the test host holds the output DLLs and the build burns MSB3026 retry rounds on locked files.
+  One at a time per worktree.
+- 2026-08-17: commit messages via Bash must use `git commit -F <file>`; PowerShell here-string
+  syntax (`@'…'@`) silently becomes part of the subject line under Git Bash.
+- 2026-08-17: every dispatched lane missed the run window, and the Phase 4.4 reviewer gate could
+  not be obtained **at all** — four attempts across three agents (two `general-purpose` opus, one
+  `feature-dev:code-reviewer` opus), briefs shortened each time down to "reply with exactly three
+  lines", every one idling without an answer. Don't let a lane block a strike: give each a
+  deadline and work the ranked list meanwhile. When the gate does not report, work its checklist
+  on the main thread and **label it self-review in the PR and the Needs-Peter queue** — never
+  imply a review happened, and don't spend the run re-spawning reviewers.
+- 2026-08-17: lanes that report *after* the PR opens are still worth working — the run's PR is
+  open, so take a second pass and commit to it rather than dropping the findings. The tests lane's
+  invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole
+  first pass missed. **Always build the matrix**, even when the section looks well tested; the
+  gaps it finds are the invariants nobody thought to doubt.

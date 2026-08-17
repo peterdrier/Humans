@@ -2,6 +2,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Search\Humans.Search.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,8 +26,8 @@
 
   <!--
     No EF Core package and no tests/Directory.Build.props exclusion: Search owns no tables, but
-    Microsoft.EntityFrameworkCore still reaches the compile path transitively through
-    Humans.Application -> Humans.Domain -> Microsoft.AspNetCore.Identity.EntityFrameworkCore, so
+    Microsoft.EntityFrameworkCore still reaches the compile path transitively through Base,
+    which took the EF packages with the AddSectionDbContext cluster at G5 lane 3a-2, so
     the shared TestDbContextFactory compiles (Debug's criterion — "no EF on the compile path",
     which is only knowable from a build; Gdpr and Onboarding hit the same counter-example).
   -->

@@ -26,11 +26,14 @@
       No Humans.Infrastructure reference, unlike every section moved before this one: Scanner
       owns no tables, so there is no DbContext, no repository and no AddSectionDbContext call
       (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
-      ScannerController's IEventServiceRead comes from Humans.Events.Contracts, which
-      Humans.Application already references for SearchService — no second edge needed.
+      ScannerController's IEventServiceRead comes from Humans.Events.Contracts, declared
+      below — it arrived transitively through Humans.Application until G5 lane 5c.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Tickets: the leaf for TicketStubInfo, and the section project for the
       <vc:ticket-stub> tag helper — the component is public under Humans.Tickets/Contracts/

@@ -30,12 +30,11 @@ using Humans.Notifications.Contracts;
 using Humans.Notifications.Jobs;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Jobs;
+using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Jobs;
 using Humans.Users.Contracts;
 using Humans.Users.Jobs;
-
-using Humans.Teams.Contracts;
 
 namespace Humans.Web.Extensions;
 

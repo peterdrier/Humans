@@ -7,13 +7,14 @@ using Humans.Guide.Services;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Guide.Tests.Services;
 
 public class GuideRoleResolverTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
     public GuideRoleResolverTests()
     {
@@ -157,5 +158,31 @@ public class GuideRoleResolverTests
         var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsTeamCoordinator.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(MappedRoles))]
+    public async Task Resolve_EveryRoleAParentheticalCanName_IsProbedAgainstClaims(string role)
+    {
+        // A role the map can name but the resolver never probes is invisible: the block
+        // carries data-guide-roles="<role>" and GuideFilter looks for it in SystemRoles,
+        // which the resolver never populated. Events Admin and Store Admin were in exactly
+        // that state until the resolver started deriving its probe list from the map.
+        var resolver = CreateResolver();
+        var user = PrincipalWithRoles(Guid.NewGuid(), role);
+
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
+
+        result.SystemRoles.Should().Contain(role);
+    }
+
+    public static TheoryData<string> MappedRoles()
+    {
+        var data = new TheoryData<string>();
+        foreach (var role in GuideRolePrivilegeMap.MappedRoles)
+        {
+            data.Add(role);
+        }
+        return data;
     }
 }

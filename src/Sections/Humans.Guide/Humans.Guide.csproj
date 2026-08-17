@@ -25,19 +25,18 @@
     <!--
       Guide owns no tables, so there is no DbContext, no repository and no AddSectionDbContext
       call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
-      Unlike Scanner — the other table-less section — Humans.Infrastructure is still referenced:
       GuideSettings binds Guide:* and is read by GitHubGuideContentSource, which stays in Base
       as a shared GitHub-markdown connector (three of its four consumers are not Guide's), so
-      the settings type stays in Humans.Infrastructure/Configuration with it.
+      the settings type stays in Humans.Interfaces/Configuration with it.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      Markdig renders the guide markdown; it moved out of Humans.Infrastructure with
-      GuideRenderer, which was its only consumer there. No AspNetCore package: those ship with
+      Markdig renders the guide markdown; it came across with GuideRenderer, its only
+      consumer in the old Base project. No AspNetCore package: those ship with
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
       Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
       already adds. No EF Core either — the section owns no tables.

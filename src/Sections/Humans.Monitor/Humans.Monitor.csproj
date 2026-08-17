@@ -37,8 +37,8 @@
       MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes pins it.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- MonitorController injects IAuditViewerService and binds AuditEvent, which moved out of
          Humans.Application into the AuditLog section in G5 lane 4b-2h
@@ -55,8 +55,8 @@
       No EF Core either — the section owns no tables.
 
       Hangfire.Core arrives with DriveActivityMonitorJob (G5 jobs move): the job carries
-      [DisableConcurrentExecution]. Package, not project — no cycle is possible, and it was
-      already coming in transitively through Humans.Application.
+      [DisableConcurrentExecution]. Package, not project — no cycle is possible. It used to
+      arrive transitively through Humans.Application, which G5 lane 5c dropped.
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="NodaTime" />

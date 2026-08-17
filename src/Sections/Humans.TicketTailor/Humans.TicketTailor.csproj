@@ -15,8 +15,8 @@
       than Sdk.Razor (SystemSettings' shape).
 
       Everything the client needs is either the ASP.NET shared framework
-      (IHttpClientFactory), Humans.Application (TicketVendorSettings) or Humans.Tickets
-      (the port and its DTOs).
+      (IHttpClientFactory), Base (TicketVendorSettings) or Humans.Tickets (the port and its
+      DTOs).
 
       The Humans.Tickets reference is a direct section-to-section project reference,
       sanctioned by Peter's 2026-08-14 G5 ruling ("TicketVendor -> Tickets; TicketTailor
@@ -30,8 +30,8 @@
       the entire reason the connector is not inside the section.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,11 +8,26 @@
 
   <ItemGroup>
     <!--
-      Both hubs are named directly since G5 lane 5b-6 deleted Humans.Infrastructure
-      (nobodies-collective/Humans#866) — they used to arrive transitively through it.
+      Base is named directly since G5 lane 5b-6 deleted Humans.Infrastructure
+      (nobodies-collective/Humans#866) — it used to arrive transitively through it. The
+      Humans.Application reference went away at G5 lane 5c, which emptied that project; the
+      contracts leaves Shell had been reaching through it are declared below.
     -->
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
