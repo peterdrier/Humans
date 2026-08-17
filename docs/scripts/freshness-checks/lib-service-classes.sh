@@ -25,9 +25,18 @@
 
 # Interfaces that reach IApplicationService, directly or through another
 # interface (IFooService : IFooServiceRead : IApplicationService).
+#
+# Files are flattened before matching, exactly like the class pass below. A
+# line-oriented grep sees only the line carrying the `interface` keyword, so a
+# declaration whose base list wraps onto the next line reads as having no bases
+# at all — which silently dropped INotificationInboxService and
+# IShiftManagementService, and with them NotificationInboxService and
+# ShiftManagementService, out of both checks.
 service_interfaces() {
   local decls seed pat new merged i
-  decls=$(grep -rhoE 'interface +I[A-Za-z0-9_]+[^{;]*' --include=*.cs src \
+  decls=$(find src -name '*.cs' -type f -not -path '*/obj/*' -not -path '*/bin/*' -print0 \
+          | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
+          | grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' \
           | sed -E 's/interface +//' | tr -d '\r')
   seed=$(echo "$decls" | grep -E ':.*\bIApplicationService\b' | sed -E 's/[ <:].*//' | sort -u)
   for i in 1 2 3 4; do
