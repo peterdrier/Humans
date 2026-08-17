@@ -1,9 +1,13 @@
 #!/bin/bash
 # Freshness check: service-data-access-map
 #
-# Verifies that every service class under src/Humans.Application/Services/
-# appears as a `### <ServiceName>` heading (or row) in
+# Verifies that every service class under src/Sections/*/Services/ and the
+# cross-section orchestrators in src/Humans.Web/Services/ appear as a
+# `### <ServiceName>` heading (or row) in
 # docs/architecture/service-data-access-map.md.
+#
+# Humans.Application, which this check used to walk, was emptied and
+# dereferenced at G5 lane 5c (nobodies-collective/Humans#866).
 
 set -euo pipefail
 
@@ -17,7 +21,7 @@ fi
 # Skip non-service helpers (no repository / DI surface, intentionally absent).
 SKIP_NAMES="GuideFilter GuideRolePrivilegeMap"
 
-ALL_FILES=$(find src/Humans.Application/Services -name "*.cs" -type f \
+ALL_FILES=$(find src/Sections src/Humans.Web/Services -path "*/Services/*" -name "*.cs" -type f \
   | sed 's|.*/||;s|\.cs$||' | sort -u)
 
 MISSING=""

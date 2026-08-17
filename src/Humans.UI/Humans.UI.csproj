@@ -16,12 +16,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

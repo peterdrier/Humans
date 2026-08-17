@@ -68,9 +68,10 @@
   </ItemGroup>
 
   <!-- BurnSettingsInfo builder. Needs Humans.Shifts.Contracts, which every test project
-       has on its compile path through Humans.Application except the two below:
-       Humans.Analyzers.Tests feeds synthetic compilations to analyzers, and
-       Humans.Domain.Tests sits under Humans.Application in the graph. Shared rather than
+       below now declares directly: the transitive path ran through Humans.Application until
+       G5 lane 5c dropped that reference (nobodies-collective/Humans#866). The two exclusions
+       stay — Humans.Analyzers.Tests feeds synthetic compilations to analyzers, and
+       Humans.Domain.Tests sits at the bottom of the graph. Shared rather than
        copied because fifteen call sites across six section test projects stub
        IBurnSettingsService after the Shifts read boundary moved every cross-section burn
        read off the entity-returning IShiftManagementService.GetActiveAsync

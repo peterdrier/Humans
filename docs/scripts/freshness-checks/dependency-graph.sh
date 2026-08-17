@@ -1,10 +1,12 @@
 #!/bin/bash
 # Freshness check: dependency-graph
 #
-# Verifies that every service class under src/Humans.Application/Services/
-# (and a small allowlist from src/Humans.Infrastructure/Services/ for
-# pre-§15-migration services) appears as a node in the Mermaid diagram in
-# docs/architecture/dependency-graph.md.
+# Verifies that every service class under src/Sections/*/Services/ and the
+# cross-section orchestrators in src/Humans.Web/Services/ appears as a node in
+# the Mermaid diagram in docs/architecture/dependency-graph.md.
+#
+# Humans.Application and Humans.Infrastructure, which this check used to walk,
+# were emptied and deleted across G5 (nobodies-collective/Humans#866).
 #
 # Mermaid node syntax used: `<Alias>[<ServiceName>]` — we look for the service
 # name inside square brackets.
@@ -18,11 +20,12 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# Service classes from Application/Services. Exclude non-service helpers that
-# the dependency graph legitimately omits (no DI, no constructor injection).
+# Service classes from every section plus the Web orchestrators. Exclude
+# non-service helpers the dependency graph legitimately omits (no DI, no
+# constructor injection).
 SKIP_NAMES="GuideFilter GuideRolePrivilegeMap"
 
-ALL_FILES=$(find src/Humans.Application/Services -name "*.cs" -type f \
+ALL_FILES=$(find src/Sections src/Humans.Web/Services -path "*/Services/*" -name "*.cs" -type f \
   | sed 's|.*/||;s|\.cs$||' | sort -u)
 
 SERVICES=""
@@ -57,5 +60,5 @@ if [ "$MISS_COUNT" -gt 0 ]; then
   exit 1
 fi
 
-echo "PASS [dependency-graph]: all $TOTAL Application/Services service classes appear as Mermaid nodes"
+echo "PASS [dependency-graph]: all $TOTAL section/Web service classes appear as Mermaid nodes"
 exit 0

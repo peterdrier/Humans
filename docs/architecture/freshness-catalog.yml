@@ -72,9 +72,8 @@ mechanical:
     target: docs/authorization-inventory.md
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
-      - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
-      - "src/Humans.Application/Authorization/**/*.cs"
+      - "src/Humans.UI/Authorization/**/*.cs"
       # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
@@ -85,8 +84,9 @@ mechanical:
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
 
-      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Application/,
-      AND every src/Sections/*/ project (its Controllers/ and Authorization/ folders).
+      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.UI/Authorization/
+      (RoleChecks / PolicyNames), AND every src/Sections/*/ project (its Controllers/ and
+      Authorization/ folders).
       Most controllers and eight sections' resource handlers now live in section
       projects; an earlier revision of this doc silently omitted them. Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
@@ -142,7 +142,7 @@ mechanical:
   - id: dependency-graph
     target: docs/architecture/dependency-graph.md
     triggers:
-      - "src/Humans.Application/**/*.cs"
+      - "src/Humans.Web/Services/**/*.cs"
       - "src/Humans.Web/Program.cs"
       - "src/Humans.Web/Extensions/Sections/**/*.cs"
       # Most services now live in section projects and register themselves from
@@ -155,19 +155,14 @@ mechanical:
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
 
-      Walk every service class under src/Humans.Application/Services/ AND under
-      src/Sections/*/Services/ — the majority of services have moved into section
-      projects, and a walk restricted to Humans.Application would silently drop
-      them from the graph even though the current diagram includes them. For
-      each:
+      Walk every service class under src/Sections/*/Services/ AND the cross-section
+      orchestrators left in src/Humans.Web/Services/. Humans.Application is gone —
+      G5 lane 5c emptied it and dropped every reference to it — so there is no
+      Application/Services/ folder to walk. For each:
       1. Read the constructor; identify every injected interface.
       2. For each injected interface, follow it to its implementing service to
-         identify the owning section. The section is the folder name under
-         src/Humans.Application/Services/ for services still in Application, and
-         the project name for one that has moved — an implementation under
-         src/Sections/Humans.Teams/Services/ belongs to Teams, and has no folder
-         under src/Humans.Application/Services/ at all. Deriving the section only
-         from the Application path misclassifies or drops every G5 dependency.
+         identify the owning section. The section is the project name: an
+         implementation under src/Sections/Humans.Teams/Services/ belongs to Teams.
          Note the interface may be declared in a separate Humans.<X>.Contracts
          project; the section is where the IMPLEMENTATION lives, not the contract.
       3. Distinguish ctor-injected (solid arrow) from
@@ -183,7 +178,7 @@ mechanical:
   - id: service-data-access-map
     target: docs/architecture/service-data-access-map.md
     triggers:
-      - "src/Humans.Application/Services/**/*.cs"
+      - "src/Humans.Web/Services/**/*.cs"
       # SystemDbContext and the admin diagnostics repository followed the rest of
       # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
       - "src/Humans.Web/Infrastructure/Repositories/**/*.cs"
@@ -199,10 +194,9 @@ mechanical:
     prompt: |
       Regenerate docs/architecture/service-data-access-map.md.
 
-      For every service under src/Humans.Application/Services/ AND under
-      src/Sections/*/Services/ — most services have moved into section projects,
-      and enumerating only Humans.Application would drop them from the map even
-      though the current version documents them — identify:
+      For every service under src/Sections/*/Services/ AND the cross-section
+      orchestrators left in src/Humans.Web/Services/ — Humans.Application is gone,
+      emptied and dereferenced at G5 lane 5c — identify:
       1. Which repository interfaces it depends on. Note that a G5 section's
          repository is often a class literally named `Repository` implementing
          `I<Section>Repository`, not `<Section>Repository`; use the real class name.
