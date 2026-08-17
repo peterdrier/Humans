@@ -45,6 +45,14 @@
     InfrastructureServiceCollectionExtensions itself deliberately stayed in
     Humans.Infrastructure — two architecture rules read typeof(…).Assembly off it to mean
     "the Humans.Infrastructure assembly".
+
+    G5 lane 5b-6 then deleted src/Humans.Infrastructure outright. Its last two settings POCOs
+    (EmailSettings, GoogleWorkspaceSettings) landed here beside CommunityKbSettings and
+    GuideSettings: five sections plus Web bind EmailSettings, so no section owns it, and the
+    design's placement test puts anything sections reference on the floor. Namespace preserved
+    again (Humans.Infrastructure.Configuration), so no call site moved. Everything else went to
+    Humans.Web — including InfrastructureServiceCollectionExtensions, whose two anchor rules
+    were self-retiring and went with the assembly.
   -->
 
   <!--
@@ -59,13 +67,14 @@
       Followed the G5 lane 3a-2 arrivals: DatabaseMigrationHostedService,
       SectionDbContextRegistration, SectionMigrationRunner and PreMigrationSnapshot are internal
       and stay that way — 26 .Contracts leaves inherit this assembly's public surface, and the
-      migration plumbing is not part of it. Humans.Infrastructure still names two of them
-      (AddHumansPersistence registers the hosted service, AdminDatabaseDiagnosticsRepository
-      injects the registrations) and Humans.Integration.Tests drives SectionMigrationRunner
-      directly; both were already inside Humans.Infrastructure's own InternalsVisibleTo set
-      before the move.
+      migration plumbing is not part of it. Humans.Web names two of them (AddHumansPersistence
+      registers the hosted service, AdminDatabaseDiagnosticsRepository injects the
+      registrations) and Humans.Integration.Tests drives SectionMigrationRunner directly; both
+      were already inside Humans.Infrastructure's own InternalsVisibleTo set before the move.
+      The grant followed those two files to Humans.Web at G5 lane 5b-6, which deleted
+      Humans.Infrastructure.
     -->
-    <InternalsVisibleTo Include="Humans.Infrastructure" />
+    <InternalsVisibleTo Include="Humans.Web" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 

@@ -37,33 +37,18 @@ public class TicketVendorArchitectureTests
     ];
 
     [HumansFact]
-    public void NeitherThePortsAssemblyNorBaseReferencesTheAdapterSection()
+    public void ThePortsAssemblyDoesNotReferenceTheAdapterSection()
     {
-        // Two anchors on purpose. The adapter half follows the port (now Humans.Tickets);
-        // the Humans.Application half is a layering claim about Humans.Application itself,
-        // which never had anything to do with where the port lives. It used to read
-        // typeof(Humans.Application.CacheKeys).Assembly, which G5 lane 3a-1 moved to
-        // Humans.Interfaces with its namespace preserved — that would have silently
-        // retargeted the assertion below onto Humans.Interfaces (which has no
-        // ProjectReferences at all, so the check would pass vacuously) instead of
-        // Humans.Application. DashboardService is a concrete Humans.Application service
-        // with no scheduled move in phase 3.
+        // The second half of this test asserted that Humans.Application does not reference
+        // Humans.Infrastructure. G5 lane 5b-6 deleted that assembly, so the claim became
+        // unfalsifiable and came out with it (retirement-first for subsumed guardrails).
         var portAssembly = typeof(ITicketVendorService).Assembly;
-        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
-        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently retarget this test onto the wrong assembly instead of failing");
 
         portAssembly.GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
             .Should().NotContain(
                 name => name.StartsWith("Humans.TicketTailor", StringComparison.Ordinal),
                 because: "the port's owning section must not reference the adapter section; the dependency runs the other way, which is what lets the adapter be deleted for the 2027 vendor");
-
-        applicationAssembly.GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Should().NotContain(
-                name => name.StartsWith("Humans.Infrastructure", StringComparison.Ordinal),
-                because: "Humans.Application must not depend on Humans.Infrastructure — the connector pattern inverts this dependency");
     }
 
     [HumansFact]

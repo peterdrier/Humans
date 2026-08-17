@@ -7,7 +7,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Services;
+using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Notifications.Contracts;
@@ -23,7 +23,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IGoogleGroupSync _googleGroupSync;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly GoogleResourceReconciliationJob _job;
 
     public GoogleResourceReconciliationJobTests()
@@ -44,7 +44,6 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
     public void Dispose()
     {
-        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

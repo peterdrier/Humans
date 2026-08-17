@@ -28,7 +28,7 @@ Since the per-context DbContext split (nobodies-collective/Humans#858, #866) the
 
 | Location | `--project` | `--output-dir` |
 |---|---|---|
-| `src/Humans.Infrastructure/Migrations/<Area>/*.cs` (peeled, not yet moved) | `src/Humans.Infrastructure` | `Migrations/<Area>` |
+| `src/Humans.Web/Migrations/<Area>/*.cs` (the platform context) | `src/Humans.Web` | `Migrations/<Area>` |
 | `src/Sections/Humans.<Section>/Data/Migrations/*.cs` (moved, G5) | `src/Sections/Humans.<Section>` | `Data/Migrations` |
 
 **Do not synthesize the context name from the folder.** A G5 section's project name and its context often differ: `src/Sections/Humans.Consent` is `LegalDbContext`, `src/Sections/Humans.Events` is `EventGuideDbContext`. Resolve the real class from either:
@@ -57,14 +57,14 @@ Migrations added on this branch since divergence from `origin/main`, across all 
 
 ```bash
 git log --diff-filter=A --name-only origin/main..HEAD \
-    -- 'src/Humans.Infrastructure/Migrations/*.cs' 'src/Sections/Humans.*/Data/Migrations/*.cs' \
+    -- 'src/Humans.Web/Migrations/*.cs' 'src/Sections/Humans.*/Data/Migrations/*.cs' \
   | grep -E '/(Migrations|Data/Migrations)(/[A-Za-z]+)?/[0-9]{14}_.*\.cs$' \
   | sort -u
 ```
 
 This includes both `<timestamp>_<Name>.cs` and `<timestamp>_<Name>.Designer.cs` for each migration. Group the results by owning context per the table above. Show the list (grouped by context) to the user and confirm "yes, scrap all of these and consolidate" before proceeding — per context if more than one is touched.
 
-**A relocated migration is not in-flight work.** If this branch moves a context from `Humans.Infrastructure` into a G5 project, every one of that context's migrations shows up above as an addition at the new path even though it is unchanged history from `origin/main`. Compare basenames against `origin/main` before treating any of them as scrappable:
+**A relocated migration is not in-flight work.** If this branch moves a context between projects, every one of that context's migrations shows up above as an addition at the new path even though it is unchanged history from `origin/main`. Compare basenames against `origin/main` before treating any of them as scrappable:
 
 ```bash
 git ls-tree -r --name-only origin/main \
@@ -83,7 +83,7 @@ git cat-file -e origin/main:<migrations-folder>/<Context>ModelSnapshot.cs 2>/dev
 ```
 
 - **PRESENT** — ordinary case. Step 4 runs as written.
-- **ABSENT, and the context exists on `origin/main` under a different path** — the branch is relocating the context. The pre-move snapshot is still at `src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs`; that path is the restore source. Find it with:
+- **ABSENT, and the context exists on `origin/main` under a different path** — the branch is relocating the context. The pre-move snapshot is still at its old path on `origin/main`; that path is the restore source. Find it with:
 
   ```bash
   git ls-tree -r --name-only origin/main | grep '<Context>ModelSnapshot\.cs$'
@@ -115,7 +115,7 @@ git checkout origin/main -- <migrations-folder>/<Context>ModelSnapshot.cs
 **Relocating the context** — restore from the pre-move path, into the new one:
 
 ```bash
-git show origin/main:src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs \
+git show origin/main:<pre-move-migrations-folder>/<Context>ModelSnapshot.cs \
   > <migrations-folder>/<Context>ModelSnapshot.cs
 ```
 
@@ -160,12 +160,12 @@ If this fails, stop — EF tooling can't run against a model that doesn't compil
 
 `--output-dir` is **required**, not optional. Without it EF writes to the project's default `Migrations/` folder, which for both shapes is the wrong place: the replacement lands outside the chain its snapshot belongs to. `.claude/check-ef-output-dir.sh` cannot save you here — it only inspects commands that already carry the flag and exits 0 on any command without it.
 
-Peeled, context still in `Humans.Infrastructure`:
+The platform context, hosted in `Humans.Web`:
 
 ```bash
 dotnet ef migrations add <MigrationName> \
   --context <Context> \
-  --project src/Humans.Infrastructure \
+  --project src/Humans.Web \
   --output-dir Migrations/<Area> \
   --startup-project src/Humans.Web
 ```

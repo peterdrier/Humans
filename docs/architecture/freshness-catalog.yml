@@ -184,8 +184,10 @@ mechanical:
     target: docs/architecture/service-data-access-map.md
     triggers:
       - "src/Humans.Application/Services/**/*.cs"
-      - "src/Humans.Infrastructure/Repositories/**/*.cs"
-      - "src/Humans.Infrastructure/Data/*DbContext.cs"
+      # SystemDbContext and the admin diagnostics repository followed the rest of
+      # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
+      - "src/Humans.Web/Infrastructure/Repositories/**/*.cs"
+      - "src/Humans.Web/Infrastructure/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
       # The section DbContexts were already triggers, but the services and
       # repositories that read through them were not — so a repository or ctor

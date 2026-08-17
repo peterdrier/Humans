@@ -26,7 +26,7 @@ jobs:
             const sectionMigrationsRe = /^src\/Sections\/[^/]+\/Data\/Migrations\//;
             const hasMigration = files.some(f =>
               f.status !== 'removed' &&
-              (f.filename.startsWith('src/Humans.Infrastructure/Migrations/') || sectionMigrationsRe.test(f.filename))
+              (f.filename.startsWith('src/Humans.Web/Migrations/') || sectionMigrationsRe.test(f.filename))
             );
 
             const labels = context.payload.pull_request.labels.map(l => l.name);

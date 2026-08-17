@@ -20,7 +20,7 @@ After every EF tool run, before staging anything:
 
 ```
 # context still hosted in Infrastructure
-git diff src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs
+git diff src/Humans.Web/Migrations/<Area>/<Context>ModelSnapshot.cs
 # G5-moved section
 git diff src/Sections/Humans.<Section>/Data/Migrations/<Context>ModelSnapshot.cs
 ```

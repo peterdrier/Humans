@@ -48,7 +48,7 @@ env:
     BudgetDbContext:src/Sections/Humans.Budget
     CampsDbContext:src/Sections/Humans.Camps
     GateDbContext:src/Sections/Humans.Gate
-    SystemDbContext:src/Humans.Infrastructure
+    SystemDbContext:src/Humans.Web
     LegalDbContext:src/Sections/Humans.Consent
     AuditLogDbContext:src/Sections/Humans.AuditLog
     ShiftsDbContext:src/Sections/Humans.Shifts
@@ -128,7 +128,7 @@ jobs:
         with:
           filters: |
             migrations:
-              - 'src/Humans.Infrastructure/Migrations/**'
+              - 'src/Humans.Web/Migrations/**'
               - 'src/Humans.Domain/**'
               # A G5 section owns its migrations, DbContext, EF configurations and
               # entities (nobodies-collective/Humans#866). Globbed, not listed per
@@ -279,7 +279,7 @@ jobs:
       run: dotnet restore Humans.slnx
 
     - name: Check formatting
-      run: dotnet format Humans.slnx --verify-no-changes --verbosity diagnostic --exclude src/Humans.Infrastructure/Migrations/
+      run: dotnet format Humans.slnx --verify-no-changes --verbosity diagnostic --exclude src/Humans.Web/Migrations/
 
     - name: Forbid RS0030 suppressions in test code
       # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]

@@ -52,9 +52,9 @@ public class TicketVendorPortArchitectureTests
         applicationAssembly.GetName().Name.Should().Be("Humans.Application",
             because: "an anchor whose type leaves this assembly would silently drop Humans.Application out of this sweep instead of failing");
 
+        // Humans.Infrastructure was a third entry until G5 lane 5b-6 deleted it.
         var assemblies = SectionDiscoveryExtensions.SectionAssemblies()
-            .Append(applicationAssembly)                                          // Humans.Application
-            .Append(Assembly.Load("Humans.Infrastructure"))
+            .Append(applicationAssembly)
             .Append(Assembly.Load("Humans.Web"))
             .Distinct()
             .ToList();

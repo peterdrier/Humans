@@ -216,9 +216,7 @@ internal sealed class DebugController(
         try
         {
             var snapshot = cacheStatsProvider.GetSnapshot();
-            var entryCounts = (cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
-                ?.GetActiveEntryCounts()
-                ?? new Dictionary<string, int>(StringComparer.Ordinal);
+            var entryCounts = cacheStatsProvider.GetActiveEntryCounts();
 
             var model = new CacheStatsViewModel
             {

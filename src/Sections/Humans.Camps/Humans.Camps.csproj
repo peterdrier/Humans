@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Camps.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections (design Â§5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -43,7 +43,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <!--
@@ -54,7 +53,7 @@
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <!--
       Camp/Details.cshtml renders the placement-phase block with CityPlanning's own copy, so
-      it binds IStringLocalizer<CityPlanningResource> — a section *resource marker*, which is a
+      it binds IStringLocalizer<CityPlanningResource> â€” a section *resource marker*, which is a
       section type rather than a leaf one (Budget's rule: the consumer takes the section
       project). Acyclic for the same reason as the leaf reference above: CityPlanning reaches
       Camps only through Humans.Camps.Contracts.
@@ -72,7 +71,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

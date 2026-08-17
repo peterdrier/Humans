@@ -24,7 +24,7 @@ internal sealed class SystemDbContextFactory : IDesignTimeDbContextFactory<Syste
             npgsqlOptions =>
             {
                 npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+                npgsqlOptions.MigrationsAssembly("Humans.Web");
                 npgsqlOptions.MigrationsHistoryTable(
                     SectionMigrationsHistory.TableFor<SystemDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);

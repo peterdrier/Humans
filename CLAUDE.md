@@ -12,7 +12,7 @@ Sections progressively move into their own project at `src/Sections/Humans.<Sect
 
 - **Domain** — entities, enums, value objects. No external dependencies.
 - **Application** — service interfaces and implementations, repository/store interfaces, DTOs. No EF types.
-- **Infrastructure** — repository implementations, the DbContexts of sections peeled but not yet moved (`Users`, `Camps`, `Shifts`, `System`, `GoogleIntegration`) plus their migrations, external API clients, jobs. There is no longer a shared `HumansDbContext` — it was deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
+- **Infrastructure** — **gone.** `src/Humans.Infrastructure` was deleted at G5 lane 5b-6 (nobodies-collective/Humans#866). Every repository, DbContext and migration folder now belongs to its section project; the platform context (`SystemDbContext` → `DataProtectionKeys`), the operational/tracking services and `Migrations/System/` live in `Humans.Web`. There is no shared `HumansDbContext` either — deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
 - **Web** — controllers, views, view models, API endpoints, DI wiring.
 
 See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) — the **regulations**: the implementing detail behind the hard rules (layer responsibilities, table ownership map, caching pattern §15, authorization, cross-domain rules). Open a single section on demand; read cover-to-cover only when onboarding. On any conflict with the hard rules, the hard rules win.

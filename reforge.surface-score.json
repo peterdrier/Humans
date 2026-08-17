@@ -3,7 +3,7 @@
     "Admin": {
       "paths": [
         "src/Humans.Application/Interfaces/Admin/**",
-        "src/Humans.Infrastructure/Repositories/Admin/**",
+        "src/Humans.Web/Infrastructure/Repositories/Admin/**",
         "src/Humans.Web/Controllers/Admin*"
       ],
       "symbols": [
@@ -678,17 +678,13 @@
         "src/Humans.Domain/Constants/**",
         "src/Humans.Domain/Helpers/**",
         "src/Humans.Analyzers/**",
-        "src/Humans.Infrastructure/Caching/**",
-        "src/Humans.Infrastructure/Data/**",
-        "src/Humans.Infrastructure/Services/AdminDatabaseDiagnosticsService.cs",
-        "src/Humans.Infrastructure/Services/ClientStatsTracker.cs",
-        "src/Humans.Infrastructure/Services/FileSystemFileStorage.cs",
-        "src/Humans.Infrastructure/Services/GitHubGuideContentSource.cs",
-        "src/Humans.Infrastructure/Helpers/**",
-        "src/Humans.Infrastructure/Hosting/**",
-        "src/Humans.Infrastructure/Jobs/**",
-        "src/Humans.Infrastructure/Services/HttpStatusTracker.cs",
-        "src/Humans.Infrastructure/Services/Metering/**",
+        "src/Humans.Interfaces/Caching/**",
+        "src/Humans.Interfaces/Data/**",
+        "src/Humans.Interfaces/Helpers/**",
+        "src/Humans.Interfaces/Hosting/**",
+        "src/Humans.Interfaces/Services/GitHubGuideContentSource.cs",
+        "src/Humans.Interfaces/Services/Metering/**",
+        "src/Humans.Web/Infrastructure/**",
         "src/Humans.Web/Controllers/ColorPaletteController.cs",
         "src/Sections/Humans.Debug/**",
         "src/Sections/Humans.Development/**",

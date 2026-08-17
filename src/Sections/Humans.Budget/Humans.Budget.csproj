@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Budget.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections (design Â§5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -24,12 +24,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <!--
       The year overview shows Holded actual spend per budget category. That comes from
-      Finance's contracts leaf, never from Humans.Finance itself — Humans.Finance
+      Finance's contracts leaf, never from Humans.Finance itself â€” Humans.Finance
       references Humans.Budget.Contracts for the active year, so the pair stays acyclic
       only while both directions go through a leaf
       (memory/architecture/section-project-cycle-fix.md).
@@ -43,7 +42,7 @@
       No AspNetCore package here: those ship with no PackageVersion on purpose and would
       fail the build with NU1010 under Central Package Management. Everything ASP.NET the
       section touches arrives through the framework reference Sdk.Razor already adds
-      (design §15 step 1).
+      (design Â§15 step 1).
       Hangfire.Core is for Contracts/TicketingBudgetSyncJob's [DisableConcurrentExecution],
       added with the job at G5 lane 5b-3. Package, not project, so no cycle is possible; it
       was already arriving transitively through Humans.Infrastructure.
@@ -56,7 +55,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

@@ -88,15 +88,14 @@
        the rest of the harness. The projects listed below have no EF Core on their compile
        path and are excluded: Humans.Analyzers.Tests feeds synthetic compilations to
        analyzers, and Humans.Scanner.Tests / Humans.Cantina.Tests / Humans.Development.Tests
-       / Humans.Mailer.Tests cover sections that own no tables *and* take no
-       Humans.Infrastructure reference. All would otherwise have to take an EF package purely
-       so a fixture they never use compiles.
+       / Humans.Mailer.Tests cover sections that own no tables *and* pull no EF in
+       transitively. All would otherwise have to take an EF package purely so a fixture they
+       never use compiles.
 
        The criterion is "no EF on the compile path", not "the section owns no tables" — the
        two came apart at Humans.Debug.Tests, whose section owns no tables and still needs no
-       exclusion because the section references Humans.Infrastructure for QueryStatistics /
-       TrackingMemoryCache / InMemoryLogSink. Add a clause only after a build actually
-       fails. -->
+       exclusion because the section names Base's QueryStatistics / InMemoryLogSink. Add a
+       clause only after a build actually fails. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'
                         AND '$(MSBuildProjectName)' != 'Humans.Scanner.Tests'
                         AND '$(MSBuildProjectName)' != 'Humans.Cantina.Tests'

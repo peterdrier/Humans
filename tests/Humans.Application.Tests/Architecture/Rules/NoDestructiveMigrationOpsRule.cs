@@ -46,7 +46,7 @@ public class NoDestructiveMigrationOpsRule
     }
 
     /// <summary>
-    /// Base's migrations folder plus each G5 section's own <c>Data/Migrations</c>.
+    /// The host's migrations folder plus each G5 section's own <c>Data/Migrations</c>.
     /// </summary>
     /// <remarks>
     /// The section half is not cosmetic. Scanning only the Base folder means a section's
@@ -58,8 +58,11 @@ public class NoDestructiveMigrationOpsRule
     /// </remarks>
     internal static IEnumerable<string> MigrationDirectories(string repoRoot)
     {
-        var baseMigrations = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Migrations");
-        if (Directory.Exists(baseMigrations)) yield return baseMigrations;
+        // Migrations/System followed SystemDbContext to Humans.Web when G5 lane 5b-6 deleted
+        // Humans.Infrastructure. Leaving the old path here would drop it from the sweep
+        // silently, which is the exact failure the remark above describes.
+        var hostMigrations = Path.Combine(repoRoot, "src", "Humans.Web", "Migrations");
+        if (Directory.Exists(hostMigrations)) yield return hostMigrations;
 
         var sections = Path.Combine(repoRoot, "src", "Sections");
         if (!Directory.Exists(sections)) yield break;

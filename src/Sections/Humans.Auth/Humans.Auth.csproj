@@ -2,7 +2,7 @@
 
   <!--
     Plain Microsoft.NET.Sdk, not Sdk.Razor: the section has no controllers and no views.
-    AccountController and its Views/Account/* stayed in Shell — see Section.cs.
+    AccountController and its Views/Account/* stayed in Shell â€” see Section.cs.
 
     The framework reference is here for Microsoft.AspNetCore.Authorization only:
     RoleAssignmentAuthorizationHandler is a resource-based handler (template step 6) and
@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Auth.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections (design Â§5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
       Temporary, both directions of Teams finding 36's trade. ServiceTestHarness and its
@@ -32,28 +32,27 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
       Three horizontal leaves:
-      AuditLog  — RoleAssignmentService writes an audit row per assign/end.
-      Gdpr      — role assignments are an Article 15 export slice.
-      Notifications — best-effort in-app notice to the human whose role changed.
+      AuditLog  â€” RoleAssignmentService writes an audit row per assign/end.
+      Gdpr      â€” role assignments are an Article 15 export slice.
+      Notifications â€” best-effort in-app notice to the human whose role changed.
 
       Two *vertical* leaves are also here, both for the magic-link sign-in path that came home
       at nobodies-collective/Humans#866 G5 lane 4b-2i:
 
-      Users.Contracts — already required before that lane (IUserServiceRead for assignee/creator
+      Users.Contracts â€” already required before that lane (IUserServiceRead for assignee/creator
                         display stitching); MagicLinkService adds UserManager<User> and
                         IUserEmailService on top.
-      Email.Contracts — IEmailService + IEmailMessageFactory, which MagicLinkService injects to
+      Email.Contracts â€” IEmailService + IEmailMessageFactory, which MagicLinkService injects to
                         send the login/signup mail. This reference is exactly what the old
                         "a horizontal may not reference a vertical" reading forbade, and it is
                         why the orchestrator sat in Humans.Application until now. Peter's
                         Base-floor decision of 2026-08-14 supersedes that reading: leaves are
                         referenceable from anywhere, so hosting a section's own sign-in path in
                         the hub bought nothing. AuthArchitectureTests.SectionReferencesNoVerticalSection,
-                        which pinned this list on the old premise, was retired in the same lane —
+                        which pinned this list on the old premise, was retired in the same lane â€”
                         this comment is the record now, so keep a reason beside every name.
 
       There is still deliberately no Humans.Teams.Contracts or Humans.Onboarding.Contracts
@@ -74,7 +73,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

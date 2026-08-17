@@ -34,7 +34,10 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly IEmailTransport _transport;
     private readonly ICampaignService _campaignService;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
+    // Substituted rather than built: the concrete HumansMetricsService moved to Humans.Web at
+    // G5 lane 5b-6 and this section may not reference it. Nothing here asserts on metrics —
+    // OutboxEmailServiceTests already used the substitute.
+    private readonly IHumansMetrics _metrics;
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
@@ -52,10 +55,7 @@ public class EmailOutboxProcessorTests : IDisposable
         _transport = Substitute.For<IEmailTransport>();
         _campaignService = Substitute.For<ICampaignService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            NullLogger<HumansMetricsService>.Instance,
-            Substitute.For<IUserActivityTracker>());
+        _metrics = Substitute.For<IHumansMetrics>();
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(_options));
@@ -70,7 +70,6 @@ public class EmailOutboxProcessorTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        _metrics.Dispose();
         _meters.Dispose();
         GC.SuppressFinalize(this);
     }

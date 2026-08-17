@@ -7,7 +7,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <!--
+      Both hubs are named directly since G5 lane 5b-6 deleted Humans.Infrastructure
+      (nobodies-collective/Humans#866) — they used to arrive transitively through it.
+    -->
+    <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
@@ -56,12 +61,31 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      Arrived with the Humans.Infrastructure residue at G5 lane 5b-6
+      (nobodies-collective/Humans#866); each is forced by exactly one moved file.
+        DataProtection.EntityFrameworkCore — SystemDbContext's IDataProtectionKeyContext and
+          PersistKeysToSystemDbContext. (.Extensions came across with it but is in the
+          ASP.NET Core shared framework; NU1510 rejects naming it.)
+        EntityFrameworkCore + the two Npgsql packages — SystemDbContext, its design-time
+          factory and Migrations/System.
+        NodaTime — AdminDatabaseDiagnosticsService, HumansMetricsService, UserActivityTracker.
+        MyCSharp.HttpUserAgentParser — UserAgentClassifier.
+    -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="MyCSharp.HttpUserAgentParser" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
     <PackageReference Include="Hangfire.AspNetCore" />
+    <!-- Program.cs's UsePostgreSqlStorage; came via Humans.Infrastructure until lane 5b-6. -->
+    <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

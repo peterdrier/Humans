@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Infrastructure.Repositories.Admin;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 
@@ -28,6 +27,16 @@ public class ServiceBoundaryArchitectureTests
         ?? throw new InvalidOperationException(
             $"{fullName} not found in any section assembly — did the section move or rename it?");
 
+    /// <summary>
+    /// Same problem one tier up: the platform diagnostics repository is <c>internal</c> to
+    /// <c>Humans.Web</c> since G5 lane 5b-6 deleted <c>Humans.Infrastructure</c>.
+    /// </summary>
+    private static Type HostRepository(string fullName) =>
+        typeof(Web.Extensions.InfrastructureServiceCollectionExtensions).Assembly
+            .GetType(fullName, throwOnError: false)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in Humans.Web — did it move or get renamed?");
+
     private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
         new Dictionary<Type, string>
         {
@@ -35,7 +44,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.SystemSettings.Data.ISystemSettingsRepository")] = "SystemSettings",
             [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
             [typeof(IAccountMergeRepository)] = "Humans",
-            [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
+            [HostRepository("Humans.Infrastructure.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",
             [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
             [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",
