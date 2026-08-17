@@ -257,3 +257,8 @@ Present the open items inline, then apply each answer:
   deadline, work the ranked list meanwhile, and when the reviewer gate does not report, either
   work its checklist yourself and **say so in the PR** or hold the item — never imply a review
   happened.
+- 2026-08-17: lanes that report *after* the PR opens are still worth working — the run's PR is
+  open, so take a second pass and commit to it rather than dropping the findings. The tests lane's
+  invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole
+  first pass missed. **Always build the matrix**, even when the section looks well tested; the
+  gaps it finds are the invariants nobody thought to doubt.

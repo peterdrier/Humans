@@ -11,6 +11,6 @@ three consumers outside Guide (the Agent section's preload readers, Shell's
 `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`), so it lives in
 `Humans.Interfaces` and the section consumes it inward like any other Base abstraction.
 
-Links into the section are by *route* (`asp-controller="Guide"` in `Humans.UI`'s
-`_LoginPartial`) and by *string* (`GuideHtmlPostprocessor` rewriting sibling `.md` links to
+Links into the section are by *route* (`asp-controller="Guide"` in `Humans.Web`'s
+`Views/Shared/_LoginPartial.cshtml`) and by *string* (`GuideHtmlPostprocessor` rewriting sibling `.md` links to
 `/Guide/{stem}`), neither of which needs a type.

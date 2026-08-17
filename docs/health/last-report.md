@@ -57,20 +57,27 @@ real shipped `docs/guide/` content through the real pipeline. Full scorecard:
 - `NotFound` / `Unavailable` render no sidebar and strand the reader. Left as an opportunity
   rather than a UI change during a doctor run.
 
-## Lanes that did not report
+## Lanes
 
-Four subagents (tests/Stryker, InspectCode, docs, and two successive opus reviewers) were
-dispatched and **none returned within the run**, despite status pings. So this run has:
+All five subagents (tests/Stryker, InspectCode, docs, two opus reviewers) missed the run window;
+everything above was found and verified directly. The docs and tests lanes reported **after** the
+PR was opened, and a second pass worked what they found:
 
-- **no mutation score** — Stryker never reported; the config the lane left behind was deleted
-  rather than committed unvalidated;
-- **no InspectCode pass**;
-- **no independent second opinion** on the `TryCanonical` consolidation. I worked the reviewer's
-  own checklist against it instead (one concept, behaviour identical on every input including
-  null/empty/whitespace, no seam lost since all ten call sites passed the same set) and shipped
-  it, but that is self-review and is flagged in the PR for Peter to judge.
-
-Everything reported above was found and verified directly, not via a lane.
+- **Docs lane** independently reached the same `KnownRoles` conclusion (already fixed), and added
+  one in-section find I had missed: `Contracts/README.md` still cited `Humans.UI`'s
+  `_LoginPartial`, and `Humans.UI` was deleted in `9830ba3ed`. Fixed. It also measured the
+  freshness-trigger rot far beyond Guide — **~113 dead trigger lines across 16 of the 28 guide
+  pages** — and caught `docs/guide/Expenses.md` missing today's #1336 feature entirely. Both to
+  the debt ledger; both off-section.
+- **Tests lane** confirmed the `RefreshAllAsync_ClearsAndRefetches` naming problem I had already
+  fixed, and its invariant matrix found three genuine gaps I had not: the **`POST /Guide/Refresh`
+  admin-only rule had no test at any level**, `GuideFiles` was never checked against the files on
+  disk, and every Board/Admin filter test also contained a `boardadmin` block, so the superset
+  promotion masked `IsCoordinatorVisible`'s own Board/Admin grant. All three now covered.
+- **Still missing: no mutation score** (Stryker never reported; its unvalidated config was
+  deleted rather than committed), **no InspectCode pass**, and **no independent second opinion**
+  on the `TryCanonical` consolidation — the second reviewer went idle without answering a direct
+  request for its verdict. I worked its checklist myself and flagged that in the PR.
 
 ## Retro
 
@@ -85,6 +92,8 @@ Everything reported above was found and verified directly, not via a lane.
   were briefed to read *code*; nothing read the 28 markdown files the code exists to serve until I
   ran them through the pipeline. For a section whose input is content, the content is part of the
   section — now a standing lane in the skill.
-- **Process risk this run exposed:** every finding came from the one thread doing the work, and
-  the four parallel lanes contributed nothing. A run that had delegated more would have shipped
-  less. Worth watching whether the lane pattern is paying for itself.
+- **Process risk this run exposed:** the lanes all missed the run window, so a run that had
+  delegated more would have shipped less. But once they did land they were worth having — the
+  tests lane's invariant matrix found an untested negative access rule, which is exactly the class
+  of defect this run was about, and the docs lane measured a repo-wide problem I had only seen the
+  Guide-sized corner of. The fix is a deadline and a second pass, not fewer lanes.

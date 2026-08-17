@@ -7,7 +7,7 @@ Last assessed: 2026-08-17 @ acb86a911 (section-doctor, `--section=Guide`)
 | Axis | State |
 |---|---|
 | Reforge (section) | 8 — the lowest of any section. Only items: `Wrap` (CC 20, 55 LOC) and the legitimate `GuideRoleResolver <- ITeamServiceRead`. No structural work is warranted |
-| Tests | 92 in `Humans.Guide.Tests` (86 before run) + 3 render tests in `Humans.Integration.Tests`, all sub-second. This run added three content-pinning tests over the real `docs/guide/` files and the section's first controller tests |
+| Tests | 95 in `Humans.Guide.Tests` (86 before run) + 3 render tests in `Humans.Integration.Tests`, all sub-second. This run added four content-pinning tests over the real `docs/guide/` files, the section's first controller tests, and the first coverage of the Refresh authorization rule. Remaining gap: the TTL floor clamp (`Math.Max(1, …)`) is unobservable through `IMemoryCache` |
 | Docs vs code | Invariants doc is strong and specific — it was right where the code was wrong. Three drift fixes this run: dead `src/Humans.Infrastructure/**` freshness triggers (project deleted at G5 lane 5b-6) and the same claim in the feature spec, Contracts README and csproj comments; plus `IGuideContentService.RefreshAllAsync` documented as *evicting* the cache when it overwrites and deliberately retains stale entries |
 | Comments / slop | Clean and constraint-stating. One auto-named local (`settings1`) inlined this run |
 | GUI / nav | Sidebar groups + breadcrumb are sound. `NotFound`/`Unavailable` are dead ends — they sit at `offset-md-3` where the sidebar would be, but never render one |
