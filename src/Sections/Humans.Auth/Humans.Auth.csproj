@@ -56,8 +56,8 @@
 
       Humans.Teams.Contracts arrived at G5 lane 5c: ISystemTeamSync moved onto that leaf when
       Humans.Application was emptied, and RoleAssignmentService injects it to reconcile the
-      Google group behind a role. There is still deliberately no Humans.Onboarding.Contracts
-      reference.
+      Board system team. A leaf, not the section — the horizontal/vertical rule still holds.
+      There is still deliberately no Humans.Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />

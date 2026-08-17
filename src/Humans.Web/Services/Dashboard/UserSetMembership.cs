@@ -5,10 +5,10 @@ namespace Humans.Web.Services.Dashboard;
 /// Venn + UpSet diagrams. Each user is placed into exactly one of 16 disjoint
 /// buckets indexed by a bitmask over four boolean dimensions:
 /// <list type="bullet">
-///   <item><description>bit 0 â€” <c>Profile</c>: <c>UserInfo.HasRequiredNameFields</c></description></item>
-///   <item><description>bit 1 â€” <c>Ticket</c>: <c>UserInfo.HasTicketForYear(activeYear)</c></description></item>
-///   <item><description>bit 2 â€” <c>Shift</c>: active signup (Pending/Confirmed) in the active event</description></item>
-///   <item><description>bit 3 â€” <c>Marketing</c>: explicit marketing opt-in (<c>MarketingOptedOut == false</c>)</description></item>
+///   <item><description>bit 0 — <c>Profile</c>: <c>UserInfo.HasRequiredNameFields</c></description></item>
+///   <item><description>bit 1 — <c>Ticket</c>: <c>UserInfo.HasTicketForYear(activeYear)</c></description></item>
+///   <item><description>bit 2 — <c>Shift</c>: active signup (Pending/Confirmed) in the active event</description></item>
+///   <item><description>bit 3 — <c>Marketing</c>: explicit marketing opt-in (<c>MarketingOptedOut == false</c>)</description></item>
 /// </list>
 /// The Venn diagram uses only the first three bits (marginalized over Marketing);
 /// the UpSet plot uses all four.

@@ -66,7 +66,7 @@ internal sealed record DashboardTrendPoint(
 
 /// <summary>
 /// One bar on the "people on site per day, stacked by department" chart. Only
-/// populated for Set-up and Strike periods â€” Event day-over-day mix has a
+/// populated for Set-up and Strike periods — Event day-over-day mix has a
 /// different planning flow so the dashboard deliberately omits it there.
 /// Counts are <c>Confirmed</c> signups only (pending/cancelled are excluded).
 /// </summary>
@@ -80,7 +80,7 @@ internal sealed record DepartmentDayCount(string DepartmentName, int ConfirmedCo
 /// <summary>
 /// A row in the "shift duration mix" table. One row per distinct duration bucket
 /// (full-day shifts share a bucket regardless of nominal duration). Scope is the
-/// selected period â€” Build, Event, or Strike.
+/// selected period — Build, Event, or Strike.
 /// </summary>
 internal sealed record ShiftDurationBreakdownRow(
     bool IsAllDay,
