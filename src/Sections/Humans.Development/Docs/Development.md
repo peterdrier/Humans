@@ -61,7 +61,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - A non-privileged authenticated human cannot invoke any `/dev/seed/*` action: `302 -> /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, app-wide - not a bare `403`). Pinned by `DevelopmentPageRenderTests`.
 - No type in the section may take `IStringLocalizer<T>` for **any** `T`. The section carries no resource set, no `Development_*` key and no `Enum_Development*` key: every string is English developer copy. Adding localized copy must start by carving a resource set. Enforced by `DevelopmentArchitectureTests`.
 - The seeders must not be reachable from production code paths. They are `internal` to this assembly and registered only outside Production.
-- No anonymous visitor to a deployed host may reach an Admin session through `/dev/login/*`, with `DevAuth:Enabled` on or off: `GET /dev/login/admin` and `GET /dev/login/users/{id}` for an active Admin both `404`. `Development` and `Testing` are the only environments that allow either.
+- No anonymous visitor to a deployed host may reach an Admin session through `/dev/login/*`, with `DevAuth:Enabled` on or off: `GET /dev/login/admin` and `GET /dev/login/users/{id}` for an active Admin both `404`. `Development` and `Testing` are the only environments that allow either. Consequence: the Playwright suite runs against QA (`Staging`) and so has **no admin persona** - `AdminOnly` routes are covered in-process by `Humans.Integration.Tests` (`DevPersona.Admin`, a `Testing` host) instead.
 
 ## Triggers
 

@@ -1,30 +1,18 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin, loginAsVolunteer, expectBlocked } from '../helpers/auth';
+import { loginAsBoard, loginAsVolunteer, expectBlocked } from '../helpers/auth';
 
+// No full-Admin persona here — see helpers/auth.ts. /Admin is AnyAdminRole, so Board
+// reaches the dashboard; the AdminOnly pages this file used to cover (/Google/SyncSettings,
+// /Debug/Configuration) are covered in-process by GoogleIntegrationPageRenderTests and
+// DebugPageRenderTests.
 test.describe('Admin (09-administration)', () => {
   test('US-9.1: admin dashboard loads with metrics cards', async ({ page }) => {
-    await loginAsAdmin(page);
+    await loginAsBoard(page);
     await page.goto('/Admin');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
     expect(page.url()).toContain('/Admin');
     await expect(page.locator('.alert-danger')).not.toBeVisible();
-  });
-
-  test('sync settings page loads', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Admin/SyncSettings');
-
-    await expect(page.locator('h1, h2').first()).toBeVisible();
-    expect(page.url()).toContain('/Admin/SyncSettings');
-  });
-
-  test('configuration status page loads', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Debug/Configuration');
-
-    await expect(page.locator('h1, h2').first()).toBeVisible();
-    expect(page.url()).toContain('/Debug/Configuration');
   });
 
   test('boundary: volunteer cannot access /Admin', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsAdmin, loginAsTeamsAdmin, expectBlocked } from '../helpers/auth';
+import { loginAsVolunteer, loginAsTeamsAdmin, expectBlocked } from '../helpers/auth';
 
 test.describe('Teams — Browsing (06-teams)', () => {
   test('US-6.1: team listing shows My Teams and Other Teams sections', async ({ page }) => {
@@ -87,8 +87,8 @@ test.describe('Teams — Membership (06-teams)', () => {
 });
 
 test.describe('Teams — Management (06-teams)', () => {
-  test('US-6.7: admin can access team member management', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('US-6.7: teams-admin can access team member management', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto('/Teams');
 
     // Navigate to a team detail, then find Members link
@@ -102,8 +102,8 @@ test.describe('Teams — Management (06-teams)', () => {
     }
   });
 
-  test('US-6.8: admin can access Create Team form', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('US-6.8: teams-admin can access Create Team form', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto('/Teams/Create');
 
     await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
@@ -111,8 +111,8 @@ test.describe('Teams — Management (06-teams)', () => {
     await expect(page.getByRole('textbox', { name: /Team Name/i })).toBeVisible();
   });
 
-  test('US-6.10: admin can access Edit Team Page', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('US-6.10: teams-admin can access Edit Team Page', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto('/Teams');
 
     // Find a team and navigate to EditPage
@@ -140,8 +140,8 @@ test.describe('Teams — Management (06-teams)', () => {
 });
 
 test.describe('Teams — Coordinator & Role Auth', () => {
-  test('admin sees Team Management card on team detail', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('teams-admin sees Team Management card on team detail', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto('/Teams');
 
     const teamLink = page.locator('.card a.btn').first();
@@ -164,8 +164,8 @@ test.describe('Teams — Coordinator & Role Auth', () => {
     }
   });
 
-  test('role management section visible on team detail for admin', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('role management section visible on team detail for teams-admin', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto('/Teams');
 
     const teamLink = page.locator('.card a.btn').first();

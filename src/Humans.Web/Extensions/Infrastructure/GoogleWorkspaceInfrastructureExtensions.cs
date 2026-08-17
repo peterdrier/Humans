@@ -1,7 +1,9 @@
 using Humans.Application.Configuration;
 using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Jobs;
 using Humans.Infrastructure.Configuration;
 using Humans.Monitor.Contracts;
+using Humans.Monitor.Jobs;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -21,7 +23,7 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// section reads the same two configuration keys to decide which of its own connector sets to
 /// bind.
 /// <para>
-/// The three recurring jobs now live in their owning sections' <c>Contracts/</c> folders —
+/// The three recurring jobs now live in their owning sections' <c>Jobs/</c> folders —
 /// two in <c>Humans.GoogleIntegration</c>, and <c>DriveActivityMonitorJob</c> in
 /// <c>Humans.Monitor</c>, whose service it is the only caller of. The registrations stay here
 /// because <c>UseHumansRecurringJobs</c> and this method both name them by concrete type,

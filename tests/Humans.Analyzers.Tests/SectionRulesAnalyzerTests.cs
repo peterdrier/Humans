@@ -21,6 +21,11 @@ public class SectionRulesAnalyzerTests
         namespace Humans.Application.Interfaces
         {
             public interface ISection { }
+
+            public interface IRecurringJob
+            {
+                System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default);
+            }
         }
 
         namespace Microsoft.EntityFrameworkCore.Migrations
@@ -172,6 +177,72 @@ public class SectionRulesAnalyzerTests
             ReferencedStubs);
 
         diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_IRecurringJob_implementor_under_Jobs()
+    {
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test.Jobs
+            {
+                public sealed class SyncStuffJob : Humans.Application.Interfaces.IRecurringJob
+                {
+                    public System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default) =>
+                        System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_public_Job_suffixed_type_under_Jobs()
+    {
+        // Enqueue-style Hangfire jobs (e.g. GateVendorCheckInJob) don't implement
+        // IRecurringJob — only the *Job naming convention marks them.
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test.Jobs
+            {
+                public sealed class ProvisionThingJob { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_public_non_job_type_under_Jobs()
+    {
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test.Jobs
+            {
+                public sealed class JobHelper { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Should().ContainSingle(d => IsHum0034(d));
     }
 
     [HumansFact]

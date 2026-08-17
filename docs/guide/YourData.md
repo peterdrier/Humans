@@ -6,7 +6,7 @@
   src/Humans.Application/Services/Users/AccountLifecycle/AccountDeletionService.cs
   src/Humans.Application/Services/Profiles/ContactFieldService.cs
   src/Humans.Application/Services/Profiles/CommunicationPreferenceService.cs
-  src/Sections/Humans.Users/Contracts/ProcessAccountDeletionsJob.cs
+  src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
   src/Humans.Domain/Entities/ContactField.cs
   src/Humans.Domain/Entities/CommunicationPreference.cs
 -->

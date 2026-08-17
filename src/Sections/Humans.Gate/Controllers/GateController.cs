@@ -9,6 +9,7 @@ using Hangfire;
 using Humans.Application;
 using Humans.Users.Contracts;
 using Humans.Gate.Contracts;
+using Humans.Gate.Jobs;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
