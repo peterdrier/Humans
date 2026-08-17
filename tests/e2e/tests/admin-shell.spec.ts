@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
-  loginAsAdmin,
   loginAsBoard,
   loginAsConsentCoordinator,
   loginAsFinanceAdmin,
@@ -18,6 +17,12 @@ import {
  * (no environment-gated Dev items, no requirement-based policies such as
  * ShiftDepartmentManager or CampComplianceAccess, no claim-dependent variants).
  *
+ * The full-Admin row and the AdminOnly pages (/Debug/*) it reached are covered
+ * in-process instead — the E2E suite cannot mint an Admin session against a
+ * deployed host since #1332. See AdminLayoutRenderTests and DebugPageRenderTests.
+ * Board is the widest role left here, so it stands in wherever a test is about
+ * the shell's chrome rather than about one role's item list.
+ *
  * Markup notes: each group renders as section.nav-group[data-group="<label>"].
  * System groups start collapsed on desktop (items attached but not visible),
  * so item assertions use toBeAttached(). Group presence is asserted on the
@@ -30,29 +35,6 @@ interface SidebarExpectation {
 }
 
 const sidebarMatrix: SidebarExpectation[] = [
-  {
-    name: 'admin',
-    login: loginAsAdmin,
-    groups: [
-      { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster', 'Campaigns', 'Scanner', 'Gate terminal', 'Early entry'] },
-      { label: 'Members', items: ['Humans', 'Roles', 'Review', 'Account merges', 'Email problems', 'Audience segmentation'] },
-      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats', 'Orphan signups'] },
-      { label: 'Barrios', items: ['Overview', 'Roles', 'Barrio map'] },
-      { label: 'Cantina', items: ['Roster'] },
-      { label: 'Money', items: ['Expense review', 'Finance', 'Store catalog', 'Store summary', 'Store payments'] },
-      { label: 'Event Guide', items: ['Dashboard', 'Moderation', 'Settings', 'Categories', 'Venues', 'Export'] },
-      { label: 'Governance', items: ['Voting', 'Applications'] },
-      { label: 'Audit', items: ['Audit log'] },
-      { label: 'Feedback', items: ['Feedback queue', 'Issues'] },
-      { label: 'Messaging', items: ['Email preview', 'Email outbox', 'Mailer', 'Surveys'] },
-      { label: 'Google', items: ['Overview', 'Workspace accounts', 'Sync outbox'] },
-      { label: 'Agent', items: ['Status', 'Config', 'History'] },
-      { label: 'Legal', items: ['Legal documents'] },
-      { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Timings', 'Hangfire', 'Health'] },
-      { label: 'Design', items: ['Color palette', 'Components', 'Date formats'] },
-      { label: 'Temp', items: ['Picture migration', 'Stub profile backfill'] },
-    ],
-  },
   {
     name: 'board',
     login: loginAsBoard,
@@ -171,77 +153,28 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
   }
 });
 
-test.describe('Admin shell — breadcrumb regression (controller-only-match bug, ddfdb6c1)', () => {
-  test('breadcrumb on /Debug/Logs shows Diagnostics / Logs', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Debug/Logs');
-
-    const crumb = page.locator('.crumb');
-    await expect(crumb).toContainText('Diagnostics');
-    await expect(crumb.locator('.here')).toHaveText('Logs');
-
-    // Regression: only the "Logs" sidebar link should be marked active, not
-    // every other item under controller=Admin.
-    const sidebar = page.locator('aside.sidebar');
-    const activeLinks = sidebar.locator('a.active');
-    await expect(activeLinks).toHaveCount(1);
-    await expect(activeLinks).toHaveText(/Logs/);
-
-    // The system group holding the active item must not start collapsed.
-    const diagnostics = sidebar.locator('section.nav-group[data-group="Diagnostics"]');
-    await expect(diagnostics).not.toHaveClass(/collapsed/);
-    await expect(activeLinks).toBeVisible();
-  });
-
-  test('breadcrumb on /Debug/DbStats shows Diagnostics / DB stats', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Debug/DbStats');
-
-    const crumb = page.locator('.crumb');
-    await expect(crumb).toContainText('Diagnostics');
-    await expect(crumb.locator('.here')).toHaveText('DB stats');
-
-    const sidebar = page.locator('aside.sidebar');
-    const activeLinks = sidebar.locator('a.active');
-    await expect(activeLinks).toHaveCount(1);
-    await expect(activeLinks).toHaveText(/DB stats/);
-  });
-});
-
 test.describe('Admin shell — desktop accordion', () => {
   test('system groups start collapsed; toggling expands them', async ({ page }) => {
-    await loginAsAdmin(page);
+    // Board's own Google item is "Resource sync" (TeamsAdminBoardOrAdmin); the rest
+    // of the group is AdminOnly. The test is about the collapse behaviour, not the
+    // item list, so any item Board can see serves.
+    await loginAsBoard(page);
     await page.goto('/Admin');
 
     const sidebar = page.locator('aside.sidebar');
     const google = sidebar.locator('section.nav-group[data-group="Google"]');
     await expect(google).toHaveClass(/collapsed/);
-    await expect(google.getByRole('link', { name: /^Workspace accounts\b/ })).not.toBeVisible();
+    await expect(google.getByRole('link', { name: /^Resource sync\b/ })).not.toBeVisible();
 
     await google.locator('.group-toggle').click();
     await expect(google).not.toHaveClass(/collapsed/);
-    await expect(google.getByRole('link', { name: /^Workspace accounts\b/ })).toBeVisible();
+    await expect(google.getByRole('link', { name: /^Resource sync\b/ })).toBeVisible();
 
     // Operational groups start expanded.
     const tickets = sidebar.locator('section.nav-group[data-group="Tickets"]');
     await expect(tickets).not.toHaveClass(/collapsed/);
     await expect(tickets.getByRole('link', { name: /^Scanner\b/ })).toBeVisible();
   });
-});
-
-test.describe('Admin shell — maintenance page', () => {
-  test('/Debug/Maintenance loads with Clear Hangfire Locks form', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Debug/Maintenance');
-
-    expect(page.url()).toContain('/Debug/Maintenance');
-    await expect(page.locator('h1', { hasText: 'Maintenance' })).toBeVisible();
-
-    const form = page.locator('form[action*="ClearHangfireLocks"]');
-    await expect(form).toBeVisible();
-    await expect(form.locator('button[type="submit"]', { hasText: 'Clear Hangfire Locks' })).toBeVisible();
-  });
-
 });
 
 test.describe('Admin shell — chrome', () => {
@@ -251,7 +184,7 @@ test.describe('Admin shell — chrome', () => {
     // group's items — NOT a Bootstrap offcanvas).
     // Log in at desktop width first — the nav dropdown the auth helper waits
     // for is collapsed behind the mobile hamburger at <768px.
-    await loginAsAdmin(page);
+    await loginAsBoard(page);
     await page.setViewportSize({ width: 480, height: 800 });
     await page.goto('/Admin');
 
@@ -273,7 +206,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('exit-admin link navigates to member home', async ({ page }) => {
-    await loginAsAdmin(page);
+    await loginAsBoard(page);
     await page.goto('/Admin');
 
     const exit = page.locator('a.exit-admin').first();
@@ -287,7 +220,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('dashboard tiles render: active profiles, shift coverage, open feedback, recent activity', async ({ page }) => {
-    await loginAsAdmin(page);
+    await loginAsBoard(page);
     await page.goto('/Admin');
 
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to

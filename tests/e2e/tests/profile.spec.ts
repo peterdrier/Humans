@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsBoard, loginAsAdmin } from '../helpers/auth';
+import { loginAsVolunteer, loginAsBoard, loginAsHumanAdmin } from '../helpers/auth';
 
 test.describe('Profile (02-profiles)', () => {
   test('US-2.1: profile view page shows status and team memberships', async ({ page }) => {
@@ -46,11 +46,13 @@ test.describe('Profile (02-profiles)', () => {
     await expect(page.getByText('Download', { exact: false }).first()).toBeVisible();
   });
 
-  test('issue-659: admin can manually verify a pending email on /Profile/{id}/Admin/Emails', async ({ page }) => {
+  test('issue-659: human admin can manually verify a pending email on /Profile/{id}/Admin/Emails', async ({ page }) => {
     // Auto-accept the data-confirm dialog that the Verify button surfaces.
     page.on('dialog', dialog => dialog.accept());
 
-    await loginAsAdmin(page);
+    // Both gates on this path — UsersAdminController's HumanAdminBoardOrAdmin and
+    // UserEmailAuthorizationHandler's self-or-HumanAdmin/Board/Admin — admit HumanAdmin.
+    await loginAsHumanAdmin(page);
     // Find a target user from the humans list and reach their AdminDetail.
     await page.goto('/Users/Admin');
     const viewLink = page.locator('table tbody a').filter({ hasText: /^View$/ }).first();

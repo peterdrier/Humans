@@ -2,7 +2,6 @@
 import {
   loginAsVolunteer,
   loginAsCoordinator,
-  loginAsAdmin,
   loginAsBoard,
   loginAsCampAdmin,
   loginAsConsentCoordinator,
@@ -64,9 +63,10 @@ interface RoleTest {
 // expected to see it below are seeded Active.
 //
 // Admin top-nav link visibility (AnyAdminRole composite):
-//   admin, board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
+//   board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
 //   financeAdmin, noInfoAdmin, volunteerCoordinator, consentCoordinator
-//   (StoreAdmin is in the policy but no dev login helper exists for it.)
+//   (Admin is in the policy too, but has no E2E persona since
+//   nobodies-collective/Humans#1332 — see helpers/auth.ts.)
 const roles: RoleTest[] = [
   {
     name: 'volunteer',
@@ -77,11 +77,6 @@ const roles: RoleTest[] = [
     name: 'coordinator',
     login: loginAsCoordinator,
     visible: ['volunteer'],
-  },
-  {
-    name: 'admin',
-    login: loginAsAdmin,
-    visible: ['volunteer', 'admin'],
   },
   {
     name: 'board',
