@@ -219,24 +219,23 @@ test.describe('Admin shell — chrome', () => {
     await expect(page.locator('body.admin-shell')).toHaveCount(0);
   });
 
-  test('dashboard tiles render: active profiles, shift coverage, open feedback, recent activity', async ({ page }) => {
+  test('dashboard tiles render: active profiles, shift coverage', async ({ page }) => {
     await loginAsBoard(page);
     await page.goto('/Admin');
 
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to
     // "Active (has profile)" by #546 (UserInfo-driven stats); the test was never
     // updated, so this assertion had been failing against a label that no longer exists.
+    // The "Open feedback" tile and the "Recent activity" card are authorize-policy
+    // ="AdminOnly" (#977) — Board reaches /Admin but is deliberately not shown either,
+    // so they are asserted in-process instead (AdminLayoutRenderTests).
     const stats = page.locator('.stats');
     await expect(stats).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: 'Active (has profile)' })).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: /Shifts staffed/ })).toBeVisible();
-    await expect(stats.locator('.stat .label', { hasText: 'Open feedback' })).toBeVisible();
 
     // Shift coverage delta (drives the system-health-style summary line).
     await expect(page.locator('.page-head .sub')).toContainText('shift coverage');
-
-    // Recent activity card (last 24h).
-    await expect(page.locator('.card-head h3', { hasText: 'Recent activity' })).toBeVisible();
   });
 });
 

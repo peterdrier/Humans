@@ -176,6 +176,35 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
+    /// The dashboard's two <c>AdminOnly</c> panels render for a full Admin.
+    /// </summary>
+    /// <remarks>
+    /// The feedback tile and the recent-activity card carry
+    /// <c>authorize-policy="AdminOnly"</c> (nobodies-collective/Humans#977): every other
+    /// admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
+    /// assert them once #1332 took the admin one away, and a tile that silently stops
+    /// rendering looks identical to one the viewer was never entitled to.
+    /// Filed here because this is the suite's only <c>/Admin</c> render.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_admin_dashboard_renders_its_admin_only_panels()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/Admin", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("Open feedback", "_DashboardStats' AdminOnly tile must render for an Admin");
+        html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
+
+        // The tag helper strips the attribute when it lets an element through; an element
+        // that keeps it never went through AuthorizeTagHelper at all.
+        html.Should().NotContain("authorize-policy", "an unbound authorize-policy leaves the element visible to everyone");
+    }
+
+    /// <summary>
     /// The breadcrumb names the group and the item, and exactly one sidebar link is active.
     /// </summary>
     /// <remarks>
