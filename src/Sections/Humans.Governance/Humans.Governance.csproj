@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Governance.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -25,17 +25,16 @@
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- ConsentResource only: the statutes page renders one Consent key, whose set came
-         home at Consent's G5. Acyclic â€” Humans.Consent references
-         Humans.Governance.Contracts, never this project (design Â§15 step 3b). -->
+         home at Consent's G5. Acyclic — Humans.Consent references
+         Humans.Governance.Contracts, never this project (design §15 step 3b). -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <!--
       Onboarding, for OnboardingResource: the board-voting detail page reuses four
       OnboardingReview_* applicant-summary labels, and a resource marker is a section
-      type rather than a Contracts/ one (design Â§15 step 3b, Budget's rule). Acyclic â€”
+      type rather than a Contracts/ one (design §15 step 3b, Budget's rule). Acyclic —
       Humans.Onboarding names only Humans.Governance.Contracts.
     -->
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
@@ -43,7 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Contracts/TermRenewalReminderJob.cs â€” [DisableConcurrentExecution] and IRecurringJob,
+    <!-- Contracts/TermRenewalReminderJob.cs — [DisableConcurrentExecution] and IRecurringJob,
          since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
          arriving transitively. -->
     <PackageReference Include="Hangfire.Core" />
@@ -61,7 +60,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

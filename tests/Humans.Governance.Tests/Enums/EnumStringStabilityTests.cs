@@ -6,8 +6,8 @@ using Xunit;
 namespace Humans.Governance.Tests.Enums;
 
 /// <summary>
-/// Governance's half of the string-stored-enum guard. The rest live in
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c>; these two moved out with the
+/// Governance's half of the string-stored-enum guard. The rest live in the test project of the
+/// section that owns each enum; these two moved out with the
 /// section because <c>ApplicationStatus</c> now sits on Governance's contracts leaf and
 /// <c>VoteChoice</c> turned internal in the section, neither of which
 /// <c>Humans.Domain.Tests</c> can name (nobodies-collective/Humans#866).

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Events.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -24,16 +24,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <!--
       EventsController derives from Humans.Camps' HumansCampControllerBase so Workshop Leads
       can submit camp events. The base could not stay in Humans.UI once ICampServiceRead moved
       onto a section leaf (Humans.UI may not reference a section at any price), and it derives
-      from HumansControllerBase, which lives in Humans.UI â€” a project no .Contracts leaf may
+      from HumansControllerBase, which lives in Humans.UI — a project no .Contracts leaf may
       reference. So it lives under the section's Contracts/ folder and consumers take the section
       project (Teams' HumansTeamControllerBase shape). Acyclic: Humans.Camps names nothing of
       Events. (This comment previously said "IActionResult, which the framework-free leaf cannot
-      name". G5 lane 3c measured that false â€” Humans.Camps.Contracts references Humans.Interfaces,
+      name". G5 lane 3c measured that false — Humans.Camps.Contracts references Humans.Interfaces,
       which carries FrameworkReference Microsoft.AspNetCore.App, and that flows transitively. The
       base class's home in Humans.UI is the real constraint; the placement is unchanged.)
     -->
@@ -41,7 +40,7 @@
     <!--
       Calendar owns the personal iCal feed; EventService implements its
       ICalendarFeedContributor. Calendar's Contracts/ is a folder, not a leaf, so the
-      reference is to the section project â€” acyclic because the contributor fan-out
+      reference is to the section project — acyclic because the contributor fan-out
       inverts the arrow: Calendar names no section but Users.Contracts
       (nobodies-collective/Humans#866, G5 lane 4b-2c).
     -->
@@ -60,7 +59,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

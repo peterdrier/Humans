@@ -14,11 +14,11 @@
       project yet; they seed team rows through ServiceTestHarness, which needs Teams
       internals. Each G5 move takes its own section's tests out of there into a section test
       project (which gets its own entry above), so this one comes out when the last section
-      leaves Base â€” rewriting an unmoved section's fixtures early would be redone at its own
+      leaves Base — rewriting an unmoved section's fixtures early would be redone at its own
       G5.
     -->
     <InternalsVisibleTo Include="Humans.Application.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -37,13 +37,12 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>, which moved out of Humans.UI into the
          AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
-         back only to Humans.Teams.Contracts, never to this project â€” no cycle. -->
+         back only to Humans.Teams.Contracts, never to this project — no cycle. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
@@ -73,7 +72,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

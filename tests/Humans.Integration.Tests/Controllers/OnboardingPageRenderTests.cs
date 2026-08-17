@@ -24,7 +24,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// now).
 /// </description></item>
 /// <item><description>
-/// The review pages' <c>&lt;vc:access-matrix&gt;</c> binds through <c>@@addTagHelper *, Humans.UI</c>
+/// The review pages' <c>&lt;vc:access-matrix&gt;</c> binds through <c>@@addTagHelper *, Humans.Interfaces</c>
 /// since the component moved there; <c>&lt;vc:profile-card&gt;</c> still reads a Shell-owned registry
 /// and is a <c>Component.InvokeAsync</c> call. An unresolvable invocation throws; a stray
 /// <c>&lt;vc:&gt;</c> renders as inert markup and only the <c>NotContain</c> assertion catches it.
@@ -72,7 +72,7 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
         // literal markup with a green build, so assert the modal id the component emits — the
         // bare section key would also match the page title and prove nothing.
         html.Should().Contain("sectionHelp-OnboardingReview",
-            "<vc:access-matrix> must bind through @addTagHelper *, Humans.UI");
+            "<vc:access-matrix> must bind through @addTagHelper *, Humans.Interfaces");
     }
 
     [HumansFact(Timeout = 120000)]

@@ -10,8 +10,8 @@
   <ItemGroup>
     <!--
       The section's controllers are ASP.NET types, and a plain Microsoft.NET.Sdk test
-      project does not get the shared framework â€” a PackageReference cannot supply it
-      either (NU1010 under Central Package Management, design Â§15 step 8).
+      project does not get the shared framework — a PackageReference cannot supply it
+      either (NU1010 under Central Package Management, design §15 step 8).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

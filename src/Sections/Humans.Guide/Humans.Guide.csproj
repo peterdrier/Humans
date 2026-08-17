@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Guide.Tests" />
-    <!-- The one assembly allowed to see many sections (design Â§5). -->
+    <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -25,14 +25,13 @@
     <!--
       Guide owns no tables, so there is no DbContext, no repository and no AddSectionDbContext
       call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
-      Unlike Scanner â€” the other table-less section â€” Humans.Infrastructure is still referenced:
+      Unlike Scanner — the other table-less section — Humans.Infrastructure is still referenced:
       GuideSettings binds Guide:* and is read by GitHubGuideContentSource, which stays in Base
       as a shared GitHub-markdown connector (three of its four consumers are not Guide's), so
       the settings type stays in Humans.Infrastructure/Configuration with it.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,14 +39,14 @@
       Markdig renders the guide markdown; it moved out of Humans.Infrastructure with
       GuideRenderer, which was its only consumer there. No AspNetCore package: those ship with
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
-      Management â€” IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
-      already adds. No EF Core either â€” the section owns no tables.
+      Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
+      already adds. No EF Core either — the section owns no tables.
     -->
     <PackageReference Include="Markdig" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design Â§7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

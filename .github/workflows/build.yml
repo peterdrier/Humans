@@ -137,7 +137,8 @@ jobs:
               - 'src/Sections/*/Data/**'
               - 'src/Sections/*/Domain/**'
               # Users is the one section whose entities are not under Domain/: User :
-              # IdentityUser<Guid> is named by Humans.UI, which cannot reference a section,
+              # IdentityUser<Guid> is named by Base (Humans.Interfaces), which references no
+              # section other than this leaf,
               # so all nine sit public on the contracts leaf (#866, G5 lane 2). Without this
               # line a bare column-mapped property added to User skips the from-scratch
               # apply check — Data/** still catches the DbContext and configurations, so the
