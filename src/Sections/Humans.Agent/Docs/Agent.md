@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Agent/**
-  src/Sections/Humans.Agent.Contracts/**
   src/Humans.Infrastructure/Services/GitHubCommunityKbContentSource.cs
   src/Humans.Infrastructure/Configuration/CommunityKbSettings.cs
 -->
@@ -130,9 +129,9 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 
 ## Architecture
 
-**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AnthropicClient`. `AgentPreloadAugmentor` stays in Shell (it reads Shell-owned help content) and implements the contracts-leaf `IAgentPreloadAugmentor`; `AgentConversationRetentionJob` moved into this project's `Contracts/` folder at G5 lane 5b-5 and calls the contracts-leaf `IAgentConversationRetention`. Only the job's DI registration and its roll-call entry stay in Shell.
+**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AnthropicClient`. `AgentPreloadAugmentor` stays in Shell (it reads Shell-owned help content) and implements `IAgentPreloadAugmentor` from this project's `Contracts/` folder; `AgentConversationRetentionJob` moved into the same folder at G5 lane 5b-5 and calls `IAgentConversationRetention` beside it. Only the job's DI registration and its roll-call entry stay in Shell.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
-**Status:** (A) G5 — the section lives in its own project, `src/Sections/Humans.Agent`, with its cross-section surface in the `Humans.Agent.Contracts` leaf (nobodies-collective/Humans#866, wave A4b). Everything except `Section`, `AgentResource` and the generated migrations is `internal`, enforced at build time by HUM0034. Architecture tests: `tests/Humans.Agent.Tests/AgentArchitectureTests.cs`; page rendering: `tests/Humans.Integration.Tests/Controllers/AgentPageRenderTests.cs`. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
+**Status:** (A) G5 — the section lives in its own project, `src/Sections/Humans.Agent`, with its cross-section surface in the project's own `Contracts/` folder (nobodies-collective/Humans#866, wave A4b); the `Humans.Agent.Contracts` leaf it once occupied folded back in (ruling 44). Everything except `Section`, `AgentResource` and the generated migrations is `internal`, enforced at build time by HUM0034. Architecture tests: `tests/Humans.Agent.Tests/AgentArchitectureTests.cs`; page rendering: `tests/Humans.Integration.Tests/Controllers/AgentPageRenderTests.cs`. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
 
 - **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. Nothing in `Humans.Web` names the section.
 - **Stores** — `IAgentSettingsStore`, `IAgentRateLimitStore` and `IAgentRetentionRunStore` are Singleton (in-process), section-internal. `AgentSettingsStoreWarmupHostedService` populates the settings store at startup; `AgentPreloadWarmupHostedService` warms the GitHub-backed preload caches after startup. Both are registered by `Section.Register`.

@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />

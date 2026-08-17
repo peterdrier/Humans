@@ -8,7 +8,6 @@
   </Folder>
   <Folder Name="/src/Sections/">
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
-    <Project Path="src/Sections/Humans.Agent.Contracts/Humans.Agent.Contracts.csproj" />
     <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
     <Project Path="src/Sections/Humans.AuditLog.Contracts/Humans.AuditLog.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Auth/Humans.Auth.csproj" />
@@ -38,7 +37,6 @@
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Expenses/Humans.Expenses.csproj" />
-    <Project Path="src/Sections/Humans.Expenses.Contracts/Humans.Expenses.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Feedback/Humans.Feedback.csproj" />
     <Project Path="src/Sections/Humans.Finance/Humans.Finance.csproj" />
     <Project Path="src/Sections/Humans.Finance.Contracts/Humans.Finance.Contracts.csproj" />
@@ -62,7 +60,6 @@
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
     <Project Path="src/Sections/Humans.Stripe/Humans.Stripe.csproj" />
     <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
-    <Project Path="src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
     <Project Path="src/Sections/Humans.TicketTailor/Humans.TicketTailor.csproj" />
