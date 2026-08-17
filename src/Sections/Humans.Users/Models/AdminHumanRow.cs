@@ -1,9 +1,9 @@
 using Humans.Users.Contracts;
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Models;
 
 using Humans.Domain.Enums;
 
-public record AdminHumanRow(
+internal sealed record AdminHumanRow(
     Guid UserId,
     string Email,
     string DisplayName,

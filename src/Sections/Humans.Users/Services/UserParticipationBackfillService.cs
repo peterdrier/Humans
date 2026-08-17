@@ -1,14 +1,13 @@
 using CsvHelper;
 using Humans.Application.Csv;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 
-public sealed class UserParticipationBackfillService(
+internal sealed class UserParticipationBackfillService(
     IUserService userService,
     IBurnSettingsService burnSettings,
     IClock clock) : IUserParticipationBackfillService

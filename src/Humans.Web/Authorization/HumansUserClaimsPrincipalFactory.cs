@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Humans.Users.Contracts;

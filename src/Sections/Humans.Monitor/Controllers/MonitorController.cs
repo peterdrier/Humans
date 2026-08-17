@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Monitor.Contracts;
 using Humans.Monitor.Models;

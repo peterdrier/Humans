@@ -3,6 +3,8 @@ using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
 
+using Humans.GoogleIntegration.Contracts;
+
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>

@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
 using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 using Humans.Gate.Contracts;
 using Humans.UI.Authorization;

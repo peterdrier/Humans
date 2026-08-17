@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// A person affected by a sync step, with enough info to render a link.

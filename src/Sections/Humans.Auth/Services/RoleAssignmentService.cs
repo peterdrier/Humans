@@ -12,10 +12,10 @@ using Humans.Domain.Constants;
 using Humans.Auth.Domain;
 using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Users.Contracts;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 

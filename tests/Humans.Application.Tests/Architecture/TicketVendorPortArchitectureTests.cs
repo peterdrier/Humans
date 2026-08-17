@@ -40,21 +40,9 @@ public class TicketVendorPortArchitectureTests
     [HumansFact]
     public void OnlyTicketsAndTheHealthCheckInjectTheVendorPort()
     {
-        // Anchored on a Base type, not on the port: since G5 lane 4b-2g the port is
-        // declared in Humans.Tickets, which SectionAssemblies() already returns —
-        // anchoring on it would silently drop Humans.Application out of the sweep.
-        // It used to read typeof(CacheKeys).Assembly, which G5 lane 3a-1 moved to
-        // Humans.Interfaces with its namespace preserved — that would have silently
-        // dropped Humans.Application out of this sweep instead of failing.
-        // DashboardService is a concrete Humans.Application service with no scheduled
-        // move in phase 3.
-        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
-        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently drop Humans.Application out of this sweep instead of failing");
-
-        // Humans.Infrastructure was a third entry until G5 lane 5b-6 deleted it.
+        // Humans.Infrastructure was an entry until G5 lane 5b-6 deleted it, and
+        // Humans.Application until lane 5c emptied it of every type.
         var assemblies = SectionDiscoveryExtensions.SectionAssemblies()
-            .Append(applicationAssembly)
             .Append(Assembly.Load("Humans.Web"))
             .Distinct()
             .ToList();

@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Users;
 using Humans.Search.Controllers;
 using Humans.Search.Models;
 using Humans.Search.Services;

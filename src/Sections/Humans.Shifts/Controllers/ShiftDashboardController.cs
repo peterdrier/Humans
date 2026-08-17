@@ -1,4 +1,3 @@
-using Humans.Application.Enums;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Users.Contracts;
 

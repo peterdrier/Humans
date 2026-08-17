@@ -1,12 +1,10 @@
 using Humans.UI.Controllers;
 using System.Security.Claims;
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Models;

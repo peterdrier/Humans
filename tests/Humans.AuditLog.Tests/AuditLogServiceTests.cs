@@ -1,7 +1,6 @@
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

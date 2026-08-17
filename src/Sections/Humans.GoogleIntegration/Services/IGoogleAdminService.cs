@@ -1,5 +1,4 @@
 using Humans.Application.Architecture;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;

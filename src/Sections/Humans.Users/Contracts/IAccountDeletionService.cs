@@ -1,9 +1,9 @@
+using Humans.Application.Interfaces;
 using Humans.Onboarding.Contracts;
 using NodaTime;
-using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Sole orchestrator for the user/profile account-deletion cascade. Owns the

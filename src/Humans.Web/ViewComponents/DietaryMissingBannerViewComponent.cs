@@ -1,5 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 

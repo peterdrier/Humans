@@ -6,7 +6,6 @@ using Humans.Governance.Data;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Governance.Services.Dtos;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
@@ -20,10 +19,10 @@ using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Users.Contracts;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Services;
 

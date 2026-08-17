@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

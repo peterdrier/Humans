@@ -5,7 +5,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 

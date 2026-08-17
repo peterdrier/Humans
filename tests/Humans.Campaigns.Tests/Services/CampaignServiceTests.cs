@@ -1,12 +1,10 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Domain.Enums;

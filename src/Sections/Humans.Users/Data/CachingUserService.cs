@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Users.Contracts;

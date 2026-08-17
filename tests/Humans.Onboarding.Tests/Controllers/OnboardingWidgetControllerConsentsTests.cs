@@ -6,7 +6,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.UI.Constants;

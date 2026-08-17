@@ -4,7 +4,6 @@ using Humans.Application.Configuration;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Domain.Enums;

@@ -2,7 +2,6 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Users.Controllers;

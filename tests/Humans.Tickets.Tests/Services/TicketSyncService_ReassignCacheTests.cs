@@ -4,7 +4,6 @@ using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

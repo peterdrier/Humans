@@ -51,6 +51,14 @@
     references Humans.Users.Contracts, so an edge from here would make this leaf's chain
     Teams -> Auth -> Users -> Onboarding, four hops of graph nobody is watching, for a
     dependency this project does not have.
+
+    G5 lane 5c added ISystemTeamSync and its SyncReport result shape, from
+    Humans.Application.Interfaces.GoogleIntegration. The interface names Google nowhere, every
+    write its implementation makes lands in Teams' tables, and six sections outside Teams
+    inject it (Auth, Camps, Development, GoogleIntegration, Governance, Onboarding) — which is
+    what a leaf is for. It had sat in the hub on the belief that Hangfire pinned its
+    assembly-qualified name as the "teams-system-sync" job target; AddOrUpdate&lt;T&gt;(id, …) is
+    keyed on the id and rewrites the stored type at every startup, so the pin was never real.
   -->
 
   <ItemGroup>

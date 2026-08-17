@@ -7,6 +7,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using Humans.Tickets.Contracts;
+
 namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceCachingTests

@@ -8,7 +8,6 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -18,7 +17,7 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 
 // Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
 [CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
-public sealed class AccountDeletionService(
+internal sealed class AccountDeletionService(
     IUserService userService,
     IUserEmailService userEmailService,
     ITeamService teamService,

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;

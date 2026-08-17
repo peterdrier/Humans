@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
 namespace Humans.Consent.Contracts;

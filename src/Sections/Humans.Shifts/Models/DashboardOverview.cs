@@ -2,9 +2,9 @@ using Humans.Domain.Enums;
 using NodaTime;
 
 using Humans.Shifts.Contracts;
-namespace Humans.Application.DTOs;
+namespace Humans.Shifts.Models;
 
-public record DashboardOverview(
+internal sealed record DashboardOverview(
     int TotalShifts,
     int FilledShifts,
     int TotalSlots,
@@ -16,9 +16,9 @@ public record DashboardOverview(
     int StalePendingCount,
     IReadOnlyList<DepartmentStaffingRow> Departments);
 
-public record PeriodBreakdown(double BuildPct, double EventPct, double StrikePct);
+internal sealed record PeriodBreakdown(double BuildPct, double EventPct, double StrikePct);
 
-public record DepartmentStaffingRow(
+internal sealed record DepartmentStaffingRow(
     Guid DepartmentId,
     string DepartmentName,
     string? DepartmentSlug,
@@ -32,7 +32,7 @@ public record DepartmentStaffingRow(
     PeriodStaffing Strike,
     IReadOnlyList<SubgroupStaffingRow> Subgroups);
 
-public record SubgroupStaffingRow(
+internal sealed record SubgroupStaffingRow(
     Guid? TeamId,
     string Name,
     string? Slug,
@@ -46,9 +46,9 @@ public record SubgroupStaffingRow(
     PeriodStaffing Event,
     PeriodStaffing Strike);
 
-public record PeriodStaffing(int Total, int Filled, int TotalSlots, int FilledSlots, int SlotsRemaining);
+internal sealed record PeriodStaffing(int Total, int Filled, int TotalSlots, int FilledSlots, int SlotsRemaining);
 
-public record CoordinatorActivityRow(
+internal sealed record CoordinatorActivityRow(
     Guid TeamId,
     string TeamName,
     IReadOnlyList<CoordinatorLogin> Coordinators,
@@ -56,9 +56,9 @@ public record CoordinatorActivityRow(
     int AggregatePendingCount,
     IReadOnlyList<CoordinatorActivityRow> Subgroups);
 
-public record CoordinatorLogin(Guid UserId, Instant? LastLoginAt);
+internal sealed record CoordinatorLogin(Guid UserId, Instant? LastLoginAt);
 
-public record DashboardTrendPoint(
+internal sealed record DashboardTrendPoint(
     LocalDate Date,
     int NewSignups,
     int NewTicketSales,
@@ -66,23 +66,23 @@ public record DashboardTrendPoint(
 
 /// <summary>
 /// One bar on the "people on site per day, stacked by department" chart. Only
-/// populated for Set-up and Strike periods — Event day-over-day mix has a
+/// populated for Set-up and Strike periods â€” Event day-over-day mix has a
 /// different planning flow so the dashboard deliberately omits it there.
 /// Counts are <c>Confirmed</c> signups only (pending/cancelled are excluded).
 /// </summary>
-public record DailyDepartmentStaffing(
+internal sealed record DailyDepartmentStaffing(
     LocalDate Date,
     string DateLabel,
     IReadOnlyList<DepartmentDayCount> Departments);
 
-public record DepartmentDayCount(string DepartmentName, int ConfirmedCount);
+internal sealed record DepartmentDayCount(string DepartmentName, int ConfirmedCount);
 
 /// <summary>
 /// A row in the "shift duration mix" table. One row per distinct duration bucket
 /// (full-day shifts share a bucket regardless of nominal duration). Scope is the
-/// selected period — Build, Event, or Strike.
+/// selected period â€” Build, Event, or Strike.
 /// </summary>
-public record ShiftDurationBreakdownRow(
+internal sealed record ShiftDurationBreakdownRow(
     bool IsAllDay,
     int DurationHours,
     int TotalSlots,
@@ -93,16 +93,16 @@ public record ShiftDurationBreakdownRow(
 /// Each cell reports slot fill for shifts that overlap that calendar day, so
 /// coordinators can spot day-of-week patterns across the whole event.
 /// </summary>
-public record CoverageHeatmap(
+internal sealed record CoverageHeatmap(
     IReadOnlyList<CoverageHeatmapDay> Days,
     IReadOnlyList<CoverageHeatmapRotaRow> Rotas);
 
-public record CoverageHeatmapDay(int DayOffset, LocalDate Date, string DateLabel, ShiftPeriod Period);
+internal sealed record CoverageHeatmapDay(int DayOffset, LocalDate Date, string DateLabel, ShiftPeriod Period);
 
-public record CoverageHeatmapRotaRow(
+internal sealed record CoverageHeatmapRotaRow(
     Guid RotaId,
     string RotaName,
     string DepartmentName,
     IReadOnlyList<CoverageHeatmapCell> Cells);
 
-public record CoverageHeatmapCell(int DayOffset, int TotalSlots, int FilledSlots);
+internal sealed record CoverageHeatmapCell(int DayOffset, int TotalSlots, int FilledSlots);

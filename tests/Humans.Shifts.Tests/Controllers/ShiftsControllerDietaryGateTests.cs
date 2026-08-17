@@ -7,7 +7,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;

@@ -7,7 +7,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

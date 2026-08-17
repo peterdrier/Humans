@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;

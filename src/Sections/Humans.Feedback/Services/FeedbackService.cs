@@ -13,7 +13,6 @@ using Humans.Feedback.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 

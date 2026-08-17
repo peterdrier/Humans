@@ -3,7 +3,6 @@ using Humans.Application.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
 using Humans.Debug.Models;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Logging;

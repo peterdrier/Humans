@@ -1,7 +1,6 @@
 using Humans.UI.Controllers;
 using System.Globalization;
 using Humans.Surveys.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Humans.UI;

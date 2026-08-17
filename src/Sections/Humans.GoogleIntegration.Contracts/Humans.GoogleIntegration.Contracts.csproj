@@ -23,15 +23,16 @@
 
     Two absences are load-bearing. ISystemTeamSync is NOT here: it syncs system-team
     membership, names Google nowhere in its signature, and its implementation
-    (SystemTeamSyncJob) is a cross-section orchestrator in Humans.Infrastructure. Putting it
-    on this leaf would have made Auth — a horizontal — reference a vertical section, which
-    peters-hard-rules.md forbids; leaving it in Base keeps Auth, Development, Governance and
-    Onboarding off this leaf entirely. And IDriveActivityMonitorService is not here because it
-    moved to Humans.Monitor for the same reason, one lane earlier.
+    (SystemTeamSyncJob) is Teams'. G5 lane 5c put it on Humans.Teams.Contracts, so Auth,
+    Camps, Development, Governance and Onboarding reference that leaf rather than this one.
+    And IDriveActivityMonitorService is not here because it moved to Humans.Monitor for the
+    same reason, one lane earlier.
 
-    IGoogleGroupSync is here despite having no *section* consumer: SystemTeamSyncJob injects
-    it from Base, and a Base file cannot reference the section project. If that job ever moves
-    into a section, this interface goes back to internal.
+    IGoogleGroupSync came here at G5 lane 5c, from Humans.Application. Its only consumer
+    outside this section is Teams' SystemTeamSyncJob, which already referenced this leaf.
+
+    GoogleWorkspaceOptions came in the same lane: Camps' CampRoleService and Users'
+    ProfileController both bind it, so it cannot be internal to the section.
 
     G5 lane 4b-2j moved the section's own vocabulary onto this leaf: the three EF entities
     (GoogleResource, GoogleSyncOutboxEvent, SyncServiceSettings) and five enums/constants

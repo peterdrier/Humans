@@ -1,12 +1,10 @@
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Dashboard;
 using Humans.Email.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
@@ -15,6 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Users.Contracts;
+
+using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Controllers;
 

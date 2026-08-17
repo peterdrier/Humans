@@ -7,7 +7,6 @@ using Humans.Application;
 using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.Consent.Controllers;

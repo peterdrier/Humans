@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Web.Services.Dashboard;
 
 public record AdminDashboardData(
     int TotalMembers,

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Web.Infrastructure;

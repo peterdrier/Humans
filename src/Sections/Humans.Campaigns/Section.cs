@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;

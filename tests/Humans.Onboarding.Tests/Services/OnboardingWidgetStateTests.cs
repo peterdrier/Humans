@@ -3,7 +3,6 @@ using Humans.Governance.Contracts;
 using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Services;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;

@@ -1,7 +1,6 @@
 using Hangfire;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
-using Humans.Application.Interfaces.Users;
 using Humans.Gate.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;

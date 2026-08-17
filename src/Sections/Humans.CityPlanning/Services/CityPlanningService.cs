@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.CityPlanning.Domain;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;

@@ -1,10 +1,11 @@
 using Humans.Governance.Contracts;
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Interfaces;
+
+namespace Humans.Web.Services.Dashboard;
 
 /// <summary>
 /// Orchestrates the member dashboard view: applies business rules to combine

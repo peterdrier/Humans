@@ -4,7 +4,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 
 namespace Humans.Users.Contracts;

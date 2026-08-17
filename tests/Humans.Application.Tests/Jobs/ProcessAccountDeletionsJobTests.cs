@@ -6,7 +6,6 @@ using NSubstitute.ExceptionExtensions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Users.Contracts;

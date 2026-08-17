@@ -1,8 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Enums;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

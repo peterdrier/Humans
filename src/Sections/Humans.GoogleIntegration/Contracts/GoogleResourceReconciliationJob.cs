@@ -1,11 +1,9 @@
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Notifications.Contracts;
 
 namespace Humans.GoogleIntegration.Contracts;

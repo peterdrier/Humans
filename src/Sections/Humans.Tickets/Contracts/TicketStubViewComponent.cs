@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.Contracts;

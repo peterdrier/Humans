@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;

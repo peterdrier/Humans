@@ -10,7 +10,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Events.Domain;
 using Microsoft.Extensions.Logging;
 using NodaTime;

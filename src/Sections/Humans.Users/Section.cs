@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Services.Users;
+using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;
 using Humans.Users.Authorization;
@@ -142,5 +144,14 @@ public sealed class Section : ISection
         // section, and every outbound edge is another section's leaf.
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
+
+        // The last three Users services to leave Base, at G5 lane 5c. Same shape as the pair
+        // above: no repository, so orchestrators by the hard rules' definition, but what they
+        // orchestrate is this section and every outbound edge is another section's leaf.
+        // ExternalLoginService keeps its Humans.Application.Services.Users namespace —
+        // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
     }
 }

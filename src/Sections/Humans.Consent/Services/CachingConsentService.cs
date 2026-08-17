@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;

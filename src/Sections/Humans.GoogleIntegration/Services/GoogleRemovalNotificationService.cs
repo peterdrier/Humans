@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;

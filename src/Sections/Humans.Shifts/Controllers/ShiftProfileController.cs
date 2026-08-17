@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.UI;

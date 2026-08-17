@@ -1,9 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Controllers;
 using Microsoft.AspNetCore.Http;

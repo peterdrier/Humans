@@ -24,27 +24,12 @@ namespace Humans.Stripe.Tests.Architecture;
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    [HumansFact]
-    public void HumansApplicationAssembly_HasNoReferenceToStripeNet()
-    {
-        // Anchored on a type that stays in Humans.Application. It used to read
-        // typeof(Humans.Application.CacheKeys).Assembly, which G5 lane 3a-1 moved to
-        // Humans.Interfaces with its namespace preserved — the assertion would have
-        // silently started measuring a different (and vacuously clean) assembly.
-        // DashboardService is a concrete Humans.Application service with no scheduled
-        // move in phase 3.
-        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
-        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently retarget this test onto the wrong assembly instead of failing");
-
-        var referenced = applicationAssembly.GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .ToList();
-
-        referenced.Should().NotContain(
-            name => name.StartsWith("Stripe", StringComparison.Ordinal),
-            because: "the hub must not reference the Stripe.net SDK — the connector is a section of its own (design-rules §15i)");
-    }
+    // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 5c):
+    // HumansApplicationAssembly_HasNoReferenceToStripeNet is gone. It asserted the hub pulled in no
+    // Stripe.net reference; lane 5c emptied Humans.Application of every type, so the assertion had
+    // nothing left to measure. Re-pointing it at Base would be widening a guardrail during a move,
+    // which the batch's ruling 1 forbids. IStripeService_ExposesNoStripeSdkTypes below still holds
+    // the seam that matters.
 
     // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 4b-2a): the sibling
     // HumansWebAssembly_HasNoReferenceToStripeNet assertion did not come across. It

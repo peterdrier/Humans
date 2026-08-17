@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Users.Services;
 using Humans.Users.Contracts;
 using Humans.Domain.Enums;

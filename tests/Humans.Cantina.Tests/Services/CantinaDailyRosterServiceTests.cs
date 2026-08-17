@@ -2,7 +2,6 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
 using Humans.Domain.Constants;
 using NodaTime;

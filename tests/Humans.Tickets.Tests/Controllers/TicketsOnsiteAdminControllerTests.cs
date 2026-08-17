@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Http;

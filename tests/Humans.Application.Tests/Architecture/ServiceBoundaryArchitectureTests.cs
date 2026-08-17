@@ -266,14 +266,9 @@ public class ServiceBoundaryArchitectureTests
     // (I<Section>Service : I<Section>ServiceRead, where the deriving half stays behind);
     // Users' IAccountProvisioningService is the whole-interface case and is what surfaced
     // this (nobodies-collective/Humans#866, lane 2 PR A).
-    // …and the anchor itself is load-bearing: it was typeof(IUserRepository) until that
-    // interface moved into Humans.Users with the section (#866, lane 2 PR B), which silently
-    // relocated this whole sweep onto the section assembly and dropped every
-    // Humans.Application.Interfaces.* interface out of it. It was typeof(IFileStorage) until
-    // G5 lane 3a-1 (nobodies-collective/Humans#866) moved that interface into the
-    // Humans.Interfaces (Base) assembly — namespace preserved, so the compile was green and
-    // the retarget would have been silent. DashboardService is the replacement because it is
-    // a concrete Humans.Application service with no scheduled move in phase 3.
+    // The Humans.Application half of this sweep is gone (G5 lane 5c): the assembly holds no
+    // types, so the anchor it needed no longer exists. Every interface it used to contribute
+    // has landed either on a section, on a contracts leaf, or in Humans.Interfaces.
     // COVERAGE NOTE: the marker/infra interfaces that now live in Humans.Interfaces under
     // Humans.Application.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
     // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
@@ -283,16 +278,9 @@ public class ServiceBoundaryArchitectureTests
     // no DbSet, so there is nothing there for an entity-returning read to leak.
     private static IEnumerable<Type> ApplicationInterfaceTypes()
     {
-        var applicationAssembly = typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly;
-        applicationAssembly.GetName().Name.Should().Be("Humans.Application",
-            because: "an anchor whose type leaves this assembly would silently drop Humans.Application.Interfaces.* interfaces out of this sweep instead of failing");
-
-        return applicationAssembly.GetTypes()
+        return SectionAssemblies()
+            .SelectMany(a => a.GetTypes())
             .Where(t => t.IsInterface)
-            .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
-            .Concat(SectionAssemblies()
-                .SelectMany(a => a.GetTypes())
-                .Where(t => t.IsInterface))
             .Concat(SectionContractsAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsInterface));

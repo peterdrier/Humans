@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Enums;
 using NodaTime;

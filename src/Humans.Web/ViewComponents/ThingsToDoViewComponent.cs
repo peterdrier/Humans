@@ -5,7 +5,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Shifts.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Users.Contracts;
 

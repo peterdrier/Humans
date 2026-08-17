@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.DTOs;
 
 namespace Humans.GoogleIntegration.Models;
 

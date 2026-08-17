@@ -7,7 +7,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Domain.Constants;
-using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Web.Infrastructure;
 using Humans.Users.Contracts;

@@ -1,8 +1,6 @@
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;

@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -31,7 +30,6 @@ using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
@@ -41,6 +39,8 @@ using Humans.Users.Services;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618
+
+using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Controllers;
 

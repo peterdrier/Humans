@@ -1,11 +1,8 @@
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Services.Dashboard;
+namespace Humans.Web.Services.Dashboard;
 
 /// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
 public sealed class AdminDashboardService(
@@ -26,7 +23,7 @@ public sealed class AdminDashboardService(
             await applicationDecisionService.GetPendingApplicationCountAsync(ct);
         var appStats = await applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution chart: Active ∪ MissingConsents (pending-deletion split off earlier).
+        // Language distribution chart: Active âˆª MissingConsents (pending-deletion split off earlier).
         var approvedNotSuspended = new HashSet<Guid>(
             partition.Active.Concat(partition.MissingConsents));
         var languageDistribution = snapshot

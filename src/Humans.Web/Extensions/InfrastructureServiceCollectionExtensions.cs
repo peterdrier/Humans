@@ -1,11 +1,8 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Budget.Contracts;
 using Humans.Consent.Contracts;
@@ -24,9 +21,9 @@ using Humans.Notifications.Contracts;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Users.Contracts;
-using Humans.Application.Services.Users.AccountLifecycle;
-using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Services.Dashboard;
+using Humans.Web.Services.Dashboard;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Web.Extensions;
 
@@ -101,8 +98,8 @@ public static class InfrastructureServiceCollectionExtensions
         // unreachable from Web. Both the type and its registration are now Teams' (Section.cs).
         //
         // SystemTeamSyncJob left this list the same way at G5 lane 4b-2e — system-team
-        // membership is a Teams invariant. Only ISystemTeamSync stayed in Humans.Application,
-        // because Hangfire serializes it as the recurring job's target type.
+        // membership is a Teams invariant. Its interface followed at lane 5c and now lives on
+        // Humans.Teams.Contracts.
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
@@ -134,28 +131,16 @@ public static class InfrastructureServiceCollectionExtensions
         // SectionHelpContent); the section consumes it through the contracts leaf.
         services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
-        // Users' CSV participation backfill. Its registration sat in the Tickets section file
-        // because /Tickets/ParticipationBackfill is the only page that drives it, but the
-        // service is Humans.Application.Services.Users' and reads only IUserService /
-        // IShiftManagementService — the section that owns the file is not always the section
-        // that owns the line (memory/architecture/governance-scope.md's rule, Governance
-        // finding 94).
-        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
-
-        // The three Users/Profiles services that stayed behind when the section moved into
-        // its own project (nobodies-collective/Humans#866, G5 lane 2). All three inject no
-        // repository and call across sections, which by peters-hard-rules.md makes them
-        // orchestrators that cannot live inside the section they orchestrate:
-        //   AccountDeletionService  — Teams, RoleAssignments, Shifts, Tickets, AuditLog, Email.
-        //   ExternalLoginService    — IMagicLinkService, Auth's orchestrator, still in Base.
-        // UserParticipationBackfillService is the third and is registered just above.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
-        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        // AccountDeletionService, ExternalLoginService and UserParticipationBackfillService
+        // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate
+        // Users' own section and every outbound edge is another section's leaf, so they now
+        // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
+        // HumanLifecycleService.
 
         // Dashboard's two aggregators. They were registered inside AddUsersSection and are
-        // not Users' — they read every section's services and own no table — so they stayed
-        // in Base when the section moved (Governance's rule: the section that owns the file
-        // is not always the section that owns the line).
+        // not Users' — they read every section's services and own no table — so they moved
+        // here with the rest of the cluster at G5 lane 5c (Governance's rule: the section
+        // that owns the file is not always the section that owns the line).
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 

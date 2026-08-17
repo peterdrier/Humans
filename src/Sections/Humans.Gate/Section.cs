@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;

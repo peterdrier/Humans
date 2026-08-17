@@ -12,7 +12,6 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Issues.Contracts;

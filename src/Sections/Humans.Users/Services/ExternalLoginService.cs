@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -16,7 +15,7 @@ namespace Humans.Application.Services.Users;
 // HUM0005 pins IUserEmailService.ReconcileOAuthIdentityAsync to this class as
 // its sole caller. Keep that surface narrow: this service exists only to serve
 // the OAuth callback, so nothing else can reach the reconcile primitive.
-public sealed class ExternalLoginService(
+internal sealed class ExternalLoginService(
     UserManager<User> userManager,
     IUserService userService,
     IUserEmailService userEmailService,

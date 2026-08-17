@@ -1,6 +1,6 @@
-namespace Humans.Application.Enums;
+namespace Humans.Shifts.Models;
 
-public enum TrendWindow
+internal enum TrendWindow
 {
     Last7Days,
     Last30Days,

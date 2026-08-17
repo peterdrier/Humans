@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Services;

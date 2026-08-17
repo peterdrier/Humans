@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 
 namespace Humans.Users.Contracts;

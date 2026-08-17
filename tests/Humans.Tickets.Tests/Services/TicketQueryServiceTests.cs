@@ -5,7 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;

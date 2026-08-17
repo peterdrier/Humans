@@ -3,7 +3,6 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.AuditLog.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using NodaTime;

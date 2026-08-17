@@ -2,7 +2,7 @@
   "sections": {
     "Admin": {
       "paths": [
-        "src/Humans.Application/Interfaces/Admin/**",
+        "src/Humans.Interfaces/Interfaces/Admin/**",
         "src/Humans.Web/Infrastructure/Repositories/Admin/**",
         "src/Humans.Web/Controllers/Admin*"
       ],
@@ -208,10 +208,7 @@
     },
     "Dashboard": {
       "paths": [
-        "src/Humans.Application/Interfaces/Dashboard/**",
-        "src/Humans.Application/Services/Dashboard/**",
-        "src/Humans.Application/DTOs/AdminDashboardData.cs",
-        "src/Humans.Application/DTOs/DashboardOverview.cs",
+        "src/Humans.Web/Services/Dashboard/**",
         "src/Humans.Web/Models/AdminDashboardViewModel.cs",
         "src/Humans.Web/Models/DashboardViewModel.cs",
         "src/Humans.Web/Models/ThingsToDoViewModel.cs",
@@ -366,9 +363,6 @@
       "paths": [
         "src/Sections/Humans.GoogleIntegration/**",
         "src/Sections/Humans.GoogleIntegration.Contracts/**",
-        "src/Humans.Application/Interfaces/GoogleIntegration/**",
-        "src/Humans.Application/DTOs/SyncReport.cs",
-        "src/Humans.Application/Configuration/GoogleWorkspaceOptions.cs",
         "src/Humans.Web/Health/GoogleWorkspaceHealthCheck.cs"
       ],
       "symbols": [
@@ -413,13 +407,11 @@
         "src/Sections/Humans.Users.Contracts/**",
         "src/Sections/Humans.Users.Contracts/IHumanLifecycleService.cs",
         "src/Sections/Humans.Users.Contracts/INonCompliantMemberSuspension.cs",
-        "src/Humans.Application/Interfaces/Users/**",
         "src/Humans.Application/DTOs/BirthdayProfileInfo.cs",
         "src/Humans.Application/DTOs/LocationProfileInfo.cs",
         "src/Humans.Application/DTOs/MemberSummary.cs",
         "src/Sections/Humans.Users/Services/HumanLifecycleService.cs",
         "src/Sections/Humans.Users/Services/NonCompliantMemberSuspension.cs",
-        "src/Humans.Application/Services/Users/**",
         "src/Humans.Web/Controllers/AboutController.cs",
         "src/Humans.Web/Controllers/AccountController.cs",
         "src/Humans.Web/Controllers/GuestController.cs",
@@ -606,7 +598,6 @@
       "paths": [
         "src/Sections/Humans.Tickets/**",
         "src/Sections/Humans.Tickets.Contracts/**",
-        "src/Humans.Application/Configuration/TicketVendorSettings.cs",
         "src/Humans.Web/ViewComponents/MyTicketStubsViewComponent.cs"
       ],
       "symbols": [

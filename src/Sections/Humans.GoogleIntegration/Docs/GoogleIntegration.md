@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.GoogleIntegration/**
   src/Sections/Humans.GoogleIntegration.Contracts/**
-  src/Humans.Application/Interfaces/GoogleIntegration/ISystemTeamSync.cs
+  src/Sections/Humans.Teams.Contracts/ISystemTeamSync.cs
 -->
 <!-- freshness:flag-on-change
   Sync mode invariants, Shared-Drive-only constraint, GoogleEmailStatus rules, and reconciliation gateway operations — review when Google Integration services/entities/controller change.

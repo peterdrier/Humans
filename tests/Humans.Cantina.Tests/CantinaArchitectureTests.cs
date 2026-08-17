@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
 using Humans.Users.Contracts;
 

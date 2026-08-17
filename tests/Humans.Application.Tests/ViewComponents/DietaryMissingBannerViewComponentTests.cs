@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;

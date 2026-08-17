@@ -5,7 +5,6 @@ using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
-using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;

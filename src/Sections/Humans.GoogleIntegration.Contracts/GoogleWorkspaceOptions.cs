@@ -1,4 +1,4 @@
-namespace Humans.Application.Configuration;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Non-sensitive Google Workspace configuration consumed by the

@@ -1,11 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;

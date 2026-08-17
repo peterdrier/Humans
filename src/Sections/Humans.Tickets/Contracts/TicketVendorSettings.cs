@@ -1,4 +1,4 @@
-namespace Humans.Application.Configuration;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// Configuration for the ticket vendor integration.

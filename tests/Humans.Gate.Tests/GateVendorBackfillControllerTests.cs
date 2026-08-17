@@ -3,7 +3,6 @@ using Humans.Gate.Controllers;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Hangfire.Common;
-using Humans.Application.Interfaces.Users;
 using Humans.Gate.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

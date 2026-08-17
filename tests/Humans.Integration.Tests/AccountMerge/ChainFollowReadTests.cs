@@ -10,7 +10,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;

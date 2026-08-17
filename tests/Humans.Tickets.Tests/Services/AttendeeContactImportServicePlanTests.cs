@@ -5,7 +5,6 @@ using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -2,7 +2,6 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Shifts.Data;

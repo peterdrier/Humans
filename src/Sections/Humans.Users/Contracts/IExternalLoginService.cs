@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
-using Humans.Users.Contracts;
+using Humans.Application.Interfaces;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Owns the decision ladder of the external (OAuth) sign-in callback: which

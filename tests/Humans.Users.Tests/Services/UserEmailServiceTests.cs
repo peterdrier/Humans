@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 

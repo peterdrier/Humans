@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;
 using Humans.Tickets.Contracts;

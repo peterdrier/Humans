@@ -13,7 +13,6 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.UI;

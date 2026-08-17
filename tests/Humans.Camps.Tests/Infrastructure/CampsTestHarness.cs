@@ -10,7 +10,6 @@ using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

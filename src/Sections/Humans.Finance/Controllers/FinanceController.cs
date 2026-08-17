@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.UI.Authorization;

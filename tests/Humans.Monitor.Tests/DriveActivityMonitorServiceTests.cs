@@ -4,7 +4,6 @@ using Humans.Monitor.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.SystemSettings.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

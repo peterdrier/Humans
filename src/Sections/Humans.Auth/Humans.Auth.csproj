@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
@@ -55,9 +56,10 @@
                         which pinned this list on the old premise, was retired in the same lane â€”
                         this comment is the record now, so keep a reason beside every name.
 
-      There is still deliberately no Humans.Teams.Contracts or Humans.Onboarding.Contracts
-      reference: ISystemTeamSync is still a Humans.Application interface, so Teams costs no
-      reference today.
+      Humans.Teams.Contracts arrived at G5 lane 5c: ISystemTeamSync moved onto that leaf when
+      Humans.Application was emptied, and RoleAssignmentService injects it to reconcile the
+      Board system team. A leaf, not the section — the horizontal/vertical rule still holds.
+      There is still deliberately no Humans.Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
