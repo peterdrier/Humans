@@ -1,15 +1,12 @@
 {
   "stryker-config": {
-    "project": "Humans.Application.csproj",
+    "project": "Humans.Users.csproj",
     "test-runner": "mtp",
     "coverage-analysis": "off",
     "mutation-level": "Standard",
     "mutate": [
-      "**/Authorization/UserEmail/*.cs",
-      "**/FullProfile.cs",
-      "**/Helpers/ProfileCompletion.cs",
-      "**/Services/Profile/*.cs",
-      "**/Services/Profiles/*.cs"
+      "**/Authorization/UserEmail*.cs",
+      "**/Services/Profile*.cs"
     ],
     "concurrency": 16,
     "reporters": [

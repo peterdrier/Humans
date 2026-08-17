@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "project": "Humans.Domain.csproj",
+    "project": "Humans.Interfaces.csproj",
     "test-runner": "mtp",
     "coverage-analysis": "off",
     "mutation-level": "Standard",
