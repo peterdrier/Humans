@@ -48,6 +48,7 @@ public class ContainerFormModel
 {
     [Required]
     [StringLength(256)]
+    [RegularExpression(@"[^<>$]*", ErrorMessage = "Container name must not contain <, > or $.")]
     public string Name { get; set; } = string.Empty;
 
     [StringLength(2000)]

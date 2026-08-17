@@ -78,7 +78,9 @@
         <div id="map" class="city-map-canvas"
              data-year="@Model.Year"
              data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
-             data-user-camp-id="@Model.UserCampId"></div>
+             data-user-camp-id="@Model.UserCampId"
+             data-i18n-clear-placement="@ContainersLocalizer["ContainerMap_ClearPlacement"]"
+             data-i18n-confirm-clear="@ContainersLocalizer["ContainerMap_ConfirmClear"]"></div>
         <div id="rotation-handle"><i class="fa-solid fa-rotate"></i></div>
         <div id="map-toast" class="alert alert-danger py-2 px-3 mb-0 shadow-sm" role="alert"></div>
         <div class="position-absolute top-0 end-0 m-3 d-grid gap-3 city-map-controls">

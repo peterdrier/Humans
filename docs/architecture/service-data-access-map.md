@@ -1862,11 +1862,12 @@ evicted). Transfers of gate-checked-in tickets are refused (#1067 —
 Listed here because it is the Tickets→Budget bridge, but the service now
 lives in the **Budget** section project (`src/Sections/Humans.Budget/Services/`,
 `internal` per HUM0034); its contract is the single-member
-`Humans.Budget.Contracts.ITicketingBudgetService`, driven by
-`TicketingBudgetSyncJob` — which moved into `Humans.Budget/Contracts/` at
-G5 lane 5b-3 (nobodies-collective/Humans#866), so the contract is now
-section-internal in fact. Only the *registration* is still in Shell:
-recurring jobs are named by concrete type in the roll-call (design §15.6b).
+`Humans.Budget.Services.ITicketingBudgetService`, `internal` since Peter's
+ruling 43, driven by `TicketingBudgetSyncJob` — which moved into
+`Humans.Budget/Jobs/` at G5 lane 5b-3 (nobodies-collective/Humans#866). The
+job's constructor is internal too, so its DI registration moved from Shell
+into Budget's own `Section.Register`; Hangfire scheduling still names the
+public job class from Shell's roll-call.
 
 No repository. Reads paid ticket sales through
 `ITicketServiceRead.GetTicketOrdersAsync` (the cached read surface) and

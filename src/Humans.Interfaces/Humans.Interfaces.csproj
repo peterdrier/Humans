@@ -109,8 +109,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Interfaces.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
       Followed the G5 lane 3a-2 arrivals: DatabaseMigrationHostedService,
       SectionDbContextRegistration, SectionMigrationRunner and PreMigrationSnapshot are internal

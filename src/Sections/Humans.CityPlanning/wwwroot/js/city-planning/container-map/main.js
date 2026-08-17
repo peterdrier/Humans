@@ -87,7 +87,7 @@ async function init() {
         // onClear: user clicked "Clear placement"
         async (container) => {
             const confirmed = confirm(
-                `Remove placement for «${container.name}»? This cannot be undone.`
+                CONFIG.I18N.CONFIRM_CLEAR.replace('{0}', container.name)
             );
             if (!confirmed) return;
             try {

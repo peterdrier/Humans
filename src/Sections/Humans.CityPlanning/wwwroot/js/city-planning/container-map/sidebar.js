@@ -1,6 +1,8 @@
 // Sidebar DOM management for the container placement map.
 // Renders containers grouped by barrio, split into Unplaced / Placed sections.
 
+import { CONFIG } from './config.js';
+
 const unplacedEl = document.getElementById('sidebar-unplaced');
 const placedEl   = document.getElementById('sidebar-placed');
 
@@ -126,7 +128,7 @@ function makePlacedCard(c) {
                 <i class="fa-solid fa-circle-info"></i>
             </button>
             ${c.canEdit ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
-                data-clear-id="${c.id}">Clear placement</button>` : ''}
+                data-clear-id="${c.id}">${CONFIG.I18N.CLEAR_PLACEMENT}</button>` : ''}
         </div>
     `;
     const locateBtn = card.querySelector('[data-locate-id]');

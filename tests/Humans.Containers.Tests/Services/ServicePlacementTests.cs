@@ -12,7 +12,7 @@ using NSubstitute;
 
 namespace Humans.Containers.Tests;
 
-public sealed class ContainerPlacementServiceTests
+public sealed class ServicePlacementTests
 {
     private const int Year = 2026;
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
@@ -26,7 +26,7 @@ public sealed class ContainerPlacementServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-    public ContainerPlacementServiceTests()
+    public ServicePlacementTests()
     {
         var repo = new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new Service(
@@ -86,8 +86,23 @@ public sealed class ContainerPlacementServiceTests
 
         await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        var placement = await _sut.GetPlacementAsync(container.Id, Year, Xunit.TestContext.Current.CancellationToken);
-        placement.Should().BeNull();
+        var placements = await _sut.GetPlacementsByYearAsync(Year, Xunit.TestContext.Current.CancellationToken);
+        placements.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ClearPlacementAsync_PreservesRowWhenNotesPresent()
+    {
+        var container = await SeedContainerAsync();
+        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdatePlacementNotesAsync(container.Id, Year, "under the shade tree", image: null, removeImage: false, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        var placement = (await _sut.GetPlacementsByYearAsync(Year, Xunit.TestContext.Current.CancellationToken)).Single();
+        placement.LocationGeoJson.Should().BeNull();
+        placement.PlacementNotes.Should().Be("under the shade tree");
     }
 
     [HumansFact]
@@ -110,7 +125,7 @@ public sealed class ContainerPlacementServiceTests
 
         await _sut.DeleteAsync(container.Id, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        (await _sut.GetPlacementAsync(container.Id, Year, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
-        (await _sut.GetPlacementAsync(container.Id, Year + 1, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _sut.GetPlacementsByYearAsync(Year, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+        (await _sut.GetPlacementsByYearAsync(Year + 1, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 }

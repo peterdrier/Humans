@@ -27,7 +27,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 |----------|------|-------|
 | Id | Guid | PK |
 | CampId | Guid | **Non-null**. Bare FK (no nav) — Camp lives in a different section (no-cross-section-ef-joins). |
-| Name | string | max 256; required |
+| Name | string | max 256; required; must not contain `<`, `>` or `$` (names travel into JS/HTML on the map pages — enforced in `Service.ValidateName` + form model) |
 | Description | string? | max 2000 |
 | ImageStoragePath | string? | max 512; relative path from `wwwroot/` |
 | ImageContentType | string? | max 64 |
@@ -62,14 +62,14 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View containers on the map overview (`/CityPlanning/`) |
-| Camp lead (own camp, placement phase open) | Create, edit, delete containers for their camp; place / clear / annotate placements for their camp's containers |
+| Camp lead (own camp) | Create, edit, delete containers for their camp any time; place / clear / annotate placements only while the placement phase is open |
 | CampAdmin role | All camp lead capabilities on every camp's containers. Placement phase toggle |
 | City-planning team member (team slug: `city-planning`) | Same as CampAdmin on containers |
 
 ## Invariants
 
 - A container belongs to its `CampId`; the owning camp's leads and Map Admins (CampAdmin or city-planning team) may manage it.
-- Write access for barrio leads is gated by `CityPlanningSettings.IsContainerPlacementOpen`. Map Admins are never gated.
+- Placement writes (place / clear / annotate) for barrio leads are gated by `CityPlanningSettings.IsContainerPlacementOpen`; container CRUD is not phase-gated (`ContainerOperation.Manage` vs `.Place`). Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.
 - `ContainerPlacement.LocationGeoJson` stores a GeoJSON Feature whose Polygon is the container footprint (20 ft container: 6 m × 2.4 m body plus a door triangle whose tip marks the door bearing — a 7-vertex ring built client-side with Turf.js, tip at vertex index 4) and whose `properties` must carry `center_lng`, `center_lat`, `rotation_degrees` (presence enforced server-side by `CityPlanningApiController` on placement PUT). Rotation deliberately lives inside the Feature — there is no separate rotation column — so the client rebuilds the drag/rotate handle state without re-deriving orientation from vertex geometry.
 - Image storage uses the shared `IFileStorage`; both main and placement images are saved by the same `SaveImageAsync` helper under `wwwroot/uploads/containers/{containerId}/{guid}.{ext}` — the two kinds are distinguished by which entity field holds the key (`Container.ImageStoragePath` vs `ContainerPlacement.PlacementImageStoragePath`), not by a filename prefix. Uploading a new image of a given kind deletes the prior file of that kind only.
@@ -80,7 +80,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Negative Access Rules
 
 - Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies the user leads a season of the container's `CampId` (via `ICampServiceRead.GetCampsForYearAsync` + `Season.IsLead`).
-- Barrio leads **cannot** create, edit, delete, or place containers when the placement phase is closed (`IsContainerPlacementOpen == false`).
+- Barrio leads **cannot** place, clear, or annotate placements when the placement phase is closed (`IsContainerPlacementOpen == false`). Container CRUD stays available to them year-round.
 - Non-admins **cannot** toggle the placement phase open or closed.
 - Non-admins **cannot** access `/CityPlanning/ContainerMap/{year}` when the placement phase is closed (controller returns 403 for non-admins who are not barrio leads or when the phase is closed).
 - Regular authenticated humans **cannot** write any container data.
@@ -106,7 +106,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 - `Service` (`Humans.Containers.Services`) never imports `Microsoft.EntityFrameworkCore`.
 - `IContainerRepository` / `Repository` (`Humans.Containers.Data`, `IDbContextFactory<ContainersDbContext>`) is the only code path that touches `containers` and `container_placements` via `DbContext`.
-- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: both tables match the section name.
+- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as every other section context — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: both tables match the section name.
 - Images are written through the shared `IFileStorage` under the `uploads/containers/` key prefix (`memory/architecture/one-ifilestorage`). There is no container-specific storage interface.
 - **Decorator decision — no caching decorator.** Small dataset, admin/lead facing, low write frequency.
 - DI: `Section.Register` (project root, discovered by Shell) registers `IContainerRepository` (Singleton), `IContainerService` (Scoped) and `ContainerAuthorizationHandler`. Nothing is added to Shell.

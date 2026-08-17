@@ -71,14 +71,14 @@
        below now declares directly: the transitive path ran through Humans.Application until
        G5 lane 5c dropped that reference (nobodies-collective/Humans#866). The two exclusions
        stay — Humans.Analyzers.Tests feeds synthetic compilations to analyzers, and
-       Humans.Domain.Tests sits at the bottom of the graph. Shared rather than
+       Humans.Interfaces.Tests sits at the bottom of the graph. Shared rather than
        copied because fifteen call sites across six section test projects stub
        IBurnSettingsService after the Shifts read boundary moved every cross-section burn
        read off the entity-returning IShiftManagementService.GetActiveAsync
        (nobodies-collective/Humans#866), and the record is positional with eighteen
        members. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Domain.Tests'">
+                        AND '$(MSBuildProjectName)' != 'Humans.Interfaces.Tests'">
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\BurnSettingsInfoFixtures.cs" Link="Humans.Testing\BurnSettingsInfoFixtures.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\ShiftUserSummaryFixtures.cs" Link="Humans.Testing\ShiftUserSummaryFixtures.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\UrgentShiftInfoFixtures.cs" Link="Humans.Testing\UrgentShiftInfoFixtures.cs" />

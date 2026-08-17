@@ -661,9 +661,6 @@
         "src/Humans.Interfaces/Interfaces/IOrchestrator.cs",
         "src/Humans.Interfaces/Interfaces/IRecurringJob.cs",
         "src/Humans.Interfaces/Interfaces/Repositories/IRepository.cs",
-        "src/Humans.Domain/Attributes/**",
-        "src/Humans.Domain/Constants/**",
-        "src/Humans.Domain/Helpers/**",
         "src/Humans.Analyzers/**",
         "src/Humans.Interfaces/Caching/**",
         "src/Humans.Interfaces/Data/**",
@@ -723,12 +720,8 @@
   },
   "classifications": {
     "entity": {
-      "paths": [
-        "src/Humans.Domain/Entities/**"
-      ],
-      "namespaces": [
-        "Humans.Domain.Entities"
-      ]
+      "paths": [],
+      "namespaces": []
     },
     "dto": {
       "namePatterns": [

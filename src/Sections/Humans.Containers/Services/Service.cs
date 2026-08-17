@@ -16,6 +16,10 @@ internal sealed class Service(
     IAuditLogService auditLog,
     IClock clock) : IContainerService
 {
+    // Names travel into JS string templates and HTML on the map pages; ban the characters
+    // that are ever token-significant there rather than trusting every sink to escape.
+    private static readonly char[] InvalidNameChars = ['<', '>', '$'];
+
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
     private static readonly HashSet<string> AllowedImageExtensions =
@@ -42,6 +46,7 @@ internal sealed class Service(
 
     public async Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
+        ValidateName(data.Name);
         ValidateImage(data.MainImage);
 
         var now = clock.GetCurrentInstant();
@@ -74,6 +79,7 @@ internal sealed class Service(
 
     public async Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
+        ValidateName(data.Name);
         ValidateImage(data.MainImage);
 
         var container = await repo.GetByIdAsync(id, ct)
@@ -128,12 +134,6 @@ internal sealed class Service(
             $"Deleted container '{container.Name}'",
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
-    }
-
-    public async Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
-    {
-        var placement = await repo.GetPlacementAsync(containerId, year, ct);
-        return placement is null ? null : ToPlacementDto(placement);
     }
 
     public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
@@ -258,6 +258,14 @@ internal sealed class Service(
             .ToList();
 
         return new ContainerAdminOverview(year, campGroups);
+    }
+
+    private static void ValidateName(string name)
+    {
+        if (name.IndexOfAny(InvalidNameChars) >= 0)
+        {
+            throw new InvalidOperationException("Container name must not contain <, > or $.");
+        }
     }
 
     private static void ValidateImage(ContainerImageUpload? image)

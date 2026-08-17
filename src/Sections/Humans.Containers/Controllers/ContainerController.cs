@@ -101,7 +101,6 @@ internal sealed class ContainerController(
         var camp = await campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return NotFound();
 
-        // Place includes the phase-gate for leads — write actions need it.
         var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
         if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 

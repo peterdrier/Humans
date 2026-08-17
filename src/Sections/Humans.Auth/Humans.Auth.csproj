@@ -20,12 +20,10 @@
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      Temporary, both directions of Teams finding 36's trade. ServiceTestHarness and its
-      copy TeamsTestHarness seed role_assignments rows for tests belonging to sections that
-      have not moved (Shifts, GoogleIntegration, Users) and for Teams' own role tests.
-      Both entries come out when those sections' own G5 lanes rewrite their fixtures.
+      Temporary, one direction of Teams finding 36's trade. TeamsTestHarness seeds
+      role_assignments rows for Teams' own role tests. Comes out when that fixture is
+      rewritten.
     -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
   </ItemGroup>
 
