@@ -435,11 +435,17 @@ public class ServiceBoundaryArchitectureTests
     /// wrapping that section's own internal entity crosses no boundary, and recursing into
     /// them adds 96 rows across twenty sections that this rule was never asserting about.
     /// </para>
+    /// <para>
+    /// Keyed on the <c>.Contracts</c> namespace segment rather than the assembly name so a
+    /// leaf folded back into its section project (which keeps the namespace) stays in scan.
+    /// </para>
     /// </remarks>
     private static bool IsApplicationReturnShape(Type type) =>
         type is { IsPrimitive: false, IsEnum: false } &&
         type != typeof(string) &&
         (type.Namespace?.StartsWith("Humans.Application.", StringComparison.Ordinal) == true ||
+         type.Namespace?.EndsWith(".Contracts", StringComparison.Ordinal) == true ||
+         type.Namespace?.Contains(".Contracts.", StringComparison.Ordinal) == true ||
          type.Assembly.GetName().Name?.EndsWith(".Contracts", StringComparison.Ordinal) == true);
 
     private static string Display(Type type) =>
