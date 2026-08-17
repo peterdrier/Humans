@@ -49,7 +49,7 @@ else
                     @Html.AntiForgeryToken()
                     <input type="number" name="MaxAmount" class="form-control form-control-sm"
                            style="max-width:110px;" step="0.01" min="0.01"
-                           value="@(item.MaxAmount?.ToString("F2"))"
+                           value="@(item.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
                            placeholder="@Localizer["Expenses_MaxAmount"].Value"
                            aria-label="@Localizer["Expenses_MaxAmount"].Value" />
                     <button type="submit" class="btn btn-sm btn-success"

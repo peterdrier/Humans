@@ -127,7 +127,7 @@ else
                             <div class="mb-3">
                                 <label class="form-label">Max amount (optional)</label>
                                 <input type="number" class="form-control" name="MaxAmount"
-                                       step="0.01" min="0.01" value="@(r.MaxAmount?.ToString("F2"))"
+                                       step="0.01" min="0.01" value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
                                        placeholder="Leave blank for no cap">
                                 <div class="form-text">Caps the payout below the receipts total. Overrides the coordinator's cap.</div>
                             </div>
