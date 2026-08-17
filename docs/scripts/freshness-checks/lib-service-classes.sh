@@ -12,9 +12,11 @@
 # SystemSettings) into one entry.
 #
 # What a service is, per docs/architecture/peters-hard-rules.md: "Services must
-# derive from IApplicationService." So the population is derived structurally —
-# a non-abstract, non-static class whose base list names an interface that
-# reaches IApplicationService — not from filenames.
+# derive from IApplicationService" — and "some services are orchestrators",
+# whose marker IOrchestrator is a sibling of IApplicationService, not derived
+# from it. So the population is derived structurally — a non-abstract,
+# non-static class whose base list names an interface that reaches
+# IApplicationService or IOrchestrator — not from filenames.
 #
 # Emits one record per service class:  <primary>|<name1,name2,...>|<file>
 #   primary — the name to report when the doc is missing it
@@ -38,7 +40,7 @@ service_interfaces() {
           | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
           | grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' \
           | sed -E 's/interface +//' | tr -d '\r')
-  seed=$(echo "$decls" | grep -E ':.*\bIApplicationService\b' | sed -E 's/[ <:].*//' | sort -u)
+  seed=$(echo "$decls" | grep -E ':.*\b(IApplicationService|IOrchestrator)\b' | sed -E 's/[ <:].*//' | sort -u)
   for i in 1 2 3 4; do
     pat=$(echo "$seed" | paste -sd'|')
     new=$(echo "$decls" | grep -E ":.*\b($pat)\b" | sed -E 's/[ <:].*//' | sort -u)
