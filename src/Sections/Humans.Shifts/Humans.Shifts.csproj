@@ -10,13 +10,6 @@
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      Temporary, and the condition that removes it: five test files belonging to sections
-      that have NOT moved seed this section's rows through Humans.Application.Tests'
-      ServiceTestHarness. Rewriting them inside a move commit changes unrelated sections'
-      fixtures; each drops out at its own G5 lane (Teams' rule, design §15 step 8).
-    -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
-    <!--
       Same shape, same expiry: Humans.Teams.Tests' harness seeds this section's rows
       through its own copy of ServiceTestHarness (Teams finding 36's two-way pattern).
     -->

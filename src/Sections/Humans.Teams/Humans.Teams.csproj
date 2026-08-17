@@ -9,15 +9,8 @@
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
-    <!--
-      Humans.Application.Tests holds the tests of sections that have not moved to their own
-      project yet; they seed team rows through ServiceTestHarness, which needs Teams
-      internals. Each G5 move takes its own section's tests out of there into a section test
-      project (which gets its own entry above), so this one comes out when the last section
-      leaves Base — rewriting an unmoved section's fixtures early would be redone at its own
-      G5.
-    -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <!-- Shell-level GDPR-export wiring tests name this section's internal service. -->
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>

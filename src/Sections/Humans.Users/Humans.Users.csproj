@@ -9,14 +9,7 @@
     <InternalsVisibleTo Include="Humans.Users.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
-    <!--
-      Temporary, and the condition that removes it: the Users/Profiles service and
-      repository tests still live in Humans.Application.Tests until lane 2 phase 3 moves
-      them into tests/Humans.Users.Tests, and several unmoved sections' tests seed this
-      section's rows through ServiceTestHarness (Teams' rule, design §15 step 8).
-    -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
-    <!-- Same shape, same expiry: Shell-level tests over the moved controllers. -->
+    <!-- Shell-level tests over the moved controllers. -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
       Three unmoved sections' harnesses seed this section's rows through an in-memory

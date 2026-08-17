@@ -1,0 +1,125 @@
+using AwesomeAssertions;
+using Humans.Governance.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Domain.Enums;
+using Humans.UI;
+using Humans.Web.Models;
+using Humans.Web.ViewComponents;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using Humans.Users.Contracts;
+
+namespace Humans.Web.Tests.ViewComponents;
+
+/// <summary>
+/// Covers the dietary-medical nudge gate in <see cref="ThingsToDoViewComponent"/>.
+/// Spec: docs/features/profiles/dietary-medical-nudge.md (US-35.5)
+/// </summary>
+public class ThingsToDoViewComponentDietaryGateTests
+{
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftVolunteerProfiles _shiftProfiles = Substitute.For<IShiftVolunteerProfiles>();
+    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly ThingsToDoViewComponent _sut;
+
+    public ThingsToDoViewComponentDietaryGateTests()
+    {
+        // Each [key] returns a LocalizedString whose Value == key. Lets tests
+        // assert against the key name (no resx lookup needed).
+        _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+
+        // Default profile snapshot — empty consents so the consent item is
+        // skipped (RequiredConsentCount==0), keeping the dashboard items list
+        // focused on what these tests care about.
+        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(
+                Status: MembershipStatus.Active,
+                IsVolunteerMember: true,
+                RequiredConsentCount: 0,
+                PendingConsentCount: 0,
+                MissingConsentVersionIds: Array.Empty<Guid>()));
+
+        _sut = new ThingsToDoViewComponent(
+            _userService,
+            _shiftMgmt,
+            _shiftProfiles,
+            _membershipCalculator,
+            _localizer,
+            NullLogger<ThingsToDoViewComponent>.Instance);
+
+        // Url helper — the component calls Url.Action(...) for the dietary item.
+        // Return a stable href so the test doesn't care about real routing.
+        var urlHelper = Substitute.For<IUrlHelper>();
+        urlHelper.Action(Arg.Any<UrlActionContext>()).Returns("/Profile/DietaryMedical");
+        _sut.Url = urlHelper;
+
+        // ViewContext is required for ViewComponent.View(model) → ViewViewComponentResult
+        _sut.ViewComponentContext = new ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext(),
+        };
+    }
+
+    [HumansFact]
+    public async Task DietaryItemAppearsWithNoShiftCopyWhenNoQualifyingSignup()
+    {
+        var userId = Guid.NewGuid();
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
+
+        var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);
+
+        var model = (ThingsToDoViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        var dietary = model.Items.Should().ContainSingle(i => i.Key == "dietary-medical").Subject;
+        dietary.IsDone.Should().BeFalse();
+        dietary.Description.Should().Be(_localizer["Todo_DietaryMedical_NoShift_Pending"].Value);
+    }
+
+    [HumansFact]
+    public async Task DietaryItemUsesExistingCopyWhenHasQualifyingSignup()
+    {
+        var userId = Guid.NewGuid();
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
+
+        var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: true, profileCompletionPercent: 100);
+
+        var model = (ThingsToDoViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        var dietary = model.Items.Should().ContainSingle(i => i.Key == "dietary-medical").Subject;
+        dietary.Description.Should().Be(_localizer["Todo_DietaryMedical_Pending"].Value);
+    }
+
+    [HumansFact]
+    public async Task DietaryItemNotAddedWhenDietaryFilled()
+    {
+        var userId = Guid.NewGuid();
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, "Vegetarian"));
+
+        var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);
+
+        if (result is ViewViewComponentResult viewResult)
+        {
+            var model = (ThingsToDoViewModel?)viewResult.ViewData!.Model;
+            model?.Items.Should().NotContain(i => i.Key == "dietary-medical");
+        }
+        // ContentResult (empty) is also valid — means the card hid entirely because all items are Done.
+    }
+
+    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfo.Create(
+        user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: new Profile { UserId = userId, BurnerName = "Test", DietaryPreference = dietary },
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
+}

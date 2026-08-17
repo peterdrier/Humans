@@ -3,7 +3,6 @@
   <Folder Name="/src/">
     <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
     <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
-    <Project Path="src/Humans.Application/Humans.Application.csproj" />
     <Project Path="src/Humans.Web/Humans.Web.csproj" />
   </Folder>
   <Folder Name="/src/Sections/">
@@ -77,9 +76,8 @@
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
-    <Project Path="tests/Humans.Domain.Tests/Humans.Domain.Tests.csproj" />
     <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
-    <Project Path="tests/Humans.Application.Tests/Humans.Application.Tests.csproj" />
+    <Project Path="tests/Humans.Interfaces.Tests/Humans.Interfaces.Tests.csproj" />
     <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Agent.Tests/Humans.Agent.Tests.csproj" />
