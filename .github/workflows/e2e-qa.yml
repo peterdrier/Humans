@@ -34,47 +34,36 @@ jobs:
           URL="https://humans.n.burn.camp/api/version"
           echo "Waiting for $SHORT_SHA to deploy..."
 
+          # A commit burst redeploys QA again within seconds of the first sighting of our
+          # target sha: a failing run of auth.setup.ts's "admin" persona was observed where
+          # /api/version cycled through two OTHER shas within this same wait loop, and the
+          # target sha had been live for only ~4s — one poll cycle — before Playwright hit
+          # it with 128 tests across 4 workers. Require two CONSECUTIVE matching polls
+          # (10s apart) before declaring the deploy ready, instead of exiting on the first
+          # sight — this gives a freshly-restarted container a beat to finish startup
+          # (migrations/DI/JIT) before load hits it. A transient probe failure or a reading
+          # of some other sha (older or newer — /api/version doesn't tell us which) just
+          # resets the streak and keeps polling within the existing budget below, rather
+          # than guessing at what a single differing reading means.
+          CONSECUTIVE=0
           for i in $(seq 1 60); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
-              echo "$SHORT_SHA live after ~$((i * 5))s — settling before Playwright starts..."
-              # A commit burst redeploys QA again within seconds of this first match: a
-              # failing run of auth.setup.ts's "admin" persona was observed where
-              # /api/version cycled through two OTHER shas during this same wait loop,
-              # and the target sha had been live for only ~4s — one poll cycle —
-              # before Playwright hit it with 128 tests across 4 workers. Re-check
-              # after a settle pause: gives a freshly-restarted container a beat to
-              # finish startup (migrations/DI/JIT) before load hits it, and catches an
-              # immediate superseding redeploy before we burn a full run testing a
-              # target that's already stale.
-              for j in 1 2 3; do
-                sleep 10
-                RECHECK=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
-                if [ "$RECHECK" = "$SHORT_SHA" ] || [ "$RECHECK" = "$FULL_SHA" ]; then
-                  echo "Deploy confirmed stable after ~$((i * 5 + j * 10))s"
-                  echo "found=true" >> "$GITHUB_OUTPUT"
-                  exit 0
-                fi
-                if [ -z "$RECHECK" ]; then
-                  # A transient curl/HTTP failure on the probe itself, not a real
-                  # supersession — retry rather than treating empty as "different
-                  # commit" and skipping every Playwright test on a network blip.
-                  echo "Settle recheck $j: /api/version unreachable — retrying"
-                  continue
-                fi
-                echo "Superseded by $RECHECK during the settle pause — a newer push landed and gets its own run; skipping"
-                echo "found=false" >> "$GITHUB_OUTPUT"
+              CONSECUTIVE=$((CONSECUTIVE + 1))
+              echo "Attempt $i: deployed=$DEPLOYED matches (stable for $CONSECUTIVE/2 checks)"
+              if [ "$CONSECUTIVE" -ge 2 ]; then
+                echo "Deploy confirmed stable after ~$((i * 5))s"
+                echo "found=true" >> "$GITHUB_OUTPUT"
                 exit 0
-              done
-              echo "Settle recheck kept failing to reach /api/version but never saw a different commit — proceeding anyway"
-              echo "found=true" >> "$GITHUB_OUTPUT"
-              exit 0
+              fi
+            else
+              CONSECUTIVE=0
+              echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
             fi
-            echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
             sleep 5
           done
 
-          echo "Build $SHORT_SHA not deployed within 5 minutes — skipping tests (likely superseded by a newer push)"
+          echo "Build $SHORT_SHA never deployed and held stable within 5 minutes — skipping tests (likely superseded by a newer push, or QA is redeploying repeatedly)"
           echo "found=false" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
