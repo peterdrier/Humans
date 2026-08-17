@@ -1,19 +1,20 @@
-using Humans.Agent.Contracts;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Agent.Contracts;
 
 /// <summary>
 /// Nightly purge of agent conversations past the retention window.
 /// </summary>
 /// <remarks>
-/// Stays in Base because recurring jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and there is no <c>ISection</c>-style discovery
-/// seam for them yet (design §15.6b). It reaches Agent through
-/// <see cref="IAgentConversationRetention"/>: the retention window, the purge and the
+/// Drives <see cref="IAgentConversationRetention"/>: the retention window, the purge and the
 /// last-run record all belong to the section, and a Base job holding the section's
 /// repository was a layer skip as well as a contracts-leaf three interfaces wide.
+///
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866), so shim and body are both Agent's. It sits under
+/// <c>Contracts/</c> because Shell names the concrete type at registration and HUM0034 makes
+/// every other public type in a section an error.
 /// </remarks>
 public class AgentConversationRetentionJob(
     IAgentConversationRetention retention,

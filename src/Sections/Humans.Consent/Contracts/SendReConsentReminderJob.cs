@@ -2,15 +2,15 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Email.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Consent.Contracts;
 
 /// <summary>
 /// Background job that sends re-consent reminders to members.
@@ -21,7 +21,22 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IUserService.SetLastConsentReminderSentAsync"/>, so the job
 /// never touches a section DbContext
 /// directly (design-rules §2c).
+///
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866). Consent owns it: the reminder exists to close a
+/// re-consent gap, the required-version set it mails about is
+/// <see cref="ILegalDocumentSyncServiceRead"/>'s, and the job id is already
+/// <c>consent-reconsent-reminders</c>. What it reads from Governance and Users is the
+/// audience and the display data, both through their read interfaces. It sits under
+/// <c>Contracts/</c> because Shell names the concrete type at registration and HUM0034 makes
+/// every other public type in a section an error.
+///
+/// The move made a write that was always here visible to HUM0032: the cooldown stamp is a
+/// Users column, set through Users' own service, so the class is marked
+/// <see cref="CrossSectionWriteAttribute"/> rather than downgraded to
+/// <c>IUserServiceRead</c> — which cannot set it.
 /// </remarks>
+[CrossSectionWrite("The re-consent reminder stamps its own cooldown on the user it mailed.")]
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendReConsentReminderJob(
     IMembershipCalculatorRead membershipCalculator,

@@ -3,7 +3,6 @@
   src/Sections/Humans.Agent.Contracts/**
   src/Humans.Infrastructure/Services/GitHubCommunityKbContentSource.cs
   src/Humans.Infrastructure/Configuration/CommunityKbSettings.cs
-  src/Humans.Infrastructure/Jobs/AgentConversationRetentionJob.cs
 -->
 <!-- freshness:flag-on-change
   Agent conversation/message/settings invariants, preload-corpus tiers + the tool surface (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue / get_audit_history), the community knowledge base (separate nobodies-collective/knowledge-base repo, cached in RAM, admin-reloadable), rate-limit/abuse gating, and the admin status/reload/prompt-preview surface — review when agent services, stores, the tool catalog, the preload/community-KB readers, or the agent controllers change.
@@ -131,7 +130,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 
 ## Architecture
 
-**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AnthropicClient`. `AgentPreloadAugmentor` stays in Shell (it reads Shell-owned help content) and implements the contracts-leaf `IAgentPreloadAugmentor`; `AgentConversationRetentionJob` stays in `Humans.Infrastructure/Jobs` and calls the contracts-leaf `IAgentConversationRetention`.
+**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AnthropicClient`. `AgentPreloadAugmentor` stays in Shell (it reads Shell-owned help content) and implements the contracts-leaf `IAgentPreloadAugmentor`; `AgentConversationRetentionJob` moved into this project's `Contracts/` folder at G5 lane 5b-5 and calls the contracts-leaf `IAgentConversationRetention`. Only the job's DI registration and its roll-call entry stay in Shell.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
 **Status:** (A) G5 — the section lives in its own project, `src/Sections/Humans.Agent`, with its cross-section surface in the `Humans.Agent.Contracts` leaf (nobodies-collective/Humans#866, wave A4b). Everything except `Section`, `AgentResource` and the generated migrations is `internal`, enforced at build time by HUM0034. Architecture tests: `tests/Humans.Agent.Tests/AgentArchitectureTests.cs`; page rendering: `tests/Humans.Integration.Tests/Controllers/AgentPageRenderTests.cs`. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
 

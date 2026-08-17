@@ -2,7 +2,7 @@
   src/Sections/Humans.Finance/**
   src/Sections/Humans.Finance.Contracts/**
   src/Sections/Humans.Holded/Services/HoldedClient.cs
-  src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
+  src/Sections/Humans.Holded/Contracts/HoldedSyncJob.cs
 -->
 <!-- freshness:flag-on-change
   FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
@@ -213,7 +213,7 @@ Budget never calls into Finance.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`)  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`  
-**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **stays in `Humans.Infrastructure/Jobs`,** because Hangfire serializes the declaring type name of a scheduled job. Since G5 lane 4b-2f it is only a shim: its body is `HoldedNightlySync` in `Humans.Holded`, which calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror.  
+**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **not this section's.** Since G5 lane 4b-2f it is only a shim: its body is `HoldedNightlySync` in `Humans.Holded`, which calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror. At G5 lane 5b-5 the shim followed its body into `src/Sections/Humans.Holded/Contracts/`; the "Hangfire serializes the declaring type name" claim that had kept it in Base is false — `AddOrUpdate<T>(id, …)` is keyed on the job id.  
 **Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline. Since then: `20260810195350_HoldedExpenseDocIsApproved` (swaps `ApprovedAt` for the nullable `IsApproved` flag) and `20260810204942_HoldedMirrorMovesToHoldedSection` (drops the ledger-mirror tables, which the Holded section now owns)  
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
@@ -238,7 +238,7 @@ Budget never calls into Finance.
 > - `Data/IHoldedRepository.cs`
 > - `Data/Repository.cs`
 > - `src/Sections/Humans.Holded/Services/HoldedClient.cs`
-> - `src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs`
+> - `src/Sections/Humans.Holded/Contracts/HoldedSyncJob.cs`
 > - `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 > - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
 >

@@ -16,10 +16,10 @@ namespace Humans.Finance;
 /// <remarks>
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
 /// Holded section, which registers it; Finance consumes it through
-/// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> stays in
-/// <c>Humans.Infrastructure/Jobs</c> because Hangfire serializes the declaring type name of a
-/// scheduled job — it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
-/// section's <c>IHoldedFinanceService.SyncAsync</c> first.
+/// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> is not registered here either, and is
+/// not this section's: it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
+/// section's <c>IHoldedFinanceService.SyncAsync</c> first, and it lives in
+/// <c>Humans.Holded/Contracts/</c> since G5 lane 5b-5 (nobodies-collective/Humans#866).
 /// </remarks>
 public sealed class Section : ISection
 {

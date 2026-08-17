@@ -9,12 +9,15 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Budget.Contracts;
 using Humans.Consent.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Gate.Contracts;
 using Humans.Governance.Contracts;
+using Humans.Holded.Contracts;
+using Humans.Mailer.Contracts;
+using Humans.Surveys.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Issues.Contracts;
 using Humans.Notifications.Contracts;
@@ -63,8 +66,8 @@ public static class InfrastructureServiceCollectionExtensions
         // the job *type* to Humans.Infrastructure, and G5 lane 5b-1 re-measured the "Hangfire
         // serializes the declaring assembly" claim and found it false: AddOrUpdate<T>(id, …)
         // rewrites the stored type string at every startup, so the job id is the stable key.
-        // CleanupIssuesJob moved to Humans.Issues/Contracts/ on that finding; the rest still
-        // reach their section through its contracts leaf and are yet to move.
+        // Every job named below now lives in its own section's Contracts/ folder — G5 lane
+        // 5b-5 emptied src/Humans.Infrastructure/Jobs/ (nobodies-collective/Humans#866).
         services.AddScoped<SendSurveyReminderJob>();
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
@@ -79,10 +82,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
-        // Both Holded jobs are Hangfire-serialized by concrete type and so stay in Base; the
-        // connector itself (client, options, call log) is registered by Humans.Holded's Section.cs
-        // since G5 lane 4b-2f. HoldedSyncJob is a shim over IHoldedNightlySync; the expense-outbox
-        // drain is Expenses' body and is unchanged.
+        // The two Holded-facing jobs are owned by different sections: HoldedSyncJob is Holded's
+        // shim over IHoldedNightlySync, the expense-outbox drain is Expenses'. The connector
+        // itself (client, options, call log) is registered by Humans.Holded's Section.cs since
+        // G5 lane 4b-2f.
         services.AddScoped<HoldedSyncJob>();
         services.AddScoped<HoldedExpenseOutboxJob>();
         // Same miss as CleanupNotificationsJob above: the job was in the roll-call from the day

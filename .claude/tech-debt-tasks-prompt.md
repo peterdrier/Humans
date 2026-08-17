@@ -94,7 +94,7 @@ Tasks are ordered by priority. Check git log and handoff notes to see which are 
 #### T5: Standardize background job patterns
 **Status:** Not started
 **What:** 14 jobs with no shared interface, inconsistent method names (`ExecuteAsync` vs `RunAsync`), no common logging. Create `IRecurringJob` interface, rename entry points to `ExecuteAsync`, add structured logging at start/end.
-**Where:** `src/Humans.Infrastructure/Jobs/`
+**Where:** `src/Sections/**/Contracts/*Job.cs`
 
 #### T6: Replace inline avatar HTML with ViewComponent
 **Status:** Partially done (some replaced in earlier runs)

@@ -4,7 +4,6 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Infrastructure.Jobs;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.UI.Extensions;

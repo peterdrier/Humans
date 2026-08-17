@@ -1,24 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Agent's cross-section surface, carved into its own leaf project because two of its
-    consumers are outside Shell:
+    Agent's cross-section surface. The leaf existed as its own project because one consumer
+    sat in Base: AgentConversationRetentionJob in Humans.Infrastructure/Jobs, reaching the
+    section through IAgentConversationRetention. **That is no longer true** — the job moved
+    into Humans.Agent/Contracts/ at G5 lane 5b-5 (nobodies-collective/Humans#866), and
+    AnthropicBalanceProvider never counted (it implements a Base-owned connector interface
+    that the section consumes, not the other way round).
 
-      * AgentConversationRetentionJob (Humans.Infrastructure/Jobs) — recurring jobs are named
-        by concrete type in Shell's UseHumansRecurringJobs roll-call and there is no
-        ISection-style discovery seam for them yet (design §15.6b), so the job stays in Base
-        and reaches the section through IAgentConversationRetention.
-      * AnthropicBalanceProvider (Humans.Infrastructure/Services/Anthropic) does NOT appear
-        here — it implements a Base-owned connector interface and the section consumes it.
-
-    A Contracts/ *folder* inside Humans.Agent would therefore make Base reference a section
-    and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
-
-    IAgentAvailability and AgentSectionKeys are here for Shell rather than Base: Shell's
-    HelpWidget/health checks need "is the agent on", and Shell's AgentPreloadAugmentor
-    resolves the section keys the agent's own tool accepts. Both would have been fine in a
-    folder; with the project forced into existence, everything cross-section lives in one
-    place (the Events/Finance shape).
+    Re-derived at that lane, every remaining consumer is in Shell: HelpWidgetViewComponent
+    and the two health checks read IAgentAvailability, AgentPreloadAugmentor implements
+    IAgentPreloadAugmentor and resolves AgentSectionKeys. Shell references Humans.Agent
+    directly, so a Contracts/ *folder* would now serve all of them and this project could
+    fold into one. Humans.UI names no type from here — its one mention is a <see cref> in a
+    doc comment. Left standing deliberately: collapsing a leaf is Peter's call, not a job
+    move's side effect.
 
     References Humans.Interfaces only.
   -->

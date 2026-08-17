@@ -28,8 +28,9 @@ namespace Humans.Agent;
 /// <para>
 /// <c>AgentConversationRetentionJob</c> is <em>not</em> registered here: recurring jobs are
 /// named by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no
-/// discovery seam for them yet, so it stays in <c>Humans.Infrastructure/Jobs</c> and reaches
-/// the section through <see cref="IAgentConversationRetention"/> (design §15.6b).
+/// discovery seam for them yet, so the registration stays in Shell (design §15.6b). The job
+/// itself is this section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and drives <see cref="IAgentConversationRetention"/>.
 /// </para>
 /// <para>
 /// The two warm-up hosted services <em>are</em> registered here. Nothing outside the section

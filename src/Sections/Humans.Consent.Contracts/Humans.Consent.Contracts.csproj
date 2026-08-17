@@ -4,16 +4,16 @@
     Consent's cross-section surface, carved into its own leaf project because most of its
     consumers are still in Base: Humans.Application's OnboardingService and
     OnboardingWidgetState read IConsentServiceRead, AccountMergeService evicts through
-    IConsentCacheInvalidator, and Humans.Infrastructure's SendReConsentReminderJob /
-    HumansMetricsService read ILegalDocumentSyncServiceRead. A Contracts/ *folder* inside
-    Humans.Consent would therefore make Base reference a section and cycle (design §15.5b,
+    IConsentCacheInvalidator, and Humans.Infrastructure's HumansMetricsService reads
+    ILegalDocumentSyncServiceRead. A Contracts/ *folder* inside Humans.Consent would
+    therefore make Base reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    ILegalDocumentSyncRunner no longer counts towards that: its only consumer,
-    SyncLegalDocumentsJob, moved into Humans.Consent/Contracts/ at G5 lane 5b-4
-    (nobodies-collective/Humans#866), following lane 5b-1's INotificationRetention precedent.
-    It could follow the job inward; that is a later pass, and shrinking interface surface
-    needs Peter.
+    Two names left that census on their jobs' way home to this section
+    (nobodies-collective/Humans#866): ILegalDocumentSyncRunner's only consumer,
+    SyncLegalDocumentsJob, moved at lane 5b-4, and SendReConsentReminderJob — the second
+    ILegalDocumentSyncServiceRead reader — moved at lane 5b-5. Both interfaces could follow
+    their jobs inward; that is a later pass, and shrinking interface surface needs Peter.
 
     ConsentReviewFormViewModel is here for the reason step 3b's "move the markup" case
     does not apply: the onboarding widget's Consents step is Onboarding's view over

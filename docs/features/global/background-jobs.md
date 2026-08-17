@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Humans.Web/Extensions/RecurringJobExtensions.cs
-  src/Humans.Infrastructure/Jobs/**
   src/Sections/**/Contracts/*Job.cs
 -->
 <!-- freshness:flag-on-change
