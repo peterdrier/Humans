@@ -25,7 +25,7 @@ public class GuideHtmlPostprocessorTests
     {
         var html = $"""<a href="{href}">text</a>""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain(expectedHrefSnippet);
     }
@@ -38,7 +38,7 @@ public class GuideHtmlPostprocessorTests
     {
         var html = $"""<a href="{href}">x</a>""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain(expectedHrefSubstring);
         result.Should().Contain("target=\"_blank\"");
@@ -50,7 +50,7 @@ public class GuideHtmlPostprocessorTests
     {
         const string html = """<a href="/Profile/Me/Edit">Edit</a>""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain("""href="/Profile/Me/Edit" """.Trim());
         result.Should().NotContain("target=\"_blank\"");
@@ -61,7 +61,7 @@ public class GuideHtmlPostprocessorTests
     {
         const string html = """<a href="mailto:a@b.com">a</a>""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain("""href="mailto:a@b.com" """.Trim());
         result.Should().NotContain("target=\"_blank\"");
@@ -78,7 +78,7 @@ public class GuideHtmlPostprocessorTests
     {
         var html = $"""<img src="{src}" alt="x" />""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain("""src="https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png" """.Trim());
     }
@@ -88,7 +88,7 @@ public class GuideHtmlPostprocessorTests
     {
         const string html = """<img src="https://cdn.example.com/x.png" alt="x" />""";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain("""src="https://cdn.example.com/x.png" """.Trim());
     }
@@ -98,7 +98,7 @@ public class GuideHtmlPostprocessorTests
     [InlineData("<code>/Profile/Me/Edit</code>", "/Profile/Me/Edit")]
     public void Rewrite_InlineCodeAppPath_WrappedInAnchor(string html, string path)
     {
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().Contain($"""<a href="{path}" class="guide-app-path"><code>{path}</code></a>""");
     }
@@ -109,7 +109,7 @@ public class GuideHtmlPostprocessorTests
         // Routes with "{id}" placeholders should NOT be linked — clicking /Users/Admin/{id} would 404.
         const string html = "<code>/Users/Admin/{id}</code>";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().NotContain("<a href=");
         result.Should().Contain("<code>/Users/Admin/{id}</code>");
@@ -121,7 +121,7 @@ public class GuideHtmlPostprocessorTests
         // Not a path (doesn't start with "/") — it's a config key or a literal value.
         const string html = "<p>Set <code>Guide:Owner</code> to your fork.</p>";
 
-        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+        var result = Processor.Rewrite(html, Settings);
 
         result.Should().NotContain("<a href=");
         result.Should().Contain("<code>Guide:Owner</code>");

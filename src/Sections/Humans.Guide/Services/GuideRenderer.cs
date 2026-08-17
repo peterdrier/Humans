@@ -20,6 +20,6 @@ internal sealed class GuideRenderer(
 
         var wrapped = preprocessor.Wrap(markdown);
         var rendered = Markdown.ToHtml(wrapped, Pipeline);
-        return postprocessor.Rewrite(rendered, settings.Value, GuideFiles.All);
+        return postprocessor.Rewrite(rendered, settings.Value);
     }
 }
