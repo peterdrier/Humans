@@ -28,6 +28,14 @@ internal static class GuideRolePrivilegeMap
             ["Volunteer Coordinator"] = RoleNames.VolunteerCoordinator
         };
 
+    /// <summary>
+    /// Every system role a parenthetical can name. <see cref="GuideRoleResolver"/> probes
+    /// exactly these against the user's claims; deriving the set here is what keeps the two
+    /// from drifting apart.
+    /// </summary>
+    public static readonly IReadOnlyList<string> MappedRoles =
+        DisplayToRole.Values.Distinct(StringComparer.Ordinal).ToList();
+
     public static bool TryResolve(string displayName, [NotNullWhen(true)] out string? systemRole)
     {
         if (string.IsNullOrWhiteSpace(displayName))
