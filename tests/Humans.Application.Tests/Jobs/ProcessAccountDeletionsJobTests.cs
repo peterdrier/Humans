@@ -9,6 +9,7 @@ using Humans.Email.Contracts;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Users.Contracts;
+using Humans.Users.Jobs;
 
 namespace Humans.Application.Tests.Jobs;
 

@@ -2,7 +2,7 @@
   src/Sections/Humans.Finance/**
   src/Sections/Humans.Finance.Contracts/**
   src/Sections/Humans.Holded/Services/HoldedClient.cs
-  src/Sections/Humans.Holded/Contracts/HoldedSyncJob.cs
+  src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
 -->
 <!-- freshness:flag-on-change
   FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
@@ -238,7 +238,7 @@ Budget never calls into Finance.
 > - `Data/IHoldedRepository.cs`
 > - `Data/Repository.cs`
 > - `src/Sections/Humans.Holded/Services/HoldedClient.cs`
-> - `src/Sections/Humans.Holded/Contracts/HoldedSyncJob.cs`
+> - `src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs`
 > - `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 > - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
 >
