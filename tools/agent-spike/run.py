@@ -105,7 +105,7 @@ def load_corpus() -> str:
         if p.exists():
             add("SECTION INVARIANT", p)
 
-    matrix = REPO_ROOT / "src" / "Humans.UI" / "Models" / "AccessMatrixDefinitions.cs"
+    matrix = REPO_ROOT / "src" / "Humans.Interfaces" / "Models" / "AccessMatrixDefinitions.cs"
     if matrix.exists():
         add("ACCESS MATRIX", matrix)
 

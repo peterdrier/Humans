@@ -1047,7 +1047,8 @@ Git Bash.)
      matching `@using` for the moved model. Same test as the filter base: the picker names no
      section's vocabulary. Caught by the step 12 render test, never by the build (proven: Gate).
      **Shell keeps rendering when the component moves down, so this is cheaper than it looks**:
-     `Humans.Web/Views/_ViewImports.cshtml` already carries `@addTagHelper *, Humans.UI`, so
+     `Humans.Web/Views/_ViewImports.cshtml` already carries `@addTagHelper *, Humans.Interfaces`
+     (the directive names an ASSEMBLY; Base's namespaces are still `Humans.UI.*`), so
      every existing `<vc:…>` in Shell resolves the moved component with no edit. The whole
      change is `git mv` of the component class and its
      `Views/Shared/Components/<Name>/Default.cshtml` plus the namespace line — check only that

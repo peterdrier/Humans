@@ -1,27 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <!-- MVC views/partials/view components, not Blazor components. -->
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
+  <!--
+    EMPTY. G5 lane 4b-iii B (nobodies-collective/Humans#866) moved the last 31 files —
+    TagHelpers/, ViewComponents/, Views/, Resources/ and TranslationsGalleryViewModel — down to
+    Humans.Interfaces, namespaces preserved. Lane 5d deletes this project and the two
+    ProjectReferences that still name it (Humans.Web, Humans.Application.Tests).
 
-  <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
-    <Using Include="Microsoft.Extensions.Logging" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="HtmlSanitizer" />
-    <PackageReference Include="Markdig" />
-  </ItemGroup>
+    Everything this file used to declare went with the files it declared them for:
+      Microsoft.NET.Sdk.Razor + AddRazorSupportForMvc — now on Humans.Interfaces.
+      Using Microsoft.AspNetCore.{Http,Routing} and Microsoft.Extensions.Logging — same.
+      ProjectReference Humans.Application — measured dead before the move (phase4-recon §1.1)
+                                            and nothing that moved names an Application type.
+      PackageReference HtmlSanitizer + Markdig — left with Extensions/HtmlHelperExtensions.cs
+                                            at lane 4b-iii A, already on Humans.Interfaces.
+  -->
 
 </Project>

@@ -92,7 +92,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         // The page's own chrome, and the two cards that render regardless of data.
         html.Should().Contain("My Profile", "the page must render its own title");
         html.Should().Contain("sectionHelp-Profile",
-            "<vc:access-matrix section=\"Profile\" /> must bind through @addTagHelper *, Humans.UI " +
+            "<vc:access-matrix section=\"Profile\" /> must bind through @addTagHelper *, Humans.Interfaces " +
             "(nobodies-collective/Humans#1056) — an unbound <vc:> ships inert with a green build");
         html.Should().Contain("Profile Information", "the profile-card must render");
         html.Should().Contain("Quick Actions", "the quick-actions panel must render");

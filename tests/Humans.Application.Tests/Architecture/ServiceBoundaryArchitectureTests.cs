@@ -167,7 +167,8 @@ public class ServiceBoundaryArchitectureTests
     /// namespace, so neither half of the sweep above finds them.
     /// </summary>
     /// <remarks>
-    /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by <c>Humans.UI</c> and by ~48 files
+    /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by Base (<c>Humans.Interfaces</c>; the namers
+    /// arrived there from <c>Humans.UI</c> in G5 lanes 4b-iii A and B) and by ~48 files
     /// across Shell and twenty test projects, and Base cannot reference a section, so the nine
     /// Users/Profiles entities are public on <c>Humans.Users.Contracts</c>
     /// (nobodies-collective/Humans#866, G5 lane 2). Without this list the two

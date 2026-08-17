@@ -12,8 +12,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// The standing proof for the five shared partials G5 lane 4b-i moved out of
-/// <c>Humans.UI</c> into their owning sections (nobodies-collective/Humans#866).
+/// The standing proof for what G5 moved out of <c>Humans.UI</c>: lane 4b-i's five shared
+/// partials, which went up into their owning sections, and lane 4b-iii B's tag helpers and
+/// view components, which went down into <c>Humans.Interfaces</c>
+/// (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -102,6 +104,66 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
                  })
         {
             html.Should().NotContain(key, $"/WidgetGallery rendered the raw key {key}");
+        }
+    }
+
+    /// <summary>
+    /// The four Base widgets the gallery renders against real data still bind after lane
+    /// 4b-iii B changed the assembly that owns them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The tag helpers and view components moved from <c>Humans.UI</c> to
+    /// <c>Humans.Interfaces</c> with their namespaces untouched, so every <c>@using</c> and every
+    /// C# reference in the repo is unchanged and the compiler has nothing to say. Only
+    /// <c>@addTagHelper *, X</c> names an assembly, and only Razor reads it — miss one of the 48
+    /// and the element ships as inert literal markup on a green 200, which the browser then
+    /// drops without a trace.
+    /// </para>
+    /// <para>
+    /// So every assertion here is on a marker the widget can only have produced by running:
+    /// an attribute pair only <c>Views/Shared/Components/Human/Default.cshtml</c> writes, ids
+    /// derived from the gallery's own <c>instance-key</c> and <c>name</c>, and — for the
+    /// attribute-targeted <c>authorize-policy</c> helper, which emits no markup of its own — the
+    /// suppression it exists to perform. Unbound, the bogus-policy span renders like any other
+    /// span carrying an unknown attribute, so its absence is the proof.
+    /// </para>
+    /// <para>
+    /// <c>&lt;vc:access-matrix&gt;</c> is not asserted here: the gallery passes
+    /// <c>section="teams"</c> while <c>AccessMatrixDefinitions.Sections</c> is keyed
+    /// <c>"Teams"</c> under <c>StringComparer.Ordinal</c>, so that card has always rendered
+    /// empty. Its binding is covered by the Camps, Teams, Users, Onboarding and Governance page
+    /// render tests, which pass the registry's own casing.
+    /// </para>
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_base_tag_helpers_and_view_components_bind_and_render_on_the_gallery()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/WidgetGallery", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain($"data-human-popover=\"true\" data-user-id=\"{userId}\"",
+            because: "<vc:human> resolved the signed-in human and its Default.cshtml wrote the "
+                   + "popover attributes — nothing else in the tree emits that pair");
+        html.Should().Contain("human-search-dropdown-widget-gallery-demo",
+            because: "<vc:human-search> derived its dropdown id from the gallery's instance-key");
+        html.Should().Contain("widget-gallery-markdown-mde-",
+            because: "<markdown-editor> rewrote the element into a textarea with a per-request "
+                   + "unique id; the raw tag has no id at all");
+        html.Should().Contain("AdminOnly element rendered.",
+            because: "the authorize-policy tag helper let the AdminOnly span through for an admin");
+        html.Should().NotContain("Bogus policy",
+            because: "an unknown policy must fail closed — unbound, the helper suppresses nothing "
+                   + "and the span renders like any element with an unrecognised attribute");
+
+        foreach (var literal in new[] { "<vc:human", "<vc:temp-data-alerts", "<markdown-editor" })
+        {
+            html.Should().NotContain(literal,
+                $"GET /WidgetGallery shipped {literal} as literal markup instead of binding it");
         }
     }
 

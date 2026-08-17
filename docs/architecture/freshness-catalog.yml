@@ -337,3 +337,7 @@ ignore:
   # design records (historical, same genre as docs/superpowers/specs/).
   - src/Sections/*/Docs/20*.md
   - src/Sections/*/Contracts/README.md
+  # Section-doctor machine-owned files: scorecards + plan/log/report. The doctor run
+  # maintains them itself (docs/superpowers/specs/2026-08-17-section-doctor-design.md).
+  - src/Sections/*/Docs/health.md
+  - docs/health/**
