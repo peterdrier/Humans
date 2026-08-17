@@ -34,7 +34,6 @@
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

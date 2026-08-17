@@ -28,16 +28,15 @@ public class MonitorArchitectureTests
         // the whole justification for the section, and it is meant to stay short: every name
         // added here is a section Monitor now couples to.
         //
-        // Its own outward surface is Humans.Monitor.Contracts — one interface, one method,
-        // consumed by DriveActivityMonitorJob, which moved into this project's Contracts/
-        // folder at the G5 jobs move (nobodies-collective/Humans#866).
+        // Its own outward surface is IDriveActivityMonitorService in Contracts/, consumed by
+        // DriveActivityMonitorJob beside it — both folded into this project during the G5
+        // jobs move and the Contracts-leaf fold-back (nobodies-collective/Humans#866).
         var sectionRefs = SectionAssembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
             .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
             .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.Analyzers"
-                                 or "Humans.Monitor.Contracts"))
+                                 or "Humans.Infrastructure" or "Humans.Analyzers"))
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
 
