@@ -47,15 +47,27 @@ jobs:
               # finish startup (migrations/DI/JIT) before load hits it, and catches an
               # immediate superseding redeploy before we burn a full run testing a
               # target that's already stale.
-              sleep 10
-              RECHECK=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
-              if [ "$RECHECK" = "$SHORT_SHA" ] || [ "$RECHECK" = "$FULL_SHA" ]; then
-                echo "Deploy confirmed stable after ~$((i * 5 + 10))s"
-                echo "found=true" >> "$GITHUB_OUTPUT"
+              for j in 1 2 3; do
+                sleep 10
+                RECHECK=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
+                if [ "$RECHECK" = "$SHORT_SHA" ] || [ "$RECHECK" = "$FULL_SHA" ]; then
+                  echo "Deploy confirmed stable after ~$((i * 5 + j * 10))s"
+                  echo "found=true" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
+                if [ -z "$RECHECK" ]; then
+                  # A transient curl/HTTP failure on the probe itself, not a real
+                  # supersession — retry rather than treating empty as "different
+                  # commit" and skipping every Playwright test on a network blip.
+                  echo "Settle recheck $j: /api/version unreachable — retrying"
+                  continue
+                fi
+                echo "Superseded by $RECHECK during the settle pause — a newer push landed and gets its own run; skipping"
+                echo "found=false" >> "$GITHUB_OUTPUT"
                 exit 0
-              fi
-              echo "Superseded by $RECHECK during the settle pause — a newer push landed and gets its own run; skipping"
-              echo "found=false" >> "$GITHUB_OUTPUT"
+              done
+              echo "Settle recheck kept failing to reach /api/version but never saw a different commit — proceeding anyway"
+              echo "found=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
