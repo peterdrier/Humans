@@ -22,7 +22,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <item><description>
 /// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. Guide's one
 /// tag-helper dependency is <c>Humans.UI</c>'s <c>AuthorizeViewTagHelper</c> on the refresh
-/// form; without <c>@@addTagHelper *, Humans.UI</c> the build stays green, the attribute
+/// form; without <c>@@addTagHelper *, Humans.Interfaces</c> the build stays green, the attribute
 /// survives into the response as literal <c>authorize-policy="AdminOnly"</c>, and the form is
 /// rendered <em>to everyone</em>. Asserting the attribute is absent is the only thing that
 /// catches it.

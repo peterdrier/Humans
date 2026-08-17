@@ -108,7 +108,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
             because: "Camp_Index_BarrioGuide resolves through IStringLocalizer<CampsResource>");
         html.Should().Contain("Filter",
             because: "Camp_Index_FilterButton is on the section's own filter bar");
-        // <vc:access-matrix> binds through @addTagHelper *, Humans.UI since the component
+        // <vc:access-matrix> binds through @addTagHelper *, Humans.Interfaces since the component
         // moved out of Shell (nobodies-collective/Humans#1056). An unbound <vc:> ships as
         // inert literal markup with a green build, so assert the emitted modal id, not just
         // the absence of "<vc:" above.

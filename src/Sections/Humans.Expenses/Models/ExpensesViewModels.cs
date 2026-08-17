@@ -160,6 +160,17 @@ internal sealed class ApproveInputModel
 {
     /// <summary>Optional category override applied at approval time.</summary>
     public Guid? OverrideCategoryId { get; set; }
+
+    /// <summary>Optional payout cap; overrides whatever the coordinator authorized at endorsement.</summary>
+    [Range(0.01, 1_000_000)]
+    public decimal? MaxAmount { get; set; }
+}
+
+internal sealed class EndorseInputModel
+{
+    /// <summary>Optional payout cap authorized by the coordinator.</summary>
+    [Range(0.01, 1_000_000)]
+    public decimal? MaxAmount { get; set; }
 }
 
 internal sealed class FinanceRejectInputModel

@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/**
-  src/Sections/Humans.Monitor.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Monitor's reference set is its whole reason to exist — review MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes when any ProjectReference is added.
@@ -70,9 +69,10 @@ registration moves into the section, policy registration does not).
   Base-resident and arrives via `Humans.Application`). Every name added there is a section
   Monitor now couples to.
 - **Nothing depends on Monitor except Shell naming the job.** Its whole outward surface is
-  `Humans.Monitor.Contracts` — `IDriveActivityMonitorService`, one method, returning `int` —
-  consumed by `DriveActivityMonitorJob`, which lives in `Contracts/` inside this project since
-  the G5 jobs move (nobodies-collective/Humans#866). It is `public` there because Shell names
+  `IDriveActivityMonitorService` in `Contracts/` — one method, returning `int` — consumed by
+  `DriveActivityMonitorJob` beside it, home since the G5 jobs move
+  (nobodies-collective/Humans#866); the `Humans.Monitor.Contracts` leaf folded back in once
+  that job left Base. It is `public` there because Shell names
   the concrete type in `AddScoped` and in the recurring roll-call — there is still no
   `ISection`-style discovery seam for recurring jobs (template step 6b) — and HUM0034 allows a
   section's public types only under `Contracts/`.
@@ -108,5 +108,5 @@ registration moves into the section, policy registration does not).
 
 ## Architecture status
 
-At G5: own project (`src/Sections/Humans.Monitor`) with a `.Contracts` leaf. Table-less, so no
-G4 gate applies. `Section.Register` has one line.
+At G5: own project (`src/Sections/Humans.Monitor`); its former `.Contracts` leaf folded into
+the project's `Contracts/` folder. Table-less, so no G4 gate applies. `Section.Register` has one line.

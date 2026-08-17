@@ -24,7 +24,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// component is not visible from the section renders as inert literal markup rather than
 /// throwing — <c>&lt;vc:access-matrix&gt;</c> is back on the tag-helper form since the
 /// component moved to <c>Humans.UI</c> (nobodies-collective/Humans#1056), and it binds
-/// through the section's <c>@@addTagHelper *, Humans.UI</c>. Note it renders <b>empty</b> on
+/// through the section's <c>@@addTagHelper *, Humans.Interfaces</c>. Note it renders <b>empty</b> on
 /// <c>/Google</c>: neither <c>AccessMatrixDefinitions.Sections</c> nor <c>SectionHelpContent</c>
 /// has a "Google" key, a content gap tracked separately — so there is no modal id to assert
 /// here, only the absence of literal markup. A key the resx carve missed renders as its own

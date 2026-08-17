@@ -30,6 +30,14 @@ else
         @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
     Func<ExpenseReportDto, IHtmlContent> submittedAtCell =
         @<text>@(item.SubmittedAt.HasValue ? item.SubmittedAt.Value.ToDate() : "")</text>;
+    @* Capped reports pay the cap, not the receipts total — show both so the difference is visible. *@
+    Func<ExpenseReportDto, IHtmlContent> payableCell = @<text>
+        @item.Payable.ToEuro()
+        @if (item.Payable < item.Total)
+        {
+            <span class="text-muted small ms-1"><s>@item.Total.ToEuro()</s></span>
+        }
+    </text>;
     Func<ExpenseReportDto, IHtmlContent> actionsCell = @<text>
         <div class="d-flex gap-2 justify-content-end">
             <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
@@ -37,8 +45,13 @@ else
             </a>
             @if (item.Status == ExpenseReportStatus.Submitted)
             {
-                <form asp-action="Endorse" asp-route-id="@item.Id" method="post" class="d-inline">
+                <form asp-action="Endorse" asp-route-id="@item.Id" method="post" class="d-flex gap-1">
                     @Html.AntiForgeryToken()
+                    <input type="number" name="MaxAmount" class="form-control form-control-sm"
+                           style="max-width:110px;" step="0.01" min="0.01"
+                           value="@(item.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                           placeholder="@Localizer["Expenses_MaxAmount"].Value"
+                           aria-label="@Localizer["Expenses_MaxAmount"].Value" />
                     <button type="submit" class="btn btn-sm btn-success"
                             data-confirm="@Localizer["Expenses_EndorseConfirm"].Value">
                         <i class="fa-solid fa-check me-1"></i>@Localizer["Expenses_Endorse"]
@@ -55,7 +68,8 @@ else
     var table = TableModel.For(Model.Reports)
         .Template(Localizer["Expenses_ColReport"].Value, reportCell)
         .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
-        .Column(SharedLocalizer["Common_Total"].Value, r => r.Total, c => c.Currency().End())
+        .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 60 } n ? n[..60] + "…" : r.Note)
+        .Template(SharedLocalizer["Common_Total"].Value, payableCell, c => c.End())
         .Column(SharedLocalizer["Common_Status"].Value, r => r.Status, c => c.EnumBadge())
         .Template(Localizer["Expenses_ColSubmitted"].Value, submittedAtCell)
         .Template(SharedLocalizer["Common_Actions"].Value, actionsCell, c => c.NoSort().End())

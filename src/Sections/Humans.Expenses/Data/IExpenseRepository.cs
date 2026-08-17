@@ -55,17 +55,20 @@ internal interface IExpenseRepository : IRepository
     Task<bool> WithdrawAsync(
         Guid reportId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> sets the authorized cap; null leaves it as it is.</summary>
     Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid actorUserId,
+        Guid reportId, Guid actorUserId, decimal? maxAmount,
         NodaTime.Instant endorsedAt, CancellationToken ct = default);
 
     Task<bool> CoordinatorRejectAsync(
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap set at endorsement; null leaves it as it is.</summary>
     Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId,
         Guid? overrideCategoryId,
+        decimal? maxAmount,
         NodaTime.Instant approvedAt,
         Guid outboxEventId,
         CancellationToken ct = default);

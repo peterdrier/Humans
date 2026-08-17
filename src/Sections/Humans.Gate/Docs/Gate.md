@@ -230,10 +230,9 @@ nobodies-collective/Humans#933.)
 **Project:** `src/Sections/Humans.Gate` — its own assembly since nobodies-collective/Humans#866
 (G5). Everything in it is `internal` except `Section`; there is no `GateResource` because the
 kiosk carries no resource keys (every string is inline English by design — a staff-facing,
-single-locale terminal). `Humans.Gate.Contracts` is a separate leaf project holding one
-interface, `IGateScanRetention`. It was carved out because its consumer `GateRetentionJob` was
-in Base; that job came home at G5 lane 5b-3, so the leaf now has no consumer outside
-`Humans.Gate` and is a candidate for folding into `Contracts/` and deleting.
+single-locale terminal). `IGateScanRetention` lives in the project's `Contracts/` folder; the
+`Humans.Gate.Contracts` leaf it once occupied was carved out for `GateRetentionJob` in Base,
+and was deleted after that job came home at G5 lane 5b-3.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor` and `IGateScanRetention`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.

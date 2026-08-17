@@ -21,7 +21,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. Tickets is
 /// the first section to ship a <c>&lt;vc:&gt;</c> component of its <em>own</em> (the ticket
 /// stub, public under <c>Contracts/</c>), alongside <c>&lt;vc:access-matrix&gt;</c> bound
-/// through <c>@@addTagHelper *, Humans.UI</c> and <c>HumanSummary</c>, still Shell's and
+/// through <c>@@addTagHelper *, Humans.Interfaces</c> and <c>HumanSummary</c>, still Shell's and
 /// invoked by name — the latter <b>throws</b> when it fails to resolve rather than degrading.
 /// </description></item>
 /// <item><description>
@@ -99,7 +99,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     {
         // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
         // so the call site is <vc:access-matrix section="Tickets" /> bound through
-        // @addTagHelper *, Humans.UI. An unbound <vc:> ships as inert literal markup with a
+        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships as inert literal markup with a
         // green build and no log line, so the emitted modal id is the proof — not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

@@ -13,7 +13,6 @@
     -->
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />

@@ -148,6 +148,9 @@ namespace Humans.Expenses.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<decimal?>("MaxAmount")
+                        .HasColumnType("decimal(12,2)");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");

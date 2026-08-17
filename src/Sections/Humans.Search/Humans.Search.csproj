@@ -32,7 +32,6 @@
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
   </ItemGroup>

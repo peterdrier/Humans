@@ -62,7 +62,7 @@ public class DashboardService(
         var (termExpiresAt, termExpiresSoon, termExpired) =
             ComputeTermState(applications, currentTier);
 
-        // Shift cards (urgent shifts + confirmed signups) â€” guarded, failures never crash the dashboard.
+        // Shift cards (urgent shifts + confirmed signups) — guarded, failures never crash the dashboard.
         BurnSettingsInfo? activeEvent = null;
         try
         {
@@ -170,7 +170,7 @@ public class DashboardService(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw; // request aborted â€” let it abort, don't log as an error
+            throw; // request aborted — let it abort, don't log as an error
         }
         catch (Exception ex)
         {
@@ -190,7 +190,7 @@ public class DashboardService(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw; // request aborted â€” let it abort, don't log as an error
+            throw; // request aborted — let it abort, don't log as an error
         }
         catch (OperationCanceledException ex)
         {
