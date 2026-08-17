@@ -4,7 +4,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Budget.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Gate.Contracts;
@@ -69,7 +68,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
         services.AddScoped<TicketSyncJob>();
-        services.AddScoped<TicketingBudgetSyncJob>();
+        // TicketingBudgetSyncJob is registered by Humans.Budget's own Section.Register instead
+        // (Peter's ruling 43 made ITicketingBudgetService internal, so only that assembly can
+        // build the job's now-internal constructor).
         services.AddScoped<CleanupIssuesJob>();
         // Added at G5 lane 5b-1: "notifications-cleanup" is in UseHumansRecurringJobs' roll-call
         // but CleanupNotificationsJob had no DI registration anywhere, so Hangfire's

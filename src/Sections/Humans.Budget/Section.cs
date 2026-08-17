@@ -8,6 +8,7 @@ using Humans.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Budget;
 
@@ -18,10 +19,10 @@ namespace Humans.Budget;
 /// <remarks>
 /// <c>TicketingBudgetSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5
 /// lane 5b-3 (nobodies-collective/Humans#866) — the plan had guessed Tickets, but both its
-/// collaborators are Budget's and the rows it writes are budget line items. It is still
-/// <em>not</em> registered here: recurring jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and there is no discovery seam for them yet, so
-/// the registration stays in Shell (design §15.6b).
+/// collaborators are Budget's and the rows it writes are budget line items. Hangfire scheduling
+/// (<c>Add&lt;TicketingBudgetSyncJob&gt;</c>) still lives in Shell's <c>UseHumansRecurringJobs</c>
+/// roll-call, but the DI registration moved here (Peter's ruling 43): the job's constructor went
+/// <c>internal</c> once <see cref="ITicketingBudgetService"/> did, so only this assembly can build it.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -39,6 +40,12 @@ public sealed class Section : ISection
 
         services.AddScoped<TicketingBudgetService>();
         services.AddScoped<ITicketingBudgetService>(sp => sp.GetRequiredService<TicketingBudgetService>());
+        // Factory registration, not plain AddScoped<T>: the job's constructor is internal, so
+        // only this assembly can call it — DI's reflection-based activation only sees public ones.
+        services.AddScoped(sp => new TicketingBudgetSyncJob(
+            sp.GetRequiredService<ITicketingBudgetService>(),
+            sp.GetRequiredService<IBudgetServiceRead>(),
+            sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
 
         // Shell's /dev/seed/budget action drives this through the contracts leaf rather than
         // resolving the concrete seeder, which is what keeps Budget's fifteen write methods
