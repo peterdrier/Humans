@@ -14,7 +14,7 @@ setup('authenticate all personas', async ({ browser, baseURL }) => {
     // Try each persona up to twice. QA cold-start or SeedLock contention on the
     // first persona can push the response past the waitForSelector ceiling; a 5 s
     // pause then a second attempt recovers without forcing Playwright to retry all
-    // 19 personas from scratch (baseURL isn't applied to ad-hoc contexts — only
+    // every persona from scratch (baseURL isn't applied to ad-hoc contexts — only
     // test page/context fixtures get use.* options — so pass it through here).
     let lastError: Error | null = null;
     for (let attempt = 0; attempt <= 1; attempt++) {

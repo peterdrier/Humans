@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/**
   src/Sections/Humans.Holded.Contracts/**
-  src/Sections/Humans.Expenses/Contracts/HoldedExpenseOutboxJob.cs
+  src/Sections/Humans.Expenses/Jobs/HoldedExpenseOutboxJob.cs
 -->
 
 # Holded (section) — Section Invariants

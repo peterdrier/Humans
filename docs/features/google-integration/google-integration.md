@@ -9,9 +9,9 @@
   src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleResourceConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/GoogleResourceReconciliationJob.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/GoogleResourceProvisionJob.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/ProcessGoogleSyncOutboxJob.cs
+  src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
+  src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceProvisionJob.cs
+  src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
   src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml

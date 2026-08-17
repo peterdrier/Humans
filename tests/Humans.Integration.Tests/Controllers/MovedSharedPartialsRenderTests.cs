@@ -129,11 +129,11 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
     /// span carrying an unknown attribute, so its absence is the proof.
     /// </para>
     /// <para>
-    /// <c>&lt;vc:access-matrix&gt;</c> is not asserted here: the gallery passes
-    /// <c>section="teams"</c> while <c>AccessMatrixDefinitions.Sections</c> is keyed
-    /// <c>"Teams"</c> under <c>StringComparer.Ordinal</c>, so that card has always rendered
-    /// empty. Its binding is covered by the Camps, Teams, Users, Onboarding and Governance page
-    /// render tests, which pass the registry's own casing.
+    /// <c>&lt;vc:access-matrix section="Teams"&gt;</c> is asserted here too: the gallery used
+    /// to pass <c>section="teams"</c> while <c>AccessMatrixDefinitions.Sections</c> is keyed
+    /// <c>"Teams"</c> under <c>StringComparer.Ordinal</c>, so that card rendered empty. Fixed
+    /// by correcting the gallery's literal to match the registry's own casing, same as every
+    /// other call site.
     /// </para>
     /// </remarks>
     [HumansFact(Timeout = 120000)]
@@ -159,6 +159,9 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         html.Should().NotContain("Bogus policy",
             because: "an unknown policy must fail closed — unbound, the helper suppresses nothing "
                    + "and the span renders like any element with an unrecognised attribute");
+        html.Should().Contain("Google resource sync",
+            because: "<vc:access-matrix section=\"Teams\"> resolved against "
+                   + "AccessMatrixDefinitions.Sections and rendered the Teams-only feature row");
 
         foreach (var literal in new[] { "<vc:human", "<vc:temp-data-alerts", "<markdown-editor" })
         {

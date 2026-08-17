@@ -6,7 +6,7 @@
   src/Humans.Web/Views/Profile/**
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
-  src/Sections/Humans.Users/Contracts/ProcessAccountDeletionsJob.cs
+  src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
 -->
 <!-- freshness:flag-on-change
   Profile fields, edit page sections, visibility matrix, and GDPR export/deletion workflow — review when Profile entity, ProfileService, or ProfileController change.

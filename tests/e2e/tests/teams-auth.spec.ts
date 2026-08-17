@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test';
 import {
   loginAsCoordinator,
   loginAsTeamsAdmin,
-  loginAsAdmin,
   loginAsBoard,
   loginAsVolunteer,
   expectBlocked,
@@ -91,17 +90,11 @@ test.describe('Teams Auth — Coordinator POST cases (#341)', () => {
   });
 });
 
-test.describe('Teams Auth — TeamsAdmin and Admin positive cases (#341)', () => {
+// The third branch of TeamsAdminBoardOrAdmin — Admin — has no E2E persona since
+// nobodies-collective/Humans#1332; TeamsAdmin and Board below cover the policy.
+test.describe('Teams Auth — TeamsAdmin and Board positive cases (#341)', () => {
   test('TeamsAdmin can access Members page for any team', async ({ page }) => {
     await loginAsTeamsAdmin(page);
-    await page.goto(`/Teams/${DEPT_SLUG}/Members`);
-
-    expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
-    await expect(page.locator('h1, h2').first()).toBeVisible();
-  });
-
-  test('Admin can access Members page for any team', async ({ page }) => {
-    await loginAsAdmin(page);
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
@@ -158,8 +151,8 @@ test.describe('Teams Auth — Management UI verification (#341)', () => {
    * trigger audit-logged service methods. Direct audit log verification is
    * deferred — there is no public API endpoint or UI for non-admin audit access.
    */
-  test('admin Members page shows management controls that trigger audited actions', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('teams-admin Members page shows management controls that trigger audited actions', async ({ page }) => {
+    await loginAsTeamsAdmin(page);
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     // The Members page should load successfully with management capabilities

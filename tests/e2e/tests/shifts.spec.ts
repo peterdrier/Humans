@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsAdmin, expectBlocked } from '../helpers/auth';
+import { loginAsVolunteer, expectBlocked } from '../helpers/auth';
 
 test.describe('Shifts (25-shift-management)', () => {
   test('US-25.3: browse shifts page loads', async ({ page }) => {
@@ -27,14 +27,8 @@ test.describe('Shifts (25-shift-management)', () => {
     await expect(mineTab).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('US-25.1: shift settings page loads for admin', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Shifts/Settings');
-
-    await expect(page.locator('h1, h2').first()).toBeVisible();
-    expect(page.url()).toContain('/Settings');
-  });
-
+  // US-25.1's positive case (/Shifts/Settings, AdminOnly) has no E2E persona since
+  // #1332 — ShiftsPageRenderTests renders it as Admin in-process. The boundary stays.
   test('boundary: volunteer cannot access /Shifts/Settings', async ({ page }) => {
     await loginAsVolunteer(page);
     await expectBlocked(page, '/Shifts/Settings');

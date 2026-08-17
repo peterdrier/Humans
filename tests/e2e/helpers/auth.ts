@@ -5,8 +5,13 @@ import path from 'path';
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
 
 // Single source of truth: every reusable persona slug (= /dev/login/{slug} segment).
+//
+// No 'admin': nobodies-collective/Humans#1332 makes GET /dev/login/admin a 404 on any host
+// that isn't Development or the in-process Testing host, so the E2E suite — which runs
+// against QA (Staging) — can never mint a full-Admin session. AdminOnly routes are covered
+// in-process instead, by tests/Humans.Integration.Tests (DevPersona.Admin).
 export const PERSONAS = [
-  'volunteer', 'admin', 'board', 'consent-coordinator', 'teams-admin',
+  'volunteer', 'board', 'consent-coordinator', 'teams-admin',
   'camp-admin', 'ticket-admin', 'no-info-admin', 'volunteer-coordinator',
   'human-admin', 'finance-admin', 'feedback-admin', 'city-planning',
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
@@ -74,7 +79,6 @@ async function loginAs(page: Page, slug: string): Promise<void> {
 }
 
 export const loginAsVolunteer = (page: Page) => loginAs(page, 'volunteer');
-export const loginAsAdmin = (page: Page) => loginAs(page, 'admin');
 export const loginAsBoard = (page: Page) => loginAs(page, 'board');
 export const loginAsConsentCoordinator = (page: Page) => loginAs(page, 'consent-coordinator');
 export const loginAsTeamsAdmin = (page: Page) => loginAs(page, 'teams-admin');

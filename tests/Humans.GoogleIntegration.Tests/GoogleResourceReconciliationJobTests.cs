@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Jobs;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

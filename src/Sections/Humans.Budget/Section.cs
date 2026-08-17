@@ -3,6 +3,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Budget.Authorization;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
+using Humans.Budget.Jobs;
 using Humans.Budget.Services;
 using Humans.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Authorization;
@@ -17,7 +18,7 @@ namespace Humans.Budget;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketingBudgetSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5
+/// <c>TicketingBudgetSyncJob</c> lives in this project's <c>Jobs/</c> folder since G5
 /// lane 5b-3 (nobodies-collective/Humans#866) — the plan had guessed Tickets, but both its
 /// collaborators are Budget's and the rows it writes are budget line items. Hangfire scheduling
 /// (<c>Add&lt;TicketingBudgetSyncJob&gt;</c>) still lives in Shell's <c>UseHumansRecurringJobs</c>
