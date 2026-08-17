@@ -293,6 +293,9 @@ inbox:
   - added: 2026-08-05
     what: "GoogleResourceProvisionJob (src/Sections/Humans.GoogleIntegration/Contracts/GoogleResourceProvisionJob.cs, moved there from src/Humans.Infrastructure/Jobs at the G5 jobs move and still undecided) has no enqueue site anywhere in src — no BackgroundJob.Enqueue, no RecurringJob.AddOrUpdate, no reference outside its own declaration. It calls IGoogleSyncService.ProvisionTeamFolderAsync (a Drive write), so it is not inert if something ever schedules it. Decide whether team-folder provisioning is meant to run through it or through the Google sync outbox, then wire it or delete it (found while auditing nobodies-collective/Humans#950)"
     review: panel
+  - added: 2026-08-17
+    what: "36 files still declare namespace Humans.Infrastructure.* after src/Humans.Infrastructure was deleted at G5 lane 5b-6 — 20 in Humans.Interfaces (Configuration/GuideSettings.cs, EmailSettings.cs, CommunityKbSettings.cs, GoogleWorkspaceSettings.cs, Services/GitHubGuideContentSource.cs, …) and 16 in Humans.Web. Consumers write `using Humans.Infrastructure.Configuration;` to reach a type in Humans.Interfaces, so the namespace actively misdirects anyone tracing a dependency, and every doc naming a src/Humans.Infrastructure/** path is a dead glob until someone checks. Mechanical rename, but it touches every consuming file, so it wants its own PR (found by /section-doctor on Guide; Guide's own dead trigger globs were repaired in that run)"
+    review: light
   - added: 2026-08-05
     what: "GitHubGuideContentSource.GetMarkdownAsync / ListMarkdownStemsAsync accept a CancellationToken they never forward — Octokit's GetRawContentByRef / GetAllContentsByRef expose no CT overload. Read-only so harmless, but the signature promises something it cannot deliver (found while auditing nobodies-collective/Humans#950)"
     review: light
