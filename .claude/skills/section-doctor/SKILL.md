@@ -44,9 +44,12 @@ Glob/Grep to `$WORKTREE`.
 so the newest plan/log/queue may exist only on that PR branch, not on `origin/main`. Discover:
 
 ```bash
-gh pr list --repo peterdrier/Humans --state open --json number,headRefName,title \
+gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName,title \
   --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
 ```
+
+(`--limit` is mandatory here — `gh pr list` fetches only 30 by default and the prefix filter runs
+client-side in `--jq`, so an older open run silently drops out of the result without it.)
 
 (`--search "head:..."` matches exact branch names, not prefixes — don't use it.) If an open run
 branch exists, fetch it and read `docs/health/*` from its tip; else read `origin/main`'s copy.
@@ -81,12 +84,18 @@ Take today's section (or `--section`). Sections are `src/Sections/` projects onl
 
 **Never work a section in the blocked set.** A section with an open section-doctor PR has
 unmerged strikes that today's run cannot see — re-doctoring it duplicates work and produces
-conflicting PRs. Walk the plan top-down and take the first unblocked row; log the skipped
-row in `docs/health/log.md` (`skipped — open PR #N`) and leave its plan row unticked so it
-comes back around. If every planned section is blocked, do no strike work: stop here, report
-that all planned sections have open PRs (list them), and exit before Phase 3. A `--section`
-naming a blocked section stops the same way — merge the open PR first, or use `resume` to
-work its Needs-Peter queue.
+conflicting PRs.
+
+Selection runs over **unticked rows only** — a ticked row is a completed run and is never
+re-taken, blocked or not (its section is unblocked the moment its PR merges, which is exactly
+when it must *stop* being a candidate). Start at today's row; if it is ticked or blocked, walk
+forward to the next unticked, unblocked row. Log each row skipped for blocking in
+`docs/health/log.md` (`skipped — open PR #N`) and leave it unticked so it comes back around.
+
+If every unticked row is blocked, do no strike work: stop here, report that all pending sections
+have open PRs (list them), and exit before Phase 3. If the plan has no unticked rows left it is
+exhausted — replan (above) rather than reaching backwards. A `--section` naming a blocked section
+stops the same way — merge the open PR first, or use `resume` to work its Needs-Peter queue.
 
 ## Phase 3: Deep assessment
 
@@ -209,7 +218,7 @@ or strike work.
 1. **Open runs:** discover by branch-name prefix — `--search "head:..."` matches exact names,
    not prefixes:
    ```bash
-   gh pr list --repo peterdrier/Humans --state open --json number,headRefName \
+   gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName \
      --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
    ```
    Each PR body's `## Needs Peter` block (authoritative for unmerged runs; their plan.md
