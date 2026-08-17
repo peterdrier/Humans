@@ -79,22 +79,33 @@ allowed, but only pay off once the prior day's PR has merged — an unmerged run
 `origin/main` and cannot see yesterday's strikes. The plan is advisory — today's findings may
 extend a section's stay.
 
-Take today's section (or `--section`). Sections are `src/Sections/` projects only.
+Take a section from the plan (or `--section`). Sections are `src/Sections/` projects only.
 
 **Never work a section in the blocked set.** A section with an open section-doctor PR has
 unmerged strikes that today's run cannot see — re-doctoring it duplicates work and produces
 conflicting PRs.
 
-Selection runs over **unticked rows only** — a ticked row is a completed run and is never
-re-taken, blocked or not (its section is unblocked the moment its PR merges, which is exactly
-when it must *stop* being a candidate). Start at today's row; if it is ticked or blocked, walk
-forward to the next unticked, unblocked row. Log each row skipped for blocking in
-`docs/health/log.md` (`skipped — open PR #N`) and leave it unticked so it comes back around.
+Selection is one rule: **the earliest-dated unticked, unblocked row wins.** Ticked rows are
+completed runs and are never re-taken, blocked or not (a merge unblocks the section at exactly
+the moment it must stop being a candidate). Scanning by date rather than from today means an
+overdue row — one skipped on its own day for blocking, whose PR has since merged — is picked up
+first, which is what an overdue row deserves; a future-dated row is only reached when everything
+earlier is ticked or blocked, and pulling it forward beats idling.
 
-If every unticked row is blocked, do no strike work: stop here, report that all pending sections
-have open PRs (list them), and exit before Phase 3. If the plan has no unticked rows left it is
-exhausted — replan (above) rather than reaching backwards. A `--section` naming a blocked section
-stops the same way — merge the open PR first, or use `resume` to work its Needs-Peter queue.
+Two terminal cases, both before Phase 3 and neither doing strike work:
+
+- **No unticked rows** — the plan is exhausted; replan (above) and select again.
+- **Every unticked row blocked** — report that all pending sections have open PRs (list them),
+  then go straight to Phase 9 teardown. Write nothing: no `log.md` row, no commit, no PR. The
+  open PRs are already the record, an empty run is not worth a PR, and a half-written worktree
+  left behind is worse than no record at all.
+
+Rows skipped for blocking on a run that *does* proceed are recorded the normal way — a
+`skipped — open PR #N` line in Phase 5's `docs/health/log.md` update, committed with the rest of
+that run's bookkeeping — and left unticked so the date scan returns to them.
+
+A `--section` naming a blocked section stops like the all-blocked case — merge the open PR first,
+or use `resume` to work its Needs-Peter queue.
 
 ## Phase 3: Deep assessment
 
