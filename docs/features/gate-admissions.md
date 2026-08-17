@@ -1,7 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gate/**
-  src/Humans.Infrastructure/Jobs/GateRetentionJob.cs
-  src/Humans.Infrastructure/Jobs/GateVendorCheckInJob.cs
 -->
 <!-- freshness:flag-on-change
   Historical design draft for the Gate section — src/Sections/Humans.Gate/Docs/Gate.md is the authoritative

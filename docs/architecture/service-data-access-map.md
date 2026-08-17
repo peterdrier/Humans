@@ -1863,9 +1863,10 @@ Listed here because it is the Tickets→Budget bridge, but the service now
 lives in the **Budget** section project (`src/Sections/Humans.Budget/Services/`,
 `internal` per HUM0034); its contract is the single-member
 `Humans.Budget.Contracts.ITicketingBudgetService`, driven by
-`TicketingBudgetSyncJob`, which stays in `Humans.Infrastructure/Jobs`
-because recurring jobs are named by concrete type in Shell's roll-call
-(design §15.6b).
+`TicketingBudgetSyncJob` — which moved into `Humans.Budget/Contracts/` at
+G5 lane 5b-3 (nobodies-collective/Humans#866), so the contract is now
+section-internal in fact. Only the *registration* is still in Shell:
+recurring jobs are named by concrete type in the roll-call (design §15.6b).
 
 No repository. Reads paid ticket sales through
 `ITicketServiceRead.GetTicketOrdersAsync` (the cached read surface) and
@@ -1913,8 +1914,9 @@ vendor port, `src/Sections/Humans.Tickets/Contracts/`) — same
 shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
 `ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
-leaf rather than the raw vendor port. `GateVendorCheckInJob` (Infrastructure)
-is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
+leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`
+since G5 lane 5b-3) is the other consumer, via `ITicketVendorMirror`. No DB
+access, no cache.
 Missing from every prior sweep of this doc; found by coverage-verify audit
 (2026-08-13).
 
@@ -1992,7 +1994,7 @@ TicketTailor check-in, #1083). `GateTerminalAccountSeeder` provisions the
 shared kiosk account and fires `InvalidateUserAccess` (claims / shift-auth /
 active-teams eviction).
 
-### Background jobs (Infrastructure)
+### Background jobs (`Humans.Gate/Contracts/` since G5 lane 5b-3)
 
 `GateRetentionJob` (daily purge of scan rows past retention, via
 `IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)

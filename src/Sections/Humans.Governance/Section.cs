@@ -20,6 +20,12 @@ namespace Humans.Governance;
 /// handful of Board-driven writes a week the service reads through the repository per request
 /// and invalidates the nav / notification-meter / voting badge caches inline after a write.
 /// </summary>
+/// <remarks>
+/// <c>TermRenewalReminderJob</c> moved into this project's <c>Contracts/</c> folder at G5
+/// lane 5b-4 (nobodies-collective/Humans#866) but is still <em>registered</em> from Shell's
+/// <c>InfrastructureServiceCollectionExtensions</c>: there is no <c>ISection</c>-style
+/// discovery seam for jobs (design §15 step 6b).
+/// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)

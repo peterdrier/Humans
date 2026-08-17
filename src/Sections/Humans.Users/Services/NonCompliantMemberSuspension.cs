@@ -21,9 +21,9 @@ namespace Humans.Users.Services;
 /// grace period has expired, and runs each suspension's downstream side effects.
 /// </summary>
 /// <remarks>
-/// The body of <c>Humans.Infrastructure.Jobs.SuspendNonCompliantMembersJob</c>,
-/// carved into the section at G5 lane 4b-2d (see
-/// <see cref="INonCompliantMemberSuspension"/> for why the job class stayed put).
+/// The body of <c>SuspendNonCompliantMembersJob</c>, carved into the section at
+/// G5 lane 4b-2d; the job class followed at lane 5b-4 and is now
+/// <c>Humans.Users/Contracts/SuspendNonCompliantMembersJob.cs</c>.
 /// All reads/writes fan out through section services
 /// (<see cref="IUserService"/>, <see cref="ITeamServiceRead"/>,
 /// <see cref="IGoogleSyncService"/>) so this never touches another section's
@@ -53,9 +53,9 @@ internal sealed class NonCompliantMemberSuspension(
     /// The audit actor recorded against every suspension this sweep performs. It is a
     /// persisted string, and it is the *job* class's name rather than this type's — the
     /// rows already in the database say "SuspendNonCompliantMembersJob", and the job is
-    /// still what runs this (memory/code/type-name-as-persisted-string.md). A literal
-    /// rather than a `nameof`: the job type lives in Humans.Infrastructure, which this
-    /// section cannot name without a cycle.
+    /// still what runs this. A literal rather than a `nameof` even though the job is now
+    /// in this assembly: the value is persisted, so renaming the type must not silently
+    /// re-key existing rows (memory/code/type-name-as-persisted-string.md).
     /// </summary>
     private const string AuditActor = "SuspendNonCompliantMembersJob";
 

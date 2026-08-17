@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/DriveActivityMonitorService.cs
-  src/Humans.Infrastructure/Jobs/DriveActivityMonitorJob.cs
+  src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
+  src/Sections/Humans.Monitor/Contracts/DriveActivityMonitorJob.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
   src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs

@@ -4,11 +4,15 @@
     Governance's cross-section surface, carved into its own leaf project because most of its
     consumers are still in Base: OnboardingService, DashboardService, AdminDashboardService and
     ConsentService read through IApplicationServiceRead / IMembershipCalculatorRead,
-    SystemTeamSyncJob, SuspendNonCompliantMembersJob, SendReConsentReminderJob and
-    HumansMetricsService do the same from Humans.Infrastructure, and TermRenewalReminderJob
-    drives the three renewal members. A Contracts/ *folder* inside Humans.Governance would
-    therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    SendReConsentReminderJob and HumansMetricsService do the same from Humans.Infrastructure.
+    A Contracts/ *folder* inside Humans.Governance would therefore make Base reference a
+    section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    Two names left that census at G5 lane 5b-4 (nobodies-collective/Humans#866):
+    TermRenewalReminderJob, the sole consumer of the three renewal members, moved into
+    Humans.Governance/Contracts/, and SuspendNonCompliantMembersJob's IMembershipCalculatorRead
+    read is now NonCompliantMemberSuspension's inside Humans.Users — a section reading a leaf,
+    the ordinary direction. SystemTeamSyncJob had already gone home to Humans.Teams.
 
     It holds exactly what lives outside the section: the tier-application read surface, the
     three members the renewal job needs, the membership-calculator read surface, the DTOs

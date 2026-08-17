@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Tickets' cross-section surface, carved into its own leaf project because six of its
+    Tickets' cross-section surface, carved into its own leaf project because five of its
     consumers are still in Base: DashboardService, UserEmailService, ShiftManagementService
     and AccountDeletionService read a human's holdings or the order projection through
-    ITicketServiceRead, AdminDatabaseDiagnosticsService does the same, and TicketSyncJob
-    drives ITicketSync. A Contracts/ *folder* inside Humans.Tickets would therefore make
-    Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    ITicketServiceRead, and AdminDatabaseDiagnosticsService does the same. A Contracts/
+    *folder* inside Humans.Tickets would therefore make Base reference a section and cycle
+    (design §15.5b, memory/architecture/section-project-cycle-fix.md). TicketSyncJob was a
+    sixth until G5 lane 5b-3 (nobodies-collective/Humans#866) moved it into
+    Humans.Tickets/Contracts/.
 
     Tickets is the first section shipping both a .Contracts leaf and a Contracts/ folder,
     and the split is principled: the leaf carries what Base consumers need, the folder inside
@@ -24,8 +25,9 @@
     packages unrestricted (Peter, 2026-08-15).
 
     Three of the members here exist so that Tickets is the application's only door to
-    ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and
-    GateVendorCheckInJob's calls off the vendor port (ITicketVendorService), which has
+    ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and Gate's
+    (GateVendorCheckInJob, in Humans.Gate/Contracts/ since lane 5b-3) calls off the vendor
+    port (ITicketVendorService), which has
     exactly two injection sites — Humans.Tickets and Shell's TicketVendorHealthCheck.
     The port itself is deliberately NOT here: it sits in Humans.Tickets/Contracts/ since
     G5 lane 4b-2g (nobodies-collective/Humans#866), because no Base consumer names it and

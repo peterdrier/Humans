@@ -8,8 +8,11 @@
     Notifications, Surveys and Monitor inject its services. A Contracts/ *folder* inside
     Humans.GoogleIntegration would therefore cycle at the assembly level (design §15.5b,
     memory/architecture/section-project-cycle-fix.md) — and would cycle a second way, because
-    Humans.Application's AuditViewerService and Humans.Infrastructure's SystemTeamSyncJob,
-    SuspendNonCompliantMembersJob and HumansMetricsService consume it from Base.
+    Humans.Application's IGoogleGroupSync and Humans.Infrastructure's HumansMetricsService
+    consume it from Base — re-derived at G5 lane 5b-4 (nobodies-collective/Humans#866), which
+    settled the last of the three names this line used to list: AuditViewerService went to
+    Humans.AuditLog, SystemTeamSyncJob to Humans.Teams, and SuspendNonCompliantMembersJob's
+    Google fan-out is now NonCompliantMemberSuspension inside Humans.Users.
 
     It holds exactly the eight interfaces something outside the section injects, plus the flat
     projections their signatures name. The rest — the Google API connector abstractions

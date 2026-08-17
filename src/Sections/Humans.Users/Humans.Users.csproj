@@ -19,11 +19,6 @@
     <!-- Same shape, same expiry: Shell-level tests over the moved controllers. -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
-      Same shape, same expiry: ContactFieldTests and ProfileTests are two of the 43 test files
-      lane 2 phase 3 moves into tests/Humans.Users.Tests.
-    -->
-    <InternalsVisibleTo Include="Humans.Domain.Tests" />
-    <!--
       Three unmoved sections' harnesses seed this section's rows through an in-memory
       UsersDbContext (Teams' two-way pattern, design §15 step 8). Each drops out at the lane
       that stops its harness building another section's context directly.
@@ -139,6 +134,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Contracts/ProcessAccountDeletionsJob.cs and Contracts/SuspendNonCompliantMembersJob.cs —
+         [DisableConcurrentExecution] and IRecurringJob, since G5 lane 5b-4. Package, not
+         project, so no cycle is possible; it was already arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <!-- Helpers/ProfilePictureProcessor.cs — profile-picture resize/orient on upload. -->
     <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />

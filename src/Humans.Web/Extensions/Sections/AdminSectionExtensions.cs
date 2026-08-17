@@ -1,5 +1,5 @@
 using Humans.Infrastructure.Hosting;
-using Humans.Infrastructure.Jobs;
+using Humans.Users.Contracts;
 using Humans.Web.Filters;
 
 namespace Humans.Web.Extensions.Sections;

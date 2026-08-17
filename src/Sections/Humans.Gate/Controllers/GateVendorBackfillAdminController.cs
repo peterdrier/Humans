@@ -2,7 +2,7 @@ using Hangfire;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Jobs;
+using Humans.Gate.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;

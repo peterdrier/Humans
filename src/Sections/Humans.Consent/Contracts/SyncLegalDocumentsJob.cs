@@ -2,9 +2,8 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Consent.Contracts;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Consent.Contracts;
 
 /// <summary>
 /// Background job that syncs legal documents from the GitHub repository.
@@ -16,6 +15,11 @@ namespace Humans.Infrastructure.Jobs;
 /// document aggregate, neither of which is visible from Base since the section's G5 move
 /// (design §15 step 6b). What is left here is the schedule, the metric and the
 /// failure boundary.
+///
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
+/// (nobodies-collective/Humans#866), so both halves are now in this section. It sits under
+/// <c>Contracts/</c> because Shell names the concrete type at registration and HUM0034
+/// makes every other public type in a section assembly an error.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SyncLegalDocumentsJob(

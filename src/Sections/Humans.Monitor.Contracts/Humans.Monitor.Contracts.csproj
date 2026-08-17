@@ -3,11 +3,12 @@
   <!--
     Monitor's whole outward surface: one interface, one method, returning an int.
 
-    It is a leaf project rather than a Contracts/ folder for the usual reason (design §15.5b) —
-    the consumer is in Base. DriveActivityMonitorJob lives in Humans.Infrastructure/Jobs and
-    stays there, because there is no ISection-style discovery seam for recurring jobs
-    (G5-SECTION-TEMPLATE.md step 6b), so it consumes the section the way every other Base
-    consumer does.
+    It was a leaf project rather than a Contracts/ folder because the consumer was in Base
+    (design §15.5b). That consumer — DriveActivityMonitorJob — moved into the section's own
+    Contracts/ folder at the G5 jobs move (nobodies-collective/Humans#866), so as of that move
+    NOTHING outside the Humans.Monitor / Humans.Monitor.Contracts pair binds this assembly:
+    Humans.Web reaches the job through Humans.Monitor. The leaf is therefore a fold-back
+    candidate at G6, which is a Peter call, not a lane's — it is left standing here.
 
     References Humans.Interfaces alone, for IApplicationService. Nothing else: the method takes
     a CancellationToken and returns Task<int>, which is the point — Monitor's fan-in is one

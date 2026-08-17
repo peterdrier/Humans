@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -9,7 +8,7 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Notifications.Contracts;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Scheduled job that reconciles Google resources.
@@ -17,6 +16,12 @@ namespace Humans.Infrastructure.Jobs;
 /// Each top-level phase runs in isolation: a failure in one phase does not abort the others.
 /// A summary Admin alert fires via SyncError if any phase fails.
 /// </summary>
+/// <remarks>
+/// Moved out of <c>Humans.Infrastructure/Jobs</c> at the G5 jobs move
+/// (nobodies-collective/Humans#866). Public and under <c>Contracts/</c> because Shell names the
+/// concrete type at two sites (<c>AddScoped</c> and the recurring roll-call) and HUM0034 allows
+/// a section's public types only there.
+/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class GoogleResourceReconciliationJob(
     IGoogleSyncService googleSyncService,

@@ -21,12 +21,14 @@ namespace Humans.Gate;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> are <em>not</em> registered here:
-/// jobs are named by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and by
-/// Hangfire's serialized method reference, and there is no discovery seam for them yet, so
-/// they stay in <c>Humans.Infrastructure/Jobs</c> (design §15.6b). The retention job reaches
-/// the section through <see cref="IGateScanRetention"/>; the vendor mirror job needs no Gate
-/// type at all.
+/// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> live in this project's
+/// <c>Contracts/</c> folder since G5 lane 5b-3 (nobodies-collective/Humans#866), but are
+/// <em>not</em> registered here: jobs are named by concrete type in Shell's
+/// <c>UseHumansRecurringJobs</c> roll-call and by Hangfire's serialized method reference, and
+/// there is no discovery seam for them yet, so the registration stays in Shell (design
+/// §15.6b). The retention job reaches the section through <see cref="IGateScanRetention"/>;
+/// the vendor mirror job needs no Gate type at all, only Tickets'
+/// <c>ITicketVendorMirror</c>.
 /// </para>
 /// <para>
 /// No caching decorator: gate reads must be live (a stale verdict admits or blocks the wrong
