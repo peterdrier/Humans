@@ -9,7 +9,7 @@ namespace Humans.Web.Tests.Architecture;
 /// <remarks>
 /// <para>
 /// <c>@addTagHelper *, X</c> names an ASSEMBLY, not a namespace, so G5 lane 4b-iii B's move of
-/// <c>Humans.UI</c>'s Razor half into <c>Humans.Interfaces</c> (nobodies-collective/Humans#866)
+/// <c>Humans.UI</c>'s Razor half into <c>Humans.Base</c> (nobodies-collective/Humans#866)
 /// had to rewrite 48 directives even though every namespace stayed <c>Humans.UI.*</c>. A missed
 /// directive is the worst failure shape in the repo: the element ships as inert literal markup
 /// on a green build, with no error, no log line, and a 200 — and the browser silently drops the
@@ -30,7 +30,7 @@ namespace Humans.Web.Tests.Architecture;
 /// </remarks>
 public class BaseRazorBindingTests
 {
-    private const string BaseDirective = "@addTagHelper *, Humans.Interfaces";
+    private const string BaseDirective = "@addTagHelper *, Humans.Base";
 
     /// <summary>
     /// Literals that only bind through <see cref="BaseDirective"/>. <c>&lt;vc:human&gt;</c> is
@@ -67,7 +67,7 @@ public class BaseRazorBindingTests
         var unbound = callSites.Where(f => !BindsBase(f, src)).ToList();
 
         unbound.Should().BeEmpty(
-            "a Base tag helper or view component whose assembly never opens Humans.Interfaces' tag "
+            "a Base tag helper or view component whose assembly never opens Humans.Base' tag "
             + "helpers ships as inert literal markup with a green build and no runtime error");
     }
 
