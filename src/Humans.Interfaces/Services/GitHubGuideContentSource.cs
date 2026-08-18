@@ -4,7 +4,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Infrastructure.Configuration;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Base.Services;
 
 public sealed class GitHubGuideContentSource : IGuideContentSource
 {

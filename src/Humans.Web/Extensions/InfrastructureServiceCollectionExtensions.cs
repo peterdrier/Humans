@@ -13,7 +13,7 @@ using Humans.Surveys.Jobs;
 using Humans.Tickets.Jobs;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Services;
+using Humans.Base.Services;
 using Humans.Web.Services;
 using Humans.Issues.Jobs;
 using Humans.Notifications.Jobs;

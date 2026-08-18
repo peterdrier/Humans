@@ -4,7 +4,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Infrastructure.Configuration;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Base.Services;
 
 /// <summary>
 /// <see cref="IGuideContentSource"/> bound to the dedicated community knowledge-base repo

@@ -10,7 +10,7 @@ using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Hosting;
-using Humans.Infrastructure.Services;
+using Humans.Base.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
