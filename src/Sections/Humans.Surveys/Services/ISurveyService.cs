@@ -47,7 +47,10 @@ internal interface ISurveyService : IApplicationService
     Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     // ── Invitations ────────────────────────────────────────────────────────
-    /// <summary>Resolves the survey's audience and returns its size; 0 if the survey has no audience.</summary>
+    /// <summary>
+    /// Resolves the survey's audience and returns the number of net-new recipients who would receive
+    /// an invitation on the next send; 0 if there is no configured audience or everyone is invited.
+    /// </summary>
     Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>

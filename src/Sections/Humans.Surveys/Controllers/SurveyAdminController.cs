@@ -70,6 +70,12 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
+        if (model.AudienceType == SurveyAudienceType.Team && model.AudienceTeamId is null)
+        {
+            ModelState.AddModelError(nameof(model.AudienceTeamId),
+                "Choose a team for the Team audience.");
+        }
+
         if (model.AudienceType == SurveyAudienceType.LoggedInSince && model.AudienceLoggedInSince is null)
         {
             ModelState.AddModelError(nameof(model.AudienceLoggedInSince),
@@ -127,17 +133,21 @@ internal sealed class SurveyAdminController(
             SetSuccess(model.Id is null ? "Survey created." : "Survey saved.");
         }
 
-        return RedirectToAction(nameof(Edit), new { id });
+        return string.Equals(submitAction, "save-review", StringComparison.Ordinal)
+            ? RedirectToAction(nameof(Send), new { id })
+            : RedirectToAction(nameof(Edit), new { id });
     }
 
     [HttpPost("Open/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Open(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Open(Guid id, bool continueToSend, CancellationToken ct)
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
         await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
-        return RedirectToAction(nameof(Edit), new { id });
+        return continueToSend
+            ? RedirectToAction(nameof(Send), new { id })
+            : RedirectToAction(nameof(Edit), new { id });
     }
 
     [HttpPost("Close/{id:guid}")]
@@ -156,8 +166,12 @@ internal sealed class SurveyAdminController(
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
 
-        var previewCount = await surveyService.PreviewAudienceCountAsync(id, ct);
+        var newRecipientCount = await surveyService.PreviewAudienceCountAsync(id, ct);
         var statuses = await surveyService.GetInviteStatusesAsync(id, ct);
+        var audienceTeamName = detail.Editable.AudienceType == SurveyAudienceType.Team
+            && detail.Editable.AudienceTeamId is { } teamId
+                ? (await LoadTeamsAsync(ct)).FirstOrDefault(t => t.Id == teamId)?.Name
+                : null;
 
         var vm = new SurveySendViewModel
         {
@@ -165,7 +179,9 @@ internal sealed class SurveyAdminController(
             Title = detail.Editable.Title.Resolve(detail.Editable.DefaultCulture, detail.Editable.DefaultCulture),
             Status = detail.Status,
             AudienceType = detail.Editable.AudienceType,
-            PreviewCount = previewCount,
+            AudienceTeamName = audienceTeamName,
+            AudienceLoggedInSince = detail.Editable.AudienceLoggedInSince?.InZone(Zone).Date,
+            NewRecipientCount = newRecipientCount,
             Invitations = statuses.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList(),
         };
         return View(vm);

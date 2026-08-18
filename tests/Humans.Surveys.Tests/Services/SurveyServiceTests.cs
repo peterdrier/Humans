@@ -80,6 +80,11 @@ public class SurveyServiceTests
     private static SurveyEditInput InputWithSlug(string? slug) =>
         new(L("Title"), L("Intro"), L("Thanks"), "en", true, null, null, null, null, null, slug, []);
 
+    private static SurveyEditInput InputWithAudience(
+        SurveyAudienceType audience, Guid? teamId = null, Instant? loggedInSince = null) =>
+        new(L("Title"), L("Intro"), L("Thanks"), "en", false, null, null,
+            audience, teamId, loggedInSince, null, []);
+
     [HumansTheory]
     [InlineData("admin")]
     [InlineData("Admin")]
@@ -116,6 +121,40 @@ public class SurveyServiceTests
 
         captured.Should().NotBeNull();
         captured!.PublicSlug.Should().Be("summer-feedback");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            InputWithAudience(SurveyAudienceType.Team), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*team is required*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_rejects_logged_in_since_audience_without_cutoff_and_does_not_persist()
+    {
+        var act = async () => await CreateService().UpdateAsync(
+            Guid.NewGuid(), InputWithAudience(SurveyAudienceType.LoggedInSince),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cutoff date is required*");
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_unknown_audience_and_does_not_persist()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            InputWithAudience((SurveyAudienceType)999), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not supported*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -252,17 +291,20 @@ public class SurveyServiceTests
             .ToList());
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_team_counts_team_members()
+    public async Task PreviewAudienceCountAsync_team_counts_only_net_new_members()
     {
         var teamId = Guid.NewGuid();
+        Guid alreadyInvited = Guid.NewGuid(), newA = Guid.NewGuid(), newB = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, teamId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(TeamWith(teamId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()));
+            .Returns(TeamWith(teamId, alreadyInvited, newA, newB));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { alreadyInvited });
 
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
-        count.Should().Be(3);
+        count.Should().Be(2);
     }
 
     [HumansFact]
@@ -278,6 +320,8 @@ public class SurveyServiceTests
             UserWithLastLogin(Guid.NewGuid(), cutoff + Duration.FromDays(30)), // after → included
             UserWithLastLogin(Guid.NewGuid(), null),                           // never logged in → excluded
         });
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
 
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -300,6 +344,8 @@ public class SurveyServiceTests
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Suspended),      // status wall → excluded
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.AdminSuspended), // status wall → excluded
         });
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
 
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -441,6 +487,21 @@ public class SurveyServiceTests
         var act = async () => await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_throws_when_team_audience_has_no_team()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SendInvitesAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*team is required*");
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(
+            Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
     }
 
     // ── Reminders (7-day nudge) ────────────────────────────────────────────────

@@ -4,6 +4,16 @@
     ViewData["Title"] = Model.IsNew ? "New survey" : "Edit survey";
     // The culture the localized-field partials render visible initially (see _SurveyLocalizedField).
     ViewData["SurveyActiveCulture"] = Model.DefaultCulture;
+
+    static string AudienceLabel(SurveyAudienceType audience) => audience switch
+    {
+        SurveyAudienceType.Team => "A team",
+        SurveyAudienceType.AllActiveMembers => "All active humans",
+        SurveyAudienceType.TicketHolders => "Current ticket holders",
+        SurveyAudienceType.ShiftParticipants => "Humans with shifts",
+        SurveyAudienceType.LoggedInSince => "Humans logged in since a date",
+        _ => audience.ToString(),
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -101,26 +111,29 @@
                 <div class="col-md-3">
                     <label class="form-label small">Audience</label>
                     <select asp-for="AudienceType" class="form-select form-select-sm">
-                        <option value="">(choose at send time)</option>
+                        <option value="">No audience selected</option>
                         @foreach (var a in Enum.GetValues<SurveyAudienceType>())
                         {
-                            <option value="@a">@a</option>
+                            <option value="@a">@AudienceLabel(a)</option>
                         }
                     </select>
+                    <div class="form-text">Invitations are reviewed and sent separately after saving.</div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small">Team (if audience = Team)</label>
+                <div class="col-md-3" id="audience-team-field" style="@(Model.AudienceType == SurveyAudienceType.Team ? "" : "display:none")">
+                    <label class="form-label small">Team</label>
                     <select asp-for="AudienceTeamId" class="form-select form-select-sm">
-                        <option value="">—</option>
+                        <option value="">Choose a team</option>
                         @foreach (var t in Model.Teams)
                         {
                             <option value="@t.Id">@t.Name</option>
                         }
                     </select>
+                    <span asp-validation-for="AudienceTeamId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-2" id="logged-in-since-field" style="@(Model.AudienceType == SurveyAudienceType.LoggedInSince ? "" : "display:none")">
                     <label class="form-label small">Logged in since</label>
                     <input type="date" name="AudienceLoggedInSince" value="@Model.AudienceLoggedInSinceInput" class="form-control form-control-sm" />
+                    <span asp-validation-for="AudienceLoggedInSince" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small">Public link slug (optional; requires Allow anonymous)</label>
@@ -148,6 +161,9 @@
             <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary"
                     title="Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.">
                 Save + translate missing
+            </button>
+            <button type="submit" name="submitAction" value="save-review" class="btn btn-outline-primary">
+                Save and review recipients
             </button>
             <button type="submit" class="btn btn-primary">Save survey</button>
         </div>
@@ -215,9 +231,11 @@
 
             // ── audience cutoff visibility ───────────────────────────────────
             const audienceType = document.querySelector('select[name="AudienceType"]');
+            const audienceTeamField = document.getElementById('audience-team-field');
             const loggedInSinceField = document.getElementById('logged-in-since-field');
 
             function applyAudienceVisibility() {
+                audienceTeamField.style.display = audienceType.value === 'Team' ? '' : 'none';
                 loggedInSinceField.style.display = audienceType.value === 'LoggedInSince' ? '' : 'none';
             }
 

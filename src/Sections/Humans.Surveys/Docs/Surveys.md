@@ -139,6 +139,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 ## Routing
 
 - **`/Survey/Admin/*`** — `SurveyAdminController` (BoardOrAdmin): index, builder, send, results, CSV/JSON export.
+  The builder's **Save and review recipients** action continues to the Send page; a Draft with
+  net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
 - **`/Survey/{slug}`** — `SurveyController` public anonymous wizard. Literal segments `Admin`/`Answer` are **reserved slugs** and resolve before `{slug}`.
 - **`/api/surveys/*`** — `SurveysApiController` (key-authed, read-only).
@@ -166,7 +168,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **`Completed` is a boolean with no timestamp** and `survey_invitations` has no `UpdatedAt`: recording *when* a CompletionTracked invitee finished would correlate (user-linked) with the unattributed response's `SubmittedAt` and re-identify them.
 - **Resume is Identified-only.** An in-progress Identified response is a persisted draft (`SubmittedAt is null`), found by `(SurveyId, UserId, SubmittedAt is null)`. CompletionTracked/Anonymous carry no link, are held in session, and **restart** on reopen.
 - **Branching is server-side and authoritative.** A null `ShowIf` is visible; hidden questions are never treated as required; at submit the full branching is re-evaluated and answers to hidden questions are **dropped/rejected** (the client cannot smuggle them). Author-save rejects `ShowIf` forward-references (`SurveyBranchingEvaluator.ValidateNoForwardReferences`).
-- **Invitation send is idempotent and additive.** Each send resolves the audience, diffs against existing `(SurveyId, UserId)` invitations, and creates+emails only net-new recipients; nobody is double-invited and **sends never revoke**. Requires the survey Open with an audience. Invites are operational (`MessageCategory.System`, always-send) — surveys are never marketing.
+- **Invitation send is idempotent and additive.** Each send resolves the audience, diffs against existing `(SurveyId, UserId)` invitations, and creates+emails only net-new recipients; nobody is double-invited and **sends never revoke**. The Send page previews that exact net-new count, not the raw audience size. Requires the survey Open with a valid audience configuration (`Team` requires a team; `LoggedInSince` requires a cutoff date). Invites are operational (`MessageCategory.System`, always-send) — surveys are never marketing.
 - **Exactly one reminder.** The 7-day reminder fires once per invitee (Open survey, `Completed == false`, `SentAt ≥ 7 days ago`, `ReminderSentAt is null`), stamping `ReminderSentAt` so it never repeats.
 - **Public responses are always Anonymous + `InputMethod=Slug`.** The slug path requires `AllowAnonymous`; reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
 <!-- wheat: docs/plans/2026-06-27-post-event-app-feedback-survey.md §1.2, §3, §4 -->

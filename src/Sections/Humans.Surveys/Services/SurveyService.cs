@@ -72,6 +72,8 @@ internal sealed class SurveyService(
 
     public async Task<Guid> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
     {
+        ValidateAudienceConfiguration(
+            input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
         var questions = MapQuestions(surveyId, input);
@@ -107,6 +109,8 @@ internal sealed class SurveyService(
 
     public async Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
     {
+        ValidateAudienceConfiguration(
+            input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         var now = clock.GetCurrentInstant();
         var questions = MapQuestions(surveyId, input);
         ValidateBranching(questions);
@@ -230,9 +234,13 @@ internal sealed class SurveyService(
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey?.AudienceType is null) return 0;
+        if (AudienceConfigurationError(
+                survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true) is not null)
+            return 0;
 
         var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        return recipients.Count;
+        var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
+        return recipients.Except(alreadyInvited).Count();
     }
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -241,11 +249,14 @@ internal sealed class SurveyService(
             ?? throw new InvalidOperationException("Survey not found.");
         if (survey.Status != SurveyStatus.Open)
             throw new InvalidOperationException("Invitations can only be sent for an Open survey.");
-        if (survey.AudienceType is null)
-            throw new InvalidOperationException("Survey has no audience to invite.");
+        var audienceType = survey.AudienceType
+            ?? throw new InvalidOperationException("Survey has no audience to invite.");
+        ValidateAudienceConfiguration(
+            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
 
         var now = clock.GetCurrentInstant();
-        var target = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
+        var target = await ResolveRecipientIdsAsync(
+            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
         var netNew = target.Except(alreadyInvited).ToList();
 
@@ -1044,6 +1055,28 @@ internal sealed class SurveyService(
             .Where(u => u.IsApproved && !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
             .Select(u => u.Id)
             .ToList();
+    }
+
+    private static void ValidateAudienceConfiguration(
+        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
+    {
+        var error = AudienceConfigurationError(type, teamId, loggedInSince, requireAudience);
+        if (error is not null)
+            throw new InvalidOperationException(error);
+    }
+
+    private static string? AudienceConfigurationError(
+        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
+    {
+        if (type is null)
+            return requireAudience ? "Survey has no audience to invite." : null;
+        if (!Enum.IsDefined(type.Value))
+            return "The selected survey audience is not supported.";
+        if (type == SurveyAudienceType.Team && teamId is null)
+            return "A team is required for the Team audience.";
+        if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
+            return "A cutoff date is required for the Logged in since audience.";
+        return null;
     }
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>

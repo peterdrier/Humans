@@ -67,17 +67,19 @@ internal sealed class SurveyClosedViewModel
     public string? Reason { get; init; }
 }
 
-/// <summary>Admin Send page: header (title/status/audience), resolved audience size, and per-invite status rows (sorted in the controller).</summary>
+/// <summary>Admin Send page: header, net-new recipient count, and per-invite status rows (sorted in the controller).</summary>
 internal sealed class SurveySendViewModel
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public SurveyStatus Status { get; init; }
     public SurveyAudienceType? AudienceType { get; init; }
-    public int PreviewCount { get; init; }
+    public string? AudienceTeamName { get; init; }
+    public LocalDate? AudienceLoggedInSince { get; init; }
+    public int NewRecipientCount { get; init; }
     public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
 
-    public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null;
+    public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null && NewRecipientCount > 0;
 }
 
 /// <summary>

@@ -23,6 +23,16 @@
         EmailOutboxStatus.Queued => "bg-info text-dark",
         _ => "bg-light text-dark",
     };
+
+    static string AudienceLabel(SurveyAudienceType audience) => audience switch
+    {
+        SurveyAudienceType.Team => "Team",
+        SurveyAudienceType.AllActiveMembers => "All active humans",
+        SurveyAudienceType.TicketHolders => "Current ticket holders",
+        SurveyAudienceType.ShiftParticipants => "Humans with shifts",
+        SurveyAudienceType.LoggedInSince => "Humans logged in since a date",
+        _ => audience.ToString(),
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -49,19 +59,54 @@
         }
         else
         {
-            <p class="mb-2">Audience: <strong>@Model.AudienceType</strong>, ~@Model.PreviewCount recipient(s).</p>
+            <p class="mb-2">
+                Audience: <strong>@AudienceLabel(Model.AudienceType.Value)</strong>
+                @if (Model.AudienceType == SurveyAudienceType.Team)
+                {
+                    <span>— @(Model.AudienceTeamName ?? "no team selected")</span>
+                }
+                else if (Model.AudienceType == SurveyAudienceType.LoggedInSince)
+                {
+                    <span>— @(Model.AudienceLoggedInSince?.ToDate() ?? "no date selected")</span>
+                }
+            </p>
+            <p class="mb-2">
+                <strong>@Model.NewRecipientCount</strong> new invitation(s) will be sent.
+                @if (Model.Invitations.Count > 0)
+                {
+                    <span>@Model.Invitations.Count invitation(s) have already been sent and will not be repeated.</span>
+                }
+            </p>
         }
 
         @if (Model.Status != SurveyStatus.Open)
         {
-            <p class="text-muted mb-0">The survey must be <strong>Open</strong> to send invitations. Open it from the <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">builder</a> first.</p>
+            <p class="text-muted">The survey must be <strong>Open</strong> before invitations can be sent.</p>
+            @if (Model.AudienceType is not null && Model.NewRecipientCount > 0)
+            {
+                <form asp-controller="SurveyAdmin" asp-action="Open" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="continueToSend" value="true" />
+                    <button type="submit" class="btn btn-success"
+                            data-confirm="Open this survey so it can receive responses?">
+                        Open survey
+                    </button>
+                </form>
+            }
         }
         else if (Model.CanSend)
         {
             <form asp-controller="SurveyAdmin" asp-action="Send" asp-route-id="@Model.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-primary" data-confirm="Send invitations to the current audience? Already-invited people are skipped.">Send invitations</button>
+                <button type="submit" class="btn btn-primary"
+                        data-confirm="Send @Model.NewRecipientCount new invitation(s) to the current audience? Already-invited humans are skipped.">
+                    Send @Model.NewRecipientCount invitation(s)
+                </button>
             </form>
+        }
+        else if (Model.AudienceType is not null && Model.NewRecipientCount == 0)
+        {
+            <p class="text-muted mb-0">There are no new humans to invite from the current audience.</p>
         }
     </div>
 </div>
