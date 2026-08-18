@@ -1,15 +1,15 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Teams.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Teams.Authorization;
+using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Authorization;
 
 public sealed class TeamAuthorizationHandlerTests
 {

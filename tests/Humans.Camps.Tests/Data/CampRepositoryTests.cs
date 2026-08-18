@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 
-namespace Humans.Camps.Tests.Repositories;
+namespace Humans.Camps.Tests.Data;
 
 public sealed class CampRepositoryTests : IDisposable
 {

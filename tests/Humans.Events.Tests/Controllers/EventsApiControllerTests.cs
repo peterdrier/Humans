@@ -1,17 +1,17 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
-using Humans.Events.Services;
+using Humans.Events.Contracts;
 using Humans.Events.Controllers;
 using Humans.Events.Models;
+using Humans.Events.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
-using Humans.Events.Contracts;
-using Humans.Users.Contracts;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Controllers;
 
 /// <summary>
 /// Host-attribution coverage for <see cref="EventsApiController"/> (US-26.3 / US-26.6).

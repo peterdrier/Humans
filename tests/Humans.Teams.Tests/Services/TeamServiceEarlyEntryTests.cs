@@ -1,22 +1,22 @@
-using Humans.GoogleIntegration.Contracts;
-using Humans.Shifts.Services;
-using Humans.Auth.Contracts;
-using Humans.Teams.Data;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Caching;
+using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
+using Humans.EarlyEntry.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.GoogleIntegration.Contracts;
+using Humans.Notifications.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
-using Humans.EarlyEntry.Contracts;
-using Humans.Gdpr.Contracts;
-using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Domain;
 using TeamService = Humans.Teams.Services.TeamService;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// Logic of the Teams early-entry surface on <see cref="TeamService"/>:

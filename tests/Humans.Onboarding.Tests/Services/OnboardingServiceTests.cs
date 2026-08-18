@@ -1,20 +1,19 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
+using Humans.Domain.Constants;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
-using Humans.Domain.Constants;
+using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
 
-using Humans.Teams.Contracts;
-
-namespace Humans.Onboarding.Tests.Services.Onboarding;
+namespace Humans.Onboarding.Tests.Services;
 
 public sealed class OnboardingServiceTests
 {

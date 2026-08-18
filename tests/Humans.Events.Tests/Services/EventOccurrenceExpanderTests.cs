@@ -1,9 +1,9 @@
 using AwesomeAssertions;
+using Humans.Events.Contracts;
 using Humans.Events.Services;
 using NodaTime;
-using Humans.Events.Contracts;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Services;
 
 public sealed class EventOccurrenceExpanderTests
 {

@@ -1,22 +1,22 @@
-using Humans.Shifts.Services;
-using Humans.Auth.Contracts;
-using Humans.Users.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
+using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// The real-graph half of <c>DependencyCycleResolutionTests</c>: <c>UserService</c> injects

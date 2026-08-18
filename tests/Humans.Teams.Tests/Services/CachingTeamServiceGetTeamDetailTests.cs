@@ -1,15 +1,15 @@
-using Humans.Auth.Contracts;
 using AwesomeAssertions;
+using Humans.Auth.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// Pins the T-01 invariant: <see cref="CachingTeamService.GetTeamDetailAsync"/>

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Xunit;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -11,8 +10,9 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
-namespace Humans.Containers.Tests;
+namespace Humans.Containers.Tests.Services;
 
 public sealed class ServiceImageTests
 {

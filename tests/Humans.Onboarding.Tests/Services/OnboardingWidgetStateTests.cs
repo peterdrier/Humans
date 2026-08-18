@@ -1,15 +1,15 @@
 using Humans.Consent.Contracts;
+using Humans.Domain.Constants;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Onboarding.Services;
-using Humans.Domain.Constants;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
 
-namespace Humans.Onboarding.Tests.Services.Onboarding;
+namespace Humans.Onboarding.Tests.Services;
 
 public class OnboardingWidgetStateTests
 {

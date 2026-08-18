@@ -1,17 +1,19 @@
-using Humans.Users.Contracts;
 // User.DisplayName is Obsolete; SeedUserAsync sets it on the unpersisted User
 // it hands back to callers.
-#pragma warning disable CS0618
+
 using AwesomeAssertions;
-using Humans.Teams.Domain;
 using Humans.Domain.Enums;
+using Humans.Teams.Contracts;
 using Humans.Teams.Data;
+using Humans.Teams.Domain;
+using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 
-using Humans.Teams.Contracts;
-namespace Humans.Teams.Tests;
+#pragma warning disable CS0618
+
+namespace Humans.Teams.Tests.Data;
 
 /// <summary>
 /// Repository tests for the Teams section — issue #540a (§15 Part 1 —

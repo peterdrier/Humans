@@ -5,7 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using Xunit;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Domain;
 
 public sealed class EventTests
 {

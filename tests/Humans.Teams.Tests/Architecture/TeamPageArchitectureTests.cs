@@ -1,11 +1,11 @@
-using Humans.GoogleIntegration.Contracts;
-using Humans.Teams.Services;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Teams.Services;
 using TeamPageService = Humans.Teams.Services.TeamPageService;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 Application-layer shape for

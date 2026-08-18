@@ -3,7 +3,7 @@ using Humans.Events.Services;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Services;
 
 public sealed class BulkEventCsvParserTests
 {
