@@ -33,7 +33,7 @@ Several system operations need to run automatically without user interaction: sy
 | GoogleResourceReconciliationJob | Daily 3:00 AM | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
 | HoldedExpenseOutboxJob | Every minute | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
-| HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals, plus a trailing 364-day sweep of the creditor daybook ledger (full-history backfill only on a cold cache or via the on-demand `POST /Finance/Creditors/Resync`) |
+| HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals, plus a trailing 364-day sweep of the creditor daybook ledger (full-history backfill only on a cold cache or via the on-demand `POST /Holded/FullSync`) |
 | GateRetentionJob | Daily 3:45 AM | Purge `gate_scan_events` older than `Gate:RetentionDays` (default 365; ≤ 0 disables the purge) |
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |

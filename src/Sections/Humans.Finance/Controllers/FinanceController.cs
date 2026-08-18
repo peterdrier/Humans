@@ -15,11 +15,10 @@ namespace Humans.Finance.Controllers;
 /// </summary>
 /// <remarks>
 /// The other 23 actions that used to share this class are Budget CRUD — years, groups,
-/// categories, line items, cash flow, audit log — and stayed in Shell as
-/// <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c> prefix so no URL
-/// moved. Dragging them in here would have put Budget's whole admin surface inside the Finance
-/// section and forced two of Budget's view models down into Base to reach it
-/// (nobodies-collective/Humans#866, G5).
+/// categories, line items, cash flow, audit log — and are now
+/// <c>Humans.Budget</c>'s <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c>
+/// prefix so no URL moved. Dragging them in here would have put Budget's whole admin surface
+/// inside the Finance section (nobodies-collective/Humans#866, G5).
 /// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
@@ -74,8 +73,8 @@ internal sealed class FinanceController(
         // Only the display flips: the contract row keeps Holded's Σdebit − Σcredit.
         var vms = rows
             .Select(r => new CreditorAccountRowVm(
-                r.SupplierAccountNum, r.Name, r.Balance is { } b ? -b : null,
-                r.Bindings.Select(b => new CreditorAccountBindingVm(
+                r.SupplierAccountNum, r.Name, r.Balance is { } bal ? -bal : null,
+                r.Bindings.Select(b => new CreditorBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList()))
@@ -86,7 +85,7 @@ internal sealed class FinanceController(
         var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
         var unresolvedVm = unresolved
-            .Select(b => new UnresolvedCreditorBindingVm(
+            .Select(b => new CreditorBindingVm(
                 b.UserId,
                 names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                 b.Source.ToString()))

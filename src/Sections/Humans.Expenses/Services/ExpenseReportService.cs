@@ -103,7 +103,7 @@ internal sealed class ExpenseReportService(
             totalPaid = status?.TotalPaid ?? 0m;
             // Settled iff the derived creditor balance (Σdebit − Σcredit) is non-negative. A null status
             // means no cached ledger lines for the account — unknown, not settled.
-            paid = status?.Balance is { } b && b >= 0m;
+            paid = status is { } s && s.Balance >= 0m;
             paidOn = status?.LastPaymentDate;
         }
 

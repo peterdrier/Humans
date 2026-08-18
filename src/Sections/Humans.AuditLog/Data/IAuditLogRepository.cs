@@ -122,18 +122,6 @@ internal interface IAuditLogRepository : IRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct entity ids of audit rows whose
-    /// <c>AuditLogEntry.Action</c> matches <paramref name="action"/>
-    /// and whose <c>AuditLogEntry.OccurredAt</c> falls inside the
-    /// half-open window <c>[windowStart, windowEnd)</c>. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct set of <c>AuditLogEntry.EntityId</c> values
     /// across all-time audit rows whose
     /// <c>AuditLogEntry.EntityType</c> matches <paramref name="entityType"/>

@@ -19,7 +19,7 @@ namespace Humans.Finance;
 /// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> is not registered here either, and is
 /// not this section's: it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
 /// section's <c>IHoldedFinanceService.SyncAsync</c> first, and it lives in
-/// <c>Humans.Holded/Contracts/</c> since G5 lane 5b-5 (nobodies-collective/Humans#866).
+/// <c>src/Sections/Humans.Holded/Jobs/</c> since G5 lane 5b-5 (nobodies-collective/Humans#866).
 /// </remarks>
 public sealed class Section : ISection
 {

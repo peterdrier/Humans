@@ -29,7 +29,7 @@ public class AuditViewerServiceTests
             relatedEntityType: "User",
             description: "shift 'Cantina'");
 
-        var auditLog = Substitute.For<IAuditLogService>();
+        var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
@@ -59,7 +59,7 @@ public class AuditViewerServiceTests
     [HumansFact]
     public async Task GetForUserAsync_EmptyResult_ReturnsEmptyList()
     {
-        var auditLog = Substitute.For<IAuditLogService>();
+        var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -117,7 +117,7 @@ public class AuditViewerServiceTests
             syncSource: GoogleSyncSource.ManualSync,
             resourceId: resourceId);
 
-        var auditLog = Substitute.For<IAuditLogService>();
+        var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByResourceAsync(resourceId).Returns([entry]);
 
         var userService = StubUserService();
@@ -153,7 +153,7 @@ public class AuditViewerServiceTests
             entityId: Guid.NewGuid(),
             description: "Suspended");
 
-        var auditLog = Substitute.For<IAuditLogService>();
+        var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
             .Returns(([entry], 1, 0));
 
@@ -176,10 +176,10 @@ public class AuditViewerServiceTests
         result.Items[0].ActorDisplayName.Should().Be("Frank");
     }
 
-    private static (IAuditLogService, IUserService, ITeamServiceRead, ITeamResourceService) MakeServices(
+    private static (IAuditLogReader, IUserService, ITeamServiceRead, ITeamResourceService) MakeServices(
         AuditLogEntrySnapshot entry, Guid actor, Guid viewer, string actorName, string viewerName)
     {
-        var auditLog = Substitute.For<IAuditLogService>();
+        var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([entry]);
 

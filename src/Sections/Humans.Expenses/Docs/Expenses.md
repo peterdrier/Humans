@@ -8,7 +8,7 @@
 
 # Expenses — Section Invariants
 
-Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md` and `src/Sections/Humans.Finance/Docs/2026-06-15-holded-ledger-single-source-design.md`.
+Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md`; the ledger side — why the daybook is the single source and paid state is derived from it rather than stamped — is in `src/Sections/Humans.Holded/Docs/2026-08-10-holded-v2-migration-design.md` and `src/Sections/Humans.Finance/Docs/Finance.md`.
 
 ## Concepts
 
@@ -164,7 +164,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Teams**: `ITeamService.IsUserCoordinatorOfTeamAsync` — coordinator endorsement gate.
 - **Profiles**: `IProfileService.GetProfileAsync` — IBAN snapshot at submit time; masked IBAN for GDPR export.
 - **Users/Identity**: `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
-- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. `GetFilteredEntriesAsync` — GDPR export.
+- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. Write-only; the GDPR export no longer re-reads audit here.
 - **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor status derived from the cached Holded daybook ledger, for the submitter's owed/paid timeline (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
 - **Admin (Users section)**: `/Users/Admin/{id}/RevealIban` lives in `UsersAdminController` and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
 

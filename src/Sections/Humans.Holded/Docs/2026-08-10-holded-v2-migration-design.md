@@ -2,7 +2,7 @@
 
 **Status:** Draft — awaiting Peter's sign-off
 **Date:** 2026-08-10
-**Supersedes:** the sync mechanics of `2026-06-15-holded-ledger-single-source-design.md` (its "daybook is the single source, cache it, derive everything" decision stands; the v1 `dailyledger` transport and creditor-range scoping do not).
+**Supersedes:** the sync mechanics of Finance's `2026-06-15-holded-ledger-single-source-design.md`, which has since been deleted (git history has it) — its "daybook is the single source, cache it, derive everything" decision stands and is restated here; the v1 `dailyledger` transport and creditor-range scoping do not.
 
 ## Context
 

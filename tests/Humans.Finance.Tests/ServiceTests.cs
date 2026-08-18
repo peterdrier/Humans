@@ -5,6 +5,7 @@ using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
+using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
@@ -293,10 +295,16 @@ public class HoldedFinanceServiceTests
     public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
     {
         // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.
+        // Two lines a side, deliberately: with one each, a sum and a max are the same number.
+        // The last debit sits at 22:30Z, which is the next day in Madrid — the date the member sees.
         _holded.GetLedgerLinesAsync(40000001, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
-            Line(1, 0, 40000001, Instant.FromUtc(2026, 4, 1, 0, 0), credit: 12720m, type: "purchase"),
-            Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 20, 0, 0), debit: 9540m, type: "payment"),
+            Line(1, 0, 40000001, Instant.FromUtc(2026, 4, 1, 0, 0), credit: 12000m, type: "purchase"),
+            Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 5, 0, 0), credit: 720m, type: "purchase"),
+            Line(3, 0, 40000001, Instant.FromUtc(2026, 4, 10, 0, 0), debit: 9000m, type: "payment"),
+            Line(4, 0, 40000001, Instant.FromUtc(2026, 4, 20, 22, 30), debit: 540m, type: "payment"),
+            // Booked after the last payment, and not one: only debit lines are money going out.
+            Line(5, 0, 40000001, Instant.FromUtc(2026, 4, 25, 0, 0), credit: 0m, debit: 0m, type: "purchase"),
         });
 
         var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
@@ -304,8 +312,8 @@ public class HoldedFinanceServiceTests
         status.Should().NotBeNull();
         status!.Balance.Should().Be(-3180m);
         status.OwedToMember.Should().Be(3180m);
-        status.TotalPaid.Should().Be(9540m);                 // debit lines only
-        status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
+        status.TotalPaid.Should().Be(9540m);                 // debit lines only, summed
+        status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 21));
     }
 
     [HumansFact]
@@ -503,8 +511,8 @@ public class HoldedFinanceServiceTests
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
-        ledger.Name.Should().Be("Daniela Marquez");
         ledger.Contact.Should().NotBeNull();
+        ledger.Contact.Name.Should().Be("Daniela Marquez");
         ledger.Contact.TradeName.Should().Be("Dani");
         ledger.Contact.Email.Should().Be("dani@example.org");
         ledger.Contact.Phone.Should().Be("+34 600 000 000");
@@ -532,7 +540,6 @@ public class HoldedFinanceServiceTests
 
         ledger.Should().NotBeNull();
         ledger.Contact.Should().BeNull();
-        ledger.Name.Should().BeNull();
         ledger.Balance.Should().Be(-50m);
     }
 
@@ -1300,5 +1307,395 @@ public class HoldedFinanceServiceTests
             userId, Xunit.TestContext.Current.CancellationToken);
 
         removed.Should().BeFalse();
+    }
+
+    // ─── Unmatched worklist ──────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetUnmatched_TellsTheTreasurerWhichHalfOfTheChainMissed()
+    {
+        // The reason text is the whole point of the worklist: it says where to go fix the mapping.
+        _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            UnmatchedDoc("neither", account: null, tagsJson: "[]"),
+            UnmatchedDoc("both", account: "acc-9", tagsJson: """["ops"]"""),
+            UnmatchedDoc("account-only", account: "acc-9", tagsJson: "[]"),
+            UnmatchedDoc("tags-only", account: null, tagsJson: """["ops"]"""),
+        ]);
+
+        var rows = await MakeService().GetUnmatchedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Select(r => (r.DocNumber, r.Reason)).Should().Equal(
+            ("neither", "No account, no tag"),
+            ("both", "Account and tags not mapped"),
+            ("account-only", "Account not mapped"),
+            ("tags-only", "Tags not matched"));
+        rows[0].HoldedUrl.Should().Be("https://app.holded.com/purchases/doc-neither");
+    }
+
+    private static HoldedExpenseDoc UnmatchedDoc(string docNumber, string? account, string tagsJson) => new()
+    {
+        Id = Guid.NewGuid(),
+        HoldedDocId = $"doc-{docNumber}",
+        DocNumber = docNumber,
+        ContactName = "Vendor",
+        Date = new LocalDate(2026, 4, 1),
+        Total = 10m,
+        Currency = "eur",
+        TagsJson = tagsJson,
+        BookedAccountId = account,
+        MatchStatus = HoldedMatchStatus.Unmatched,
+        MatchSource = HoldedMatchSource.None,
+        CreatedAt = FixedNow,
+        UpdatedAt = FixedNow,
+    };
+
+    // ─── Provisioning: tag collisions ────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetProvisioningPlan_TagTakenByAMappedRowFurtherDownTheWalk_IsStillDisambiguated()
+    {
+        // "S-taff" normalizes to the same tag as "Staff" and sorts ahead of it, so a ToAdd row
+        // reaches the collision check before the mapped row that already owns the tag. Two active
+        // rows sharing a tag make tag attribution arbitrary, so the proposal must not reuse it.
+        var toAddCat = Guid.NewGuid();
+        var mappedCat = Guid.NewGuid();
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
+            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(), BudgetYearId: Guid.NewGuid(), Name: "Operations",
+                    SortOrder: 1, IsRestricted: false, IsDepartmentGroup: false,
+                    IsTicketingGroup: false, TicketingProjection: null,
+                    Categories:
+                    [
+                        new BudgetCategoryDetail(toAddCat, Guid.NewGuid(), "S-taff", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(mappedCat, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 1, []),
+                    ])
+            ]));
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            new List<HoldedCategoryMap>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mappedCat,
+                    HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
+                    Tag = "operationsstaff", IsActive = true,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                }
+            });
+
+        var plan = await MakeService().GetProvisioningPlanAsync(
+            blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var proposed = plan.Rows.Single(r => r.BudgetCategoryId == toAddCat);
+        proposed.State.Should().Be("ToAdd");
+        proposed.Tag.Should().NotBe("operationsstaff");
+        proposed.Tag.Should().StartWith("operationsstaff");
+    }
+
+    // ─── Provisioning: applying the plan ─────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Provision_AddOne_CreatesExactlyTheFirstPendingAccount()
+    {
+        var (catA, catB) = TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+
+        var created = await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: false, ct: Xunit.TestContext.Current.CancellationToken);
+
+        created.Should().Be(1);
+        await _client.Received(1).CreateExpenseAccountAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        var row = _repo.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Select(c => (HoldedCategoryMap)c.GetArguments()[0]!)
+            .Should().ContainSingle().Subject;
+        row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
+        row.HoldedAccountNumber.Should().Be(6290010);
+        row.HoldedAccountId.Should().Be("acc-6290010");
+        row.IsActive.Should().BeTrue();
+        row.Tag.Should().NotBeNullOrEmpty();
+        catB.Should().NotBe(catA);
+    }
+
+    [HumansFact]
+    public async Task Provision_AddAll_CreatesEveryPendingAccountAndNeverRemovesAMapRow()
+    {
+        TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+
+        var created = await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        created.Should().Be(2);
+        var numbers = _repo.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Select(c => ((HoldedCategoryMap)c.GetArguments()[0]!).HoldedAccountNumber);
+        numbers.Should().Equal(6290010, 6290011);
+        // Provisioning is additive: the repository has no map-delete method and none is called.
+        _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
+            .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task Provision_HoldedRefusesTheSecondAccount_KeepsTheFirstAndRethrows()
+    {
+        // Partial success is deliberate: an account already created in Holded must keep its map row,
+        // or the number is stranded remotely with nothing pointing at it.
+        TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(6290010, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("acc-6290010");
+        _client.CreateExpenseAccountAsync(6290011, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("holded said no"));
+
+        var act = async () => await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.Received(1).AddCategoryMapAsync(
+            Arg.Is<HoldedCategoryMap>(m => m.HoldedAccountNumber == 6290010), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An active year with two unmapped categories, "Alpha" then "Beta", and an empty map.</summary>
+    private (Guid First, Guid Second) TwoUnmappedCategories()
+    {
+        var catA = Guid.NewGuid();
+        var catB = Guid.NewGuid();
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
+            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(), BudgetYearId: Guid.NewGuid(), Name: "Operations",
+                    SortOrder: 1, IsRestricted: false, IsDepartmentGroup: false,
+                    IsTicketingGroup: false, TicketingProjection: null,
+                    Categories:
+                    [
+                        new BudgetCategoryDetail(catA, Guid.NewGuid(), "Alpha", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(catB, Guid.NewGuid(), "Beta", 0, ExpenditureType.OpEx, null, 1, []),
+                    ])
+            ]));
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        return (catA, catB);
+    }
+
+    // ─── The creditor block is inclusive at both ends ────────────────────────────
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_TheCreditorBlockIsInclusiveAtBothEnds()
+    {
+        // Holded numbers every supplier contact, so the block bounds are the only thing separating a
+        // member's creditor account from an ordinary org vendor. Both ends are members' accounts.
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>
+            {
+                [39999999] = -1m,
+                [40000000] = -1m,
+                [40000999] = -1m,
+                [40001000] = -1m,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "lo-out", Name = "Vendor", SupplierAccountNum = 39999999 },
+            new() { Id = "lo-in", Name = "First member", SupplierAccountNum = 40000000 },
+            new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 40000999 },
+            new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 40001000 },
+        });
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 40000999]);
+        // Name comes from the contact filter and Balance from the mirror filter; assert both, or a row
+        // arriving through one of them hides the other end being wrong.
+        var first = rows.Single(r => r.SupplierAccountNum == 40000000);
+        var last = rows.Single(r => r.SupplierAccountNum == 40000999);
+        first.Name.Should().Be("First member");
+        last.Name.Should().Be("Last member");
+        first.Balance.Should().Be(-1m);
+        last.Balance.Should().Be(-1m);
+    }
+
+    [HumansTheory]
+    [InlineData(39999999)]
+    [InlineData(40001000)]
+    public async Task SetCreditorContact_JustOutsideTheBlock_IsRefused(int accountNum)
+    {
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(40000000)]
+    [InlineData(40000999)]
+    public async Task SetCreditorContact_OnTheBlockBoundary_IsAccepted(int accountNum)
+    {
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Member", SupplierAccountNum = accountNum },
+        });
+
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    // ─── Negative rule: the sync never removes a doc ─────────────────────────────
+
+    [HumansFact]
+    public async Task Sync_DocsMissingFromHolded_AreNeverDeleted()
+    {
+        // "The sync job cannot delete HoldedExpenseDoc rows" — Holded-side deletions are out of scope,
+        // so a doc that stops appearing in the pull is simply not upserted, never removed.
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedPurchaseDocListItemDto>());
+        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>(StringComparer.Ordinal));
+
+        var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.DocCount.Should().Be(0);
+        _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
+            .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
+    }
+
+    // ─── Which Holded account an expense line is booked to ───────────────────────
+
+    [HumansFact]
+    public async Task GetHoldedAccountIdForCategory_UsesTheActiveMapping_AndIgnoresAnArchivedOne()
+    {
+        // Expenses calls this to book a purchase line straight onto the category's account. An
+        // archived row for the same category must never win, and an unmapped category yields null.
+        var mapped = Guid.NewGuid();
+        var unmapped = Guid.NewGuid();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            new List<HoldedCategoryMap>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290001,
+                    HoldedAccountId = "acc-old", Tag = "a", IsActive = false,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290002,
+                    HoldedAccountId = "acc-live", Tag = "b", IsActive = true,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                },
+            });
+
+        var svc = MakeService();
+        (await svc.GetHoldedAccountIdForCategoryAsync(mapped, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be("acc-live");
+        (await svc.GetHoldedAccountIdForCategoryAsync(unmapped, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeNull();
+    }
+
+    // ─── GDPR export slice ───────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheBindingAndNothingElse()
+    {
+        // Article 15: the member gets what we hold about them. The binding row is three facts —
+        // and not the row's Id or timestamps, which are ours rather than theirs.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "contact-9",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Manual,
+                CreatedAt = FixedNow,
+                UpdatedAt = FixedNow,
+            });
+
+        var slices = await MakeService().ContributeForUserAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        slice.Data.Should().NotBeNull();
+        var json = JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
+        json.Should().NotContain("CreatedAt").And.NotContain("UpdatedAt");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_UnboundMember_StillReportsTheSectionWithNoData()
+    {
+        // The section has to appear either way: "we hold nothing here" is itself the answer, and a
+        // missing section reads as a section nobody asked.
+        _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null);
+
+        var slices = await MakeService().ContributeForUserAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        slice.Data.Should().BeNull();
+    }
+
+    // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────
+
+    [HumansFact]
+    public async Task GetDocSyncInfo_ReportsTheStoredStateAndTheBindingCount()
+    {
+        // The binding count rides along on this DTO so /Holded can show a number without building
+        // the whole creditor view, which would cost a live Holded contacts walk.
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedDocSyncState
+            {
+                LastSyncAt = FixedNow,
+                Status = "Error",
+                LastError = "holded said no",
+                LastSyncedDocCount = 42,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c1" },
+            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
+        });
+
+        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+
+        info.LastSyncAt.Should().Be(FixedNow);
+        info.Status.Should().Be("Error");
+        info.LastError.Should().Be("holded said no");
+        info.LastSyncedDocCount.Should().Be(42);
+        info.CreditorBindingCount.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetDocSyncInfo_NeverSynced_ReadsAsIdleWithNothingRecorded()
+    {
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+
+        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+
+        info.Status.Should().Be("Idle");
+        info.LastSyncAt.Should().BeNull();
+        info.LastError.Should().BeNull();
+        info.LastSyncedDocCount.Should().Be(0);
+        info.CreditorBindingCount.Should().Be(0);
     }
 }

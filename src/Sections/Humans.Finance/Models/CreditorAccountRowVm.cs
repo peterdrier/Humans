@@ -11,7 +11,7 @@ internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
     decimal? Balance,
-    IReadOnlyList<CreditorAccountBindingVm> Bindings)
+    IReadOnlyList<CreditorBindingVm> Bindings)
 {
     /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
@@ -23,19 +23,18 @@ internal sealed record CreditorAccountRowVm(
         : string.Join(", ", Bindings.Select(b => b.MemberName)).ToUpperInvariant();
 }
 
-/// <summary>One member bound to a creditor account, named for display and unbindable by id.</summary>
-internal sealed record CreditorAccountBindingVm(Guid UserId, string MemberName, string Source);
+/// <summary>One member bound to a creditor account, named for display and unbindable by id. Used
+/// for both halves of the page: the bindings on an account row, and the ones with no account yet.</summary>
+internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string Source);
 
-/// <summary>The /Finance/Creditors page model: the per-account overview plus the bindings that never
-/// resolved a 400000xx and so have no account row to sit on (nobodies-collective/Humans#972).</summary>
+/// <summary>The /Finance/Creditors page model.</summary>
+/// <param name="Unresolved">Bindings with no 400000xx, so no account row to sit on. Nothing retries
+/// the resolution, so this is the only place they can be bound (nobodies-collective/Humans#972).</param>
 /// <param name="SortBy">Active column — "account" (default), "name", "balance" or "member".</param>
 /// <param name="SortDir">"asc" or "desc"; the headers link to the opposite of whatever is active.</param>
 internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorAccountRowVm> Accounts,
-    IReadOnlyList<UnresolvedCreditorBindingVm> Unresolved,
+    IReadOnlyList<CreditorBindingVm> Unresolved,
     string SortBy,
     string SortDir);
 
-/// <summary>A member whose creditor-account number never resolved — no automatic retry exists, so this
-/// is the discoverability surface for binding them manually via POST /Finance/Creditors/Bind.</summary>
-internal sealed record UnresolvedCreditorBindingVm(Guid UserId, string MemberName, string Source);
