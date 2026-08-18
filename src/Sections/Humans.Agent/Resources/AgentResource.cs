@@ -1,4 +1,4 @@
-namespace Humans.Agent;
+namespace Humans.Agent.Resources;
 
 /// <summary>
 /// Marker type for Agent's resource set. The <c>.resx</c> files sit beside this file on

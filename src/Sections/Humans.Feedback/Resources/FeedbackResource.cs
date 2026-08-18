@@ -1,4 +1,4 @@
-namespace Humans.Feedback;
+namespace Humans.Feedback.Resources;
 
 /// <summary>
 /// Marker type for Feedback's resource set. The <c>.resx</c> files sit beside this file

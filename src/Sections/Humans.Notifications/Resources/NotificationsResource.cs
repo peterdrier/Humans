@@ -1,4 +1,4 @@
-namespace Humans.Notifications;
+namespace Humans.Notifications.Resources;
 
 /// <summary>
 /// Marker type for Notifications' resource set. The <c>.resx</c> files sit beside this

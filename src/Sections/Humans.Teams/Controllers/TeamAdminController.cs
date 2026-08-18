@@ -11,6 +11,7 @@ using Humans.UI.Extensions;
 using Humans.UI.Models;
 using Humans.Teams.Models;
 using Humans.Teams.Contracts;
+using Humans.Teams.Resources;
 using Humans.Users.Contracts;
 using Humans.UI.Authorization;
 using NodaTime.Text;

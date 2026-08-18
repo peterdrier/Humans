@@ -1,4 +1,4 @@
-namespace Humans.Calendar;
+namespace Humans.Calendar.Resources;
 
 /// <summary>
 /// Marker type for Calendar's resource set. The <c>.resx</c> files sit beside this file

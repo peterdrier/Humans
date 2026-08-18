@@ -1,4 +1,4 @@
-namespace Humans.Governance;
+namespace Humans.Governance.Resources;
 
 /// <summary>
 /// Marker type for Governance's resource set. The <c>.resx</c> files sit beside this file on

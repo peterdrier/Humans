@@ -10,6 +10,7 @@ using Humans.UI.Authorization;
 using Humans.UI.Constants;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
+using Humans.Shifts.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;

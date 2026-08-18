@@ -1,4 +1,4 @@
-namespace Humans.Events;
+namespace Humans.Events.Resources;
 
 /// <summary>
 /// Marker type for Events' resource set. The <c>.resx</c> files sit beside this file

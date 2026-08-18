@@ -1,4 +1,4 @@
-namespace Humans.Tickets;
+namespace Humans.Tickets.Resources;
 
 /// <summary>
 /// Marker type for Tickets' resource set. The <c>.resx</c> files sit beside this file on

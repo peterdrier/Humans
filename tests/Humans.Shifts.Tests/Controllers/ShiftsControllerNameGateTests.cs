@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
+using Humans.Onboarding.Resources;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
+using Humans.Shifts.Resources;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;

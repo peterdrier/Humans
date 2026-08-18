@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
+using Humans.Surveys.Resources;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Localization;
 

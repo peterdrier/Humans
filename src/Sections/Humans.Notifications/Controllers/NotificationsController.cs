@@ -1,6 +1,7 @@
 using Humans.Notifications.Services;
 using Humans.UI.Controllers;
 using Humans.Notifications.Models;
+using Humans.Notifications.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;

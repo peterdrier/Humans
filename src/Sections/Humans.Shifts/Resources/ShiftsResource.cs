@@ -1,4 +1,4 @@
-namespace Humans.Shifts;
+namespace Humans.Shifts.Resources;
 
 /// <summary>
 /// Marker type for the Shifts resource set. The <c>.resx</c> files sit beside this file on

@@ -1,4 +1,4 @@
-namespace Humans.Surveys;
+namespace Humans.Surveys.Resources;
 
 /// <summary>
 /// Marker type for Surveys' resource set. The <c>.resx</c> files sit beside this file

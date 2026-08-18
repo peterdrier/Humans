@@ -1,4 +1,4 @@
-namespace Humans.Email;
+namespace Humans.Email.Resources;
 
 /// <summary>
 /// Marker type for Email's resource set. The <c>.resx</c> files sit beside this file on

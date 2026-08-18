@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Onboarding.Models;
 using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Resources;
 using Humans.Onboarding.Services;
 using Humans.UI;
 using Humans.UI.Authorization;

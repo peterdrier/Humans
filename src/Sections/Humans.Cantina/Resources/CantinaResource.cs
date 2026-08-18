@@ -1,4 +1,4 @@
-namespace Humans.Cantina;
+namespace Humans.Cantina.Resources;
 
 /// <summary>
 /// Marker type for Cantina's resource set. The <c>.resx</c> files sit beside this file on

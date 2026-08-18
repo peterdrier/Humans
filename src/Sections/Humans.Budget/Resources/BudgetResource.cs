@@ -1,4 +1,4 @@
-namespace Humans.Budget;
+namespace Humans.Budget.Resources;
 
 /// <summary>
 /// Marker type for Budget's resource set. The <c>.resx</c> files sit beside this file

@@ -6,6 +6,7 @@ using Humans.Shifts.Domain;
 using Humans.UI.Controllers;
 using Humans.UI.Authorization;
 using Humans.Shifts.Models;
+using Humans.Shifts.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;

@@ -1,4 +1,4 @@
-namespace Humans.CityPlanning;
+namespace Humans.CityPlanning.Resources;
 
 /// <summary>
 /// Marker type for City Planning's resource set. The <c>.resx</c> files sit beside this file

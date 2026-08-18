@@ -1,4 +1,4 @@
-namespace Humans.Scanner;
+namespace Humans.Scanner.Resources;
 
 /// <summary>
 /// Marker type for Scanner's resource set. The <c>.resx</c> files sit beside this file on

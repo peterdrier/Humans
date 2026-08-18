@@ -1,4 +1,5 @@
 @inject IStringLocalizer<ConsentResource> ConsentLocalizer
+@using Humans.Consent.Resources
 @model ConsentsStepViewModel
 @{ ViewData["Title"] = string.Format(ConsentLocalizer["ConsentReview_Title"].Value, Model.DocumentName); }
 

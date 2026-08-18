@@ -4,6 +4,7 @@ using Humans.Consent.Services;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Consent.Controllers;
+using Humans.Consent.Resources;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

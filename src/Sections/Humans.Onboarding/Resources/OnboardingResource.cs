@@ -1,4 +1,4 @@
-namespace Humans.Onboarding;
+namespace Humans.Onboarding.Resources;
 
 /// <summary>
 /// Marker type for Onboarding's resource set. The <c>.resx</c> files sit beside this file

@@ -6,6 +6,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
+using Humans.Shifts.Resources;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;

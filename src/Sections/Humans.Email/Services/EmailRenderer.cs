@@ -1,6 +1,7 @@
 using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
+using Humans.Email.Resources;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;

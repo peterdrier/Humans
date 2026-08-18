@@ -4,6 +4,7 @@ using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using Humans.UI.Extensions;
 using Humans.Surveys.Models;
+using Humans.Surveys.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;

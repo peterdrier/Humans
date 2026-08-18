@@ -1,4 +1,4 @@
-﻿@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    None of these views carries a `<vc:` element, so no view component had to move; the
    `_TabbedMarkdownDocuments` partial they render lives in Humans.UI and resolves by path
@@ -12,6 +12,7 @@
 @using Humans.Consent.Contracts
 @using Humans.Consent.Controllers
 @using Humans.Consent.Models
+@using Humans.Consent.Resources
 @using Humans.Domain.Enums
 @using Humans.UI
 @using Humans.UI.Extensions

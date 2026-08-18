@@ -1,4 +1,4 @@
-namespace Humans.Search;
+namespace Humans.Search.Resources;
 
 /// <summary>
 /// Marker type for Search's resource set. The <c>.resx</c> files sit beside this file on

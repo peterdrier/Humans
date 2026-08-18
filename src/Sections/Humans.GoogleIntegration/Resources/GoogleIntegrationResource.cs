@@ -1,4 +1,4 @@
-namespace Humans.GoogleIntegration;
+namespace Humans.GoogleIntegration.Resources;
 
 /// <summary>
 /// Marker type for GoogleIntegration's resource set. The <c>.resx</c> files sit beside this

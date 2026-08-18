@@ -1,4 +1,4 @@
-namespace Humans.Issues;
+namespace Humans.Issues.Resources;
 
 /// <summary>
 /// Marker type for Issues' resource set. The <c>.resx</c> files sit beside this file

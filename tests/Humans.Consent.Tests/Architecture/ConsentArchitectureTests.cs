@@ -2,6 +2,7 @@ using System.Reflection;
 using Humans.Consent.Data;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
+using Humans.Consent.Resources;
 using Humans.Consent.Services;
 using Humans.UI;
 using Microsoft.Extensions.DependencyInjection;

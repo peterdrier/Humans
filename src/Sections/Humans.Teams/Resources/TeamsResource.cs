@@ -1,4 +1,4 @@
-namespace Humans.Teams;
+namespace Humans.Teams.Resources;
 
 /// <summary>
 /// Marker type for Teams' resource set. The <c>.resx</c> files sit beside this file on

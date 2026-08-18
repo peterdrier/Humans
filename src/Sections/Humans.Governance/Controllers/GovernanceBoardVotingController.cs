@@ -7,6 +7,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.UI.Authorization;
 using Humans.Governance.Models;
+using Humans.Governance.Resources;
 using Humans.Users.Contracts;
 
 namespace Humans.Governance.Controllers;

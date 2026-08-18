@@ -1,4 +1,4 @@
-namespace Humans.Consent;
+namespace Humans.Consent.Resources;
 
 /// <summary>
 /// Marker type for Consent's resource set. The <c>.resx</c> files sit beside this file on

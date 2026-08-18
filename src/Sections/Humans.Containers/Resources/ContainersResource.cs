@@ -1,4 +1,4 @@
-namespace Humans.Containers;
+namespace Humans.Containers.Resources;
 
 /// <summary>
 /// Marker type for Containers' resource set. The <c>.resx</c> files sit beside this file
