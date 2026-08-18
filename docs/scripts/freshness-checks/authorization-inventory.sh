@@ -5,13 +5,20 @@
 # src/Sections/*/Docs/authorization.md (split from the global file
 # 2026-08-18), covers:
 # 1. Every controller file from src/Humans.Web/Controllers/ and
-#    src/Sections/*/Controllers/ (the docs must mention the filename — e.g.
-#    `AdminController` — at least once, in whichever file owns it).
+#    src/Sections/*/Controllers/ — each mentioned in the map that OWNS it.
 # 2. Every AuthorizationHandler<...> subclass from src/Humans.Web/Authorization
-#    and each section's own src/Sections/*/Authorization/.
+#    and each section's own src/Sections/*/Authorization/, likewise in its
+#    owning map.
 # 3. Has at least as many "| ... | Action |" rows as there are [Authorize]
 #    occurrences on action-level attributes in controllers (loose floor; the
-#    doc may consolidate multi-action attribute groups into one row).
+#    doc may consolidate multi-action attribute groups into one row). This one
+#    stays an aggregate across all maps — it is a volume floor, not ownership.
+#
+# Ownership comes from each type's own path: a section controller or handler
+# must appear in its src/Sections/<Project>/Docs/authorization.md, and only
+# Humans.Web types belong to the global inventory. Searching every document
+# together let a mention in the global tables or a neighbouring section stand in
+# for an owning map that had lost its rows entirely.
 
 set -euo pipefail
 
@@ -22,22 +29,38 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# The global inventory plus every per-section authorization doc.
+# The global inventory plus every per-section authorization doc — the row-count
+# floor (check 3) is an aggregate over all of them.
 DOCS=("$DOC")
 while IFS= read -r F; do DOCS+=("$F"); done < <(ls src/Sections/*/Docs/authorization.md 2>/dev/null)
+
+# The map that owns a type, derived from its own source path. A section that
+# owns a controller or handler but has no map yet fails here naming the file it
+# must create — the global inventory is not a fallback.
+owning_map() {
+  local file=$1 proj
+  proj=$(echo "$file" | sed -nE 's|^src/Sections/([^/]+)/.*|\1|p')
+  if [ -n "$proj" ]; then
+    echo "src/Sections/$proj/Docs/authorization.md"
+  else
+    echo "$DOC"
+  fi
+}
 
 # 1. Controller files (excluding abstract bases), across Humans.Web and every section.
 CONTROLLERS=$(find src/Humans.Web/Controllers src/Sections/*/Controllers -name "*Controller.cs" -type f \
   -not -name "Humans*ControllerBase.cs" \
-  2>/dev/null | sed 's|.*/||;s|\.cs$||' | sort -u)
+  2>/dev/null | sort -u)
 
 MISSING_CTRL=""
 MISS_CTRL_COUNT=0
 TOTAL_CTRL=0
-for CTRL in $CONTROLLERS; do
+for PATH_CTRL in $CONTROLLERS; do
   TOTAL_CTRL=$((TOTAL_CTRL + 1))
-  if ! grep -qF "$CTRL" "${DOCS[@]}"; then
-    MISSING_CTRL="${MISSING_CTRL}${CTRL}
+  CTRL=$(basename "$PATH_CTRL" .cs)
+  MAP=$(owning_map "$PATH_CTRL")
+  if ! grep -qF "$CTRL" "$MAP" 2>/dev/null; then
+    MISSING_CTRL="${MISSING_CTRL}${CTRL} -> expected in ${MAP}
 "
     MISS_CTRL_COUNT=$((MISS_CTRL_COUNT + 1))
   fi
@@ -46,16 +69,17 @@ done
 # 2. AuthorizationHandler subclasses.
 HANDLERS=$(grep -rlE 'AuthorizationHandler<' \
     src/Humans.Web/Authorization/Requirements/ \
-    src/Sections/*/Authorization/ 2>/dev/null \
-  | sed 's|.*/||;s|\.cs$||' | sort -u)
+    src/Sections/*/Authorization/ 2>/dev/null | sort -u)
 
 MISSING_HND=""
 MISS_HND_COUNT=0
 TOTAL_HND=0
-for HND in $HANDLERS; do
+for PATH_HND in $HANDLERS; do
   TOTAL_HND=$((TOTAL_HND + 1))
-  if ! grep -qF "$HND" "${DOCS[@]}"; then
-    MISSING_HND="${MISSING_HND}${HND}
+  HND=$(basename "$PATH_HND" .cs)
+  MAP=$(owning_map "$PATH_HND")
+  if ! grep -qF "$HND" "$MAP" 2>/dev/null; then
+    MISSING_HND="${MISSING_HND}${HND} -> expected in ${MAP}
 "
     MISS_HND_COUNT=$((MISS_HND_COUNT + 1))
   fi

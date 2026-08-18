@@ -21,19 +21,19 @@ public class AgentFeatureSpecReaderTests
     /// build. Fail here instead, at the moment the second one is committed.
     /// </summary>
     [HumansFact]
-    public async Task Every_spec_stem_in_the_repository_is_unique()
+    public void Every_spec_stem_in_the_repository_is_unique()
     {
-        var paths = RepositoryMarkdownPaths();
-        var reader = new AgentFeatureSpecReader(
-            new TreeSource(paths),
-            new MemoryCache(new MemoryCacheOptions()),
-            NullLogger<AgentFeatureSpecReader>.Instance);
+        // Asserted on the paths that feed the index, not on the index: its keys are unique by
+        // construction, the colliding spec having already been dropped by TryAdd.
+        var specPaths = RepositoryMarkdownPaths().Where(AgentFeatureSpecReader.IsSpecPath).ToList();
 
-        var stems = await reader.KnownStemsAsync(TestContext.Current.CancellationToken);
+        // An empty set means the walk found nothing and the assertion below is vacuous.
+        specPaths.Should().NotBeEmpty();
 
-        stems.Should().OnlyHaveUniqueItems();
-        // A collapsed index means the walk found nothing and the assertion above is vacuous.
-        stems.Should().NotBeEmpty();
+        // The index keys case-insensitively, so stems differing only in case collide too.
+        specPaths
+            .Select(p => p[(p.LastIndexOf('/') + 1)..^".md".Length].ToLowerInvariant())
+            .Should().OnlyHaveUniqueItems();
     }
 
     /// <summary>

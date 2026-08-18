@@ -101,6 +101,7 @@ graph LR
     LegalDoc[LegalDocumentService]:::legal
     LegalSync[LegalDocumentSyncService]:::legal
     Consent[ConsentService]:::consent
+    LegalSyncRunner[LegalDocumentSyncRunner]:::consent
 
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
@@ -119,6 +120,7 @@ graph LR
     DriveMon[DriveActivityMonitorService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
+    GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
 
     Onboard[OnboardingService]:::onboarding
@@ -263,6 +265,9 @@ graph LR
     Consent --> HumanLifecycle
     Consent --> User
     Consent --> Metrics
+    LegalSyncRunner --> Email
+    LegalSyncRunner --> Team
+    LegalSyncRunner --> User
 
     %% Tickets
     TicketQ --> Budget
@@ -326,6 +331,9 @@ graph LR
     DriveMon --> User
     DriveMon --> SysSettings
     DriveMon --> Audit
+    GSyncOutboxProc --> User
+    GSyncOutboxProc --> Team
+    GSyncOutboxProc --> Metrics
 
     %% Onboarding
     Onboard --> User
@@ -516,9 +524,9 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 263 (indices 0..262);
-    %% the 18 lazy edges are indices 263..280. Recompute whenever edges change.
-    linkStyle 263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. Eager count: 269 (indices 0..268);
+    %% the 18 lazy edges are indices 269..286. Recompute whenever edges change.
+    linkStyle 269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Services with no cross-section edges
@@ -527,9 +535,9 @@ Not drawn above — their collaborators are all section-internal (or fan-out con
 interfaces / infra connectors, which this graph doesn't chart):
 
 `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
-`GdprExportService` (fans `IUserDataContributor`), `GoogleSyncOutboxProcessor`,
-`GoogleWorkspaceUserService`, `SyncSettingsService`, `GuideContentService`,
-`LegalDocumentSyncRunner`, `MailerLiteService`, `StripeService`, `TicketVendorService`.
+`GdprExportService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
+`SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
+`TicketVendorService`.
 
 ## Cycles broken by lazy-resolution
 

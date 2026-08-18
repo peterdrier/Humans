@@ -151,26 +151,10 @@ detail, so the orders slice and both users' holdings are evicted).
 Transfers of gate-checked-in tickets are refused — `CheckedInAt` respected.
 No `IMemoryCache` directly.
 
-### TicketingBudgetService (Scoped) — owned by Budget
-
-Listed here because it is the Tickets→Budget bridge; the service lives in
-the **Budget** section project (`src/Sections/Humans.Budget/Services/`,
-`internal` per HUM0034); its contract is the single-member
-`Humans.Budget.Services.ITicketingBudgetService`, `internal` per Peter's
-ruling 43, driven by `TicketingBudgetSyncJob` in `Humans.Budget/Jobs/`. The
-job's constructor is internal too, so its DI registration lives in
-Budget's own `Section.Register`; Hangfire scheduling names the public job
-class from Shell's roll-call.
-
-No repository. Reads paid ticket sales through
-`ITicketServiceRead.GetTicketOrdersAsync` (the cached read surface) and
-delegates every `BudgetLineItem` / `TicketingProjection` write to
-`IBudgetService`. Holds no DB access of its own.
-
-Cross-section calls via `ITicketServiceRead`, `IBudgetService`, plus
-`IClock` and `ILogger`. Aggregates paid orders into weekly ticketing
-actuals which it hands to `IBudgetService.SyncTicketingActualsAsync`.
-Implements `ITicketingBudgetService`. No cache.
+Tickets is also read from the outside by `TicketingBudgetService`, which
+consumes `ITicketServiceRead.GetTicketOrdersAsync` to build the budget's
+ticketing actuals. It is a Budget service and is documented in
+[Budget's map](../../Humans.Budget/Docs/data-access.md).
 
 ### AttendeeContactImportService (Scoped)
 

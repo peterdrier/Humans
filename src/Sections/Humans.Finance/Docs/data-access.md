@@ -12,7 +12,8 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `HoldedCategoryMap`, `HoldedDocSyncStates`, `HoldedCreditorContacts`.
 
 The ledger mirror (`HoldedLedgerLines` and its sync state, chart-of-accounts
-cache, and API call-metering log) is owned by the [Holded](#holded) section
+cache, and API call-metering log) is owned by the
+[Holded](../../Humans.Holded/Docs/data-access.md) section
 (`IHoldedMirrorRepository` / `HoldedDbContext`), not Finance. Finance owns
 Holded-account **provisioning** (mapping budget categories to Holded
 expense accounts, `HoldedCategoryMap`), purchase-**document** sync and

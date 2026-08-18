@@ -61,6 +61,23 @@ plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
 caching lives in the decorator. Periodic background sync of legal
 documents from the legal-internal repo.
 
+### LegalDocumentSyncRunner (Scoped)
+
+Repository: `IConsentRepository`.
+
+| Table | R/W |
+|-------|-----|
+| ConsentRecords | R |
+
+The body of `SyncLegalDocumentsJob`. Runs
+`ILegalDocumentSyncService.SyncAllDocumentsAsync`, then, for each updated
+document, narrows the affected teams' active members down to those without a
+consent record for the new version — `GetPairsForUsersAndVersionsAsync` is its
+only repository call, read-only — and mails them the re-consent notice.
+Cross-section calls via `IEmailService` and `IEmailMessageFactory`
+(`ReConsentsRequired`), `ITeamServiceRead` (team membership) and
+`IUserServiceRead`. No cache.
+
 ### CachingLegalDocumentSyncService (Singleton, `Humans.Consent.Services`)
 
 | Cache | Type | Read | Write | Invalidate |

@@ -91,7 +91,7 @@ grandfathering as the read-model boundary.
 `AccountMergeService` / `DuplicateAccountService` live in the Users
 section — see [Users](#users) below.
 
-### AdminHumanListAssembler / EmailProblemsService / PersonSearchFields / PersonSearchMatcher
+### AdminHumanListAssembler / PersonSearchFields / PersonSearchMatcher
 
 Read-only DTO assemblers — no repository, no cache. Fan out over
 `IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
@@ -107,6 +107,16 @@ non-name field 40, accent-folded) so every people-search surface ranks by
 match quality instead of alphabetically. `PersonSearchFields` is the
 accompanying scope-flag enum that doubles as the field-level authorization
 model.
+
+### EmailProblemsService (Scoped)
+
+No repository, no cache, no direct DB access. Section-internal diagnostics over
+`IUserEmailService` and `IUserService`: `ScanAsync` builds the
+`EmailProblemsReport` for the admin email-health screen,
+`IsGhostExternalLoginsUserAsync` flags accounts whose only identity is an
+external login, and `BackfillLegacyIdentityEmailsAsync` returns the
+`(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
+`IClock`.
 
 ---
 

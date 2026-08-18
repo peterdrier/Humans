@@ -70,6 +70,13 @@ mechanical:
       pointers to architecture/, etc.). Only regenerate the indexed tables.
 
   - id: authorization-inventory
+    # Split per-section 2026-08-18 (Peter): each section's authorization map
+    # lives in its own project at src/Sections/Humans.<X>/Docs/authorization.md,
+    # routed by each controller's and handler's owning project, so a change
+    # inside one section only regenerates that section's file. The global target
+    # below keeps ONLY the cross-section content (view map, canonical policy
+    # names, same-rule-different-spelling table, enforcement gaps, role
+    # appendix) plus the Humans.Web shell controllers and handlers.
     target: docs/authorization-inventory.md
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
@@ -85,21 +92,37 @@ mechanical:
       - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
-      Regenerate docs/authorization-inventory.md from scratch.
+      Document current state only — no move/migration history, no "new this
+      sweep", no PR archaeology, no generated-by header boilerplate
+      (memory/process/current-state-docs-no-history.md). A PR/date reference
+      is allowed only for a live pending item.
 
-      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Interfaces/Authorization/
-      (RoleChecks / ShiftRoleChecks / PolicyNames), AND every src/Sections/*/ project (its
-      Controllers/ and Authorization/ folders).
-      Most controllers and eight sections' resource handlers now live in section
-      projects; an earlier revision of this doc silently omitted them. Find every:
+      Regenerate the per-section authorization maps and the global inventory.
+
+      Outputs: src/Sections/Humans.<X>/Docs/authorization.md for each section
+      whose Controllers/ or Authorization/ files changed in the diff window, and
+      docs/authorization-inventory.md (view map + canonical policy names +
+      same-rule-different-spelling table + enforcement gaps + role appendix,
+      plus the src/Humans.Web shell's own controllers and handlers) when
+      cross-section findings or Humans.Web files changed. Do NOT regenerate
+      untouched sections' files.
+
+      Route every controller and handler to the map that OWNS it, by its own
+      source path: a type under src/Sections/<Project>/ belongs in that
+      project's Docs/authorization.md, and only src/Humans.Web types belong in
+      the global inventory. Never document a section's controller in the global
+      file or in a neighbouring section's map — the verifier checks the owning
+      map only, and a misfiled row leaves the owner permanently stale.
+
+      Search src/Humans.Web/ (Controllers/, Authorization/),
+      src/Humans.Interfaces/Authorization/ (RoleChecks / ShiftRoleChecks /
+      PolicyNames), AND every src/Sections/*/ project (its Controllers/ and
+      Authorization/ folders). Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
         controllers and actions
       - RoleChecks.* / ShiftRoleChecks.* invocation
       - IAuthorizationService.AuthorizeAsync call site
       - Resource-based authorization handler (subclass of AuthorizationHandler<T, R>)
-
-      Group by section (Admin, Tickets, Teams, Profiles, Camps, etc. — match
-      the existing section headings).
 
       Match the existing column layout: Controller | Scope | Roles | Source.
       "Scope" is "Class" for class-level [Authorize], "Action" for
@@ -107,8 +130,8 @@ mechanical:
       the static field (e.g. RoleNames.Admin, RoleGroups.BoardOrAdmin) when
       identifiable.
 
-      Preserve the file's existing intro paragraph and any non-table prose
-      at the top.
+      Preserve each file's existing intro paragraph and any non-table prose at
+      the top, and the global file's "Per-Section Inventories" pointer section.
 
   # controller-architecture-audit retired 2026-08-18 (Peter): the action-name
   # conventions live in docs/architecture/conventions.md, and a perpetual
@@ -190,6 +213,16 @@ mechanical:
       docs/architecture/service-data-access-map.md (Dashboard orchestrator +
       cross-section analysis + cache inventory + appendices) when cross-section
       findings changed. Do NOT regenerate untouched sections' files.
+
+      Route every service to the map that OWNS it, by its own source path: a
+      service under src/Sections/<Project>/Services/ belongs in that project's
+      Docs/data-access.md, and only src/Humans.Web/Services orchestrators belong
+      in the rollup. A service that bridges two sections (e.g.
+      TicketingBudgetService, which reads Tickets and writes through Budget) is
+      documented once, in the section that owns the class; the consuming
+      section's map may reference it in prose but must not carry its `###`
+      heading. The verifier checks the owning map only, so a misfiled heading
+      leaves the owner permanently stale.
 
       For every service in a touched section (and the cross-section orchestrators
       left in src/Humans.Web/Services/), identify:

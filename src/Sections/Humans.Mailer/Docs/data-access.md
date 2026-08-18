@@ -14,6 +14,16 @@ No repository. Cross-section calls via `IMailerLiteService` (external),
 slice — reads MailerLite subscribers and provisions matching accounts.
 No DB access, no cache.
 
+### MailerLiteService (Scoped)
+
+No repository. `MailerLiteClient` is the MailerLite HTTP port, built over
+`IHttpClientFactory`: account and group reads (`GetAccountSummaryAsync`,
+`ListGroupsAsync`, `CreateGroupAsync`), subscriber reads
+(`ListSubscribersAsync`, `GetSubscriberAsync`), and the group-membership
+writes the audience sync drives (`AssignSubscriberToGroupAsync`,
+`UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`,
+`RefreshAsync`). Retry timing uses `IClock`. No DB access, no cache.
+
 ### MailerAudienceSyncService (Scoped)
 
 No repository. Cross-section calls via `IMailerLiteService`,

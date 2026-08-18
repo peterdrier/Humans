@@ -47,6 +47,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | `LanguageController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
 | `WelcomeController` (`src/Humans.Web`) | Class | `AllowAnonymous` | — |
 | `ColorPaletteController` (`src/Humans.Web`) | Class | `AllowAnonymous` | — |
+| `TicketsGateAdminController` (`src/Humans.Web`) | Class | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | — (gate-terminal credential management at `/Tickets/Admin/Gate`; `Index` and `SetPassword` inherit the class policy) |
 
 ### Guest Section
 

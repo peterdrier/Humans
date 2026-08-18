@@ -67,7 +67,7 @@ directly — all caching lives in the decorator.
 
 Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
 `ICampInfoInvalidator`. `SearchAsync` is served from the cached `CampInfo`
-snapshot (never the DB — #906). Surfaced on `/Debug/CacheStats`.
+snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 ### CampRoleService (Scoped)
 

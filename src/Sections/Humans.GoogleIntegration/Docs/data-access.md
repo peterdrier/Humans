@@ -86,7 +86,7 @@ Repository: `IGoogleSyncOutboxRepository`.
 |-------|-----|
 | GoogleSyncOutboxEvents | W (`AddAsync` / `AddRangeAsync`) |
 
-Thin write surface (#889) over the outbox table so other sections append
+Thin write surface over the outbox table so other sections append
 events through a service interface rather than reaching into the repository.
 `TeamService` calls `IGoogleSyncOutboxService.AddAsync` /
 `AddRangeAsync` inside a `TransactionScope` to keep each team mutation

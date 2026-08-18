@@ -76,9 +76,15 @@ adapters or fan-out over public service interfaces (`ITeamServiceRead`,
 `IBurnSettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 
-### AnthropicClient / AnthropicBalanceProvider (`Services/Anthropic/`)
+### AnthropicClient (`Services/Anthropic/`)
 
 Outbound API client over `AnthropicOptions`. No DB access, no cache.
+
+### AnthropicBalanceProvider (`Services/Anthropic/`)
+
+No repository. Reads the Anthropic credit balance over `AnthropicOptions`
+(`GetBalanceAsync` → `AgentBalanceStatus`) for the admin status screen via
+`AgentAdminStatusService`. No DB access, no cache.
 
 ---
 

@@ -18,7 +18,8 @@
 # name inside square brackets. Since the 2026-08-18 cross-section-only rewrite,
 # a service with zero cross-section edges is legitimately absent from the
 # Mermaid but MUST be named in the doc's "Services with no cross-section edges"
-# list — so a backtick-quoted mention anywhere in the doc also counts.
+# list — a backtick-quoted mention is only accepted inside that section, so a
+# service that loses its diagram node cannot be covered by prose elsewhere.
 
 set -euo pipefail
 
@@ -44,6 +45,14 @@ export SKIP_PREFIXES="Stub Caching"
 # Extract every Mermaid node label (text inside `[ ... ]` after a node alias).
 NODE_LABELS=$(grep -oE '[A-Za-z]+\[[A-Za-z]+\]' "$DOC" | sed -E 's/^[A-Za-z]+\[//; s/\]$//' | sort -u)
 
+# The zero-cross-section-edge roster, isolated so prose elsewhere in the doc
+# cannot stand in for a missing diagram node.
+ZERO_EDGE_SECTION=$(sed -n '/^## Services with no cross-section edges$/,/^## /p' "$DOC")
+if [ -z "$ZERO_EDGE_SECTION" ]; then
+  echo "FAIL [dependency-graph]: $DOC has no '## Services with no cross-section edges' section"
+  exit 1
+fi
+
 MISSING=""
 MISS_COUNT=0
 TOTAL=0
@@ -57,7 +66,7 @@ while IFS='|' read -r PRIMARY NAMES FILE; do
       break
     fi
     # Zero-cross-section-edge services are listed (backtick-quoted) instead of drawn.
-    if grep -q "\`${NAME}\`" "$DOC"; then
+    if echo "$ZERO_EDGE_SECTION" | grep -q "\`${NAME}\`"; then
       FOUND=true
       break
     fi

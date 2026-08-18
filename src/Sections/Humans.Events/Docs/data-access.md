@@ -11,9 +11,10 @@ directly. Owns `Events`,
 `EventGuideSettings`, `EventCategories`, `EventVenues`,
 `EventModerationActions`, `EventPreferences`, `EventFavourites`. The
 name-colliding `EventSettings` table is **Shifts-owned** (lives on
-`ShiftsDbContext` — see the [Shifts](#shifts) section) and
+`ShiftsDbContext` — see [Shifts](../../Humans.Shifts/Docs/data-access.md)) and
 `EventParticipations` is **Users-owned** (lives on `UsersDbContext` —
-see [Users](#users)); `EventGuideDbContext` deliberately excludes both
+see [Users](../../Humans.Users/Docs/data-access.md)); `EventGuideDbContext`
+deliberately excludes both
 (see its doc comment).
 
 `EventRepository` does not read `EventSettings` (the Shifts-owned table)
@@ -57,8 +58,8 @@ service has no `IMemoryCache`.
 | Flat `EventVenueView` list | Static | yes | yes | yes |
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
-Implements `IEventService` (which extends the new cross-section read
-surface `IEventServiceRead` — #915), `IEventViewInvalidator`,
+Implements `IEventService` (which extends the cross-section read surface
+`IEventServiceRead`), `IEventViewInvalidator`,
 `IHostedService` (`StartAsync` warms all four projections).
 `IEventServiceRead` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the

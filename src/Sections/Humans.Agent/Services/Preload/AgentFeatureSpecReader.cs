@@ -47,8 +47,10 @@ internal sealed partial class AgentFeatureSpecReader(
     /// True for a repo path that is a feature spec: anything under <c>docs/features/global/</c>,
     /// or a file in a section's <c>Docs/</c> that is not the section's own invariants doc
     /// (<c>&lt;Section&gt;.md</c>), one of its generated companions, or a dated design record.
+    /// Internal so the stem-collision test can apply the real rule to the real tree; reading
+    /// the built index back cannot detect a collision, having already dropped the loser.
     /// </summary>
-    private static bool IsSpecPath(string path)
+    internal static bool IsSpecPath(string path)
     {
         if (path.StartsWith(GlobalFolderPath + "/", StringComparison.OrdinalIgnoreCase))
             return path.LastIndexOf('/') == GlobalFolderPath.Length;
