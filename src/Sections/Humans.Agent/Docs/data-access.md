@@ -1,0 +1,91 @@
+# Agent — Data Access
+
+## Agent
+
+Project: `src/Sections/Humans.Agent` — services live under `Services/`
+(with `Services/Anthropic/`, `Services/Preload/`, `Services/Stores/`
+subfolders), repository under `Data/`. **DbContext:** `AgentDbContext`.
+`AgentRepository` injects `AgentDbContext` directly (Scoped, not via
+`IDbContextFactory` — mirrors `AgentService` being Scoped rather than
+Singleton like most other sections' repositories). Owns
+`AgentConversations`, `AgentMessages`, `AgentSettings`.
+
+The preload/warmup surface: `AgentPreloadCorpusBuilder` assembles the
+tool-corpus preload from `AgentSectionDocReader`, `AgentFeatureSpecReader`,
+`CommunityFaqReader`, and calls into `IAgentPreloadAugmentor`
+(`Humans.Web.Services.Agent.AgentPreloadAugmentor`,
+`src/Humans.Web/Services/Agent/`) — a Web-layer helper, not part of this
+section, because it renders the access matrix / glossaries / route map /
+FAQ preload pages from `Humans.UI`'s `AccessMatrixDefinitions` /
+`SectionHelpContent` (every section's help content, which only the Web
+layer can see in one place). Pure static-content formatting — no DI
+dependencies beyond the two static readers, no DB access, no cache.
+`AgentPreloadWarmupHostedService` and `AgentSettingsStoreWarmupHostedService`
+run startup warmup, no DB access — fan out over the readers /
+`IAgentSettingsService` via `IServiceScopeFactory`. `AgentRateLimitStore`,
+`AgentRetentionRunStore`, `AgentSettingsStore` are in-memory stores backing
+the rate-limit / retention / settings caches — no DB access of their own.
+`AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
+`IBurnSettingsService` for its tool surface.
+
+### AgentService (Scoped, `Humans.Agent.Services`)
+
+Repository: `IAgentRepository`.
+
+| Table | R/W |
+|-------|-----|
+| AgentConversations | R/W |
+| AgentMessages | R/W |
+| AgentSettings | R (via `IAgentSettingsService`) |
+
+Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
+`IAgentAbuseDetector`, `IAgentUserSnapshotProvider`,
+`IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`,
+`IAgentToolDispatcher`, `IAnthropicClient`. Implements
+`IUserDataContributor`. Uses `AnthropicOptions`. No `IMemoryCache`.
+
+### AgentAdminStatusService (Scoped, `Humans.Agent.Services`)
+
+Repository: `IAgentRepository` (read-only window queries for the admin
+status report).
+
+| Table | R/W |
+|-------|-----|
+| AgentConversations | R |
+| AgentMessages | R |
+
+Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
+`IAgentRetentionRunStore`, `IAgentAnthropicBalanceProvider`. Read-only
+assembler for `/Agent/Admin/Status` — one 30-day projection, all
+sub-windows computed in memory. No cache.
+
+### AgentPricing
+
+Static class — hard-coded per-1M-token Anthropic pricing for agent spend
+estimates. No DI, no DB access.
+
+### AgentSettingsService / AgentPromptAssembler / AgentToolDispatcher / AgentUserSnapshotProvider / AgentAbuseDetector
+
+Live under `src/Sections/Humans.Agent/Services/`. The settings
+service is the only one that touches `AgentSettings` directly (via
+`AgentRepository.GetAgentSettingsAsync` / `UpsertAgentSettingsAsync`),
+backed in-memory by `AgentSettingsStore`. The others are stateless
+adapters or fan-out over public service interfaces (`ITeamServiceRead`,
+`IUserServiceRead`, `IRoleAssignmentService`, `IConsentServiceRead`,
+`IFeedbackServiceRead`, `ITicketServiceRead`, `IShiftView`,
+`IBurnSettingsService`, `IAuditViewerService`, etc.) for the agent's
+tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
+
+### AnthropicClient (`Services/Anthropic/`)
+
+Outbound API client over `AnthropicOptions`. No DB access, no cache.
+
+### AnthropicBalanceProvider (`Services/Anthropic/`)
+
+No repository. Reads the Anthropic credit balance over `AnthropicOptions`
+(`GetBalanceAsync` → `AgentBalanceStatus`) for the admin status screen via
+`AgentAdminStatusService`. No DB access, no cache.
+
+---
+
+

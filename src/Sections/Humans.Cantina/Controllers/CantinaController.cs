@@ -13,7 +13,7 @@ namespace Humans.Cantina.Controllers;
 
 /// <summary>
 /// Cantina coordinator surface — weekly roster page and CSV export
-/// (feature #36 — docs/features/cantina/daily-roster.md). View-only.
+/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). View-only.
 /// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
 /// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
 /// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans

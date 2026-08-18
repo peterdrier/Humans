@@ -198,5 +198,8 @@ public class CommunityFaqReaderTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(Files.Keys.ToList());
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 }

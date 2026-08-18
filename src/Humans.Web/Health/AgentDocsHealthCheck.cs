@@ -18,7 +18,7 @@ namespace Humans.Web.Health;
 /// A cached reader would refresh the sliding expiration off one warm fetch and keep
 /// reporting Healthy through a revoked token / outage / moved canary. That is also why
 /// the two folder paths below are spelled out here rather than read off the section:
-/// both canaries are Base docs (docs/sections/_Index.md, docs/features/26-events.md),
+/// both canaries are Base docs (docs/sections/_Index.md, docs/features/global/gdpr-export.md),
 /// so this check depends on nothing Agent owns except whether the feature is on.
 /// </summary>
 public sealed class AgentDocsHealthCheck(
@@ -27,7 +27,7 @@ public sealed class AgentDocsHealthCheck(
     ILogger<AgentDocsHealthCheck> logger) : IHealthCheck
 {
     private const string SectionsFolder = "docs/sections";
-    private const string FeaturesFolder = "docs/features";
+    private const string FeaturesFolder = "docs/features/global";
 
     // The canary for docs/sections. This probe fetches the folder path literally and
     // has no src/Sections/Humans.{key}/Docs fallback, unlike AgentSectionDocReader, so
@@ -38,10 +38,12 @@ public sealed class AgentDocsHealthCheck(
     // docs/sections for as long as the folder itself is worth probing.
     private const string ProbeSectionDoc = "_Index";
 
-    // A stable feature-spec canary — fetched from a different folder (docs/features)
+    // A stable feature-spec canary — fetched from a different folder (docs/features/global)
     // than sections, so a folder-level fetch regression on one folder doesn't mask
-    // the other.
-    private const string ProbeFeature = "26-events";
+    // the other. Per-section specs live in each section's own Docs/ folder and move with
+    // the section; docs/features/global holds the cross-section ones, which belong to no
+    // section and so have nowhere to move to. GDPR export is the most load-bearing of them.
+    private const string ProbeFeature = "gdpr-export";
 
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
@@ -57,7 +59,7 @@ public sealed class AgentDocsHealthCheck(
 
         if (!await TryFetchAsync(FeaturesFolder, ProbeFeature, cancellationToken))
             return HealthCheckResult.Degraded(
-                $"agent grounding docs unreachable — docs/features/{ProbeFeature}.md could not be fetched from GitHub; " +
+                $"agent grounding docs unreachable — {FeaturesFolder}/{ProbeFeature}.md could not be fetched from GitHub; " +
                 "fetch_feature_spec will return errors");
 
         return HealthCheckResult.Healthy();

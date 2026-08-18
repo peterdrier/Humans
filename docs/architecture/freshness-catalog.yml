@@ -49,13 +49,18 @@ mechanical:
       # new or renamed section doc must mark it dirty. Adding Tour's row this
       # sweep required a manual nudge for exactly this reason.
       - "src/Sections/*/Docs/*.md"
+      # …and the section's feature specs, which sit one level deeper. The glob above
+      # does not descend, so without this a new spec never marks README dirty.
+      - "src/Sections/*/Docs/features/*.md"
     update: prompt
     prompt: |
-      Walk docs/features/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
-      — a section that has moved into its own project keeps its invariants doc
-      in-project, and README indexes those rows too, so a walk restricted to
-      docs/ would drop or omit exactly the in-project doc whose change fired
-      this entry. Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
+      Walk docs/features/global/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
+      recursively — a section keeps its invariants doc directly in Docs/ and its feature
+      specs in Docs/features/, and README indexes both, so a walk restricted to docs/ or
+      one that does not descend into Docs/features/ would drop exactly the in-project doc
+      whose change fired this entry.
+      docs/features/ now holds only global/, the cross-section specs.
+      Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
       GettingStarted.md, Glossary.md, and the dated design records matching
       src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
       map of which section's doc lives where — read it first and agree with it.
@@ -69,6 +74,13 @@ mechanical:
       pointers to architecture/, etc.). Only regenerate the indexed tables.
 
   - id: authorization-inventory
+    # Split per-section 2026-08-18 (Peter): each section's authorization map
+    # lives in its own project at src/Sections/Humans.<X>/Docs/authorization.md,
+    # routed by each controller's and handler's owning project, so a change
+    # inside one section only regenerates that section's file. The global target
+    # below keeps ONLY the cross-section content (view map, canonical policy
+    # names, same-rule-different-spelling table, enforcement gaps, role
+    # appendix) plus the Humans.Web shell controllers and handlers.
     target: docs/authorization-inventory.md
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
@@ -80,25 +92,41 @@ mechanical:
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
       # Section-owned controllers carry [Authorize] attributes the inventory lists,
-      # but were not a trigger for it. Same gap as controller-architecture-audit.
+      # but were not a trigger for it.
       - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
-      Regenerate docs/authorization-inventory.md from scratch.
+      Document current state only — no move/migration history, no "new this
+      sweep", no PR archaeology, no generated-by header boilerplate
+      (memory/process/current-state-docs-no-history.md). A PR/date reference
+      is allowed only for a live pending item.
 
-      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Interfaces/Authorization/
-      (RoleChecks / ShiftRoleChecks / PolicyNames), AND every src/Sections/*/ project (its
-      Controllers/ and Authorization/ folders).
-      Most controllers and eight sections' resource handlers now live in section
-      projects; an earlier revision of this doc silently omitted them. Find every:
+      Regenerate the per-section authorization maps and the global inventory.
+
+      Outputs: src/Sections/Humans.<X>/Docs/authorization.md for each section
+      whose Controllers/ or Authorization/ files changed in the diff window, and
+      docs/authorization-inventory.md (view map + canonical policy names +
+      same-rule-different-spelling table + enforcement gaps + role appendix,
+      plus the src/Humans.Web shell's own controllers and handlers) when
+      cross-section findings or Humans.Web files changed. Do NOT regenerate
+      untouched sections' files.
+
+      Route every controller and handler to the map that OWNS it, by its own
+      source path: a type under src/Sections/<Project>/ belongs in that
+      project's Docs/authorization.md, and only src/Humans.Web types belong in
+      the global inventory. Never document a section's controller in the global
+      file or in a neighbouring section's map — the verifier checks the owning
+      map only, and a misfiled row leaves the owner permanently stale.
+
+      Search src/Humans.Web/ (Controllers/, Authorization/),
+      src/Humans.Interfaces/Authorization/ (RoleChecks / ShiftRoleChecks /
+      PolicyNames), AND every src/Sections/*/ project (its Controllers/ and
+      Authorization/ folders). Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
         controllers and actions
       - RoleChecks.* / ShiftRoleChecks.* invocation
       - IAuthorizationService.AuthorizeAsync call site
       - Resource-based authorization handler (subclass of AuthorizationHandler<T, R>)
-
-      Group by section (Admin, Tickets, Teams, Profiles, Camps, etc. — match
-      the existing section headings).
 
       Match the existing column layout: Controller | Scope | Roles | Source.
       "Scope" is "Class" for class-level [Authorize], "Action" for
@@ -106,40 +134,12 @@ mechanical:
       the static field (e.g. RoleNames.Admin, RoleGroups.BoardOrAdmin) when
       identifiable.
 
-      Preserve the file's existing intro paragraph and any non-table prose
-      at the top.
+      Preserve each file's existing intro paragraph and any non-table prose at
+      the top, and the global file's "Per-Section Inventories" pointer section.
 
-  - id: controller-architecture-audit
-    target: docs/controller-architecture-audit.md
-    triggers:
-      - "src/Humans.Web/Controllers/**/*.cs"
-      # Section-owned controllers (G5, #866). The audit documents all 92 actions
-      # including the 58 controllers under src/Sections/, but only fired on the
-      # Humans.Web ones — so a section controller change left it stale silently.
-      # Caught 2026-08-13 by diff-mode.sh test 5 after its synthetic probe was
-      # repointed at a section controller.
-      - "src/Sections/*/Controllers/**/*.cs"
-    update: prompt
-    prompt: |
-      Regenerate the action-name audit in docs/controller-architecture-audit.md.
-
-      For every controller in src/Humans.Web/Controllers/ AND every controller
-      under src/Sections/*/Controllers/ (both are triggers for this entry, and
-      the target already documents both — the majority of controllers now live
-      in section projects, so auditing only Humans.Web leaves their action rows
-      stale even though the trigger fired):
-      1. List every public action method with its [HttpGet]/[HttpPost]/etc.
-         verb and route.
-      2. For each action, derive a Purpose line from the action name and
-         body comments.
-      3. Suggest a rename only if the action name violates the project's
-         action-name conventions documented in
-         docs/architecture/conventions.md §"Action Naming" (or note "OK"
-         if it doesn't).
-
-      Match the existing column layout: Method | Route | Verb | Purpose | Suggestion.
-      Preserve the document header (the "Living document. Last updated: ..." line)
-      and update the date.
+  # controller-architecture-audit retired 2026-08-18 (Peter): the action-name
+  # conventions live in docs/architecture/conventions.md, and a perpetual
+  # per-action inventory just re-derives what the code already says. Do not re-add.
 
   - id: dependency-graph
     target: docs/architecture/dependency-graph.md
@@ -157,16 +157,18 @@ mechanical:
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
 
-      Walk every service class under src/Sections/*/Services/ AND the cross-section
-      orchestrators left in src/Humans.Web/Services/. Humans.Application is gone —
-      G5 lane 5c emptied it and dropped every reference to it — so there is no
-      Application/Services/ folder to walk. For each:
+      This graph shows CROSS-SECTION edges only (Peter, 2026-08-18): omit any
+      edge whose consumer and target implementation live in the same section
+      project, omit nodes left with zero edges, and never re-add intra-section
+      detail. Walk every service class under src/Sections/*/Services/ AND the
+      cross-section orchestrators left in src/Humans.Web/Services/. For each:
       1. Read the constructor; identify every injected interface.
       2. For each injected interface, follow it to its implementing service to
          identify the owning section. The section is the project name: an
          implementation under src/Sections/Humans.Teams/Services/ belongs to Teams.
          Note the interface may be declared in a separate Humans.<X>.Contracts
          project; the section is where the IMPLEMENTATION lives, not the contract.
+         Drop the edge if both ends resolve to the same section.
       3. Distinguish ctor-injected (solid arrow) from
          IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
          label).
@@ -174,10 +176,34 @@ mechanical:
          NotificationService, RoleAssignmentService, HumansMetrics) — place
          these on the right side of the graph as a separate cluster.
 
-      Preserve the document header ("How to read", classDef colors, and any
-      explanatory prose). Only regenerate the Mermaid diagram body.
+      5. A service with no cross-section edges at all is not drawn. List it in
+         the "Services with no cross-section edges" section instead, backtick-
+         quoted. Regenerate that roster from the same walk that produces the
+         diagram, in the same pass — it is the diagram's complement, not prose.
+         Every service must end up in exactly one of the two: the verifier
+         accepts an undrawn service only if it is named there, so a service that
+         loses its last cross-section dependency fails the check until it is
+         added, and one that gains its first must be removed from the roster as
+         it enters the diagram.
+
+      After regenerating the Mermaid body, recount the `linkStyle` line: it
+      indexes the lazy edges by position, so every added or removed eager edge
+      shifts them. Eager edges are numbered 0..n-1 in source order and the lazy
+      ones follow; the comment above it must state the new counts.
+
+      Preserve the document header ("How to read", classDef colors) and the
+      remaining explanatory prose — the cycles, fan-in and follow-up sections.
 
   - id: service-data-access-map
+    # Split per-section 2026-08-18 (Peter): each section's map lives in its own
+    # project at src/Sections/Humans.<X>/Docs/data-access.md so a change inside
+    # one section only regenerates that section's file. The global target below
+    # keeps ONLY the cross-section content (Dashboard orchestrator, cross-section
+    # analysis, cache inventory, appendices). When this entry fires, regenerate
+    # only the data-access.md of the sections whose files changed, plus the
+    # global rollup if cross-section findings changed. The per-section files are
+    # mechanical outputs — they carry no editorial freshness markers and are not
+    # hand-edited.
     target: docs/architecture/service-data-access-map.md
     triggers:
       - "src/Humans.Web/Services/**/*.cs"
@@ -194,11 +220,31 @@ mechanical:
       - "src/Sections/*/Data/*Repository.cs"
     update: prompt
     prompt: |
-      Regenerate docs/architecture/service-data-access-map.md.
+      Document current state only — no move/migration history, no "new this
+      sweep", no PR archaeology, no generated-by header boilerplate
+      (memory/process/current-state-docs-no-history.md). A PR/date reference
+      is allowed only for a live pending item.
 
-      For every service under src/Sections/*/Services/ AND the cross-section
-      orchestrators left in src/Humans.Web/Services/ — Humans.Application is gone,
-      emptied and dereferenced at G5 lane 5c — identify:
+      Regenerate the per-section data-access maps and the cross-section rollup.
+
+      Outputs: src/Sections/Humans.<X>/Docs/data-access.md for each section whose
+      source files changed in the diff window, and
+      docs/architecture/service-data-access-map.md (Dashboard orchestrator +
+      cross-section analysis + cache inventory + appendices) when cross-section
+      findings changed. Do NOT regenerate untouched sections' files.
+
+      Route every service to the map that OWNS it, by its own source path: a
+      service under src/Sections/<Project>/Services/ belongs in that project's
+      Docs/data-access.md, and only src/Humans.Web/Services orchestrators belong
+      in the rollup. A service that bridges two sections (e.g.
+      TicketingBudgetService, which reads Tickets and writes through Budget) is
+      documented once, in the section that owns the class; the consuming
+      section's map may reference it in prose but must not carry its `###`
+      heading. The verifier checks the owning map only, so a misfiled heading
+      leaves the owner permanently stale.
+
+      For every service in a touched section (and the cross-section orchestrators
+      left in src/Humans.Web/Services/), identify:
       1. Which repository interfaces it depends on. Note that a G5 section's
          repository is often a class literally named `Repository` implementing
          `I<Section>Repository`, not `<Section>Repository`; use the real class name.
@@ -212,44 +258,18 @@ mechanical:
          re-resolve it from the context sources.
       3. Which IMemoryCache keys the service reads/writes.
 
-      Group by section (use folder name under Services/). Match the existing
-      section headings and table layout. Preserve the intro paragraph and
-      Table of Contents.
+      Match each per-section file's existing header and table layout. In the
+      global rollup, preserve the intro/methodology block and the
+      "Per-Section Maps" pointer section.
 
       Note: at scale ~500 users with single-server deployment, this map is
       diagnostic — call out cross-section table reads (a service reading a
       table owned by another section's repository) as a design rule
       violation per docs/architecture/design-rules.md §"Services own their data".
 
-  - id: data-model-index
-    target: docs/architecture/data-model.md
-    triggers:
-      # Humans.Domain and Humans.Infrastructure were deleted across G5, so their
-      # Entities/ and Data/Configurations/ globs matched nothing. What survives of
-      # the platform side is SystemDbContext (DataProtectionKeys), which the doc
-      # lists and which now lives in Shell; section-owned entities and
-      # configurations are covered by the two src/Sections globs below.
-      - "src/Humans.Web/Data/**/*.cs"
-      # G5 sections own their entities and EF configurations outright (24 Domain/
-      # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
-      # Without these, this entry reported "not dirty" on 2026-08-13 while 39
-      # section-owned entity/configuration files had changed — a false clean, not
-      # a real one. A trigger that cannot see the code makes a doc look fresh.
-      - "src/Sections/*/Domain/**/*.cs"
-      # Whole Data/ tree, not just Data/Configurations/: four configurations sit
-      # directly under Data/ (Consent's three, Email's EmailOutboxMessage), so a
-      # Configurations-only glob still left this entry falsely clean for them.
-      - "src/Sections/*/Data/**/*.cs"
-    update: prompt
-    # NOTE — the authoritative instruction for this entry is NOT this file. The
-    # prompt-file below explicitly defers to the inline `freshness:auto
-    # id="entity-index"` marker in docs/architecture/data-model.md, so that
-    # marker is what actually runs. Three places must agree (triggers here,
-    # prompt-file, inline marker); editing only the prompt-file is dead code —
-    # exactly the trap hit on 2026-08-13. If you widen these triggers, widen the
-    # INLINE MARKER first. Both currently cover src/Sections/*/Domain/ and
-    # src/Sections/*/Data/Configurations/ alongside the src/Humans.* roots.
-    prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
+  # data-model-index retired 2026-08-18 (Peter): docs/architecture/data-model.md
+  # deleted — each section's Docs/ owns its data model; the DbContext→tables
+  # rollup lives in service-data-access-map's methodology block. Do not re-add.
 
   - id: guid-reservations
     target: docs/guid-reservations.md
@@ -355,3 +375,6 @@ ignore:
   # maintains them itself (docs/superpowers/specs/2026-08-17-section-doctor-design.md).
   - src/Sections/*/Docs/health.md
   - docs/health/**
+  # Per-section data-access maps: mechanical outputs of the service-data-access-map
+  # entry (split from the global file 2026-08-18). No editorial markers; never hand-edited.
+  - src/Sections/*/Docs/data-access.md

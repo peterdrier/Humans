@@ -21,7 +21,7 @@ internal sealed class AuditLogService(
     IAuditLogRepository repo,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<AuditLogService> logger) : IAuditLogService, IUserDataContributor
+    ILogger<AuditLogService> logger) : IAuditLogService, IAuditLogReader, IUserDataContributor
 {
     // ─── Writes (append-only) ───
 
@@ -267,13 +267,6 @@ internal sealed class AuditLogService(
 
         return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
-
-    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        Instant windowStart,
-        Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,

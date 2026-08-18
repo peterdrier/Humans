@@ -5,9 +5,9 @@ using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Services;
 
-/// <summary>Read-side wrapper over <see cref="IAuditLogService"/> that resolves actor/subject/team names. No DB or caching.</summary>
+/// <summary>Read-side wrapper over <see cref="IAuditLogReader"/> that resolves actor/subject/team names. No DB or caching.</summary>
 internal sealed class AuditViewerService(
-    IAuditLogService auditLog,
+    IAuditLogReader auditLog,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     ITeamResourceService teamResourceService) : IAuditViewerService

@@ -22,7 +22,7 @@ For ANY change to `peterdrier/Humans` that touches code, docs (other than `memor
 - One-line typo fixes
 - "Obviously safe" changes
 - Anything that feels too small for a PR
-- Changes to `docs/architecture/`, `docs/sections/`, `docs/features/`, `CLAUDE.md`, `README.md`
+- Changes to `docs/architecture/`, `docs/sections/`, `src/Sections/*/Docs/` (invariants + `features/` specs), `docs/features/global/`, `CLAUDE.md`, `README.md`
 
 For `memory/**`-only changes (new atoms, atom edits, INDEX.md updates, META.md tweaks):
 

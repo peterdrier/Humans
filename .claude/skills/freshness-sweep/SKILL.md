@@ -74,7 +74,7 @@ Abort on validation failure → Phase 8.
 | Editorial `freshness:flag-on-change` | 1 | **Dispatch a drift-fix subagent** (see below) — MANDATORY every sweep, not optional. Read the doc against the *specific* changed files its triggers matched; fix every concrete factual contradiction in place; escalate only genuine judgment calls. A passive "flagged for review" list is a process failure. |
 | Unmarked editorial | none | No triggers → reviewing against all of `src/**` is noise. Add to flag list ("Unmarked editorial; add `freshness:triggers`: \<files\>") so a future sweep can scope it; do not full-review. |
 
-**Editorial drift-fix is the core of the sweep — DO IT, don't punt it.** `docs/sections/`, `docs/features/`, and `docs/guide/` are Claude-authored; the sweep *owns* keeping them true. Emitting a "flagged for human review" list of triggered docs instead of fixing them is the single most common way this skill has failed in practice. The default is **fix**, not flag.
+**Editorial drift-fix is the core of the sweep — DO IT, don't punt it.** `docs/sections/`, `src/Sections/*/Docs/`, `docs/features/global/`, and `docs/guide/` are Claude-authored; the sweep *owns* keeping them true. Emitting a "flagged for human review" list of triggered docs instead of fixing them is the single most common way this skill has failed in practice. The default is **fix**, not flag.
 
 Procedure — for **each** triggered `freshness:flag-on-change` doc, dispatch a tightly-scoped subagent (≤3 concurrent; cluster docs that share the same changed files into one subagent) with:
 - the doc's absolute path in the worktree;
@@ -140,10 +140,10 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft 
 
 - Anything outside `docs/`
 - `docs/architecture/freshness-catalog.yml`
-- `docs/sections/`, `docs/features/`, `docs/guide/` as deletion targets (these are migration *destinations*, never sources)
+- `docs/sections/`, `src/Sections/*/Docs/`, `docs/features/global/`, `docs/guide/` as deletion targets (these are migration *destinations*, never sources)
 - `docs/architecture/{design-rules,code-review-rules,coding-rules,conventions}.md` as deletion targets (same — these are destinations)
 - `docs/freshness/last-report.md`
-- the `freshness:auto` blocks in `data-model.md` and `code-analysis.md` (Phase 5 owns those)
+- the `freshness:auto` block in `code-analysis.md` (Phase 5 owns it)
 
 ### Sizing
 

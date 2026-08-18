@@ -76,4 +76,38 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
             return [];
         }
     }
+
+    public async Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var settings = _guideSettings.Value;
+        try
+        {
+            var tree = await _client.Git.Tree.GetRecursive(
+                settings.Owner, settings.Repository, settings.Branch);
+
+            // GitHub caps a recursive tree; past the cap the response is a partial list that
+            // looks complete. Say so rather than let a caller treat a truncated corpus as the
+            // whole repository (memory/code/always-log-problems.md).
+            if (tree.Truncated)
+            {
+                _logger.LogWarning(
+                    "Recursive tree for {Owner}/{Repository}@{Branch} was truncated by GitHub; the markdown listing is incomplete",
+                    settings.Owner, settings.Repository, settings.Branch);
+            }
+
+            IReadOnlyList<string> paths = [.. tree.Tree
+                .Where(i => i.Type == TreeType.Blob &&
+                            i.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                .Select(i => i.Path)];
+            return (paths, !tree.Truncated);
+        }
+        catch (NotFoundException)
+        {
+            _logger.LogWarning(
+                "Tree not found in GitHub: {Owner}/{Repository}@{Branch}",
+                settings.Owner, settings.Repository, settings.Branch);
+            return ([], false);
+        }
+    }
 }

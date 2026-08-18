@@ -4,7 +4,7 @@ namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Single owner of the audit-log <em>read+render</em> path. Wraps
-/// <see cref="IAuditLogService"/> raw queries with name resolution so every
+/// <c>IAuditLogReader</c> raw queries with name resolution so every
 /// caller — controllers, view components, the agent tool — consumes the
 /// same resolved-event shape (<see cref="AuditEvent"/>) rather than
 /// re-implementing the query → batch-resolve actor/subject/team-name dance.
@@ -45,7 +45,7 @@ public interface IAuditViewerService : IApplicationService
     /// <summary>
     /// Audit events involving <paramref name="userId"/> as either the actor
     /// or the subject. Mirrors the merge-tombstone-following semantics of
-    /// <see cref="IAuditLogService.GetByUserAsync"/>.
+    /// <c>IAuditLogReader.GetByUserAsync</c>.
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 
@@ -65,7 +65,7 @@ public interface IAuditViewerService : IApplicationService
     /// <summary>
     /// Returns a paged slice of audit events plus aggregate counts (total,
     /// anomalies). Filter is the same string
-    /// <see cref="IAuditLogService.GetFilteredAsync"/> takes — case-insensitive
+    /// <c>IAuditLogReader.GetFilteredAsync</c> takes — case-insensitive
     /// <see cref="Humans.AuditLog.Contracts.AuditAction"/> name match.
     /// </summary>
     Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);

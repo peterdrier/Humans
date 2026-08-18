@@ -3,6 +3,7 @@ using Humans.Auth.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
 using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Services;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
@@ -52,8 +53,8 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         // Act: query the AuditLog read path for the TARGET — chain-follow
         // should union the source-tombstone id and surface source's row.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var auditService = assertScope.ServiceProvider.GetRequiredService<IAuditLogService>();
-        var entries = await auditService.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
+        var auditReader = assertScope.ServiceProvider.GetRequiredService<IAuditLogReader>();
+        var entries = await auditReader.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
 
         entries.Should().Contain(
             e => e.Description == description

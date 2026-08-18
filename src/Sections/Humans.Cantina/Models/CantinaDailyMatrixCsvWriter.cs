@@ -10,7 +10,7 @@ namespace Humans.Cantina.Models;
 /// <summary>
 /// Renders a <see cref="DailyMatrixDto"/> as a UTF-8 CSV byte payload — the
 /// per-day drill-down companion to <see cref="CantinaRosterCsvWriter"/>
-/// (feature #36 — docs/features/cantina/daily-roster.md). Quoting and OWASP
+/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). Quoting and OWASP
 /// injection escaping come from the shared <see cref="HumansCsv"/> conventions.
 ///
 /// <para>

@@ -956,7 +956,7 @@ Git Bash.)
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
      are not Guide's: the signatures name only `string`, and three of the four consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
-     `CommunityFaqReader` over `docs/sections`, `docs/features` and `docs/community-kb`,
+     `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
      Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
@@ -1360,17 +1360,17 @@ Git Bash.)
      `AgentPageRenderTests` has one of each, and the pre/post HTML capture confirmed the only
      difference across every page in English and Spanish was the URL prefix — the `?v=` hashes
      were byte-identical before and after the move.
-7b. [ ] The section's **invariants doc** moves into `Docs/` along with its own design specs;
-   **its `docs/features/*.md` spec does not.** `AgentFeatureSpecReader` lists and fetches
-   `docs/features/{stem}.md` from GitHub at runtime with **no whitelist** — the stem set is the
-   folder listing — so moving a feature doc silently removes it from what the agent can serve,
-   with no probe and no fallback (contrast `AgentSectionDocReader`, which probes
-   `src/Sections/Humans.{key}/Docs/{key}.md` second and is why the *invariants* doc may move).
-   Rewrite the feature doc's own `freshness:triggers` to `src/Sections/Humans.<Section>/**` and
-   leave the file where it is (proven: Gate, whose `gate-admissions.md` stayed).
+7b. [ ] The section's **invariants doc and its own design specs move into `Docs/`; its feature
+   specs move into `Docs/features/`.** `AgentFeatureSpecReader` derives the servable spec set
+   from the repository structure — every `src/Sections/*/Docs/features/*.md`, plus
+   `docs/features/global/` — so a spec is served from wherever its section keeps it, with
+   nothing to register per file. The folder is the whole rule: the invariants doc, the generated
+   companions (`authorization.md`, `data-access.md`, `health.md`) and the dated `20*.md` records
+   stay directly in `Docs/` and are excluded by sitting outside `features/`. Only genuinely
+   cross-section specs belong in `docs/features/global/`.
    Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
-   `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
+   **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and
@@ -1399,8 +1399,7 @@ Git Bash.)
      "until Guide's own G5", which read as a scheduled move; it is not one.
      `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from
      `nobodies-collective/Humans@main` **over the network at request time**, so the folder is a
-     live API against *production's* branch with no fallback and no whitelist — the
-     `AgentFeatureSpecReader` case (Gate finding 4), one step worse. Moving it into `Docs/`
+     live API against *production's* branch with no fallback and no whitelist. Moving it into `Docs/`
      would 404 all 28 files on every deployed instance from the moment the fork's `main`
      deploys until the change reached production `main`, and would need `FolderPath`'s default
      changed in the same commit. The section's *invariants* doc still moves — that probe has a

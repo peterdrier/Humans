@@ -8,7 +8,7 @@ namespace Humans.Cantina.Models;
 /// <summary>
 /// Renders a <see cref="WeeklyRosterDto"/> as a UTF-8 CSV byte payload.
 /// Used by <c>CantinaController.Csv</c> (feature #36 —
-/// docs/features/cantina/daily-roster.md). Quoting (RFC 4180 conditional) and
+/// src/Sections/Humans.Cantina/Docs/features/daily-roster.md). Quoting (RFC 4180 conditional) and
 /// OWASP CSV-injection escaping come from the shared <see cref="HumansCsv"/>
 /// conventions — source text includes user-controlled profile fields
 /// (BurnerName, AllergyOtherText, IntoleranceOtherText). Multi-select fields

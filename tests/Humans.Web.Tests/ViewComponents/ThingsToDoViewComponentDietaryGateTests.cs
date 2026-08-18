@@ -16,7 +16,7 @@ namespace Humans.Web.Tests.ViewComponents;
 
 /// <summary>
 /// Covers the dietary-medical nudge gate in <see cref="ThingsToDoViewComponent"/>.
-/// Spec: docs/features/profiles/dietary-medical-nudge.md (US-35.5)
+/// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.5)
 /// </summary>
 public class ThingsToDoViewComponentDietaryGateTests
 {

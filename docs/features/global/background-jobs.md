@@ -166,7 +166,7 @@ Day 30: Suspension (handled by SuspendJob)
 
 **Preserved for audit trail**: ConsentRecords and Applications are kept (anonymized implicitly via the user record). ConsentRecords are immutable (DB triggers prevent UPDATE/DELETE).
 
-See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
+See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/features/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
 
 ---
 
@@ -380,8 +380,8 @@ BackgroundJob.Enqueue<SystemTeamSyncJob>(
 
 ## Related Features
 
-- [Legal Documents & Consent](../legal-and-consent/legal-documents-consent.md) - Document sync job
-- [Volunteer Status](../onboarding/volunteer-status.md) - Compliance jobs
-- [Teams](../teams/teams.md) - System team sync
-- [Google Integration](../google-integration/google-integration.md) - Resource provisioning job
-- [Drive Activity Monitoring](../google-integration/drive-activity-monitoring.md) - Anomalous permission detection
+- [Legal Documents & Consent](../../../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) - Document sync job
+- [Volunteer Status](../../../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) - Compliance jobs
+- [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - System team sync
+- [Google Integration](../../../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) - Resource provisioning job
+- [Drive Activity Monitoring](../../../src/Sections/Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection
