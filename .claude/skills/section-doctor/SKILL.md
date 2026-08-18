@@ -312,3 +312,23 @@ Present the open items inline, then apply each answer:
   invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole
   first pass missed. **Always build the matrix**, even when the section looks well tested; the
   gaps it finds are the invariants nobody thought to doubt.
+- 2026-08-18: **`cd` inside a backgrounded Bash call does not move the session; `cd` in a
+  foreground call does.** Nearly wrote `docs/health/plan.md` into the main checkout on that
+  confusion. Run `pwd` once before the first write of a run and take the answer, rather than
+  reasoning about which earlier call moved the shell.
+- 2026-08-18: **do not conclude anything about a view from a grep.** Concluded
+  `CreditorStatement.cshtml` was a nav dead end because the backlink grep keyed on
+  `asp-controller`; the file uses `asp-action`. Second run running that a grep-shaped claim about
+  a view did not survive opening the view — open the four or five views a section has.
+- 2026-08-18: **no lanes were dispatched this run and the assessment did not suffer.** Following
+  2026-08-17's lesson, InspectCode ran as one background command and everything else was
+  main-thread reading; a ~1,600-line section is small enough that dispatch costs more than it
+  returns. Reserve lanes for sections too big to read end to end, and prefer a background
+  *command* over a subagent whenever the work is a tool invocation rather than judgment.
+- 2026-08-18: **a duplicated table in a doc is a drift generator — replace it with a pointer, not
+  a corrected copy.** `Finance.md` restated Budget's 23-route table and it was that copy, not the
+  original in `Budget.md`, that went stale. Fixing the copy would have rearmed it.
+- 2026-08-18: **when the section doc contradicts itself, believe the specific half.**
+  `Finance.md`'s summary and its Architecture section disagreed about which controller serves
+  `/Finance`; the detailed lower section was right and the summary a reader hits first was wrong.
+  Read a section doc's end before trusting its beginning.

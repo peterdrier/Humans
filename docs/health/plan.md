@@ -31,6 +31,35 @@ Phase 5 Holded v2 invoicing, #158). Web/Interfaces/Analyzers/Development — not
 Unticked items are open. `resume` works this list for merged runs, and the PR body for runs whose
 PR is still open.
 
+### 2026-08-18 — Finance (peterdrier/Humans#PENDING)
+
+- [ ] **Split `Service` (856 lines) along the doc-pipeline / creditor-bindings seam?** They share
+      no state and no invariant — one is a nightly full-pull with attribution and an unmatched
+      queue, the other a member↔account link with a three-way concurrency story. The split retires
+      both of the section's reforge findings and is behaviour-preserving, but it adds a type and a
+      DI registration.
+- [ ] **Take the five admin-only methods off the public `IHoldedFinanceService`?**
+      `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetUnmatchedAsync`, `SetCreditorContactAsync`
+      and `ClearCreditorContactAsync` have no caller outside this project — they cross an assembly
+      boundary for `FinanceController`'s benefit alone. The contract Budget, Expenses and Holded
+      consume is nine methods. Landing them on an internal interface is surface *addition*.
+- [ ] **Drop `RawPayload`?** A NOT NULL jsonb column on `holded_expense_docs` that has only ever
+      held the literal `{}` — `MapDoc` never wrote a payload and nothing reads it. Schema change.
+- [ ] **Trim `Service.cs`'s rationale blocks to 1–3 lines?** ~15 comment blocks, several 10–14
+      lines with decision history and issue archaeology inline, against `comments-stay-short`.
+      Every one is accurate and most restate a `Finance.md` invariant. ~200 lines; the judgment is
+      whether the doc is genuinely the right home for all of it.
+- [ ] **Six contract properties InspectCode reports as never read** —
+      `HoldedCreditorStatus.SupplierAccountNum`, `HoldedPaymentInfo.DocumentType`,
+      `HoldedUnmatchedRow.HoldedDocId`, `CreditorContactBinding.HoldedContactId`,
+      `CreditorLedgerLine.AccountNum`, `HoldedMatchEntry.AccountNum`. Left alone: on a contract
+      record "nobody reads it today" is weak evidence, and two are the natural key of their row.
+      Delete, or is carrying them correct?
+- [ ] **Second data point on the rubric question already open from Guide.** Guide (score 8) was
+      failing open on access control; Finance (254) had a section doc two versions behind. Neither
+      is something score growth or staleness can see. The rubric picks *a* section fine and has
+      predicted nothing about *what* is wrong. Worth changing, or is picking a section all it is for?
+
 ### 2026-08-17 — Guide (peterdrier/Humans#1354)
 
 - [ ] **`GuideFiles.TryCanonical` shipped without the second-opinion gate.** Four attempts across
