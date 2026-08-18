@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Development/**
-  src/Humans.Web/Infrastructure/DevLoginControllerExclusionProvider.cs
+  src/Humans.Web/Hosting/DevLoginControllerExclusionProvider.cs
   src/Humans.Web/Views/Account/Login.cshtml
 -->
 

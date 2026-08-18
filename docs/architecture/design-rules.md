@@ -2,6 +2,7 @@
   src/Humans.Application/Interfaces/**
   src/Humans.Application/Services/**
   src/Humans.Web/Hosting/**
+  src/Humans.Web/Services/**
   src/Humans.Web/Data/**
   src/Humans.Web/Repositories/**
   src/Humans.Analyzers/**
@@ -62,7 +63,7 @@ Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live 
 
 Repository **implementations** (the classes that talk to `DbContext`) live in the owning section project's `Data/`. `Humans.Infrastructure` was the shared home until G5 lane 5b-6 deleted it (nobodies-collective/Humans#866); only the platform context is left, in `Humans.Web/Data/`.
 
-Every application context is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `PersistKeysToSystemDbContext`) — a namespace `Humans.Web` and Base now share, since the class stayed put by name while its assembly changed. The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access the contexts directly via `InternalsVisibleTo`.
+Every application context is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Web.Extensions.PersistenceServiceCollectionExtensions` (`AddHumansPersistence`, `PersistKeysToSystemDbContext`) — renamed from `InfrastructureServiceCollectionExtensions` when Web's `Infrastructure/` folder dissolved, to stop colliding with the roll-call class of that name. The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access the contexts directly via `InternalsVisibleTo`.
 
 **There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Sections/Humans.<Section>/Data/Migrations/`, and `src/Humans.Web/Migrations/System/` for the platform context. `HumansDbContext` and its root migration chain were deleted at peel 15 (nobodies-collective/Humans#858); the merged Users+Profiles section (`UsersDbContext`) carries the Identity base. Consequences:
 
