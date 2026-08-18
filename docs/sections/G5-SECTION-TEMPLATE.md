@@ -956,7 +956,7 @@ Git Bash.)
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
      are not Guide's: the signatures name only `string`, and three of the four consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
-     `CommunityFaqReader` over `docs/sections`, `docs/features` and `docs/community-kb`,
+     `CommunityFaqReader` over `docs/sections`, the section `Docs/` spec corpus and `docs/community-kb`,
      Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
