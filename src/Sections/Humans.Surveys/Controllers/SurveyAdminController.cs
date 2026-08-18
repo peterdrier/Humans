@@ -170,7 +170,7 @@ internal sealed class SurveyAdminController(
         var statuses = await surveyService.GetInviteStatusesAsync(id, ct);
         var audienceTeamName = detail.Editable.AudienceType == SurveyAudienceType.Team
             && detail.Editable.AudienceTeamId is { } teamId
-                ? (await LoadTeamsAsync(ct)).FirstOrDefault(t => t.Id == teamId)?.Name
+                ? (await teamService.GetTeamAsync(teamId, ct))?.Name
                 : null;
 
         var vm = new SurveySendViewModel

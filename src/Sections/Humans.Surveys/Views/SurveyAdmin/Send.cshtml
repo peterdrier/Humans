@@ -93,6 +93,10 @@
                     </button>
                 </form>
             }
+            else if (Model.AudienceType is not null)
+            {
+                <p class="text-muted mb-0">There are no new humans to invite from the current audience.</p>
+            }
         }
         else if (Model.CanSend)
         {
