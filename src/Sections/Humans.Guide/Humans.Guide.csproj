@@ -29,7 +29,7 @@
       as a shared GitHub-markdown connector (three of its four consumers are not Guide's), so
       the settings type stays in Humans.Interfaces/Configuration with it.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
   </ItemGroup>
 

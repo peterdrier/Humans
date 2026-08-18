@@ -30,7 +30,7 @@
       their owners' contracts leaves, and the CSV writers use
       Humans.Application.Csv.HumansCsv — a Base namespace, not the deleted hub's.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>

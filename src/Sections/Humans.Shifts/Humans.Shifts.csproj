@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
     <!--
       Humans.Interfaces above carries whatever of the section's persisted-string vocabulary
       is still shared. The separate Humans.Domain reference is gone: lane 4b-2k took

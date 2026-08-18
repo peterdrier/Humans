@@ -2,7 +2,7 @@
   <Project Path="docs/docs.csproj" />
   <Folder Name="/src/">
     <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
-    <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
+    <Project Path="src/Humans.Interfaces/Humans.Base.csproj" />
     <Project Path="src/Humans.Web/Humans.Web.csproj" />
   </Folder>
   <Folder Name="/src/Sections/">

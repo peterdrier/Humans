@@ -13,7 +13,7 @@
       Humans.Application reference went away at G5 lane 5c, which emptied that project; the
       contracts leaves Shell had been reaching through it are declared below.
     -->
-    <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Humans.Interfaces\Humans.Base.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
