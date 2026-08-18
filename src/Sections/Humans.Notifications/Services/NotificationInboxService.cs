@@ -1,4 +1,4 @@
-using Humans.Application;
+using Humans.Base;
 using Humans.Notifications.Data;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;

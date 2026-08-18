@@ -225,7 +225,7 @@ internal sealed class DebugController(
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
-                    Application.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                    Base.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
                     return new CacheStatEntryViewModel
                     {
                         KeyType = e.KeyType,

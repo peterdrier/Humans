@@ -33,7 +33,7 @@
     <Using Include="Humans.Camps.Data" />
     <Using Include="Humans.Application.Interfaces" />
     <Using Include="Humans.Base.Interfaces.Repositories" />
-    <Using Include="Humans.Application" />
+    <Using Include="Humans.Base" />
     <Using Include="Humans.Application.Extensions" />
     <Using Include="Humans.Base.Helpers" />
     <Using Include="Humans.Infrastructure.Data" />

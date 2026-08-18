@@ -1,6 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
-using Humans.Application;
+using Humans.Base;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
 using Microsoft.Extensions.Caching.Memory;

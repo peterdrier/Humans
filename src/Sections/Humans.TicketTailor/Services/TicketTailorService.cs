@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Application;
+using Humans.Base;
 using Humans.Application.Extensions;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;

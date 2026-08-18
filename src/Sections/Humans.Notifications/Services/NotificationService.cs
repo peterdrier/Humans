@@ -1,4 +1,4 @@
-using Humans.Application;
+using Humans.Base;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;

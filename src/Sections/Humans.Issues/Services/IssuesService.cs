@@ -2,7 +2,7 @@ using Humans.Auth.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
-using Humans.Application;
+using Humans.Base;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;

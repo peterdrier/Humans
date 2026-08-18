@@ -1,4 +1,4 @@
-namespace Humans.Application;
+namespace Humans.Base;
 
 public static class CacheKeys
 {

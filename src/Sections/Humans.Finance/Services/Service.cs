@@ -1,4 +1,4 @@
-using Humans.Application;
+using Humans.Base;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;

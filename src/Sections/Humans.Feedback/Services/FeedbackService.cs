@@ -3,7 +3,7 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Application;
+using Humans.Base;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
