@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 using Octokit;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 

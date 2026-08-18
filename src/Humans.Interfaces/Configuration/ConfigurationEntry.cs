@@ -1,4 +1,4 @@
-namespace Humans.Application.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Metadata about a configuration setting, auto-registered when accessed via extension methods.

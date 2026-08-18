@@ -21,7 +21,7 @@
       written through those sections' own repositories.
 
       Base carries IApplicationService's sibling usings: Humans.Application.Extensions
-      (ILogger.TimeOperation) and Humans.Application.Configuration.GitHubSettings, which the
+      (ILogger.TimeOperation) and Humans.Base.Configuration.GitHubSettings, which the
       webhook registrar reads to sweep endpoints for closed PRs. Those namespaces stayed put
       when G5 lane 3a-1 moved the files, so only the hub ProjectReference went away.
     -->

@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Text;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Development.Services;

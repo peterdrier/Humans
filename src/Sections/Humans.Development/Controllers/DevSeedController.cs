@@ -1,4 +1,4 @@
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Budget.Contracts;
 using Humans.Development.Services;
 using Humans.UI.Controllers;

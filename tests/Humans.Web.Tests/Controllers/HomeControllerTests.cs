@@ -1,6 +1,6 @@
 using Humans.Governance.Contracts;
 using System.Security.Claims;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Shifts.Contracts;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;

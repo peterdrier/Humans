@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Humans.Application.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Singleton registry that collects metadata about every configuration setting the app touches.

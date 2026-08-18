@@ -1,5 +1,5 @@
 using System.Text;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Web.Extensions;

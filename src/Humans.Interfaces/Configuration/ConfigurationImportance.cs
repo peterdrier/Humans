@@ -1,4 +1,4 @@
-namespace Humans.Application.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Three-tier importance classification for configuration settings.

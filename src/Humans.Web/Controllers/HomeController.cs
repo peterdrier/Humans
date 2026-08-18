@@ -1,7 +1,7 @@
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Web.Models;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;

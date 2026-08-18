@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace Humans.Application.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Extension methods on IConfiguration that auto-register accessed keys in the ConfigurationRegistry.

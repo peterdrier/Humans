@@ -1,6 +1,6 @@
 using Humans.Agent.Contracts;
 using Humans.Agent.Jobs;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Jobs;

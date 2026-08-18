@@ -9,7 +9,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// registration time.
 /// </summary>
 /// <remarks>
-/// Lives in <c>Humans.Application.Configuration</c> so the Application-layer
+/// Lives in <c>Humans.Base.Configuration</c> so the Application-layer
 /// sync service can read domain / customer id / default group settings without
 /// reaching into Infrastructure. Mirrors the same field names as the
 /// corresponding properties on <c>GoogleWorkspaceSettings</c> so the shared

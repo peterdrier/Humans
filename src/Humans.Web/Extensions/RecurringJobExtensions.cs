@@ -1,6 +1,6 @@
 using Hangfire;
 using Hangfire.Storage;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Agent.Jobs;
 using Humans.Budget.Jobs;

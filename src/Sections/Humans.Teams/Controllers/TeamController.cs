@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Domain.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Models;

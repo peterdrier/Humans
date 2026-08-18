@@ -8,7 +8,7 @@ using System.Globalization;
 using System.Web;
 using AngleSharp.Dom;
 using Humans.Users.Authorization;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;

@@ -1,4 +1,4 @@
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Base.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Base.Interfaces.Admin;

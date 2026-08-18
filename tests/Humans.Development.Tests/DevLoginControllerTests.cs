@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Camps.Contracts;

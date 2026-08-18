@@ -2,7 +2,7 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;

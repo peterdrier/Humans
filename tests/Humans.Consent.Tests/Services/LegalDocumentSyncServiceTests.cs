@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Teams.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
