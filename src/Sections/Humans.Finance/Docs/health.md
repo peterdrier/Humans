@@ -131,9 +131,12 @@ Specified, not built. Not ranked, not struck; items touching these callers are s
 ## 6. Deliberately not done
 
 - **No unique DB index on `SupplierAccountNum`.** The automatic writers run unattended inside outbox
-  drain, where a constraint violation strands a created Holded document as permanently-failed.
-  Enforcement lives in the service.
-- **No concurrency token on the binding row.** Repo-wide rule; the mitigation is the re-read.
+  drain, where a constraint violation strands a created Holded document as permanently-failed, and the
+  index would have to be created against production rows that may already collide. Enforcement lives
+  in the service ([`db-enforcement-minimal`](../../../../memory/architecture/db-enforcement-minimal.md)).
+- **No concurrency token on the binding row**
+  ([`no-concurrency-tokens`](../../../../memory/architecture/no-concurrency-tokens.md)); the mitigation
+  is the re-read immediately before each write.
 - **No caching decorator over the service.** The one repeated vendor call is cached at its own call
   site with a 2-minute TTL, which is the whole caching need.
 - **No `.resx`.** English-only finance-admin pages with zero localizer call sites.
