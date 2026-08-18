@@ -653,6 +653,45 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_WithFile_CreatesLineAndAttachment_InOneCall()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.LineId.Should().NotBeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Single().AttachmentId.Should().NotBeNull();
+        loaded.Lines.Single().Attachment!.OriginalFileName.Should().Be("receipt.pdf");
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_WithBadFile_CreatesNothing()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("virus.exe", "application/octet-stream", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task AddLineWithResultAsync_RejectsTravelTypes()
     {
         var (_, category) = SetupActiveYear();

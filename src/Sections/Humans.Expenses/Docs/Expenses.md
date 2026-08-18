@@ -98,6 +98,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
+| `/Expenses/{id}/Lines/New` | GET | Authenticated (owner, Draft only) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
+| `/Expenses/{id}/Lines/{lineId}` | GET | Authenticated (owner) | Focused line page — edit description/amount, view/replace/remove the file, remove the line |
+| `/Expenses/{id}/Lines/{lineId}/Proofs` | GET | Authenticated (owner) | Invoice line's proofs page — coverage vs invoice amount, list, add/remove proof rows |
 | `/Expenses/{id}/Lines/*` | POST | Authenticated (owner) | Line mutations |
 | `/Expenses/{id}/Submit` | POST | Authenticated (owner) | Submit |
 | `/Expenses/{id}/Withdraw` | POST | Authenticated (owner, submitted states) | Withdraw |

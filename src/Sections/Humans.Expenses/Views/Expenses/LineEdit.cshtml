@@ -1,0 +1,152 @@
+@model Humans.Expenses.Models.ExpenseLineEditViewModel
+@{
+    ViewData["Title"] = "Edit Line";
+    var r = Model.Report;
+    var line = Model.Line;
+    var isTravel = line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem;
+    var isProof = line.ParentLineId is not null;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@r.Id">Edit Report</a></li>
+        @if (isProof)
+        {
+            <li class="breadcrumb-item"><a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.ParentLineId">Receipts behind the invoice</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">Line</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>
+                    @(line.LineType == ExpenseLineType.Invoice ? "Invoice" : isProof ? "Receipt behind the invoice" : line.LineType.ToString())
+                </strong>
+            </div>
+            <div class="card-body">
+                @if (isTravel)
+                {
+                    <p class="mb-1">@line.Description</p>
+                    <p class="text-muted small mb-0">
+                        Travel lines are computed from their inputs and cannot be edited.
+                        Remove the line from the report and add it again to change it.
+                    </p>
+                }
+                else if (Model.CanEditLines)
+                {
+                    <form asp-action="UpdateLine" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="LineId" value="@line.Id" />
+                        <div class="mb-3">
+                            <label class="form-label">Description <span class="text-danger">*</span></label>
+                            <input type="text" name="Description" value="@line.Description" class="form-control" maxlength="500" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amount (EUR) <span class="text-danger">*</span></label>
+                            <input type="number" name="Amount" value="@line.Amount.ToString("F2")" class="form-control" step="0.01" min="0.01" required style="max-width:200px;" />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="mb-1">@line.Description</p>
+                    <p class="mb-0"><strong>@line.Amount.ToEuro()</strong></p>
+                }
+            </div>
+        </div>
+
+        @if (!isTravel)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong>@(line.LineType == ExpenseLineType.Invoice ? "Invoice file" : "Receipt file")</strong></div>
+                <div class="card-body">
+                    @if (line.Attachment is not null)
+                    {
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            @if (line.Attachment.IsImage)
+                            {
+                                <a href="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })" target="_blank">
+                                    <img src="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })"
+                                         alt="@line.Attachment.OriginalFileName" class="rounded border"
+                                         style="max-height:120px; max-width:200px; object-fit:cover;" loading="lazy" />
+                                </a>
+                            }
+                            <div>
+                                <a href="@Url.Action(line.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = line.Attachment.Id })"
+                                   class="text-decoration-none" target="_blank">
+                                    <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                </a>
+                                <span class="text-muted small">(@(line.Attachment.SizeBytes / 1024) KB)</span>
+                                @if (Model.CanEditLines)
+                                {
+                                    <form asp-action="RemoveAttachment" asp-route-id="@r.Id" asp-route-lineId="@line.Id" method="post" class="mt-2">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                data-confirm="Remove this file? You'll need to upload another before submitting.">Remove file</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (Model.CanEditLines)
+                    {
+                        <p class="text-muted small">Required before the report can be submitted.</p>
+                        <form asp-action="AttachFile" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
+                              method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
+                            @Html.AntiForgeryToken()
+                            <input type="file" name="file" class="form-control" style="max-width:320px;"
+                                   accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                            <button type="submit" class="btn btn-outline-primary">Upload</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No file attached.</span>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            @if (isProof)
+            {
+                <a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.ParentLineId" class="btn btn-outline-secondary">Back to invoice receipts</a>
+            }
+            else
+            {
+                <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-secondary">Back to report</a>
+                @if (line.LineType == ExpenseLineType.Invoice)
+                {
+                    <a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.Id" class="btn btn-outline-primary">Receipts behind this invoice</a>
+                }
+            }
+            @if (Model.CanEditLines)
+            {
+                <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id" method="post" class="ms-auto">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger"
+                            data-confirm="@(line.LineType == ExpenseLineType.Invoice ? "Remove this invoice and all the receipts behind it?" : "Remove this line and its file?")">
+                        Remove line
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>

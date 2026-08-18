@@ -301,21 +301,42 @@ internal sealed class ExpenseReportService(
         return line.Id;
     }
 
-    public Task<ExpenseMutationResult> AddLineWithResultAsync(
+    public async Task<ExpenseAddLineResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
         Guid? parentLineId = null,
-        CancellationToken ct = default) =>
-        RunMutationAsync(async () =>
+        ExpenseFileUpload? file = null,
+        CancellationToken ct = default)
+    {
+        try
         {
             // Travel lines are computed and can no longer be created; this path takes free-text
             // amounts, so it accepts only the receipt-backed types.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
                 throw new ExpenseValidationException("Only receipt and invoice lines can be added.");
-            await AddLineAsync(reportId, submitterUserId, description, amount, lineType, parentLineId, ct);
-            return ExpenseMutationResult.Success;
-        }, "Error adding line to report {ReportId}", null, reportId);
+            // Validate the file before creating anything, so a bad upload leaves no half-made line.
+            if (file is not null)
+                ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content);
+
+            var lineId = await AddLineAsync(
+                reportId, submitterUserId, description, amount, lineType, parentLineId, ct);
+            if (file is not null)
+                await AttachFileToLineAsync(
+                    reportId, submitterUserId, lineId, file.FileName, file.ContentType, file.Content, ct);
+            return new ExpenseAddLineResult(true, null, lineId);
+        }
+        catch (ExpenseValidationException ex)
+        {
+            logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, ex.Message);
+            return new ExpenseAddLineResult(false, ex.Message, null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
+            return new ExpenseAddLineResult(false, ex.Message, null);
+        }
+    }
 
     public Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
@@ -436,10 +457,8 @@ internal sealed class ExpenseReportService(
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    internal async Task<Guid> AttachFileToLineAsync(
-        Guid reportId, Guid submitterUserId,
-        Guid lineId, string originalFileName, string contentType,
-        Stream content, CancellationToken ct = default)
+    private static void ValidateAttachmentUpload(
+        string originalFileName, string contentType, Stream content)
     {
         if (content is null || content.Length == 0)
             throw new ExpenseValidationException("Please select a file.");
@@ -449,6 +468,15 @@ internal sealed class ExpenseReportService(
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
             throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+    }
+
+    internal async Task<Guid> AttachFileToLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default)
+    {
+        ValidateAttachmentUpload(originalFileName, contentType, content);
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
 
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
