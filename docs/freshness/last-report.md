@@ -80,7 +80,7 @@ a PASS line — it must never be able to exit having said nothing.
 | `reforge-history` | script — 5 rows appended (138 days) |
 | `authorization-inventory` | regenerated (+207/−195) |
 | `controller-architecture-audit` | regenerated — 4 real drifts: undocumented `ShiftProfileController` (the `ShiftInfo` GET/POST pair moved off `ProfileController` at the G5 Shifts move), missing `ExpensesController.HoldedRetry`, `FeedbackController.Submit` documented but gone since #1185/#977, and 4 stale inline path comments |
-| `dependency-graph` | regenerated — caught a gap no prior sweep did: the Guide section (`GuideRoleResolver → ITeamServiceRead`) landed in #1269 on 2026-08-12 and was never added; eager edges 290→291, `TeamService` fan-in 28→29 |
+| `dependency-graph` | regenerated — caught a gap no prior sweep did: the Guide section (`GuideRoleResolver → ITeamServiceRead`) landed in #1269 on 2026-08-12 and was never added; eager edges 290→291. It also re-asserted a `TeamService` fan-in of 29 over 28 real edges — an inherited off-by-one, caught by the self-verification pass below and corrected to 28 |
 | `service-data-access-map` | regenerated (+279/−146) — 8 sections repointed off `Humans.Application`, Monitor split out as its own section, 3 undocumented services added (`GoogleSyncOutboxProcessor`, `NonCompliantMemberSuspension`, `AgentPreloadAugmentor`), 10 caching-decorator headers still labelled "(Singleton, Infrastructure)" corrected, TOC 43→44 |
 | `guid-reservations` | 5 stale Source links repointed to `Humans.Interfaces/Constants` and `src/Sections/*/Data/Configurations` |
 | `docs-readme-index` | regenerated **last**, after the husk deletions, so no row links at a deleted file |
@@ -178,6 +178,63 @@ analysed this sweep; deferring any would bin finished verification for no review
 and stranding a mined husk is the deferral anti-pattern.
 
 ---
+
+## Self-verification pass — 11 errors the sweep introduced, all fixed
+
+An independent opus pass re-checked **163 added claims** against source (trigger-path lines
+excluded — those are bulk-verified by the repo's own verifier). It confirmed **11 errors the
+sweep itself wrote**, every one fixed in a follow-up commit on this branch. This pass has now
+earned its keep two sweeps running and should stay standing.
+
+Two of them were **the sweep contradicting itself** — the most valuable category, because no
+single lane can see them:
+
+1. `design-rules.md` listed `DriveActivityMonitorService` under Google Integration (twice: the
+   §8 table row and the §15 migration list) while `service-data-access-map.md`, rewritten in
+   the same sweep, correctly recorded it moving to the new Monitor section.
+2. `service-data-access-map.md` put `SuspendNonCompliantMembersJob` under `Humans.Users/Contracts/`
+   while `_Index.md`, also edited this sweep, had the correct `Humans.Users/Jobs/` path. Same
+   `Jobs/`-vs-`Contracts/` confusion the editorial lanes were fixing elsewhere — it reappeared
+   in a doc *written by* the sweep.
+
+The rest:
+
+3. `design-rules.md` called `HumanAdminOnlyHandler` "the only one left in the Shell";
+   `CampComplianceAccessHandler` and `IsAnyTeamManagerOrCoordinatorHandler` sit beside it.
+4. `service-data-access-map.md` said caching decorators are wired from
+   `src/Humans.Web/Extensions/Sections/*.cs`; that folder holds only `AdminSectionExtensions`
+   and `AuthSectionExtensions`, and neither registers one — registration is each section's
+   `Section.cs`.
+5. `dependency-graph.md` asserted a `TeamService` fan-in of 29 over 28 actual `--> Team` edges.
+   The off-by-one was *inherited* (the prior 28 sat over 27 edges) but the sweep re-asserted it
+   instead of counting. Corrected to 28. The 291-eager / 20-lazy / `linkStyle 291..310` figures
+   in the same file all check out.
+6. `controller-architecture-audit.md` placed three controller base classes in `Humans.UI` — a
+   project this very sweep documents as deleted. They are in `Humans.Interfaces/Controllers/`
+   and `Humans.Camps/Contracts/`. (The count of 94 controllers was right.)
+7. `shift-signup-visibility.md` wrote `/Profile/Picture?id={userId}`; the `id` is a **profile**
+   id — `HumanViewComponent` passes `profile.Id` and the endpoint takes `Guid profileId`. The
+   sweep fixed this route's *shape* correctly and then got its *parameter* wrong.
+8. `Users.md` cited `UserConfiguration.cs:27` twice for the `GoogleEmail` shadow property; it is
+   at line 23.
+9. `Expenses.md` called `IExpenseReportServiceRead` "the internal read surface
+   (`[SurfaceBudget(8)]`)" — it is `public` in `Contracts/` and carries no `[SurfaceBudget]`,
+   which the sweep's own `roslyn-analysis.md` lines state.
+10. `test-system-reliability.md` claimed the bare `Integration` filter skipped
+    `Humans.Monitor.Tests`; that assembly has no such substring. `build.yml`'s own comment says
+    the match was on a test *method* name from an unrelated assembly.
+11. `authorization-inventory.md` listed the "only authorization files left directly in
+    `src/Humans.Web/`" and omitted `HttpCurrentUserContext.cs`,
+    `HumansUserClaimsPrincipalFactory.cs` and `RoleAssignmentClaimsTransformation.cs`.
+
+**The pattern worth carrying forward:** every one of these is in a doc a *generator* lane
+rewrote wholesale, not in a doc a drift-fix lane edited surgically. Wholesale regeneration
+re-asserts inherited numbers and path claims without re-deriving them. Counts and paths in
+generated docs need to be *computed*, not carried.
+
+One claim the pass flagged that turned out **correct** on inspection: `Gdpr.md`'s "20 section
+projects reference `Humans.Gdpr.Contracts`" — 20 other sections do, and the sentence already
+says "plus `Humans.Web`". Left as-is.
 
 ## Flagged for human review
 

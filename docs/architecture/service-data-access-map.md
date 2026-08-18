@@ -149,7 +149,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > their inner service in each section's own `Services/` (or `Data/`) folder —
 > e.g. `CachingUserService` is `src/Sections/Humans.Users/Data/CachingUserService.cs`
 > — and are resolved from their DI wiring in
-> `src/Humans.Web/Extensions/Sections/*.cs`.
+> each section's own `Section.cs` (`ISection.Register`). `src/Humans.Web/Extensions/Sections/` retains only `AdminSectionExtensions` and `AuthSectionExtensions`, neither of which registers a decorator.
 >
 > At ~500-user single-server scale this map is diagnostic, not gating —
 > **cross-section table reads are flagged as design-rule violations per
@@ -554,7 +554,7 @@ the unified User+Profile read-model downstream.
 
 No repository. `SuspendNonCompliantMembersJob`'s body, carved into the
 section at G5 lane 4b-2d (job class followed at 5b-4, now
-`Humans.Users/Contracts/SuspendNonCompliantMembersJob.cs`). Suspends members
+`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members
 who haven't re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
 `ITeamServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncService`,

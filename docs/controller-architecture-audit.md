@@ -5,7 +5,7 @@ Living document. Last updated: 2026-08-18 (freshness-sweep regeneration).
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 94 (excludes base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all in `Humans.UI` — and `HumansTeamControllerBase`, now in `Humans.Teams/Contracts`; none of these match the `*Controller.cs` naming this audit walks)
+- Controllers audited: 94 (excludes base classes: `ApiControllerBase` and `HumansControllerBase` in `Humans.Interfaces/Controllers`, `HumansCampControllerBase` in `Humans.Camps/Contracts`, and `HumansTeamControllerBase` in `Humans.Teams/Contracts`; none of these match the `*Controller.cs` naming this audit walks)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).

@@ -73,7 +73,7 @@ Add signup user data to `ShiftDisplayItem` (or a new nested DTO):
 public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
 ```
 
-The avatar is rendered from `UserId` by the shared `<vc:human>` component, which resolves the profile picture via `/Profile/Picture?id={userId}`; the record carries no picture URL of its own.
+The avatar is rendered from `UserId` by the shared `<vc:human>` component, which resolves the profile picture via `/Profile/Picture?id={profileId}` (the `id` is the **profile** id, not the user id); the record carries no picture URL of its own.
 
 `ShiftDisplayItem` gains: `IReadOnlyList<ShiftSignupInfo> Signups`. The view chooses name-list vs avatar display based on the parent rota's `RotaPeriod`.
 
