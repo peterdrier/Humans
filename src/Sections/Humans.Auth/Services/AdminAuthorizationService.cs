@@ -1,6 +1,6 @@
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using NodaTime;
 
 namespace Humans.Auth.Services;

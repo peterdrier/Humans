@@ -2,7 +2,7 @@ using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using NodaTime;

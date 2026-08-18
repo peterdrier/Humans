@@ -6,7 +6,7 @@ using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;

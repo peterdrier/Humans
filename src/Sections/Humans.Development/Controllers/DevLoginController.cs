@@ -4,7 +4,7 @@ using Humans.Base.Configuration;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Development.Services;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 

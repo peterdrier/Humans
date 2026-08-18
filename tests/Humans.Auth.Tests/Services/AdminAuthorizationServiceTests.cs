@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;

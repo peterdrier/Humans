@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 
 namespace Humans.Interfaces.Tests.Constants;
 

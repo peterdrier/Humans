@@ -6,7 +6,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Auth.Domain;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;

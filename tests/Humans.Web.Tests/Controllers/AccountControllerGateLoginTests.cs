@@ -1,6 +1,6 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Services;
 using Microsoft.AspNetCore.Authentication;

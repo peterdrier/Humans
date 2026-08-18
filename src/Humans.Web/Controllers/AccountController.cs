@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.UI;
 using Humans.Web.Services;
 using Humans.Users.Contracts;

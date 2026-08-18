@@ -11,7 +11,7 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 

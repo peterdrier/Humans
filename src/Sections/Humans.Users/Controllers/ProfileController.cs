@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Gdpr.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.Users.Models;

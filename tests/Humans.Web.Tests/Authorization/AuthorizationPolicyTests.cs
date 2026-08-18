@@ -6,7 +6,7 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;

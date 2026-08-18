@@ -7,7 +7,7 @@ using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

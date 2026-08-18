@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Humans.Expenses.Authorization;
 using Microsoft.AspNetCore.Authorization;

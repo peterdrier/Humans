@@ -2,7 +2,7 @@ using Humans.UI.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;

@@ -707,7 +707,7 @@ app.Use(async (context, next) =>
     if (context.User.Identity?.IsAuthenticated == true
         && context.User.HasClaim(
             ClaimTypes.NameIdentifier,
-            Humans.Domain.Constants.SystemUserIds.GateTerminal.ToString()))
+            Humans.Base.Constants.SystemUserIds.GateTerminal.ToString()))
     {
         var path = context.Request.Path;
         var allowed =

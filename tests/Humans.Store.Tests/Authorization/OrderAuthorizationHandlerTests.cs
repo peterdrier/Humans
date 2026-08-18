@@ -4,7 +4,7 @@ using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Humans.Store.Authorization;
 using Microsoft.AspNetCore.Authorization;

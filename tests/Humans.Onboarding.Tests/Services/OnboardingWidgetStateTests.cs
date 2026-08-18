@@ -1,5 +1,5 @@
 using Humans.Consent.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;

@@ -6,7 +6,7 @@ using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;

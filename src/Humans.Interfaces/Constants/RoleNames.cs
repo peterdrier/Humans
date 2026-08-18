@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Constants for role names used in the application.

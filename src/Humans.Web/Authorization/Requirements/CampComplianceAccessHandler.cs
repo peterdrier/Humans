@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;

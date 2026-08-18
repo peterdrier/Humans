@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Governance.Contracts;
 using Humans.Issues.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 
 using Humans.Web.Services.Dashboard;
 

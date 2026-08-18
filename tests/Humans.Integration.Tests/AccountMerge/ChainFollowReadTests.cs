@@ -6,7 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Services;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;

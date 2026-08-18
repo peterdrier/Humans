@@ -1,5 +1,5 @@
 using System.Reflection;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

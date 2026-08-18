@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 
 namespace Humans.Guide.Services;
 

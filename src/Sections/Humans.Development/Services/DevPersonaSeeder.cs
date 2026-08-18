@@ -10,7 +10,7 @@ using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;

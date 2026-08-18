@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Shared role combinations used in authorization attributes.

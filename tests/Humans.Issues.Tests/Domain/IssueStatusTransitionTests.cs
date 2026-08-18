@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Issues.Domain;
 
 namespace Humans.Issues.Tests.Domain;

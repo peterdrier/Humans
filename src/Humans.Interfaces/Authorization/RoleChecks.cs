@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Users.Contracts;
 
 namespace Humans.UI.Authorization;

@@ -1,6 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using NodaTime;
 

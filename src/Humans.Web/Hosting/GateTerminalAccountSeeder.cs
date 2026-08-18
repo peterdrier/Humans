@@ -1,7 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;

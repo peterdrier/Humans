@@ -2,7 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Budget.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;

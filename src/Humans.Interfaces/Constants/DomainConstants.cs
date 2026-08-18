@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Domain-level constants shared across the application.

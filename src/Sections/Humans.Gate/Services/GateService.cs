@@ -6,7 +6,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;

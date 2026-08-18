@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Events.Contracts;
 using Humans.Events.Controllers;
 using Humans.Events.Domain;

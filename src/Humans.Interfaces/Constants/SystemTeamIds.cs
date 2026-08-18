@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Well-known IDs for system-managed teams.

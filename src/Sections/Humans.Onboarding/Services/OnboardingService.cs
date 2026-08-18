@@ -2,7 +2,7 @@ using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Domain.Enums;
 using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;

@@ -8,7 +8,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using NSubstitute;
 
 using Humans.Users.Contracts;
