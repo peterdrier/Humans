@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Mailer.Services.Dtos;
 using Humans.Base.Threading;
 using NodaTime;

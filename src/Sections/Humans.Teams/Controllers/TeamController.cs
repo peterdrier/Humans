@@ -1,5 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.UI.Controllers;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;

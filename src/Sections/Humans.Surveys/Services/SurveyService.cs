@@ -1,5 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;

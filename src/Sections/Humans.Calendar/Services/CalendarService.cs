@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Calendar.Services.Dtos;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Teams.Contracts;

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Base;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;

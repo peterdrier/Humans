@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Humans.Base.Diagnostics;
 
-namespace Humans.Application.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class LoggerTimingExtensions
 {

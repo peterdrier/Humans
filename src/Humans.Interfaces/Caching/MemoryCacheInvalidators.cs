@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 
 namespace Humans.Infrastructure.Caching;

@@ -5,7 +5,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Domain.Helpers;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;

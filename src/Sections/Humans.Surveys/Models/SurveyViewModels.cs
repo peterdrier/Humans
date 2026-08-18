@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using Humans.UI.Extensions;

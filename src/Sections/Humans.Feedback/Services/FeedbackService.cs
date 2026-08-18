@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Base;

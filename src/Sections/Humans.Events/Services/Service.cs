@@ -3,7 +3,7 @@ using System.Text.Json;
 using CsvHelper.Configuration;
 using Humans.Base.Csv;
 using Humans.Events.Services.Dtos;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;

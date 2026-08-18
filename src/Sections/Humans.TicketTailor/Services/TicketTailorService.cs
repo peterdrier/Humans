@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;

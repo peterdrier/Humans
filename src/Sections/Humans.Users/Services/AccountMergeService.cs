@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;

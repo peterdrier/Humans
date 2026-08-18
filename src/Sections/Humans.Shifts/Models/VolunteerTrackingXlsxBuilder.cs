@@ -1,6 +1,6 @@
 using ClosedXML.Excel;
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 
 namespace Humans.Shifts.Models;
 

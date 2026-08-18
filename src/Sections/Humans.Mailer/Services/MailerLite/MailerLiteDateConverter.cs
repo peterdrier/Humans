@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using NodaTime;
 
 namespace Humans.Mailer.Services.MailerLite;

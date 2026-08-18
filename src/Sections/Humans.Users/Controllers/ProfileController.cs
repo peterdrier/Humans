@@ -10,7 +10,7 @@ using AngleSharp.Dom;
 using Humans.Users.Authorization;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Configuration;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

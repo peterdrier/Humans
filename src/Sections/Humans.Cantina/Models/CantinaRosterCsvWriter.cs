@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Base.Csv;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Cantina.Services.Dtos;
 
 namespace Humans.Cantina.Models;

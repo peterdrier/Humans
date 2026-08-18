@@ -1,6 +1,6 @@
 using Humans.Base.Architecture;
 using Humans.Auth.Contracts;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.EarlyEntry.Contracts;

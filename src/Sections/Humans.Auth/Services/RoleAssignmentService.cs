@@ -3,7 +3,7 @@ using Humans.Auth.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Base.Architecture;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;

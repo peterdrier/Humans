@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Diagnostics;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;

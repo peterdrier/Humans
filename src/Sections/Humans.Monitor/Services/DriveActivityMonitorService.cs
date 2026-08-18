@@ -1,7 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Monitor.Contracts;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.SystemSettings.Contracts;
 using Humans.Users.Contracts;

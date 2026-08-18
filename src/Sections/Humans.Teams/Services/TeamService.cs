@@ -3,7 +3,7 @@ using Humans.Auth.Contracts;
 using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;

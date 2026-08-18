@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 

@@ -1,7 +1,7 @@
 using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;

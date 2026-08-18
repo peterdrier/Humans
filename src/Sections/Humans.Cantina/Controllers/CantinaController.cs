@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Cantina.Services;
 using Humans.Shifts.Contracts;
 using Humans.UI.Authorization;

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;

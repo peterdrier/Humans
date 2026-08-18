@@ -1,6 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;

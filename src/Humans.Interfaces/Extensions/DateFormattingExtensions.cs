@@ -2,7 +2,7 @@ using System.Globalization;
 using NodaTime;
 using NodaTime.Text;
 
-namespace Humans.Application.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class DateFormattingExtensions
 {

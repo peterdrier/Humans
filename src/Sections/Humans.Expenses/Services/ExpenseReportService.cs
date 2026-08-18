@@ -1,5 +1,5 @@
 using Humans.Base.Architecture;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;

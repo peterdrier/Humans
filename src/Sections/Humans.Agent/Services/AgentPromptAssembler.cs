@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 

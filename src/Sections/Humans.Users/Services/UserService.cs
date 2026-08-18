@@ -1,6 +1,6 @@
 using Humans.Auth.Contracts;
 using System.ComponentModel.DataAnnotations;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;

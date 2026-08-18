@@ -1,7 +1,7 @@
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Web.Models;

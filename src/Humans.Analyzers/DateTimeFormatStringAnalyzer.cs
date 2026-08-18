@@ -8,7 +8,7 @@ namespace Humans.Analyzers;
 
 /// <summary>
 /// HUM0030 -- date/time format-string literals may live only in the single sanctioned
-/// formatting home (Humans.Application.Extensions.DateFormattingExtensions). Anywhere else a
+/// formatting home (Humans.Base.Extensions.DateFormattingExtensions). Anywhere else a
 /// hand-rolled custom format string is forbidden; call a named formatter on the home instead.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -16,14 +16,14 @@ public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0030";
 
-    private const string HomeTypeFullName = "Humans.Application.Extensions.DateFormattingExtensions";
+    private const string HomeTypeFullName = "Humans.Base.Extensions.DateFormattingExtensions";
     private const string MigrationsNamespacePrefix = "Humans.Infrastructure.Migrations";
 
     private static readonly LocalizableString Title = "Hand-rolled date/time format string";
 
     private static readonly LocalizableString MessageFormat =
         "Date/time format string \"{0}\" must not be hand-rolled here. Call a named formatter on " +
-        "Humans.Application.Extensions.DateFormattingExtensions (or add one there) -- it is the single " +
+        "Humans.Base.Extensions.DateFormattingExtensions (or add one there) -- it is the single " +
         "sanctioned home for date/time format strings.";
 
     public static readonly DiagnosticDescriptor Rule = new(

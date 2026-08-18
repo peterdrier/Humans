@@ -3,7 +3,7 @@ using Humans.UI.Controllers;
 using System.Globalization;
 using System.Text.Json;
 using AngleSharp.Dom;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Shifts.Services;

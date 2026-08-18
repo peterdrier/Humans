@@ -6,7 +6,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.DriveActivity.v2;
 using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 

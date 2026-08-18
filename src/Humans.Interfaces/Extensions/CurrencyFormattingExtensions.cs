@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Humans.Application.Extensions;
+namespace Humans.Base.Extensions;
 
 /// <summary>
 /// The one sanctioned home for money formatting. Renders euro amounts with the

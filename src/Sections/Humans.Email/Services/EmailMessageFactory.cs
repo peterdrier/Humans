@@ -1,5 +1,5 @@
 using Humans.Users.Contracts;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using NodaTime;
 using Humans.Tickets.Contracts;
