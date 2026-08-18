@@ -56,7 +56,7 @@ public class AccountControllerGateLoginTests
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
-        var localizer = Substitute.For<IStringLocalizer<UI.SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<Base.SharedResource>>();
         localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci =>

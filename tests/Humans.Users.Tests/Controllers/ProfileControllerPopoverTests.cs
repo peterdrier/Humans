@@ -16,7 +16,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Base.Enums;
-using Humans.UI;
+using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

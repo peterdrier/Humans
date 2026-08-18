@@ -8,7 +8,7 @@ using Humans.Debug.Models;
 using Humans.Base.Data;
 using Humans.Base.Logging;
 using Humans.Base.Controllers;
-using Humans.UI;
+using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Base.Models;

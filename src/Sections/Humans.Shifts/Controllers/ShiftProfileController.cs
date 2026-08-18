@@ -1,6 +1,6 @@
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
-using Humans.UI;
+using Humans.Base;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

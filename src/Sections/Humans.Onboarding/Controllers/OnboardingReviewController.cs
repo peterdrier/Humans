@@ -5,7 +5,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Onboarding.Models;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
-using Humans.UI;
+using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 

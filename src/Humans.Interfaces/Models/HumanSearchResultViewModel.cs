@@ -7,7 +7,7 @@ namespace Humans.Base.Models;
 /// admin picker) and by the Search section's <c>/Search</c> page.
 /// </summary>
 /// <remarks>
-/// Lives in <c>Humans.UI</c> rather than Shell for the reason
+/// Lives in <c>Humans.Base</c> rather than Shell for the reason
 /// <c>HumanLookupSearchResult</c> and <c>AssigneeOption</c> do: a section cannot
 /// name a <c>Humans.Web</c> type, it carries no section vocabulary, and
 /// duplicating it would fork the shape the shared partial exists to keep

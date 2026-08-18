@@ -470,7 +470,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         // MVC defaults to (which nothing here provides, so annotations rendered raw
         // English regardless of culture). A key with no SharedResource match just
         // falls back to the attribute's own text, so untouched view models are unaffected.
-        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.UI.SharedResource));
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.Base.SharedResource));
     });
 
 // A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
@@ -545,7 +545,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 {
     using var scope = app.Services.CreateScope();
     var localizerFactory = scope.ServiceProvider.GetRequiredService<IStringLocalizerFactory>();
-    var resourceType = typeof(Humans.UI.SharedResource);
+    var resourceType = typeof(Humans.Base.SharedResource);
     var localizer = localizerFactory.Create(resourceType);
     var testKey = "Dashboard_Welcome";
     var result = localizer[testKey];

@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
-using Humans.UI;
+using Humans.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

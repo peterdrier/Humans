@@ -31,7 +31,7 @@ using Humans.Tickets.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using Humans.UI;
+using Humans.Base;
 using Humans.Base.Authorization;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.

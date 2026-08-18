@@ -15,7 +15,7 @@ namespace Humans.Base.Models.Tables;
 /// <c>Humans.Base.Enums</c>. A section that has moved owns its rows and pushes them in from
 /// <c>Section.Register</c> via <see cref="Register"/> — Base cannot name a moved section's enum,
 /// and referencing the section's contracts leaf to get it back would end with
-/// <c>Humans.UI</c> holding a reference to every section (Peter, 2026-08-09;
+/// <c>Humans.Base</c> holding a reference to every section (Peter, 2026-08-09;
 /// <c>memory/architecture/base-ui-registries-are-section-populated.md</c>). Each G5 move
 /// therefore deletes its rows from here and adds one call there, and the literal ends empty.
 /// </remarks>

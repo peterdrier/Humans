@@ -12,7 +12,7 @@ public static class PersonSearchOrderingExtensions
     /// so the literal "Ian" lands above "Adrian"/"Brian" instead of one alphabetical list.
     /// </summary>
     /// <remarks>
-    /// In Humans.UI rather than Shell because a section project cannot reference Humans.Web
+    /// In Humans.Base rather than Shell because a section project cannot reference Humans.Web
     /// and Gate's kiosk people-picker needs the same order (design §15 step 6).
     /// </remarks>
     public static IOrderedEnumerable<HumanSearchResult> OrderByRelevance(

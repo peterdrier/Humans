@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.UI;
+using Humans.Base;
 using Humans.Web.Models;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc;

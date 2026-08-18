@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.UI;
+using Humans.Base;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Controllers;

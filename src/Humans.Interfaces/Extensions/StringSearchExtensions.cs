@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Humans.Base.Extensions;
 
 /// <summary>
-/// Two pure-string search predicates. In <c>Humans.UI</c> rather than Shell because
+/// Two pure-string search predicates. In <c>Humans.Base</c> rather than Shell because
 /// <c>Humans.Teams</c>' admin controller filters its member list with them and a section
 /// cannot reference <c>Humans.Web</c>; they name no section vocabulary, which is the test
 /// (design §15 step 6, Gate's <c>OrderByRelevance</c> call).

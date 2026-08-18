@@ -1,6 +1,5 @@
 using System.Globalization;
 using Humans.Base.Extensions;
-using Humans.UI;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Base.Models;
@@ -14,7 +13,7 @@ namespace Humans.Base.Models;
 /// <remarks>
 /// Moved down from <c>Humans.Web/Models</c> at Debug's G5 (nobodies-collective/Humans#866)
 /// rather than into the section. It enumerates <c>SharedResource</c> and reads
-/// <c>CultureCatalog</c> — both <c>Humans.UI</c>'s own vocabulary, none of it Debug's — and it
+/// <c>CultureCatalog</c> — both <c>Humans.Base</c>'s own vocabulary, none of it Debug's — and it
 /// has a second consumer outside the section: <c>SharedResourceParityTests</c> asserts
 /// translation parity through this same enumeration. Taking it into the section would have
 /// turned it internal and stranded that test (step 6's "names no section vocabulary" test).

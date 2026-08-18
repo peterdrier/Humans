@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Web.Models;
 using Humans.Shifts.Contracts;
 using Humans.Governance.Contracts;
-using Humans.UI;
+using Humans.Base;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.ViewComponents;
