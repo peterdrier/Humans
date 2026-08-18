@@ -33,6 +33,19 @@ written a second time; the comments state the constraint and point at it.
 What a rewrite would still not keep is `GetDocSyncInfoAsync` returning the creditor binding count
 from the doc service — see below.
 
+## Not covered this run
+
+Named so the next run does not read silence as coverage:
+
+- **Mutation testing.** Stryker was not run. The tests read well; nothing measures what they kill.
+- **The read/write axis.** The contract was narrowed by caller, not by read/write, so
+  `ICreditorService` still carries two cross-section writes.
+- **The second-opinion gate.** The service split — the run's largest structural change — shipped
+  self-reviewed; no reviewer could be obtained, second run running.
+- **Test pruning.** The invariant matrix added tests; nothing looked for redundant ones.
+- **The section inbox.** Open issues were used to pick the section, not worked; the two
+  Finance/Holded debt-ledger entries were not touched.
+
 ## Opportunities (ranked by value)
 
 1. **`GetDocSyncInfoAsync` is the split's one leak.** A doc-pipeline method that also returns the
