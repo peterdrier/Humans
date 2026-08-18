@@ -205,7 +205,7 @@ mechanical:
       2. Which database tables those repositories ultimately access, and which
          DbContext maps each one. Since the per-section split
          (nobodies-collective/Humans#858) there is no single context: resolve
-         the DbSet<> declarations across every src/Humans.Infrastructure/Data/
+         the DbSet<> declarations across src/Humans.Web/Data/
          *DbContext.cs plus each G5 section's own Data/*DbContext.cs, and
          report the owning context per table. Do not assume a table is on
          HumansDbContext because a previous revision of this doc said so —
