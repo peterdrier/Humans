@@ -161,3 +161,9 @@ Settled; do not re-litigate.
   array; one such contact once blanked every account name in production.
 - **The unresolved card is a feature of a missing retry.** It exists because nothing retries the
   number resolution, and it is the only place those members are bindable.
+
+## History
+
+| Run | Anchor | Headline | PR |
+|---|---|---|---|
+| [2026-08-18](../../../../docs/health/runs/2026-08-18-Finance.md) | `41fd7374d` | First target. Doc led with 23 routes the section does not serve; a tag-collision bug in provisioning; a published DTO with no consumer. Prod code −113 lines, tests 55 → 88, mutation 34.4% → 57.1%. | pending |
