@@ -7,7 +7,7 @@
 
 # Calendar — Section Invariants
 
-Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations. Spec: [`docs/features/calendar/community-calendar.md`](../../../../docs/features/calendar/community-calendar.md).
+Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations. Spec: [`src/Sections/Humans.Calendar/Docs/community-calendar.md`](community-calendar.md).
 
 ## Concepts
 

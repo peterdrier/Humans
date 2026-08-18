@@ -77,4 +77,28 @@ public sealed class GitHubCommunityKbContentSource : IGuideContentSource
             return [];
         }
     }
+
+    /// <summary>
+    /// The community KB is one flat folder, so its reader lists that folder rather than the
+    /// whole tree. Implemented for interface completeness; a repo-wide listing has no caller here.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default)
+    {
+        var s = _settings.Value;
+        try
+        {
+            var tree = await _client.Git.Tree.GetRecursive(s.Owner, s.Repository, s.Branch);
+            return [.. tree.Tree
+                .Where(i => i.Type == TreeType.Blob &&
+                            i.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                .Select(i => i.Path)];
+        }
+        catch (NotFoundException)
+        {
+            _logger.LogWarning(
+                "Community KB tree not found in GitHub: {Owner}/{Repository}@{Branch}",
+                s.Owner, s.Repository, s.Branch);
+            return [];
+        }
+    }
 }

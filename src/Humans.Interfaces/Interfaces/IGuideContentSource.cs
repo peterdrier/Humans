@@ -15,11 +15,21 @@ public interface IGuideContentSource
 
     /// <summary>
     /// Fetches the raw markdown for one file from an arbitrary folder inside the same
-    /// configured Humans repo/branch (e.g. <c>docs/sections</c>, <c>docs/features</c>).
+    /// configured Humans repo/branch (e.g. <c>docs/sections</c>, <c>docs/features/global</c>).
     /// Throws Octokit's <c>NotFoundException</c> when the file is not present; callers
     /// that want null-on-miss must catch it explicitly.
     /// </summary>
     Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists every markdown file in the configured repo/branch as a repo-root-relative path
+    /// (e.g. <c>src/Sections/Humans.Shifts/Docs/shift-management.md</c>), in one recursive tree
+    /// request. For a corpus scattered across many folders — feature specs now live in each
+    /// section's own <c>Docs/</c> — this is what lets the caller derive its file set from the
+    /// repository structure instead of paying a folder listing per section. Returns an empty
+    /// list when the tree cannot be read.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lists the markdown file stems (filename without the <c>.md</c> extension) in a folder

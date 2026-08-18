@@ -51,11 +51,12 @@ mechanical:
       - "src/Sections/*/Docs/*.md"
     update: prompt
     prompt: |
-      Walk docs/features/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
-      — a section that has moved into its own project keeps its invariants doc
-      in-project, and README indexes those rows too, so a walk restricted to
-      docs/ would drop or omit exactly the in-project doc whose change fired
-      this entry. Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
+      Walk docs/features/global/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
+      — a section keeps both its invariants doc and its feature specs in-project,
+      and README indexes those rows too, so a walk restricted to docs/ would drop
+      or omit exactly the in-project doc whose change fired this entry.
+      docs/features/ now holds only global/, the cross-section specs.
+      Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
       GettingStarted.md, Glossary.md, and the dated design records matching
       src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
       map of which section's doc lives where — read it first and agree with it.

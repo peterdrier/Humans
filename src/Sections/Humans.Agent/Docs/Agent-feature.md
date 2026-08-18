@@ -72,6 +72,6 @@ Tool call `route_to_issue` with `{title, category, description}` → dispatcher 
 
 ## Related Features
 
-- Issues system (`docs/features/issues/issues-system.md`) — handoff target via client-side modal pre-fill.
-- Legal documents (`docs/features/legal-and-consent/legal-documents-consent.md`) — `agent-chat` slug renders the AI Terms at `/Legal/agent-chat`; linked from the Assistant panel composer footer.
+- Issues system (`src/Sections/Humans.Issues/Docs/issues-system.md`) — handoff target via client-side modal pre-fill.
+- Legal documents (`src/Sections/Humans.Consent/Docs/legal-documents-consent.md`) — `agent-chat` slug renders the AI Terms at `/Legal/agent-chat`; linked from the Assistant panel composer footer.
 - GDPR export (`docs/features/global/gdpr-export.md`) — conversation/message data included.

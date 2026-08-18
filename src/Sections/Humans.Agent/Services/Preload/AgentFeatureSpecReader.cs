@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Octokit;
@@ -5,48 +6,109 @@ using Octokit;
 namespace Humans.Agent.Services.Preload;
 
 /// <summary>
-/// Reads a <c>docs/features/{stem}.md</c> file from the Humans repo on GitHub at runtime
-/// via the shared <see cref="IGuideContentSource"/>. Held in memory with no expiration
-/// (loaded once at startup or first call, refreshed only on restart).
-/// Returns <c>null</c> on miss (invalid stem, GitHub 404, or transient failure).
+/// Reads one feature spec from the Humans repo on GitHub at runtime via the shared
+/// <see cref="IGuideContentSource"/>. Specs live in the owning section's own
+/// <c>src/Sections/Humans.&lt;Section&gt;/Docs/</c> folder, plus <c>docs/features/global/</c>
+/// for the cross-section ones, so the stem the tool is given is resolved through an index
+/// derived from the repository tree rather than a fixed folder. Held in memory with no
+/// expiration (loaded once at startup or first call, refreshed only on restart).
+/// Returns <c>null</c> on miss (unknown stem, GitHub 404, or transient failure).
 /// </summary>
-internal sealed class AgentFeatureSpecReader(
+internal sealed partial class AgentFeatureSpecReader(
     IGuideContentSource source,
     IMemoryCache cache,
     ILogger<AgentFeatureSpecReader> logger)
 {
-    internal const string FolderPath = "docs/features";
+    internal const string GlobalFolderPath = "docs/features/global";
     private const string CacheKeyPrefix = "agent:feature:";
-    private const string StemsCacheKey = "agent:feature:stems";
+    private const string IndexCacheKey = "agent:feature:index";
 
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
+    /// <summary>A section project's docs folder: <c>src/Sections/Humans.{Section}/Docs/{file}.md</c>.</summary>
+    [GeneratedRegex(@"^src/Sections/Humans\.(?<section>[^/]+)/Docs/(?<stem>[^/]+)\.md$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex SectionDocPath();
+
+    /// <summary>A dated design record — history by design, not a spec of current behaviour.</summary>
+    [GeneratedRegex(@"^20\d\d-\d\d-\d\d-", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex DatedRecord();
+
     /// <summary>
-    /// Lists the spec stems available under <c>docs/features</c> so a miss can tell the agent
-    /// what it may ask for instead of dead-ending on "not found" (nobodies-collective/Humans#949).
-    /// An unreachable folder yields an empty list, never an exception — the caller then falls back
-    /// to the bare message rather than advertising an empty key set.
+    /// The section-owned docs that share the folder with the specs. Excluded by rule rather
+    /// than the specs being listed by name, so a new spec is servable the moment it is
+    /// committed and nothing has to be registered for it.
     /// </summary>
-    public async Task<IReadOnlyList<string>> KnownStemsAsync(CancellationToken cancellationToken)
+    private static readonly HashSet<string> SectionOwnedStems =
+        new(StringComparer.OrdinalIgnoreCase) { "authorization", "data-access", "health" };
+
+    /// <summary>
+    /// True for a repo path that is a feature spec: anything under <c>docs/features/global/</c>,
+    /// or a file in a section's <c>Docs/</c> that is not the section's own invariants doc
+    /// (<c>&lt;Section&gt;.md</c>), one of its generated companions, or a dated design record.
+    /// </summary>
+    private static bool IsSpecPath(string path)
     {
-        if (cache.TryGetValue<IReadOnlyList<string>>(StemsCacheKey, out var cached) && cached is not null)
+        if (path.StartsWith(GlobalFolderPath + "/", StringComparison.OrdinalIgnoreCase))
+            return path.LastIndexOf('/') == GlobalFolderPath.Length;
+
+        var match = SectionDocPath().Match(path);
+        if (!match.Success) return false;
+
+        var stem = match.Groups["stem"].Value;
+        return !SectionOwnedStems.Contains(stem)
+               && !DatedRecord().IsMatch(stem)
+               && !string.Equals(stem, match.Groups["section"].Value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Stem → containing folder for every spec in the repo, derived from one recursive tree
+    /// listing. An unreachable tree yields an empty index, never an exception — the caller then
+    /// falls back to the bare miss message rather than advertising an empty key set.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, string>> IndexAsync(CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue<IReadOnlyDictionary<string, string>>(IndexCacheKey, out var cached) && cached is not null)
             return cached;
 
         try
         {
-            var stems = await source.ListMarkdownStemsAsync(FolderPath, cancellationToken);
-            cache.Set(StemsCacheKey, stems, HoldForever);
-            return stems;
+            var paths = await source.ListMarkdownPathsAsync(cancellationToken);
+            var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in paths.Where(IsSpecPath))
+            {
+                var slash = path.LastIndexOf('/');
+                var stem = path[(slash + 1)..^".md".Length];
+                // Stems are unique across sections today; the tool takes a bare stem, so if two
+                // ever collide it can only serve one — say which rather than let the loser
+                // vanish silently (memory/code/always-log-problems.md).
+                if (!index.TryAdd(stem, path[..slash]))
+                {
+                    logger.LogWarning(
+                        "Feature spec stem {Stem} is ambiguous: {Path} is shadowed by {Served}",
+                        stem, path, index[stem] + "/" + stem + ".md");
+                }
+            }
+
+            cache.Set(IndexCacheKey, (IReadOnlyDictionary<string, string>)index, HoldForever);
+            return index;
         }
         catch (Exception ex)
         {
-            // Log per memory/code/always-log-problems.md — a folder listing that keeps failing is
-            // why the agent's miss messages stop naming any valid stems.
-            logger.LogWarning(ex, "Failed to list agent feature specs in {Folder}; returning empty list", FolderPath);
-            return [];
+            // Log per memory/code/always-log-problems.md — an index that keeps failing is why
+            // the agent's miss messages stop naming any valid stems.
+            logger.LogWarning(ex, "Failed to index agent feature specs; returning an empty index");
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
     }
+
+    /// <summary>
+    /// Lists the spec stems available so a miss can tell the agent what it may ask for instead
+    /// of dead-ending on "not found" (nobodies-collective/Humans#949).
+    /// </summary>
+    public async Task<IReadOnlyList<string>> KnownStemsAsync(CancellationToken cancellationToken) =>
+        [.. (await IndexAsync(cancellationToken)).Keys];
 
     public async Task<string?> ReadAsync(string stem, CancellationToken cancellationToken)
     {
@@ -60,18 +122,28 @@ internal sealed class AgentFeatureSpecReader(
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
             return cached;
 
+        var index = await IndexAsync(cancellationToken);
+        if (!index.TryGetValue(stem, out var folderPath))
+        {
+            // Not in the repo tree. Log per memory/code/always-log-problems.md so a spec the
+            // model keeps asking for is visible in the prod log viewer rather than silently
+            // returning an empty preload entry.
+            logger.LogWarning("Agent feature spec {Stem} is not in the repository's spec index", stem);
+            return null;
+        }
+
         try
         {
-            var body = await source.GetMarkdownAsync(FolderPath, stem, cancellationToken);
+            var body = await source.GetMarkdownAsync(folderPath, stem, cancellationToken);
             cache.Set(cacheKey, body, HoldForever);
             return body;
         }
         catch (NotFoundException)
         {
-            // 404 from GitHub — file is absent from the configured repo/branch. Log per
-            // memory/code/always-log-problems.md so a missing feature spec is visible in
-            // the prod log viewer rather than silently returning an empty preload entry.
-            logger.LogWarning("Agent feature spec {Stem} not found on GitHub (docs/features)", stem);
+            // Indexed but absent — the tree and the contents API disagree, which happens while a
+            // branch moves under a long-lived process.
+            logger.LogWarning(
+                "Agent feature spec {Stem} not found on GitHub in {Folder}", stem, folderPath);
             return null;
         }
         catch (Exception ex)
