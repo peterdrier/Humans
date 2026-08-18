@@ -9,6 +9,4 @@ namespace Humans.Application.Interfaces;
 /// interfaces extending <see cref="IInvalidator"/> fire an Error; existing
 /// ones carry <c>[Grandfathered("HUM0028", …)]</c> and ride as Warning.
 /// </summary>
-public interface IInvalidator
-{
-}
+public interface IInvalidator;

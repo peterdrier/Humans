@@ -23,4 +23,4 @@ namespace Humans.Teams;
 /// and <c>Enum_RolePeriod_*</c> reads — both enums are Base's vocabulary (§15.3b, carve by
 /// renderer per key).
 /// </remarks>
-public class TeamsResource { }
+public class TeamsResource;

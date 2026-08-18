@@ -19,4 +19,4 @@ namespace Humans.Consent;
 /// in <c>SharedResource</c>: its renderer is <c>Humans.UI</c>'s login partial, which is
 /// Base chrome.
 /// </remarks>
-public class ConsentResource { }
+public class ConsentResource;

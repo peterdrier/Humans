@@ -8,6 +8,4 @@ namespace Humans.Application.Interfaces;
 /// exists for searchability and to name the fan-out seam. Contract purity
 /// (read-only, DTO-not-entity returns) is enforced elsewhere.
 /// </summary>
-public interface IFanout
-{
-}
+public interface IFanout;

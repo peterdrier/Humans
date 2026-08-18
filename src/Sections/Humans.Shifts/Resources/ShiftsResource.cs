@@ -56,4 +56,4 @@ namespace Humans.Shifts;
 /// shift-preference keys rather than have them split off the section's own preferences card.
 /// </para>
 /// </remarks>
-public class ShiftsResource { }
+public class ShiftsResource;

@@ -7,4 +7,4 @@ namespace Humans.Store;
 /// <c>namespace Humans.Store</c> — <c>Humans.Store.Resources</c> would make every
 /// Store string fall back to its raw key at runtime (design §3).
 /// </summary>
-public class StoreResource { }
+public class StoreResource;

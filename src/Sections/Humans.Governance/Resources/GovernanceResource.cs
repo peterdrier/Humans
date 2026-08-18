@@ -17,4 +17,4 @@ namespace Humans.Governance;
 /// form and its error messages during profile setup and the Onboarding review queue renders
 /// the rest. Those call sites bind <c>SharedLocalizer</c>.
 /// </remarks>
-public class GovernanceResource { }
+public class GovernanceResource;

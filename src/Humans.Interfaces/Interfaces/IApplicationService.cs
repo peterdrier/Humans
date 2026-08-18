@@ -5,6 +5,4 @@ namespace Humans.Application.Interfaces;
 /// must not expose EF/domain aggregate entities; existing violations are ratcheted
 /// in <c>tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt</c>.
 /// </summary>
-public interface IApplicationService
-{
-}
+public interface IApplicationService;

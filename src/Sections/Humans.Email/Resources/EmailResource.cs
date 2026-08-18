@@ -16,4 +16,4 @@ namespace Humans.Email;
 /// <c>EmailRenderer</c>, their one and only renderer, is now a section type (design §15
 /// step 3b's carve-by-renderer, applied in the direction that moves the renderer).
 /// </remarks>
-public class EmailResource { }
+public class EmailResource;

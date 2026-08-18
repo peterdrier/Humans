@@ -16,4 +16,4 @@ namespace Humans.GoogleIntegration;
 /// there is no renderer to carve by, and importing dead copy into a new set is noise.
 /// Everything else on the section's pages is admin-only English.
 /// </remarks>
-public class GoogleIntegrationResource { }
+public class GoogleIntegrationResource;

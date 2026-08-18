@@ -25,4 +25,4 @@ namespace Humans.Search;
 /// "would carving split a set?" test answering yes for once).
 /// </para>
 /// </remarks>
-public class SearchResource { }
+public class SearchResource;

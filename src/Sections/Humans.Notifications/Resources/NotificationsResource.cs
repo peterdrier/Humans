@@ -16,4 +16,4 @@ namespace Humans.Notifications;
 /// sets. Shell's layouts still render it — by name, through
 /// <c>Component.InvokeAsync("NotificationBell")</c>.
 /// </remarks>
-public class NotificationsResource { }
+public class NotificationsResource;

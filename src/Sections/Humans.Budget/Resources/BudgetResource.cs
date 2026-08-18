@@ -11,4 +11,4 @@ namespace Humans.Budget;
 /// Public because the boot localization diagnostic discovers section resource markers
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
 /// </remarks>
-public class BudgetResource { }
+public class BudgetResource;

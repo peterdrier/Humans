@@ -20,4 +20,4 @@ namespace Humans.Onboarding;
 /// <c>Nav_OnboardingReview</c> stays in <c>SharedResource</c>: its renderer is
 /// <c>AdminNavTree</c>, which is Base chrome.
 /// </remarks>
-public class OnboardingResource { }
+public class OnboardingResource;

@@ -13,4 +13,4 @@ namespace Humans.CityPlanning;
 /// (G5-SECTION-TEMPLATE.md step 3b). Shell's <c>Views/Camp/Details.cshtml</c> also injects
 /// <c>IStringLocalizer&lt;CityPlanningResource&gt;</c> for the placement-phase strip.
 /// </remarks>
-public class CityPlanningResource { }
+public class CityPlanningResource;

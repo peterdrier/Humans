@@ -12,4 +12,4 @@ namespace Humans.Events;
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence
 /// (G5-SECTION-TEMPLATE.md step 3b).
 /// </remarks>
-public class EventsResource { }
+public class EventsResource;

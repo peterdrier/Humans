@@ -14,4 +14,4 @@ namespace Humans.Feedback;
 /// <c>EmailRenderer</c> renders that email, so those keys stay in <c>SharedResource</c>
 /// where their owner can read them.
 /// </remarks>
-public class FeedbackResource { }
+public class FeedbackResource;

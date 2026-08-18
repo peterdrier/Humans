@@ -188,9 +188,7 @@ internal sealed class PendingRequestsViewModel : PagedListViewModel
     public string? TeamNameFilter { get; set; }
 }
 
-internal sealed class CreateTeamViewModel : TeamFormViewModelBase
-{
-}
+internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
 
 internal sealed class EditTeamViewModel : TeamFormViewModelBase
 {

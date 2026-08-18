@@ -14,4 +14,4 @@ namespace Humans.Issues;
 /// modal moved into this section as <c>Views/Shared/_IssueWidgetModal.cshtml</c> so the
 /// whole <c>Issue_*</c> set could come home rather than splitting across two resource sets.
 /// </remarks>
-public class IssuesResource { }
+public class IssuesResource;

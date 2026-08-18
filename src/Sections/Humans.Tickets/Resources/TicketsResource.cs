@@ -23,4 +23,4 @@ namespace Humans.Tickets;
 /// <c>EmailGrid_DeleteTicketLinkedBlocked</c> (§15 step 3b, carve by renderer).
 /// </para>
 /// </remarks>
-public class TicketsResource { }
+public class TicketsResource;

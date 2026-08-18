@@ -1,3 +1,3 @@
 namespace Humans.UI;
 
-public class SharedResource { }
+public class SharedResource;
