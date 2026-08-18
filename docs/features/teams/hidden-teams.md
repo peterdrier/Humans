@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
-  src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
+  src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   IsHidden visibility filtering touchpoints (directory/detail/profile card/birthday/My Teams/join/admin badge) may have shifted.

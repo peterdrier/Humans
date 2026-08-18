@@ -1,13 +1,13 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/GoogleGroupSyncService.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupSync.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipSource.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupSyncScheduler.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipClient.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleGroupSyncService.cs
+  src/Sections/Humans.GoogleIntegration.Contracts/IGoogleGroupSync.cs
+  src/Sections/Humans.GoogleIntegration.Contracts/IGoogleGroupMembershipSource.cs
+  src/Sections/Humans.GoogleIntegration/Services/IGoogleGroupSyncScheduler.cs
+  src/Sections/Humans.GoogleIntegration/Services/Workspace/IGoogleGroupMembershipClient.cs
   src/Sections/Humans.Teams/**
-  src/Humans.Infrastructure/GoogleIntegration/HangfireGoogleGroupSyncScheduler.cs
+  src/Sections/Humans.GoogleIntegration/Services/HangfireGoogleGroupSyncScheduler.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
-  src/Humans.Web/Controllers/GoogleController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
 -->
 <!-- freshness:flag-on-change
   Source/orchestrator split, ReconcileAll vs ReconcileOne semantics, fail-closed collision rule, capped scoped retries, and Rejected GoogleEmailStatus marking. Review when the group sync service, source interfaces, or scheduler change.

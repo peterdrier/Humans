@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
-  src/Humans.Application/Interfaces/Shifts/IShiftManagementService.cs
-  src/Humans.Application/DTOs/PostEventStats.cs
-  src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
-  src/Humans.Web/Controllers/ShiftDashboardController.cs
-  src/Humans.Web/Views/ShiftDashboard/PostEventStats.cshtml
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/IShiftManagementService.cs
+  src/Sections/Humans.Shifts/Models/PostEventStats.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
+  src/Sections/Humans.Shifts/Views/ShiftDashboard/PostEventStats.cshtml
 -->
 <!-- freshness:flag-on-change
   Aggregation logic (period buckets, no-show rate formula, AdminOnly/hidden exclusions),

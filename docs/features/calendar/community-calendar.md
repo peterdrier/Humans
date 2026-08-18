@@ -105,7 +105,7 @@ CalendarEvent
 ├── Id: Guid
 ├── OwningTeamId: Guid (bare cross-section reference to Team, no DB FK)
 ├── CreatedByUserId: Guid (bare cross-section reference to User, no DB FK)
-├── Title: string (required, 256)
+├── Title: string (required, 200)
 ├── Description: string? (4000)
 ├── Location: string? (500)
 ├── LocationUrl: string? (2000)

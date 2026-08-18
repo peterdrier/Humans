@@ -75,11 +75,11 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` (the §2a Identity exception, see [`Users.md`](../../../../docs/sections/Users.md)), `IUserService`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator` |
+| Users / Profiles | `UserManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator` |
 | Auth | `IRoleAssignmentService` |
-| Teams | `ITeamService`, `ISystemTeamSync` |
-| Camps | `ICampService`, `ICampRoleService` |
-| Shifts | `IShiftManagementService`, `IShiftSignupService` |
+| Teams | `ITeamService`, `ITeamSeeding`, `ISystemTeamSync` |
+| Camps | `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding` |
+| Shifts | `IShiftSeeding`, `IBurnSettingsService`, `IShiftSignupSeeding` |
 | Audit Log | `IAuditLogService` |
 | Human Lifecycle | `IHumanLifecycleService` |
 | Consent | `IConsentSubmission` (contracts leaf) |
@@ -100,7 +100,7 @@ Nothing depends on Development in the other direction. Shell reaches it twice an
 - `Contracts/` is an empty folder. Folder-vs-project is decided by where the consumer lives, and there is no compile-time consumer at all.
 - `DevPersonaSeeder` is on the `ApplicationServicesTakeNoMemoryCacheRule` allowlist. It does not *hold* a cache - it calls `MemoryCacheExtensions.InvalidateUserAccess(userId)` after changing a persona's roles or teams, the same call Shell's `GateTerminalAccountSeeder` makes. It entered that sweep at the move, because the rule scans `Humans.Application` plus the section assemblies and this code used to sit in `Humans.Web/Infrastructure`, which it covers neither before nor after.
 - **Known deviation, carried from the G0 audit (gap #5):** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create Identity accounts through `UserManager<User>` rather than `IUserService`. This is the §2a framework exception applied to a dev fixture; it is invisible to the analyzers because `UserManager` is neither a repository nor a `DbContext`. Sanctioned here rather than left implicit.
-- **Known deviation, carried from the G0 audit (gap #6):** `DevelopmentDashboardSeeder` reads `IShiftManagementService.GetByIdAsync`/`GetActiveAsync` and `ITeamService.GetTeamEntityBySlugAsync`, all of which are baselined entity-returning reads, and it mutates the `EventSettings` it gets back before writing it again. Those are Shifts' and Teams' baseline rows to retire; this section follows their read-splits rather than leading them.
+- **Gap #6 from the G0 audit is closed.** Shifts and Teams carried out their read-splits: `DevelopmentDashboardSeeder` now creates/deactivates the seeded event through `IShiftSeeding.CreateBurnAsync`/`DeactivateActiveBurnAsync` (input records, not a mutated `EventSettings` entity), resolves it via `IBurnSettingsService.GetByIdAsync`, and resolves teams via `ITeamServiceRead.GetTeamBySlugAsync` (`TeamInfo`, not the `Team` entity). No baselined entity-returning read remains in this section.
 - **Known deviation, carried from the G0 audit (gap #4):** the Production exclusion covers `DevLoginController` only. `DevSeedController` stays in the MVC graph in Production behind its action-level guards. Generalising the provider to the whole section's controller surface is behavioural and out of a G5 move's scope.
 - **No renames.** `DevelopmentCampRoleSeeder` and `DevelopmentDashboardSeeder` duplicate the section name, which is normally step 5's collapse case - but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping half of them would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.
 - **Decorator decision - no caching decorator.** Owns no data.

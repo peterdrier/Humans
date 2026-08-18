@@ -4,6 +4,7 @@
   src/Humans.Web/Authorization/**
   src/Humans.Web/Infrastructure/**
   src/Humans.Web/Migrations/**
+  src/Humans.Interfaces/**
   src/Sections/**
   tests/Humans.Testing/**
 -->
@@ -32,7 +33,7 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 - **Every controller action that modifies data must have `[Authorize]` with explicit roles.** Missing `[Authorize]` on a POST/PUT/DELETE action is a security hole. Don't rely on controller-level `[Authorize]` alone if individual actions need different role requirements.
 - **Every POST action must have `[ValidateAntiForgeryToken]`.** No exceptions.
 - **Admin actions must check admin roles, not just `[Authorize]`.** Bare `[Authorize]` only checks authentication, not authorization. Actions in Admin/TeamAdmin/ShiftAdmin/CampAdmin controllers need role-based authorization.
-- **Manual role checks in method bodies should be attributes.** Replace `if (!User.IsInRole("Admin"))` patterns with `[Authorize(Roles = "Admin")]` on the action.
+- **Manual role checks in method bodies should be attributes — policy attributes.** Replace `if (!User.IsInRole("Admin"))` with `[Authorize(Policy = PolicyNames.AdminOnly)]` on the action. **Never `[Authorize(Roles = "...")]`**: raw role strings are forbidden by `design-rules.md` §11 and there are zero of them in `src/` — flagging a reviewer toward one would reintroduce the pattern. For a check that depends on the *resource* (this team, this camp, this expense report), the attribute is not enough: use the section's resource-based handler via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`.
 
 ## Missing .Include() *(6+ historical fixes)*
 

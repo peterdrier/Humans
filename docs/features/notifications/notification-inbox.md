@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Notifications/**
   src/Sections/Humans.Notifications.Contracts/**
-  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
   src/Sections/Humans.Notifications/Jobs/CleanupNotificationsJob.cs
 -->
 <!-- freshness:flag-on-change

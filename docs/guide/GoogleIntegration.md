@@ -1,15 +1,15 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Google/**
+  src/Sections/Humans.GoogleIntegration/Views/Google/**
   src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Application/Services/GoogleIntegration/**
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.GoogleIntegration/Services/**
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEvent.cs
   src/Sections/Humans.GoogleIntegration.Contracts/SyncServiceSettings.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEventTypes.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleResourceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Sync mode plumbing, drift detection, workspace account provisioning, Drive activity monitor, and team-resource linking. Review when Google services, sync settings, or related entities change.

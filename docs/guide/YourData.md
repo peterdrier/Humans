@@ -1,14 +1,14 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Views/Profile/Privacy.cshtml
-  src/Humans.Web/Views/Profile/CommunicationPreferences.cshtml
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Views/Profile/Privacy.cshtml
+  src/Sections/Humans.Users/Views/Profile/CommunicationPreferences.cshtml
   src/Sections/Humans.Gdpr/Services/GdprExportService.cs
-  src/Humans.Application/Services/Users/AccountLifecycle/AccountDeletionService.cs
-  src/Humans.Application/Services/Profiles/ContactFieldService.cs
-  src/Humans.Application/Services/Profiles/CommunicationPreferenceService.cs
+  src/Sections/Humans.Users/Services/AccountDeletionService.cs
+  src/Sections/Humans.Users/Services/ContactFieldService.cs
+  src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs
   src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
-  src/Humans.Domain/Entities/ContactField.cs
-  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Sections/Humans.Users.Contracts/ContactField.cs
+  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
 -->
 <!-- freshness:flag-on-change
   Per-field visibility options, communication preference categories, data export contents, and the 30-day deletion/cancel window. Review when privacy views, GDPR export, or account deletion flows change.

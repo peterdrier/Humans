@@ -1,14 +1,14 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/**
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Views/Google/**
+  src/Sections/Humans.GoogleIntegration/Services/**
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.GoogleIntegration/Views/Google/**
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEvent.cs
   src/Sections/Humans.GoogleIntegration.Contracts/SyncServiceSettings.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEventTypes.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleResourceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceProvisionJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
@@ -190,24 +190,33 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 public interface IGoogleSyncService
 {
     // Shared Drive folder provisioning
-    Task<GoogleResource> ProvisionTeamFolderAsync(Guid teamId, string folderName, CancellationToken ct);
+    Task<GoogleResource> ProvisionTeamFolderAsync(Guid teamId, string folderName, CancellationToken ct = default);
 
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct);
-    Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct);
+    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default);
+    Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
 
     // Team membership changes
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct);
-    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct);
+    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
+    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
-    // Status
-    Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken ct);
+    // Google Group lifecycle
+    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
 
-    // Google Group lifecycle/settings, not membership
-    Task EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
-    Task<GoogleResource> ProvisionTeamGroupAsync(Guid teamId, string groupEmail, string groupName, CancellationToken ct);
-    // Restoration
-    Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken ct);
+    // Group settings drift detection/remediation
+    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken ct = default);
+    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken ct = default);
+    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken ct = default);
+
+    // Drive folder path / inherited-permission maintenance
+    Task<int> UpdateDriveFolderPathsAsync(CancellationToken ct = default);
+    Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken ct = default);
+    Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken ct = default);
+
+    // Admin outbox recovery
+    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken ct = default);
+    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken ct = default);
+    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken ct = default);
 }
 ```
 
@@ -217,7 +226,11 @@ public interface IGoogleGroupSync
 {
     Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
     Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default);
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true);
+
+    // Pre-#663 4-param overload, kept so in-flight Hangfire jobs serialized
+    // against the old signature can still deserialize.
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct, int retryAttempt);
 }
 ```
 
