@@ -1,7 +1,7 @@
 using Humans.Application.Configuration;
 using Humans.Base.Diagnostics;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Admin;
+using Humans.Base.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
 using Humans.Debug.Models;
 using Humans.Infrastructure.Data;

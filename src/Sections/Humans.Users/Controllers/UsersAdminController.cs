@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Application.Interfaces.Admin;
+using Humans.Base.Interfaces.Admin;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;

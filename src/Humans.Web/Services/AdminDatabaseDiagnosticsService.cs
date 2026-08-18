@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Admin;
+using Humans.Base.Interfaces.Admin;
 using Humans.Web.Repositories.Admin;
 using Humans.Tickets.Contracts;
 using NodaTime;

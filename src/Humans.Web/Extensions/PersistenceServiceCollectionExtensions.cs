@@ -46,7 +46,7 @@ public static class PersistenceServiceCollectionExtensions
     {
         services.AddSingleton<Repositories.Admin.IAdminDatabaseDiagnosticsRepository,
             Repositories.Admin.AdminDatabaseDiagnosticsRepository>();
-        services.AddScoped<Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService,
+        services.AddScoped<Base.Interfaces.Admin.IAdminDatabaseDiagnosticsService,
             Services.AdminDatabaseDiagnosticsService>();
         return services;
     }

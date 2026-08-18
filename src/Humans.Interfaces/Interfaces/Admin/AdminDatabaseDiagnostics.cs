@@ -1,4 +1,6 @@
-namespace Humans.Application.Interfaces.Admin;
+using Humans.Application.Interfaces;
+
+namespace Humans.Base.Interfaces.Admin;
 
 public interface IAdminDatabaseDiagnosticsService : IApplicationService
 {
