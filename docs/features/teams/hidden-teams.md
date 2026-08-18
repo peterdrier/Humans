@@ -22,7 +22,7 @@ Campaigns (code distribution) target teams to determine who receives codes. Some
 | Viewer | Can see hidden teams? |
 |--------|----------------------|
 | Anonymous | No |
-| Regular authenticated human | No -- not on profile cards, team listings, public pages, birthday calendars, or "My Teams" |
+| Regular authenticated human | No on **another** human's profile card, team listings, public pages, birthday calendars, or "My Teams". **Yes on their own profile card** — `ProfileCardViewComponent` filters `IsHidden` only when `viewMode == Public`, and a human viewing themselves gets `Self`, so their own hidden-team memberships are listed back to them (see ISSUE_PLACEHOLDER2) |
 | Admin / Board / TeamsAdmin | Yes -- full visibility in team directory, detail pages, admin summary, and "My Teams" |
 | Campaigns | Yes -- campaigns target by team ID, unaffected by visibility |
 

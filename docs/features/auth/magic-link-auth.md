@@ -214,21 +214,6 @@ if (userEmail is not null)
 
 The same lookup pattern applies to the Google OAuth account linking in `ExternalLoginCallback`.
 
-### New/Modified Files
-
-| Layer | File | Change |
-|-------|------|--------|
-| Application | `Interfaces/IMagicLinkService.cs` | New interface: `SendLoginLinkAsync`, `VerifyLoginTokenAsync`, `SendSignupLinkAsync`, `VerifySignupTokenAsync` |
-| Infrastructure | `Services/MagicLinkService.cs` | Token generation (Identity + DataProtection), email lookup, email sending via outbox |
-| Web | `Controllers/AccountController.cs` | New actions: `MagicLinkRequest` (POST), `MagicLink` (GET, login), `MagicLinkSignup` (GET, signup), `CompleteSignup` (GET+POST). Modified: `ExternalLoginCallback` (account linking) |
-| Web | `Views/Account/Login.cshtml` | Add email input + "Send login link" form alongside Google button |
-| Web | `Views/Account/MagicLinkSent.cshtml` | Confirmation page ("Check your email") |
-| Web | `Views/Account/MagicLinkError.cshtml` | Expired/invalid token page with "Request new link" button |
-| Web | `Views/Account/CompleteSignup.cshtml` | Burner name + first/last (legal) name prompt for new users (email pre-filled, readonly) |
-| Infrastructure | `Services/OutboxEmailService.cs` | New `SendMagicLinkAsync` method |
-| Web | `Program.cs` | Configure `DataProtectionTokenProviderOptions.TokenLifespan` |
-| Domain | `Entities/User.cs` | Add `MagicLinkSentAt` (nullable Instant) for rate limiting |
-
 ### Account Linking (Google OAuth)
 
 The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsync`; `AccountController.ExternalLoginCallback` only dispatches to it:
