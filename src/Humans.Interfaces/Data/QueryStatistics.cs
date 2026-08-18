@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.Base.Data;
 
 /// <summary>
 /// Thread-safe in-memory store for DB query execution statistics.

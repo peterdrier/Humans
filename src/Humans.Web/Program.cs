@@ -21,7 +21,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Humans.Base.Hosting;
 using Humans.Web.Services;
 using Humans.Web.Authorization;

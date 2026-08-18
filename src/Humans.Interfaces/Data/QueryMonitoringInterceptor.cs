@@ -2,7 +2,7 @@ using System.Data.Common;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.Base.Data;
 
 /// <summary>
 /// EF Core interceptor that tracks query execution counts and timings in memory,

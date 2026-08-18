@@ -1,6 +1,6 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;

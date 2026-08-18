@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.Feedback.Data;

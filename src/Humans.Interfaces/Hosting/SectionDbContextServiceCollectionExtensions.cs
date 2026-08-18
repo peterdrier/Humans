@@ -1,4 +1,4 @@
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;

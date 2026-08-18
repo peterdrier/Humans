@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Humans.Web.Data;
 using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.Base.Data;
 
 /// <summary>
 /// Single source of truth for the per-section migrations-history table names

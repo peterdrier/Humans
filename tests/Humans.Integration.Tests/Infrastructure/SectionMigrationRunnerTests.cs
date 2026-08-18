@@ -12,7 +12,7 @@ using Humans.Calendar.Data;
 using Humans.Campaigns.Data;
 using AwesomeAssertions;
 using Humans.Agent.Data;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 using Humans.Web.Data;
 using Humans.Base.Hosting;
 using Humans.CityPlanning.Data;
