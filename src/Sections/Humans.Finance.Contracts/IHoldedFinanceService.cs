@@ -38,7 +38,8 @@ public interface IHoldedFinanceService : IApplicationService
     /// Fails, writing nothing, when the account is already bound or no Holded contact carries it.</summary>
     Task<CreditorBindResult> SetCreditorContactAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Per-account statement: balance + itemized journal lines over the last ~year. Null if unknown.</summary>
+    /// <summary>Per-account statement: balance plus every journal line the Holded mirror holds for the
+    /// account — no window of its own, so the span is whatever the last sync swept. Null when none.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);
 
     /// <summary>Ensures the member has a Holded creditor contact and binding, returning the contact id.

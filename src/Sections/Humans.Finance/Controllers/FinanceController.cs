@@ -15,11 +15,10 @@ namespace Humans.Finance.Controllers;
 /// </summary>
 /// <remarks>
 /// The other 23 actions that used to share this class are Budget CRUD — years, groups,
-/// categories, line items, cash flow, audit log — and stayed in Shell as
-/// <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c> prefix so no URL
-/// moved. Dragging them in here would have put Budget's whole admin surface inside the Finance
-/// section and forced two of Budget's view models down into Base to reach it
-/// (nobodies-collective/Humans#866, G5).
+/// categories, line items, cash flow, audit log — and are now
+/// <c>Humans.Budget</c>'s <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c>
+/// prefix so no URL moved. Dragging them in here would have put Budget's whole admin surface
+/// inside the Finance section (nobodies-collective/Humans#866, G5).
 /// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]

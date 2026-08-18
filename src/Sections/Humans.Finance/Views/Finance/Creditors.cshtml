@@ -72,7 +72,9 @@
 @if (!Model.Accounts.Any())
 {
     <div class="card"><div class="card-body text-center py-5 text-muted">
-        No creditor balances cached yet — run a Holded sync from the Unmatched page.
+        No creditor balances cached yet — run the ledger-mirror sync from
+        <a href="/Holded">the Holded admin screen</a>. (The Unmatched page's "Sync Now" pulls purchase
+        documents, which never populate creditor balances.)
     </div></div>
 }
 else

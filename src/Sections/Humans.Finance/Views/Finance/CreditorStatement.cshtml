@@ -78,10 +78,10 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Ledger — last 12 months (credit = owed/in, debit = paid/out)</div>
+    <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out)</div>
     @if (lines.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No ledger lines in the last year.</div>
+        <div class="card-body text-muted text-center py-4">No cached ledger lines for this account.</div>
     }
     else
     {

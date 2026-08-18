@@ -38,7 +38,7 @@ and member contacts; it never posts a journal entry.
 
 ## 2. The shapes
 
-15 contract methods over four question shapes.
+The contract's methods, grouped by the question each one answers.
 
 | Shape | The question | Methods | Asked by |
 |---|---|---|---|

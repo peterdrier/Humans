@@ -5,6 +5,7 @@ using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
+using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -1604,5 +1605,97 @@ public class HoldedFinanceServiceTests
             .Should().Be("acc-live");
         (await svc.GetHoldedAccountIdForCategoryAsync(unmapped, Xunit.TestContext.Current.CancellationToken))
             .Should().BeNull();
+    }
+
+    // ─── GDPR export slice ───────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheBindingAndNothingElse()
+    {
+        // Article 15: the member gets what we hold about them. The binding row is three facts —
+        // and not the row's Id or timestamps, which are ours rather than theirs.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "contact-9",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Manual,
+                CreatedAt = FixedNow,
+                UpdatedAt = FixedNow,
+            });
+
+        var slices = await MakeService().ContributeForUserAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        slice.Data.Should().NotBeNull();
+        var json = JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
+        json.Should().NotContain("CreatedAt").And.NotContain("UpdatedAt");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_UnboundMember_StillReportsTheSectionWithNoData()
+    {
+        // The section has to appear either way: "we hold nothing here" is itself the answer, and a
+        // missing section reads as a section nobody asked.
+        _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null);
+
+        var slices = await MakeService().ContributeForUserAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        slice.Data.Should().BeNull();
+    }
+
+    // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────
+
+    [HumansFact]
+    public async Task GetDocSyncInfo_ReportsTheStoredStateAndTheBindingCount()
+    {
+        // The binding count rides along on this DTO so /Holded can show a number without building
+        // the whole creditor view, which would cost a live Holded contacts walk.
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedDocSyncState
+            {
+                LastSyncAt = FixedNow,
+                Status = "Error",
+                LastError = "holded said no",
+                LastSyncedDocCount = 42,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c1" },
+            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
+        });
+
+        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+
+        info.LastSyncAt.Should().Be(FixedNow);
+        info.Status.Should().Be("Error");
+        info.LastError.Should().Be("holded said no");
+        info.LastSyncedDocCount.Should().Be(42);
+        info.CreditorBindingCount.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetDocSyncInfo_NeverSynced_ReadsAsIdleWithNothingRecorded()
+    {
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+
+        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+
+        info.Status.Should().Be("Idle");
+        info.LastSyncAt.Should().BeNull();
+        info.LastError.Should().BeNull();
+        info.LastSyncedDocCount.Should().Be(0);
+        info.CreditorBindingCount.Should().Be(0);
     }
 }
