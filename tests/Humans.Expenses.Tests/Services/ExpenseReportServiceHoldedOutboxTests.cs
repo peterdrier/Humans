@@ -223,9 +223,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         // Proof rows back an invoice line for review only — Holded gets the invoice line and the
         // invoice file, never the proofs.
         var invoiceLine = MakeLineWithAttachment(Guid.NewGuid(), "invoice.pdf", 0, holdedUploadedAt: null)
-            with { LineType = ExpenseLineType.Invoice, Amount = 1000m };
+            with
+        { LineType = ExpenseLineType.Invoice, Amount = 1000m };
         var proofLine = MakeLineWithAttachment(Guid.NewGuid(), "proof.pdf", 1, holdedUploadedAt: null)
-            with { ParentLineId = invoiceLine.Id, Amount = 400m };
+            with
+        { ParentLineId = invoiceLine.Id, Amount = 400m };
 
         var report = MakeReport() with { Total = 1000m, Lines = [invoiceLine, proofLine] };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);

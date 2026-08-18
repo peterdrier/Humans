@@ -396,39 +396,27 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId, Guid lineId,
         CancellationToken ct = default)
     {
-        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+        await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
-        // An invoice line takes its proof rows with it — each cleaned up like any other line.
-        foreach (var proof in report.Lines.Where(l => l.ParentLineId == lineId))
+        // One atomic save removes the line, any proof rows under it, and their attachment rows;
+        // the files are deleted only after that commit (best-effort — an orphan file is a warning,
+        // an orphan row is a bug).
+        var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
+            ?? throw new InvalidOperationException("Failed to remove line.");
+
+        foreach (var attachment in removedAttachments)
         {
-            await CleanLineAttachmentAsync(proof, ct);
-            var proofOk = await repo.RemoveLineAsync(reportId, proof.Id, ct);
-            if (!proofOk) throw new InvalidOperationException("Failed to remove proof row.");
-        }
-
-        // Clean attachment first to avoid orphan row + file blob.
-        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-        if (line is not null) await CleanLineAttachmentAsync(line, ct);
-
-        var ok = await repo.RemoveLineAsync(reportId, lineId, ct);
-        if (!ok) throw new InvalidOperationException("Failed to remove line.");
-    }
-
-    private async Task CleanLineAttachmentAsync(ExpenseLineDto line, CancellationToken ct)
-    {
-        if (line.Attachment is null) return;
-        await repo.SetLineAttachmentAsync(line.Id, null, ct);
-        await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
-        try
-        {
-            await fileStorage.DeleteAsync(
-                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                line.Attachment.Id, line.Id);
+            try
+            {
+                await fileStorage.DeleteAsync(
+                    AttachmentKey(attachment.Id, attachment.Extension), ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Could not delete attachment file {AttachmentId} while removing line {LineId}",
+                    attachment.Id, lineId);
+            }
         }
     }
 
