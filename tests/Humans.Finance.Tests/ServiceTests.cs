@@ -13,6 +13,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Finance.Tests;
 
@@ -1391,5 +1392,172 @@ public class HoldedFinanceServiceTests
         proposed.State.Should().Be("ToAdd");
         proposed.Tag.Should().NotBe("operationsstaff");
         proposed.Tag.Should().StartWith("operationsstaff");
+    }
+
+    // ─── Provisioning: applying the plan ─────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Provision_AddOne_CreatesExactlyTheFirstPendingAccount()
+    {
+        var (catA, catB) = TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+
+        var created = await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: false, ct: Xunit.TestContext.Current.CancellationToken);
+
+        created.Should().Be(1);
+        await _client.Received(1).CreateExpenseAccountAsync(
+            Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        var row = _repo.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Select(c => (HoldedCategoryMap)c.GetArguments()[0]!)
+            .Should().ContainSingle().Subject;
+        row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
+        row.HoldedAccountNumber.Should().Be(6290010);
+        row.HoldedAccountId.Should().Be("acc-6290010");
+        row.IsActive.Should().BeTrue();
+        row.Tag.Should().NotBeNullOrEmpty();
+        catB.Should().NotBe(catA);
+    }
+
+    [HumansFact]
+    public async Task Provision_AddAll_CreatesEveryPendingAccountAndNeverRemovesAMapRow()
+    {
+        TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+
+        var created = await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        created.Should().Be(2);
+        var numbers = _repo.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Select(c => ((HoldedCategoryMap)c.GetArguments()[0]!).HoldedAccountNumber);
+        numbers.Should().Equal(6290010, 6290011);
+        // Provisioning is additive: the repository has no map-delete method and none is called.
+        _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
+            .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task Provision_HoldedRefusesTheSecondAccount_KeepsTheFirstAndRethrows()
+    {
+        // Partial success is deliberate: an account already created in Holded must keep its map row,
+        // or the number is stranded remotely with nothing pointing at it.
+        TwoUnmappedCategories();
+        _client.CreateExpenseAccountAsync(6290010, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("acc-6290010");
+        _client.CreateExpenseAccountAsync(6290011, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("holded said no"));
+
+        var act = async () => await MakeService().ProvisionAsync(
+            blockStart: 6290010, addAll: true, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.Received(1).AddCategoryMapAsync(
+            Arg.Is<HoldedCategoryMap>(m => m.HoldedAccountNumber == 6290010), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An active year with two unmapped categories, "Alpha" then "Beta", and an empty map.</summary>
+    private (Guid First, Guid Second) TwoUnmappedCategories()
+    {
+        var catA = Guid.NewGuid();
+        var catB = Guid.NewGuid();
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
+            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(), BudgetYearId: Guid.NewGuid(), Name: "Operations",
+                    SortOrder: 1, IsRestricted: false, IsDepartmentGroup: false,
+                    IsTicketingGroup: false, TicketingProjection: null,
+                    Categories:
+                    [
+                        new BudgetCategoryDetail(catA, Guid.NewGuid(), "Alpha", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(catB, Guid.NewGuid(), "Beta", 0, ExpenditureType.OpEx, null, 1, []),
+                    ])
+            ]));
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        return (catA, catB);
+    }
+
+    // ─── The creditor block is inclusive at both ends ────────────────────────────
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_TheCreditorBlockIsInclusiveAtBothEnds()
+    {
+        // Holded numbers every supplier contact, so the block bounds are the only thing separating a
+        // member's creditor account from an ordinary org vendor. Both ends are members' accounts.
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>
+            {
+                [39999999] = -1m, [40000000] = -1m, [40000999] = -1m, [40001000] = -1m,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "lo-out", Name = "Vendor", SupplierAccountNum = 39999999 },
+            new() { Id = "lo-in", Name = "First member", SupplierAccountNum = 40000000 },
+            new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 40000999 },
+            new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 40001000 },
+        });
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 40000999]);
+    }
+
+    [HumansTheory]
+    [InlineData(39999999)]
+    [InlineData(40001000)]
+    public async Task SetCreditorContact_JustOutsideTheBlock_IsRefused(int accountNum)
+    {
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(40000000)]
+    [InlineData(40000999)]
+    public async Task SetCreditorContact_OnTheBlockBoundary_IsAccepted(int accountNum)
+    {
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Member", SupplierAccountNum = accountNum },
+        });
+
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), accountNum, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    // ─── Negative rule: the sync never removes a doc ─────────────────────────────
+
+    [HumansFact]
+    public async Task Sync_DocsMissingFromHolded_AreNeverDeleted()
+    {
+        // "The sync job cannot delete HoldedExpenseDoc rows" — Holded-side deletions are out of scope,
+        // so a doc that stops appearing in the pull is simply not upserted, never removed.
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedPurchaseDocListItemDto>());
+        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>(StringComparer.Ordinal));
+
+        var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.DocCount.Should().Be(0);
+        _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
+            .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
     }
 }
