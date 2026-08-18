@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 using AwesomeAssertions;
-using Humans.Application.Metering;
+using Humans.Base.Metering;
 using Humans.Infrastructure.Services.Metering;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,4 +1,4 @@
-namespace Humans.Application.Metering;
+namespace Humans.Base.Metering;
 
 /// <summary>
 /// Descriptor for an <see cref="Interfaces.Metering.IMeters.Declare"/> call.

@@ -2,7 +2,7 @@ using Humans.Application.Architecture;
 using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Base.Interfaces.Metering;
-using Humans.Application.Metering;
+using Humans.Base.Metering;
 using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Domain.Enums;

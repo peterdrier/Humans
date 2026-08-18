@@ -1,4 +1,4 @@
-using Humans.Application.Metering;
+using Humans.Base.Metering;
 
 namespace Humans.Base.Interfaces.Metering;
 
