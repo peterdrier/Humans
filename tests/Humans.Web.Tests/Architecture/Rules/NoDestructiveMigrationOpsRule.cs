@@ -41,6 +41,11 @@ public class NoDestructiveMigrationOpsRule
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
+    private static readonly Regex LocatorNameRegex = new(
+        @"name=(?<name>[^),]+)",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(2));
+
     [HumansFact]
     public void No_new_destructive_migration_ops_in_Up()
     {
@@ -58,6 +63,12 @@ public class NoDestructiveMigrationOpsRule
     /// evidence and no approval would pass silently — which is the whole gate the rule rewrite
     /// of 2026-08-18 depends on. This does not try to judge whether the evidence is *good*; a
     /// human does that. It only refuses an entry that never claimed any.
+    ///
+    /// The block must also *name* each dropped object it covers. Coverage alone is inheritable:
+    /// a bare locator appended directly under an approved group (no blank line) would sit inside
+    /// that group's comment block and borrow its Approval line. Requiring the object's name in
+    /// the block forces every new entry to put its own name into the approval text — a visible,
+    /// deliberate edit — instead of free-riding on a neighbour's.
     /// </remarks>
     [HumansFact]
     public void Every_baseline_entry_is_covered_by_an_approval_note()
@@ -77,14 +88,19 @@ public class NoDestructiveMigrationOpsRule
             var covered = block.Any(c =>
                 c.Contains("Approval:", StringComparison.Ordinal)
                 || c.Contains("Pre-existing:", StringComparison.Ordinal));
-            if (!covered) unapproved.Add(line);
+            var objectName = LocatorNameRegex.Match(line).Groups["name"].Value;
+            var named = objectName.Length == 0
+                || block.Any(c => c.Contains(objectName, StringComparison.Ordinal));
+            if (!covered || !named) unapproved.Add(line);
         }
 
         unapproved.Should().BeEmpty(
             because: "every locator in {0} needs the comment block above it to carry an "
                    + "'Approval:' line (Peter's per-case written approval, with the description "
                    + "and the evidence beside it) or a 'Pre-existing:' line for drops that "
-                   + "shipped before this rule. See memory/architecture/"
+                   + "shipped before this rule, and that block must name the dropped "
+                   + "object/table itself — an entry cannot borrow a neighbouring group's "
+                   + "approval. See memory/architecture/"
                    + "no-drops-until-prod-verified.md. Uncovered: {1}",
             BaselinePath, string.Join(", ", unapproved));
     }

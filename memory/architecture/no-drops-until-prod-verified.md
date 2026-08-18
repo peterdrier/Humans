@@ -71,7 +71,9 @@ Peter's approval. If you cannot write the three facts, you do not have approval 
 
 That is enforced, not merely asked for: `Every_baseline_entry_is_covered_by_an_approval_note` fails
 any locator whose comment block above it carries no `Approval:` line (or `Pre-existing:`, for drops
-that shipped before this rule). The ratchet's own reader discards comments and diffs locators only,
+that shipped before this rule), or does not name the dropped object itself — naming is what stops a
+new locator appended inside an existing group from borrowing that group's approval. The ratchet's
+own reader discards comments and diffs locators only,
 so without that second test a bare locator would pass silently and the ledger would be a convention
 rather than a guardrail. The test does not judge whether the evidence is *good* — a human does that;
 it only refuses an entry that never claimed any.

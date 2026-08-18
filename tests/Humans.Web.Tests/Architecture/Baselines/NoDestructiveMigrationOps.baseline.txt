@@ -13,7 +13,8 @@
 # A bare locator with no such comment is a rubber stamp, not an approval. If you cannot write
 # the three facts, you do not have approval yet — ask, do not add the line.
 
-# Pre-existing: three already-shipped drops in a G5 section's own Data/Migrations folder.
+# Pre-existing: three already-shipped drops in a G5 section's own Data/Migrations folder —
+# holded_expense_docs.ApprovedAt, and the holded_ledger_lines + holded_sync_states tables.
 # They are new to this file only because the rule's scan was widened to section migration
 # folders at Email's G5 move (nobodies-collective/Humans#866) — before that, every moved
 # section's migrations silently left the sweep and the rule reported success by finding
