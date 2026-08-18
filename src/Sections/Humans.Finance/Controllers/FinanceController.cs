@@ -14,12 +14,9 @@ namespace Humans.Finance.Controllers;
 /// <c>/Finance/Creditors*</c>, <c>/Finance/HoldedSync/Run</c>).
 /// </summary>
 /// <remarks>
-/// The other 23 actions that used to share this class are Budget CRUD — years, groups,
-/// categories, line items, cash flow, audit log — and became <c>BudgetAdminController</c>,
-/// now in the Budget section project, keeping the same <c>[Route("Finance")]</c> prefix so no
-/// URL moved. Dragging them in here would have put Budget's whole admin surface inside the Finance
-/// section and forced two of Budget's view models down into Base to reach it
-/// (nobodies-collective/Humans#866, G5).
+/// Budget's own admin actions share the <c>[Route("Finance")]</c> prefix from
+/// <c>BudgetAdminController</c> in the Budget section; the two controllers' templates are
+/// disjoint. Docs/Finance.md carries why they are separate.
 /// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
