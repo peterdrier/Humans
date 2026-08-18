@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.Domain.Architecture;
 using Microsoft.CodeAnalysis;
 

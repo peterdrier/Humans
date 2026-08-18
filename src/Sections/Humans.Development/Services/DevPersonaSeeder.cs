@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;

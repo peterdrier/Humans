@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;

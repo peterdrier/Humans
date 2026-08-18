@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
 
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 
 namespace Humans.Shifts.Contracts;
 

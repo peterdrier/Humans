@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;

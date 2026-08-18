@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Base.Interfaces.Metering;

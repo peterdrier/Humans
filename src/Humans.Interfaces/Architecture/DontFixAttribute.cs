@@ -1,4 +1,4 @@
-namespace Humans.Application.Architecture;
+namespace Humans.Base.Architecture;
 
 /// <summary>
 /// Marks a class as an <b>intentional, permanent</b> exception to an architecture

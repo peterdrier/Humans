@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Base.Attributes;

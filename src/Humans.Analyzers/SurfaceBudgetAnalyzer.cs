@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 

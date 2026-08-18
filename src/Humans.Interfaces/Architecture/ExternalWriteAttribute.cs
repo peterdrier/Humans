@@ -1,4 +1,4 @@
-namespace Humans.Application.Architecture;
+namespace Humans.Base.Architecture;
 
 /// <summary>
 /// Marks a service/interface method that reaches an outbound call which

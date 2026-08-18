@@ -15,7 +15,7 @@ public class CachingDecoratorRuleTests
             }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -268,7 +268,7 @@ public class CachingDecoratorRuleTests
 
             namespace Humans.Infrastructure.Services.Teams
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Architecture.Grandfathered(
                     ruleId: "HUM0020",
                     justification: "Existing repository-backed warm path.",
                     since: "2026-05-24",

@@ -8,7 +8,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
 {
     // Stubs mirror the production shapes the analyzer matches by name:
     // the MVC verb attributes, HttpContext.RequestAborted, and the two
-    // Humans.Application.Architecture markers.
+    // Humans.Base.Architecture markers.
     private const string Stubs = """
         namespace Microsoft.AspNetCore.Http
         {
@@ -32,7 +32,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
             public sealed class HttpPatchAttribute : System.Attribute { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Method)]
             public sealed class ExternalWriteAttribute : System.Attribute { }
@@ -47,7 +47,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
         {
             public interface ISyncService
             {
-                [Humans.Application.Architecture.ExternalWrite]
+                [Humans.Base.Architecture.ExternalWrite]
                 System.Threading.Tasks.Task SyncAsync(System.Threading.CancellationToken ct);
 
                 System.Threading.Tasks.Task PreviewAsync(System.Threading.CancellationToken ct);
@@ -201,7 +201,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
-                    [Humans.Application.Architecture.Grandfathered("HUM0033", "legacy", "2026-08-05", "nobodies-collective/Humans#950")]
+                    [Humans.Base.Architecture.Grandfathered("HUM0033", "legacy", "2026-08-05", "nobodies-collective/Humans#950")]
                     public System.Threading.Tasks.Task Execute() =>
                         _sync.SyncAsync(HttpContext.RequestAborted);
             """));

@@ -2,7 +2,7 @@ using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;

@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Consent.Contracts;

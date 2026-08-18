@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.UI.Controllers;
 using System.Globalization;
 using System.Text.Json;

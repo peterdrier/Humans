@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts

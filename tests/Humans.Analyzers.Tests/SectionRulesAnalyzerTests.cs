@@ -50,7 +50,7 @@ public class SectionRulesAnalyzerTests
             public interface ITagHelper { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -445,7 +445,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0034", "test", "2026-08-10", "test")]
+                [Humans.Base.Architecture.Grandfathered("HUM0034", "test", "2026-08-10", "test")]
                 public sealed class LeakedType { }
             }
             """;

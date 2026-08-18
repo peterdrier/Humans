@@ -29,7 +29,7 @@ public sealed class TableOwnershipRuleTests
             public interface IRepository { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -205,7 +205,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                [Humans.Base.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
@@ -215,7 +215,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                [Humans.Base.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
@@ -239,7 +239,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                [Humans.Base.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
@@ -281,7 +281,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "AuditLogEntries")]
+                [Humans.Base.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "AuditLogEntries")]
                 public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>

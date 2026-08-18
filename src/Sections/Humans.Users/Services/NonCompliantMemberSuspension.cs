@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
 using Humans.Application.Interfaces;

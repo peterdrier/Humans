@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
