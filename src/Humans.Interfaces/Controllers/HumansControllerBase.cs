@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.UI.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;

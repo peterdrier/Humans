@@ -7,7 +7,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.UI.Authorization;
-using Humans.UI.Constants;
+using Humans.Base.Constants;
 using Humans.GoogleIntegration.Services;
 
 namespace Humans.GoogleIntegration.Controllers;

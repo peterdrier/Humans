@@ -1,4 +1,4 @@
-namespace Humans.UI.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Constants for TempData dictionary keys used across controllers and view components.

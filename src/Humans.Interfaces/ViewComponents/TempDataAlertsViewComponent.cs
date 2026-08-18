@@ -1,4 +1,4 @@
-using Humans.UI.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Base.ViewComponents;
