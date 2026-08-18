@@ -5,6 +5,7 @@ using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 
 using Humans.Shifts.Contracts;
+using Xunit;
 namespace Humans.Agent.Tests;
 
 public class AgentToolDispatcherTests
@@ -433,7 +434,31 @@ public class AgentToolDispatcherTests
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Feature spec not found: no-such-spec");
-        result.Content.Should().Contain("Valid keys are: 26-events, gate-admissions");
+        // The three specs in the stub tree, and only those: the invariants doc, the generated
+        // authorization.md and the dated design record share those folders and are not specs.
+        result.Content.Should().Contain("Valid keys are: Events-feature, gate-admissions, gdpr-export");
+    }
+
+    /// <summary>
+    /// Specs live in their own section's <c>Docs/</c> folder, so a stem resolves to whichever
+    /// folder holds it rather than to one fixed path. Both homes must serve.
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Events-feature")]
+    [InlineData("gate-admissions")]
+    [InlineData("gdpr-export")]
+    public async Task FetchFeatureSpec_resolves_a_stem_to_its_own_section_folder(string stem)
+    {
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchFeatureSpec,
+                $$"""{"name":"{{stem}}"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeFalse();
+        result.Content.Should().Contain($"# {stem}");
     }
 
     /// <summary>
@@ -454,7 +479,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Be("Feature spec not found: no-such-spec.");
     }
 
-    /// <summary>A source whose folder listing is broken (revoked token, GitHub outage).</summary>
+    /// <summary>A source whose listing is broken (revoked token, GitHub outage).</summary>
     private sealed class UnlistableGuideSource : Application.Interfaces.IGuideContentSource
     {
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
@@ -464,6 +489,9 @@ public class AgentToolDispatcherTests
             throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("github unreachable");
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("github unreachable");
     }
 
@@ -501,16 +529,30 @@ public class AgentToolDispatcherTests
 
     private sealed class StubGuideSource : Application.Interfaces.IGuideContentSource
     {
-        /// <summary>The only feature specs this stub repo contains — anything else 404s like GitHub would.</summary>
-        internal static readonly string[] FeatureStems = ["26-events", "gate-admissions"];
+        /// <summary>
+        /// This stub repo's whole markdown tree. Specs sit in the Docs/features/ folder of two
+        /// different section projects and in docs/features/global, with the section-owned docs
+        /// one level up in Docs/ — so the folder boundary that decides what is a spec is
+        /// exercised, not just the happy path. Anything outside this list 404s like GitHub would.
+        /// </summary>
+        internal static readonly string[] MarkdownPaths =
+        [
+            "src/Sections/Humans.Events/Docs/features/Events-feature.md",
+            "src/Sections/Humans.Events/Docs/Events.md",                      // invariants doc
+            "src/Sections/Humans.Events/Docs/authorization.md",               // generated companion
+            "src/Sections/Humans.Events/Docs/2026-06-08-events-card-design.md", // dated record
+            "src/Sections/Humans.Gate/Docs/features/gate-admissions.md",
+            "docs/features/global/gdpr-export.md",
+            "docs/sections/_Index.md",                                        // outside both spec homes
+            "docs/community-kb/FAQ-general.md",                               // the community reader's corpus
+        ];
 
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}");
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
         {
-            if (string.Equals(folderPath, AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
-                && !FeatureStems.Contains(fileStem, StringComparer.Ordinal))
+            if (!MarkdownPaths.Contains($"{folderPath}/{fileStem}.md", StringComparer.Ordinal))
             {
                 throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
             }
@@ -521,9 +563,10 @@ public class AgentToolDispatcherTests
             Task.FromResult<IReadOnlyList<string>>(
                 string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
                     ? ["FAQ-general"]
-                    : string.Equals(folderPath, AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
-                        ? FeatureStems
-                        : []);
+                    : []);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>((MarkdownPaths, true));
     }
 
     private static IShiftView MakeViewFor(

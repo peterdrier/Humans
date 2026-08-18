@@ -1,14 +1,16 @@
 # Service Dependency Graph
 
-Directed graph of service-to-service dependencies, reflecting the post-§15 Part 1 migration state (assumes Wave 3 of the 2026-04-23 cleanup plan is complete — see `docs/architecture/tech-debt-2026-04-23.md`).
+Directed graph of **cross-section** service-to-service dependencies. Intra-section edges are
+omitted by design — a section's internal wiring belongs to the section; this map shows the
+coupling between sections.
 
 ## How to read
 
 - Solid black arrow (`-->`) = ctor-injected dependency, eagerly resolved.
-- Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()`. This pattern breaks DI cycles where two services legitimately call each other. The edges are colored via Mermaid `linkStyle` so the cycle-breaking sites stand out — a healthy graph minimizes them.
-- Cross-cutting services (AuditLog, Email, Notification, RoleAssignment, HumansMetrics) are shown separately to reduce noise.
-- Intra-section edges are omitted when they don't cross a section boundary.
-- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary (e.g. `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `ITicketServiceRead`, `IConsentServiceRead`, `ICampaignServiceRead`, `IApplicationServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncServiceRead`, `ICityPlanningServiceRead`) are collapsed onto the owning service node. The label on the node still names the full service; the read interface is the cross-section consumption surface.
+- Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
+- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary are collapsed onto the owning service node. The node names the full service; the read interface is the cross-section consumption surface.
+- Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
+- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IMailerAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
 ## Mermaid diagram
 
@@ -35,7 +37,7 @@ graph LR
     classDef calendar fill:#06b6d4,color:#fff
     classDef dashboard fill:#f43f5e,color:#fff
     classDef notifications fill:#a855f7,color:#fff
-    classDef gdpr fill:#0f172a,color:#fff
+    classDef email fill:#0d9488,color:#fff
     classDef mailer fill:#10b981,color:#fff
     classDef search fill:#fb7185,color:#fff
     classDef issues fill:#fbbf24,color:#000
@@ -45,7 +47,6 @@ graph LR
     classDef containers fill:#4ade80,color:#000
     classDef events fill:#2dd4bf,color:#000
     classDef earlyentry fill:#fb923c,color:#fff
-    classDef agent fill:#e879f9,color:#000
     classDef systemsettings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
@@ -53,6 +54,7 @@ graph LR
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
     classDef crosscut fill:#334155,color:#fff
+    classDef platform fill:#52525b,color:#fff
 
     %% ── Cross-cutting services (hub) ──
     Audit[AuditLogService]:::crosscut
@@ -62,7 +64,7 @@ graph LR
     Role[RoleAssignmentService]:::auth
     Metrics[HumansMetricsService]:::crosscut
 
-    %% ── Section services ──
+    %% ── Section services (only those with cross-section edges) ──
     Prof[ProfileService]:::profiles
     ProfEdit[ProfileEditorService]:::profiles
     CF[ContactFieldService]:::profiles
@@ -99,6 +101,7 @@ graph LR
     LegalDoc[LegalDocumentService]:::legal
     LegalSync[LegalDocumentSyncService]:::legal
     Consent[ConsentService]:::consent
+    LegalSyncRunner[LegalDocumentSyncRunner]:::consent
 
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
@@ -113,12 +116,12 @@ graph LR
     GSyncSvc[GoogleWorkspaceSyncService]:::google
     GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
-    GUser[GoogleWorkspaceUserService]:::google
     EmailProv[EmailProvisioningService]:::google
-    SyncSet[SyncSettingsService]:::google
     DriveMon[DriveActivityMonitorService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
+    GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
+    GTrans[GoogleTranslationService]:::google
 
     Onboard[OnboardingService]:::onboarding
     OnboardWidget[OnboardingWidgetState]:::onboarding
@@ -142,17 +145,18 @@ graph LR
     MagicLink[MagicLinkService]:::auth
 
     Cal[CalendarService]:::calendar
+    ICalFeed[ICalFeedService]:::icalfeed
 
+    AdminDbDiag[AdminDatabaseDiagnosticsService]:::platform
     Dash[DashboardService]:::dashboard
     AdminDash[AdminDashboardService]:::dashboard
 
+    EmailOutbox[EmailOutboxService]:::email
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
     NotifResolver[NotificationRecipientResolver]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
     OutboxEmail[OutboxEmailService]:::notifications
-
-    Gdpr[GdprExportService]:::gdpr
 
     Search[SearchService]:::search
     Issues[IssuesService]:::issues
@@ -165,23 +169,21 @@ graph LR
     EventSvc[EventService]:::events
     EarlyEntry[EarlyEntryService]:::earlyentry
     Gate[GateService]:::gate
-    Agent[AgentService]:::agent
     Survey[SurveyService]:::surveys
     SysSettings[SystemSettingsService]:::systemsettings
-    ICalFeed[ICalFeedService]:::icalfeed
-    GTrans[GoogleTranslationService]:::google
     Guide[GuideRoleResolver]:::guide
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
     %% ═══════════════════════════════════
-    %% Read-split note: edges into User/Team/Camp/Tickets/Consent/GoogleSync drawn
-    %% to the owning service node may be consumed via the I<Section>ServiceRead
-    %% interface (which the full service implements). The node is the section owner;
-    %% the read interface is the cross-section surface. See "How to read".
 
-    %% Profiles section
-    %% ProfileService is now picture-only (#685+) — IProfilePictureService.
+    %% AuditLog (crosscut read+render side)
+    Audit --> User
+    AuditViewer --> User
+    AuditViewer --> Team
+    AuditViewer --> TRes
+
+    %% Profiles
     Prof --> User
     ProfEdit --> User
     CF --> User
@@ -192,55 +194,45 @@ graph LR
     CommPref --> User
     CommPref --> Audit
     EmailProb --> User
-    EmailProb --> UEmail
 
-    %% Teams section
+    %% Teams
     Team --> ShiftMgmt
     Team --> NotifEmitter
     Team --> Audit
     Team --> AdminAuth
-    TPage --> Team
-    TPage --> TRes
     TPage --> ShiftMgmt
     TPage --> User
-    TRes --> Team
     TRes --> Audit
 
-    %% Camps section
+    %% Camps
     Camp --> User
     Camp --> NotifEmitter
     Camp --> Audit
     CampContact --> Email
     CampContact --> NotifEmitter
     CampContact --> Audit
-    CampRole --> Camp
     CampRole --> User
     CampRole --> UEmail
     CampRole --> NotifEmitter
     CampRole --> Audit
 
-    %% Cantina section (own project since G5; registered by its own Section.Register)
-    %% CantinaRosterService also reads IBurnSettingsService (gate-open cutoff for the
-    %% on-site cohort window) — missing from the prior diagram; added this sweep.
+    %% Cantina
     Cantina --> ShiftMgmt
     Cantina --> User
     Cantina --> BurnSettings
 
-    %% CityPlanning section
+    %% CityPlanning
     CityPlan --> Camp
     CityPlan --> Team
     CityPlan --> User
 
-    %% Shifts section
+    %% Shifts
     ShiftMgmt --> Audit
     ShiftMgmt --> AdminAuth
-    ShiftSign --> ShiftMgmt
-    ShiftSign --> BurnSettings
     ShiftSign --> NotifEmitter
     ShiftSign --> Audit
     ShiftSign --> AdminAuth
     VolTrack --> User
-    VolTrackExport --> ShiftMgmt
     VolTrackExport --> User
     RotaMsg --> Team
     RotaMsg --> User
@@ -248,11 +240,8 @@ graph LR
     RotaMsg --> Audit
     Workload --> Team
     Workload --> User
-    Workload --> ShiftView
-    %% BurnSettings + ShiftView are repo-only adapters (no service→service edges).
-    %% #820: GeneralAvailabilityService was deleted in the Shifts surface refactor — node removed.
 
-    %% Governance section
+    %% Governance
     AppDec --> User
     AppDec --> Role
     AppDec --> UEmail
@@ -260,20 +249,14 @@ graph LR
     AppDec --> NotifEmitter
     AppDec --> Metrics
     AppDec --> Audit
-    MembershipCalc --> MemQuery
     MembershipCalc --> User
     MembershipCalc --> LegalSync
     MemQuery --> Team
     MemQuery --> Role
-    GovIndex --> AppDec
     GovIndex --> LegalDoc
     GovIndex --> User
 
-    %% Legal + Consent sections
-    %% #751 (PR #1155): AdminLegalDocumentService was consolidated into LegalDocumentSyncService —
-    %% it's now the sole writer for the Legal-document aggregate and implements both
-    %% ILegalDocumentSyncService and IAdminLegalDocumentService directly. The separate
-    %% AdminLegal node/edges (AdminLegal --> LegalSync, AdminLegal --> Team) are gone.
+    %% Legal + Consent
     LegalSync --> User
     LegalSync --> Team
     LegalSync --> NotifEmitter
@@ -282,10 +265,12 @@ graph LR
     Consent --> HumanLifecycle
     Consent --> User
     Consent --> Metrics
+    LegalSyncRunner --> Email
+    LegalSyncRunner --> Team
+    LegalSyncRunner --> User
 
-    %% Tickets section
+    %% Tickets
     TicketQ --> Budget
-    %% TicketQ reads Campaigns via ICampaignServiceRead (campaign read-split); TicketSync still uses full ICampaignService.
     TicketQ --> Campaign
     TicketQ --> User
     TicketQ --> UEmail
@@ -294,7 +279,6 @@ graph LR
     TicketSync --> User
     TicketSync --> Campaign
     TicketSync --> ShiftMgmt
-    TicketBudget --> TicketQ
     TicketBudget --> Budget
     TicketTransfer --> User
     TicketTransfer --> UEmail
@@ -310,42 +294,31 @@ graph LR
     OnsiteRoster --> Team
     OnsiteRoster --> Role
 
-    %% Campaigns section
+    %% Campaigns
     Campaign --> Team
     Campaign --> User
     Campaign --> UEmail
     Campaign --> CommPref
     Campaign --> NotifEmitter
     Campaign --> Email
-    %% CampaignService injects ITicketDiscountCodes (Tickets.Contracts) to generate discount
-    %% codes via the ticket vendor integration — resolved to TicketVendorGateway. Missing from
-    %% the prior diagram; found by coverage-verify audit (2026-08-13).
     Campaign --> TicketVendor
 
-    %% Google section
+    %% Google
     GSyncSvc --> Team
     GSyncSvc --> User
     GSyncSvc --> UEmail
-    GSyncSvc --> GGroupSync
-    GSyncSvc --> SyncSet
-    GSyncSvc --> GRemoval
     GSyncSvc --> Audit
     GGroupSync --> Team
     GGroupSync --> TRes
     GGroupSync --> User
     GGroupSync --> UEmail
-    GGroupSync --> SyncSet
-    GGroupSync --> GRemoval
     GGroupSync --> Audit
-    GAdmin --> GUser
-    GAdmin --> GSyncSvc
     GAdmin --> Team
     GAdmin --> TRes
     GAdmin --> User
     GAdmin --> UEmail
     GAdmin --> Audit
     EmailProv --> User
-    EmailProv --> GUser
     EmailProv --> UEmail
     EmailProv --> Team
     EmailProv --> Email
@@ -358,47 +331,30 @@ graph LR
     DriveMon --> User
     DriveMon --> SysSettings
     DriveMon --> Audit
+    GSyncOutboxProc --> User
+    GSyncOutboxProc --> Team
+    GSyncOutboxProc --> Metrics
 
-    %% AuditLog read+render side
-    %% AuditLogService injects IUserServiceRead for display-name + merged-source-id lookups ([DontFix] crosscut→User).
-    %% AuditViewerService composes resolved audit pages; calls cross-section services
-    %% for display-name stitching (lifted out of AuditLogRepository in 2026-05 alignment).
-    Audit --> User
-    AuditViewer --> Audit
-    AuditViewer --> User
-    AuditViewer --> Team
-    AuditViewer --> TRes
-    %% #889: DriveActivityMonitorRepository deleted; DriveActivityMonitorService now logs
-    %% anomalies via IAuditLogService.LogAsync (eager DriveMon --> Audit edge above) and reads/writes
-    %% its last-run marker through ISystemSettingsService — the prior direct-ctx-write violation is resolved.
-
-    %% Onboarding section
-    %% #568: Profile↔Onboarding cycle gone; Onboard → Prof not needed since
-    %% Prof is picture-only — Onboarding talks to User directly.
+    %% Onboarding
     Onboard --> User
     Onboard --> AppDec
     Onboard --> MembershipCalc
     Onboard --> Consent
-    Onboard --> HumanLifecycle
     Onboard --> Email
     Onboard --> NotifEmitter
     Onboard --> Audit
-
-    %% OnboardingWidgetState (IOnboardingWidgetState) — read-only widget-step resolver;
-    %% reads via IUserServiceRead / IMembershipCalculatorRead / IConsentServiceRead + IShiftView.
     OnboardWidget --> User
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
     OnboardWidget --> ShiftMgmt
     OnboardWidget --> Consent
-
     HumanLifecycle --> User
     HumanLifecycle --> NotifEmitter
     HumanLifecycle --> NotifInbox
     HumanLifecycle --> Audit
     HumanLifecycle --> Metrics
 
-    %% Feedback section
+    %% Feedback
     Feedback --> User
     Feedback --> UEmail
     Feedback --> Team
@@ -406,27 +362,19 @@ graph LR
     Feedback --> NotifEmitter
     Feedback --> Audit
 
-    %% Budget + Finance sections
+    %% Budget + Finance + Holded
     Budget --> Team
     Budget --> User
     Finance --> Budget
-    %% #Holded-split (2026-08-10): the ledger mirror moved out of Finance into its own
-    %% Holded section (HoldedDbContext, migration 20260810204942_HoldedMirrorMovesToHoldedSection).
-    %% HoldedFinanceService now reads ledger lines / account balances cross-section via IHoldedService
-    %% instead of computing them itself.
     Finance --> Holded
 
-    %% Users section
+    %% Users
     User --> AdminAuth
     AcctProv --> UEmail
-    AcctProv --> User
     AcctProv --> Audit
-    Unsub --> User
     Unsub --> CommPref
-    UserParticipationBackfill --> User
     UserParticipationBackfill --> ShiftMgmt
     UEmailProvBackfill --> Audit
-    AcctDel --> User
     AcctDel --> UEmail
     AcctDel --> Team
     AcctDel --> Role
@@ -435,34 +383,28 @@ graph LR
     AcctDel --> TicketQ
     AcctDel --> Audit
     AcctDel --> Email
-    %% #899: AccountMerge + DuplicateAccount moved Profiles -> Users.
-    Merge --> User
     Merge --> Role
     Merge --> Notif
     Merge --> Audit
-    DupAcct --> User
     DupAcct --> Team
     DupAcct --> Role
-    %% #857 (HUM0031): ExternalLoginService — OAuth-callback decision ladder lifted out of AccountController.
-    %% UserManager<User> is Identity/infra, not a service node.
-    ExtLogin --> User
     ExtLogin --> UEmail
     ExtLogin --> MagicLink
 
-    %% Auth section
+    %% Auth
     Role --> User
     Role --> NotifEmitter
     Role --> Audit
     MagicLink --> UEmail
     MagicLink --> User
     MagicLink --> Email
-    %% AdminAuthorizationService reads IRoleAssignmentRepository + ICurrentUserContext only — no service→service edges.
 
-    %% Calendar section
+    %% Calendar
     Cal --> Team
     Cal --> Audit
+    ICalFeed --> User
 
-    %% Dashboard section
+    %% Dashboard
     Dash --> MembershipCalc
     Dash --> AppDec
     Dash --> ShiftMgmt
@@ -477,14 +419,10 @@ graph LR
     AdminDash --> ShiftMgmt
     AdminDash --> ShiftView
 
-    %% Notifications cluster
-    Notif --> NotifEmitter
-    Notif --> NotifResolver
+    %% Notifications
     Notif --> CommPref
     NotifEmitter --> CommPref
     NotifInbox --> User
-    %% #852: NotificationRecipientResolver narrowed to a pass-through over
-    %% IRoleAssignmentService — the old ITeamServiceRead edge is gone.
     NotifResolver --> Role
     NotifMeter --> User
     NotifMeter --> GSyncSvc
@@ -496,7 +434,7 @@ graph LR
     OutboxEmail --> CommPref
     OutboxEmail --> Metrics
 
-    %% Search / Issues / Store / Expenses / Containers / Mailer / Events / EarlyEntry
+    %% Search / Issues / Store
     Search --> User
     Search --> Team
     Search --> Camp
@@ -514,7 +452,7 @@ graph LR
     Store --> ShiftMgmt
     Store --> Audit
 
-    %% ── Surveys ──
+    %% Surveys
     Survey --> Team
     Survey --> User
     Survey --> TicketQ
@@ -524,16 +462,7 @@ graph LR
     Survey --> Audit
     Survey --> GTrans
 
-    %% ── ICalFeed ──
-    %% ICalFeedService fans IEnumerable<ICalendarFeedContributor> — no eager edges to the contributors.
-    %% Implemented by: EventService (favourited approved events) + ShiftSignupService (signed-up shifts).
-    ICalFeed --> User
-
-    %% ── Gate (admissions, #1066) ──
-    %% GateService evaluates gate scans against admission rules using cross-section
-    %% reads (Tickets via ITicketServiceRead, EarlyEntry, BurnSettings), resolves the
-    %% current gate roster via ShiftMgmt, verifies supervisor-override roles via Role,
-    %% and records decisions to its own gate_scan_events table + the audit log.
+    %% Gate
     Gate --> TicketQ
     Gate --> EarlyEntry
     Gate --> BurnSettings
@@ -542,6 +471,7 @@ graph LR
     Gate --> User
     Gate --> Audit
 
+    %% Expenses / Containers / Mailer / Events
     ExpenseReport --> Budget
     ExpenseReport --> Team
     ExpenseReport --> User
@@ -556,44 +486,30 @@ graph LR
     MailerImport --> AcctProv
     MailerImport --> CommPref
     MailerImport --> Audit
-    %% Mailer audience classes (Humans.Mailer/Services/Audiences) are IMailerAudience implementations
-    %% fanned into MailerAudienceSyncService via IEnumerable<IMailerAudience>. Each audience
-    %% ctor-injects IUserServiceRead / IShiftView / ITicketServiceRead directly — per-audience
-    %% deps, not MailerSync ctor edges, so they are not drawn as MailerSync arrows.
     EventSvc --> BurnSettings
     EventSvc --> User
     EventSvc --> Email
-    %% EarlyEntryService fans out IEnumerable<IEarlyEntryProvider> — no eager service-typed deps.
-    %% Providers registered: TeamService (camp-team EE allocation) + VolunteerTrackingExportService.
-    %% These are implemented BY existing section services, so they add no new service→service edges.
-    %% AgentService + AgentAdminStatusService depend only on Agent-internal interfaces
-    %% (settings/repo/dispatcher/Anthropic client) — no cross-section service edges.
-    %% #889: SystemSettingsService (own section) and GoogleSyncOutboxService (GoogleIntegration)
-    %% are thin repo-only adapters over ISystemSettingsRepository / IGoogleSyncOutboxRepository —
-    %% no outbound service→service edges. SysSettings is read/written by EmailOutboxService
-    %% (pause flag) and DriveActivityMonitorService (last-run marker); GSyncOutbox is the
-    %% transactional-outbox owner written by TeamService on membership/role changes (lazy edge below).
 
-    %% ── Guide (in-app docs, landed #1269 2026-08-12 — missing from every prior sweep) ──
-    %% GuideContentService (rendering/caching) has no cross-section deps — its only
-    %% collaborators (IGuideContentSource, IGuideRenderer) are Guide-internal or Base.
-    %% GuideRoleResolver is the one cross-section consumer: it reads ITeamServiceRead to
-    %% resolve whether the current user is a team Coordinator (role-gated guide sections).
+    %% Email (admin outbox — pause flag lives in SystemSettings)
+    EmailOutbox --> SysSettings
+
+    %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
+    AdminDbDiag --> User
+    AdminDbDiag --> TicketQ
+
+    %% Guide
     Guide --> Team
 
     %% ═══════════════════════════════════
-    %% Lazy-resolved (IServiceProvider/Lazy<T>) —
-    %% break DI cycles
+    %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles
     %% ═══════════════════════════════════
 
     Team -. "lazy" .-> User
-    Team -. "lazy" .-> TRes
     Team -. "lazy" .-> Role
     Team -. "lazy" .-> Email
     Team -. "lazy" .-> GSyncOutbox
     Team -. "lazy" .-> GSyncSvc
     TRes -. "lazy" .-> Role
-    Camp -. "lazy" .-> CampRole
     Camp -. "lazy" .-> CityPlan
     Consent -. "lazy" .-> MembershipCalc
     MembershipCalc -. "lazy" .-> Consent
@@ -608,113 +524,56 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy-resolution edges — colored + thickened so the cycle-breaking
-    %% dashed arrows pop visually against eager solid arrows. The first lazy
-    %% edge in this diagram is the (N+1)-th link after the eager arrows
-    %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 291 eager links, indices 0..290. (+1 vs prior sweep — this sweep found the
-    %% Guide section (landed #1269, 2026-08-12) was missing entirely: GuideRoleResolver's
-    %% Guide --> Team edge, dropped by every sweep since it landed. Diffing the anchor commit
-    %% against upstream/main otherwise found zero service→service edge changes — the 50 commits
-    %% since the last sweep were DTO field additions, a UI enum-badge registry, and DI-registration
-    %% relocations (ActiveTeamsCacheInvalidator, ISystemTeamSync into Teams' own Section.cs) with
-    %% no new cross-section calls.)
-    %% The 20 lazy edges are indices 291..310. (unchanged count vs prior sweep.)
-    linkStyle 291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309,310 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. Eager count: 269 (indices 0..268);
+    %% the 18 lazy edges are indices 269..286. Recompute whenever edges change.
+    linkStyle 269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286 stroke:#f97316,stroke-width:2.5px
 ```
+
+## Services with no cross-section edges
+
+Not drawn above — their collaborators are all section-internal (or fan-out contributor
+interfaces / infra connectors, which this graph doesn't chart):
+
+`AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
+`GdprExportService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
+`SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
+`TicketVendorService`.
 
 ## Cycles broken by lazy-resolution
 
-The `IServiceProvider` + property-getter lazy-resolution pattern is used to break otherwise-intractable DI cycles. Each pair below would fail constructor injection if both sides tried to eager-inject the other. The deletion-cascade extraction (peterdrier/Humans PR #314, nobodies-collective/Humans#582), the ProfileService decomposition (peterdrier/Humans#685), the cross-section read-write split (`I<Section>ServiceRead`), and the OnboardingService cycle fix (#568) together made `UserService`, `ProfileService`, and the Onboarding orchestrator far less entangled — the old User↔* cycles, the Profile↔AccountDeletion cycle, and the Profile↔Onboarding cycle are all gone. With #685 finished, `ProfileService` is now picture-only (`IProfilePictureService`) and inbound fan-in collapsed to a single eager dependent (`NotifMeter`'s old edge is gone — it now reads users directly).
+Each pair below would fail constructor injection if both sides eager-injected the other.
 
-1. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService` for team-deletion resource cleanup; TeamResourceService eagerly injects `ITeamService` for ownership checks.
-2. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService`. (ShiftSignupService also lazy-resolves `ITeamServiceRead`, but the reverse edge runs through ShiftManagementService, not ShiftSignupService directly.)
-3. **ShiftManagement ↔ Tickets** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
-4. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both sides are lazy because this cycle is two-way hot.
-5. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` inside `ReconcileNobodiesDriveAsync` (ad-hoc `serviceProvider.GetRequiredService<ITeamResourceService>()`) for resource reconciliation; TeamResourceService no longer eagerly takes `IGoogleSyncService` since the last sweep (the eager half of the cycle is gone), but the lazy edge is retained because the call still needs the live scoped instance.
-6. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a deleted camp's city-planning polygon/history rows (`DeleteCampPolygonsForSeasonsAsync`) inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`. Found this sweep — the edge and cycle were missing from the prior diagram, and the "no Application-layer consumer" note under CityPlanning's read-split boundary below is now stale for the write side (see updated note).
+1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService`. (ShiftSignupService also lazy-resolves `ITeamServiceRead`; the reverse edge runs through ShiftManagementService.)
+2. **ShiftManagement ↔ Tickets** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
+3. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both lazy because the cycle is two-way hot.
+4. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` inside `ReconcileNobodiesDriveAsync`; the reverse eager edge is gone but the call still needs the live scoped instance.
+5. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a camp's polygon/history rows inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`.
+6. **UserEmail ↔ Tickets** — UserEmailService lazy-resolves `ITicketServiceRead` for the email delete-guard (nobodies-collective/Humans#758); TicketQueryService eagerly injects `IUserEmailService`.
 
-Other notable one-way lazy edges (not cycles):
+Other notable one-way lazy edges:
 
-- **Team → User** — TeamService lazy-resolves `IUserService` for user-slice stitching. Used to be a cycle (User↔Team), but PR #314 dropped UserService's eager `ITeamService` injection — User no longer reaches back into Team.
-- **UserEmail → Tickets** (`ITicketServiceRead`) — UserEmailService lazy-resolves the tickets read interface for the email delete-guard (nobodies-collective/Humans#758), to detect ticket-linked addresses. TicketQueryService eagerly injects `IUserEmailService`, so this closes a cycle that must stay lazy on the UserEmail side.
-- **UserEmail → AccountMerge** (now Users section, #899) — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting. AccountMergeService takes neither `IUserEmailService` nor `IUserEmailRepository`: section re-FK during a merge runs through the `IEnumerable<IUserMerge>` fan-out (UserEmail registers its own `IUserMerge`), so no reverse eager edge to UserEmail exists.
-- **CampService → CampRoleService** — CampService holds `Lazy<ICampRoleService>` (intra-section) to break the Camp↔CampRole construction cycle; CampRoleService eagerly injects the narrow `ICampRoleCampAccess` port (implemented by CampService / CachingCampService), not the full `ICampService` — the `CampRole --> Camp` edge in the diagram reflects this port.
-- **Team → GoogleSyncOutbox** (#889) — TeamService lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue transactional-outbox Google-sync events on membership/role changes. One-way; `GoogleSyncOutboxService` is a repo-only adapter that calls back into nothing.
-- **Team → GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation triggered from team admin actions (e.g. renaming a team updates the Google Group). One-way; `GoogleWorkspaceSyncService` eagerly injects `ITeamServiceRead` (not the full `ITeamService`), so this does not close a cycle, but lazy is required because the scoped instance must be resolved at call time.
-- **ShiftManagement → Role / User / Camp**, **Team → Role / Email**, **TeamResource → Role**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph (notably through `ISystemTeamSync`, the job interface omitted from this service-only graph). ShiftManagementService resolves `ICampServiceRead` lazily (#898 Shift-Summary-by-Camp) via `IServiceProvider`.
+- **Team → User** — user-slice stitching; User no longer reaches back into Team.
+- **UserEmail → AccountMerge** — merge-driven email reparenting; the reverse path runs through the `IEnumerable<IUserMerge>` fan-out, not an eager edge.
+- **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
+- **Team → GoogleWorkspaceSync** — ad-hoc Drive/Group reconciliation from team admin actions; lazy because the scoped instance must resolve at call time.
+- **ShiftManagement → Role / User / Camp**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 
-## Fan-in hotspots (most depended-on services)
+## Fan-in hotspots
 
-Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are derived from the edge set above; read-interface variants (`I<Section>ServiceRead`) are folded onto the owning service node.
+The most depended-on cross-section surfaces (read the counts off the diagram):
 
-| Service | Eager dependents | Lazy dependents | Notes |
-|---------|-----------------:|----------------:|-------|
-| `UserService` | 60 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `GateService` added as a new eager consumer (#1066); `ExternalLoginService` added as a new eager consumer (#857). |
-| `AuditLogService` | 36 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
-| `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. `GuideRoleResolver` added this sweep (found missing since Guide landed, #1269). |
-| `UserEmailService` | 22 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. `ExternalLoginService` added as a new eager consumer (#857). |
-| `ShiftManagementService` | 16 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). Recent eager consumers: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`, `OnboardingWidgetState`, `GateService` (current gate-roster lookups, #1066). |
-| `IEmailService` | 14 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
-| `RoleAssignmentService` | 10 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. `GateService` added as an eager consumer (supervisor-override role checks, #1066). |
-| `CampService` | 7 | 1 | Read consumers via `ICampServiceRead`; lazy-in from `ShiftManagementService`'s `ICampServiceRead` resolve (#898 Shift-Summary-by-Camp). CampService itself lazy-resolves `CampRoleService` (outbound) to break the intra-section construction cycle. |
-| `NotificationEmitter` | 15 | 0 | Lower-level enqueue surface — the high-fan-in notification node. Injected (`INotificationEmitter`) by Team, Camp, CampContact, CampRole, Role, ShiftSign, AppDec, LegalSync, Campaign, EmailProv, Onboard, HumanLifecycle, Feedback, Issues, and `NotificationService` itself (which wraps the emitter). Only `AccountMergeService` takes the full `INotificationService` instead. |
-| `CommunicationPreferenceService` | 6 | 0 | Consent + unsubscribe gating for any outbound message. |
-| `HumansMetricsService` | 4 | 0 | Invoked from Application services that emit counter events (ConsentService, HumanLifecycleService, AppDec, OutboxEmail). OnboardingService dropped its `IHumansMetrics` dependency in #881. Scheduled for push-model inversion in #580. |
-| `ApplicationDecisionService` | 5 | 0 | Tier-application decisions; read by GovIndex, Onboard, Dash, AdminDash, NotifMeter. |
-| `TeamResourceService` | 5 | 2 | Teams-owned Google resources. Lazy-in from Team + GoogleWorkspaceSync cycles. |
-| `MembershipCalculator` | 4 | 1 | Membership-status snapshot consumed by Onboard, Dash, AdminDash, OnboardingWidgetState; lazy half of the Consent cycle. ShiftSignupService dropped its eager `IMembershipCalculator` earlier. |
-| `BudgetService` | 4 | 0 | Read by TicketQ, TicketBudget, ExpenseReport, and now `HoldedFinanceService` (Finance section). |
-| `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
-| `LegalDocumentSyncService` | 2 | 0 | Required-docs snapshot for Membership + Consent. Now also the sole writer for the admin write surface (`IAdminLegalDocumentService`, consolidated in #751/PR #1155) — no separate `AdminLegalDocumentService` node/edges remain. |
-| `NotificationInboxService` | 3 | 0 | In-app inbox read/write; injected by Consent, HumanLifecycle, and IssuesService (added this sweep). |
-| `TicketQueryService` | 5 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, Survey, `TicketingBudgetService` (paid orders via the read interface after the #815 budget-repo removal), and now `GateService` (barcode → attendee lookup, #1066). Lazy-in from ShiftMgmt + UEmail cycles. |
-| `ShiftViewService` (`IShiftView`) | 5 | 0 | Read-only shift-view projection (repo-only adapter, zero outbound service edges). Injected by Dash, AdminDash, OnboardWidget, Survey, Workload; also fanned into the Mailer audiences (per-audience deps, not drawn). |
-| `BurnSettingsService` | 5 | 0 | Burn-event settings (repo-only adapter). Consumers: ShiftSign, EventSvc, `GateService` (gate-open cutoff, #1066), `CantinaRosterService` (gate-open cutoff for the on-site cohort window), and now `DashboardService` (active-event year lookup — missing edge found this sweep). |
+- **`UserService`** — largest fan-in by far; nearly every section reads users through `IUserServiceRead`. No outbound edges except `IAdminAuthorizationService`, which is what keeps it foundational.
+- **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules §7a, not a decorator).
+- **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamServiceRead`; batch methods exist to avoid N+1 at call sites.
+- **`UserEmailService`** — email-identity lookups across the system.
+- **`ShiftManagementService`** — shift hub; itself lazy-resolves Team/Role/Tickets/User/Camp to break cycles.
+- **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` takes the full `INotificationService`.
+- **`IEmailService`** / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
+- **`AdminAuthorizationService`**, **`BurnSettingsService`**, **`ShiftViewService`** — repo-only adapters with zero outbound service edges.
 
-Below the >= 3 threshold but tracked for narrative continuity:
+## Pending follow-ups
 
-- `NotificationService` — 1 eager (`AccountMergeService`). The full cross-cutting notification service has only a single section-service dependent; nearly every other notifier injects the lower-level `INotificationEmitter` instead (see `NotificationEmitter` above). `NotificationService` itself wraps the emitter.
-- `CampaignService` — 2 eager (TicketQ, TicketSync). Profile dropped its dependency in #685.
-- `GoogleWorkspaceSyncService` — 2 eager (GAdmin, NotifMeter). `NotifMeter` injects the narrow `IGoogleSyncServiceRead` (for `GetFailedSyncEventCountAsync`); GAdmin injects the full `IGoogleSyncService`.
-- `ProfileService` (`IProfilePictureService`) — 1 eager (UserService graph anchor only). After #685 wound down, the picture-only ProfileService injects just `IUserService`. Removed entirely from `Onboard`, `AppDec`, `AcctProv`, `AcctDel`, `ExpenseReport`, `NotifMeter`.
-- `HoldedFinanceService` (Finance section) — 1 eager (`ExpenseReportService`). New section landed in #791. Itself now depends eagerly on `Budget` (`IBudgetServiceRead`) and, new this sweep, `Holded` (`IHoldedService` — ledger-line / account-balance reads, since the ledger mirror split out of Finance).
-- `HoldedService` (Holded section, node `Holded`) — 1 eager (`HoldedFinanceService`). **New section this sweep** — the ledger mirror (daybook sync, chart-of-accounts cache, API call-log) split out of Finance so the two Holded-touching sections are structurally isolated (migration `20260810204942_HoldedMirrorMovesToHoldedSection`). No outbound service edges — depends only on its own connector (`IHoldedClient`, `IHoldedCallLog`), which moved into the section in G5 lane 4b-2f.
-- `AccountDeletionService` — 0 dependents. After #685 it has zero service-level dependents — invoked only from `ProfileController` / `GuestController` as the single deletion-orchestration entry point. Owns the User-section deletion cascade so foundational User/Profile services stay outbound-edge-free.
-
-## Notes on architectural follow-ups
-
-- **Guide section (PR #1269, 2026-08-12) — found missing this sweep.** `src/Sections/Humans.Guide` (in-app docs rendered from GitHub markdown, memory-cached, role-filtered) landed before the prior graph sweep's anchor but was never added — its Section.cs registers no `AddGuideSection` call in Shell for the freshness trigger globs to catch, and no prior sweep's manual walk caught it either. `GuideContentService` (rendering/caching) has zero cross-section service deps — its `IGuideContentSource` connector lives in Base, consumed by three sections besides Guide. `GuideRoleResolver` is the one real cross-section consumer: it injects `ITeamServiceRead` to resolve team-Coordinator status for role-gated guide sections (new eager `Guide --> Team` edge). Verified this sweep by diffing the graph's last-touched commit against `upstream/main` for every trigger glob: this was the only edge-relevant gap found — the rest of the 50-commit window was DTO fields, a UI enum-badge registry, and DI-registration relocations with no new service-to-service calls.
-- **#568** — OnboardingService cycle removed: `ProfileService` no longer injects `IOnboardingService`, so `Onboard → Prof` is gone entirely now that `ProfileService` is picture-only.
-- **#685** — ProfileService decomposition complete: `ProfileService` is now `IProfilePictureService` only (picture upload/delete). The fat-service responsibilities moved to `UserService` (profile reads/writes via `SaveProfileAsync`), `ProfileEditorService` (top-level write orchestration), and `ContactFieldService`. No section now needs `IProfileService` — every former call site moved to `IUserService`/`IUserServiceRead` or `IProfileEditorService`.
-- **#744** — ticket-read-service / read-split: cross-section ticket consumers now go through `ITicketServiceRead` (not `ITicketQueryService` directly), matching the broader `I<Section>ServiceRead` boundary (`IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `IConsentServiceRead`). These read interfaces are what drove `UserService`/`TeamService`/`CampService` fan-in upward.
-- **#580** — `HumansMetricsService` push-model inversion: sections register their own metrics instead of the service spidering across every section. After that lands, the current `Metrics` node becomes pure registry infrastructure with zero outgoing edges.
-- **#581** — `NotificationMeterProvider` push-model inversion: same pattern as #580 for the navbar-badge meter counts. Post-inversion, `NotifMeter` has zero outgoing edges.
-- **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
-- **#791** — Holded Finance section landed: `HoldedFinanceService` (`src/Sections/Humans.Finance`, G5) now owns Holded-account provisioning, purchase-doc sync, and the creditor-contact binding surface. `ExpenseReportService` eagerly injects it (node `Finance`).
-- **Holded mirror split (2026-08-10, migration `20260810204942_HoldedMirrorMovesToHoldedSection`)** — the ledger mirror (daybook journal sync, chart-of-accounts cache, API call-log/metering) moved out of Finance into a brand-new **Holded** section (`src/Sections/Humans.Holded`, G5; `HoldedService` implementing `IHoldedService` + `IHoldedAdminService`). `HoldedFinanceService` no longer computes ledger balances itself — it eagerly injects `IHoldedService` (new `Finance --> Holded` edge) for `GetLedgerLinesAsync` / `GetAccountBalancesAsync`, alongside its existing `Finance --> Budget` edge. The renamed node `Finance` (was `Holded` in the prior diagram) now represents `HoldedFinanceService`; the new node `Holded` represents the ledger-mirror `HoldedService`.
-- **G5 overnight batch (PR #1263, 2026-08-11)** — Budget, Calendar, Campaigns, CityPlanning, Feedback, Issues, and Notifications all moved from `src/Humans.Application/Services/<Section>/` into their own `src/Sections/Humans.<Section>/` projects (alongside Surveys, PR #1251, and Agent, PR #1259, both 2026-08-10/11). None of these moves changed any service→service edge — same ctor dependencies, new project location — so no diagram changes resulted from them beyond this note.
-- **G5 batch #3 (PR #1280, 2026-08-13)** — Teams and Tickets moved from `src/Humans.Application/Services/Teams` / `.../Tickets` into their own projects: `src/Sections/Humans.Teams` (+ `Humans.Teams.Contracts`) and `src/Sections/Humans.Tickets` (+ `Humans.Tickets.Contracts`), plus a new `src/Sections/Humans.TicketTailor` vendor-adapter project implementing `ITicketVendorService`. Verified this sweep: every moved service's ctor is unchanged (`TeamService`, `TeamPageService`, `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, `OnsiteRosterService`) — same dependencies, new project location, matching the G5-overnight-batch pattern above. `TicketTailorService`/`StubTicketVendorService` (the vendor adapter and its dev stub) have zero cross-section service dependencies — `HttpClient`/`IMemoryCache`/logger only, same thin-connector shape as `GoogleTranslationService` — so no new node was added for them.
-- **`TicketVendorGateway` node added (coverage-verify audit, 2026-08-13)** — `Humans.Tickets/Services/TicketVendorGateway.cs` implements `ITicketDiscountCodes` + `ITicketVendorMirror` (`Humans.Tickets.Contracts`), forwarding onto the vendor port (`ITicketVendorService`, infra — no node). `CampaignService` injects `ITicketDiscountCodes` to generate discount codes via the ticket vendor integration (documented in `Humans.Campaigns/Docs/Campaigns.md`); this `Campaign → TicketVendor` edge was missing from every prior sweep of this diagram. No other consumer of `ITicketDiscountCodes`/`ITicketVendorMirror` is a service (`GateVendorCheckInJob` is a Job, out of this graph's scope).
-- **#815** — Ticketing budget repository removed: `TicketingBudgetService` no longer owns tables. The old `ITicketingBudgetRepository` was dropped; the service now reads paid orders through `ITicketServiceRead.GetTicketOrdersAsync` (eager `TicketBudget → TicketQ` edge) and delegates all writes to `IBudgetService`. It is now marked `IOrchestrator` (Tickets read + Budget writes), so HUM0026 catches any future repo-injection regression.
-- **#889** — drive-monitor adapter deleted + SystemSettings centralization + Google sync outbox:
-  - `IDriveActivityMonitorRepository` / `DriveActivityMonitorRepository` were deleted. `DriveActivityMonitorService` no longer owns a repo: it logs anomalies through `IAuditLogService.LogAsync` (eager `DriveMon → Audit`) and reads/writes its last-run marker via `ISystemSettingsService` (new eager `DriveMon → SysSettings`). The prior "pending direct-write to `ctx.AuditLogEntries`" dashed annotation is gone — the violation is resolved.
-  - New **SystemSettings** section: `SystemSettingsService` is a thin adapter over `ISystemSettingsRepository` — no outbound service edges. It centralizes key/value system settings; consumed by `EmailOutboxService` (the `IsEmailSendingPaused` flag) and `DriveActivityMonitorService` (last-run marker). (`EmailOutboxService` is an Email-section admin service not otherwise in this service→service graph — its only section-service edge is to `SysSettings`.)
-  - `GoogleSyncOutboxService` (GoogleIntegration) is the transactional-outbox owner over `IGoogleSyncOutboxRepository` — no outbound service edges. `TeamService` lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue Google-sync outbox events on membership/role changes — new dashed `Team → GSyncOutbox` edge.
-- **#894** — Camps compliance role-staffing matrix: the redesign moved into `CampComplianceController` plus supporting read types (`CampDirectoryRoleSummary`) and trimmed `CampRoleService` (the old `CampRoleComplianceReport` DTO was deleted). No service→service edges changed — `CampRoleService`/`CampService` ctor dependencies are unchanged (`CampRole → Camp/User/UEmail/NotifEmitter/Audit`, `Camp -. lazy .-> CampRole`).
-- **#899** — Account-merge consolidation moved Profiles → Users: `AccountMergeService` and `DuplicateAccountService` relocated from `Application/Services/Profiles` to `Application/Services/Users` (now `:::users` in the diagram). Edges are otherwise stable except `DuplicateAccountService` dropped its `IAuditLogService` dependency (`DupAcct → Audit` removed); it now injects only `IUserService`/`ITeamService`/`IRoleAssignmentService`. `AccountMergeService` keeps `Merge → User/Role/Notif/Audit` and remains the sole consumer of the full `INotificationService`. The `UEmail -. lazy .-> Merge` reparenting edge is unchanged.
-- **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4) and gained `IConsentServiceRead` + `IHumanLifecycleService` dependencies (new eager `Onboard → Consent` and `Onboard → HumanLifecycle` edges added in the current sweep — these were present in code but missing from the prior diagram). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
-- **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge). The ctor is unchanged — no new eager edges.
-- **#1066** — Gate (admissions) section landed: `GateService` (Application/Services/Gate) evaluates gate scans (barcode → admission decision) against `GateAdmissionRules` using cross-section reads — `ITicketServiceRead` (current-event attendee lookup), `IEarlyEntryService` (early-entry eligibility), `IBurnSettingsService` (gate-open cutoff), `IShiftManagementService` (current gate-roster shifts), `IRoleAssignmentService` (supervisor-override role verification), `IUserService` — and records decisions to its own `gate_scan_events` table (`IGateRepository`) plus the audit log. Seven new eager edges; zero inbound service edges. It also registers `IUserMerge` and `IUserDataContributor` fan-out implementations (account-merge and GDPR-export participation without new edges).
-- **#751 (PR #1155)** — Legal-document writers consolidated: `AdminLegalDocumentService` was merged into `LegalDocumentSyncService`, which is now the sole writer for the Legal-document aggregate (`legal_documents`, `document_versions`) and implements both `IAdminLegalDocumentService` (admin create/update/archive/version-summary edits) and `ILegalDocumentSyncService` (GitHub-sync surface). Being the single writer lets it call `ILegalDocumentCacheInvalidator.InvalidateAll()` directly instead of relying on a cross-cutting SaveChanges interceptor. The separate `AdminLegal` node and its two edges (`AdminLegal --> LegalSync`, `AdminLegal --> Team`) are gone; `LegalSync`'s own edges (`LegalSync --> User/Team/NotifEmitter`) are unchanged.
-- **#857 (HUM0031)** — `ExternalLoginService` (Application/Services/Users) landed: the OAuth-callback decision ladder lifted out of `AccountController` per the A2/A3 findings in `docs/debt/controller-intent-audit-2026-06-12.md`. Ctor-injects `UserManager<User>` (Identity infra, no node), `IUserService`, `IUserEmailService`, `IMagicLinkService`, `IClock`, `ILogger`. Three new eager edges (`ExtLogin --> User/UEmail/MagicLink`); zero inbound service edges. HUM0031 pins `IUserEmailService.ReconcileOAuthIdentityAsync` to this class as its sole caller.
-- New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User + BurnSettings), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
-- **Calendar's personal iCal feed** (`ICalFeedService`, `src/Sections/Humans.Calendar/Services/`; contributor interface, `CalendarFeedItem` and `IICalFeedService` under `Humans.Calendar/Contracts/` since G5 lane 4b-2c): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
-- **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).
-- **CityPlanning — read-split boundary (`ICityPlanningServiceRead`):** `ICityPlanningService` extends `ICityPlanningServiceRead`, exposing the per-year settings projection (`GetSettingsAsync`), the registration-info scalar (`GetRegistrationInfoAsync`), and the team-membership check (`IsCityPlanningTeamMemberAsync`) as the cross-section read surface. No Application-layer service injects `ICityPlanningServiceRead` itself — the read-side consumers are still Web-layer controllers/view components (`CampController`, `ContainerAuthorizationHandler`, `CampAdminPageBuilder`). When a read-side service consumer is added, the edge must be drawn to the `CityPlan` node per the read-split convention.
-  **Write side (found this sweep):** `CampService` lazy-resolves the *full* `ICityPlanningService` (`Lazy<ICityPlanningService>`, not the read interface) to call `DeleteCampPolygonsForSeasonsAsync` when a camp is deleted, cleaning up its city-planning polygon/history rows inside the same transaction. This is a genuine Application-layer cross-section consumer — new dashed `Camp -. lazy .-> CityPlan` edge, closing cycle #6 above with `CityPlanningService`'s eager `ICampServiceRead` dependency.
-- **GoogleIntegration — `IGoogleSyncServiceRead` read boundary:** `IGoogleSyncService` extends `IGoogleSyncServiceRead`. The only Application-layer cross-section consumer is `NotificationMeterProvider` (injecting `IGoogleSyncServiceRead` for `GetFailedSyncEventCountAsync`). This is already represented as the `NotifMeter --> GSyncSvc` edge (collapsed per the read-split convention); the `(via IGoogleSyncServiceRead)` label is omitted in the diagram because the fan-in hotspot comment explains it.
-- The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
-- **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.
+- **#580 / #581** — `HumansMetricsService` and `NotificationMeterProvider` push-model inversions: sections register their own metrics/meters instead of the hub spidering across sections. Post-inversion, `Metrics` and `NotifMeter` have zero outgoing edges.
+- **GoogleIntegration consumer-side gaps (PR #500)** — (1) AuditLog reads `GoogleResource` via a nav + `.Include` instead of `ITeamResourceService.GetResourceNamesByIdsAsync`; (2) Teams still owns the `GoogleResource.Team` cross-domain nav (strip → typed FK); (3) Users/Profiles should expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController`/`ProfileController` can drop their `IMemoryCache` injection.

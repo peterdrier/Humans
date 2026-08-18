@@ -6,75 +6,75 @@ Business requirements, user stories, data model, and workflows for each feature 
 
 | Document | Description |
 |----------|-------------|
-| [Event Guide Management](../src/Sections/Humans.Events/Docs/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
-| [In-App Guide Browser](features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
-| [Google Group Membership Sync](features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
-| [Volunteer Tracking](features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
-| [Active User Metrics](features/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
-| [Agent Section](../src/Sections/Humans.Agent/Docs/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
-| [F-12: Audit Log](features/audit-log/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
-| [User Authentication & Accounts](features/auth/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
-| [Feature 30: Magic Link Authentication](features/auth/magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
-| [Budget](features/budget/budget.md) | Seasonal budget planning, tracking, and transparency replacing the spreadsheet as the financial source of truth |
-| [Community Calendar](features/calendar/community-calendar.md) | Centralized calendar of team-organized events with month/agenda views and recurrence support |
-| [Feature 22: Campaigns](features/campaigns/campaigns.md) | Bulk individualized code distribution (e.g., presale ticket codes) sent in team-filtered email waves |
-| [Camps](features/camps/camps.md) | Annual camping area ("barrio") registration, admin approval, public listing, and seasonal opt-ins |
-| [Cantina Weekly Roster](features/cantina/daily-roster.md) | Printable per-week roster (and CSV) of who is on site, with dietary preferences, allergies, and intolerances for cantina meal planning |
-| [City Planning](features/city-planning/city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
-| [Client Stats (Debug)](features/debug/client-stats.md) | `/Debug/ClientStats` screen showing, since process start, the OS / browser / device-type mix of visitors, their screen-resolution distribution, and HTTP response status-code tallies — all in-memory, no DB |
-| [HTTP Errors (Debug)](features/debug/http-errors.md) | `/Debug/HttpErrors` screen showing the last 1000 error responses (status > 399) with per-request detail: when, code, method, URL, IP, authenticated user, and classified User-Agent — all in-memory, no DB |
-| [Email Flag Violations — Admin & Self Remediation](features/email/email-flag-violations-remediation.md) | Recovery surface for stuck `UserEmail` IsGoogle/IsPrimary duplicates with admin scan page and self-service clear actions |
-| [Feature 21: Email Outbox](features/email/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
-| [`[ExpiresOn]` — Hard removal deadlines](features/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
-| [Feedback System](features/feedback/feedback-system.md) | Retired (nobodies-collective/Humans#977) — closed to new reports and Admin-only; superseded by Issues |
-| [Gate Admissions](features/gate-admissions.md) | Gate QR scanning on rugged tablets deciding entry against ticket validity, photo-ID name check, and Early Entry grants — shipped design draft; `src/Sections/Humans.Gate/Docs/Gate.md` is the authoritative current-state doc |
+| [Event Guide Management](../src/Sections/Humans.Events/Docs/features/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
+| [In-App Guide Browser](../src/Sections/Humans.Guide/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
+| [Google Group Membership Sync](../src/Sections/Humans.GoogleIntegration/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
+| [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
+| [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
+| [Agent Section](../src/Sections/Humans.Agent/Docs/features/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
+| [F-12: Audit Log](../src/Sections/Humans.AuditLog/Docs/features/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
+| [User Authentication & Accounts](../src/Sections/Humans.Auth/Docs/features/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
+| [Feature 30: Magic Link Authentication](../src/Sections/Humans.Auth/Docs/features/magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
+| [Budget](../src/Sections/Humans.Budget/Docs/features/Budget-feature.md) | Seasonal budget planning, tracking, and transparency replacing the spreadsheet as the financial source of truth |
+| [Community Calendar](../src/Sections/Humans.Calendar/Docs/features/community-calendar.md) | Centralized calendar of team-organized events with month/agenda views and recurrence support |
+| [Feature 22: Campaigns](../src/Sections/Humans.Campaigns/Docs/features/Campaigns-feature.md) | Bulk individualized code distribution (e.g., presale ticket codes) sent in team-filtered email waves |
+| [Camps](../src/Sections/Humans.Camps/Docs/features/Camps-feature.md) | Annual camping area ("barrio") registration, admin approval, public listing, and seasonal opt-ins |
+| [Cantina Weekly Roster](../src/Sections/Humans.Cantina/Docs/features/daily-roster.md) | Printable per-week roster (and CSV) of who is on site, with dietary preferences, allergies, and intolerances for cantina meal planning |
+| [City Planning](../src/Sections/Humans.CityPlanning/Docs/features/city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
+| [Client Stats (Debug)](../src/Sections/Humans.Debug/Docs/features/client-stats.md) | `/Debug/ClientStats` screen showing, since process start, the OS / browser / device-type mix of visitors, their screen-resolution distribution, and HTTP response status-code tallies — all in-memory, no DB |
+| [HTTP Errors (Debug)](../src/Sections/Humans.Debug/Docs/features/http-errors.md) | `/Debug/HttpErrors` screen showing the last 1000 error responses (status > 399) with per-request detail: when, code, method, URL, IP, authenticated user, and classified User-Agent — all in-memory, no DB |
+| [Email Flag Violations — Admin & Self Remediation](../src/Sections/Humans.Email/Docs/features/email-flag-violations-remediation.md) | Recovery surface for stuck `UserEmail` IsGoogle/IsPrimary duplicates with admin scan page and self-service clear actions |
+| [Feature 21: Email Outbox](../src/Sections/Humans.Email/Docs/features/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
+| [`[ExpiresOn]` — Hard removal deadlines](features/global/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
+| [Feedback System](../src/Sections/Humans.Feedback/Docs/features/feedback-system.md) | Retired (nobodies-collective/Humans#977) — closed to new reports and Admin-only; superseded by Issues |
+| [Gate Admissions](../src/Sections/Humans.Gate/Docs/features/gate-admissions.md) | Gate QR scanning on rugged tablets deciding entry against ticket validity, photo-ID name check, and Early Entry grants — shipped design draft; `src/Sections/Humans.Gate/Docs/Gate.md` is the authoritative current-state doc |
 | [Administration](features/global/administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
 | [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
 | [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
 | [Global Search (`/Search`)](features/global/global-search.md) | Single-entry magnifying-glass search that fans out across humans, teams, camps, shifts, and (when `Features:Events` is on) approved events |
-| [F-13: Drive Activity Monitoring](features/google-integration/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
-| [Google Integration](features/google-integration/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
-| [Google Removal Notifications](features/google-integration/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
-| [Workspace Account Provisioning](features/google-integration/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
-| [Tier Applications](features/governance/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
-| [Board Voting](features/governance/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
-| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Admin dashboard — the Admin /Humans list and Volunteers team sync each compute their own status buckets independently now |
-| [Membership Tiers](features/governance/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
-| [In-App Guide](features/guide/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
-| [Issues System](features/issues/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
-| [Legal Documents & Consent Management](features/legal-and-consent/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
-| [Mailer Audience Debug Screen](features/mailer/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
-| [Notification Inbox](features/notifications/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
-| [Onboarding Pipeline](features/onboarding/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
-| [Volunteer Status](features/onboarding/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
-| [Burner-Name Collision Warning](features/profiles/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
-| [Communication Preferences](features/profiles/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
-| [Feature 29: Contact Accounts](features/profiles/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
-| [Contact Fields with Granular Visibility](features/profiles/contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
-| [Dietary & Medical Nudge Modal](features/profiles/dietary-medical-nudge.md) | Placeholder for a dashboard nudge collecting dietary, allergy, and medical info for 6+ hour cantina-fed shifts |
-| [Email Management](features/profiles/preferred-email.md) | Multiple email addresses per user with per-email verification, visibility, and notification targeting |
-| [Profile Pictures & Birthday Calendar](features/profiles/profile-pictures-birthdays.md) | Custom avatar uploads superseding Google OAuth photos, plus a community birthday calendar |
-| [Profile Search Detail (Picker Row Enrichment)](features/profiles/profile-search-detail.md) | Second-line context plus avatar in the shared human picker so Playa-name collisions can be disambiguated |
-| [Profiles](features/profiles/profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
-| [Public Coordinator Popover](features/profiles/public-coordinator-popover.md) | Anonymous-visible reduced popover on public team pages surfacing only avatar, BurnerName, and coordinator role labels via an `AllowAnonymous` `/Profile/{id}/PublicPopover` endpoint |
-| [Scanner — Barcode (Phase 1)](features/scanner/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
-| [Scanner — Gate Terminal Login](features/scanner/gate-terminal-login.md) | Shared gate-terminal account (well-known GUID, no email or roles) so any shift volunteer can operate the ticket-lookup kiosk without tying the device to a personal login or granting admin powers |
-| [Coordinator Roles](features/shifts/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
-| [Department Coverage Pies](features/shifts/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
-| [Email a Rota](features/shifts/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
-| [Post-Event Stats Dashboard](features/shifts/post-event-stats.md) | Post-event no-show and completion-rate breakdown by department and period for coordinators and admins |
-| [Shift Management](features/shifts/shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
-| [Shift Preference Wizard](features/shifts/shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
-| [Shift Signup Visibility](features/shifts/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
-| [Workload Dashboard](features/shifts/workload-dashboard.md) | Cross-event "who is doing how much" view sliced three ways to spot burnout candidates, idle volunteers, and under-staffed departments |
-| [Store](../src/Sections/Humans.Store/Docs/Store-feature.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
-| [Hidden Teams](features/teams/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
-| [Teams & Working Groups](features/teams/teams.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
-| [Test System Reliability](features/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
-| [Event Participation Tracking](features/tickets/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
-| [Ticket Transfer](features/tickets/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, processed by the ticket team either via automated void+reissue through the TicketTailor API or manually in the vendor dashboard |
-| [Ticket Vendor Integration](features/tickets/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
-| [User Search Overhaul](features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
+| [F-13: Drive Activity Monitoring](../src/Sections/Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
+| [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
+| [Google Removal Notifications](../src/Sections/Humans.GoogleIntegration/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
+| [Workspace Account Provisioning](../src/Sections/Humans.GoogleIntegration/Docs/features/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
+| [Tier Applications](../src/Sections/Humans.Governance/Docs/features/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
+| [Board Voting](../src/Sections/Humans.Governance/Docs/features/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
+| [Membership Status Partition](../src/Sections/Humans.Governance/Docs/features/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Admin dashboard — the Admin /Humans list and Volunteers team sync each compute their own status buckets independently now |
+| [Membership Tiers](../src/Sections/Humans.Governance/Docs/features/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
+| [In-App Guide](../src/Sections/Humans.Guide/Docs/features/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
+| [Issues System](../src/Sections/Humans.Issues/Docs/features/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
+| [Legal Documents & Consent Management](../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
+| [Mailer Audience Debug Screen](../src/Sections/Humans.Mailer/Docs/features/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
+| [Notification Inbox](../src/Sections/Humans.Notifications/Docs/features/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
+| [Onboarding Pipeline](../src/Sections/Humans.Onboarding/Docs/features/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
+| [Volunteer Status](../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
+| [Burner-Name Collision Warning](../src/Sections/Humans.Users/Docs/features/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
+| [Communication Preferences](../src/Sections/Humans.Users/Docs/features/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
+| [Feature 29: Contact Accounts](../src/Sections/Humans.Users/Docs/features/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
+| [Contact Fields with Granular Visibility](../src/Sections/Humans.Users/Docs/features/contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
+| [Dietary & Medical Nudge Modal](../src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md) | Placeholder for a dashboard nudge collecting dietary, allergy, and medical info for 6+ hour cantina-fed shifts |
+| [Email Management](../src/Sections/Humans.Users/Docs/features/preferred-email.md) | Multiple email addresses per user with per-email verification, visibility, and notification targeting |
+| [Profile Pictures & Birthday Calendar](../src/Sections/Humans.Users/Docs/features/profile-pictures-birthdays.md) | Custom avatar uploads superseding Google OAuth photos, plus a community birthday calendar |
+| [Profile Search Detail (Picker Row Enrichment)](../src/Sections/Humans.Users/Docs/features/profile-search-detail.md) | Second-line context plus avatar in the shared human picker so Playa-name collisions can be disambiguated |
+| [Profiles](../src/Sections/Humans.Users/Docs/features/profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
+| [Public Coordinator Popover](../src/Sections/Humans.Users/Docs/features/public-coordinator-popover.md) | Anonymous-visible reduced popover on public team pages surfacing only avatar, BurnerName, and coordinator role labels via an `AllowAnonymous` `/Profile/{id}/PublicPopover` endpoint |
+| [Scanner — Barcode (Phase 1)](../src/Sections/Humans.Scanner/Docs/features/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
+| [Scanner — Gate Terminal Login](../src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md) | Shared gate-terminal account (well-known GUID, no email or roles) so any shift volunteer can operate the ticket-lookup kiosk without tying the device to a personal login or granting admin powers |
+| [Coordinator Roles](../src/Sections/Humans.Shifts/Docs/features/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
+| [Department Coverage Pies](../src/Sections/Humans.Shifts/Docs/features/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
+| [Email a Rota](../src/Sections/Humans.Shifts/Docs/features/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
+| [Post-Event Stats Dashboard](../src/Sections/Humans.Shifts/Docs/features/post-event-stats.md) | Post-event no-show and completion-rate breakdown by department and period for coordinators and admins |
+| [Shift Management](../src/Sections/Humans.Shifts/Docs/features/shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
+| [Shift Preference Wizard](../src/Sections/Humans.Shifts/Docs/features/shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
+| [Shift Signup Visibility](../src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
+| [Workload Dashboard](../src/Sections/Humans.Shifts/Docs/features/workload-dashboard.md) | Cross-event "who is doing how much" view sliced three ways to spot burnout candidates, idle volunteers, and under-staffed departments |
+| [Store](../src/Sections/Humans.Store/Docs/features/Store-feature.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
+| [Hidden Teams](../src/Sections/Humans.Teams/Docs/features/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
+| [Teams & Working Groups](../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
+| [Test System Reliability](testing/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
+| [Event Participation Tracking](../src/Sections/Humans.Tickets/Docs/features/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
+| [Ticket Transfer](../src/Sections/Humans.Tickets/Docs/features/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, processed by the ticket team either via automated void+reissue through the TicketTailor API or manually in the vendor dashboard |
+| [Ticket Vendor Integration](../src/Sections/Humans.Tickets/Docs/features/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
+| [User Search Overhaul](../src/Sections/Humans.Users/Docs/features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
 
 ## Section Invariants
 
@@ -207,7 +207,6 @@ Domain          Entities, Enums, Value Objects
 | [Design Rules](architecture/design-rules.md) | Persistence, service ownership, repository / store / decorator pattern, cross-domain join ban, authorization, migration strategy |
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
 | [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
-| [Data Model](architecture/data-model.md) | Entities, relationships, serialization notes |
 | [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |
 | [Code Review Rules](architecture/code-review-rules.md) | Hard-reject rules for code review |
 | [Service / Data Access Map](architecture/service-data-access-map.md) | Per-service table access inventory |

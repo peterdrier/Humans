@@ -222,8 +222,8 @@ jobs:
               - docs/architecture/code-review-rules.md
               - docs/architecture/design-rules.md
 
-            Do NOT read docs/sections/ or docs/features/ as part of this
-            review. Section invariants and feature specs are reviewed
+            Do NOT read docs/sections/, src/Sections/*/Docs/ or docs/features/
+            as part of this review. Section invariants and feature specs are reviewed
             separately by /section-align on demand; including them here
             burns budget and produces cross-document nits this workflow
             should not gate on.

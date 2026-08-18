@@ -195,7 +195,7 @@ if [ ! -f "$SYNTHETIC" ]; then
   FAIL=$((FAIL+1))
 fi
 mech_dirty=0
-for entry in authorization-inventory controller-architecture-audit dependency-graph; do
+for entry in authorization-inventory dependency-graph; do
   in_block=false
   in_triggers=false
   while IFS= read -r line; do
@@ -217,7 +217,7 @@ for entry in authorization-inventory controller-architecture-audit dependency-gr
 done
 
 ed_dirty=0
-for f in src/Sections/Humans.Teams/Docs/Teams.md docs/features/teams/teams.md docs/guide/Teams.md; do
+for f in src/Sections/Humans.Teams/Docs/Teams.md src/Sections/Humans.Teams/Docs/features/Teams-feature.md docs/guide/Teams.md; do
   triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null | grep -E '^\s+src/' | sed 's/^\s*//;s/\s*$//')
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue

@@ -222,7 +222,7 @@ builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransfo
 // (e.g. HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor →
 // OutboxEmailService) throws InvalidOperationException, failing every integration
 // test. HumansWebApplicationFactory binds a substitute IBackgroundJobClient in
-// Testing — see docs/features/test-system-reliability.md (P0/#762).
+// Testing — see docs/testing/test-system-reliability.md (P0/#762).
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHangfire((sp, config) =>

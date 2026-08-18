@@ -4,7 +4,7 @@ namespace Humans.Cantina.Services.Dtos;
 
 /// <summary>
 /// Per-day "drill-down" payload for the Cantina Daily Matrix page
-/// (feature #36 — docs/features/cantina/daily-roster.md). The weekly
+/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). The weekly
 /// view's per-day mini-table rows link to this view so cantina
 /// coordinators planning a specific meal can see, on a single screen,
 /// every on-site human's dietary preference + allergy + intolerance

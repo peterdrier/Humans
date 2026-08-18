@@ -1628,7 +1628,7 @@ internal sealed class ProfileController(
             // ShiftsController.ToggleDay by the dietary gate. After a
             // successful save we re-run the original signup and land them on
             // /Shifts with the appropriate flash. See
-            // docs/features/profiles/dietary-medical-nudge.md (US-35.6).
+            // src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6).
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
             return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);

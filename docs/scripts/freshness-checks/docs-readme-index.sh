@@ -3,7 +3,9 @@
 #
 # Counts .md files under docs/sections/, docs/features/, docs/guide/ (excluding
 # the catalog's ignore list) and verifies that docs/README.md has at least that
-# many link occurrences pointing into each folder.
+# many link occurrences pointing into each folder. docs/features/ holds only the
+# cross-section global/ specs; per-section specs live in src/Sections/*/Docs/ and
+# are covered by the src/Sections/*/Docs/*.md trigger, not counted here.
 #
 # Source: docs/sections/**/*.md, docs/features/**/*.md, docs/guide/**/*.md
 # Doc:    docs/README.md
