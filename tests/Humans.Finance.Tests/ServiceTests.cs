@@ -25,7 +25,19 @@ public class HoldedFinanceServiceTests
     private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly TestClock _cacheClock = new();
+    private readonly IMemoryCache _cache;
+
+    public HoldedFinanceServiceTests() =>
+        _cache = new MemoryCache(new MemoryCacheOptions { Clock = _cacheClock });
+
+    /// <summary>Absolute cache expiry is measured against this, so advancing it is the only way to
+    /// observe a TTL without sleeping.</summary>
+    private sealed class TestClock : Microsoft.Extensions.Internal.ISystemClock
+    {
+        public DateTimeOffset UtcNow { get; private set; } = new(2026, 5, 1, 12, 0, 0, TimeSpan.Zero);
+        public void Advance(TimeSpan by) => UtcNow = UtcNow.Add(by);
+    }
 
     private Service MakeService() => new(
         _repo,
@@ -1014,9 +1026,10 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task ListCreditorAccounts_ReadsHoldedsContactListOncePerCacheWindow()
     {
-        // The account name lives only in Holded, and /Finance/Creditors and /Expenses/{id}
-        // both read the same list on every load. It is cached for two minutes
-        // (design-rules §15 Option A), so a second read inside the window costs no Holded call.
+        // The account name lives only in Holded, and /Finance/Creditors and /Expenses/{id} both
+        // read the same list on every load, so it is cached (design-rules §15 Option A). Both
+        // halves matter: a read inside the window must cost no Holded call, and the window must
+        // actually end — a cache that never expires would serve a contact renamed today forever.
         _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
@@ -1031,7 +1044,18 @@ public class HoldedFinanceServiceTests
 
         await _client.Received(1).ListContactsAsync(Arg.Any<CancellationToken>());
         rows.Should().ContainSingle().Which.Name.Should().Be("Daniela Marquez");
+
+        // Past the TTL the next read goes back to Holded. Asserting the reuse alone would pass
+        // just as happily against a cache with no expiry at all.
+        _cacheClock.Advance(ContactsCacheDuration + TimeSpan.FromSeconds(1));
+        await svc.ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _client.Received(2).ListContactsAsync(Arg.Any<CancellationToken>());
     }
+
+    /// <summary>Mirrors <c>Service.ContactsCacheDuration</c>, which is private. If the two drift the
+    /// expiry half of the test above stops proving anything, so a change to one must change both.</summary>
+    private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
 
     [HumansFact]
     public async Task ListCreditorAccounts_UnexpectedClientFailure_Propagates()
