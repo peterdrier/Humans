@@ -1,4 +1,4 @@
-namespace Humans.Application.Constants;
+namespace Humans.Base.Constants;
 
 /// <summary>
 /// Default values for pagination and display limits.
