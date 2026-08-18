@@ -302,6 +302,8 @@ public class HoldedFinanceServiceTests
             Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 5, 0, 0), credit: 720m, type: "purchase"),
             Line(3, 0, 40000001, Instant.FromUtc(2026, 4, 10, 0, 0), debit: 9000m, type: "payment"),
             Line(4, 0, 40000001, Instant.FromUtc(2026, 4, 20, 22, 30), debit: 540m, type: "payment"),
+            // Booked after the last payment, and not one: only debit lines are money going out.
+            Line(5, 0, 40000001, Instant.FromUtc(2026, 4, 25, 0, 0), credit: 0m, debit: 0m, type: "purchase"),
         });
 
         var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
@@ -1509,6 +1511,14 @@ public class HoldedFinanceServiceTests
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
         rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 40000999]);
+        // Name comes from the contact filter and Balance from the mirror filter; assert both, or a row
+        // arriving through one of them hides the other end being wrong.
+        var first = rows.Single(r => r.SupplierAccountNum == 40000000);
+        var last = rows.Single(r => r.SupplierAccountNum == 40000999);
+        first.Name.Should().Be("First member");
+        last.Name.Should().Be("Last member");
+        first.Balance.Should().Be(-1m);
+        last.Balance.Should().Be(-1m);
     }
 
     [HumansTheory]
@@ -1559,5 +1569,38 @@ public class HoldedFinanceServiceTests
         result.DocCount.Should().Be(0);
         _repo.ReceivedCalls().Select(c => c.GetMethodInfo().Name)
             .Should().NotContain(n => n.Contains("Delete", StringComparison.Ordinal));
+    }
+
+    // ─── Which Holded account an expense line is booked to ───────────────────────
+
+    [HumansFact]
+    public async Task GetHoldedAccountIdForCategory_UsesTheActiveMapping_AndIgnoresAnArchivedOne()
+    {
+        // Expenses calls this to book a purchase line straight onto the category's account. An
+        // archived row for the same category must never win, and an unmapped category yields null.
+        var mapped = Guid.NewGuid();
+        var unmapped = Guid.NewGuid();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            new List<HoldedCategoryMap>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290001,
+                    HoldedAccountId = "acc-old", Tag = "a", IsActive = false,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290002,
+                    HoldedAccountId = "acc-live", Tag = "b", IsActive = true,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                },
+            });
+
+        var svc = MakeService();
+        (await svc.GetHoldedAccountIdForCategoryAsync(mapped, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be("acc-live");
+        (await svc.GetHoldedAccountIdForCategoryAsync(unmapped, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeNull();
     }
 }
