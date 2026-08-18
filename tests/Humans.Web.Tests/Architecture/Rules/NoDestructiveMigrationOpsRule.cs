@@ -19,9 +19,10 @@ namespace Humans.Web.Tests.Architecture.Rules;
 /// <c>src/Sections/Humans.&lt;Section&gt;/Data/Migrations/*.cs</c>
 /// (excluding <c>.Designer.cs</c> and <c>*DbContextModelSnapshot.cs</c>),
 /// find every <c>migrationBuilder.Drop*</c> call inside the <c>Up</c> method
-/// body, emit one locator per call. The first <c>name: "X"</c> argument is
-/// captured so the same drop op on different objects produces distinct keys
-/// without using line numbers.
+/// body, emit one locator per call. The <c>name: "X"</c> and (where present)
+/// <c>table: "Y"</c> arguments are captured so the same drop op on different
+/// objects — including same-named columns on different tables — produces
+/// distinct keys without using line numbers.
 ///
 /// The <c>Down()</c> method legitimately mirrors <c>Up()</c> Adds with Drops,
 /// so we strip <c>Down()</c> bodies before scanning.
@@ -41,8 +42,18 @@ public class NoDestructiveMigrationOpsRule
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
+    private static readonly Regex TableArgRegex = new(
+        @"\btable\s*:\s*""(?<table>[^""]+)""",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(2));
+
     private static readonly Regex LocatorNameRegex = new(
         @"name=(?<name>[^),]+)",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex LocatorTableRegex = new(
+        @"table=(?<table>[^),]+)",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
@@ -64,11 +75,14 @@ public class NoDestructiveMigrationOpsRule
     /// of 2026-08-18 depends on. This does not try to judge whether the evidence is *good*; a
     /// human does that. It only refuses an entry that never claimed any.
     ///
-    /// The block must also *name* each dropped object it covers. Coverage alone is inheritable:
-    /// a bare locator appended directly under an approved group (no blank line) would sit inside
-    /// that group's comment block and borrow its Approval line. Requiring the object's name in
-    /// the block forces every new entry to put its own name into the approval text — a visible,
-    /// deliberate edit — instead of free-riding on a neighbour's.
+    /// The block must also *name* each dropped object it covers — every identifier in the
+    /// locator, the table included, not just the column. Coverage alone is inheritable: a bare
+    /// locator appended directly under an approved group (no blank line) would sit inside that
+    /// group's comment block and borrow its Approval line, and a column-name-only check would
+    /// still let an approval for one table's column cover a same-named column on any other
+    /// table. Requiring every identifier in the block forces each new entry to put its own
+    /// names into the approval text — a visible, deliberate edit — instead of free-riding on a
+    /// neighbour's.
     /// </remarks>
     [HumansFact]
     public void Every_baseline_entry_is_covered_by_an_approval_note()
@@ -88,9 +102,14 @@ public class NoDestructiveMigrationOpsRule
             var covered = block.Any(c =>
                 c.Contains("Approval:", StringComparison.Ordinal)
                 || c.Contains("Pre-existing:", StringComparison.Ordinal));
-            var objectName = LocatorNameRegex.Match(line).Groups["name"].Value;
-            var named = objectName.Length == 0
-                || block.Any(c => c.Contains(objectName, StringComparison.Ordinal));
+            var identifiers = new[]
+                {
+                    LocatorNameRegex.Match(line).Groups["name"].Value,
+                    LocatorTableRegex.Match(line).Groups["table"].Value,
+                }
+                .Where(id => id.Length > 0);
+            var named = identifiers.All(id =>
+                block.Any(c => c.Contains(id, StringComparison.Ordinal)));
             if (!covered || !named) unapproved.Add(line);
         }
 
@@ -163,7 +182,10 @@ public class NoDestructiveMigrationOpsRule
                 var args = match.Groups["args"].Value;
                 var nameMatch = NameArgRegex.Match(args);
                 var arg = nameMatch.Success ? nameMatch.Groups["name"].Value : "?";
-                var key = $"{op}(name={arg})";
+                var tableMatch = TableArgRegex.Match(args);
+                var key = tableMatch.Success
+                    ? $"{op}(name={arg},table={tableMatch.Groups["table"].Value})"
+                    : $"{op}(name={arg})";
                 counts.TryGetValue(key, out var n);
                 counts[key] = ++n;
                 var absoluteOffset = upBodyStart + match.Index;

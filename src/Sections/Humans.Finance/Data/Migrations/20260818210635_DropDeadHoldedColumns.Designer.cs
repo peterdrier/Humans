@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Finance.Data.Migrations
 {
     [DbContext(typeof(FinanceDbContext))]
-    [Migration("20260818195930_DropDeadHoldedColumns")]
+    [Migration("20260818210635_DropDeadHoldedColumns")]
     partial class DropDeadHoldedColumns
     {
         /// <inheritdoc />

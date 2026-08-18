@@ -48,11 +48,14 @@ calendar.
   last built, which yields an empty migration; a following `migrations remove --force` then walks back
   the *wrong* migration. Recover by `git checkout` of the Migrations folder, then rebuild and
   regenerate.
-- **`Down()` must restore the shape.** EF writes it — check it is there *and that it would run*.
+- **`Down()` must restore the shape.** EF writes it — check it is there *and whether it would run*.
   For a non-nullable string column EF scaffolds `defaultValue: ""`, which on a `jsonb` column is
-  `DEFAULT ''` and a Postgres syntax error, so the rollback fails the moment anyone tries it. The fix
-  is model-side, never a hand edit: declare the default (`HasDefaultValueSql("'{}'::jsonb")`) in a
-  preceding migration so the drop's `Down()` scaffolds a valid one.
+  `DEFAULT ''` and a Postgres error, so that rollback fails the moment anyone tries it. Never hand
+  edit it. The only mechanical fix — `HasDefaultValueSql` declared in a preceding migration —
+  collides with the one-migration-per-context check, and Peter resolved that collision in favour of
+  the single migration (2026-08-18, peterdrier/Humans#1379): ship the drop alone, record the
+  broken-rollback caveat in the approval comment, and accept that rolling back means re-adding the
+  column by hand.
 - [`event-deploy-freeze`](../process/event-deploy-freeze.md) still freezes schema-changing deploys
   during the event.
 - The restore procedure behind all of this is
@@ -71,9 +74,10 @@ Peter's approval. If you cannot write the three facts, you do not have approval 
 
 That is enforced, not merely asked for: `Every_baseline_entry_is_covered_by_an_approval_note` fails
 any locator whose comment block above it carries no `Approval:` line (or `Pre-existing:`, for drops
-that shipped before this rule), or does not name the dropped object itself — naming is what stops a
-new locator appended inside an existing group from borrowing that group's approval. The ratchet's
-own reader discards comments and diffs locators only,
+that shipped before this rule), or does not name every identifier in its locator — the table as
+well as the column. Naming is what stops a new locator appended inside an existing group from
+borrowing that group's approval, or one table's approval covering a same-named column on another
+table. The ratchet's own reader discards comments and diffs locators only,
 so without that second test a bare locator would pass silently and the ledger would be a convention
 rather than a guardrail. The test does not judge whether the evidence is *good* — a human does that;
 it only refuses an entry that never claimed any.

@@ -19,7 +19,7 @@
 # folders at Email's G5 move (nobodies-collective/Humans#866) — before that, every moved
 # section's migrations silently left the sweep and the rule reported success by finding
 # nothing. The code is byte-identical to what merged; deleting it is not this PR's business.
-src/Sections/Humans.Finance/Data/Migrations/20260810195350_HoldedExpenseDocIsApproved.cs:DropColumn(name=ApprovedAt)#1
+src/Sections/Humans.Finance/Data/Migrations/20260810195350_HoldedExpenseDocIsApproved.cs:DropColumn(name=ApprovedAt,table=holded_expense_docs)#1
 src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_ledger_lines)#1
 src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_sync_states)#1
 
@@ -32,5 +32,9 @@ src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHo
 # re-added, so nothing has ever set it. Neither column is read anywhere.
 # Approval: Peter, 2026-08-18 — "drop both columns", and destructive migrations now ship on
 # description + evidence + his per-case approval.
-src/Sections/Humans.Finance/Data/Migrations/20260818195930_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload)#1
-src/Sections/Humans.Finance/Data/Migrations/20260818195930_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt)#1
+# Down() caveat: EF scaffolds RawPayload's re-add as jsonb NOT NULL DEFAULT '' (invalid JSON, the
+# ALTER would fail). A valid default needs a preceding default-declaring migration, which the
+# one-migration-per-context check rejects — Peter chose the single migration (2026-08-18); a
+# rollback of this dead, never-read column would re-add it by hand instead.
+src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload,table=holded_expense_docs)#1
+src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt,table=holded_category_map)#1
