@@ -38,12 +38,12 @@
         {
             switch (column)
             {
-                case "When": builder.Template("When", whenCell); break;
-                case "Actor": builder.Template("Actor", actorCell); break;
-                case "Action": builder.Template("Action", actionCell); break;
-                case "Subject": builder.Template("Subject", subjectCell); break;
-                case "Description": builder.Column("Description", ev => ev.Description); break;
-                case "Target": builder.Template("Target", targetCell); break;
+                case "When": builder.Template(Model.Header("When"), whenCell); break;
+                case "Actor": builder.Template(Model.Header("Actor"), actorCell); break;
+                case "Action": builder.Template(Model.Header("Action"), actionCell); break;
+                case "Subject": builder.Template(Model.Header("Subject"), subjectCell); break;
+                case "Description": builder.Column(Model.Header("Description"), ev => ev.Description); break;
+                case "Target": builder.Template(Model.Header("Target"), targetCell); break;
             }
         }
         table = builder.RowCss(ev => ev.Action.ToAuditEntryRowClass()).Build();

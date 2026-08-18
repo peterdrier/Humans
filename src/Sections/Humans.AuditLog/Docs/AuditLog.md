@@ -126,7 +126,7 @@ A section that wants to *show* audit history emits `<vc:audit-log>` with a predi
 
 - **Predicates** (first match wins): `resource-id`; `user-id` + `google-sync-only`; `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
 - **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`; `sync` is the Google-specific Action · Description · User · Role · Source · Result · Actor · When grid. `sync` exists only for those columns and is expected to go with nobodies-collective/Humans#1083.
-- **Chrome:** `title`, `empty-text` and `show-card`. The section ships no resource set, so a localized host page passes localized copy in — column headers stay English.
+- **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. The section ships no resource set, so a localized host page passes every display string in. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
 - Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests`.
 
 ## Negative Access Rules

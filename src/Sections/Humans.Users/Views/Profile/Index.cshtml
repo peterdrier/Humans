@@ -109,9 +109,14 @@
 
         @if (Model.CanViewSentMessages)
         {
+            @* The AuditLog section ships no resource set, so this page passes its own copy in. *@
+            var sentMessageHeaders = $"when:{Localizer["Common_Date"].Value}"
+                                     + $",actor:{Localizer["Common_Sender"].Value}"
+                                     + $",description:{Localizer["Common_Preview"].Value}";
             <vc:audit-log entity-type="User" entity-id="@Model.UserId"
                           actions="FacilitatedMessageSent" limit="50"
                           layout="table" columns="when,actor,description"
+                          column-labels="@sentMessageHeaders"
                           title="@Localizer["Profile_SentMessages"].Value"
                           empty-text="@Localizer["Profile_NoSentMessages"].Value" />
         }

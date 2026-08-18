@@ -132,6 +132,34 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
+    public async Task ColumnLabels_override_headers_by_key_not_by_position()
+    {
+        // Keys deliberately out of order against `columns`: pairing positionally would
+        // mis-header the table, which is the whole reason this is keyed.
+        var (_, model) = Unwrap(await BuildSut().InvokeAsync(
+            layout: "table", columns: "when,actor,description",
+            columnLabels: "DESCRIPTION: Vista previa , when:Fecha"));
+
+        model.Header("When").Should().Be("Fecha");
+        model.Header("Description").Should().Be("Vista previa");
+        model.Header("Actor").Should().Be("Actor", "an unsupplied key keeps the English default");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("sideways:Nope")]
+    [InlineData("when")]
+    [InlineData(":Fecha")]
+    [InlineData("when:")]
+    public async Task ColumnLabels_ignores_junk_and_falls_back_to_the_column_name(string? columnLabels)
+    {
+        var (_, model) = Unwrap(await BuildSut().InvokeAsync(layout: "table", columnLabels: columnLabels));
+
+        model.Header("When").Should().Be("When");
+    }
+
+    [HumansFact]
     public async Task A_viewer_failure_renders_the_empty_state_rather_than_throwing()
     {
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),

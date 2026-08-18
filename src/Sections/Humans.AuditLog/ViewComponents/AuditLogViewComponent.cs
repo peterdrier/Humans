@@ -33,6 +33,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         int limit = 20,
         string layout = "line",
         string? columns = null,
+        string? columnLabels = null,
         string title = "Audit History",
         string emptyText = "No audit history.",
         bool showCard = true)
@@ -53,7 +54,8 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
             Title = title,
             EmptyText = emptyText,
             ShowCard = showCard,
-            Columns = SelectColumns(columns)
+            Columns = SelectColumns(columns),
+            ColumnLabels = ParseColumnLabels(columnLabels)
         };
 
         try
@@ -113,6 +115,33 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         _ => "Default"
     };
 
+    /// <summary>
+    /// Keyed header overrides for <c>layout="table"</c>, e.g. <c>when:Fecha,actor:Remitente</c>.
+    /// Keyed rather than positional so reordering <c>columns</c> can never silently mis-header
+    /// the table. The section ships no resource set, so a localized host page passes its own
+    /// strings in, as it already does for <c>title</c> and <c>emptyText</c>.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> ParseColumnLabels(string? columnLabels)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(columnLabels))
+            return labels;
+
+        foreach (var pair in columnLabels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = pair.IndexOf(':', StringComparison.Ordinal);
+            if (separator <= 0)
+                continue;
+
+            var key = pair[..separator].Trim();
+            var label = pair[(separator + 1)..].Trim();
+            var canonical = TableColumns.FirstOrDefault(c => string.Equals(c, key, StringComparison.OrdinalIgnoreCase));
+            if (canonical is not null && label.Length > 0)
+                labels[canonical] = label;
+        }
+        return labels;
+    }
+
     /// <summary>Parsed like <c>actions</c>: split on comma, trim, ignore unknown. Empty ⇒ all.</summary>
     private static IReadOnlyList<string> SelectColumns(string? columns)
     {
@@ -136,4 +165,12 @@ internal sealed class AuditLogComponentViewModel
 
     /// <summary>Columns to render for <c>layout="table"</c>, in canonical order.</summary>
     public IReadOnlyList<string> Columns { get; set; } = [];
+
+    /// <summary>Header overrides keyed by canonical column name; a missing key renders the name.</summary>
+    public IReadOnlyDictionary<string, string> ColumnLabels { get; set; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>The header to render for <paramref name="column"/>.</summary>
+    public string Header(string column) =>
+        ColumnLabels.TryGetValue(column, out var label) ? label : column;
 }
