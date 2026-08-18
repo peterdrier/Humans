@@ -316,8 +316,8 @@ internal sealed class Service(
     {
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
         // Tags are stored as JSON; a non-empty array means at least one tag existed.
-        var hasTags = d.TagsJson is not null
-            && !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal)
+        // "null" is the jsonb literal, not a C# null — TagsJson is non-nullable.
+        var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal)
             && !string.Equals(d.TagsJson, "null", StringComparison.Ordinal);
 
         if (!hasAccount && !hasTags)
