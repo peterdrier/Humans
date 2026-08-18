@@ -2680,7 +2680,7 @@
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>En el sitio desde {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in en la puerta realizado</value></data>
   <data name="Profile_Redeemed" xml:space="preserve"><value>Canjeado</value></data>
-  <data name="Profile_SentMessages" xml:space="preserve"><value>Mensajes enviados ({0})</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Mensajes enviados</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Información del turno</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Empieza a escribir tu ciudad…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Tipo</value></data>

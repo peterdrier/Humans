@@ -139,8 +139,6 @@ internal sealed class Service(
                 .ToList();
         }
 
-        var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
-
         // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from
         // BalanceEur, so without this guard the full balance would stay payable a second time
         // while the mandate settles — a double-charge window.
@@ -152,34 +150,7 @@ internal sealed class Service(
             order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
-            stripeService.IsStoreCheckoutConfigured,
-            priceChanges);
-    }
-
-    /// <summary>
-    /// Price-change audit events (<see cref="AuditAction.StoreProductPriceChanged"/>) for the
-    /// products on this order, recorded since the order was created — the order page's
-    /// "price changes" view (#816). Reuses the existing per-entity audit query; the product
-    /// count per order is tiny.
-    /// </summary>
-    private async Task<IReadOnlyList<AuditLogEntrySnapshot>> LoadOrderPriceChangesAsync(OrderDto order, CancellationToken ct)
-    {
-        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        if (productIds.Count == 0)
-            return [];
-
-        var changes = new List<AuditLogEntrySnapshot>();
-        foreach (var productId in productIds)
-        {
-            var entries = await audit.GetFilteredEntriesAsync(
-                entityType: AuditEntityTypes.Product,
-                entityId: productId,
-                actions: [AuditAction.StoreProductPriceChanged],
-                limit: 50,
-                ct: ct);
-            changes.AddRange(entries.Where(e => e.OccurredAt >= order.CreatedAt));
-        }
-        return changes.OrderByDescending(e => e.OccurredAt).ToList();
+            stripeService.IsStoreCheckoutConfigured);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)

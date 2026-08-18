@@ -15,7 +15,7 @@
         else
         {
             <div class="card-body text-muted">
-                No audit history.
+                @Model.EmptyText
             </div>
         }
     </div>
@@ -28,6 +28,6 @@ else
     }
     else
     {
-        <p class="text-muted mb-0">No audit history.</p>
+        <p class="text-muted mb-0">@Model.EmptyText</p>
     }
 }

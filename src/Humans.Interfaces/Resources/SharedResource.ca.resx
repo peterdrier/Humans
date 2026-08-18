@@ -2680,7 +2680,7 @@
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Al recinte des de {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in fet a la porta</value></data>
   <data name="Profile_Redeemed" xml:space="preserve"><value>Bescanviat</value></data>
-  <data name="Profile_SentMessages" xml:space="preserve"><value>Missatges enviats ({0})</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Missatges enviats</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Informació del torn</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Comença a escriure la teva ciutat…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Tipus</value></data>

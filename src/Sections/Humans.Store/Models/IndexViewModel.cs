@@ -1,4 +1,3 @@
-using Humans.AuditLog.Contracts;
 using Humans.Store.Services.Dtos;
 
 namespace Humans.Store.Models;
@@ -37,9 +36,6 @@ internal sealed class OrderViewModel
     /// </summary>
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
-    /// <summary>Price-change audit events for this order's items since it was created (#816).</summary>
-    public IReadOnlyList<AuditLogEntrySnapshot> PriceChanges { get; init; } = [];
-
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
         bool canDelete,
@@ -53,7 +49,6 @@ internal sealed class OrderViewModel
             RemovableLineIds = removableLineIds,
             CanPay = pageData.CanPay,
             IsStripeConfigured = pageData.IsStripeConfigured,
-            CanDelete = canDelete,
-            PriceChanges = pageData.PriceChanges
+            CanDelete = canDelete
         };
 }

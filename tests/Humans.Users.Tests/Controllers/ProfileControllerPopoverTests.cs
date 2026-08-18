@@ -98,8 +98,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculatorRead>(),
             signInManager,
-            Options.Create(new GoogleWorkspaceOptions()),
-            Substitute.For<IAuditViewerService>());
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString())

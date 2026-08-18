@@ -40,9 +40,9 @@
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <!-- MonitorController injects IAuditViewerService and binds AuditEvent, which moved out of
-         Humans.Application into the AuditLog section in G5 lane 4b-2h
-         (nobodies-collective/Humans#866). -->
+    <!-- SyncAudit.cshtml emits <vc:audit-log>, so the section's tag helpers must be
+         referenced for @addTagHelper *, Humans.AuditLog to bind. Monitor no longer reads
+         audit itself. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
   </ItemGroup>

@@ -378,13 +378,6 @@ internal sealed class ProfileViewModel
     public bool CanViewOnsiteChip { get; set; }
 
     /// <summary>
-    /// In-platform messages sent to this volunteer. Coordinator-gated; null when
-    /// the viewer does not have coordinator access. Source: <c>FacilitatedMessageSent</c>
-    /// audit entries where <c>EntityId == UserId</c>.
-    /// </summary>
-    public IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>? SentMessages { get; set; }
-
-    /// <summary>
     /// Whether the viewer can see the "Sent messages" panel.
     /// True when the viewer is a coordinator or has a privileged shift-management role.
     /// </summary>

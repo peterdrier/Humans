@@ -1337,7 +1337,7 @@
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Onsite since {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Checked in at the gate</value></data>
   <data name="Profile_Redeemed" xml:space="preserve"><value>Redeemed</value></data>
-  <data name="Profile_SentMessages" xml:space="preserve"><value>Sent messages ({0})</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Shift Info</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Start typing your city…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Type</value></data>

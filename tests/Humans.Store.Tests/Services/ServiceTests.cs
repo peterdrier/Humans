@@ -128,37 +128,6 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderPageDataAsync_surfaces_price_changes_since_order_started()
-    {
-        var productId = Guid.NewGuid();
-        var orderStart = Instant.FromUtc(2026, 3, 1, 0, 0);
-        var line = new OrderLineDto(Guid.NewGuid(), Guid.NewGuid(), productId, "Ice", 1,
-            2.34m, 21m, null, orderStart, 2.34m, 0.49m, 0m, 2.83m);
-        var order = new OrderDto(
-            Id: Guid.NewGuid(), CampSeasonId: Guid.NewGuid(), TeamId: null,
-            CounterpartyType: OrderCounterpartyType.Camp, CounterpartyDisplayName: "Camp",
-            Year: 2026, Label: null, State: OrderState.Open,
-            CounterpartyName: null, CounterpartyVatId: null, CounterpartyAddress: null,
-            CounterpartyCountryCode: null, CounterpartyEmail: null, IssuedInvoiceId: null,
-            Lines: [line], Payments: [], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
-            PaymentsTotalEur: 0m, BalanceEur: 2.83m, CreatedAt: orderStart);
-
-        _audit.GetFilteredEntriesAsync(AuditEntityTypes.Product, productId, null,
-                Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<AuditLogEntrySnapshot>
-            {
-                PriceChangeEntry(productId, orderStart.Minus(Duration.FromDays(5)), "before this order existed"),
-                PriceChangeEntry(productId, orderStart.Plus(Duration.FromDays(2)), "Price for Ice changed from 1.23 to 2.34"),
-            });
-
-        var pageData = await _service.GetOrderPageDataAsync(order, canEdit: false, canPayAuthorized: false, ct: TestContext.Current.CancellationToken);
-
-        // Only the change after the order started is shown.
-        pageData.PriceChanges.Should().ContainSingle()
-            .Which.Description.Should().Be("Price for Ice changed from 1.23 to 2.34");
-    }
-
-    [HumansFact]
     public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -1373,10 +1342,6 @@ public class ServiceTests
     // ==========================================================================
     // Helpers
     // ==========================================================================
-
-    private static AuditLogEntrySnapshot PriceChangeEntry(Guid productId, Instant occurredAt, string description) =>
-        new(Guid.NewGuid(), AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, productId,
-            description, occurredAt, null, null, null, null, null, null, null, null, null);
 
     private static Product MakeProduct(
         string name = "Test product",

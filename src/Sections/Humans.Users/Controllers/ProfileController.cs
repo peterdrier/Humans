@@ -77,13 +77,11 @@ internal sealed class ProfileController(
     IAccountDeletionService accountDeletionService,
     IMembershipCalculatorRead membershipCalculator,
     SignInManager<User> signInManager,
-    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions,
-    IAuditViewerService auditViewerService) : HumansControllerBase(userService)
+    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
     private readonly IUserService _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
-    private readonly IAuditViewerService _auditViewerService = auditViewerService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -1827,7 +1825,7 @@ internal sealed class ProfileController(
             || (await authorizationService.AuthorizeAsync(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
 
-        var sentMessagesContext = await BuildSentMessagesContextAsync(id, viewer.Id, isOwnProfile, ct);
+        var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile);
 
         var viewModel = new ProfileViewModel
         {
@@ -1842,8 +1840,7 @@ internal sealed class ProfileController(
                 ? await ResolveOnsiteSinceAsync(profileInfo)
                 : null,
             CanViewOnsiteChip = canViewOnsiteChip,
-            CanViewSentMessages = sentMessagesContext.CanView,
-            SentMessages = sentMessagesContext.Messages,
+            CanViewSentMessages = canViewSentMessages,
         };
 
         return View("Index", viewModel);
@@ -1907,32 +1904,20 @@ internal sealed class ProfileController(
     }
 
     /// <summary>
-    /// Loads in-platform messages sent to the profile user, gated on the viewer being a
-    /// coordinator or holding a privileged shift-management role. Uses the same coordinator
-    /// check as <see cref="BuildNoShowHistoryContextAsync"/> so the two panels appear
-    /// under consistent access rules.
-    /// Returns <c>(false, null)</c> for own-profile views and non-coordinators.
+    /// Whether the viewer may see the in-platform messages sent to the profile user: a
+    /// coordinator or a privileged shift-management role, never on one's own profile. Uses
+    /// the same coordinator check as <see cref="BuildNoShowHistoryContextAsync"/> so the two
+    /// panels appear under consistent access rules. The rows themselves come from
+    /// <c>&lt;vc:audit-log&gt;</c> in the view.
     /// </summary>
-    private async Task<(bool CanView, IReadOnlyList<AuditEvent>? Messages)>
-        BuildSentMessagesContextAsync(Guid profileUserId, Guid viewerId, bool isOwnProfile, CancellationToken ct)
+    private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile)
     {
         if (isOwnProfile)
-            return (false, null);
+            return false;
 
         var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)).Succeeded;
-        if (!viewerIsCoordinator && !isPrivilegedApprover)
-            return (false, null);
-
-        var messages = await _auditViewerService.GetFilteredAsync(
-            entityType: nameof(User),
-            entityId: profileUserId,
-            userId: null,
-            actions: [AuditAction.FacilitatedMessageSent],
-            limit: 50,
-            ct: ct);
-
-        return (true, messages);
+        return viewerIsCoordinator || isPrivilegedApprover;
     }
 
     [HttpGet("{id:guid}/Popover")]

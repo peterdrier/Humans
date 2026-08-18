@@ -20,8 +20,11 @@ namespace Humans.Monitor.Controllers;
 /// *horizontal* — <c>peters-hard-rules.md</c> forbids a horizontal from referencing a
 /// vertical section, and the reference only became visible at the assembly level when
 /// GoogleIntegration went to G5. The third (<c>Human</c>) came with them because all three
-/// render the same <c>GoogleSync</c> view; splitting them would have split one view, one view
-/// model and two helpers across two sections.
+/// render the same <c>SyncAudit</c> view.
+///
+/// The rows themselves are no longer read here: the page emits
+/// <c>&lt;vc:audit-log layout="sync"&gt;</c> and the AuditLog section owns the read and the
+/// render.
 ///
 /// What stayed in AuditLog is the general audit browser (<c>/AuditLog</c>), which reaches no
 /// section at all.
@@ -29,7 +32,6 @@ namespace Humans.Monitor.Controllers;
 [Route("Monitor")]
 internal sealed class MonitorController(
     IUserServiceRead userService,
-    IAuditViewerService auditViewer,
     ILogger<MonitorController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -74,12 +76,12 @@ internal sealed class MonitorController(
             return NotFound();
         }
 
-        var events = await auditViewer.GetForResourceAsync(id);
-        return GoogleSyncAuditView(
+        return View("SyncAudit", new SyncAuditViewModel(
             $"Sync Audit: {resource.Name}",
             Url.Action("Sync", "Google"),
             "Back to Sync Status",
-            events);
+            ResourceId: id,
+            UserId: null));
     }
 
     [HttpGet("Human/{id:guid}")]
@@ -93,50 +95,13 @@ internal sealed class MonitorController(
             return NotFound();
         }
 
-        var events = await auditViewer.GetGoogleSyncForUserAsync(id);
         var info = await _userService.GetUserInfoAsync(id);
         var displayName = info?.BurnerName ?? user.BurnerName;
-        return GoogleSyncAuditView(
+        return View("SyncAudit", new SyncAuditViewModel(
             $"Google Sync Audit: {displayName}",
             Url.Action("AdminDetail", "UsersAdmin", new { id }),
             "Back to Human Detail",
-            events);
-    }
-
-    private IActionResult GoogleSyncAuditView(
-        string title,
-        string? backUrl,
-        string? backLabel,
-        IEnumerable<AuditEvent> events)
-    {
-        return View("GoogleSync", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
-    }
-
-    private static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
-        string title,
-        string? backUrl,
-        string? backLabel,
-        IEnumerable<AuditEvent> events)
-    {
-        return new GoogleSyncAuditListViewModel
-        {
-            Title = title,
-            BackUrl = backUrl,
-            BackLabel = backLabel,
-            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
-            {
-                Action = ev.Action,
-                Description = ev.Description,
-                UserEmail = ev.UserEmail,
-                Role = ev.Role,
-                SyncSource = ev.SyncSource,
-                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
-                Success = ev.Success,
-                ErrorMessage = ev.ErrorMessage,
-                ResourceName = ev.ResourceName,
-                ResourceId = ev.ResourceId,
-                RelatedEntityId = ev.RelatedEntityId
-            }).ToList()
-        };
+            ResourceId: null,
+            UserId: id));
     }
 }

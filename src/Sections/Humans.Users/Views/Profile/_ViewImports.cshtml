@@ -35,6 +35,8 @@
 @addTagHelper *, Humans.Shifts
 @* <vc:my-camps> is Humans.Camps'. *@
 @addTagHelper *, Humans.Camps
+@* <vc:audit-log> (Index's sent-messages panel) is the AuditLog section's own component. *@
+@addTagHelper *, Humans.AuditLog
 @* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. AccessMatrix
    moved to Humans.UI (nobodies-collective/Humans#1056) and now binds as <vc:access-matrix>;
    the three still-Shell-owned components this page renders (EventsCard, TicketHoldings,

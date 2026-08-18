@@ -109,39 +109,11 @@
 
         @if (Model.CanViewSentMessages)
         {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-envelope me-1"></i> @Localizer["Profile_SentMessages", Model.SentMessages?.Count ?? 0]</h5>
-                </div>
-                @if (Model.SentMessages is null || Model.SentMessages.Count == 0)
-                {
-                    <div class="card-body text-muted">@Localizer["Profile_NoSentMessages"]</div>
-                }
-                else
-                {
-                    <div class="card-body p-0">
-                        <table class="table table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>@Localizer["Common_Date"]</th>
-                                    <th>@Localizer["Common_Sender"]</th>
-                                    <th>@Localizer["Common_Preview"]</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var msg in Model.SentMessages)
-                                {
-                                    <tr>
-                                        <td class="text-nowrap">@msg.OccurredAt.ToDateTimeUtc().ToDateTime()</td>
-                                        <td class="text-nowrap">@(msg.ActorDisplayName ?? "—")</td>
-                                        <td>@msg.Description</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
+            <vc:audit-log entity-type="User" entity-id="@Model.UserId"
+                          actions="FacilitatedMessageSent" limit="50"
+                          layout="table" columns="when,actor,description"
+                          title="@Localizer["Profile_SentMessages"].Value"
+                          empty-text="@Localizer["Profile_NoSentMessages"].Value" />
         }
 
         @if (Model.IsOwnProfile && Model.CampaignGrants.Any())

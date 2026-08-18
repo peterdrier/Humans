@@ -2680,7 +2680,7 @@
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Vor Ort seit {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Am Tor eingecheckt</value></data>
   <data name="Profile_Redeemed" xml:space="preserve"><value>Eingelöst</value></data>
-  <data name="Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten ({0})</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Schichtinfo</value></data>
   <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Beginne, deine Stadt einzutippen…</value></data>
   <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Typ</value></data>
