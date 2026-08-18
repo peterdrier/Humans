@@ -1,7 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Text;
-using Humans.Application.Helpers;
+using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;

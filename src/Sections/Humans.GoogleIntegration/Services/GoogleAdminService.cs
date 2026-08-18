@@ -1,6 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Helpers;
+using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Users.Contracts;

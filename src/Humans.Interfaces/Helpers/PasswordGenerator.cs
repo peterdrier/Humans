@@ -1,4 +1,4 @@
-namespace Humans.Application.Helpers;
+namespace Humans.Base.Helpers;
 
 public static class PasswordGenerator
 {

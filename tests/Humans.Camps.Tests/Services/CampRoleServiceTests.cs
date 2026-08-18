@@ -774,7 +774,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Slug = slug ?? Application.Helpers.SlugHelper.GenerateSlug(name) + "-" + Guid.NewGuid().ToString("N").Substring(0, 6),
+            Slug = slug ?? Base.Helpers.SlugHelper.GenerateSlug(name) + "-" + Guid.NewGuid().ToString("N").Substring(0, 6),
             SlotCount = slotCount,
             MinimumRequired = minimumRequired,
             CreatedAt = Clock.GetCurrentInstant(),

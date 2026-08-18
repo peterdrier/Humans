@@ -35,7 +35,7 @@
     <Using Include="Humans.Application.Interfaces.Repositories" />
     <Using Include="Humans.Application" />
     <Using Include="Humans.Application.Extensions" />
-    <Using Include="Humans.Application.Helpers" />
+    <Using Include="Humans.Base.Helpers" />
     <Using Include="Humans.Infrastructure.Data" />
     <Using Include="Humans.UI.Controllers" />
   </ItemGroup>

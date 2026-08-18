@@ -4,7 +4,7 @@ using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.Extensions;
-using Humans.Application.Helpers;
+using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
