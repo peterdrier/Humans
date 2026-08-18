@@ -1,7 +1,5 @@
-using Humans.Application;
 using AwesomeAssertions;
 using Humans.Mailer.Services.Audiences;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;

@@ -1,5 +1,4 @@
 using Hangfire;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Architecture;

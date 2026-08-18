@@ -1,9 +1,7 @@
-using Microsoft.Extensions.Logging;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;

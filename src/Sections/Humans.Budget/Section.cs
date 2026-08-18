@@ -9,7 +9,6 @@ using Humans.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Budget;
 

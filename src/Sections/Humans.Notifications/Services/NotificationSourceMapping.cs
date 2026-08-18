@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;

@@ -1,12 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

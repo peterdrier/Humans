@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Application.Architecture;
 using NodaTime;
 
 namespace Humans.Governance.Contracts;

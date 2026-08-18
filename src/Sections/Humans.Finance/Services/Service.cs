@@ -7,7 +7,6 @@ using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Finance.Services;
@@ -258,7 +257,7 @@ internal sealed class Service(
             Total = doc.Total,
             Currency = doc.Currency,
             IsApproved = !draftIds.Contains(doc.Id),
-            TagsJson = System.Text.Json.JsonSerializer.Serialize(tags),
+            TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
             MatchStatus = matchResult.CategoryId is null

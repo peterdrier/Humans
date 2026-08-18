@@ -1,5 +1,4 @@
 using Humans.Shifts.Domain;
-using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Services.Dtos;
 

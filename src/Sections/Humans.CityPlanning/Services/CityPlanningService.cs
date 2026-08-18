@@ -5,8 +5,6 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Domain;
-using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;

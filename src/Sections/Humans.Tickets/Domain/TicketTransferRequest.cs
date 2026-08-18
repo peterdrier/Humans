@@ -1,6 +1,4 @@
 using NodaTime;
-using Humans.Domain.Enums;
-using Humans.Tickets.Services;
 
 namespace Humans.Tickets.Domain;
 

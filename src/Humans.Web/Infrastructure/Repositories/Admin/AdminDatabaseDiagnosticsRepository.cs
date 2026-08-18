@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Admin;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Infrastructure.Repositories.Admin;
 

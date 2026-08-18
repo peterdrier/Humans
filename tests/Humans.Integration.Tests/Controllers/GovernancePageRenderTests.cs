@@ -1,13 +1,11 @@
 using Humans.Users.Contracts;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 // Humans.Application is a sibling namespace inside this project, so the bare name
 // `Application` resolves to it rather than to the entity.
 using MemberApplication = Humans.Governance.Domain.Application;
-using Humans.Domain.Enums;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

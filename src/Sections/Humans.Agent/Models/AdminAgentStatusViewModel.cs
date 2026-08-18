@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
 

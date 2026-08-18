@@ -1,8 +1,6 @@
 using Humans.UI.Authorization;
 using System.Security.Claims;
-using Humans.Users.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Authorization;
 

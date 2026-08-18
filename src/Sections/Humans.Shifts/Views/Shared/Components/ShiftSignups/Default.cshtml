@@ -1,6 +1,4 @@
-@using Humans.Shifts.Contracts
 @model Humans.Shifts.Models.ShiftSignupsViewModel
-@using NodaTime
 
 @{
     var hasAny = Model.Upcoming.Count > 0 || Model.Pending.Count > 0 || Model.Past.Count > 0;

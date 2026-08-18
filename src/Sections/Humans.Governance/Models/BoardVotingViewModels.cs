@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
-using Humans.Domain.Enums;
 
 namespace Humans.Governance.Models;
 

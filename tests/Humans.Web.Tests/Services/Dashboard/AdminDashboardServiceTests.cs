@@ -1,9 +1,7 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Web.Services.Dashboard;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;

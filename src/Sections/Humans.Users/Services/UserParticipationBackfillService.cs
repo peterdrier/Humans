@@ -1,7 +1,6 @@
 using CsvHelper;
 using Humans.Application.Csv;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 

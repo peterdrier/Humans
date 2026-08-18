@@ -5,10 +5,7 @@ using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Application.Extensions;
 using Humans.Infrastructure.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Services;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 

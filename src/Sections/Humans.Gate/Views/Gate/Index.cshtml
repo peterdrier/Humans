@@ -81,7 +81,7 @@
     </details>
 </div>
 
-@inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider
+@inject IFileVersionProvider FileVersionProvider
 @section Scripts {
     @* Shared keypad is a cache-busted classic script (no module import to go stale on the kiosk);
        the override panel uses it. Cache-bust the gate.js module import too (the tag-helper

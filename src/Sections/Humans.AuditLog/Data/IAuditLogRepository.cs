@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.AuditLog.Domain;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;

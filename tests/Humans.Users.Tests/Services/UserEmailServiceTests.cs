@@ -1,10 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
-using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;

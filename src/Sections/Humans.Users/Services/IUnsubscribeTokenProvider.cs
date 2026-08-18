@@ -1,5 +1,3 @@
-using Humans.Users.Services;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;

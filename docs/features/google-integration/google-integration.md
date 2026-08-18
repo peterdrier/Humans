@@ -1,14 +1,14 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/**
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Views/Google/**
+  src/Sections/Humans.GoogleIntegration/Services/**
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.GoogleIntegration/Views/Google/**
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleResource.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEvent.cs
   src/Sections/Humans.GoogleIntegration.Contracts/SyncServiceSettings.cs
   src/Sections/Humans.GoogleIntegration.Contracts/GoogleSyncOutboxEventTypes.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleResourceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
@@ -23,22 +23,25 @@
 
 ## Business Context
 
-Nobodies Collective uses Google Workspace for collaboration. The system integrates with **Shared Drives** and **Google Groups** to manage shared resources for teams. Resources can be either provisioned automatically or linked manually by admins when pre-shared with the service account.
+Nobodies Collective uses Google Workspace for collaboration. The system integrates with **Shared Drives** and **Google Groups** to manage shared resources for teams. Google Groups are provisioned automatically for teams. Drive resources are never created by the system — an admin pre-shares an existing Shared Drive folder or file with the service account and links it.
 
 > **Important: All Drive resources are Shared Drives.** This system does not use regular (My Drive) folders. All permission logic accounts for Shared Drive behavior, including inherited permissions from the drive level.
 
 ## User Stories
 
-### US-7.1: Team Shared Drive Provisioning
+### US-7.1: Team Shared Drive Linking
 **As a** team
-**I want to** have a Shared Drive folder automatically created
-**So that** team members can collaborate on documents
+**I want to** have our Shared Drive folder linked to the team
+**So that** team members get access to it automatically
 
 **Acceptance Criteria:**
-- Folder created in the organization's Shared Drive
-- Named appropriately (e.g., "Team: [Team Name]")
+- Admin pre-shares an existing Shared Drive folder with the service account, then links it by URL
 - Tracked in system for permission management
 - All API calls use `SupportsAllDrives = true`
+
+> The system does not create Drive folders. Linking is the only way a Drive
+> resource enters the system (`ITeamResourceService.LinkDriveFolderAsync`);
+> only Google Groups are provisioned automatically.
 
 ### US-7.2: Automatic Access Grants
 **As a** new team member
@@ -189,21 +192,30 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 public interface IGoogleSyncService
 {
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct);
-    Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct);
+    Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default);
+    Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
 
     // Team membership changes
-    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct);
-    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct);
+    Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
+    Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
-    // Status
-    Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken ct);
+    // Google Group lifecycle
+    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
 
-    // Google Group lifecycle/settings, not membership
-    Task EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
-    Task<GoogleResource> ProvisionTeamGroupAsync(Guid teamId, string groupEmail, string groupName, CancellationToken ct);
-    // Restoration
-    Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken ct);
+    // Group settings drift detection/remediation
+    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken ct = default);
+    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken ct = default);
+    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken ct = default);
+
+    // Drive folder path / inherited-permission maintenance
+    Task<int> UpdateDriveFolderPathsAsync(CancellationToken ct = default);
+    Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken ct = default);
+    Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken ct = default);
+
+    // Admin outbox recovery
+    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken ct = default);
+    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken ct = default);
+    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken ct = default);
 }
 ```
 
@@ -213,7 +225,11 @@ public interface IGoogleGroupSync
 {
     Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
     Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default);
-    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true);
+
+    // Pre-#663 4-param overload, kept so in-flight Hangfire jobs serialized
+    // against the old signature can still deserialize.
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct, int retryAttempt);
 }
 ```
 
@@ -565,7 +581,7 @@ The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categorie
 
 ### Resource-Level Retry Strategy
 ```
-On Google API error (resource provisioning):
+On Google API error (resource sync):
   1. Log error with details
   2. Store error in GoogleResource.ErrorMessage
   3. Set IsActive = false if persistent
@@ -579,7 +595,7 @@ On Google API error (resource provisioning):
 | User not found (404) | Permanent — mark user email rejected |
 | Invalid email (400) | Permanent — mark user email rejected |
 | Permission denied (403) | Permanent — no Google account for address, mark rejected |
-| Folder not found | Re-provision |
+| Folder not found | Resource marked inactive — an admin re-links the folder |
 | Inherited permission delete | Excluded from the removal set before the delete is ever attempted — any permission with an inherited component (not just fully-inherited ones) is skipped. If Drive still 403s on a race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (#945) |
 
 ### Failed-Sync Admin Meter
@@ -604,7 +620,6 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
     "ServiceAccountKeyPath": "/secrets/google-sa.json",
     "ServiceAccountKeyJson": "",
     "Domain": "nobodies.team",
-    "TeamFoldersParentId": "",
     "UseSharedDrives": true,
     "Groups": {
       "WhoCanViewMembership": "ALL_MEMBERS_CAN_VIEW",
@@ -627,7 +642,7 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 ## Monitoring
 
 ### Metrics
-- Resources provisioned (counter)
+- Google Groups provisioned (counter)
 - Permission grants/revocations (counter)
 - API errors by type (counter)
 - Sync duration (histogram)
@@ -639,7 +654,7 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 
 ## Related Features
 
-- [Teams](../teams/teams.md) - Triggers resource provisioning
+- [Teams](../teams/teams.md) - Triggers Google Group provisioning and access sync
 - [Background Jobs](../global/background-jobs.md) - Resource sync job
 - [Authentication](../auth/authentication.md) - User Google identity
 - [Drive Activity Monitoring](../google-integration/drive-activity-monitoring.md) - Anomalous permission detection

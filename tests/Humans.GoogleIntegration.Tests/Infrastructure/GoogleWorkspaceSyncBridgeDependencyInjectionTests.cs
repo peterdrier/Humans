@@ -4,8 +4,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 

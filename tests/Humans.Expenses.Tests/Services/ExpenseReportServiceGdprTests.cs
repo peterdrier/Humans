@@ -1,7 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -13,7 +11,6 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

@@ -10,6 +10,4 @@ namespace Humans.Application.Interfaces;
 /// <c>I*Repository</c> or section DbContext (HUM0026). See
 /// <c>memory/architecture/orchestrator-marker.md</c>.
 /// </summary>
-public interface IOrchestrator
-{
-}
+public interface IOrchestrator;

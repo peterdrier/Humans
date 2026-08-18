@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Onboarding.Models;
 

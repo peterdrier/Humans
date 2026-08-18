@@ -261,7 +261,6 @@ GitHub__AccessToken=github_pat_...
     "ServiceAccountKeyPath": "",
     "ServiceAccountKeyJson": "",
     "Domain": "nobodies.team",
-    "TeamFoldersParentId": "",
     "UseSharedDrives": false,
     "Groups": {
       "WhoCanViewMembership": "ALL_MEMBERS_CAN_VIEW",

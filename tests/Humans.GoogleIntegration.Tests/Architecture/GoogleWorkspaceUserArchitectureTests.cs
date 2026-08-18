@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using GoogleWorkspaceUserService = Humans.GoogleIntegration.Services.GoogleWorkspaceUserService;
-using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 

@@ -1,10 +1,8 @@
 using Humans.Shifts.Domain;
-using Humans.Application;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.Shifts.Helpers;
 using NodaTime;
 using NSubstitute;

@@ -5,14 +5,12 @@ using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application;
 
 namespace Humans.Tickets.Tests.Services;
 

@@ -1,6 +1,4 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Services;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
 

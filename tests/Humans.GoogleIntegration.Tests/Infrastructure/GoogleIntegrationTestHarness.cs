@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.GoogleIntegration.Data;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;

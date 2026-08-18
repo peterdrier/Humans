@@ -1,13 +1,10 @@
 using System.Security.Claims;
 using Humans.Consent;
-using Humans.Application;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
-using Humans.UI;
 using Humans.Onboarding.Controllers;
 using Humans.Onboarding.Models;
 using Microsoft.AspNetCore.Http;

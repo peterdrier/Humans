@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using Humans.Surveys.Services;
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using NodaTime.Text;
 

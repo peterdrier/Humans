@@ -10,7 +10,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-namespace Humans.Containers.Tests;
+namespace Humans.Containers.Tests.Services;
 
 public sealed class ServicePlacementTests
 {

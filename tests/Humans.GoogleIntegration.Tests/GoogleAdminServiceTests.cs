@@ -11,9 +11,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using GoogleAdminService = Humans.GoogleIntegration.Services.GoogleAdminService;
 using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
 
 namespace Humans.GoogleIntegration.Tests;
 
@@ -912,6 +909,6 @@ public class GoogleAdminServiceTests
     private static TeamInfo MakeTeamInfo(Guid id, string name, string slug) =>
         new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
             SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-            IsPromotedToDirectory: false, NodaTime.SystemClock.Instance.GetCurrentInstant(), []);
+            IsPromotedToDirectory: false, SystemClock.Instance.GetCurrentInstant(), []);
 
 }

@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-
 namespace Humans.Agent.Services;
 
 internal sealed class AgentAbuseDetector : IAgentAbuseDetector

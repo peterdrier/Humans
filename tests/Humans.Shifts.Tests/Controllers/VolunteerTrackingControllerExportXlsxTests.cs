@@ -1,12 +1,9 @@
-using Humans.Shifts.Domain;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;

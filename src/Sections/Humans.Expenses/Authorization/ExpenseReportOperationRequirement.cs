@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Humans.Expenses.Models;
-using Humans.Expenses.Services.Dtos;
 
 namespace Humans.Expenses.Authorization;
 

@@ -2,10 +2,8 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
 using NodaTime;
 using NodaTime.Text;
-using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Models;
 

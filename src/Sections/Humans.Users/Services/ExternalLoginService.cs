@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Users;

@@ -1,9 +1,7 @@
-using Humans.Application;
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Mailer.Services.Audiences;
 using Humans.Mailer.Tests.Infrastructure;
-using Humans.Domain.Enums;
 using NSubstitute;
 using Humans.Users.Contracts;
 

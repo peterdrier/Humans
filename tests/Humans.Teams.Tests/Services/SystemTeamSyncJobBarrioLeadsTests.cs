@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -8,7 +7,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using Humans.Teams.Services;

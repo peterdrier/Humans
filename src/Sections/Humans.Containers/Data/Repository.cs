@@ -1,5 +1,4 @@
 using Humans.Containers.Domain;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

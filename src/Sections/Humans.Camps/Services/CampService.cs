@@ -1,16 +1,11 @@
 using System.Transactions;
-using Humans.Application.Extensions;
-using Humans.Application.Helpers;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Users.Contracts;
 

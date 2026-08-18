@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
-  src/Humans.Application/Interfaces/Shifts/IShiftManagementService.cs
-  src/Humans.Web/Models/Shifts/ShiftBrowsePageBuilder.cs
-  src/Humans.Web/Views/Shifts/Index.cshtml
-  src/Humans.Web/Views/Shifts/_DepartmentCoveragePieRow.cshtml
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/IShiftManagementService.cs
+  src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
+  src/Sections/Humans.Shifts/Views/Shifts/Index.cshtml
+  src/Sections/Humans.Shifts/Views/Shifts/_DepartmentCoveragePieRow.cshtml
   src/Humans.Web/wwwroot/css/site.css
 -->
 <!-- freshness:flag-on-change
@@ -28,7 +28,7 @@ Volunteers browsing `/Shifts` see a long flat list of shifts grouped by departme
 - Disc fill = `FilledHours / RequestedHours` clamped to `[0, 100]%`
 - Hover tooltip shows `Name — N h / M h (P%)`
 - ARIA label reads `Name: P% covered, N of M hours` for screen readers
-- A tip pill above the row reads `Tip — click any chart below to filter shifts to that department.`
+- A tip pill above the row reads `Tip — click a chart to filter to that department; click it again to clear.`
 
 ### US-Pie.2: Click a Pie to Filter; Click Again to Clear
 **As a** volunteer

@@ -1,16 +1,12 @@
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Text;
 

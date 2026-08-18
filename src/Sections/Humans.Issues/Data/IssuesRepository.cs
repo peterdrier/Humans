@@ -1,4 +1,3 @@
-using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using Humans.Issues.Services.Dtos;
 using Microsoft.EntityFrameworkCore;

@@ -2,22 +2,22 @@
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr.Contracts/**
-  src/Humans.Web/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GuestController.cs
-  src/Humans.Application/Services/Profiles/ProfileService.cs
-  src/Humans.Application/Services/Users/UserService.cs
+  src/Sections/Humans.Users/Services/ProfileService.cs
+  src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
-  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Feedback/Services/FeedbackService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
   src/Sections/Humans.Tickets/Services/TicketQueryService.cs
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
-  src/Humans.Application/Services/Camps/**
+  src/Sections/Humans.Camps/Services/**
   src/Sections/Humans.AuditLog/Services/**
   src/Sections/Humans.Budget/Services/BudgetService.cs
-  src/Humans.Application/Services/Users/AccountMergeService.cs
+  src/Sections/Humans.Users/Services/AccountMergeService.cs
   src/Sections/Humans.Surveys/Services/SurveyService.cs
   src/Sections/Humans.Agent/Services/AgentService.cs
   src/Sections/Humans.Events/Services/Service.cs
@@ -170,8 +170,9 @@ Adding a new section:
    only for single-object sections whose underlying entity doesn't exist for
    this user (for example, a profileless account has no `Profile`). The
    orchestrator drops only `null` slices from the export.
-3. Register the service in `InfrastructureServiceCollectionExtensions` using
-   the forwarding pattern:
+3. Register the forwarding factory in the owning section's own
+   `Section.Register` — it belongs beside the rest of that section's DI setup,
+   not in a shared registration file:
 
    ```csharp
    services.AddScoped<MyNewService>();
@@ -183,17 +184,28 @@ Adding a new section:
    `GdprExportDependencyInjectionTests.ExpectedContributorTypes` so the
    architecture test asserts the new contributor is accounted for.
 
-The architecture test fails the build if a new class implements
-`IUserDataContributor` in `Humans.Infrastructure` without being added to the
-expected list, and fails if an expected contributor isn't wired in DI — so the
-export can't silently drop a category.
+The architecture test scans `Humans.Web` (the host assembly, successor to the
+deleted `Humans.Infrastructure`) plus every section assembly via
+`SectionDiscoveryExtensions`, and fails the build if a new class implements
+`IUserDataContributor` there without being added to the expected list, and
+fails if an expected contributor isn't wired in DI — so the export can't
+silently drop a category.
 
 ## Right to deletion (Article 17)
 
-Out of scope for the current refactor but designed for. A future
-`IUserDataEraser` sibling interface will follow the same fan-out pattern for
-GDPR Article 17 right-to-deletion. Append-only entities per DESIGN_RULES §7
-(`consent_records`, `audit_log_entries`, `budget_audit_logs`,
-`camp_polygon_histories`, `application_state_histories`,
-`team_join_request_state_histories`) will not be deleted — foreign keys will be
-nulled or rewritten to a tombstone user.
+Implemented, but not through this fan-out — it's a separate orchestration
+owned by Users, not Gdpr (see `src/Sections/Humans.Gdpr/Docs/Gdpr.md`).
+`IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`)
+drives a 30-day grace period: on request it revokes team memberships and
+governance roles immediately, then the daily `ProcessAccountDeletionsJob`
+anonymizes the account once the grace period expires — cascading through
+Teams, governance roles, shift signups, and identity/profile data directly,
+rather than reusing `IUserDataContributor`, because deletion needs per-section
+side effects (revoke, cancel, anonymize) that export's read-only slice doesn't
+have. See `docs/guide/YourData.md` for the user-facing flow and
+`src/Sections/Humans.Users/Docs/Users.md` for the full cascade. Append-only
+entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
+`budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
+`team_join_request_state_history`) are not deleted — foreign keys are nulled
+or the row is re-pointed at the anonymized user rather than a separate
+tombstone user.

@@ -704,7 +704,7 @@ app.Use(async (context, next) =>
 {
     if (context.User.Identity?.IsAuthenticated == true
         && context.User.HasClaim(
-            System.Security.Claims.ClaimTypes.NameIdentifier,
+            ClaimTypes.NameIdentifier,
             Humans.Domain.Constants.SystemUserIds.GateTerminal.ToString()))
     {
         var path = context.Request.Path;

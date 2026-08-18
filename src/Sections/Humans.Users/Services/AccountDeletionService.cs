@@ -9,8 +9,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;

@@ -1,22 +1,8 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
-using Humans.Email.Contracts;
-using Humans.Notifications.Contracts;
-using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Infrastructure.Data;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using NSubstitute;
 using Humans.Users.Data;
 
 namespace Humans.Users.Tests.Services;

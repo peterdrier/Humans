@@ -2,8 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application;
-using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Models;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -11,7 +9,6 @@ using Humans.Teams.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Constants;
 using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Controllers;
 

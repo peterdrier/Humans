@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Shifts.Contracts;

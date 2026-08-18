@@ -1,18 +1,13 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Caching;
-using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
-using Humans.Domain.Enums;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
 

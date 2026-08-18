@@ -5,9 +5,8 @@ using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using TeamService = Humans.Teams.Services.TeamService;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
 /// What is left of the Teams §15 checks (issue #540). The read split is the subject:

@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -12,7 +11,6 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Surveys.Services;

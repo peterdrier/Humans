@@ -1,6 +1,5 @@
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Holded.Services;

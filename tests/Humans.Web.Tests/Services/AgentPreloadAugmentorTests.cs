@@ -3,8 +3,6 @@ using Humans.Application.Interfaces;
 using Humans.Agent.Contracts;
 using Humans.UI.Models;
 using Humans.Web.Services.Agent;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Web.Tests.Services;
 

@@ -67,7 +67,7 @@ internal static class GrandfatheredCheck
 
             var ruleIdArg = attr.ConstructorArguments[0];
             if (ruleIdArg.Value is string s &&
-                string.Equals(s, ruleId, System.StringComparison.Ordinal))
+                string.Equals(s, ruleId, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -116,13 +116,13 @@ internal static class GrandfatheredCheck
                 continue;
 
             if (args[0].Value is not string ruleIdValue ||
-                !string.Equals(ruleIdValue, ruleId, System.StringComparison.Ordinal))
+                !string.Equals(ruleIdValue, ruleId, StringComparison.Ordinal))
             {
                 continue;
             }
 
             var scopeValue = args.Length >= 5 ? args[4].Value as string : null;
-            if (scopeValue is not null && string.Equals(scopeValue, scope, System.StringComparison.Ordinal))
+            if (scopeValue is not null && string.Equals(scopeValue, scope, StringComparison.Ordinal))
                 return true;
         }
 

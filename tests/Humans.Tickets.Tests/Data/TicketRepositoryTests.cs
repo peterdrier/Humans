@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using Humans.Tickets.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

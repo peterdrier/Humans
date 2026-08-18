@@ -1,6 +1,5 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.Web.Extensions;
 using Microsoft.EntityFrameworkCore;

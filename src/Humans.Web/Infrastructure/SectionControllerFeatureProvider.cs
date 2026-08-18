@@ -1,7 +1,6 @@
 using System.Reflection;
 using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace Humans.Web.Infrastructure;

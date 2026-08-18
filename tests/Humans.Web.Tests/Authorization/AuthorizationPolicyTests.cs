@@ -1,14 +1,12 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -476,7 +474,7 @@ public class AuthorizationPolicyTests : IDisposable
     /// or dropped controller fails the test rather than quietly leaving the sweep.
     /// </summary>
     private static Type SectionType(string fullName) =>
-        Humans.Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(

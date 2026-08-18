@@ -9,8 +9,6 @@ using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-
-using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;

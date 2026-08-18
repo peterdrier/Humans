@@ -56,16 +56,18 @@ section's `Section.cs` (G5 lane 4b-2f, nobodies-collective/Humans#866) — it us
 Base behind `Humans.Web`'s `AddHoldedConnector`.
 
 **Why the leaf and not a `Contracts/` folder:** two consumers are outside the section —
-Expenses (`ExpenseReportService`) and Finance (`Service`) — and two more are in Base:
-`HoldedSyncJob` names `IHoldedNightlySync`, and `HoldedExpenseOutboxJob` reads
-`HoldedClientOptions.ApiKey`. A folder inside `Humans.Holded` would make Base reference a
-section and cycle.
+Expenses (`ExpenseReportService`, via `IHoldedClient.IsConfigured`) and Finance (`Service`).
+A folder inside `Humans.Holded` would make those sections reach into a section-internal
+folder and cycle.
 
-**Why the jobs stayed in Base:** Hangfire serializes the declaring type name of a scheduled
-job, so `HoldedSyncJob` and `HoldedExpenseOutboxJob` cannot move without stranding any run
-queued or retry-delayed across a deploy. `HoldedSyncJob` is now a shim; its body is
-`HoldedNightlySync` in this section behind `IHoldedNightlySync`. `HoldedExpenseOutboxJob`'s
-body is Expenses' and was left alone.
+**The jobs are not in Base.** The "Hangfire serializes the declaring type name" concern that
+used to keep `HoldedSyncJob` and `HoldedExpenseOutboxJob` in Base turned out to be false —
+`AddOrUpdate<T>(id, …)` is keyed on the job id, not the type — so both moved to their own
+section's `Jobs/` folder at G5 (lane 5b-5): `HoldedSyncJob` here, a shim over this section's
+own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` in `Humans.Expenses/Jobs/`, a shim over
+`IExpenseReportBackgroundProcessor`. Neither job references this section's connector types
+directly — Shell's roll-call still names the concrete classes for Hangfire scheduling, and
+each section registers its own job's DI.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's

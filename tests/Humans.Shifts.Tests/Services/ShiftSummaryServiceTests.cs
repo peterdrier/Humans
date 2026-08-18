@@ -1,6 +1,4 @@
-using Humans.Application;
 using Humans.Shifts.Domain;
-using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;

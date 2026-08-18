@@ -1,5 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;

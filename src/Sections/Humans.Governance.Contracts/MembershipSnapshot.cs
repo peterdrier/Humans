@@ -1,5 +1,3 @@
-using Humans.Domain.Enums;
-
 namespace Humans.Governance.Contracts;
 
 /// <summary>

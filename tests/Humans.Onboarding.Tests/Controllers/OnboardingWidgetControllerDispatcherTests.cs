@@ -1,12 +1,10 @@
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.UI;
 using Humans.Onboarding.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;

@@ -1,7 +1,5 @@
-using Humans.Application;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
-using Humans.Domain.Constants;
 using NodaTime;
 using Humans.Users.Contracts;
 

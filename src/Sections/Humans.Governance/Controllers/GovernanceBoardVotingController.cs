@@ -1,4 +1,3 @@
-using Humans.UI.Models.Tables;
 using Humans.Governance.Services;
 using Humans.Governance.Domain;
 using Humans.UI.Controllers;
@@ -6,9 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using Humans.Governance.Contracts;
-using Humans.Domain.Enums;
-using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;

@@ -1,13 +1,10 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 
 namespace Humans.Users.Data;

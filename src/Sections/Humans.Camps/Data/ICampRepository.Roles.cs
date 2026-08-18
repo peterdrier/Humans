@@ -1,5 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Camps.Data;

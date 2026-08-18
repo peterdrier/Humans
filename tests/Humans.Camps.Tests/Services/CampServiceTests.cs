@@ -1,17 +1,12 @@
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Camps.Services;
-using Humans.Camps.Tests.Infrastructure;
 using Humans.Domain.Enums;
-using Humans.Camps.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;

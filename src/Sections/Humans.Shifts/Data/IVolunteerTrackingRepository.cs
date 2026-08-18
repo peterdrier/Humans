@@ -1,7 +1,5 @@
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Shifts.Data;
-
 using Humans.Application.Interfaces.Repositories;
 
 namespace Humans.Shifts.Data;

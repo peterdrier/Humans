@@ -1,11 +1,8 @@
 using AwesomeAssertions;
-using Humans.Consent.Contracts;
-using Humans.Consent.Services;
 using Humans.Consent.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Domain.Enums;
 using Humans.Consent.Data;
 
 namespace Humans.Consent.Tests.Data;

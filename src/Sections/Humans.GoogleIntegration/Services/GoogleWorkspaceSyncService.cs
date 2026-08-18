@@ -1,19 +1,13 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Configuration;
-using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
 

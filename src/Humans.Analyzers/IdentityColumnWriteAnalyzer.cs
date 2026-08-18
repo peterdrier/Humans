@@ -37,7 +37,7 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> ForbiddenSetters =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "Email",
             "NormalizedEmail",
             "EmailConfirmed",

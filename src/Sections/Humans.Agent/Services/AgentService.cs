@@ -1,13 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text;
-using Humans.Application.Configuration;
-using Humans.Application.Constants;
-using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Agent.Domain;

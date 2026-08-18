@@ -2,11 +2,9 @@ using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Application.Interfaces.Caching;
 using Humans.Teams.Contracts;
-using Humans.Teams.Services;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Users.Contracts;
 

@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
-
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Data.Configurations;
 

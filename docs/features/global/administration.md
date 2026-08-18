@@ -1,16 +1,16 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
-  src/Humans.Web/Controllers/UsersAdminController.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.UI/Authorization/PolicyNames.cs
+  src/Sections/Humans.Users/Controllers/UsersAdminAccountMergesController.cs
+  src/Sections/Humans.Users/Controllers/UsersAdminController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Humans.Interfaces/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
   src/Sections/Humans.Governance/Views/Governance/**
-  src/Humans.Domain/Constants/RoleNames.cs
-  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Interfaces/Constants/RoleNames.cs
+  src/Humans.Interfaces/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   Admin/Profile/Google route tables, role catalog, dashboard metrics, and the Board-vs-Admin role split — review when admin-area controllers, role names, or authorization policies change.
@@ -125,9 +125,9 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | GET: AJAX preview drift |
 | `/Google/Sync/Execute/{resourceId}` | Admin | POST: Sync one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
-| `/Monitor/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
-| `/Monitor/Resource/{id}` | Board, Admin | GET: Per-resource sync audit log |
-| `/Monitor/Human/{id}` | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
+| `/Monitor/CheckDriveActivity` (`MonitorController`, not `GoogleController` — nobodies-collective/Humans#866) | Board, Admin | POST: Manual Drive Activity check |
+| `/Monitor/Resource/{id}` (`MonitorController`) | Board, Admin | GET: Per-resource sync audit log |
+| `/Monitor/Human/{id}` (`MonitorController`) | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
 | `/Google/Human/{id}/ProvisionEmail` | Admin | POST: Provision @nobodies.team email |
 | `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
 | `/Google/Accounts/Provision` | Admin | POST: Provision account |
@@ -136,9 +136,10 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Accounts/ResetPassword` | Admin | POST: Reset password |
 | `/Google/Accounts/Link` | Admin | POST: Link existing account |
 | `/Google/LinkGroupToTeam` | Admin | POST: Link group to team |
-| `/Google/CheckEmailMismatches` | Admin | POST: Check email mismatches |
-| `/Google/EmailBackfillReview` | HumanAdmin, Admin | GET: Review email backfill |
-| `/Google/ApplyEmailBackfill` | Admin | POST: Apply email backfill |
+| `/Google/CheckEmailRenames` | Admin | POST: Detect Google-side email renames |
+| `/Google/EmailRenames` | Admin | GET: Display the last detected email-rename results |
+| `/Google/EmailFlagViolations` | Admin | GET: List users whose email flags (primary/Google/verified) are inconsistent |
+| `/Google/SyncOutbox` | Admin | GET: View the last 200 Google sync outbox events |
 | `/Google/SyncOutbox/{id}/Requeue` | Admin | POST: Requeue a single failed sync outbox event |
 | `/Google/SyncOutbox/RequeueAll` | Admin | POST: Requeue all permanently-failed sync outbox events |
 | `/Google/Human/{id}/RerunSync` | Admin | POST: Enqueue Google sync for all of a user's teams |
@@ -202,7 +203,7 @@ public sealed record AdminDashboardViewModel(
     decimal ExpenseTotalEur);
 ```
 
-`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
+`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), the active event from `IBurnSettingsService.GetActiveAsync`, shift coverage from `IShiftManagementServiceRead.GetOverallCoverageAsync`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
 
 ## Member Management
 
@@ -356,10 +357,11 @@ The app uses both role-based `[Authorize(Roles = "...")]` attributes (on control
 Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and `[Authorize(Roles = "...")]` work correctly based on temporal role assignments.
 
 ### Role Assignment Authorization
+Resource-based: `UsersAdminController.AddRole`/`EndRole` call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)`, evaluated by `RoleAssignmentAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
 - **Admin** can assign/end any role
-- **Board** (non-Admin) can assign/end: Board, ConsentCoordinator, VolunteerCoordinator (not Admin)
-- **HumanAdmin** actions use `HumanAdminBoardOrAdmin` role group
-- Attempting to assign a role outside your permissions returns 403 Forbidden
+- **Board** or **HumanAdmin** can assign/end any role in `RoleNames.BoardManageableRoles` — Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EETeamAdmin, ConsentCoordinator, VolunteerCoordinator (not Admin)
+- Everyone else is denied
+- Attempting to assign a role outside your permissions returns 403 Forbidden; ending one outside your permissions returns 404 (the row is treated as not found rather than as a permissions error)
 
 ### Hangfire Dashboard
 - Restricted to **Admin** role only via `HangfireAuthorizationFilter`

@@ -1,7 +1,3 @@
-using Humans.Application;
-using Humans.Application.Constants;
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Humans.Agent.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Agent.Domain;

@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Architecture;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;

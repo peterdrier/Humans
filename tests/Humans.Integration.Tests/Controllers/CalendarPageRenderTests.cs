@@ -1,4 +1,3 @@
-using Humans.Teams.Domain;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;

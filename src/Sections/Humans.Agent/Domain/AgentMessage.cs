@@ -1,6 +1,5 @@
 using NodaTime;
 using Humans.Domain.Attributes;
-using Humans.Domain.Enums;
 
 namespace Humans.Agent.Domain;
 

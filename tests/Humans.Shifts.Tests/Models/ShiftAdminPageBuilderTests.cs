@@ -1,6 +1,5 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;

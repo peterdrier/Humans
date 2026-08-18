@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Budget.Contracts;
@@ -13,9 +12,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
-using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
-using Humans.Tickets.Services.Stores;
 
 namespace Humans.Tickets.Services;
 

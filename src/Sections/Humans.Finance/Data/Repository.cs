@@ -1,4 +1,3 @@
-using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

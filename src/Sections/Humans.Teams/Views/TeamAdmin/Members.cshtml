@@ -1,7 +1,3 @@
-@using Humans.Teams.Contracts
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
-@using Microsoft.AspNetCore.Html
 @model Humans.Teams.Models.TeamMembersViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["TeamAdminMembers_Title"].Value, Model.TeamName);
@@ -107,9 +103,9 @@
             <span class="badge bg-warning">@Model.PendingRequests.Count</span>
         </div>
         @{
-        Func<Humans.Teams.Models.TeamJoinRequestViewModel, IHtmlContent> pendingApplicantCell =
+        Func<TeamJoinRequestViewModel, IHtmlContent> pendingApplicantCell =
             @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="32" /></text>;
-        Func<Humans.Teams.Models.TeamJoinRequestViewModel, IHtmlContent> pendingMessageCell = @<text>
+        Func<TeamJoinRequestViewModel, IHtmlContent> pendingMessageCell = @<text>
             @if (!string.IsNullOrEmpty(item.Message))
             {
                 <span style="white-space: pre-wrap;">@item.Message</span>
@@ -119,7 +115,7 @@
                 <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
             }
         </text>;
-        Func<Humans.Teams.Models.TeamJoinRequestViewModel, IHtmlContent> pendingActionsCell = @<text>
+        Func<TeamJoinRequestViewModel, IHtmlContent> pendingActionsCell = @<text>
             <div class="d-flex gap-1">
                 <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@item.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()

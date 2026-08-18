@@ -1,12 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application;
-using Humans.Users.Data.Repositories;
-using Humans.Domain;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Users.Data.Repositories;
 

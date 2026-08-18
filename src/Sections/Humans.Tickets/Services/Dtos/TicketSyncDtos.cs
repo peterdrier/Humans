@@ -1,7 +1,5 @@
-using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Services;
 
 namespace Humans.Tickets.Services.Dtos;
 

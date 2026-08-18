@@ -36,12 +36,12 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> UserEmailForbiddenMembers =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "IsOAuth",
             "DisplayOrder");
 
     private static readonly ImmutableHashSet<string> UserForbiddenMembers =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "GoogleEmail",
             "GetGoogleServiceEmail");
 

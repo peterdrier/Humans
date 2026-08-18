@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -10,8 +9,6 @@ using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
-
-using Humans.Teams.Contracts;
 
 namespace Humans.Governance;
 

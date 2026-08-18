@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Data;
-using Microsoft.EntityFrameworkCore;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
 
 namespace Humans.Feedback.Tests.Architecture;

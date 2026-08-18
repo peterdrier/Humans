@@ -2,8 +2,6 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
-using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
@@ -11,7 +9,6 @@ using Humans.Expenses.Authorization;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Expenses.Controllers;

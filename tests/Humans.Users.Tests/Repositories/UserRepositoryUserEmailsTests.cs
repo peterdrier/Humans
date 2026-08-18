@@ -1,14 +1,11 @@
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Users.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
-using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Repositories;
 

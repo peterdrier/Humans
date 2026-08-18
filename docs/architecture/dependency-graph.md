@@ -51,6 +51,7 @@ graph LR
     classDef icalfeed fill:#38bdf8,color:#000
     classDef gate fill:#b45309,color:#fff
     classDef holded fill:#ca8a04,color:#fff
+    classDef guide fill:#65a30d,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -169,6 +170,7 @@ graph LR
     SysSettings[SystemSettingsService]:::systemsettings
     ICalFeed[ICalFeedService]:::icalfeed
     GTrans[GoogleTranslationService]:::google
+    Guide[GuideRoleResolver]:::guide
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -572,6 +574,13 @@ graph LR
     %% (pause flag) and DriveActivityMonitorService (last-run marker); GSyncOutbox is the
     %% transactional-outbox owner written by TeamService on membership/role changes (lazy edge below).
 
+    %% ── Guide (in-app docs, landed #1269 2026-08-12 — missing from every prior sweep) ──
+    %% GuideContentService (rendering/caching) has no cross-section deps — its only
+    %% collaborators (IGuideContentSource, IGuideRenderer) are Guide-internal or Base.
+    %% GuideRoleResolver is the one cross-section consumer: it reads ITeamServiceRead to
+    %% resolve whether the current user is a team Coordinator (role-gated guide sections).
+    Guide --> Team
+
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) —
     %% break DI cycles
@@ -603,13 +612,15 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 290 eager links, indices 0..289. (+1 vs prior sweep — coverage-verify audit
-    %% (2026-08-13) found CampaignService's missing ITicketDiscountCodes/TicketVendorGateway edge;
-    %% the 2026-08-13 freshness sweep itself had verified the Teams/Tickets G5 batch #3 move
-    %% (PR #1280) against every moved service's ctor and found no edge changes there;
-    %% see the "G5 batch #3" note below.)
-    %% The 20 lazy edges are indices 290..309. (unchanged count vs prior sweep.)
-    linkStyle 290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 291 eager links, indices 0..290. (+1 vs prior sweep — this sweep found the
+    %% Guide section (landed #1269, 2026-08-12) was missing entirely: GuideRoleResolver's
+    %% Guide --> Team edge, dropped by every sweep since it landed. Diffing the anchor commit
+    %% against upstream/main otherwise found zero service→service edge changes — the 50 commits
+    %% since the last sweep were DTO field additions, a UI enum-badge registry, and DI-registration
+    %% relocations (ActiveTeamsCacheInvalidator, ISystemTeamSync into Teams' own Section.cs) with
+    %% no new cross-section calls.)
+    %% The 20 lazy edges are indices 291..310. (unchanged count vs prior sweep.)
+    linkStyle 291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309,310 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -643,7 +654,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 |---------|-----------------:|----------------:|-------|
 | `UserService` | 60 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `GateService` added as a new eager consumer (#1066); `ExternalLoginService` added as a new eager consumer (#857). |
 | `AuditLogService` | 36 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
-| `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
+| `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. `GuideRoleResolver` added this sweep (found missing since Guide landed, #1269). |
 | `UserEmailService` | 22 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. `ExternalLoginService` added as a new eager consumer (#857). |
 | `ShiftManagementService` | 16 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). Recent eager consumers: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`, `OnboardingWidgetState`, `GateService` (current gate-roster lookups, #1066). |
 | `IEmailService` | 14 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
@@ -675,6 +686,7 @@ Below the >= 3 threshold but tracked for narrative continuity:
 
 ## Notes on architectural follow-ups
 
+- **Guide section (PR #1269, 2026-08-12) — found missing this sweep.** `src/Sections/Humans.Guide` (in-app docs rendered from GitHub markdown, memory-cached, role-filtered) landed before the prior graph sweep's anchor but was never added — its Section.cs registers no `AddGuideSection` call in Shell for the freshness trigger globs to catch, and no prior sweep's manual walk caught it either. `GuideContentService` (rendering/caching) has zero cross-section service deps — its `IGuideContentSource` connector lives in Base, consumed by three sections besides Guide. `GuideRoleResolver` is the one real cross-section consumer: it injects `ITeamServiceRead` to resolve team-Coordinator status for role-gated guide sections (new eager `Guide --> Team` edge). Verified this sweep by diffing the graph's last-touched commit against `upstream/main` for every trigger glob: this was the only edge-relevant gap found — the rest of the 50-commit window was DTO fields, a UI enum-badge registry, and DI-registration relocations with no new service-to-service calls.
 - **#568** — OnboardingService cycle removed: `ProfileService` no longer injects `IOnboardingService`, so `Onboard → Prof` is gone entirely now that `ProfileService` is picture-only.
 - **#685** — ProfileService decomposition complete: `ProfileService` is now `IProfilePictureService` only (picture upload/delete). The fat-service responsibilities moved to `UserService` (profile reads/writes via `SaveProfileAsync`), `ProfileEditorService` (top-level write orchestration), and `ContactFieldService`. No section now needs `IProfileService` — every former call site moved to `IUserService`/`IUserServiceRead` or `IProfileEditorService`.
 - **#744** — ticket-read-service / read-split: cross-section ticket consumers now go through `ITicketServiceRead` (not `ITicketQueryService` directly), matching the broader `I<Section>ServiceRead` boundary (`IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `IConsentServiceRead`). These read interfaces are what drove `UserService`/`TeamService`/`CampService` fan-in upward.

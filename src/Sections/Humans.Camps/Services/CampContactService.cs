@@ -1,11 +1,8 @@
 using System.Text.RegularExpressions;
-using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Camps.Services;
 

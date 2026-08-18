@@ -1,6 +1,5 @@
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;

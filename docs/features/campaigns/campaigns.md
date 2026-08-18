@@ -1,8 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
   src/Sections/Humans.Campaigns.Contracts/**
-  src/Humans.Application/Services/Users/UnsubscribeService.cs
-  src/Humans.Web/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Users/Services/UnsubscribeService.cs
+  src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
 -->
 <!-- freshness:flag-on-change
   Campaign workflow, wave-send eligibility, unsubscribe behavior, or self-service code lookup may have shifted; verify states/routes/auth still match.

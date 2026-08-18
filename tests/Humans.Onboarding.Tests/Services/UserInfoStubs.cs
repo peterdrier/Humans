@@ -1,4 +1,3 @@
-using Humans.Application;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -45,7 +44,7 @@ internal static class UserInfoStubs
                 BurnerName = displayName,
                 CreatedAt = SystemClock.Instance.GetCurrentInstant(),
                 UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-                State = Humans.Users.Contracts.ProfileState.Active,
+                State = ProfileState.Active,
                 IsApproved = true,
             },
             [],

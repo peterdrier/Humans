@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Tests.Architecture.Rules;
@@ -115,7 +114,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     /// section type from this project rather than two.
     /// </summary>
     private static Type SectionType(string fullName) =>
-        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(

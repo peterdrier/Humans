@@ -10,7 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 

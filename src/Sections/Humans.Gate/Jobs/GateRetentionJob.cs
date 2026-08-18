@@ -2,7 +2,6 @@ using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Gate.Contracts;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Gate.Jobs;

@@ -3,12 +3,9 @@ using Humans.Shifts.Domain;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
-using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.UI.Constants;
 using Humans.Shifts.Controllers;
@@ -53,7 +50,7 @@ public class VolunteerTrackingControllerTests
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IVolunteerTrackingExportService _exportService =
         Substitute.For<IVolunteerTrackingExportService>();
-    private readonly Humans.Shifts.Models.VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
+    private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer =

@@ -1,13 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Tickets.Contracts;
-using Humans.Teams.Domain;
-using Humans.Domain.Enums;
 using Humans.Teams.Controllers;
-using NodaTime;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
+using NodaTime;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerTicketLookupTests
 {

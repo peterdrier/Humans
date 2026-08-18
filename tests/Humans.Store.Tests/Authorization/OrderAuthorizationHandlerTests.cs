@@ -1,5 +1,4 @@
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;

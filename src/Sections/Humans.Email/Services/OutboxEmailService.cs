@@ -5,7 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Email.Services;

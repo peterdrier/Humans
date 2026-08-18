@@ -1,13 +1,11 @@
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
-using Humans.Camps.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,9 +1,7 @@
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services.Dtos;
-using Humans.Calendar.Services;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 

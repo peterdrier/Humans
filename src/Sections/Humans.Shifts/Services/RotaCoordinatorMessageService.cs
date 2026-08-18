@@ -1,16 +1,11 @@
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Shifts.Data;
-using Humans.Application;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;

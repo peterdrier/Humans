@@ -2,16 +2,18 @@
   src/Sections/Humans.Events/Services/CachingEventService.cs
   src/Sections/Humans.Events/Section.cs
   src/Sections/Humans.Search/**
-  src/Humans.Application/DTOs/SectionSearchHits.cs
-  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
+  src/Sections/Humans.Users/Data/CachingUserService.cs
   src/Sections/Humans.Teams/**
-  src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
-  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
-  src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
-  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
-  src/Humans.Web/Controllers/CampController.cs
-  src/Humans.Web/Controllers/ShiftsController.cs
-  src/Humans.Web/Models/Shifts/ShiftBrowsePageBuilder.cs
+  src/Sections/Humans.Camps/Services/CachingCampService.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
+  src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
+  src/Sections/Humans.Camps/Controllers/CampController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
+  src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
+  src/Sections/Humans.Camps.Contracts/CampSearchHit.cs
+  src/Sections/Humans.Shifts.Contracts/IShiftManagementServiceRead.cs
+  src/Sections/Humans.Teams.Contracts/TeamSearchHit.cs
 -->
 <!-- freshness:flag-on-change
   Search scope (which fields are searched per section), the authorization model (role-blind on both paths; public-only on text queries), the US-GS.4 GUID exception, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
@@ -134,7 +136,7 @@ SearchController
          └── IEventServiceRead.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
 ```
 
-Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. **Events is cache-backed too:** `IEventServiceRead` is registered as the `CachingEventService` singleton (`EventsSectionExtensions.cs:48`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. **Events is cache-backed too:** `IEventServiceRead` is registered as the `CachingEventService` singleton (`Section.cs:55`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
 The orchestrator scores each non-human hit by name-match strength (humans arrive pre-scored by `PersonSearchMatcher`, which adds tiers for token-prefix and non-name-field matches):
 

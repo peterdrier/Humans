@@ -1,5 +1,4 @@
 using Humans.Auth.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Services;

@@ -16,10 +16,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
 using Humans.UI;
-using Humans.Web.Controllers;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -517,7 +514,7 @@ public class ProfileControllerEditTests
                 AllergyOtherText = "Mango",
             }));
 
-        var result = await _controller.Edit(ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.Edit(ct: TestContext.Current.CancellationToken);
 
         var viewModel = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<ProfileViewModel>().Subject;

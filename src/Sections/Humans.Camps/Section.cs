@@ -1,11 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Camps.Authorization;
-using Humans.Camps.Data;
-using Humans.Camps.Models;
-using Humans.Camps.Services;
 using Humans.CityPlanning.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;

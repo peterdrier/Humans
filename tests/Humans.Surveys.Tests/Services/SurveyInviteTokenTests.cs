@@ -1,4 +1,3 @@
-using Humans.Surveys.Domain;
 using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.DataProtection;

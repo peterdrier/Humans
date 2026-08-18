@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Humans.Domain.Enums;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Finance.Data;

@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Application/Services/Profiles/PersonSearchFields.cs
-  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
-  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
-  src/Humans.UI/Models/SearchResponseModels.cs
-  src/Humans.Web/Views/Profile/Edit.cshtml
+  src/Sections/Humans.Users/Controllers/ProfileApiController.cs
+  src/Sections/Humans.Users.Contracts/PersonSearchFields.cs
+  src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
+  src/Sections/Humans.Users/Data/CachingUserService.cs
+  src/Humans.Interfaces/Models/SearchResponseModels.cs
+  src/Sections/Humans.Users/Views/Profile/Edit.cshtml
 -->
 <!-- freshness:flag-on-change
   Exact-match semantics (accent-/case-folded full-string equality), the self/rejected/tombstone exclusion set, or the burner-name-count endpoint contract — review when any of these shift.
@@ -100,6 +100,6 @@ five locale siblings (es/ca/fr/de/it).
 
 ## Related
 
-- [`docs/sections/Profiles.md`](../../sections/Profiles.md) — Profile section invariants.
+- [`docs/sections/Profiles.md`](../../../src/Sections/Humans.Users/Docs/Users.md) — Profile section invariants.
 - [`docs/features/profiles/profile-search-detail.md`](profile-search-detail.md) — the person-search endpoint and matcher this feature extends.
 - [`memory/code/search-endpoint-response-shape.md`](../../../memory/code/search-endpoint-response-shape.md) — typed search/JSON responses.

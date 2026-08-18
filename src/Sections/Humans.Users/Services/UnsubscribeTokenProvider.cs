@@ -1,11 +1,8 @@
 using System.Net;
 using System.Security.Cryptography;
-using Humans.Users.Services;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Users.Services;

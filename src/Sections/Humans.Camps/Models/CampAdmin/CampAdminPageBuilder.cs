@@ -1,5 +1,4 @@
 using Humans.CityPlanning.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Camps.Models;
 

@@ -1,9 +1,6 @@
-using Humans.Auth.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Auth.Domain;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Auth.Data;
 

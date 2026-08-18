@@ -1,8 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Teams.Contracts;
@@ -11,7 +9,6 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

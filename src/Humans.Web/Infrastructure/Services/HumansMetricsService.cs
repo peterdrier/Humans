@@ -1,12 +1,8 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Diagnostics.Metrics;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Consent.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;

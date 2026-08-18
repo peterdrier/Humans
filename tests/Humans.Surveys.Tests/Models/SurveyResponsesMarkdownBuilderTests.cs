@@ -1,7 +1,6 @@
 using Humans.Surveys.Domain;
 using AwesomeAssertions;
 using Humans.Surveys.Services;
-using Humans.Domain.Enums;
 using Humans.Surveys.Models;
 using NodaTime;
 

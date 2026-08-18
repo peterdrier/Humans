@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;

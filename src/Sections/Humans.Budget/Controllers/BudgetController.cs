@@ -1,4 +1,3 @@
-using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;

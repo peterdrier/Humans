@@ -1,8 +1,5 @@
-using Humans.UI.Helpers;
 using NodaTime;
 using Humans.Application.Extensions;
-using Humans.Domain.Enums;
-
 using Humans.UI.ViewComponents;
 using Humans.Users.Contracts;
 

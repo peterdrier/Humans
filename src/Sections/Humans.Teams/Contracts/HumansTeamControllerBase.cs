@@ -1,5 +1,3 @@
-using Humans.Application;
-using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.Teams.Authorization;

@@ -1,10 +1,6 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Humans.Agent.Domain;
-using Humans.Agent.Services;
 
 namespace Humans.Agent.Services.Preload;
 

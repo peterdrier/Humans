@@ -1,12 +1,9 @@
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 using Humans.UI.Models;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
-using Humans.Tickets.Services;
-using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Models;
 

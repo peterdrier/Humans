@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

@@ -2,8 +2,6 @@ using Humans.Auth.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Data;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Users.Services.UserService;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Architecture;
 
@@ -78,7 +75,7 @@ public class UserArchitectureTests
         var typesToScan = new[]
         {
             typeof(IUserEmailService),
-            typeof(Humans.Users.Data.Repositories.UserRepository),
+            typeof(UserRepository),
             typeof(IUserRepository),
         };
 
@@ -149,7 +146,7 @@ public class UserArchitectureTests
     [HumansFact]
     public void User_HasNoCrossDomainNavigationProperties()
     {
-        var userType = typeof(Humans.Users.Contracts.User);
+        var userType = typeof(User);
         var declaredProps = userType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(p => p.Name)

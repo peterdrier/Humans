@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Humans.Application.Interfaces;
-using Microsoft.Extensions.Hosting;
 
 namespace Humans.Infrastructure.Services;
 

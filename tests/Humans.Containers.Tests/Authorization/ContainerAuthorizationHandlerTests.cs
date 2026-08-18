@@ -1,16 +1,16 @@
-using Humans.Containers.Authorization;
-using Humans.Containers.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Containers.Authorization;
+using Humans.Containers.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Containers.Tests;
+namespace Humans.Containers.Tests.Authorization;
 
 public sealed class ContainerAuthorizationHandlerTests
 {

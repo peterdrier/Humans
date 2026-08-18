@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
 using Microsoft.AspNetCore.Authorization;

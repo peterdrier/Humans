@@ -6,8 +6,8 @@
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs
-  src/Humans.Domain/Constants/SystemTeamIds.cs
-  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Interfaces/Constants/SystemTeamIds.cs
+  src/Humans.Interfaces/Constants/RoleNames.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change

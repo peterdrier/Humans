@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Enums;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 

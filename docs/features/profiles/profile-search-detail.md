@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.UI/Models/SearchResponseModels.cs
-  src/Humans.UI/Views/Shared/Components/HumanSearch/Default.cshtml
-  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
-  src/Humans.Application/DTOs/ProfileSearchResults.cs
-  src/Humans.Application/Services/Profiles/ContactFieldService.cs
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
+  src/Sections/Humans.Users/Controllers/ProfileApiController.cs
+  src/Humans.Interfaces/Models/SearchResponseModels.cs
+  src/Humans.Interfaces/Views/Shared/Components/HumanSearch/Default.cshtml
+  src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
+  src/Sections/Humans.Users.Contracts/HumanSearchResult.cs
+  src/Sections/Humans.Users/Services/ContactFieldService.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
 -->
 <!-- freshness:flag-on-change
   Detail priority order, avatar visibility rule, or the viewer-access ladder used by ContactFieldService / UserEmailService — review when any of these shift.
@@ -50,14 +50,14 @@ No new entities. Reads from:
 - `ContactField` rows (visibility-filtered).
 - `RoleAssignment` (board check is upstream of the visibility ladder, not surfaced here directly).
 
-`HumanSearchResult` (the service-returned DTO) carries `ProfileId` alongside `UserId` so the controller can drive `IContactFieldService.GetVisibleContactFieldsAsync` (which keys by profile id) without a separate `GetByUserIdsAsync` round-trip.
+`HumanSearchResult` (the service-returned DTO) carries `ProfileId` alongside `UserId`. `IContactFieldService.GetVisibleContactFieldsAsync` now keys by `userId` directly, reading from the cached `UserInfo` projection, so the controller does not need `ProfileId` to drive it.
 
 ## Detail Priority Order
 
-For each result row, the controller calls `GetSharedDetailAsync(userId, profileId, viewerUserId, ct)` and returns the first non-empty value:
+For each result row, the controller calls `GetSharedDetailAsync(userId, viewerUserId, ct)` and returns the first non-empty value:
 
 1. **Highest-priority viewer-visible email** from `IUserEmailService.GetVisibleEmailsAsync(userId, accessLevel)`. Ordered: `IsPrimary` first, then alphabetical.
-2. **Highest-priority viewer-visible contact field** from `IContactFieldService.GetVisibleContactFieldsAsync(profileId, viewerUserId)`. Ordered by type:
+2. **Highest-priority viewer-visible contact field** from `IContactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId)`. Ordered by type:
    1. `Phone`
    2. `Signal`
    3. `Telegram`
@@ -81,7 +81,7 @@ Viewer-visibility is delegated to the existing `IContactFieldService.GetViewerAc
 | Shared team with target | `MyTeams` |
 | None of the above | `AllActiveProfiles` |
 
-`GetVisibleEmailsAsync` and `GetVisibleContactFieldsAsync` then filter rows whose `Visibility` is within the viewer's access level. Rows whose `Visibility` is `null` (explicitly private) are always excluded — including from self.
+`GetVisibleEmailsAsync` and `GetVisibleContactFieldsAsync` then filter rows whose `Visibility` is within the viewer's access level. `ContactFieldVisibility` has no private/null tier — `BoardOnly` is the most restrictive level, and self/board viewers always resolve to at least `BoardOnly`, so a field can never be hidden from its own owner.
 
 This is the same ladder used by `ProfileCardViewComponent` for the canonical profile page, so the picker row never reveals more than the click-through card would.
 

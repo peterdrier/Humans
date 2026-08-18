@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -12,8 +11,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests;
@@ -870,7 +867,7 @@ public sealed class GoogleGroupSyncServiceTests
     private static TeamInfo MakeTeamInfo(Guid id, string name, string slug, string? googleGroupPrefix = null) =>
         new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
             SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-            IsPromotedToDirectory: false, NodaTime.SystemClock.Instance.GetCurrentInstant(), [],
+            IsPromotedToDirectory: false, SystemClock.Instance.GetCurrentInstant(), [],
             GoogleGroupPrefix: googleGroupPrefix);
 
 }

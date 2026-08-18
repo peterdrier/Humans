@@ -1,5 +1,3 @@
-using Humans.Agent.Services.Stores;
-using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Agent.Domain;
 

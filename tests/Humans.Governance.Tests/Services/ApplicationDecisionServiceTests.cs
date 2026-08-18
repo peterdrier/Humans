@@ -1,10 +1,8 @@
 using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
-using Humans.Testing;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.AuditLog.Contracts;
-using Humans.Application;
 using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +13,6 @@ using NSubstitute;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Governance.Services;
-using Humans.Domain;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Email.Contracts;

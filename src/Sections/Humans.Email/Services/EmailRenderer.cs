@@ -1,10 +1,8 @@
 using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Humans.Events.Contracts;

@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.EarlyEntry.Contracts;
-using Humans.Domain.Enums;
 using Humans.EarlyEntry.Controllers;
 using Humans.EarlyEntry.Models;
 using Microsoft.AspNetCore.Http;

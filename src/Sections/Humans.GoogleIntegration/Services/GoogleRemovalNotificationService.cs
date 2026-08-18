@@ -1,11 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 

@@ -8,7 +8,6 @@ using System.Text.Json.Nodes;
 using Humans.Application.Extensions;
 using Humans.Domain.Helpers;
 using Humans.Holded.Contracts;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
@@ -89,7 +88,7 @@ internal sealed class HoldedClient : IHoldedClient
         using var content = new MultipartFormDataContent();
         var streamContent = new StreamContent(attachment.Content);
         streamContent.Headers.ContentType =
-            new System.Net.Http.Headers.MediaTypeHeaderValue(attachment.ContentType);
+            new MediaTypeHeaderValue(attachment.ContentType);
         content.Add(streamContent, "file", attachment.FileName);
 
         using var req = new HttpRequestMessage(HttpMethod.Post,

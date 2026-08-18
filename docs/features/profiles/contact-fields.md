@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/ContactFieldService.cs
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Views/Profile/Emails.cshtml
-  src/Humans.Domain/Entities/ContactField.cs
-  src/Humans.Domain/Entities/UserEmail.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Sections/Humans.Users/Services/ContactFieldService.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.Users.Contracts/ContactField.cs
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
   ContactField visibility model, UserEmail entity, per-field access logic, and Profile/Emails routes — review when ContactFieldService, UserEmailService, or related entities change.
@@ -122,7 +122,9 @@ GetViewerAccessLevel(ownerUserId, viewerUserId):
 
   3. Any coordinator (of any team) → CoordinatorsAndBoard
 
-  4. Shares team with owner → MyTeams
+  4. Shares a non-Volunteers team with owner → MyTeams
+     (the auto-assigned Volunteers team doesn't count — otherwise every
+     active member would qualify for MyTeams)
 
   5. Active member → AllActiveProfiles only
 ```
@@ -152,7 +154,7 @@ Carol (coordinator of Art team) views Bob's profile:
 - Cannot see: Fields with BoardOnly visibility
 
 ### Scenario 3: Teammate Viewing
-Dave (member of same team as Bob) views Bob's profile:
+Dave (member of the same non-Volunteers team as Bob) views Bob's profile:
 - Access level: MyTeams (2)
 - Sees: Fields with visibility MyTeams or AllActiveProfiles
 - Cannot see: Fields with BoardOnly or CoordinatorsAndBoard visibility
@@ -192,7 +194,7 @@ Eve (active member, no shared teams) views Bob's profile:
 
 ```csharp
 IContactFieldService
-├── GetVisibleContactFieldsAsync(profileId, viewerUserId)
+├── GetVisibleContactFieldsAsync(userId, viewerUserId)
 │   → Returns fields filtered by viewer's access level
 ├── GetAllContactFieldsAsync(profileId)
 │   → Returns all fields for editing (owner only)
@@ -266,8 +268,9 @@ IUserEmailService
 │   → Emails visible on profile based on viewer access
 ├── AddEmailAsync(userId, email)
 │   → Adds new email and returns verification token
-├── VerifyEmailAsync(userId, token)
-│   → Verifies email, returns verified address
+├── VerifyEmailAsync(userId, emailId, token)
+│   → Verifies email, returns verified address (emailId disambiguates when
+│     the user has multiple pending rows)
 ├── SetPrimaryAsync(userId, emailId)
 │   → Sets which verified email receives notifications
 ├── SetVisibilityAsync(userId, emailId, visibility)

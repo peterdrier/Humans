@@ -2,8 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NodaTime;
-using Humans.Domain.Enums;
-using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Data.Configurations;
 

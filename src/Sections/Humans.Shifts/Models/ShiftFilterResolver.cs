@@ -1,5 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Shifts.Models;

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -14,7 +13,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using CampaignServiceImpl = Humans.Campaigns.Services.CampaignService;
 
 namespace Humans.Campaigns.Tests.Services;

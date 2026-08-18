@@ -3,7 +3,7 @@ using Humans.Domain.Enums;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Camps.Tests.Entities;
+namespace Humans.Camps.Tests.Domain;
 
 public class CampSeasonTests
 {

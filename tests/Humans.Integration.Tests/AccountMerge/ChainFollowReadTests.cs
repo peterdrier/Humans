@@ -1,25 +1,17 @@
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
-using Humans.AuditLog.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
-using Humans.Consent.Domain;
-using Humans.Consent.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

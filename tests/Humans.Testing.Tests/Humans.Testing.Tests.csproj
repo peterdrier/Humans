@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests for the Humans.Testing harness library: the HumansFact/HumansTheory
+    attribute smoke tests and the timeout demo. The Humans.Testing reference
+    comes from tests/Directory.Build.props like every other test project.
+  -->
+
+</Project>

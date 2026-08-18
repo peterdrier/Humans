@@ -1,14 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 

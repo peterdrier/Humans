@@ -4,7 +4,6 @@ using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Calendar.Tests;
 

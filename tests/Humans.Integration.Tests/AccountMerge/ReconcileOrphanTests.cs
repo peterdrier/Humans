@@ -2,8 +2,6 @@ using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

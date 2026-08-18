@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using NodaTime;
-using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;

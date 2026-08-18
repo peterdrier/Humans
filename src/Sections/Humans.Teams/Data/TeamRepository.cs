@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 

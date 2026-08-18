@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Contracts;
 
@@ -81,7 +80,7 @@ public interface IAuditViewerService : IApplicationService
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions,
+        IReadOnlyList<AuditAction>? actions,
         int limit,
         CancellationToken ct = default);
 }

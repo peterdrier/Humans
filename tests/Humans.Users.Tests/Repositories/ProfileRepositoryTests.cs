@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;

@@ -1,7 +1,5 @@
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Services.Dtos;
-using Humans.Expenses.Domain;
 using Humans.Expenses.Models;
 using NodaTime;
 

@@ -1,6 +1,3 @@
-using Humans.Governance.Contracts;
-using Humans.Governance.Services.Dtos;
-
 namespace Humans.Governance.Services.Dtos;
 
 /// <summary>

@@ -1,10 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Domain.Enums;
-using Humans.Web.Controllers;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;

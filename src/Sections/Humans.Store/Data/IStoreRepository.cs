@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Store.Domain;
-using NodaTime;
 
 namespace Humans.Store.Data;
 

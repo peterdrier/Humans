@@ -1,9 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces;
 
 namespace Humans.GoogleIntegration.Data;
 

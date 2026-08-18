@@ -1,12 +1,12 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
-  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
-  src/Humans.Application/Services/Users/AccountProvisioningService.cs
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
+  src/Sections/Humans.Users/Services/AccountProvisioningService.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Humans.Web/Controllers/AdminController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Infrastructure/Services/GoogleWorkspace/**
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.GoogleIntegration/Services/**
 -->
 <!-- freshness:flag-on-change
   Provisioning step ordering, recovery email handling, credentials email template, admin/HumanAdmin authorization, or post-provisioning account management (2FA enrollment status, recovery-email visibility, password reset, combined Reset+2FA recovery flow on `/Google/Accounts`) may have changed.

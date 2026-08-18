@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Teams.Services;
 

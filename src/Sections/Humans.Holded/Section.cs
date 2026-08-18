@@ -64,7 +64,7 @@ public sealed class Section : ISection
 
         services.AddScoped<IHoldedMirrorRepository, Repository>();
         services.AddScoped<Services.Service>();
-        services.AddScoped<Contracts.IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
+        services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
         // The nightly pull's body (G5 step 6b). Its Hangfire target, HoldedSyncJob, is in

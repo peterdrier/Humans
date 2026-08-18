@@ -1,6 +1,5 @@
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
-using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Services;
@@ -756,7 +755,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     // Helpers
     // ============================================================
 
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static TeamInfo ToTeamInfo(Team team) =>
         new(

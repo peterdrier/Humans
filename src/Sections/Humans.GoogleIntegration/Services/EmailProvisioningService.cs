@@ -1,17 +1,12 @@
 using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Text;
-using Microsoft.Extensions.Logging;
 using Humans.Application.Helpers;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -70,7 +69,7 @@ public class CampContactServiceTests : IDisposable
             "alice@example.com");
 
         await _auditLogService.Received(1).LogAsync(
-            Arg.Any<Humans.AuditLog.Contracts.AuditAction>(),
+            Arg.Any<AuditAction>(),
             Arg.Any<string>(),
             _campId,
             Arg.Any<string>(),

@@ -1,9 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Users.Data.Repositories;
 

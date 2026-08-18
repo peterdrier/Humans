@@ -1,10 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Humans.Application/Services/Profiles/ProfileService.cs
+  src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Teams/**
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Domain/Entities/Profile.cs
-  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Humans.Interfaces/Constants/SystemTeamIds.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
   src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs
 -->

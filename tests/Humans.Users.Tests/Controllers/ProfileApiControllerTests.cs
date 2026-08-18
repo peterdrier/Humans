@@ -1,13 +1,9 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
-using Humans.Web.Controllers;
 using Humans.Users.Controllers;
 using NodaTime;
 using Humans.UI.Models;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

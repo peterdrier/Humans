@@ -1,4 +1,3 @@
-using Humans.Camps.Domain;
 using Humans.Domain.Enums;
 using NodaTime;
 

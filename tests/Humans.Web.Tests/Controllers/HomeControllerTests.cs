@@ -1,9 +1,7 @@
 using Humans.Governance.Contracts;
 using System.Security.Claims;
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

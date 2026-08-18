@@ -1,4 +1,3 @@
-using Humans.Events.Domain;
 using NodaTime;
 
 namespace Humans.Events.Domain;

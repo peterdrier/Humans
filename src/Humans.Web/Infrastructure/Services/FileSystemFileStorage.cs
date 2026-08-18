@@ -1,6 +1,4 @@
 using Humans.Application.Interfaces;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Services;
 

@@ -1,9 +1,7 @@
 using Hangfire;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 

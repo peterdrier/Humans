@@ -1,7 +1,7 @@
 @model Humans.Finance.Contracts.HoldedCreditorLedger
 @{
     ViewData["Title"] = $"Creditor {Model.SupplierAccountNum}";
-    var lines = (IReadOnlyList<Humans.Finance.Contracts.CreditorLedgerLine>)ViewBag.Lines;
+    var lines = (IReadOnlyList<CreditorLedgerLine>)ViewBag.Lines;
 
     // Shown from the member's side: positive = the organisation owes them. The mirror keeps
     // Holded's sign (Σdebit − Σcredit); /Holded/Accounts/{num} below shows it unflipped.

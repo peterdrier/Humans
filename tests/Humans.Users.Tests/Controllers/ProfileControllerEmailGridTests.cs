@@ -1,10 +1,8 @@
 using Humans.Users.Controllers;
-using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
@@ -18,7 +16,6 @@ using Humans.Teams.Contracts;
 
 using Humans.Users.Tests.Infrastructure;
 using Humans.UI;
-using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

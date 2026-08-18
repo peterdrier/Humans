@@ -1,5 +1,4 @@
 using Hangfire;
-using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Contracts;
 

@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Events.Services;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;

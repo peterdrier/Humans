@@ -1,4 +1,3 @@
-@using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
 @model Humans.GoogleIntegration.Services.EmailRenameDetectionResult
 @{
@@ -28,13 +27,13 @@
     }
     else
     {
-        Func<Humans.GoogleIntegration.Services.EmailRenameInfo, IHtmlContent> arrowCell =
+        Func<EmailRenameInfo, IHtmlContent> arrowCell =
             @<text><i class="fa-solid fa-arrow-right text-muted"></i></text>;
-        Func<Humans.GoogleIntegration.Services.EmailRenameInfo, IHtmlContent> oldEmailCell =
+        Func<EmailRenameInfo, IHtmlContent> oldEmailCell =
             @<text><code class="text-danger">@item.OldEmail</code></text>;
-        Func<Humans.GoogleIntegration.Services.EmailRenameInfo, IHtmlContent> newEmailCell =
+        Func<EmailRenameInfo, IHtmlContent> newEmailCell =
             @<text><code class="text-success">@item.NewEmail</code></text>;
-        Func<Humans.GoogleIntegration.Services.EmailRenameInfo, IHtmlContent> affectedCell = @<text>
+        Func<EmailRenameInfo, IHtmlContent> affectedCell = @<text>
             @if (item.AffectedResourceCount > 0)
             {
                 <span class="badge bg-warning text-dark">@item.AffectedResourceCount</span>

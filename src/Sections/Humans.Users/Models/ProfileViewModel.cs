@@ -4,7 +4,6 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;

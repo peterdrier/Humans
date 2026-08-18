@@ -1,8 +1,6 @@
 using Humans.Auth.Contracts;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Extensions;
@@ -13,7 +11,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;

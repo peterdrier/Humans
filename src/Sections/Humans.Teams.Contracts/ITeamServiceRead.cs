@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-
 namespace Humans.Teams.Contracts;
 
 /// <summary>

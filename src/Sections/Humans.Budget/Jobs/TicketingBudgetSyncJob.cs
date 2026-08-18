@@ -2,7 +2,6 @@ using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Budget.Jobs;
 

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Domain.Constants;
 using Humans.Issues.Domain;
-using Xunit;
 
 namespace Humans.Issues.Tests.Domain;
 

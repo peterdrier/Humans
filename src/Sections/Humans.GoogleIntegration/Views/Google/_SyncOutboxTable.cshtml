@@ -1,4 +1,3 @@
-@using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
 @model IList<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot>
 @{
@@ -15,13 +14,13 @@
 }
 else
 {
-    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
+    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
         @<text><code>@item.EventType</code></text>;
-    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
+    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
         @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
-    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
+    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
         @<text><small class="text-muted">@googleEmailLookup.GetValueOrDefault(item.UserId, "unknown")</small></text>;
-    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
+    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
     {
         var resources = resourceLookup.GetValueOrDefault(evt.TeamId);
         if (resources is { Count: > 0 })
@@ -33,7 +32,7 @@ else
         }
         return new HtmlString("<small class=\"text-muted\">-</small>");
     };
-    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> retriesCell = @<text>
+    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> retriesCell = @<text>
         @if (item.RetryCount > 0)
         {
             <span class="badge bg-secondary">@item.RetryCount</span>
@@ -49,7 +48,7 @@ else
         .Template("Retries", retriesCell);
     if (showError)
     {
-        Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> errorCell = @<text>
+        Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> errorCell = @<text>
             @if (!string.IsNullOrEmpty(item.LastError))
             {
                 <small class="text-danger" title="@item.LastError">
@@ -61,7 +60,7 @@ else
     }
     if (showRequeue)
     {
-        Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> requeueCell = @<text>
+        Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> requeueCell = @<text>
             <form asp-action="RequeueOutboxEvent" asp-route-id="@item.Id" method="post">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-warning btn-sm"

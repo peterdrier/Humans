@@ -1,14 +1,8 @@
 using Humans.Application.Architecture;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Stripe.Contracts;

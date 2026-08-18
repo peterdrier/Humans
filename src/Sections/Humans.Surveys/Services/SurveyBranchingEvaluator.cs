@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;

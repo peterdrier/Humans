@@ -26,5 +26,5 @@ internal static class ApplicationSweepScope
 {
     /// <summary>Every G5 section assembly, via the same discovery the runtime uses.</summary>
     public static IEnumerable<Assembly> Assemblies() =>
-        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies();
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies();
 }

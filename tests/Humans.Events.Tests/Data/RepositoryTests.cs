@@ -1,13 +1,12 @@
 using AwesomeAssertions;
-
-using Humans.Events.Domain;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
+using Humans.Events.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Data;
 
 public sealed class EventRepositoryTests : IDisposable
 {

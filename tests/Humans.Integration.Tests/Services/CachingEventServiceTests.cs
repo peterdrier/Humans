@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Events.Services;
-using Humans.Domain.Enums;
 using Humans.Events.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;

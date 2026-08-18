@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Humans.Application;
 using Humans.Consent.Services;
 using System.Text;
 using AwesomeAssertions;
@@ -10,14 +9,10 @@ using NSubstitute;
 using Humans.Application.Interfaces;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
-using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Domain.Enums;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
-
-using Humans.Teams.Contracts;
 
 namespace Humans.Consent.Tests.Services;
 

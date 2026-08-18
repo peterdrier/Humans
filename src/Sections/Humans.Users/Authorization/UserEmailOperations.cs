@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 namespace Humans.Users.Authorization;
 
 /// <summary>

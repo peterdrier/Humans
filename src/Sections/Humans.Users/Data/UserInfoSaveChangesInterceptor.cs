@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Humans.Users.Contracts;
-using Humans.Users.Data;
 
 namespace Humans.Users.Data;
 

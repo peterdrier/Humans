@@ -1,6 +1,5 @@
 using Humans.UI.Authorization;
 
-using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
 /// <summary>

@@ -1,6 +1,4 @@
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Expenses.Domain;
 

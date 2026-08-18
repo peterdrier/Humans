@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Domain.Enums;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using Humans.AuditLog.Contracts;

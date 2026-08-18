@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
-using Humans.Shifts.Data;
 
 namespace Humans.Shifts.Data;
 

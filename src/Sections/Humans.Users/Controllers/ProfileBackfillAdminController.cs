@@ -1,7 +1,6 @@
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using NodaTime;
 using Humans.Users.Contracts;

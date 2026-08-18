@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Application;
-using Humans.Domain.Constants;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;

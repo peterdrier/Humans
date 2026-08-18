@@ -1,11 +1,9 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Caching;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Tickets.Services.Dtos;
 

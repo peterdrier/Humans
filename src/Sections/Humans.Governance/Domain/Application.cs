@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using NodaTime;
-using Humans.Domain.Enums;
 using Stateless;
 
 namespace Humans.Governance.Domain;

@@ -7,13 +7,7 @@ namespace Humans.Testing;
 /// tests can assert on level and message without involving a real logging
 /// framework.
 /// </summary>
-/// <remarks>
-/// Shared via <c>tests/Directory.Build.props</c> rather than owned by one test project,
-/// so a section test project created at G5 (nobodies-collective/Humans#866) inherits it
-/// along with the rest of the harness. It lived at the bottom of
-/// <c>AuditLogServiceTests.cs</c> until Finance's move needed it from a second assembly.
-/// </remarks>
-internal sealed class CapturingLogger<T> : ILogger<T>
+public sealed class CapturingLogger<T> : ILogger<T>
 {
     public sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
 
