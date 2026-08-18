@@ -2,7 +2,9 @@
   src/Sections/Humans.Finance/**
   src/Sections/Humans.Finance.Contracts/**
   src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/Service.cs
   src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
+  src/Sections/Humans.Budget/Controllers/BudgetAdminController.cs
 -->
 <!-- freshness:flag-on-change
   FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
@@ -14,11 +16,11 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 ## Today vs Planned
 
-**Today — treasurer surface over Budget** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. Reads/writes route through `IBudgetService`, `ITicketServiceRead`.
+**Today — treasurer surface over Budget** (built, *not this section*): the Budget years/groups/categories/line-items/cash-flow surface under the same `/Finance` prefix is `Humans.Budget`'s `BudgetAdminController` — see [`Budget.md`](../../Humans.Budget/Docs/Budget.md). It shares only the URL prefix and the `FinanceAdminOrAdmin` policy.
 
 **Today — Holded actuals integration** (built, Feature 1): Finance-owned entities (`HoldedExpenseDoc`, `HoldedCategoryMap`, `HoldedSyncState`) with a dedicated repository, `IHoldedFinanceService`/`HoldedFinanceService`, nightly sync job, and treasurer UI pages for account provisioning and unmatched-doc resolution. Actuals displayed on the budget year detail view.
 
-**Today — Holded creditor ledger cache** (built, Feature 2): nightly sync of the Holded daybook (dailyledger) journal lines into one table, `HoldedLedgerLine`. Creditor balance, owed, and payments are **derived** from these lines (no separate balance/payment tables, no live API call on page load); `GetCreditorStatusAsync` / `GetCreditorLedgerAsync` expose the read surface to Expenses. See [Feature 2](#feature-2--holded-creditor-ledger-cache) below.
+**Today — Holded creditor reads** (built, Feature 2): the daybook journal-line mirror itself belongs to the **Holded** section; Finance derives creditor balance, owed and payments from it (no balance/payment tables of its own, no live API call on page load), and `GetCreditorStatusAsync` / `GetCreditorLedgerAsync` expose that read surface to Expenses. See [Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror) below.
 
 ## Concepts
 
@@ -27,7 +29,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
   1. **Account (A):** the line's booked Holded `account` id is looked up in `HoldedCategoryMap.HoldedAccountId`. Match → `MatchSource = Account`.
   2. **Tag (B):** each raw tag is normalized (lowercase, non-alphanumeric stripped — Holded strips separators like dashes) and compared against `HoldedCategoryMap.Tag`. First hit → `MatchSource = Tag`.
   3. **None:** doc lands in the **unmatched bucket** (`MatchStatus = Unmatched`, `MatchSource = None`).
-- A **Holded Category Map** row joins a `BudgetCategory` to its dedicated Holded account number/id and its dash-free fallback tag. Retired rows are archived (`IsActive = false`); Holded accounts are never deleted.
+- A **Holded Category Map** row joins a `BudgetCategory` to its dedicated Holded account number/id and its dash-free fallback tag. `IsActive`/`ArchivedAt` are the retirement columns, but **nothing retires a row today** — a category deleted in Budget shows as an `Orphan` on the provisioning page and its map row stays active. Holded accounts are never deleted.
 - The **Provisioning page** (`/Finance/HoldedAccounts`) reconciles the live Holded chart-of-accounts against the local `HoldedCategoryMap`: diffs into Mapped / ToAdd / Orphan. "Add one (test)" / "Add all" create accounts in Holded + map rows locally. Additive only.
 - The **Holded Sync State** is a singleton row tracking the operational state of the recurring sync job (`Idle / Running / Error`).
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync.
@@ -55,7 +57,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | BudgetCategoryId | Guid? | Attributed category (null = unmatched) |
 | MatchStatus | HoldedMatchStatus | `Matched` or `Unmatched` |
 | MatchSource | HoldedMatchSource | `None`, `Account`, or `Tag` |
-| RawPayload | string (jsonb) | Full Holded JSON for debugging |
+| RawPayload | string (jsonb) | Intended for the full Holded JSON; the sync writes `{}` and nothing reads it |
 | LastSyncedAt | Instant | Updated every sync that touches this row |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
@@ -73,8 +75,8 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | HoldedAccountNumber | int | Reserved account number in Holded |
 | HoldedAccountId | string | Holded's internal account id |
 | Tag | string | Dash-free normalized fallback tag (Holded strips separators) |
-| IsActive | bool | `false` = archived; row kept for history |
-| ArchivedAt | Instant? | Set when `IsActive` flipped to false |
+| IsActive | bool | Always `true` today — nothing flips it; see Concepts |
+| ArchivedAt | Instant? | Never written today; see Concepts |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -107,33 +109,9 @@ Stored as string via `HasConversion<string>()`.
 
 All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`.
 
-### Today — treasurer surface over Budget
+### Not this section — the Budget surface on the same prefix
 
-| Route | Controller action |
-|-------|-------------------|
-| `GET /Finance` | `Index` — Budget year overview (active year) |
-| `GET /Finance/Years/{id}` | `YearDetail` — Budget year detail (includes Holded actuals column) |
-| `GET /Finance/Categories/{id}` | `CategoryDetail` — Budget category detail |
-| `GET /Finance/AuditLog/{yearId?}` | `AuditLog` — Budget audit log |
-| `GET /Finance/CashFlow` | `CashFlow` — Cash flow projection |
-| `GET /Finance/Admin` | `Admin` — Budget admin (years/groups) |
-| `POST /Finance/Years/{id}/SyncDepartments` | `SyncDepartments` |
-| `POST /Finance/Years/Create` | `CreateYear` |
-| `POST /Finance/Years/{id}/UpdateStatus` | `UpdateYearStatus` |
-| `POST /Finance/Years/{id}/Update` | `UpdateYear` |
-| `POST /Finance/Years/{id}/Delete` | `DeleteYear` |
-| `POST /Finance/Groups/Create` | `CreateGroup` |
-| `POST /Finance/Groups/{id}/Update` | `UpdateGroup` |
-| `POST /Finance/Groups/{id}/Delete` | `DeleteGroup` |
-| `POST /Finance/Categories/Create` | `CreateCategory` |
-| `POST /Finance/Categories/{id}/Update` | `UpdateCategory` |
-| `POST /Finance/Categories/{id}/Delete` | `DeleteCategory` |
-| `POST /Finance/LineItems/Create` | `CreateLineItem` |
-| `POST /Finance/LineItems/{id}/Update` | `UpdateLineItem` |
-| `POST /Finance/LineItems/{id}/Delete` | `DeleteLineItem` |
-| `POST /Finance/Years/{id}/EnsureTicketingGroup` | `EnsureTicketingGroup` |
-| `POST /Finance/TicketingProjection/{groupId}/Update` | `UpdateTicketingProjection` |
-| `POST /Finance/TicketingBudget/{yearId}/Sync` | `SyncTicketingBudget` |
+`Humans.Budget`'s `BudgetAdminController` keeps `[Route("Finance")]`, so `/Finance`, `/Finance/Years/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/CashFlow`, `/Finance/AuditLog` and `/Finance/Admin` are served by Budget. Their table lives in [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
 
 ### Holded integration
 
@@ -146,7 +124,6 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
 | `POST /Finance/Creditors/Bind` | Manually bind a member to a Holded creditor account by 400000xx number |
-| `POST /Finance/Creditors/Resync` | Full-history creditor-ledger resweep; the nightly job only covers a trailing year |
 | `POST /Finance/Creditors/Unbind` | Clear a member's creditor binding (the remedy for a wrong bind or a collision) |
 
 ## Actors & Roles
