@@ -1,6 +1,6 @@
 using Humans.Users.Controllers;
 using Humans.Users.Models;
-using Humans.UI.Helpers;
+using Humans.Base.Helpers;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
