@@ -1,7 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Caching;
+using Humans.Base.Caching;
 using Humans.Infrastructure.Hosting;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;

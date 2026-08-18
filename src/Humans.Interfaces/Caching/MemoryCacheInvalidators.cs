@@ -2,7 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 
-namespace Humans.Infrastructure.Caching;
+namespace Humans.Base.Caching;
 
 /// <summary>
 /// <see cref="IMemoryCache"/>-backed implementations of the cross-cutting
