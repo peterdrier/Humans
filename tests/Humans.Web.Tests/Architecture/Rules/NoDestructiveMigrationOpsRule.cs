@@ -9,7 +9,10 @@ namespace Humans.Web.Tests.Architecture.Rules;
 /// DropUniqueConstraint / DropCheckConstraint / DropPrimaryKey).
 ///
 /// Source rule: <c>memory/architecture/no-drops-until-prod-verified.md</c>.
-/// Hard storage drops belong in a separate PR after prod soak.
+/// Destructive ops are allowed, and this rule is what makes the approval visible: a drop
+/// ships once its locator is in the baseline alongside a comment naming what was removed,
+/// the evidence it held nothing in use, and Peter's per-case approval. A bare locator with
+/// no such comment is the failure mode the baseline header warns about.
 ///
 /// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c> and each G5 section's
 /// <c>src/Sections/Humans.&lt;Section&gt;/Data/Migrations/*.cs</c>
