@@ -27,6 +27,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor
 {
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ internal sealed class Service(
             var map = await repo.GetCategoryMapAsync(ct);
             var entries = map
                 .Where(m => m.IsActive)
-                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.HoldedAccountNumber, m.Tag))
+                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
                 .ToArray();
 
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
@@ -241,9 +242,7 @@ internal sealed class Service(
 
         var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries);
 
-        var localDate = doc.Date
-            .InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
-            .Date;
+        var localDate = doc.Date.InZone(MadridZone).Date;
 
         return new HoldedExpenseDoc
         {
@@ -315,10 +314,8 @@ internal sealed class Service(
     private static string ReasonFor(HoldedExpenseDoc d)
     {
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
-        // Tags are stored as JSON; a non-empty array means at least one tag existed.
-        var hasTags = d.TagsJson is not null
-            && !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal)
-            && !string.Equals(d.TagsJson, "null", StringComparison.Ordinal);
+        // MapDoc always serializes a list, so "[]" is the only empty spelling.
+        var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal);
 
         if (!hasAccount && !hasTags)
             return "No account, no tag";
@@ -345,31 +342,22 @@ internal sealed class Service(
             return null;
 
         var balance = LedgerBalance(lines);
-        var payments = LedgerPayments(lines);
+        var payments = lines.Where(l => l.Debit > 0m).ToList();
 
         return new HoldedCreditorStatus(
             SupplierAccountNum: num,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
-            LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
-            TotalPaid: payments.Sum(p => p.Amount));
+            LastPaymentDate: payments.Count == 0
+                ? null
+                : payments.Max(l => l.Date).InZone(MadridZone).Date,
+            TotalPaid: payments.Sum(l => l.Debit));
     }
 
-    // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
-    //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
-    //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
-
+    // Sign confirmed against live data (Daniela 40000001: credit 12720 − debit 9540 = 3180 owed,
+    // chart showed −3180). Payments out are the debit lines.
     private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
-
-    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLineInfo> lines)
-    {
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        return lines
-            .Where(l => l.Debit > 0m)
-            .Select(l => new HoldedPaymentInfo(l.Date.InZone(zone).Date, l.Debit, l.Type))
-            .ToList();
-    }
 
     // ─── Creditor bindings + statement ──────────────────────────────────────────
 

@@ -221,7 +221,7 @@ Budget never calls into Finance.
 >
 > **What exists (Feature 2 — ledger single-source):**
 > - `Domain/HoldedCreditorContact.cs` — member → 400000xx binding (from #1021)
-> - `../Humans.Finance.Contracts/HoldedPaymentInfo.cs` — internal row shape (date / amount / document type) derived from debit lines; feeds `TotalPaid` / `LastPaymentDate`
+> - `TotalPaid` / `LastPaymentDate` on `HoldedCreditorStatus` — aggregated straight off the debit lines; no payment row type leaves the service
 > - Ledger reads via `IHoldedService` (the mirror moved to the Holded section; sync is `SyncLedgerAsync` there)
 > - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum)` / `GetCreditorLedgerAsync(int supplierAccountNum)` — Expenses→Finance read surface, derived from cached lines
 > - `IHoldedFinanceService.ListCreditorAccountsAsync` — returns `(Accounts, Unresolved)`; the `Unresolved` half is the bindings with no resolved 400000xx, surfaced on `/Finance/Creditors` for manual bind (nobodies-collective/Humans#972)

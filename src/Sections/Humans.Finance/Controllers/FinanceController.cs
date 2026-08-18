@@ -74,8 +74,8 @@ internal sealed class FinanceController(
         // Only the display flips: the contract row keeps Holded's Σdebit − Σcredit.
         var vms = rows
             .Select(r => new CreditorAccountRowVm(
-                r.SupplierAccountNum, r.Name, r.Balance is { } b ? -b : null,
-                r.Bindings.Select(b => new CreditorAccountBindingVm(
+                r.SupplierAccountNum, r.Name, r.Balance is { } bal ? -bal : null,
+                r.Bindings.Select(b => new CreditorBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList()))
@@ -86,7 +86,7 @@ internal sealed class FinanceController(
         var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
         var unresolvedVm = unresolved
-            .Select(b => new UnresolvedCreditorBindingVm(
+            .Select(b => new CreditorBindingVm(
                 b.UserId,
                 names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                 b.Source.ToString()))
