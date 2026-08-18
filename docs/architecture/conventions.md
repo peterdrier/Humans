@@ -83,7 +83,7 @@ Do not rely on hidden buttons or view-only checks for anything important.
 
 ## Action Naming
 
-Controller action names should describe the operation in the controller's domain. The audit at [`controller-architecture-audit.md`](../controller-architecture-audit.md) flags actions that violate these heuristics.
+Controller action names should describe the operation in the controller's domain.
 
 - **`Index` is a listing of the controller's resource.** If the action does something else (a single dashboard, a settings page, a one-off form), pick a more specific name.
 - **Don't repeat the controller name in the action.** `TeamController.TeamDetail` reads as `Team/TeamDetail` — the `Team` prefix is redundant. Use `TeamController.Detail` (`Team/Detail`).
@@ -91,7 +91,7 @@ Controller action names should describe the operation in the controller's domain
 - **Avoid generic verbs.** `View`, `Show`, `Process`, `Handle` say nothing. Pick a verb that describes the operation: `Approve`, `Reject`, `Withdraw`, `Resync`, `Backfill`.
 - **Use the conventional form-handler pattern.** `Create` (GET form + POST submit), `Edit` (GET form + POST submit), `Delete` (POST), `Confirm`, `Cancel` are the established verbs across this codebase. Match them when the operation is the same shape.
 
-These are heuristics, not laws — a clearer name that violates one of them beats a literal-conformance one. The audit doc flags suspected violations; the rename is a judgment call.
+These are heuristics, not laws — a clearer name that violates one of them beats a literal-conformance one.
 
 ## Integration
 

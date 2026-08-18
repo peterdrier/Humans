@@ -1,9 +1,12 @@
 #!/bin/bash
 # Freshness check: authorization-inventory
 #
-# Verifies docs/authorization-inventory.md covers:
-# 1. Every controller file from src/Humans.Web/Controllers/ (the doc must
-#    mention the filename — e.g. `AdminController` — at least once).
+# Verifies docs/authorization-inventory.md, together with every per-section
+# src/Sections/*/Docs/authorization.md (split from the global file
+# 2026-08-18), covers:
+# 1. Every controller file from src/Humans.Web/Controllers/ and
+#    src/Sections/*/Controllers/ (the docs must mention the filename — e.g.
+#    `AdminController` — at least once, in whichever file owns it).
 # 2. Every AuthorizationHandler<...> subclass from src/Humans.Web/Authorization
 #    and each section's own src/Sections/*/Authorization/.
 # 3. Has at least as many "| ... | Action |" rows as there are [Authorize]
@@ -19,17 +22,21 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# 1. Controller files (excluding abstract bases).
-CONTROLLERS=$(find src/Humans.Web/Controllers -name "*Controller.cs" -type f \
+# The global inventory plus every per-section authorization doc.
+DOCS=("$DOC")
+while IFS= read -r F; do DOCS+=("$F"); done < <(ls src/Sections/*/Docs/authorization.md 2>/dev/null)
+
+# 1. Controller files (excluding abstract bases), across Humans.Web and every section.
+CONTROLLERS=$(find src/Humans.Web/Controllers src/Sections/*/Controllers -name "*Controller.cs" -type f \
   -not -name "Humans*ControllerBase.cs" \
-  | sed 's|.*/||;s|\.cs$||' | sort -u)
+  2>/dev/null | sed 's|.*/||;s|\.cs$||' | sort -u)
 
 MISSING_CTRL=""
 MISS_CTRL_COUNT=0
 TOTAL_CTRL=0
 for CTRL in $CONTROLLERS; do
   TOTAL_CTRL=$((TOTAL_CTRL + 1))
-  if ! grep -qF "$CTRL" "$DOC"; then
+  if ! grep -qF "$CTRL" "${DOCS[@]}"; then
     MISSING_CTRL="${MISSING_CTRL}${CTRL}
 "
     MISS_CTRL_COUNT=$((MISS_CTRL_COUNT + 1))
@@ -47,7 +54,7 @@ MISS_HND_COUNT=0
 TOTAL_HND=0
 for HND in $HANDLERS; do
   TOTAL_HND=$((TOTAL_HND + 1))
-  if ! grep -qF "$HND" "$DOC"; then
+  if ! grep -qF "$HND" "${DOCS[@]}"; then
     MISSING_HND="${MISSING_HND}${HND}
 "
     MISS_HND_COUNT=$((MISS_HND_COUNT + 1))
@@ -56,11 +63,11 @@ done
 
 # 3. Action-row floor: number of [Authorize ...] occurrences on action-level
 # attributes. We count ALL [Authorize occurrences (class + action) in src,
-# then count "| ... | Action |" + "| ... | Class |" rows in the doc as the
-# combined floor. The doc routinely consolidates groups (e.g.
+# then count "| ... | Action |" + "| ... | Class |" rows across all docs as
+# the combined floor. The docs routinely consolidate groups (e.g.
 # `Foo / Bar / Baz`) so we use a 60% floor rather than strict >=.
-SRC_AUTHZ=$(grep -hE '\[Authorize' src/Humans.Web/Controllers/*.cs | wc -l)
-DOC_ROWS=$(grep -cE '^\| .* \| (Action|Class) \|' "$DOC" || true)
+SRC_AUTHZ=$(grep -hE '\[Authorize' src/Humans.Web/Controllers/*.cs src/Sections/*/Controllers/*.cs | wc -l)
+DOC_ROWS=$(grep -chE '^\| .* \| (Action|Class) \|' "${DOCS[@]}" | awk -F: '{sum+=$NF} END {print sum+0}')
 FLOOR=$(( SRC_AUTHZ * 60 / 100 ))
 
 FAIL=false

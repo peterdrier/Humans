@@ -16,7 +16,6 @@ CHECKS=(
   about-page-packages
   docs-readme-index
   authorization-inventory
-  controller-architecture-audit
   dependency-graph
   service-data-access-map
   guid-reservations

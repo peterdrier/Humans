@@ -195,7 +195,7 @@ if [ ! -f "$SYNTHETIC" ]; then
   FAIL=$((FAIL+1))
 fi
 mech_dirty=0
-for entry in authorization-inventory controller-architecture-audit dependency-graph; do
+for entry in authorization-inventory dependency-graph; do
   in_block=false
   in_triggers=false
   while IFS= read -r line; do
