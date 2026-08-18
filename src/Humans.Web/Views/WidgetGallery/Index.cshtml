@@ -854,20 +854,29 @@
                             <span class="wg-card-name">&lt;vc:audit-log&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AuditLogViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.AuditLog/ViewComponents/AuditLogViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Filtered audit log. Filters can stack — entity type/id, human id, comma-separated actions.</div>
+                    <div class="wg-card-note">Filtered audit log — the only sanctioned way for a section to <em>show</em> audit history. Filters can stack; the AuditLog section owns the read and the render.</div>
                     @ParamsBlock(
                         ("entityType", "<code>string?</code> — e.g. <code>User</code>, <code>Team</code>, <code>Application</code>"),
                         ("entityId", "<code>Guid?</code> — scoped to one entity"),
+                        ("entityIds", "<code>IReadOnlyList&lt;Guid&gt;?</code> — several entities of one type, merged newest-first"),
                         ("userId", "<code>Guid?</code> — scoped to actions taken by/on a user"),
+                        ("resourceId", "<code>Guid?</code> — scoped to one Google resource"),
+                        ("googleSyncOnly", "<code>bool</code> — with <code>userId</code>, only Google-sync entries"),
                         ("actions", "<code>string?</code> — CSV of <code>AuditAction</code> values"),
+                        ("since", "<code>Instant?</code> — drop entries older than this"),
                         ("limit", "<code>int</code> — page size (default 20)"),
+                        ("layout", "<code>string</code> — <code>line</code> (default, narrative), <code>table</code>, or <code>sync</code>"),
+                        ("columns", "<code>string?</code> — CSV subset of When/Actor/Action/Subject/Description/Target; <code>table</code> only"),
                         ("title", "<code>string</code> — heading text (default \"Audit History\")"),
+                        ("emptyText", "<code>string</code> — no-rows copy (default \"No audit history.\")"),
                         ("showCard", "<code>bool</code> — wrap in a Bootstrap card (default true)")
                     )
                     <div class="wg-card-example">
                         <vc:audit-log user-id="@Model.CurrentUserId" limit="10" title="Recent audit entries for current human" />
+                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" layout="table" columns="when,actor,description"
+                                      title="Same entries, layout=&quot;table&quot;" />
                     </div>
                 </div>
             </section>
