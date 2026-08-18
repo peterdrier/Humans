@@ -50,7 +50,7 @@
                       LogicalName="ProductionAttributes.SurfaceBudgetAttribute.cs" />
     <EmbeddedResource Include="..\..\src\Humans.Interfaces\Attributes\ExternalWriteAttribute.cs"
                       LogicalName="ProductionAttributes.ExternalWriteAttribute.cs" />
-    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\ExpiresOnAttribute.cs"
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Attributes\ExpiresOnAttribute.cs"
                       LogicalName="ProductionAttributes.ExpiresOnAttribute.cs" />
   </ItemGroup>
 

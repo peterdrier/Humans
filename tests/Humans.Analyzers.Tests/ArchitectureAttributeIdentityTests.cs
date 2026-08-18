@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Attributes;
-using Humans.Domain.Architecture;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
@@ -23,7 +22,7 @@ namespace Humans.Analyzers.Tests;
 /// The other analyzer tests stub their marker attribute inline, so the stub and
 /// the analyzer agree with each other no matter what the real class says. These
 /// tests instead compile the <b>production source file</b>, embedded verbatim
-/// from <c>src/Humans.Interfaces/Architecture/</c> by the test csproj, into the
+/// from <c>src/Humans.Interfaces/Attributes/</c> by the test csproj, into the
 /// referenced assembly — the same shape as production, where the attribute lives
 /// outside the assembly under analysis. If the analyzers' compiled copy ever
 /// diverges from that file — the link dropped, a literal re-inlined, a hand-made
@@ -52,7 +51,7 @@ public class ArchitectureAttributeIdentityTests
             typeof(ArchitectureAttributeIdentityTests).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException(
                 $"Embedded resource '{resourceName}' is missing. It is declared in " +
-                "Humans.Analyzers.Tests.csproj against src/Humans.Interfaces/Architecture/ — " +
+                "Humans.Analyzers.Tests.csproj against src/Humans.Interfaces/Attributes/ — " +
                 "if the attributes moved, move the declaration with them rather than " +
                 "dropping it, or the analyzers lose their only end-to-end check.");
 

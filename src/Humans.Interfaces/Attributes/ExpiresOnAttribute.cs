@@ -1,4 +1,4 @@
-namespace Humans.Domain.Architecture;
+namespace Humans.Base.Attributes;
 
 /// <summary>
 /// Marks a symbol as having a hard removal deadline. The

@@ -58,8 +58,8 @@
              Link="Attributes\SurfaceBudgetAttribute.cs" />
     <Compile Include="..\Humans.Interfaces\Attributes\ExternalWriteAttribute.cs"
              Link="Attributes\ExternalWriteAttribute.cs" />
-    <Compile Include="..\Humans.Interfaces\Architecture\ExpiresOnAttribute.cs"
-             Link="Architecture\ExpiresOnAttribute.cs" />
+    <Compile Include="..\Humans.Interfaces\Attributes\ExpiresOnAttribute.cs"
+             Link="Attributes\ExpiresOnAttribute.cs" />
   </ItemGroup>
 
 </Project>
