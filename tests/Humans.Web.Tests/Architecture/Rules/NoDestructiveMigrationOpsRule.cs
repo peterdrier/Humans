@@ -96,12 +96,21 @@ public class NoDestructiveMigrationOpsRule
 
         var unapproved = new List<string>();
         var block = new List<string>();
+        var afterLocator = false;
 
         foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw.Trim();
-            if (line.Length == 0) { block.Clear(); continue; }
-            if (line.StartsWith('#')) { block.Add(line); continue; }
+            if (line.Length == 0) { block.Clear(); afterLocator = false; continue; }
+            if (line.StartsWith('#'))
+            {
+                // A comment run starting directly under a locator is a NEW block — reset so
+                // its entries cannot combine with the previous group's Approval:/Evidence:.
+                if (afterLocator) { block.Clear(); afterLocator = false; }
+                block.Add(line);
+                continue;
+            }
+            afterLocator = true;
 
             var covered = block.Any(c => c.Contains("Pre-existing:", StringComparison.Ordinal))
                 || (block.Any(c => c.Contains("Approval:", StringComparison.Ordinal))

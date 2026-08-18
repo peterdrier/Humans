@@ -23,12 +23,10 @@ public class BaselineSeeder
 
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
 
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Web.Tests/Architecture/Baselines/NoDestructiveMigrationOps.baseline.txt",
-            NoDestructiveMigrationOpsRule.ScanMigrations(
-                repoRoot, NoDestructiveMigrationOpsRule.MigrationDirectories(repoRoot)),
-            "no destructive migration ops in Up() (memory/architecture/no-drops-until-prod-verified.md)");
+        // NoDestructiveMigrationOps is deliberately NOT seeded: its baseline is the approval
+        // ledger (per-entry Approval:/Evidence: comment blocks, hand-maintained), and a generic
+        // reseed would overwrite those comments with bare locators — destroying the record and
+        // failing Every_baseline_entry_is_covered_by_an_approval_note. Edit that file by hand.
 
         WriteBaseline(
             repoRoot,
