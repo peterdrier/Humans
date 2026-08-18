@@ -1,5 +1,5 @@
 using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Web.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -5,7 +5,6 @@ using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Humans.UI.Controllers;
 
 namespace Humans.Users.Controllers;
 

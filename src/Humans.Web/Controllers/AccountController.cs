@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

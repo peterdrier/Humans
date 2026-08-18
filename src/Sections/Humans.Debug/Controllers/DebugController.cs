@@ -7,7 +7,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Debug.Models;
 using Humans.Base.Data;
 using Humans.Base.Logging;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Base.Extensions;

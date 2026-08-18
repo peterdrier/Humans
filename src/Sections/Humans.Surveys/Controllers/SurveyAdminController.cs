@@ -1,4 +1,4 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;

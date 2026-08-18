@@ -37,7 +37,7 @@
     <Using Include="Humans.Base.Extensions" />
     <Using Include="Humans.Base.Helpers" />
     <Using Include="Humans.Base.Data" />
-    <Using Include="Humans.UI.Controllers" />
+    <Using Include="Humans.Base.Controllers" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,7 +12,7 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authorization;

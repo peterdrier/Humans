@@ -1,6 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;

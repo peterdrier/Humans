@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Monitor.Contracts;
 using Humans.Monitor.Models;
 using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;

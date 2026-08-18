@@ -4,7 +4,7 @@ using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

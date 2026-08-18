@@ -3,7 +3,7 @@ using Humans.Holded.Contracts;
 using Humans.Holded.Models;
 using Humans.Holded.Services;
 using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;

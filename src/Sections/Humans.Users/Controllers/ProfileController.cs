@@ -2,7 +2,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;

@@ -1,4 +1,4 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Net;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;

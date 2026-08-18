@@ -5,7 +5,7 @@ using Humans.Store.Services.Dtos;
 using Humans.UI.Authorization;
 using Humans.Store.Authorization;
 using Humans.Store.Models;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;

@@ -1,5 +1,5 @@
 using Humans.Agent.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;

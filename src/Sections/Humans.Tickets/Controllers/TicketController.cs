@@ -4,7 +4,7 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Services;
 using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;

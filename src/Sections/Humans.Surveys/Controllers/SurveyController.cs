@@ -1,4 +1,4 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Globalization;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;

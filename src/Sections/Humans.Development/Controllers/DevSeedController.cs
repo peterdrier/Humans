@@ -1,7 +1,7 @@
 using Humans.Base.Configuration;
 using Humans.Budget.Contracts;
 using Humans.Development.Services;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

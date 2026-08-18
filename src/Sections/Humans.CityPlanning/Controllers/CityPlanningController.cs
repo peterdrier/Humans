@@ -3,7 +3,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.CityPlanning.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

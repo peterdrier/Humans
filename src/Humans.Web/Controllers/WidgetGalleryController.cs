@@ -2,7 +2,7 @@ using Humans.Users.Models;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;

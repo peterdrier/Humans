@@ -1,6 +1,6 @@
 using Humans.Events.Services;
 using Humans.Events.Domain;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;

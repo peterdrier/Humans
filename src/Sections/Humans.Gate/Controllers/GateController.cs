@@ -1,7 +1,7 @@
 using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;

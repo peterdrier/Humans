@@ -1,7 +1,7 @@
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

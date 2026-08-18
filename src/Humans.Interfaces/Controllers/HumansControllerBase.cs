@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.Controllers;
+namespace Humans.Base.Controllers;
 
 public abstract class HumansControllerBase(IUserServiceRead userService) : Controller
 {

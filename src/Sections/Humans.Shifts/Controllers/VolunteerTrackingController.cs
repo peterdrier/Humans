@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.UI.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;

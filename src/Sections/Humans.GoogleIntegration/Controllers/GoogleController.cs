@@ -1,5 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.GoogleIntegration.Models;
