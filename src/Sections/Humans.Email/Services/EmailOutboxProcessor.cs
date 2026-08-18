@@ -1,9 +1,8 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Metering;
 using Humans.Base.Metering;
-using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Domain.Enums;
 using Humans.Email.Contracts;

@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.Base.Interfaces;

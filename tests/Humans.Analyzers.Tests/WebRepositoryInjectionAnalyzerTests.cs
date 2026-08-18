@@ -74,7 +74,7 @@ public class WebRepositoryInjectionAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Base.Architecture
+            namespace Humans.Base.Attributes
             {
                 [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
                 public sealed class GrandfatheredAttribute : System.Attribute
@@ -85,7 +85,7 @@ public class WebRepositoryInjectionAnalyzerTests
 
             namespace Humans.Web.Controllers
             {
-                [Humans.Base.Architecture.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
+                [Humans.Base.Attributes.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(Humans.Base.Interfaces.Repositories.ICampRepository repo) { }

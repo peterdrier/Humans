@@ -28,7 +28,7 @@ public class DbContextOwnershipRuleTests
             public interface IUserRepository : IRepository { }
         }
 
-        namespace Humans.Base.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -250,7 +250,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Jobs
             {
-                [Humans.Base.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0009",
                     justification: "Pending migration to repository pattern.",
                     since: "2026-05-12",
@@ -281,7 +281,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Jobs
             {
-                [Humans.Base.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0042",
                     justification: "Different rule.",
                     since: "2026-05-12",

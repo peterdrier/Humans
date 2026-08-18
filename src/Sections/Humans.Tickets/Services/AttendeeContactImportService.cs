@@ -1,6 +1,5 @@
-using Humans.Base.Architecture;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Services.Dtos;

@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -12,7 +12,6 @@ using Humans.Domain.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
-using Humans.Base.Attributes;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;

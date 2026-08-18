@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration.Services;

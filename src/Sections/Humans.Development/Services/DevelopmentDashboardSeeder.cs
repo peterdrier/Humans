@@ -1,6 +1,5 @@
-using Humans.Base.Architecture;
-using Humans.Base.Helpers;
 using Humans.Base.Attributes;
+using Humans.Base.Helpers;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

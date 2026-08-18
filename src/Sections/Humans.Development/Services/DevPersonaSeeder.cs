@@ -1,10 +1,9 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;

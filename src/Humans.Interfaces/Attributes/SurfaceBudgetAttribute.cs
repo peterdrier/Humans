@@ -1,4 +1,4 @@
-namespace Humans.Base.Architecture;
+namespace Humans.Base.Attributes;
 
 /// <summary>
 /// Per-type public-instance method-count budget. Decorate a type

@@ -1,11 +1,10 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.UI.Controllers;
 using System.Globalization;
 using System.Text.Json;
 using AngleSharp.Dom;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

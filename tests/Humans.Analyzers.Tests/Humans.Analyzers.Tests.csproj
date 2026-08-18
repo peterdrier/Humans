@@ -44,11 +44,11 @@
     attributes move, this is a build error, not a quietly-skipped test.
   -->
   <ItemGroup>
-    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\GrandfatheredAttribute.cs"
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Attributes\GrandfatheredAttribute.cs"
                       LogicalName="ProductionAttributes.GrandfatheredAttribute.cs" />
-    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\SurfaceBudgetAttribute.cs"
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Attributes\SurfaceBudgetAttribute.cs"
                       LogicalName="ProductionAttributes.SurfaceBudgetAttribute.cs" />
-    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\ExternalWriteAttribute.cs"
+    <EmbeddedResource Include="..\..\src\Humans.Interfaces\Attributes\ExternalWriteAttribute.cs"
                       LogicalName="ProductionAttributes.ExternalWriteAttribute.cs" />
     <EmbeddedResource Include="..\..\src\Humans.Interfaces\Architecture\ExpiresOnAttribute.cs"
                       LogicalName="ProductionAttributes.ExpiresOnAttribute.cs" />

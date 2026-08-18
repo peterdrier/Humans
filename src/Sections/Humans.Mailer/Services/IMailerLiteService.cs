@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Mailer.Services.Dtos;
 using NodaTime;

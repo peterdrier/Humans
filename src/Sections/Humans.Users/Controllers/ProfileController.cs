@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -23,7 +23,6 @@ using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;

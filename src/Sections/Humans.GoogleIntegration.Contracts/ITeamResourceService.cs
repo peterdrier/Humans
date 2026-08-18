@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;

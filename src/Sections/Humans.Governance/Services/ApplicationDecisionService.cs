@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base;
 using Humans.Governance.Domain;
@@ -15,7 +15,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;

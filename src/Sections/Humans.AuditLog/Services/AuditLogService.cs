@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;

@@ -1,4 +1,4 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 
 namespace Humans.Tickets.Contracts;
 

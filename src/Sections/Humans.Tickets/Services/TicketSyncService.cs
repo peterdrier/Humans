@@ -1,4 +1,3 @@
-using Humans.Base.Architecture;
 using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;

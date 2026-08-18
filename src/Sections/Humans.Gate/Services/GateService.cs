@@ -1,8 +1,7 @@
-using Humans.Base.Architecture;
+using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Attributes;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;

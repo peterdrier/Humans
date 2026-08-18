@@ -1,4 +1,4 @@
-namespace Humans.Base.Architecture;
+namespace Humans.Base.Attributes;
 
 /// <summary>
 /// Marks a class (or, for method-level rules like HUM0031, a method) as a
