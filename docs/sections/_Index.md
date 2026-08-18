@@ -5,6 +5,8 @@
   src/Humans.Application/Services/**
   src/Humans.Web/Hosting/**
   src/Humans.Web/Data/**
+  src/Humans.Web/Repositories/**
+  src/Humans.Web/Services/**
 -->
 <!-- freshness:flag-on-change
   Code-derived section map — the controllers/orchestrators/services/repositories/tables rows must match code (code is authoritative), and the section list must match docs/sections/ directory contents. Regenerate when sections move or new controllers/services/repos/tables land.
