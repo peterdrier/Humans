@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Humans.Infrastructure.Logging;
+using Humans.Base.Logging;
 using Humans.Web.Filters;
 using Serilog.Events;
 

@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Humans.Infrastructure.Logging;
+namespace Humans.Base.Logging;
 
 /// <summary>
 /// Serilog enricher that redacts PII values from log event properties.

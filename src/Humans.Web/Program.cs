@@ -30,7 +30,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
-using Humans.Infrastructure.Logging;
+using Humans.Base.Logging;
 using Humans.UI.Extensions;
 using Serilog;
 using Serilog.Events;

@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Humans.Infrastructure.Logging;
+namespace Humans.Base.Logging;
 
 /// <summary>
 /// Serilog enricher that attaches the current authenticated user's id (<c>UserId</c>)

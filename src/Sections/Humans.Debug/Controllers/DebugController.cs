@@ -6,7 +6,7 @@ using Humans.Base.Interfaces.Admin;
 using Humans.Base.Interfaces.Caching;
 using Humans.Debug.Models;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Logging;
+using Humans.Base.Logging;
 using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;

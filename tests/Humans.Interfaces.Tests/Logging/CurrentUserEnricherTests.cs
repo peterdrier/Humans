@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Infrastructure.Logging;
+using Humans.Base.Logging;
 using Microsoft.AspNetCore.Http;
 using Serilog.Core;
 using Serilog.Events;
