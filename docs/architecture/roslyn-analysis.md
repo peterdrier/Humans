@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Analyzers/**
   Directory.Build.props
-  tests/Humans.Application.Tests/Architecture/**
+  tests/*/Architecture/**
   docs/architecture/code-analysis.md
 -->
 <!-- freshness:flag-on-change
@@ -28,9 +28,10 @@ forbidden), **marker / existence** (a symbol must exist, an interface must be
 implemented), or **filesystem-aware** (rule depends on which directory a file
 lives in).
 
-The ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
-and the 5 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
-outside the analyzer envelope and stay as tests. Tier 3 below lists them so
+The ratchet rules under `tests/Humans.Web.Tests/Architecture/Rules/` (they
+moved there when `Humans.Application.Tests` was dissolved into per-section test
+projects) and the 4 boundary scans in `ServiceBoundaryArchitectureTests.cs` all
+fall outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
 
 **Don't scope a new analyzer by assembly name.** `src/Directory.Build.props`
@@ -56,10 +57,12 @@ project at least one fix commit.
 
 ### HUM0020 — Caching decorators must not reference repositories (SHIPPED)
 
-- Rule: a `Caching*Service` class under `Humans.Infrastructure.Services.*`,
-  or one of its nested helper types, must not structurally reference any
-  `IRepository` implementation/interface. Cache misses and warm paths go
+- Rule: a class whose top-level name starts with `Caching` and ends with
+  `Service`, or one of its nested helper types, must not structurally reference
+  any `IRepository` implementation/interface. Cache misses and warm paths go
   through the keyed inner application service, never sideways into persistence.
+  The match is on the name alone — no namespace or assembly gate — which is why
+  the rule followed all 11 decorators into their section projects without an edit.
 - Source: generalized from the deleted `CachingTeamServiceBypassArchitectureTests`
   one-off and `TicketQueryArchitectureTests.CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter`.
 - Why analyzer, not one-off test: the important invariant is system-wide:
@@ -81,21 +84,18 @@ assertion families that are plausible analyzer candidates:
   `UserManager`, or direct SDK clients. `IMemoryCache` is already covered by a
   generalized arch test; promote it to an analyzer once the remaining
   grandfather story is clear.
-- Repository implementations should be sealed, live under
-  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory<TContext>`
-  rather than constructing an application context directly (any
-  per-section context). The first two are already generalized arch tests
-  (`IRepositoryImplementationsAreSealedRule`,
-  `RepositoryImplementationsLiveInInfrastructureRule`), both scoped to the
-  `Humans.Infrastructure` assembly. They do **not** sweep the G5 section
-  assemblies, and should not be widened to: there, HUM0034 forces every
-  non-`Contracts/` type `internal` and MA0053 then errors on an unsealed
-  `internal` class, so sealing is a structural fact; and a section repository
-  lives under its own section namespace by construction, so the
-  `Humans.Infrastructure.*` prefix would be wrong. Both rules retire — file
-  deleted, not repointed — once `src/Humans.Infrastructure/Repositories/` is
-  empty. Note MA0053 does not report `public` classes, which is why
-  `Humans.Infrastructure` (no HUM0034) still needs the sealing sweep.
+- Repository sealing and placement — **retired as predicted, not re-proposed.**
+  `IRepositoryImplementationsAreSealedRule` and
+  `RepositoryImplementationsLiveInInfrastructureRule` were both scoped to the
+  `Humans.Infrastructure` assembly; both files were deleted when G5 lane 5b-6
+  deleted that project. Do not repoint them at the section assemblies: there,
+  HUM0034 forces every non-`Contracts/` type `internal` and MA0053 then errors on
+  an unsealed `internal` class, so sealing is a structural fact, and a repository
+  lives in its own section's `Data/` folder by construction (HUM0035 additionally
+  errors on a repository declared under `Contracts/`). What is still unenforced is
+  the third clause — a repository must take `IDbContextFactory<TContext>` rather
+  than construct or inject a context directly. HUM0009 covers the "not a
+  repository" half; nothing covers the factory shape.
 - Interface marker obligations should be compile-time enforced:
   `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
   `I*Repository` extends `IRepository`.
@@ -116,15 +116,16 @@ assertion families that are plausible analyzer candidates:
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.
 - Cross-section EF nav configuration was error-enforced by `HUM0024`, **retired in
-  nobodies-collective/Humans#1278**. Structure took over: each peeled section has its own
+  nobodies-collective/Humans#1278**. Structure took over: each section has its own
   `DbContext` in its own assembly, so there is no shared EF model for a navigation to
   join across. The debt was already drained before retirement —
   nobodies-collective/Humans#992 cut all 54 cross-section relationships, leaving no
-  `[Grandfathered("HUM0024", ...)]` markers. **Accepted residual:** an EF configuration
-  inside `Humans.Infrastructure`, which still hosts the five not-yet-G5 section contexts,
-  could map another section's entity; that is a review-time check now, not a build error. Do not re-propose this analyzer —
-  reviving it would mean carrying it until the last section peels, which is exactly the
-  trade #1278 declined.
+  `[Grandfathered("HUM0024", ...)]` markers. The residual the retirement note reserved —
+  an EF configuration inside `Humans.Infrastructure` mapping another section's entity —
+  is moot: that project no longer exists, and all 28 contexts are section-owned. What is
+  left is the review-time check that a *section* context does not map a foreign entity;
+  `DbContextEntityOwnershipTests` catches the zero-context and two-context cases of that.
+  Do not re-propose this analyzer.
 
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
@@ -137,11 +138,16 @@ assertion families that are plausible analyzer candidates:
   `PropertyBuilder<T>`, or an attribute on a property. Identical to HUM0002 in
   shape — operation kind + symbol metadata match.
 - Why analyzer, not ratchet: at the symbol-not-baseline level there are zero
-  legitimate uses anywhere in the live source today (the existing ratchet
-  test already runs with an empty baseline outside migrations). An analyzer
-  with a path-based suppression for `src/Humans.Infrastructure/Migrations/**`
-  gives Peter a build-break the moment someone adds one, in-editor and in CI.
-- Current coverage: `HUM0007` analyzer.
+  legitimate uses anywhere in the live source today. An analyzer gives Peter a
+  build-break the moment someone adds one, in-editor and in CI.
+- Current coverage: `HUM0007` analyzer. **Its migration carve-out is inert:**
+  `ConcurrencyTokenAnalyzer.IsInMigration` still matches only the
+  `Humans.Infrastructure.Migrations` namespace and the
+  `/Humans.Infrastructure/Migrations/` path, neither of which survives — migrations
+  now live in `src/Sections/Humans.<Section>/Data/Migrations/` and
+  `src/Humans.Web/Migrations/System/`. Nothing has tripped it because EF does not
+  scaffold concurrency metadata unasked, but the carve-out no longer covers what it
+  was written to cover.
 
 ### View components may not inject `IMemoryCache`
 
@@ -215,9 +221,12 @@ assertion families that are plausible analyzer candidates:
 - Source: replaces the retired `InterfaceMethodBudgetTests`
   (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
   Budgets live as a per-type attribute with the rationale in XML `<remarks>`
-  on the type. Owner-applied only (currently the read-side `I…ServiceRead`
-  interfaces); agents never add it or suggest adding it — see
-  `memory/code/surface-budget-owner-applied.md`.
+  on the type. Owner-applied only; agents never add it or suggest adding it — see
+  `memory/code/surface-budget-owner-applied.md`. **There are zero live
+  applications right now** — the attribute was lifted off every type for the
+  remainder of the 866 migration while surfaces are in flight, so both diagnostics
+  currently match nothing. `SurfaceBudgetAttribute` itself still ships from
+  `src/Humans.Interfaces/Architecture/`.
 - Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
   carrying the attribute, count public-instance `MethodKind == Ordinary`
   members directly on the symbol. Accessibility filter is a no-op on
@@ -228,8 +237,9 @@ assertion families that are plausible analyzer candidates:
 ### `Cached*` type names forbidden for public surface
 
 - Rule: a `public` or `internal` `INamedTypeSymbol` whose name starts with
-  `Cached` may not be declared anywhere except `Humans.Infrastructure.Services.**`
-  (where caching decorator implementation classes legitimately live).
+  `Cached` may not be declared anywhere except a section's `Services/` or `Data/`
+  folder (where caching decorator implementation classes legitimately live) —
+  `Internal/AssemblyScope.IsInSectionDataLayer` already answers half of that.
 - Source: [`memory/architecture/caching-transparent.md`](../../memory/architecture/caching-transparent.md)
   ("Never introduce a type named `Cached*` for domain data").
 - Call-site shape: type declaration symbol. Pure name + scope check; same
@@ -263,8 +273,10 @@ have the supporting machinery. Each notes the missing piece.
   section from its assembly name or, failing that, its namespace segment, and
   `Internal/SectionDbContexts.cs`
   enumerates the DbSets on every application context. What is still missing is
-  the entity→section direction — `Sections.cs` keys on service/interface
-  namespaces, not on `Humans.Domain` entity types. HUM0024 used to derive entity
+  the entity→section direction — `Sections.cs` keys on assembly name, then on
+  service/interface namespace, and an entity declared in a `.Contracts` leaf
+  (`Humans.Users.Contracts.User`) resolves to its own section, not to the section
+  doing the querying. HUM0024 used to derive entity
   ownership from EF-config namespace layout, but it is retired
   (nobodies-collective/Humans#1278), so that derivation is no longer available to
   copy — the mapping has to be written fresh. Land it as a shared helper before
@@ -272,8 +284,8 @@ have the supporting machinery. Each notes the missing piece.
 
 - **`Display sort in repositories/services`** (HARD-ish rule, see
   [`memory/architecture/display-sort-in-controllers.md`](../../memory/architecture/display-sort-in-controllers.md)).
-  Call-site is `OrderBy` / `OrderByDescending` inside `Humans.Application` or
-  `Humans.Infrastructure.Repositories`, but the rule has an inline
+  Call-site is `OrderBy` / `OrderByDescending` inside a section's `Services/` or
+  `Data/` folder, but the rule has an inline
   `// arch:db-sort-ok` opt-out comment. Comment-driven suppression is doable
   in an analyzer (read trailing trivia on the invocation syntax) but it's a
   new pattern for this project. **Needs:** a small `TriviaSuppression`
@@ -281,11 +293,12 @@ have the supporting machinery. Each notes the missing piece.
   comment-suppression shape.
 
 - **`IsConcurrencyToken in migrations is OK`** (the suppression carve-out for
-  HUM0007). EF migration files are inside `src/`, so a path-based analyzer
-  suppression has to recognize `**/Migrations/**`. Roslyn's
-  `AdditionalFiles` / `Compilation.SyntaxTrees` give the path, so this is
-  ~5 lines — but worth noting as a Tier-2 dependency for HUM0007 to be
-  comfortable.
+  HUM0007) — **now a live gap, not a nicety.** The shipped carve-out matches only
+  the deleted `Humans.Infrastructure` namespace and path, so it covers no migration
+  today. The fix is the same ~5 lines it always was: recognize `**/Migrations/**`
+  from `Compilation.SyntaxTrees`, which reaches both
+  `src/Sections/Humans.<Section>/Data/Migrations/` and
+  `src/Humans.Web/Migrations/System/`.
 
 - **`No `.Include()` for navigations across sections by name`** (a softer
   Phase-1 of the §6 rule). Could fire on hardcoded nav-property names that
@@ -319,8 +332,9 @@ analyzer.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` — retired alongside `NoLinqAtDbLayerRule` (Peter's call). Its scan root `src/Humans.Web` was still valid and its baseline genuinely zero, but it was a regex over one project out of 36+ and saw no section's `Section.Register`. The `no-startup-guards` rule itself still stands (`memory/architecture/no-startup-guards.md`).
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
-- `ServiceBoundaryArchitectureTests` (`tests/.../Architecture/ServiceBoundaryArchitectureTests.cs`) — five boundary scans (marker-attribute presence for services and repositories, repository-ownership-map completeness, the Users/Profiles single-section pin, and the entity-read-return ratchet; the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
-- The per-section `*ArchitectureTests.cs` files (Camps, Teams, Shifts, Profile, etc.) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
+- `ServiceBoundaryArchitectureTests` (`tests/Humans.Web.Tests/Architecture/ServiceBoundaryArchitectureTests.cs`) — four boundary scans (marker-attribute presence for services and for repositories, repository-ownership-map completeness, and the entity-read-return ratchet; the Users/Profiles single-section pin went with the merge, and the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
+- `ApplicationServicesTakeNoDbContextRule` / `ApplicationServicesTakeNoMemoryCacheRule` (`tests/Humans.Web.Tests/Architecture/Rules/`) — generalized ctor sweeps over the section assemblies. Their scope comes from `ApplicationSweepScope.Assemblies()`, which resolves through `SectionDiscoveryExtensions.SectionAssemblies()` rather than a hardcoded assembly name — the fix for the four silent anchor drifts G5 produced. Stay as tests.
+- The per-section `*ArchitectureTests.cs` files (each section's `tests/Humans.<Section>.Tests/Architecture/`; 21 of them today) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 
 Cited reference for the policy: `docs/architecture/code-analysis.md`
 §"When to write an analyzer vs. a test" (the decision table).

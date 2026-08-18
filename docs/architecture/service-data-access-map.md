@@ -3,15 +3,20 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-08-13
+**Generated:** 2026-08-18
 
 > **Methodology.** Tables are resolved by following each service's injected
-> repository interface to its EF-backed implementation in
-> `src/Humans.Infrastructure/Repositories/` (or the section's own
-> `Data/Repository.cs` under `src/Sections/`), then mapping the `DbSet<>`
-> (or bare `Set<T>()`) usage to the declaring context under
-> `src/Humans.Infrastructure/Data/` (or the section's own `Data/` under
-> `src/Sections/`). **Since the per-section DbContext split
+> repository interface to its EF-backed implementation in the section's own
+> `Data/Repository.cs` (or `Data/Repositories/*.cs`) under `src/Sections/`,
+> then mapping the `DbSet<>` (or bare `Set<T>()`) usage to the declaring
+> context in that same section's `Data/` folder. **`Humans.Application` and
+> `Humans.Infrastructure` are both gone** — `Humans.Infrastructure` was
+> deleted at G5 lane 5b-6 and `Humans.Application` was emptied and
+> dereferenced at G5 lane 5c (nobodies-collective/Humans#866); every
+> repository, `DbContext`, and service now lives under `src/Sections/`, and
+> the handful of true cross-section orchestrators that never owned a table
+> (Dashboard, the Agent preload augmentor) live in `src/Humans.Web/Services/`
+> instead. **Since the per-section DbContext split
 > (nobodies-collective/Humans#858) `HumansDbContext` no longer exists at
 > all.** Peel 15 (nobodies-collective/Humans#1273, 2026-08-13) merged Users
 > and Profiles into a new `UsersDbContext` and **deleted `HumansDbContext`
@@ -19,8 +24,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > migration files. Every context below is internal-sealed with its own
 > `IDbContextFactory<T>`/direct-injection pattern, against the same
 > database/connection. Each peeled context gets its own
-> `__EFMigrationsHistory_<Section>` table (see
-> `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`) —
+> `__EFMigrationsHistory_<Section>` table —
 > `UsersDbContext` is the sole exception, carrying forward the original
 > unsuffixed `__EFMigrationsHistory` from the deleted root chain (no
 > removal migration; the table itself is left in place pending its own
@@ -28,20 +32,20 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 >
 > | DbContext | Owns |
 > |-----------|------|
-> | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations`, plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`) — **the successor to `HumansDbContext`** (peel 15, nobodies-collective/Humans#1273, 2026-08-13). Still `src/Humans.Infrastructure/Data/`, not G5 — Users and Profiles services remain in `src/Humans.Application/Services/`. |
+> | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations`, plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`) — **the successor to `HumansDbContext`** (peel 15, nobodies-collective/Humans#1273, 2026-08-13). Own project, `src/Sections/Humans.Users/`, G5 (Profiles folded in — no separate Profiles project). |
 > | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — peeled in nobodies-collective/Humans#1264; owned by the now fully-G5 `src/Sections/Humans.Teams` project (moved off `src/Humans.Application`/`src/Humans.Infrastructure` in G5 batch #3, PR #1280, 2026-08-13); `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
 > | `AuditLogDbContext` | `AuditLogEntries` — owned by the now fully-G5 `src/Sections/Humans.AuditLog` project (moved in G5 batch #3, PR #1280, 2026-08-13; the first *horizontal* section to go to G5 — see [AuditLog](#auditlog)) |
 > | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — own project, `src/Sections/Humans.Consent/Data/` (G5). `ConsentRecords` living here (not a separate Consent context) is unchanged from before the peel — Consent has never owned its own DbContext. |
-> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` — still `src/Humans.Infrastructure/Data/` (not G5) |
+> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` (own project, `src/Sections/Humans.Shifts/`, G5) |
 > | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests` — owned by the now fully-G5 `src/Sections/Humans.Tickets` project, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (G5 batch #3, PR #1280, 2026-08-13; see [Tickets](#tickets)) |
-> | `AuthDbContext` | `RoleAssignments` (peeled #1234) |
+> | `AuthDbContext` | `RoleAssignments` (peeled #1234; own project, `src/Sections/Humans.Auth/`, G5) |
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes` (own project, `src/Sections/Humans.Governance/`, G5) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`, G5 since PR #1263, 2026-08-11) |
-> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings` (peeled #1236) |
+> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings` (peeled #1236; own project, `src/Sections/Humans.GoogleIntegration/`, G5 — the [Monitor](#monitor) section split out of it this sweep, but owns no table of its own) |
 > | `FeedbackDbContext` | `FeedbackReports`, `FeedbackMessages` (own project, `src/Sections/Humans.Feedback/`, G5 since PR #1263, 2026-08-11) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`, G5 since PR #1263, 2026-08-11) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`, G5 since PR #1263, 2026-08-11) |
-> | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (peeled #1238, still `src/Humans.Infrastructure/Data/` — Camps has not moved to G5) |
+> | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`, G5) |
 > | `GateDbContext` | `GateScanEvents`, `GateSettings`, `GateStaffPins` (own project, `src/Sections/Humans.Gate/`, G5, table names `gate_scan_events` / `gate_settings` / `gate_staff_pins`) |
 > | `SystemDbContext` | `DataProtectionKeys` — ASP.NET Data Protection key ring storage, wired directly in `src/Humans.Web/Program.cs`; **no owning Application section, no repository, no service** |
 > | `EmailDbContext` | `EmailOutboxMessages` (peeled #1234) |
@@ -57,6 +61,33 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` — **new section this sweep** (own project, `src/Sections/Humans.Holded/`, G5). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering, split out of Finance so the two peeled sections that both touch Holded data are structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`, G5; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` (own project, `src/Sections/Humans.Store/`, G5) |
+>
+> **Change this sweep (2026-08-18):** G5 (nobodies-collective/Humans#866)
+> finished emptying both legacy layers. **`Humans.Application` is now gone**
+> (emptied and dereferenced at G5 lane 5c), on top of `Humans.Infrastructure`
+> already being gone (lane 5b-6). The six sections still described below as
+> living under `src/Humans.Application/Services/<X>/` — Profiles, Users,
+> Google Integration, Camps, Shifts, Legal, Consent — moved into their own
+> `src/Sections/Humans.<X>/` projects with no table-ownership change (same
+> `DbSet`s, new project); Dashboard (`DashboardService`,
+> `AdminDashboardService`) has no owned tables and landed in
+> `src/Humans.Web/Services/Dashboard/` alongside the other true cross-section
+> orchestrators, not in a section project. **Legal and Consent share one
+> project** (`src/Sections/Humans.Consent/`) rather than getting one each —
+> they always shared `LegalDbContext`. **A new horizontal section,
+> [Monitor](#monitor) (`src/Sections/Humans.Monitor/`), split out of Google
+> Integration**, taking `DriveActivityMonitorService` /
+> `IDriveActivityMonitorService` / `DriveActivityMonitorJob` with it; Google
+> Integration keeps the Drive/Directory API clients Monitor calls into. Two
+> previously-undocumented services surfaced this sweep:
+> `GoogleSyncOutboxProcessor` (Google Integration — the outbox drain,
+> `[CrossSectionWrite]`-marked, lifted verbatim out of the deleted
+> `Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob`) and
+> `NonCompliantMemberSuspension` (Users). The shared cache infrastructure
+> (`CacheKeys.cs`, `MemoryCacheExtensions.cs`, `MemoryCacheInvalidators.cs`,
+> `TrackedCache<TKey, TValue>`) consolidated into `src/Humans.Interfaces/`
+> now that there is no `Humans.Application`/`Humans.Infrastructure` split
+> left to straddle — see the note below the DbContext table.
 >
 > **Change since prior sweep:** two structural moves landed on 2026-08-13.
 > (1) **Peel 15 / #858 finale** (PR #1273): Users and Profiles — the last
@@ -98,24 +129,27 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > the type). Below, each section header states which DbContext backs its
 > tables; per-table `DbContext` notes appear only where a section's tables
 > span more than one context.
-> The new marker-only project `src/Humans.Interfaces/` (referenced by
-> both Application and Infrastructure) now holds the shared
+> The marker-only project `src/Humans.Interfaces/` now holds the shared
 > `IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, and
-> `IInvalidator` marker interfaces — no data-access behavior of its own.
-> Cache keys come from
-> `src/Humans.Application/CacheKeys.cs` and the invalidator extensions in
-> `src/Humans.Application/Extensions/MemoryCacheExtensions.cs`. Cross-cutting
-> invalidator interfaces (`INavBadgeCacheInvalidator`,
+> `IInvalidator` marker interfaces (no data-access behavior of its own), plus
+> the cache infrastructure that used to straddle the deleted Application/
+> Infrastructure split: `CacheKeys.cs`, the invalidator extensions in
+> `Extensions/MemoryCacheExtensions.cs`, `Caching/MemoryCacheInvalidators.cs`,
+> and the `TrackedCache<TKey, TValue>` base class
+> (`Interfaces/Caching/TrackedCache.cs`) that every section-owned Singleton
+> caching decorator below inherits. Cross-cutting invalidator interfaces
+> (`INavBadgeCacheInvalidator`,
 > `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
 > `IRoleAssignmentClaimsCacheInvalidator`, `IActiveTeamsCacheInvalidator`,
 > `ICampLeadJoinRequestsBadgeCacheInvalidator`, `IShiftAuthorizationInvalidator`,
 > `IUserInfoInvalidator`, `IShiftViewInvalidator`, `IEarlyEntryInvalidator`,
-> `IIssuesBadgeCacheInvalidator`) are resolved via
-> `Humans.Infrastructure/Caching/MemoryCacheInvalidators.cs` to the cache keys
-> their backing `MemoryCacheExtensions` invalidator hits. Section-decorator
-> caches (`TrackedCache<TKey, TValue>` subclasses in
-> `src/Humans.Infrastructure/Services/<Section>/Caching*.cs`) are resolved from
-> their DI wiring in `src/Humans.Web/Extensions/Sections/*.cs`.
+> `IIssuesBadgeCacheInvalidator`) resolve via `MemoryCacheInvalidators.cs` to
+> the cache keys their backing `MemoryCacheExtensions` invalidator hits.
+> Section-decorator `TrackedCache<TKey, TValue>` subclasses now live beside
+> their inner service in each section's own `Services/` (or `Data/`) folder —
+> e.g. `CachingUserService` is `src/Sections/Humans.Users/Data/CachingUserService.cs`
+> — and are resolved from their DI wiring in
+> each section's own `Section.cs` (`ISection.Register`). `src/Humans.Web/Extensions/Sections/` retains only `AdminSectionExtensions` and `AuthSectionExtensions`, neither of which registers a decorator.
 >
 > At ~500-user single-server scale this map is diagnostic, not gating —
 > **cross-section table reads are flagged as design-rule violations per
@@ -134,52 +168,56 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 6. [Auth](#auth)
 7. [Teams](#teams)
 8. [Google Integration](#google-integration)
-9. [Camps](#camps)
-10. [Containers](#containers)
-11. [City Planning](#city-planning)
-12. [Calendar](#calendar)
-13. [Shifts](#shifts)
-14. [Cantina](#cantina)
-15. [Early Entry](#early-entry)
-16. [Legal](#legal)
-17. [Consent](#consent)
-18. [Notifications](#notifications)
-19. [Tickets](#tickets)
-20. [Gate](#gate)
-21. [Budget](#budget)
-22. [Campaigns](#campaigns)
-23. [Email](#email)
-24. [SystemSettings](#systemsettings)
-25. [Mailer](#mailer)
-26. [Feedback](#feedback)
-27. [Issues](#issues)
-28. [Events (Event Guide)](#events-event-guide)
-29. [Expenses](#expenses)
-30. [Finance](#finance)
-31. [Holded](#holded)
-32. [Store](#store)
-33. [Agent](#agent)
-34. [Search](#search)
-35. [Dashboard](#dashboard)
-36. [Gdpr](#gdpr)
-37. [AuditLog](#auditlog)
-38. [Surveys](#surveys)
-39. [ICalFeed](#icalfeed)
-40. [Cross-Section Analysis](#cross-section-analysis)
-41. [Cache Inventory](#cache-inventory)
-42. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
-43. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
+9. [Monitor](#monitor)
+10. [Camps](#camps)
+11. [Containers](#containers)
+12. [City Planning](#city-planning)
+13. [Calendar](#calendar)
+14. [Shifts](#shifts)
+15. [Cantina](#cantina)
+16. [Early Entry](#early-entry)
+17. [Legal](#legal)
+18. [Consent](#consent)
+19. [Notifications](#notifications)
+20. [Tickets](#tickets)
+21. [Gate](#gate)
+22. [Budget](#budget)
+23. [Campaigns](#campaigns)
+24. [Email](#email)
+25. [SystemSettings](#systemsettings)
+26. [Mailer](#mailer)
+27. [Feedback](#feedback)
+28. [Issues](#issues)
+29. [Events (Event Guide)](#events-event-guide)
+30. [Expenses](#expenses)
+31. [Finance](#finance)
+32. [Holded](#holded)
+33. [Store](#store)
+34. [Agent](#agent)
+35. [Search](#search)
+36. [Dashboard](#dashboard)
+37. [Gdpr](#gdpr)
+38. [AuditLog](#auditlog)
+39. [Surveys](#surveys)
+40. [ICalFeed](#icalfeed)
+41. [Cross-Section Analysis](#cross-section-analysis)
+42. [Cache Inventory](#cache-inventory)
+43. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
+44. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
 
 ---
 
 ## Profiles
 
-Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
+Folder: `src/Sections/Humans.Users/Services/` (moved with the rest of the
+Users+Profiles section into its own project, G5, nobodies-collective/Humans#866
+— no separate `Profiles/` subfolder any more; `ProfileEditorService`,
+`ProfileService`, and `ContactFieldService` sit alongside the Users services
+listed under [Users](#users) below). Owns `Profiles`,
 `ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
 `UserEmails`, `CommunicationPreferences`. **DbContext:** `UsersDbContext`
 — **the merged Users+Profiles context** (peel 15, nobodies-collective/Humans#1273,
-2026-08-13, replacing `HumansDbContext`, which is deleted). Still
-`src/Humans.Infrastructure/Data/`, not G5.
+2026-08-13, replacing `HumansDbContext`, which is deleted).
 
 > **Change since prior sweep (#899):** the **account-merge surface moved
 > from Profiles to the Users section.** `AccountMergeService` and
@@ -247,8 +285,8 @@ Repository: `ICommunicationPreferenceRepository`.
 | CommunicationPreferences | R/W |
 
 Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
-`IUnsubscribeTokenProvider` (Infrastructure). Implements `IUserMerge`. No
-cache.
+`IUnsubscribeTokenProvider` (same section, `Services/`). Implements
+`IUserMerge`. No cache.
 
 ### UserEmailService (Scoped)
 
@@ -291,7 +329,10 @@ that doubles as the field-level authorization model.
 
 ## Users
 
-Folder: `src/Humans.Application/Services/Users/`. **DbContext:**
+Folder: `src/Sections/Humans.Users/Services/` — moved from
+`src/Humans.Application/Services/Users/` into its own project (G5,
+nobodies-collective/Humans#866); repository under `Data/Repositories/`.
+**DbContext:**
 `UsersDbContext` — the merged Users+Profiles context (peel 15,
 nobodies-collective/Humans#1273, 2026-08-13; `Users` is the Identity-backed
 `users` table via `IdentityDbContext<User, …>`, which the context now
@@ -301,13 +342,14 @@ is deleted). Owns `Users`,
 `IdentityUserLogins`, and (since #899) `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) moved here from Profiles. The inner `IUserService` registration is wrapped
-by `Humans.Infrastructure.Services.Users.CachingUserService` (Singleton
-decorator inheriting `TrackedCache<Guid, UserInfo>`) which holds the
+by `Humans.Users.Data.CachingUserService` (Singleton
+decorator inheriting `TrackedCache<Guid, UserInfo>`, now in the section's
+own `Data/` folder rather than `Humans.Infrastructure`) which holds the
 canonical `UserInfo` read-model spanning User + Profile sections. The
 decorator exposes the budgeted cross-section read surface as
-`IUserServiceRead`. Per the in-flight User+Profile section merge,
-`IUserService` is absorbing the legacy `IProfileService` surface; the
-interface's `[SurfaceBudget]` is intentionally suspended for now.
+`IUserServiceRead`. Following the User+Profile section merge,
+`IUserService` absorbed the legacy `IProfileService` surface; the
+interface's `[SurfaceBudget]` remains intentionally suspended.
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
@@ -334,7 +376,7 @@ unified persistence layer. Implements `IUserDataContributor`,
 Cross-section calls via `IAdminAuthorizationService`. No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
-### CachingUserService (Singleton, Infrastructure)
+### CachingUserService (Singleton, `Humans.Users.Data`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -508,6 +550,21 @@ direct DB access, no cache. All `Profile.State` writes go through
 `IUserService` (the unified user/profile write surface) which invalidates
 the unified User+Profile read-model downstream.
 
+### NonCompliantMemberSuspension (Scoped) — new this sweep
+
+No repository. `SuspendNonCompliantMembersJob`'s body, carved into the
+section at G5 lane 4b-2d (job class followed at 5b-4, now
+`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members
+who haven't re-consented after the grace period and runs each suspension's
+downstream side effects. Cross-section calls via `IUserService`,
+`ITeamServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncService`,
+`IEmailService`, `IEmailMessageFactory`, `INotificationEmitter`,
+`IAuditLogService`, plus `IActiveTeamsCacheInvalidator` /
+`IRoleAssignmentClaimsCacheInvalidator` / `IShiftAuthorizationInvalidator`
+for cache eviction. `[CrossSectionWrite]`-marked (suspension removes the
+user from their team's Google resources). No direct DB access, no
+`IMemoryCache`. Missing from the prior sweep of this doc.
+
 ---
 
 ## Governance
@@ -612,7 +669,7 @@ Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
-### CachingRoleAssignmentService (Singleton, Infrastructure)
+### CachingRoleAssignmentService (Singleton, `Humans.Auth.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -628,7 +685,7 @@ No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
 `IEmailService`, `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`,
 `IUnsubscribeTokenProvider`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
-(Infrastructure) which writes `magic_link_used:{tokenPrefix}` and
+(same section, `Services/`) which writes `magic_link_used:{tokenPrefix}` and
 `magic_link_signup:{normalizedEmail}` into `IMemoryCache`.
 
 ### AdminAuthorizationService (Scoped)
@@ -753,7 +810,7 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 atomically. This is a §15-compliant cross-section call (service interface),
 so the prior design-rule violation here is **closed**.
 
-### CachingTeamService (Singleton, Infrastructure)
+### CachingTeamService (Singleton, `Humans.Teams.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -774,7 +831,11 @@ Read-only assemblers — no repository, no cache. Fan out over
 
 ## Google Integration
 
-Folder: `src/Humans.Application/Services/GoogleIntegration/`. **DbContext:**
+Folder: `src/Sections/Humans.GoogleIntegration/Services/` — moved from
+`src/Humans.Application/Services/GoogleIntegration/` into its own project
+(G5, nobodies-collective/Humans#866); repository under `Data/`; the Directory /
+Drive / Groups / Translation API clients live under `Services/Workspace/`.
+**DbContext:**
 `GoogleIntegrationDbContext` — **peeled** (nobodies-collective/Humans#1236,
 part of #858). `GoogleResourceRepository`, `GoogleSyncOutboxRepository`, and
 `SyncSettingsRepository` all inject
@@ -785,6 +846,12 @@ part of #858). `GoogleResourceRepository`, `GoogleSyncOutboxRepository`, and
 (`TrySetGoogleEmailStatusFromSyncAsync`, targeting the canonical Google row)
 per §15.
 
+> **Change this sweep:** `DriveActivityMonitorService` (and its contracts /
+> job) **moved out of Google Integration into a new section,
+> [Monitor](#monitor)** (`src/Sections/Humans.Monitor/`) — see that section
+> below for its current dependencies. `GoogleSyncOutboxProcessor` — the
+> outbox drain, previously undocumented — is added below.
+>
 > **Change since prior sweep (#889):** `GoogleSyncOutboxEvents` is now
 > written **only** by the Google Integration section's own
 > `GoogleSyncOutboxService` / `GoogleSyncOutboxRepository`. `TeamRepository`
@@ -838,7 +905,7 @@ owning services. Cross-section calls via `IGoogleWorkspaceUserService`,
 ### GoogleWorkspaceUserService (Scoped)
 
 No repository. Thin facade over `IWorkspaceUserDirectoryClient`
-(Infrastructure). No DB access, no cache.
+(`Services/Workspace/`). No DB access, no cache.
 
 ### EmailProvisioningService (Scoped)
 
@@ -887,31 +954,29 @@ HUM0008/HUM0009/HUM0025. Cross-section calls via
 `IAuditLogService`, plus `IServiceProvider` to break a DI cycle. No
 cache.
 
-### DriveActivityMonitorService (Scoped)
+### GoogleSyncOutboxProcessor (Scoped, `internal`) — new this sweep
 
-No repository (its `IDriveActivityMonitorRepository` was deleted in #889).
+Repositories: `IGoogleSyncOutboxRepository`, `IGoogleResourceRepository`
+(read-only — active-resource check before marking Google email status
+`Valid`).
 
 | Table | R/W |
 |-------|-----|
-| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISystemSettingsService`** — owned by the SystemSettings section) |
-| GoogleResources | R (via `ITeamResourceService`) |
-| Users / IdentityUserLogins | R (via `IUserServiceRead.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
+| GoogleSyncOutboxEvents | R/W (`GetProcessingBatchAsync` / `MarkProcessedAsync` / `MarkPermanentlyFailedAsync` / `IncrementRetryAsync`) |
+| GoogleResources | R (`GetActiveByTeamIdAsync`, via `IGoogleResourceRepository`) |
 
-Google `people/{id}` fallback resolution goes through the Users read-model:
-the service builds a per-run Google provider-key -> `UserInfo` index from
-`IUserServiceRead.GetAllUserInfosAsync` and uses `UserInfo.Email`. The
-last-run marker (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is read
-and written through `ISystemSettingsService` — the SystemSettings section's
-repository, not its own. Audit-log writes go through `IAuditLogService`.
-
-Cross-section calls via `IGoogleDriveActivityClient`,
-`ITeamResourceService`, `ISystemSettingsService`, `IUserServiceRead`,
-`IAuditLogService`. No cache.
-
-**Cross-section table read/write (design-rule note):** `SystemSettings`
-is read/written through the owning SystemSettings section's
-`ISystemSettingsService` — this is the §15-compliant cross-section call
-(service interface, not a foreign repository), so it is **not** a violation.
+The outbox drain — lifted verbatim out of the deleted
+`Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob` at the section's G5
+move; the Hangfire shim and job-level metric are unchanged, only the queue
+semantics moved in beside the two repositories it always injected directly.
+`[CrossSectionWrite("Outbox processing writes Google email status back to
+the user.")]`-marked: `AddUserToTeamResources` / `RemoveUserFromTeamResources`
+events are dispatched via `IGoogleSyncService`, then the user's
+`GoogleEmailStatus` is written through `IUserService.TrySetGoogleEmailStatusFromSyncAsync`
+(`Valid` on a successful add with active resources, `Rejected` on a permanent
+vendor failure — HTTP 400/403/404). Cross-section calls via `IUserService`,
+`ITeamServiceRead`, `IGoogleSyncService`, plus `IHumansMetrics` and `IClock`.
+No `IMemoryCache`. Missing from the prior sweep of this doc.
 
 ### GoogleRemovalNotificationService (Scoped)
 
@@ -922,17 +987,61 @@ DB access, no cache.
 ### GoogleTranslationService (Scoped)
 
 No repository. Thin §15-compliant facade over `IGoogleTranslationClient`
-(Infrastructure). Exists so cross-section callers (Survey authoring —
+(`Services/Workspace/`). Exists so cross-section callers (Survey authoring —
 `SurveyService.PreFillTranslationsAsync`) depend on a GoogleIntegration
 service interface rather than the raw connector client. No DB access,
 no cache.
 
 ---
 
+## Monitor
+
+Project: `src/Sections/Humans.Monitor` — **split out of Google Integration
+into its own horizontal section this sweep** (G5, nobodies-collective/Humans#866).
+Owns no DB tables and has no `Data/` folder of its own — it took
+`DriveActivityMonitorService` (+ `IDriveActivityMonitorService` in
+`Contracts/`, + `DriveActivityMonitorJob` in `Jobs/`) with it; Google
+Integration kept the Drive/Directory API clients Monitor calls into
+(`Services/Workspace/`).
+
+### DriveActivityMonitorService (Scoped)
+
+No repository — its `IDriveActivityMonitorRepository` was deleted in #889,
+before the section split.
+
+| Table | R/W |
+|-------|-----|
+| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISystemSettingsService`** — owned by the SystemSettings section) |
+| GoogleResources | R (via `ITeamResourceService` — the GoogleIntegration section) |
+| Users / IdentityUserLogins | R (via `IUserServiceRead.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
+
+Monitors the Drive Activity API for non-service-account permission changes
+on managed Drive resources and logs anomaly audit entries. Google
+`people/{id}` fallback resolution goes through the Users read-model:
+the service builds a per-run Google provider-key -> `UserInfo` index from
+`IUserServiceRead.GetAllUserInfosAsync` and uses `UserInfo.Email`. The
+last-run marker (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is read
+and written through `ISystemSettingsService` — the SystemSettings section's
+repository, not its own. Audit-log writes go through `IAuditLogService`.
+
+Cross-section calls via `IGoogleDriveActivityClient` (GoogleIntegration —
+`Services/Workspace/`),
+`ITeamResourceService`, `ISystemSettingsService`, `IUserServiceRead`,
+`IAuditLogService`. No cache.
+
+**Cross-section table read/write (design-rule note):** `SystemSettings`
+is read/written through the owning SystemSettings section's
+`ISystemSettingsService` — this is the §15-compliant cross-section call
+(service interface, not a foreign repository), so it is **not** a violation.
+
+---
+
 ## Camps
 
-Folder: `src/Humans.Application/Services/Camps/`. **DbContext:**
-`CampsDbContext` — **peeled** (nobodies-collective/Humans#1238, part of
+Folder: `src/Sections/Humans.Camps/Services/` — moved from
+`src/Humans.Application/Services/Camps/` into its own project (G5,
+nobodies-collective/Humans#866); repository under `Data/`. **DbContext:**
+`CampsDbContext` — peeled from `HumansDbContext` (part of
 #858). `CampRepository` injects `IDbContextFactory<CampsDbContext>`
 directly. Owns `Camps`,
 `CampSeasons`, `CampHistoricalNames`, `CampImages`,
@@ -1001,7 +1110,7 @@ consumed by `CampRoleService`), `IUserDataContributor`, `IUserMerge`,
 `IEarlyEntryProvider`. The inner service no longer touches `IMemoryCache`
 directly — all caching lives in the decorator.
 
-### CachingCampService (Singleton, Infrastructure)
+### CachingCampService (Singleton, `Humans.Camps.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1152,10 +1261,11 @@ names. Surfaced on `/Debug/CacheStats`.
 
 ## Shifts
 
-Folder: `src/Humans.Application/Services/Shifts/`. **DbContext:**
-`ShiftsDbContext` — **newly peeled this sweep** (still
-`src/Humans.Infrastructure/Data/`, not G5; was `HumansDbContext` as of
-the prior sweep — `EventSettings` stays with Shifts, not
+Folder: `src/Sections/Humans.Shifts/Services/` — moved from
+`src/Humans.Application/Services/Shifts/` into its own project (G5,
+nobodies-collective/Humans#866); repository under `Data/`. **DbContext:**
+`ShiftsDbContext` — peeled from `HumansDbContext` (part of #858;
+`EventSettings` stays with Shifts, not
 `EventGuideDbContext`, despite the Events/EventGuide section peeling out
 separately; see `EventGuideDbContext`'s doc comment). `ShiftRepository` /
 `VolunteerTrackingRepository` inject `IDbContextFactory<ShiftsDbContext>`
@@ -1195,9 +1305,9 @@ this peel — it lives on `UsersDbContext` under the Users section (see
 > `VolunteerTrackingService`. `ShiftSignupService` gained
 > `ICalendarFeedContributor` (personal iCal feed — shift signups).
 
-The Application-layer `ShiftViewService` provides the inner
+`ShiftViewService` provides the inner
 implementation of `IShiftView`; it is wrapped by
-`Humans.Infrastructure.Services.Shifts.CachingShiftViewService`
+`Humans.Shifts.Services.CachingShiftViewService`
 (Singleton decorator with two `TrackedCache` dictionaries for user and
 rota views).
 
@@ -1330,7 +1440,7 @@ which caches both projection types per-entity (per-user view and
 per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
 can resolve it without self-recursion.
 
-### CachingShiftViewService (Singleton, Infrastructure)
+### CachingShiftViewService (Singleton, `Humans.Shifts.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1458,7 +1568,7 @@ No direct DB access, no cache.
 > other contributor orchestrators (`GdprExportService`, `ICalFeedService`),
 > not because parallelism would be unsafe.
 
-### CachingEarlyEntryService (Singleton, Infrastructure)
+### CachingEarlyEntryService (Singleton, `Humans.EarlyEntry.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1474,14 +1584,17 @@ since most users have no EE). Resolves the keyed Scoped inner via
 
 ## Legal
 
-Folder: `src/Humans.Application/Services/Legal/`. **DbContext:**
-`LegalDbContext` — **newly peeled this sweep** (still
-`src/Humans.Infrastructure/Data/`, not G5; was `HumansDbContext` as of
-the prior sweep). `LegalDocumentRepository` injects
+Folder: `src/Sections/Humans.Consent/Services/` — Legal and
+[Consent](#consent) **share one project**, `src/Sections/Humans.Consent/`
+(moved from `src/Humans.Application/Services/{Legal,Consent}/` together, G5,
+nobodies-collective/Humans#866 — they always shared `LegalDbContext`, so the
+G5 move didn't split them into two projects). **DbContext:**
+`LegalDbContext` — peeled from `HumansDbContext` (part of #858).
+`LegalDocumentRepository` injects
 `IDbContextFactory<LegalDbContext>` directly. Owns `LegalDocuments`,
 `DocumentVersions` (`ConsentRecords`, the third table on this context, is
-owned by the [Consent](#consent) section below). The inner `ILegalDocumentSyncService` is wrapped by
-`Humans.Infrastructure.Services.Legal.CachingLegalDocumentSyncService`
+owned by the same section's [Consent](#consent) repository below). The inner `ILegalDocumentSyncService` is wrapped by
+`Humans.Consent.Services.CachingLegalDocumentSyncService`
 (Singleton decorator inheriting `TrackedCache<Guid, LegalDocumentInfo>`,
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
@@ -1537,7 +1650,7 @@ plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
 caching lives in the decorator. Periodic background sync of legal
 documents from the legal-internal repo.
 
-### CachingLegalDocumentSyncService (Singleton, Infrastructure)
+### CachingLegalDocumentSyncService (Singleton, `Humans.Consent.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1551,15 +1664,15 @@ scope per warm. Surfaced on `/Debug/CacheStats`.
 
 ## Consent
 
-Folder: `src/Humans.Application/Services/Consent/`. **DbContext:**
-`LegalDbContext` — **newly peeled this sweep** (still
-`src/Humans.Infrastructure/Data/`, not G5; was `HumansDbContext` as of
-the prior sweep — Consent has never owned a dedicated context of its
-own, it rides on the same context as Legal's `LegalDocuments` /
+Folder: `src/Sections/Humans.Consent/Services/` — shares the project with
+[Legal](#legal) above (see that section's header for why). **DbContext:**
+`LegalDbContext` — peeled from `HumansDbContext` (part of #858 — Consent
+has never owned a dedicated context of its own, it rides on the same
+context as Legal's `LegalDocuments` /
 `DocumentVersions`). `ConsentRepository` injects
 `IDbContextFactory<LegalDbContext>` directly. Owns `ConsentRecords`.
 The inner `IConsentService` is wrapped by
-`Humans.Infrastructure.Services.Consent.CachingConsentService` (Singleton
+`Humans.Consent.Services.CachingConsentService` (Singleton
 decorator inheriting `TrackedCache<Guid, UserConsentInfo>`, lazy / no
 startup warmup). It caches the per-user set of consented document-version
 ids (with the account-merge source-id chain resolved at load) and
@@ -1587,7 +1700,7 @@ lives in the decorator.
 > no longer injects `IOnboardingService`, and its cross-section user read
 > moved from the full `IUserService` to `IUserServiceRead`.
 
-### CachingConsentService (Singleton, Infrastructure)
+### CachingConsentService (Singleton, `Humans.Consent.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1798,7 +1911,7 @@ been **removed**.
 > flag-gated TicketTailor void(-to-hold)+reissue path
 > (`ProcessTransferAsync`, #1058) via `ITicketVendorService`.
 
-### CachingTicketQueryService (Singleton, Infrastructure)
+### CachingTicketQueryService (Singleton, `Humans.Tickets.Services.Stores`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -1982,18 +2095,22 @@ Pure static helpers — no DI, no DB access. `GateAdmissionRules.Evaluate`
 is the decision table (void / duplicate / cutoff / EE / ID-check outcomes);
 `GateBarcode.Normalize` canonicalises scanned codes.
 
-### Web-layer gate helpers (`src/Humans.Web/Infrastructure/`)
+### Gate helpers holding `IMemoryCache` state
 
 Not Application services, but they hold the section's only `IMemoryCache`
-state (single-server in-memory, see Appendix B): `GateLoginThrottle`
-(`GateLoginFailures:{sourceIp}` — per-IP terminal sign-in throttle),
+state (single-server in-memory, see Appendix B). **Moved this sweep:**
+`GatePinThrottle` and `GateVendorMirrorLedger` now live in the Gate section
+itself (`src/Sections/Humans.Gate/Services/Stores/`), not `Humans.Web` —
 `GatePinThrottle` (`GatePinFailures:{key}` — PIN brute-force lockout, 5
-failures / 15 min), and `GateVendorMirrorLedger`
+failures / 15 min) and `GateVendorMirrorLedger`
 (`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
 check-in mirror and the backfill page never double-post a non-idempotent
-TicketTailor check-in, #1083). `GateTerminalAccountSeeder` provisions the
-shared kiosk account and fires `InvalidateUserAccess` (claims / shift-auth /
-active-teams eviction).
+TicketTailor check-in, #1083). Two helpers remain genuinely Web-layer
+(`src/Humans.Web/Infrastructure/`) because they gate terminal *sign-in*,
+not gate *admission*: `GateLoginThrottle` (`GateLoginFailures:{sourceIp}` —
+per-IP terminal sign-in throttle) and `GateTerminalAccountSeeder`, which
+provisions the shared kiosk account and fires `InvalidateUserAccess`
+(claims / shift-auth / active-teams eviction).
 
 ### Background jobs (`Humans.Gate/Contracts/` since G5 lane 5b-3)
 
@@ -2311,7 +2428,7 @@ Cross-section calls limited to `IClock` (plus owning-service lookups for
 active-event scoping). Implements `IUserDataContributor`. The inner
 service has no `IMemoryCache`.
 
-### CachingEventService (Singleton, Infrastructure)
+### CachingEventService (Singleton, `Humans.Events.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
@@ -2556,7 +2673,16 @@ Application/Infrastructure split is gone — everything below lives under
 `AgentService` being Scoped rather than Singleton like most other
 sections' repositories). Owns `AgentConversations`, `AgentMessages`, `AgentSettings`.
 
-> **New since prior sweep:** the preload/warmup surface grew —
+> **New this sweep:** `AgentPreloadCorpusBuilder` calls into
+> `IAgentPreloadAugmentor` (`Humans.Web.Services.Agent.AgentPreloadAugmentor`,
+> `src/Humans.Web/Services/Agent/`) — a Web-layer helper, not part of this
+> section, because it renders the access matrix / glossaries / route map /
+> FAQ preload pages from `Humans.UI`'s `AccessMatrixDefinitions` /
+> `SectionHelpContent` (every section's help content, which only the Web
+> layer can see in one place). Pure static-content formatting — no DI
+> dependencies beyond the two static readers, no DB access, no cache.
+>
+> **Prior sweep:** the preload/warmup surface grew —
 > `AgentPreloadCorpusBuilder` (assembles the tool-corpus preload from
 > `AgentSectionDocReader`, `AgentFeatureSpecReader`, `CommunityFaqReader`),
 > `AgentPreloadWarmupHostedService` and
@@ -2639,7 +2765,11 @@ TeamInfo / CampInfo / event projections.
 
 ## Dashboard
 
-Folder: `src/Humans.Application/Services/Dashboard/`. No owned DB tables.
+Folder: `src/Humans.Web/Services/Dashboard/` — moved from
+`src/Humans.Application/Services/Dashboard/` at G5 (nobodies-collective/Humans#866);
+has no owned tables and never became a section project, so it landed
+alongside the other Web-layer cross-section orchestrators instead of under
+`src/Sections/`. No owned DB tables.
 
 ### DashboardService (Scoped)
 
@@ -2962,7 +3092,8 @@ former HUM0025 `[Grandfathered]` markers have been retired:
    The prior cross-section repository write is closed.
 
 6. **DriveActivityMonitor user fallback uses UserInfo; state via SystemSettings
-   service (#889).** `DriveActivityMonitorService` resolves Google
+   service (#889).** `DriveActivityMonitorService` — now the [Monitor](#monitor)
+   section's own, split out of Google Integration this sweep — resolves Google
    `people/{client_id}` actors through Directory first, then through a per-run
    Google provider-key -> `UserInfo` index from
    `IUserServiceRead.GetAllUserInfosAsync`. Its `IDriveActivityMonitorRepository`
@@ -3106,8 +3237,8 @@ former HUM0025 `[Grandfathered]` markers have been retired:
 
 ### All Cache Keys
 
-Sourced from `src/Humans.Application/CacheKeys.cs` and
-`src/Humans.Application/Extensions/MemoryCacheExtensions.cs`. TTL/type
+Sourced from `src/Humans.Interfaces/CacheKeys.cs` and
+`src/Humans.Interfaces/Extensions/MemoryCacheExtensions.cs`. TTL/type
 classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
 `/Debug/CacheStats` page). Note: most section projections are now
 `TrackedCache` dictionaries (not `IMemoryCache` keys) and are listed
@@ -3125,11 +3256,11 @@ separately below the key table.
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
-| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (Infrastructure) / TicketSyncService | TicketSyncService, `ITicketCacheInvalidator.InvalidateVendorEventSummary` |
+| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (`Humans.TicketTailor`) / TicketSyncService | TicketSyncService, `ITicketCacheInvalidator.InvalidateVendorEventSummary` |
 | `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | (reserved cache-stats key) |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
-| `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
-| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
+| `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
+| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
 | `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateLoginThrottle (Web) | GateLoginThrottle (reset on success) |
 | `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (Web) | GatePinThrottle (only a correct PIN clears it) |
 | `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (Web) | expiry only |
@@ -3193,15 +3324,17 @@ separately below the key table.
    the `null` outcome too — otherwise every page render for the no-EE
    majority would re-fan-out across the provider chain.
 
-5. **Caching decorators live in `Humans.Infrastructure`**, not
-   `Humans.Application/Services/`, because they are transparent
-   decorators over inner Application-layer services (registered keyed
+5. **Caching decorators live beside their inner service in each section's
+   own project**, not in a shared Infrastructure layer — `Humans.Infrastructure`
+   is gone, and every decorator listed above moved into its owning section's
+   `Services/` (or, for Users, `Data/`) folder at G5. They are transparent
+   decorators over an inner Scoped service (registered keyed
    `"user-inner"`, `"team-inner"`, `"shift-view-inner"`,
    `"ticket-query-inner"`, `"camp-inner"`, `"calendar-inner"`,
    `"event-inner"`, `"role-assignment-inner"`, `"legal-document-sync-inner"`,
    `"early-entry-inner"`, plus the Consent inner key) and inherit
-   `TrackedCache<TKey, TValue>` rather than using `IMemoryCache` for
-   their projection state.
+   `TrackedCache<TKey, TValue>` (`src/Humans.Interfaces/Interfaces/Caching/TrackedCache.cs`)
+   rather than using `IMemoryCache` for their projection state.
 
 ---
 
@@ -3265,8 +3398,8 @@ Controllers and components that touch `IMemoryCache` directly.
 |------------------------|-----------------|-----|
 | **NotificationBellViewComponent** | GetOrCreate | `NotificationBadge:{userId}` |
 | **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
-| **GatePinThrottle** (Web infrastructure, used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
-| **GateVendorMirrorLedger** (Web infrastructure, used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
+| **GatePinThrottle** (`Humans.Gate/Services/Stores/`, moved this sweep from Web infrastructure; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
+| **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`, moved this sweep from Web infrastructure; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
 | **GateTerminalAccountSeeder** (Web infrastructure) | `InvalidateUserAccess` extension | `ActiveTeams` + `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
 
 The §15 work continues to push cache populators into the owning service

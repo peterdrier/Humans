@@ -3,13 +3,13 @@
   src/Sections/Humans.Onboarding/Services/**
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
-  src/Humans.Web/Controllers/UsersAdminController.cs
-  src/Humans.Web/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/UsersAdminController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Sections/Humans.Onboarding/Views/OnboardingReview/**
-  src/Humans.Domain/Constants/RoleNames.cs
-  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Interfaces/Constants/RoleNames.cs
+  src/Humans.Interfaces/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   ConsentCoordinator/VolunteerCoordinator capabilities, OnboardingReview authorization, and role-management permissions — review when role names, OnboardingReviewController, or membership filter change.

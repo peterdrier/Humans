@@ -1,7 +1,7 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/GoogleRemovalNotificationService.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleRemovalNotificationService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleRemovalNotificationService.cs
+  src/Sections/Humans.GoogleIntegration/Services/IGoogleRemovalNotificationService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
   src/Sections/Humans.Email/**
   src/Sections/Humans.Email.Contracts/**
   src/Sections/Humans.Email/EmailResource*.resx

@@ -94,6 +94,8 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | Org-level + all-barrio container admin: CRUD, image management, container placement phase toggle |
 | `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Open barrio placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Close barrio placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
 | `POST /CityPlanning/BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
@@ -162,8 +164,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - **Camps:** `ICampServiceRead` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampsForYearAsync`, `GetCampSeasonByIdAsync`, `GetSettingsAsync` used by container admin and map pages. Lead/display data is derived via LINQ over the cached `GetCampsForYearAsync` projection (`CampInfo.IsLead` / `GetLeadSeasonIdForYear`).
 - **Containers:** `IContainerService` — placement API and container admin pages (`CityPlanningApiController`, `CityPlanningController`) read and write container placement via `IContainerService.GetAllAsync`, `GetPlacementsByYearAsync`, `SavePlacementAsync`, `ClearPlacementAsync`, plus per-camp container CRUD. City Planning hosts the placement API endpoints for an entity owned by the Containers section.
-- **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
-- **Profiles:** `IProfileService` — display data for polygon edit attribution.
+- **Teams:** `ITeamServiceRead` — membership in the city-planning team (slug: `city-planning`) grants admin access.
 - **Containers:** `ContainerController` and `ContainerAuthorizationHandler` inject `ICityPlanningServiceRead` (placement phase gate and city-planning team check). This is the correct read-only cross-section surface — not `ICityPlanningService`.
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).
 
@@ -181,7 +182,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly (file read, size limit, and JSON validation moved into the service) and return `GeoJsonUploadResult`. `UpdatePlacementDatesAsync` now accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult` — the controller no longer owns the `LocalDateTime` parse logic or `DateFormattingExtensions`.
 - **`GetSettingsByYearAsync` removed** from `ICityPlanningRepository`; all settings access routes through `GetOrCreateSettingsAsync` (creates the row with `IsPlacementOpen = false` when absent).
 - **`UpdatePlacementDatesAsync` is now `private`** inside `CityPlanningService`; it is no longer part of `ICityPlanningService`.
-- **Cross-section reads** route through `ICampServiceRead`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserServiceRead.GetUserInfosAsync` lookup at the service layer.
+- **Cross-section reads** route through `ICampServiceRead`, `ITeamServiceRead`, and `IUserServiceRead`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserServiceRead.GetUserInfosAsync` lookup at the service layer.
 - **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.
 - **Cross-section surface** — `Humans.CityPlanning.Contracts` is its own project, not a `Contracts/` folder: `Humans.Application`'s `CampService` clears a deleted camp's polygons, so a folder would make Base reference a section and cycle. It holds `ICityPlanningServiceRead` (three reads), `ICityPlanningService` (adds `DeleteCampPolygonsForSeasonsAsync` and `UpdateRegistrationInfoAsync`), `CityPlanningSettingsDto` and `CityPlanningOptions`. Everything else in the section is `internal`.
 - **Resources** — `CityPlanningResource` (103 keys × 6 languages). `Container_*` / `ContainerMap_*` on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`.

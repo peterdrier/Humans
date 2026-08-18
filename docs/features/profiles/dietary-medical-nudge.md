@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Domain/Entities/VolunteerEventProfile.cs
-  src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerEventProfileConfiguration.cs
-  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
-  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
+  src/Sections/Humans.Shifts/Data/Configurations/VolunteerEventProfileConfiguration.cs
+  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs
-  src/Humans.Web/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml
 -->
 <!-- freshness:flag-on-change
@@ -140,7 +140,7 @@ The check operates over the user's **currently-active signups only**:
 
 ## Data Model
 
-Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invariants are in [`sections/Profiles.md`](../../sections/Profiles.md)). The corresponding columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
+Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invariants are in [`sections/Profiles.md`](../../../src/Sections/Humans.Users/Docs/Users.md)). The corresponding columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
 
 | Column | Type | Notes |
 |---|---|---|
@@ -166,7 +166,7 @@ Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invari
 
 ## Cross-section dependencies
 
-Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see [`sections/Profiles.md`](../../sections/Profiles.md) and [`sections/Shifts.md`](../../sections/Shifts.md)). Saves now go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `ProfileRepository`) — **not** `IShiftManagementService`.
+Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see [`sections/Profiles.md`](../../../src/Sections/Humans.Users/Docs/Users.md) and [`sections/Shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md)). Saves now go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `ProfileRepository`) — **not** `IShiftManagementService`.
 
 - **Shifts** (reads, gate): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. Method `IShiftManagementService.HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct)` on the existing service. Pure-query, no `Include` of `User`. Internally calls `Shift.QualifiesForCantinaMeal()` (pure helper on the entity).
 - **Profile** (reads, form): The dietary/medical form view pre-populates from `FullProfile` (loaded by `ProfileController` via `IUserService`). The `DietaryPreference`/`Allergies`/`Intolerances`/`AllergyOtherText`/`IntoleranceOtherText`/`MedicalConditions` fields are now `Profile`-owned.

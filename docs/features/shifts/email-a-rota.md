@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Interfaces/Shifts/IRotaCoordinatorMessageService.cs
-  src/Humans.Application/Services/Shifts/RotaCoordinatorMessageService.cs
+  src/Sections/Humans.Shifts/Services/IRotaCoordinatorMessageService.cs
+  src/Sections/Humans.Shifts/Services/RotaCoordinatorMessageService.cs
   src/Sections/Humans.Email/**
   src/Sections/Humans.Email.Contracts/**
-  src/Humans.Web/Controllers/ShiftAdminController.cs
-  src/Humans.Web/Models/Shifts/EmailRotaViewModel.cs
-  src/Humans.Web/Views/ShiftAdmin/EmailRota.cshtml
+  src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
+  src/Sections/Humans.Shifts/Models/EmailRotaViewModel.cs
+  src/Sections/Humans.Shifts/Views/ShiftAdmin/EmailRota.cshtml
 -->
 <!-- freshness:flag-on-change
   Email template shape, recipient selection rules, and authorization scope — review when ShiftAdminController authorization, signup status filtering, or the coordinator-rota email body changes.
@@ -154,4 +154,4 @@ Failure paths
 - [Shift Management](shift-management.md) — broader shift/rota admin context.
 - [Coordinator Roles](coordinator-roles.md) — Volunteer Coordinator role that gates many shift-admin actions.
 - [Shift Signup Visibility](shift-signup-visibility.md) — signup statuses used to scope the recipient set.
-- [`docs/sections/shifts.md`](../../sections/shifts.md) — section invariants for Shifts.
+- [`docs/sections/shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md) — section invariants for Shifts.

@@ -5,8 +5,8 @@
   src/Humans.Web/Views/Tickets/Admin/Gate.cshtml
   src/Humans.Web/Infrastructure/GateTerminalAccountSeeder.cs
   src/Humans.Web/Infrastructure/GateLoginThrottle.cs
-  src/Humans.Domain/Constants/SystemUserIds.cs
-  src/Humans.UI/Authorization/PolicyNames.cs
+  src/Humans.Interfaces/Constants/SystemUserIds.cs
+  src/Humans.Interfaces/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
 -->
 <!-- freshness:flag-on-change

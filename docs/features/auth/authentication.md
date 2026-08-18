@@ -1,14 +1,14 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
-  src/Humans.Application/Services/Users/**
+  src/Sections/Humans.Users/Services/**
   src/Humans.Web/Authorization/**
-  src/Humans.UI/Authorization/**
+  src/Humans.Interfaces/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Development/Controllers/DevLoginController.cs
-  src/Humans.Domain/Entities/User.cs
+  src/Sections/Humans.Users.Contracts/User.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
-  src/Humans.Domain/Constants/RoleNames.cs
-  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Interfaces/Constants/RoleNames.cs
+  src/Humans.Interfaces/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   Authentication flow, role-claims transformation, role catalog, MembershipRequiredFilter, and policy names — review when auth/identity surfaces change.
@@ -145,6 +145,8 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **FeedbackAdmin** | None since #977 — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
+| **EventsAdmin** | Approve, reject, and request edits on event guide submissions |
+| **CantinaAdmin** | Read-only cantina roster for meal planning; dietary preferences only, never medical conditions |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 
@@ -155,7 +157,7 @@ In addition to governance roles, `RoleAssignmentClaimsTransformation` stamps the
 - **Granted when**: `UserState == Active` (legal name entered)
 - **Checked by**: `MembershipRequiredFilter` (global action filter, routes non-Active users by state) and the `AppAccess` policy used for `_Layout.cshtml` nav visibility
 - **Escape**: none; roles do not bypass the stored `UserState` access gate
-- **Effect**: non-Active users are routed by state (Bare → name entry, DeletePending → cancel-deletion, Suspended/Rejected/Deleted/Merged → account-status page)
+- **Effect**: non-Active users are routed by state (Bare → name entry, DeletePending → cancel-deletion, Suspended/AdminSuspended/Rejected/Deleted/Merged → account-status page)
 
 ### Authorization Policies
 

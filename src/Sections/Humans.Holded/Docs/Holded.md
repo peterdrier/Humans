@@ -74,12 +74,12 @@ mirror tables runs before this baseline recreates them.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly, Base): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
+- `HoldedSyncJob` (nightly, this section's `Jobs/`; scheduled from Shell's roll-call): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
 - `/Holded` buttons: `SyncNow` (incremental + reconcile), `FullSync`.
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (Base connector) only.
+- Outbound: `IHoldedClient` (this section's own connector) only.
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture

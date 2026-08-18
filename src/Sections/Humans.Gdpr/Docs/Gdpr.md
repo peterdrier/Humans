@@ -22,11 +22,9 @@ closed, transcribed from the code rather than from memory.
 - **`IUserDataContributor`** is the fan-out contract (an `IFanout`, per
   `memory/architecture/orchestrator-marker.md`). Every service that owns
   user-scoped tables implements it and returns the personal data it — and only
-  it — owns. There are 21 implementers: four still in `Humans.Application`
-  (`UserService`, `AccountMergeService`, `CampService`, `ShiftSignupService`)
-  and seventeen in already-moved G5 sections (including `TeamService`,
-  `RoleAssignmentService`, `TicketQueryService`, and `AuditLogService`, which
-  have since moved out of `Humans.Application`).
+  it — owns. There are 21 implementers, all in already-moved G5 sections —
+  `Humans.Application` was emptied and deleted at G5 lane B6
+  (nobodies-collective/Humans#1347).
 - **`UserDataSlice`** is one contributor's answer: a stable JSON section name
   plus a payload. **`GdprExportSections`** holds those names as constants, so
   the document's top-level keys survive a contributor moving between services.
@@ -110,9 +108,9 @@ the fan-out is over its own interface.
 
 **Inbound:** the widest of any moved section, and all of it through the leaf.
 Every contributor implements `Humans.Gdpr.Contracts.IUserDataContributor`, so
-`Humans.Application` and thirteen section projects reference
-`Humans.Gdpr.Contracts`. It references `Humans.Interfaces` alone, so none of
-that cycles.
+20 section projects reference `Humans.Gdpr.Contracts`, plus `Humans.Web` for
+the two download controllers. It references `Humans.Interfaces` alone, so
+none of that cycles.
 
 ## Architecture
 

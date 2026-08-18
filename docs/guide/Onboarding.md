@@ -2,8 +2,8 @@
   src/Humans.Web/Views/Account/**
   src/Humans.Web/Views/Guest/**
   src/Humans.Web/Views/Home/**
-  src/Humans.Web/Views/Profile/Edit.cshtml
-  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
+  src/Sections/Humans.Users/Views/Profile/Edit.cshtml
+  src/Sections/Humans.Shifts/Views/ShiftProfile/ShiftInfo.cshtml
   src/Sections/Humans.Consent/Views/Consent/**
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Index.cshtml
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Detail.cshtml

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
-  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Interfaces/Constants/SystemTeamIds.cs
 -->
 <!-- freshness:flag-on-change
   Team directory, join/leave/approval flow, sub-team scoping, role slots, public team page editing, system-team sync, and Teams Admin actions. Review when team views, services, entities, or system-team constants change.

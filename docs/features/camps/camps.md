@@ -1,21 +1,21 @@
 <!-- freshness:triggers
-  src/Humans.UI/Controllers/HumansCampControllerBase.cs
-  src/Humans.Application/Services/Camps/**
-  src/Humans.Web/Controllers/CampController.cs
-  src/Humans.Web/Controllers/CampAdminController.cs
-  src/Humans.Web/Controllers/CampApiController.cs
-  src/Humans.Web/Controllers/CampComplianceController.cs
-  src/Humans.Web/Views/Camp/**
-  src/Humans.Web/Views/CampAdmin/**
-  src/Humans.Web/Views/CampCompliance/**
-  src/Humans.Domain/Entities/Camp.cs
-  src/Humans.Domain/Entities/CampSeason.cs
-  src/Humans.Domain/Entities/CampMember.cs
-  src/Humans.Domain/Entities/CampImage.cs
-  src/Humans.Domain/Entities/CampHistoricalName.cs
-  src/Humans.Domain/Entities/CampSettings.cs
-  src/Humans.Infrastructure/Data/Configurations/Camps/**
-  src/Humans.Infrastructure/Data/Configurations/Camps/CampMemberConfiguration.cs
+  src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs
+  src/Sections/Humans.Camps/Services/**
+  src/Sections/Humans.Camps/Controllers/CampController.cs
+  src/Sections/Humans.Camps/Controllers/CampAdminController.cs
+  src/Sections/Humans.Camps/Controllers/CampApiController.cs
+  src/Sections/Humans.Camps/Controllers/CampComplianceController.cs
+  src/Sections/Humans.Camps/Views/Camp/**
+  src/Sections/Humans.Camps/Views/CampAdmin/**
+  src/Sections/Humans.Camps/Views/CampCompliance/**
+  src/Sections/Humans.Camps/Domain/Camp.cs
+  src/Sections/Humans.Camps/Domain/CampSeason.cs
+  src/Sections/Humans.Camps/Domain/CampMember.cs
+  src/Sections/Humans.Camps/Domain/CampImage.cs
+  src/Sections/Humans.Camps/Domain/CampHistoricalName.cs
+  src/Sections/Humans.Camps/Domain/CampSettings.cs
+  src/Sections/Humans.Camps/Data/Configurations/**
+  src/Sections/Humans.Camps/Data/Configurations/CampMemberConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Camp registration/season approval workflow, CampMember per-season affiliation, lead management, and route table — review when Camp services, controllers, or entities change.
@@ -81,6 +81,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Leads can edit their own camp; CampAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
+- Can manually add or remove historical names from the Edit page, independent of the rename auto-log (`/Camps/{slug}/HistoricalNames/Add`, `/Camps/{slug}/HistoricalNames/Remove/{nameId}`)
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images
 - Can manage co-leads by assigning/unassigning the Camp Lead role on the Members page's Roles panel — the same mechanism as any other per-camp role (see US-20.12); there is no separate "primary lead" concept
@@ -400,29 +401,29 @@ Authenticated User
   │ Active  │  │ Rejected  │  │Withdrawn │
   └────┬────┘  └───────────┘  └────┬─────┘
        │                           │
-  ┌────┼─────┐                     │
-  │          │                     │
+  ┌────┼─────┐                Rejoin (lead or
+  │          │                 CampAdmin)
 ┌─▼──┐ ┌────▼─────┐               │
 │Full│ │Withdrawn │               │
-└─┬──┘ └────┬─────┘               │
-  │          │                     │
-  └────┬─────┴─────────────────────┘
-       │
-  Reactivate (CampAdmin only)
-       │
-  ┌────▼────┐
-  │ Active  │
-  └─────────┘
+└─┬──┘ └──────────┘               │
+  │                                │
+Reactivate                    ┌────▼────┐
+(CampAdmin only)               │ Pending │
+  │                            └─────────┘
+┌─▼───────┐
+│ Active  │
+└─────────┘
 ```
 
 Transitions:
 - Pending → Active (admin approves)
 - Pending → Rejected (admin rejects)
 - Pending → Withdrawn (lead withdraws)
-- Active → Full (lead marks full)
 - Active → Withdrawn (lead withdraws)
 - Full → Active (CampAdmin reactivates)
-- Withdrawn → Active (CampAdmin reactivates)
+- Withdrawn → Pending (lead or CampAdmin rejoins; requires re-approval)
+
+Note: nothing in the app currently transitions a season *into* `Full` — `SetSeasonFullAsync` was dropped as a zero-caller dead method (commit b4710bf01, 2026-05-03). `Full` still exists as a readable/reactivatable status (for seasons that reached it before the method was removed, or set directly), but there is no in-app "mark full" action today. This is a **known gap, not an intended retirement** — a reachable `Full` is an intended requirement; see nobodies-collective/Humans#1070.
 
 ## Authorization
 
@@ -459,17 +460,33 @@ Transitions:
 | `POST /Camps/{slug}/Edit` | Submit edits |
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
+| `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
+| `POST /Camps/{slug}/Rejoin/{seasonId}` | Lead or CampAdmin rejoins a Withdrawn season (back to Pending) |
+| `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
+| `POST /Camps/{slug}/HistoricalNames/Remove/{nameId}` | Remove a historical name |
 | `POST /Camps/{slug}/Images/Upload` | Upload image |
 | `POST /Camps/{slug}/Images/Delete/{imageId}` | Delete image |
 | `POST /Camps/{slug}/Images/Reorder` | Reorder images |
+| `POST /Camps/{slug}/Members/Request` | Request membership for the current season |
+| `POST /Camps/{slug}/Members/Withdraw/{campMemberId}` | Withdraw a pending membership request |
+| `POST /Camps/{slug}/Members/Leave/{campMemberId}` | Leave an active membership |
+| `POST /Camps/{slug}/Members/Approve/{campMemberId}` | Lead/CampAdmin approves a pending request |
+| `POST /Camps/{slug}/Members/Reject/{campMemberId}` | Lead/CampAdmin rejects a pending request |
+| `POST /Camps/{slug}/Members/Remove/{campMemberId}` | Lead/CampAdmin removes an active member |
+| `POST /Camps/{slug}/Members/{campMemberId}/EarlyEntry` | Grant / revoke Early Entry on a member |
 | `GET /Camps/Admin` | Admin dashboard |
 | `POST /Camps/Admin/Approve/{seasonId}` | Approve season |
 | `POST /Camps/Admin/Reject/{seasonId}` | Reject season |
-| `POST /Camps/Admin/OpenSeason/{year}` | Open season |
+| `POST /Camps/Admin/OpenSeason` | Open season (year as form field) |
 | `POST /Camps/Admin/CloseSeason/{year}` | Close season |
 | `POST /Camps/Admin/SetPublicYear` | Set public year |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
-| `POST /Camps/Admin/Delete/{campId}` | Delete camp |
+| `GET /Camps/Admin/Export` | Export camps CSV |
+| `POST /Camps/Admin/UpdateRegistrationInfo` | Update the registration-info banner shown on the registration form |
+| `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
+| `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a Full season to Active |
+| `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |
+| `POST /Camps/Admin/SetEeStartDate` | Set the global Early Entry start date |
 | `GET /Camps/Admin/Roles` | List role definitions |
 | `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |
 | `POST /Camps/Admin/Roles/Create` | Create role definition |
@@ -478,7 +495,8 @@ Transitions:
 | `POST /Camps/Admin/Roles/{id}/Reactivate` | Reactivate a soft-deleted role definition |
 | `GET /Camps/Admin/Compliance` | Role-staffing compliance matrix (`CampComplianceController`): barrios × role definitions grid, defaults to current public year |
 | `POST /Camps/{slug}/Members/Add` | Lead-adds-active-member shortcut |
-| `POST /Camps/{slug}/Roles/Assign` | Assign role for the current season |
+| `POST /Camps/{slug}/Roles/AssignByUser` | Picker-driven assign: adds the human as a member (if needed) and assigns the role in one step |
+| `POST /Camps/{slug}/Roles/Assign` | Legacy assign by existing `campMemberId` |
 | `POST /Camps/{slug}/Roles/{assignmentId}/Unassign` | Unassign role (controller verifies cross-camp ownership) |
 | `GET /api/camps/{year}` | JSON API: camps for year |
 | `GET /api/camps/{year}/placement` | JSON API: placement data |
