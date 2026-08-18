@@ -279,8 +279,8 @@ Git Bash.)
      reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
      `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
 2. [ ] Move the vertical, folders as layers: `Contracts/ Interfaces/ Domain/ Data/ Services/
-   Controllers/ Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/`
-   + `Section.cs`. **`Contracts/` is the public folder and `Interfaces/` is the internal one** —
+   Controllers/ Models/ Views/ Authorization/ Filters/ Docs/ Properties/ wwwroot/`
+   + `Section.cs` (and, per step 3b, `<Section>Resource.cs` + its `.resx` at the project root). **`Contracts/` is the public folder and `Interfaces/` is the internal one** —
    that pair is the whole accessibility convention, and HUM0034 enforces it. Ship only the
    folders the section has.
    **A controller that names its views by absolute path pins the folder layout** — an RCL's
@@ -295,16 +295,17 @@ Git Bash.)
    shipped Store example (spec §2) but derive the `@using` list from the section's own folders.
    Omitting a line — or one `@addTagHelper` — ships broken HTML with a green build.
 3b. [ ] **First ask whether the section has any keys at all.** A section whose views carry no
-   `Localizer[…]` call and no `<Section>_*` key in `SharedResource` ships **no `Resources/`
-   folder and no `<Section>Resource`** — `SectionResourceTypes()` simply returns one fewer
+   `Localizer[…]` call and no `<Section>_*` key in `SharedResource` ships **no resource set
+   and no `<Section>Resource`** — `SectionResourceTypes()` simply returns one fewer
    marker and the boot diagnostic is happy (proven both ways: Finance and Gate ship none; the
    `GateLogin_*` keys that look like Gate's belong to Shell's `/Account/GateLogin` page and stay).
    Assert it structurally instead: *no* type in the section may take `IStringLocalizer<T>` for
    any `T` (`GateArchitectureTests.SectionTypesTakeNoStringLocalizer`), so the day someone adds
    copy the build tells them to carve a resource set first. Skip the rest of this step.
    Otherwise: carve the section's `.resx` — the `<Section>_*` and `Enum_<Section>*` keys move out of
-   `Humans.UI`'s set into `Resources/<Section>Resource.{resx,es,ca,de,fr,it}` beside a
-   `<Section>Resource.cs` in the section's namespace. The `.cs` and `.resx` must sit in the same
+   `Humans.UI`'s set into `<Section>Resource.{resx,es,ca,de,fr,it}` at the project root beside a
+   `<Section>Resource.cs` in the section's namespace (root, not a `Resources/` folder — folder and
+   namespace must agree, PR peterdrier/Humans#1365). The `.cs` and `.resx` must sit in the same
    folder, and the `.cs` namespace determines the manifest prefix (spec §3) — get it wrong and
    every string in the set degrades to its key at runtime. The boot diagnostic needs no
    per-section edit, **but only if `<Section>Resource` is `public`** — discovery reads
@@ -421,7 +422,7 @@ Git Bash.)
      in `SharedResource`, so its guard is "`<Section>Resource` or `SharedResource`, nothing
      else", which still catches a controller bound to some third set (proven: Governance).
      **A section with no keys at all can still need the guard in its bound form rather than
-     Gate's "takes no `IStringLocalizer<T>` at all".** Debug ships no `Resources/` folder — its
+     Gate's "takes no `IStringLocalizer<T>` at all".** Debug ships no resource set — its
      copy is English developer text — and yet `/Debug/Translations` injects
      `IStringLocalizer<SharedResource>` on the action, because the page renders the whole shared
      set *as data*: every key in every culture, as a coverage gallery. Gate's structural
