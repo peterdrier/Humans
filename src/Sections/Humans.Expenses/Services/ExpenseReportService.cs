@@ -1,4 +1,5 @@
 using Humans.Application.Architecture;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -1175,7 +1176,7 @@ internal sealed class ExpenseReportService(
             throw new UnauthorizedAccessException("Actor is not a coordinator of the category's team.");
     }
 
-    /// <summary>User's reports (lines+attachment metadata) and masked IBAN. Chain-follows merge tombstones.</summary>
+    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Chain-follows merge tombstones.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
@@ -1196,6 +1197,31 @@ internal sealed class ExpenseReportService(
         var maskedIban = string.IsNullOrEmpty(profile?.Iban)
             ? null
             : IbanFormatter.Mask(profile.Iban);
+
+        var expenseActions = new List<AuditAction>
+        {
+            AuditAction.ExpenseSubmit,
+            AuditAction.ExpenseEndorse,
+            AuditAction.ExpenseCoordinatorReject,
+            AuditAction.ExpenseApprove,
+            AuditAction.ExpenseReject,
+            AuditAction.ExpenseWithdraw,
+            AuditAction.ExpenseCategoryOverride,
+            AuditAction.ExpenseSepaSent,
+            AuditAction.ExpenseSepaReopened,
+            AuditAction.ExpensePaid,
+            AuditAction.ExpenseAttachmentUploaded,
+            AuditAction.ExpenseAttachmentRemoved,
+            AuditAction.IbanSet,
+            AuditAction.IbanRemove,
+            AuditAction.IbanReveal,
+        };
+
+        var auditEntries = await auditLogService.GetFilteredEntriesAsync(
+            userId: userId,
+            actions: expenseActions,
+            limit: 10_000,
+            ct: ct);
 
         var shapedReports = allReports
             .OrderBy(r => r.CreatedAt)
@@ -1228,11 +1254,23 @@ internal sealed class ExpenseReportService(
                 }).ToList()
             }).ToList();
 
+        var shapedAudit = auditEntries
+            .Select(e => new
+            {
+                e.Action,
+                e.EntityType,
+                e.EntityId,
+                e.Description,
+                OccurredAt = e.OccurredAt.ToIso8601()
+            }).ToList();
+
         return
         [
             new UserDataSlice(GdprExportSections.ExpenseReports,
-                shapedReports.Count > 0 || maskedIban is not null
-                    ? new { MaskedIban = maskedIban, Reports = shapedReports }
+                shapedReports.Count > 0 ? shapedReports : null),
+            new UserDataSlice(GdprExportSections.ExpenseAuditLog,
+                shapedAudit.Count > 0
+                    ? new { MaskedIban = maskedIban, Entries = shapedAudit }
                     : (object?)null),
         ];
     }

@@ -261,8 +261,6 @@ internal sealed class AuditLogService(
         {
             a.Action,
             a.EntityType,
-            a.EntityId,
-            a.Description,
             OccurredAt = a.OccurredAt.ToIso8601(),
             Role = a.ActorUserId == userId ? "Actor" : "Subject"
         }).ToList();

@@ -461,24 +461,6 @@ public class AuditLogServiceTests : IDisposable
             because: "rows belonging to unrelated users must not bleed into the merged view");
     }
 
-    // ===== ContributeForUserAsync (GDPR export) =====
-
-    [HumansFact]
-    public async Task ContributeForUserAsync_ShapesEntityIdDescriptionAndRole()
-    {
-        var userId = Guid.NewGuid();
-        SeedAuditLogEntry(AuditAction.ExpenseSubmit, "ExpenseReport", userId,
-            _clock.GetCurrentInstant());
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        var json = System.Text.Json.JsonSerializer.Serialize(slices.Single().Data);
-        json.Should().Contain("EntityId").And.Contain("Description")
-            .And.Contain("OccurredAt").And.Contain("Role")
-            .And.Contain(userId.ToString());
-    }
-
     // --- Helpers ---
 
     private AuditLogEntry SeedAuditLogEntry(
