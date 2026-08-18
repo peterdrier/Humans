@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;

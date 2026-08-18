@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Stores;
 using Microsoft.Extensions.Caching.Memory;

@@ -6,7 +6,7 @@
 // instead of raw entity inserts.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;

@@ -1,5 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Base;
+using Humans.Base.Caching;
 using System.Security.Claims;
 using Humans.Notifications.Services.Dtos;
 using Humans.Camps.Contracts;

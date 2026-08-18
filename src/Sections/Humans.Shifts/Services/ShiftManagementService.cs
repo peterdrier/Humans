@@ -13,7 +13,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Shifts.Data;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Users.Contracts;
 
 using Humans.Shifts.Models;

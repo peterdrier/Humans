@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Consent.Contracts;
 
 namespace Humans.Consent.Services;

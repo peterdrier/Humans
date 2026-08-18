@@ -1,3 +1,4 @@
+using Humans.Base.Caching;
 using Humans.Base.Configuration;
 using Humans.Base.Diagnostics;
 using Humans.Base.Interfaces;
@@ -225,7 +226,7 @@ internal sealed class DebugController(
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
-                    Base.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                    CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
                     return new CacheStatEntryViewModel
                     {
                         KeyType = e.KeyType,

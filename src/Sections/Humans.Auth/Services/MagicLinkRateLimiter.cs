@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Base.Extensions;
 
 namespace Humans.Auth.Services;

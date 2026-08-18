@@ -1,4 +1,4 @@
-using Humans.Base;
+using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
