@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
-using Humans.Application.Interfaces.Metering;
+using Humans.Base.Interfaces.Metering;
 using Humans.Application.Metering;
 
 namespace Humans.Infrastructure.Services.Metering;

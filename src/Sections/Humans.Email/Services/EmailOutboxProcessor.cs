@@ -1,7 +1,7 @@
 using Humans.Application.Architecture;
 using System.Text.Json;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Metering;
+using Humans.Base.Interfaces.Metering;
 using Humans.Application.Metering;
 using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;

@@ -1,6 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Metering;
+using Humans.Base.Interfaces.Metering;
 using Humans.Web.Services;
 using Humans.Infrastructure.Services.Metering;
 

@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Metering;
+namespace Humans.Base.Interfaces.Metering;
 
 /// <summary>
 /// Handle for a push-registered gauge. Returned by

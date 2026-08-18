@@ -1,6 +1,6 @@
 using Humans.Application.Metering;
 
-namespace Humans.Application.Interfaces.Metering;
+namespace Humans.Base.Interfaces.Metering;
 
 /// <summary>
 /// Process-wide gauge registry. Leaf node in the DI graph: depends on
