@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Hosting;
 
 /// <summary>Admin-card status of the shared gate-terminal account.</summary>
 public record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);

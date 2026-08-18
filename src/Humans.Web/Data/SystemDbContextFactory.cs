@@ -1,7 +1,8 @@
+using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.Web.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context SystemDbContext</c>.

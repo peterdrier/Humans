@@ -1982,7 +1982,7 @@ Pure static helpers — no DI, no DB access. `GateAdmissionRules.Evaluate`
 is the decision table (void / duplicate / cutoff / EE / ID-check outcomes);
 `GateBarcode.Normalize` canonicalises scanned codes.
 
-### Web-layer gate helpers (`src/Humans.Web/Infrastructure/`)
+### Web-layer gate helpers (`src/Humans.Web/Services/`)
 
 Not Application services, but they hold the section's only `IMemoryCache`
 state (single-server in-memory, see Appendix B): `GateLoginThrottle`
@@ -3135,7 +3135,7 @@ separately below the key table.
 | `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (Web) | expiry only |
 
 > The three `Gate*` keys are held by Web-layer helper singletons
-> (`src/Humans.Web/Infrastructure/`), not `CacheKeys.cs` /
+> (`src/Humans.Web/Services/`), not `CacheKeys.cs` /
 > `CacheKeys.Metadata` — they never appear on `/Debug/CacheStats`.
 
 > **Retired `IMemoryCache` keys** (now `TrackedCache` projections or

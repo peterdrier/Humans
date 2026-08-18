@@ -2,7 +2,7 @@ using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Hosting;
 
 /// <summary>
 /// Removes the dev-only <c>DevLoginController</c> from MVC's controller feature when running

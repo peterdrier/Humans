@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using NodaTime;
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <inheritdoc cref="IUserActivityTracker"/>
 public sealed class UserActivityTracker(IClock clock) : IUserActivityTracker

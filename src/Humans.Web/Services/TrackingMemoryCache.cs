@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Decorator around <see cref="IMemoryCache"/> that tracks hit/miss statistics

@@ -1,7 +1,9 @@
 <!-- freshness:triggers
   src/Humans.Application/Interfaces/**
   src/Humans.Application/Services/**
-  src/Humans.Web/Infrastructure/**
+  src/Humans.Web/Hosting/**
+  src/Humans.Web/Data/**
+  src/Humans.Web/Repositories/**
   src/Humans.Analyzers/**
   src/Sections/**
   docs/architecture/freshness-catalog.yml
@@ -58,13 +60,13 @@ Controllers call services. Controllers never inject `DbContext`, never write EF 
 
 Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live in `Humans.Application`. They contain business rules, workflow logic, validation, and orchestration. They **never** import EF types. When they need to load or persist entities, they call their owning repository interface; when they need cached data, they go through their owning store.
 
-Repository **implementations** (the classes that talk to `DbContext`) live in the owning section project's `Data/`. `Humans.Infrastructure` was the shared home until G5 lane 5b-6 deleted it (nobodies-collective/Humans#866); only the platform context is left, in `Humans.Web/Infrastructure/`.
+Repository **implementations** (the classes that talk to `DbContext`) live in the owning section project's `Data/`. `Humans.Infrastructure` was the shared home until G5 lane 5b-6 deleted it (nobodies-collective/Humans#866); only the platform context is left, in `Humans.Web/Data/`.
 
 Every application context is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `PersistKeysToSystemDbContext`) — a namespace `Humans.Web` and Base now share, since the class stayed put by name while its assembly changed. The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access the contexts directly via `InternalsVisibleTo`.
 
 **There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Sections/Humans.<Section>/Data/Migrations/`, and `src/Humans.Web/Migrations/System/` for the platform context. `HumansDbContext` and its root migration chain were deleted at peel 15 (nobodies-collective/Humans#858); the merged Users+Profiles section (`UsersDbContext`) carries the Identity base. Consequences:
 
-- **One design-time factory per context**, each next to its context: every section's in its own project under `Humans.<Section>.Data` (`AgentDbContextFactory`, `HoldedDbContextFactory`, …), and `SystemDbContextFactory` in `Humans.Web/Infrastructure/Data/`. Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
+- **One design-time factory per context**, each next to its context: every section's in its own project under `Humans.<Section>.Data` (`AgentDbContextFactory`, `HoldedDbContextFactory`, …), and `SystemDbContextFactory` in `Humans.Web/Data/`. Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
 - **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` is the single source for both the runtime registration (`AddSectionDbContext`) and the design-time factories.
 - **Section contexts apply their configurations explicitly** (no assembly scanning, which would drag in other sections). `DbContextEntityOwnershipTests` fails the build if an `IEntityTypeConfiguration` ends up applied by zero contexts (invisible to `has-pending-model-changes`) or by two.
 - **Unit tests for a section context** build their in-memory options with the shared `NewSectionDbOptions<TContext>()` helper in `tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` rather than hand-rolling a `DbContextOptionsBuilder`.

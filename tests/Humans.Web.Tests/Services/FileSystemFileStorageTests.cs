@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Filesystem-backed <see cref="IFileStorage"/> rooted at the application's

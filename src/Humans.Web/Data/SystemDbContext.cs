@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.Web.Data;
 
 /// <summary>
 /// Platform database context (nobodies-collective/Humans#858): the home for

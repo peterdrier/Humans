@@ -8,7 +8,7 @@ using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Singleton service that owns the "Humans.Metrics" meter and all application-level

@@ -183,8 +183,8 @@ mechanical:
       - "src/Humans.Web/Services/**/*.cs"
       # SystemDbContext and the admin diagnostics repository followed the rest of
       # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
-      - "src/Humans.Web/Infrastructure/Repositories/**/*.cs"
-      - "src/Humans.Web/Infrastructure/Data/*DbContext.cs"
+      - "src/Humans.Web/Repositories/**/*.cs"
+      - "src/Humans.Web/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
       # The section DbContexts were already triggers, but the services and
       # repositories that read through them were not — so a repository or ctor
@@ -229,7 +229,7 @@ mechanical:
       # the platform side is SystemDbContext (DataProtectionKeys), which the doc
       # lists and which now lives in Shell; section-owned entities and
       # configurations are covered by the two src/Sections globs below.
-      - "src/Humans.Web/Infrastructure/Data/**/*.cs"
+      - "src/Humans.Web/Data/**/*.cs"
       # G5 sections own their entities and EF configurations outright (24 Domain/
       # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
       # Without these, this entry reported "not dirty" on 2026-08-13 while 39

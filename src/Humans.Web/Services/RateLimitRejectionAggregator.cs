@@ -1,4 +1,4 @@
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Collapses rate-limit rejection warnings into one detailed line plus a

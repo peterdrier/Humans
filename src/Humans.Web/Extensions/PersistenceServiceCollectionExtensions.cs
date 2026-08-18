@@ -1,23 +1,22 @@
-using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Hosting;
+using Humans.Web.Data;
 using Microsoft.AspNetCore.DataProtection;
 
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Web.Extensions;
 
 /// <summary>
 /// DI wiring for Base's own context, the migration runner and the Identity stores.
 /// </summary>
 /// <remarks>
 /// The generic <c>AddSectionDbContext&lt;TContext&gt;</c> seam left for
-/// <see cref="SectionDbContextServiceCollectionExtensions"/> in the Humans.Interfaces (Base)
-/// assembly at G5 lane 3a-2 (nobodies-collective/Humans#866) — sections call it and may not
-/// reference Web. The rest of the type came here at lane 5b-6, which deleted
-/// Humans.Infrastructure; the two architecture rules that read
-/// <c>typeof(InfrastructureServiceCollectionExtensions).Assembly</c> as "the Humans.Infrastructure
-/// assembly" were self-retiring on an empty <c>Repositories/</c> and went with it. The namespace
-/// is kept so no call site moved, and it is what keeps this type distinct from
-/// <c>Humans.Web.Extensions.InfrastructureServiceCollectionExtensions</c>, the roll-call.
+/// <see cref="Humans.Infrastructure.Hosting.SectionDbContextServiceCollectionExtensions"/> in the
+/// Humans.Interfaces (Base) assembly at G5 lane 3a-2 (nobodies-collective/Humans#866) — sections
+/// call it and may not reference Web. The rest of the type came here at lane 5b-6, which deleted
+/// Humans.Infrastructure, and was renamed from <c>InfrastructureServiceCollectionExtensions</c>
+/// when Web's <c>Infrastructure/</c> folder dissolved — distinct from
+/// <see cref="InfrastructureServiceCollectionExtensions"/>, the roll-call.
 /// </remarks>
-public static class InfrastructureServiceCollectionExtensions
+public static class PersistenceServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the per-section contexts + factories + migration runner. Caller must
