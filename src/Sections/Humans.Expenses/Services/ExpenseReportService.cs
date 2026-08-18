@@ -322,8 +322,19 @@ internal sealed class ExpenseReportService(
             var lineId = await AddLineAsync(
                 reportId, submitterUserId, description, amount, lineType, parentLineId, ct);
             if (file is not null)
-                await AttachFileToLineAsync(
-                    reportId, submitterUserId, lineId, file.FileName, file.ContentType, file.Content, ct);
+            {
+                try
+                {
+                    await AttachFileToLineAsync(
+                        reportId, submitterUserId, lineId, file.FileName, file.ContentType, file.Content, ct);
+                }
+                catch
+                {
+                    // The form retries the whole add, so a line left behind here would duplicate.
+                    await repo.RemoveLineAsync(reportId, lineId, ct);
+                    throw;
+                }
+            }
             return new ExpenseAddLineResult(true, null, lineId);
         }
         catch (ExpenseValidationException ex)

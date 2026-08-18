@@ -673,6 +673,29 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_RollsBackLine_WhenUploadFailsAfterCreation()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("disk full"));
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        // The form retries the whole add — a leftover line would duplicate on retry.
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+        loaded.Total.Should().Be(0m);
+    }
+
+    [HumansFact]
     public async Task AddLineWithResultAsync_WithBadFile_CreatesNothing()
     {
         var (_, category) = SetupActiveYear();

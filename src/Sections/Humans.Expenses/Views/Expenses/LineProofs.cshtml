@@ -71,6 +71,8 @@
                                 <span>@proof.Amount.ToEuro()</span>
                                 @if (Model.CanEditLines)
                                 {
+                                    <a asp-action="LineEdit" asp-route-id="@r.Id" asp-route-lineId="@proof.Id"
+                                       class="btn btn-sm btn-outline-secondary">Edit</a>
                                     <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@proof.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Remove this receipt?">Remove</button>
