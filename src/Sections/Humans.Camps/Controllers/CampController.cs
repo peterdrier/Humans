@@ -8,7 +8,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Camps.Resources;
 using Humans.UI;
 using Humans.Users.Contracts;
 
