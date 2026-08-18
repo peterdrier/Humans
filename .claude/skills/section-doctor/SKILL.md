@@ -1,6 +1,6 @@
 ---
 name: section-doctor
-description: "Daily per-section review cycle. Reads the global plan at docs/health/plan.md (replanning over every section when exhausted or stale), inhales today's section front to back, refreshes its Docs/health.md scorecard + ideal shape, then spends a 2-3h budget on the biggest-value behavior-preserving improvements across code, tests, docs, comments, nav, and translations. One PR per run; each run's report + Needs-Peter queue lives in its own docs/health/runs/ file; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
+description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Reads the global plan at docs/health/plan.md (replanning over every section when exhausted or stale), inventories every file in the section, derives the target shape before running any scan, then works parallel threads — shape, behavior/bugs, freshness, conformance, tests, prose/nav, inbox — into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report + Needs-Peter queue lives in its own docs/health/runs/ file; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
 argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--replan]"
 ---
 
@@ -8,6 +8,30 @@ argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--replan]"
 
 Full design: `docs/superpowers/specs/2026-08-17-section-doctor-design.md`. This file is
 self-amending — replan sweeps apply run lessons here; keep those edits terse and dated.
+
+## Purpose
+
+**Every section converges, run over run, on the smallest and clearest form that still does
+everything it does today — and is correct.**
+
+Feature work deposits sediment: duplicated helpers, comments that outlived their decisions, docs
+describing a version that shipped two refactors ago, contracts wider than any caller, tests that
+assert the mock. Nothing else in this repo removes it — reviews look at diffs, and sediment is in
+no single diff. This is the only process that reads a section *as it now stands* rather than as it
+was last changed.
+
+A run is judged on three things:
+
+- **Did the section get smaller and clearer without losing anything?** Line count is a fair proxy
+  for the token weight every future reader, human or agent, pays to work here. Growth needs a
+  stated reason — and cross-section consolidation is a good one, so the figure that matters is the
+  **net across every section the run touched**, not a per-section floor.
+- **Was every file actually looked at?** A finding-driven pass finds only what sits next to what
+  it already suspects. Full coverage is what makes this a review rather than a sweep — and it is
+  where the bugs come from: Guide's and Finance's defects both surfaced because something read
+  everything, not because anything hunted for them.
+- **Is the section still doing exactly what it did?** The constraint that buys all the latitude
+  above.
 
 **Contract: business functionality does not change.** That constraint is what buys the latitude
 to rewrite anything else about the section.
@@ -124,61 +148,136 @@ unmerged strikes that today's run cannot see — re-doctoring it duplicates work
 conflicting PRs. A `--section` naming a blocked section stops like the all-blocked case — merge
 the open PR first, or use `resume` to work its Needs-Peter queue.
 
-## Phase 3: Deep assessment
+## Phase 3: Assess
 
-Start `dotnet build Humans.slnx -v quiet` (background) immediately — reforge scores need a
-built solution, and the build doubles as the strike phase's baseline.
+Five stages, in this order. **The order is the point.** The target is derived *before* any scan
+runs, because a target written after a linter run is a summary of the linter run (`/simplify`,
+Pass 2). This skill had it backwards until 2026-08-18, and the Finance run's "ideal shape" came
+out as a restatement of its reforge score — the failure that rule exists to prevent.
 
-Inhale the section front to back — this is the once-per-cycle expensive judgment. Dispatch
-parallel background lanes where useful; **every subagent gets an explicit model, tagged in name
-and description** (sonnet for mechanical scanning, opus-tier only where judgment earns it):
+Start `dotnet build Humans.slnx -v quiet` in the background now: reforge needs a built solution
+and 3d's tool threads need the build. Do not look at its output until 3d.
 
-- **Code/arch lane** — audit-surface posture on the section's services/interfaces with
-  per-method external-caller counts (reforge makes this cheap); smells against
-  `peters-hard-rules.md` + `design-rules.md`; reforge surface + internal score; dead surface;
-  reuse-review's unnecessary-surface checklist against the section's own Contracts;
-  a flow-trace simplification pass — walk each service/repository flow asking "is there a
-  simpler shape" (overlapping methods, pass-throughs, duplicated pipelines).
-- **Tests lane** — good/bad/ugly triage of the section's tests (slop, redundancy); **kick off
-  section-scoped Stryker in the background at lane start** (`dotnet tool restore` first —
-  Stryker is a manifest-local tool, see `docs/testing/mutation-testing.md`) — score goes in the
-  scorecard, surviving mutants seed test strikes. **Stryker is never a blocker**: if the restore
-  or the run fails, write `n/a (<reason>)` in the scorecard's mutation cell, carry on with the
-  rest of the lane, and note it in the retro — do not retry, reconfigure, or install anything
-  globally; build the **invariant coverage matrix**: every
-  invariant, negative access rule, and trigger in the section doc mapped to a pinning test —
-  each gap is a ranked opportunity.
-- **InspectCode lane** — `jb inspectcode` scoped to the section's project(s) (see `/resharper`
-  for invocation); Tier 1/2 findings become strike items.
-- **Docs lane** — the section's `Docs/*.md` and `docs/guide/<Section>.md` vs code: do the
-  business docs match what the code actually does; verify the section doc's
-  `freshness:triggers` globs still resolve.
-- **Surface lane** — AI slop: wasteful comments, 500-words-that-should-be-50 docs/messages,
-  dead resources, missing translations, per-section nav quality (dead ends, missing backlinks).
-- **Content lane** (only where the section consumes authored content — markdown, resx, templates,
-  seed data): run the **real shipped content** through the section's **real pipeline** and assert
-  the section doc's invariants over the result. Code-reading lanes cannot see a defect whose
-  trigger is the shape of an input file. Where the pipeline fails *open* (an unrecognised input
-  is passed through rather than rejected), that check belongs in the repo as a test over the
-  production content, not just in the run.
-- **Inbox** — section-tagged items in `docs/architecture/debt-ledger.yml`, open GitHub issues,
-  and in-app issues: work or rank them; off-section finds go to this run's sweep queue as
-  `debt:` items (never written to the ledger directly — it is shared).
+### 3a. Inventory — every file, assigned
 
-Then, from the whole picture, write the **ideal shape**: what this section would be if rewritten
-from scratch today (`/simplify` with a magic wand), and rank the concrete moves toward it by
-value. Refresh `src/Sections/Humans.<X>/Docs/health.md` (format in the spec; keep last 3
-history rows, prune older).
+```bash
+git ls-files -- src/Sections/Humans.<X> src/Sections/Humans.<X>.Contracts tests/Humans.<X>.Tests
+```
+plus `docs/guide/<X>.md` where one exists. Drop nothing. Assign every path to at least one thread
+from 3d.
+
+Two things are exempt, both generated: `*.Designer.cs` and `*DbContextModelSnapshot.cs`. Migration
+`.cs` files are **not** exempt.
+
+**Coverage is a success criterion of the run, not an aspiration.** A file no thread claims is a
+hole in the thread set, not a file to skip — widen a thread or add one, and say so in the run
+file. The run file's `## File coverage` block records a disposition for every path: `reviewed`,
+`changed`, or `generated`.
+
+Why this is stage one: a finding-driven pass only finds what sits adjacent to what it already
+suspects. The 2026-08-18 Finance run skipped ~20 of 55 files and two instances of its own
+headline finding were sitting in two of them, reachable from no lane it ran.
+
+### 3b. Behavior first, tool-free
+
+No scores, no linters, no scans yet. Read the section for what it *does*, in words its user would
+recognise:
+
+- **The external surface — grouped, not listed.** Routes, contract methods, jobs, events. "N
+  methods" is a list; "N methods over M question-shapes" is a grouping, and the grouping is what
+  makes collapse items visible. Record the shapes.
+- Owned tables, cross-section calls in and out, config it reads.
+- **What the section said it would be** — its `Docs/*.md`, the guide page, the specs and design
+  docs that named it. *Stated-but-unbuilt* and *built-differently-than-stated* are deltas, and no
+  tool reports them.
+
+### 3c. The target — written now, before scanning
+
+One page, in `src/Sections/Humans.<X>/Docs/health.md`. Six parts, each required; write "none"
+where genuinely empty:
+
+1. **What the section does** — behavior, no code nouns.
+2. **The shapes** — 3b's grouping as a table. Load-bearing; everything below follows from it.
+3. **Structure** — the layout those shapes imply, written fresh. Not today's layout with fixes.
+4. **Invariants** — stated so a violation is recognisable.
+5. **Seams** — specified-but-unbuilt work. Don't build it, don't rank it; reserve its place,
+   because items touching its future callers are shaped by it.
+6. **Deliberately not done** — abstractions a reader would reach for and shouldn't, with the
+   reason, including ones Peter has declined.
+
+Plus a **load-bearing weirdness** list: essential complexity and settled decisions, with why, so
+later runs stop re-litigating them.
+
+**Regenerate the target every run, then diff it against the previous one** (it is in git; the
+previous run's is the parent commit's copy). The diff is signal in both directions: the section
+moved, or the earlier target was wrong. Record which in the run file. A target that never changes
+across runs on a section that keeps changing is a target nobody is really deriving.
+
+### 3d. Threads
+
+Each thread is a lens over the **same complete inventory**, and each reports a disposition for
+every file it claims. They run concurrently, but *how* a thread runs follows from what it is —
+this is the wall-clock / token / fragility balance, and subagent lanes have historically been the
+fragile part (two runs running, every dispatched lane missed the window):
+
+- **Tool threads run as background commands** — Stryker, InspectCode, reforge, conformance
+  detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
+  main thread reads.
+- **Judgment threads run on the main thread** — shape, behavior, prose. They are the expensive
+  reading this whole run exists to do.
+- **Subagents only when a thread must read more than one context can hold**, and then with an
+  explicit tagged model and a deadline. A thread that misses its deadline does not block the
+  strike loop: work its checklist on the main thread and label it self-run in the run file.
+
+| Thread | Lens | Runs as |
+|---|---|---|
+| **Shape** | `/simplify`'s method against the target: shape mismatches, duplicated pipelines, pass-throughs, over-general options, dead and over-exposed surface, per-method external-caller counts | main |
+| **Behavior & bugs** | Does it do what it claims? Walk each flow against the target's invariants. Where the section consumes authored content (markdown, resx, templates, seed data), run the **real shipped content through the real pipeline** — a defect whose trigger is the shape of an input file is invisible to every code-reading thread | main |
+| **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
+| **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
+| **Tests** | Mutation score (Stryker, section-scoped); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
+| **Prose & surface** | InspectCode Tier 1/2; comments against `comments-stay-short`; docs that are 500 words where 50 would do; dead resources, missing translations; nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
+| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them; off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
+
+**Every thread that does not run says so in the run file, with why.** A silent skip is how the
+2026-08-18 run left the whole mutation dimension unmeasured with nothing flagging it. A thread
+earns removal from this table only when several runs record it as "ran, found nothing".
+
+### 3e. Merge, rank, and check independence
+
+One value-ranked list across all threads — value is bug surface removed, concepts removed, and
+reader cost removed. Effort is a column, never the sort key.
+
+**Independence check, before striking.** Walk the ranked list and mark where each item came from.
+Either symptom is a fail:
+
+- every item traces to a tool finding, a score, or a grep; or
+- no item cites a shape mismatch, a spec-vs-reality delta, or an abstraction covering only part of
+  its domain.
+
+On a fail, 3c was reverse-engineered from the defect list. Re-derive the target from 3b and
+re-rank — the scans are still good, the design isn't. Record the verdict in the run file either
+way.
 
 ## Phase 4: Strike
 
-Work the ranked list top-down until budget exhausted. **Drain the list — stopping early with
-strikeable items remaining is a failure mode, not a judgment call.** Budget checks are real
+Work the ranked list until budget exhausted. **Drain the list — stopping early with strikeable
+items remaining is a failure mode, not a judgment call.**
+
+Rank is value order; *execution* order is `cut → delete → dedup → collapse → rearch`, each green
+before the next (`/simplify`'s phase discipline). Cutting an unneeded behaviour turns whole
+subtrees into dead code, so it precedes deletion; deletion is near-zero risk and shrinks
+everything downstream of it. A `collapse` or `rearch` item routinely outranks a `delete` one —
+a wrong abstraction costs every future session, a dead local costs one grep — but it is still
+executed after it. Budget checks are real
 `date` reads between items, never estimates. Per item (one item or tight cluster per commit):
 
-1. Pick the play: a toolbox skill scoped to the section — `section-align`, `trim-tests`,
-   `simplify`, `section-read-split`, `reuse-review` (against the section's own surface),
-   the `.codex/skills/humans-refactor` lane process, a `debt-ledger.yml` item — or a direct fix.
+1. Pick the play. `/simplify`'s *method* is absorbed into Phase 3 — do not call the skill from a
+   run: it is audit-gated (its approval gate is a merged audit PR, then one item per PR) and that
+   cannot fit inside one run, one PR. It stays invocable for repo-wide work. The rest of the
+   toolbox is still called directly where it fits: `section-align`, `trim-tests`,
+   `section-read-split`, `reuse-review` (against the section's own surface), the
+   `.codex/skills/humans-refactor` lane process, a `debt-ledger.yml` item — or a direct fix.
 2. Fix it right — no surgical fixes. Reuse-first.
 3. `dotnet build Humans.slnx -v quiet`; targeted tests for the touched area.
 4. Non-mechanical changes (deletions beyond plainly-dead code, structural moves) → second-opinion
@@ -211,14 +310,27 @@ surfaces mid-run → stop striking, ship the assessment-only PR, note it in the 
   checklist, `## Sweep queue` (`lesson:` / `debt:` / `memory:` items as plain bullets — the
   next replan whose window covers this run's merge applies them; nothing ever ticks them).
 
+  Plus three blocks that make the Purpose's three tests answerable rather than assertable:
+
+  - **`## File coverage`** — a disposition for every path in the 3a inventory: `reviewed`,
+    `changed` or `generated`. Not a summary; the list.
+  - **`## Threads`** — which threads ran, and for each that did not, why. A silent skip is a
+    failed run, not a quiet one.
+  - **`## Size`** — line count against the run's anchor for every section touched, and the net.
+    Growth is reported with its reason, and consolidation that grows this section while shrinking
+    another is stated as the trade it is.
+
 The runs directory **is** the log and the newest file **is** the last report. There is no
 `log.md`, `last-report.md`, or generated index — never recreate them — and daily runs never
 touch `docs/architecture/maintenance-log.md`. `plan.md` is written only by a replan (Phase 2).
 
 ## Phase 6: Retro + self-amend
 
-Three questions, answered honestly in the run file: what did the plan/rubric get wrong, what
-was wasted motion, what did the assessment miss that striking revealed. Then:
+Four questions, answered honestly in the run file: what did the plan/rubric get wrong, what was
+wasted motion, what did the assessment miss that striking revealed, and **what does the target
+diff say** — 3c regenerated the target and diffed it against the previous run's; a change means
+either the section moved or the earlier target was wrong, and which one it was is worth a line.
+Then:
 
 - **Mechanical lessons** → this run's `## Sweep queue` as `lesson:` one-liners; the next replan
   applies them to this skill's files after this run merges. Never edit the skill's files
@@ -295,6 +407,9 @@ Present the open items inline, then apply each answer:
   additionally touches**: `docs/health/plan.md`, this skill's files,
   `docs/architecture/debt-ledger.yml`, `memory/` — never the run files it sweeps. Nothing
   writes `docs/architecture/maintenance-log.md`.
+- **`docs/architecture/section-conformance.yml` is read-only to every run**, replans included.
+  Rows are added and removed only at Peter's direction; a run that wants one proposes it in its
+  Needs-Peter block.
 
 ## Lessons
 
