@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;

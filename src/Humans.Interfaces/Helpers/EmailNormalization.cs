@@ -1,4 +1,4 @@
-namespace Humans.Domain.Helpers;
+namespace Humans.Base.Helpers;
 
 /// <summary>
 /// Normalizes email addresses for comparison to prevent provider-level aliases from causing mismatches.

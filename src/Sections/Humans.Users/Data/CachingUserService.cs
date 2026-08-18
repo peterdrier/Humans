@@ -5,7 +5,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Base.Caching;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 
 namespace Humans.Users.Data;
 

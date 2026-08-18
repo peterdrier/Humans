@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Xunit;
 
 namespace Humans.Interfaces.Tests.Helpers;

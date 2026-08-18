@@ -2,7 +2,7 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Expenses.Authorization;

@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Base.Extensions;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;

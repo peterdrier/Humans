@@ -8,7 +8,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;

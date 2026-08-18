@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 
 namespace Humans.Expenses.Models;
 

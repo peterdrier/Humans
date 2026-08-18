@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Humans.Domain.Helpers;
+namespace Humans.Base.Helpers;
 
 /// <summary>
 /// Centralized IBAN masking. All log/audit/error output that

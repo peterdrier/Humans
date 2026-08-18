@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

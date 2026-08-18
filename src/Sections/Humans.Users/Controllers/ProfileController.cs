@@ -2136,7 +2136,7 @@ internal sealed class ProfileController(
         var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
 
         bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
+            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext

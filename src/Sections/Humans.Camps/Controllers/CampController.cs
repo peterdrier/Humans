@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;

@@ -278,7 +278,7 @@
                     <div class="mb-3">
                         @foreach (var link in Model.Links)
                         {
-                            var platform = Humans.Domain.Helpers.PlatformDetector.Detect(link.Url);
+                            var platform = Humans.Base.Helpers.PlatformDetector.Detect(link.Url);
                             <div class="mb-2">
                                 <a href="@link.Url" target="_blank" rel="noopener noreferrer">
                                     <i class="@platform.IconClass me-1"></i> @platform.Name

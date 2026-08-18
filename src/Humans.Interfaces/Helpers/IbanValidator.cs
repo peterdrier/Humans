@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 
-namespace Humans.Domain.Helpers;
+namespace Humans.Base.Helpers;
 
 public static class IbanValidator
 {

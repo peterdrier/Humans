@@ -7,7 +7,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using NodaTime;
 
 namespace Humans.Users.Services;

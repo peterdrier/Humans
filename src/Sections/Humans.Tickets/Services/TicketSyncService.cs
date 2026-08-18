@@ -2,7 +2,7 @@ using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Stripe.Contracts;

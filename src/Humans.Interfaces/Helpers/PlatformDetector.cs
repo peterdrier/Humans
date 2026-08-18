@@ -1,4 +1,4 @@
-namespace Humans.Domain.Helpers;
+namespace Humans.Base.Helpers;
 
 public static class PlatformDetector
 {
