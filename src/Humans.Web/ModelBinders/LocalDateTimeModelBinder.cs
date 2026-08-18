@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using NodaTime.Text;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.ModelBinders;
 
 /// <summary>
 /// Binds NodaTime <see cref="LocalDateTime"/> (and <c>LocalDateTime?</c>) from

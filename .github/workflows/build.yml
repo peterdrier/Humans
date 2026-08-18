@@ -157,7 +157,7 @@ jobs:
               - 'src/Humans.Web/Migrations/**'
               # SystemDbContext + its factory live here (not under Migrations/**);
               # a DbSet added there must trigger the System checks.
-              - 'src/Humans.Web/Infrastructure/Data/**'
+              - 'src/Humans.Web/Data/**'
               - 'src/Humans.Domain/**'
               # Shared leaf: enums here are EF-mapped by section configurations
               # (e.g. Teams maps SystemTeamType with HasConversion<string> and

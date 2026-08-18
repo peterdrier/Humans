@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <inheritdoc cref="IHttpStatusTracker"/>
 /// <remarks>

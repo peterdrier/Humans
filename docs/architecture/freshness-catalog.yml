@@ -194,8 +194,8 @@ mechanical:
       - "src/Humans.Web/Services/**/*.cs"
       # SystemDbContext and the admin diagnostics repository followed the rest of
       # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
-      - "src/Humans.Web/Infrastructure/Repositories/**/*.cs"
-      - "src/Humans.Web/Infrastructure/Data/*DbContext.cs"
+      - "src/Humans.Web/Repositories/**/*.cs"
+      - "src/Humans.Web/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
       # The section DbContexts were already triggers, but the services and
       # repositories that read through them were not — so a repository or ctor
@@ -221,7 +221,7 @@ mechanical:
       2. Which database tables those repositories ultimately access, and which
          DbContext maps each one. Since the per-section split
          (nobodies-collective/Humans#858) there is no single context: resolve
-         the DbSet<> declarations across every src/Humans.Infrastructure/Data/
+         the DbSet<> declarations across src/Humans.Web/Data/
          *DbContext.cs plus each G5 section's own Data/*DbContext.cs, and
          report the owning context per table. Do not assume a table is on
          HumansDbContext because a previous revision of this doc said so —

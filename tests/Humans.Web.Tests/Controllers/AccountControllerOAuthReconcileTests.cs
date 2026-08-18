@@ -85,7 +85,7 @@ public class AccountControllerOAuthReconcileTests
             externalLoginService,
             _magicLinkService,
             Substitute.For<IAccountProvisioningService>(),
-            new Web.Infrastructure.GateLoginThrottle(
+            new Web.Services.GateLoginThrottle(
                 new Microsoft.Extensions.Caching.Memory.MemoryCache(
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),

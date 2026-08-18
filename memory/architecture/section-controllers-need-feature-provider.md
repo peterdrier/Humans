@@ -8,7 +8,7 @@ MVC's `ControllerFeatureProvider.IsController` requires `typeInfo.IsPublic`. A c
 is simply not added to the application part's controller feature. **Nothing says so:** the build is
 green with zero warnings, the type exists, the `[Route]` attribute is right there, and the URL 404s.
 
-`SectionControllerFeatureProvider` (`src/Humans.Web/Infrastructure/`) relaxes exactly that one check
+`SectionControllerFeatureProvider` (`src/Humans.Web/Hosting/`) relaxes exactly that one check
 for discovered section assemblies, and is registered once in Shell for all sections.
 
 **Why:** without it, "public means `Section` or `Contracts/`" needs a controllers-shaped carve-out in

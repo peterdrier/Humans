@@ -3,7 +3,10 @@
   src/Sections/**
   src/Humans.Web/Controllers/**
   src/Sections/*/Services/**
-  src/Humans.Web/Infrastructure/**
+  src/Humans.Web/Hosting/**
+  src/Humans.Web/Data/**
+  src/Humans.Web/Repositories/**
+  src/Humans.Web/Services/**
 -->
 <!-- freshness:flag-on-change
   Code-derived section map — the controllers/orchestrators/services/repositories/tables rows must match code (code is authoritative), and the section list must match docs/sections/ directory contents. Regenerate when sections move or new controllers/services/repos/tables land.
@@ -139,4 +142,4 @@ The technical services the business verticals use. Per the hard rules these are 
 - **`/Admin/*` is not a vertical section.** `AdminController` is a nav holder; the actions it exposes belong to their owning sections (outbox pause → Email, suspend/merge/purge → Users, sync settings → Google Integration, role assignments → Auth, legal-doc management → Consent). It *is* listed above as the cross-cutting **Admin Shell** — the logical holder for the admin-type bits each section contributes ([`admin-shell.md`](admin-shell.md) documents the shared frame: sidebar, breadcrumb, dashboard skeleton). Long-term direction is for the shell to become framework plumbing with a dynamically built nav, so keep the row: it is the seam that work lands on, not a vertical section sneaking in.
 - **`design-rules.md` §8 divergence (code wins):** §8 still lists `google_resources` and `TeamResourceService` under Teams, but `TeamResourceService` (`Humans.GoogleIntegration.Services`) and `GoogleResourceRepository` (`Humans.GoogleIntegration.Data`) live in Google Integration, matching this table's row above. This is drift to reconcile in §8. (§8's other previously-noted divergences — Event Guide's service name, Camps' `CampRoleService`/`camp_role_*` rows, and the Finance tables list — are resolved as of this sweep.)
 - **`event_participations`** is resolved: it is configured under `Humans.Users/Data/Configurations/` and owned by `UserRepository`, so Users is the owner (matching §8). `ShiftsDbContext` has no `EventParticipation` DbSet; Shifts reads participation through the Users service.
-- **`SystemDbContext` is not a section.** nobodies-collective/Humans#858 (2026-08-10) added `SystemDbContext` (`src/Humans.Web/Infrastructure/Data/SystemDbContext.cs` since G5 lane 5b-6 deleted `Humans.Infrastructure`) mapping only `DataProtectionKeys` — the platform context for framework-owned tables no section can plausibly own. It has no repository, no service, and no controller; additions are Peter's call by design. Not listed as a table row above because it owns no section-shaped table, but noted here so a reader searching for `DataProtectionKeys` finds it.
+- **`SystemDbContext` is not a section.** nobodies-collective/Humans#858 (2026-08-10) added `SystemDbContext` (`src/Humans.Web/Data/SystemDbContext.cs`; landed in Web when G5 lane 5b-6 deleted `Humans.Infrastructure`, moved out of Web's `Infrastructure/` folder when that dissolved) mapping only `DataProtectionKeys` — the platform context for framework-owned tables no section can plausibly own. It has no repository, no service, and no controller; additions are Peter's call by design. Not listed as a table row above because it owns no section-shaped table, but noted here so a reader searching for `DataProtectionKeys` finds it.

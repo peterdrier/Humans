@@ -1,10 +1,10 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Infrastructure.Repositories.Admin;
+using Humans.Web.Repositories.Admin;
 using Humans.Tickets.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 internal sealed class AdminDatabaseDiagnosticsService(
     IAdminDatabaseDiagnosticsRepository repository,

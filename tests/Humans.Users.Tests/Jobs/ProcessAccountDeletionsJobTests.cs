@@ -6,7 +6,7 @@ using NSubstitute.ExceptionExtensions;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Humans.Users.Contracts;
 using Humans.Users.Jobs;
 

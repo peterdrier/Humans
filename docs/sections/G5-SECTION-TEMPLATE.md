@@ -1155,7 +1155,7 @@ Git Bash.)
      two things. First, MVC's `ViewComponentConventions.IsComponent` requires `IsPublic`, so an
      `internal` component is silently never discovered — exactly the hazard
      `SectionControllerFeatureProvider` exists for on the controller side. The counterpart is
-     `Humans.Web/Infrastructure/SectionViewComponentFeatureProvider`: a second
+     `Humans.Web/Hosting/SectionViewComponentFeatureProvider`: a second
      `IApplicationFeatureProvider<ViewComponentFeature>` pass (the base one is not virtual and
      `ViewComponentConventions` is internal to MVC) that adds non-public components from
      discovered section assemblies. Write it once; every later section with a
@@ -1213,7 +1213,7 @@ Git Bash.)
      partial's own `@model` line, because Shell's `Views/_ViewImports.cshtml` already has the
      `@using` (proven: Search).
      **Fourth sighting, and it says `Humans.UI` is the rule's *example*, not its depth.**
-     `Humans.Web/Infrastructure/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
+     `Humans.Interfaces/Logging/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
      renders; `Program.cs`'s logger configuration writes to it and Shell's `LogApiController`
      reads it, so it cannot come into the section and the section cannot name it where it is.
      It carries no section vocabulary — which is the test — but it is also not presentation, so
@@ -1731,7 +1731,7 @@ Git Bash.)
       controller needs no edit at all. One file, two rows about the same controller, only one
       of which is a `typeof` (proven: Debug, `DebugController.DbVersion`).
       **And a third shape, which is not in `tests/` at all: Shell's own production code.**
-      `Humans.Web/Infrastructure/DevLoginControllerExclusionProvider` removes
+      `Humans.Web/Hosting/DevLoginControllerExclusionProvider` removes
       `typeof(Controllers.DevLoginController)` from MVC's controller feature in Production —
       the thing that keeps the dev sign-in page out of prod. It cannot move into the section
       (`Program.cs` constructs it by name, which would make it a public section type) and it

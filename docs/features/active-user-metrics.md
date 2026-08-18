@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Interfaces/Interfaces/IUserActivityTracker.cs
-  src/Humans.Web/Infrastructure/Services/UserActivityTracker.cs
-  src/Humans.Web/Infrastructure/Services/HumansMetricsService.cs
+  src/Humans.Web/Services/UserActivityTracker.cs
+  src/Humans.Web/Services/HumansMetricsService.cs
   src/Humans.Web/Middleware/UserActivityTrackingMiddleware.cs
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Views/Shared/_DashboardStats.cshtml

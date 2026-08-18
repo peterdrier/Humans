@@ -2,7 +2,10 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/Views/**
   src/Humans.Web/Authorization/**
-  src/Humans.Web/Infrastructure/**
+  src/Humans.Web/Hosting/**
+  src/Humans.Web/Services/**
+  src/Humans.Web/Data/**
+  src/Humans.Web/Repositories/**
   src/Humans.Web/Migrations/**
   src/Humans.Interfaces/**
   src/Sections/**

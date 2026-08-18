@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Interfaces/Interfaces/IClientStatsTracker.cs
-  src/Humans.Web/Infrastructure/Services/ClientStatsTracker.cs
+  src/Humans.Web/Services/ClientStatsTracker.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
   src/Sections/Humans.Debug/**
 -->

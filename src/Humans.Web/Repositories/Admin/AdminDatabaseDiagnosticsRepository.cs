@@ -1,9 +1,9 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Infrastructure.Data;
+using Humans.Web.Data;
 using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Infrastructure.Repositories.Admin;
+namespace Humans.Web.Repositories.Admin;
 
 internal sealed class AdminDatabaseDiagnosticsRepository(
     IDbContextFactory<SystemDbContext> factory,

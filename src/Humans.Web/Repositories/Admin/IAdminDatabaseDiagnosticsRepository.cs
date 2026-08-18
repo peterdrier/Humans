@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Repositories;
 
-namespace Humans.Infrastructure.Repositories.Admin;
+namespace Humans.Web.Repositories.Admin;
 
 /// <summary>
 /// Migration and Hangfire-lock state for the admin diagnostics page. Internal, and beside

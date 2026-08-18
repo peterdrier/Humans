@@ -3,7 +3,7 @@
     "Admin": {
       "paths": [
         "src/Humans.Interfaces/Interfaces/Admin/**",
-        "src/Humans.Web/Infrastructure/Repositories/Admin/**",
+        "src/Humans.Web/Repositories/Admin/**",
         "src/Humans.Web/Controllers/Admin*"
       ],
       "symbols": [
@@ -668,7 +668,10 @@
         "src/Humans.Interfaces/Hosting/**",
         "src/Humans.Interfaces/Services/GitHubGuideContentSource.cs",
         "src/Humans.Interfaces/Services/Metering/**",
-        "src/Humans.Web/Infrastructure/**",
+        "src/Humans.Web/Hosting/**",
+        "src/Humans.Web/Data/**",
+        "src/Humans.Web/ModelBinders/**",
+        "src/Humans.Web/Services/*.cs",
         "src/Humans.Web/Controllers/ColorPaletteController.cs",
         "src/Sections/Humans.Debug/**",
         "src/Sections/Humans.Development/**",
@@ -689,7 +692,10 @@
         "src/Humans.Web/Helpers/**",
         "src/Humans.Web/Health/ConfigurationHealthCheck.cs",
         "src/Humans.Web/Health/GitHubHealthCheck.cs",
-        "src/Humans.Web/Infrastructure/**",
+        "src/Humans.Web/Hosting/**",
+        "src/Humans.Web/Data/**",
+        "src/Humans.Web/ModelBinders/**",
+        "src/Humans.Web/Services/*.cs",
         "src/Humans.Web/Middleware/**",
         "src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs",
         "src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs",

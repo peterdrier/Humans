@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Web.Infrastructure;
+using Humans.Web.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Tests.Infrastructure;

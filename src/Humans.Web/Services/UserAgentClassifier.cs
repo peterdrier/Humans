@@ -1,6 +1,6 @@
 using MyCSharp.HttpUserAgentParser;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Maps a raw User-Agent string to coarse, bounded family-level buckets

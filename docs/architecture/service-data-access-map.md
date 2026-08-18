@@ -473,7 +473,7 @@ separately below the key table.
 | `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (Web) | expiry only |
 
 > The three `Gate*` keys are held by Web-layer helper singletons
-> (`src/Humans.Web/Infrastructure/`), not `CacheKeys.cs` /
+> (`src/Humans.Web/Services/`), not `CacheKeys.cs` /
 > `CacheKeys.Metadata` — they never appear on `/Debug/CacheStats`.
 
 > **Retired `IMemoryCache` keys** (now `TrackedCache` projections or

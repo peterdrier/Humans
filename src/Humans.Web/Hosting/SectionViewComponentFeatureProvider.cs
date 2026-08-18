@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Hosting;
 
 /// <summary>
 /// Lets a section project's view components be <c>internal</c>

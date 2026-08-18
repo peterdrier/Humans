@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Humans.Web.Middleware;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;

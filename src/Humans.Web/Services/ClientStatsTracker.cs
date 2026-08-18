@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Web.Services;
 
 /// <inheritdoc cref="IClientStatsTracker"/>
 public sealed class ClientStatsTracker : IClientStatsTracker

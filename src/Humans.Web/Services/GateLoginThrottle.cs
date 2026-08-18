@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Services;
 
 /// <summary>
 /// Per-source-IP failure throttle for the gate-terminal sign-in.

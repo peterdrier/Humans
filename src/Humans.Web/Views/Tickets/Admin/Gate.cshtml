@@ -1,4 +1,4 @@
-@model Humans.Web.Infrastructure.GateTerminalStatus
+@model Humans.Web.Hosting.GateTerminalStatus
 @{
     ViewData["Title"] = "Gate Terminal";
 }
@@ -73,7 +73,7 @@
                     Pick something gate staff can type on a laptop keyboard. Anyone with this
                     password can see attendee names, emails, and ticket status.
                     The account never locks out — wrong-password attempts are throttled per
-                    source IP instead (@Humans.Web.Infrastructure.GateLoginThrottle.MaxFailuresPerWindow
+                    source IP instead (@Humans.Web.Services.GateLoginThrottle.MaxFailuresPerWindow
                     failures per minute), so nobody can deny the gate by hammering the login.
                 </p>
             </div>

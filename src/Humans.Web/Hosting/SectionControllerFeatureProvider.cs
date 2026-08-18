@@ -3,7 +3,7 @@ using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Web.Hosting;
 
 /// <summary>
 /// Lets a section project's controllers be <c>internal</c>

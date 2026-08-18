@@ -76,7 +76,7 @@ failures / 15 min) and `GateVendorMirrorLedger`
 (`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
 check-in mirror and the backfill page never double-post a non-idempotent
 TicketTailor check-in, #1083). Two helpers remain genuinely Web-layer
-(`src/Humans.Web/Infrastructure/`) because they gate terminal *sign-in*,
+(`src/Humans.Web/Services/` and `Hosting/`) because they gate terminal *sign-in*,
 not gate *admission*: `GateLoginThrottle` (`GateLoginFailures:{sourceIp}` —
 per-IP terminal sign-in throttle) and `GateTerminalAccountSeeder`, which
 provisions the shared kiosk account and fires `InvalidateUserAccess`
