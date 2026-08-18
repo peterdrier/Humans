@@ -103,9 +103,16 @@ public class HoldedFinanceServiceTests
     private static HoldedPurchaseDocListItemDto Doc(string id, Instant date) =>
         new()
         {
-            Id = id, DocNumber = id, ContactName = "Vendor", Date = date,
-            Subtotal = 10, Tax = 0, Total = 10, Currency = "eur",
-            Lines = [], Tags = [],
+            Id = id,
+            DocNumber = id,
+            ContactName = "Vendor",
+            Date = date,
+            Subtotal = 10,
+            Tax = 0,
+            Total = 10,
+            Currency = "eur",
+            Lines = [],
+            Tags = [],
         };
 
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
