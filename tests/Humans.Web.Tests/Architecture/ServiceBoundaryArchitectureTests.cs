@@ -43,7 +43,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.SystemSettings.Data.ISystemSettingsRepository")] = "SystemSettings",
             [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
             [typeof(IAccountMergeRepository)] = "Humans",
-            [HostRepository("Humans.Infrastructure.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",
+            [HostRepository("Humans.Web.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",
             [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
             [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",

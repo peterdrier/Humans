@@ -1,12 +1,12 @@
 <!-- freshness:triggers
   src/Sections/Humans.Email/**
-  src/Humans.Web/Views/Profile/Emails.cshtml
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Domain/Entities/UserEmail.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/UserEmailConfiguration.cs
+  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Sections/Humans.Users/Data/Configurations/UserEmailConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   @nobodies.team mailbox provisioning, group address mechanics, sending-as alias, and Profile Emails surface. Review when email views, provisioning service, or UserEmail entity change.

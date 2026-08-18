@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Domain/Architecture/ExpiresOnAttribute.cs
+  src/Humans.Interfaces/Architecture/ExpiresOnAttribute.cs
   src/Humans.Analyzers/ExpiresOnAnalyzer.cs
   Directory.Build.props
 -->
@@ -69,6 +69,13 @@ Combine with `[Obsolete]` when both apply — `[Obsolete]` carries the migration
 
 ## Currently Set Deadlines
 
-| Symbol                  | Date       | Grace | Tracking issue |
-| ----------------------- | ---------- | ----- | -------------- |
-| `User.NormalizedEmail`  | 2026-09-01 | 7     | #635           |
+None currently applied in the codebase.
+
+`User.NormalizedEmail` carried `[ExpiresOn("2026-09-01", ...)]` for #635 until
+G5 lane 3b (nobodies-collective/Humans#866) dropped it: the attribute lives in
+`Humans.Interfaces`, and the leaf that declares `NormalizedEmail`
+(`Humans.Users.Contracts`) had to reach zero `ProjectReference`s so Base could
+reference it, so the dated escalation couldn't come along. The member still
+carries a plain `[Obsolete]` with the issue link — only the HUM0010/HUM0011
+escalation is gone. Restore `[ExpiresOn]` once that leaf can reference
+`Humans.Interfaces` again, or delete `NormalizedEmail` outright per #635.

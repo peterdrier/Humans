@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/**
+  src/Sections/Humans.Users/Services/**
   src/Sections/Humans.Gdpr/**
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Views/Profile/**
-  src/Humans.Domain/Entities/Profile.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileApiController.cs
+  src/Sections/Humans.Users/Views/Profile/**
+  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Data/Configurations/**
   src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
 -->
 <!-- freshness:flag-on-change

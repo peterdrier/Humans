@@ -13,6 +13,7 @@ using Humans.Campaigns.Data;
 using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Infrastructure.Data;
+using Humans.Web.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.CityPlanning.Data;
 using Humans.Containers.Data;

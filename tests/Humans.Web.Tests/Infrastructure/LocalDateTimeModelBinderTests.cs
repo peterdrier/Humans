@@ -1,6 +1,6 @@
 using System.Globalization;
 using AwesomeAssertions;
-using Humans.Web.Infrastructure;
+using Humans.Web.ModelBinders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;

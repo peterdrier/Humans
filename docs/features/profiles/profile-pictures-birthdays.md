@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/ProfileService.cs
+  src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Teams/**
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Views/Profile/Edit.cshtml
-  src/Humans.Domain/Entities/Profile.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Views/Profile/Edit.cshtml
+  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
   Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, ProfileController picture endpoint, or the team birthdays view change.
@@ -91,13 +91,13 @@ Profile pictures are stored on the application's filesystem via the shared `IFil
 
 Profile pictures live under `uploads/` but are NOT publicly served — `Program.cs` registers middleware that 404s `/uploads/profile-pictures/*` before `UseStaticFiles` sees it, so reads must go through the controller (and therefore through the GDPR gate below).
 
-The read path lives in `IProfileService.GetProfilePictureAsync` and is the only entry point the `Profile/Picture` endpoint calls — the controller does not touch `IFileStorage` directly. The service:
+The read path lives in `IProfilePictureService.GetProfilePictureAsync` and is the only entry point the `Profile/Picture` endpoint calls — the controller does not touch `IFileStorage` directly. The service:
 
 1. Reads the DB `ProfilePictureContentType` column via a cheap scalar projection. If null (no picture, or the row was anonymized), it returns `null` and the endpoint responds with 404 — even if a stale file still exists on disk.
 2. Otherwise reads the filesystem store. A hit is returned immediately.
 3. On a filesystem miss it returns `null` — there is no DB-column fallback.
 
-Saves and removals are filesystem-only: `SaveProfileAsync` writes the bytes through `IFileStorage` (deleting the old-extension file first when the content type changed) and sets only the `ProfilePictureContentType` column; removal/anonymization clears the content-type column AND best-effort deletes the filesystem file. If the filesystem delete fails an error is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant).
+Saves and removals are filesystem-only: `IProfilePictureService.SetProfilePictureAsync` writes the bytes through `IFileStorage` (deleting the old-extension file first when the content type changed) and sets only the `ProfilePictureContentType` column; removal/anonymization clears the content-type column AND best-effort deletes the filesystem file. If the filesystem delete fails an error is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant).
 
 ## Routes
 
@@ -142,13 +142,7 @@ Saves and removals are filesystem-only: `SaveProfileAsync` writes the bytes thro
 
 Only the custom uploaded picture is rendered in the UI. Google OAuth avatar URLs are never displayed directly — humans without a custom picture get the initial-letter placeholder. (The former one-click import that consumed the captured Google avatar URL was removed in peterdrier/Humans#745.)
 
-This is implemented via the `EffectiveProfilePictureUrl` computed property on both `ProfileViewModel` and `TeamMemberViewModel`:
-
-```
-EffectiveProfilePictureUrl = HasCustomProfilePicture
-    ? CustomProfilePictureUrl   (→ /Profile/Picture/{id})
-    : null                       (→ initial-letter placeholder)
-```
+The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "Profile", new { id = profile.Id, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page still uses `ProfileViewModel.EffectiveProfilePictureUrl` (`HasCustomProfilePicture ? CustomProfilePictureUrl : ProfilePictureUrl`) for its own preview. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
 
 ## Privacy Model
 

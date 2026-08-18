@@ -5,9 +5,9 @@
   src/Sections/Humans.Auth.Contracts/IMagicLinkService.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Domain/Entities/User.cs
-  src/Humans.Domain/Entities/UserEmail.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users.Contracts/User.cs
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
   Magic link token strategy (Identity vs DataProtection), email-lookup order, single-use enforcement, account-linking on OAuth, or rate limiting may have changed.
@@ -142,26 +142,26 @@ Google OAuth callback
 
 There are two distinct cases that need different token approaches:
 
-#### Case 1: Existing user login (Identity tokens)
+#### Case 1: Existing user login (DataProtection tokens)
 
-When the email matches an existing user, use **ASP.NET Identity's token provider** — same pattern as existing email verification in `UserEmailService`:
+As shipped, login tokens use **DataProtection** — the same mechanism as signup (Case 2 below), not ASP.NET Identity's token provider. `MagicLinkUrlBuilder` protects the user id as the payload:
 
 ```csharp
-// Generate
-var token = await _userManager.GenerateUserTokenAsync(
-    user, TokenOptions.DefaultEmailProvider, "MagicLinkLogin");
+// Generate — payload is the user id, encrypted with 15min expiry
+var token = protector.Protect(userId.ToString(), TimeSpan.FromMinutes(15));
 
-// Verify
-var isValid = await _userManager.VerifyUserTokenAsync(
-    user, TokenOptions.DefaultEmailProvider, "MagicLinkLogin", token);
+// Verify — returns the user id, throws CryptographicException if expired/tampered
+var userId = protector.Unprotect(token);
 ```
 
-The token is bound to the user's security stamp, so it becomes invalid if the stamp rotates. **Token lifetime: 15 minutes.**
+**Token lifetime: 15 minutes.** The token carries no server-side state; single-use is enforced separately (see "Single-Use Enforcement" below).
 
 **URL format:**
 ```
-https://{baseUrl}/Account/MagicLink?userId={userId}&token={urlEncodedToken}&returnUrl={returnUrl}
+https://{baseUrl}/Account/MagicLinkConfirm?userId={userId}&token={urlEncodedToken}&returnUrl={returnUrl}
 ```
+
+`MagicLinkConfirm` is a GET landing page — it defers token consumption to a user-clicked POST to `/Account/MagicLink` so automated email-security scanners can't "use up" the link before the human clicks it.
 
 #### Case 2: New user signup (DataProtection tokens)
 
@@ -190,9 +190,7 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 ### Single-Use Enforcement
 
-**Login tokens (existing users):** After successful verification and sign-in, `SignInManager.SignInAsync` does NOT rotate the security stamp by default. Explicitly call `await _userManager.UpdateSecurityStampAsync(user)` after sign-in to invalidate the used token.
-
-**Side effect:** This also invalidates any pending email verification tokens for that user. This is acceptable — email verification tokens are re-sent on demand via the Profile page, and the scenario (user has a pending email verification AND uses a magic link to log in within the same 15-minute window) is rare. The alternative — tracking used tokens in a separate table — is over-engineering for ~500 users.
+**Login tokens (existing users):** As shipped, the DataProtection token carries no server-side state, so single-use is enforced separately: on successful verification, `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` reserves the token (keyed on a prefix of the token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails verification.
 
 **Signup tokens (new users):** Single-use is enforced by the fact that the callback creates the user. A second click with the same token would find the email already taken and show an appropriate message ("Account already created — use the login link instead").
 
@@ -206,7 +204,7 @@ var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct
 
 if (userEmail is not null)
 {
-    // Generate Identity token for userEmail.User
+    // Generate login token for userEmail.User
     // Send magic link to the specific address they typed (userEmail.Email)
     return;
 }
@@ -215,21 +213,6 @@ if (userEmail is not null)
 ```
 
 The same lookup pattern applies to the Google OAuth account linking in `ExternalLoginCallback`.
-
-### New/Modified Files
-
-| Layer | File | Change |
-|-------|------|--------|
-| Application | `Interfaces/IMagicLinkService.cs` | New interface: `SendLoginLinkAsync`, `VerifyLoginTokenAsync`, `SendSignupLinkAsync`, `VerifySignupTokenAsync` |
-| Infrastructure | `Services/MagicLinkService.cs` | Token generation (Identity + DataProtection), email lookup, email sending via outbox |
-| Web | `Controllers/AccountController.cs` | New actions: `MagicLinkRequest` (POST), `MagicLink` (GET, login), `MagicLinkSignup` (GET, signup), `CompleteSignup` (GET+POST). Modified: `ExternalLoginCallback` (account linking) |
-| Web | `Views/Account/Login.cshtml` | Add email input + "Send login link" form alongside Google button |
-| Web | `Views/Account/MagicLinkSent.cshtml` | Confirmation page ("Check your email") |
-| Web | `Views/Account/MagicLinkError.cshtml` | Expired/invalid token page with "Request new link" button |
-| Web | `Views/Account/CompleteSignup.cshtml` | Burner name + first/last (legal) name prompt for new users (email pre-filled, readonly) |
-| Infrastructure | `Services/OutboxEmailService.cs` | New `SendMagicLinkAsync` method |
-| Web | `Program.cs` | Configure `DataProtectionTokenProviderOptions.TokenLifespan` |
-| Domain | `Entities/User.cs` | Add `MagicLinkSentAt` (nullable Instant) for rate limiting |
 
 ### Account Linking (Google OAuth)
 

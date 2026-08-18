@@ -1,7 +1,7 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Metering;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Web.Extensions.Infrastructure;

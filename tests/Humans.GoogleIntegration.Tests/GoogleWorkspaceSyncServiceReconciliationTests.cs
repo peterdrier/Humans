@@ -127,7 +127,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
-        var googleId = await CreateGoogleFolderAsync("Doomed Folder");
+        var googleId = CreateGoogleFolder("Doomed Folder");
         const string extraEmail = "ex-member@nobodies.team";
 
         // Simulate a permission that survived from when the team had members.
@@ -200,7 +200,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
 
-        var cleanGoogleId = await CreateGoogleFolderAsync("Clean Folder");
+        var cleanGoogleId = CreateGoogleFolder("Clean Folder");
         const string erroredGoogleId = "unregistered-errored-folder-id";
 
         var cleanResourceId = SeedDriveResource(teamId, cleanGoogleId, "Clean Folder");
@@ -228,7 +228,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
 
-        var googleId = await CreateGoogleFolderAsync("Folder");
+        var googleId = CreateGoogleFolder("Folder");
         var folderResourceId = SeedDriveResource(teamId, googleId, "Folder", GoogleResourceType.DriveFolder);
         var groupResourceId = SeedDriveResource(teamId, "group-id", "Group", GoogleResourceType.Group);
         var driveFileResourceId = SeedDriveResource(teamId, "file-id", "File", GoogleResourceType.DriveFile);
@@ -267,7 +267,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         // the exact requested type instead of overfetching DriveFolder rows).
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
-        var googleId = await CreateGoogleFolderAsync("Doomed File");
+        var googleId = CreateGoogleFolder("Doomed File");
         const string extraEmail = "ex-member@nobodies.team";
 
         await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
@@ -303,7 +303,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             .Returns(mode);
 
         var teamId = Guid.NewGuid();
-        var googleId = await CreateGoogleFolderAsync("Doomed Folder");
+        var googleId = CreateGoogleFolder("Doomed Folder");
         const string extraEmail = "ex-member@nobodies.team";
         await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
 
@@ -326,12 +326,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     // Helpers
     // ==========================================================================
 
-    private async Task<string> CreateGoogleFolderAsync(string name)
-    {
-        var result = await _drivePermissions.CreateFolderAsync(name, parentFolderId: null, CancellationToken.None);
-        result.Folder.Should().NotBeNull();
-        return result.Folder!.Id!;
-    }
+    private string CreateGoogleFolder(string name) => _drivePermissions.SeedFolder(name);
 
     private Guid SeedDriveResource(
         Guid teamId,

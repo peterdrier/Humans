@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/**
   src/Humans.Web/Controllers/**
   src/Humans.Web/ViewComponents/**
   src/Humans.Web/Views/**
-  src/Humans.UI/**
+  src/Humans.Interfaces/ViewComponents/**
+  src/Humans.Interfaces/Views/**
   src/Sections/**
   Directory.Build.props
 -->
@@ -95,7 +95,7 @@ These are heuristics, not laws — a clearer name that violates one of them beat
 
 ## Integration
 
-External systems stay behind `Humans.Application` interfaces and `Humans.Infrastructure` implementations.
+External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, Mailer and Email.
 
 Do not leak raw provider concerns through multiple layers.
 
@@ -108,7 +108,7 @@ Non-production stub implementations are preferred over scattered environment che
 
 Version strings are derived from git tags via [MinVer](https://github.com/adamralph/minver) at build time — there is no hardcoded `Version` / `FileVersion` / `AssemblyVersion` in `Directory.Build.props`. Tag prefix is `v` (e.g., `v0.8.0`). Between tags MinVer emits `0.8.1-alpha.0.N` where N is commits-since-tag. The `+<hash>` suffix on `InformationalVersion` comes from the existing `SourceRevisionId` MSBuild target.
 
-The `_Layout.cshtml` footer renders the version differently for tagged-release builds (links to `github.com/.../releases/tag/v0.8.0`) vs dev/QA builds (shows the short commit hash, links to the commit). Production releases must be cut as GitHub Releases — `gh release create vX.Y.Z -R nobodies-collective/Humans --generate-notes` after merging to upstream creates both the tag *and* the release page the footer links to. A bare `git tag` is not enough.
+`_VersionInfo.cshtml` still exists but is **rendered nowhere** — `_Layout.cshtml`'s footer was removed ("About and Privacy are in the avatar dropdown menu"), and no view includes the partial. The only version string the app surfaces today is the 8-char commit hash, as a tooltip on the navbar brand, and only for full Admins. Production releases are still cut as GitHub Releases — `gh release create vX.Y.Z -R nobodies-collective/Humans --generate-notes` after merging to upstream — but the reason is the tag MinVer reads and the generated changelog, **not** an in-app link: there is no longer a footer pointing at the release page. A bare `git tag` still isn't enough, because it produces no release notes.
 
 ## Time and Configuration
 
@@ -135,7 +135,7 @@ Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, 
 Server-rendered Razor is the default rendering approach for all pages.
 
 <!-- wheat: docs/plans/2026-06-11-q3-ui-refactoring-plan.md §Strategic call -->
-A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (the section-agnostic ones in `src/Humans.UI/ViewComponents`, the rest in `src/Humans.Web/ViewComponents` or the owning section project; stable `<vc:>` call sites either way) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
+A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (the section-agnostic ones in `src/Humans.Interfaces/ViewComponents`, the rest in `src/Humans.Web/ViewComponents` or the owning section project; stable `<vc:>` call sites either way) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
 
 Default rule:
 
@@ -168,7 +168,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 
 **Conventions:**
 
-- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.UI` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
+- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.Interfaces` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
 - Invocation: `<vc:{kebab-name} param="…">` tag helper or `@await Component.InvokeAsync("{Name}", new { param = value })`
@@ -185,6 +185,7 @@ Client-side JavaScript with `fetch()` is appropriate for:
 - **Dynamic form field population** that responds to parent field changes (team Google resource dropdown)
 - **Progressive enhancement** for inline actions that avoid full page reloads (notification dismiss/mark-read, feedback detail panel loading)
 - **Utility behaviors** that are not page content (timezone detection, notification popup, profile popover on hover)
+- **Interactive maps** whose whole surface is a client-rendered canvas driven by a JSON API (the city-planning barrio, container and overview maps)
 
 These patterns use `fetch()` to enhance an already server-rendered page, not to replace server rendering entirely.
 
@@ -194,16 +195,25 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 
 | File | Purpose | Exception type |
 |------|---------|----------------|
-| `Humans.UI/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
+| `Humans.Interfaces/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
 | `Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
-| `Humans.UI/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
+| `Humans.Interfaces/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
-| `Humans.Web/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
+| `Humans.Teams/Views/TeamAdmin/Roles.cshtml` | Role-grid save without reload | Progressive enhancement |
+| `Humans.Shifts/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
+| `Humans.Shifts/wwwroot/js/shifts.js` | Day-signup toggle without reload | Progressive enhancement |
 | `Humans.Notifications/Views/Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
 | `Humans.Feedback/Views/Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
-| `Humans.Web/Views/Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
-| `Humans.Scanner/Views/Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
-| `Humans.Gate/Views/Gate/Index.cshtml` (`js/gate/gate.js`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
+| `Humans.Issues/Views/Issues/Index.cshtml` | Master-detail panel loaded via Razor partial (`?partial=true`) | Partial-via-AJAX |
+| `Humans.GoogleIntegration/Views/Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
+| `Humans.Scanner/wwwroot/js/scanner/tickets.js` (`Views/Scanner/Tickets.cshtml`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
+| `Humans.Gate/wwwroot/js/gate/gate.js` (`Views/Gate/Index.cshtml`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
+| `Humans.Users/Views/Profile/Edit.cshtml` | Burner-name collision count on keystroke | Search input |
+| `Humans.Users/Views/Profile/CommunicationPreferences.cshtml` | Per-preference toggle POST without reload | Progressive enhancement |
+| `Humans.Web/Views/Guest/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
+| `Humans.Web/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
+| `Humans.Agent/wwwroot/js/agent/widget.js` | Streamed answer from `/Agent/Ask` (SSE) | Progressive enhancement |
+| `Humans.CityPlanning/wwwroot/js/city-planning/**` | Barrio, container and overview maps read and write `/api/city-planning/*` | Interactive map |
 | `Humans.Web/wwwroot/js/site.js` | Timezone, notification popup, profile popover | Utility |
 
 Paths are relative to `src/` (`src/Sections/` for the section projects).
@@ -268,7 +278,7 @@ Stop and reconsider when a change introduces any of these:
 - query logic for a major screen lives in the web layer
 
 **Service / persistence smells:**
-- a new service placed in `Humans.Infrastructure/Services/` instead of `Humans.Application/Services/`
+- a new service placed in `Humans.Web/Services/` instead of the owning section project's `Services/`
 - a service that injects an application `DbContext` (any per-section context) directly instead of going through its owning repository
 - a service that injects another domain's repository (should call the other domain's `I{Section}ServiceRead` interface instead)
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)

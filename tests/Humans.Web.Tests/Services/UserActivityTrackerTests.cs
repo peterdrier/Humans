@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using NodaTime;
 using NodaTime.Testing;
 

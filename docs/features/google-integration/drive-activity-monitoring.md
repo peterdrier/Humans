@@ -55,31 +55,23 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 ## Architecture
 
-### Clean Architecture Layers
+### Ownership
 
-**Domain:**
-- `AuditAction.AnomalousPermissionDetected` enum value (stored as string, no migration needed)
-
-**Application:**
-- `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method
-- `DriveActivityMonitorService` - implementation using Google Drive Activity API v2
-
-**Infrastructure:**
-- `DriveActivityMonitorJob` - Hangfire background job wrapper
-
-**Web:**
-- `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering
-- `MonitorController.CheckDriveActivity` action (`POST /Monitor/CheckDriveActivity`) - manual trigger
-- `Views/AuditLog/Index.cshtml` view
+- `AuditAction.AnomalousPermissionDetected` enum value (stored as string, no migration needed) — `Humans.AuditLog.Contracts`
+- `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Contracts/` and `Services/`
+- `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
+- `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
+- `MonitorController.CheckDriveActivity` action (`POST /Monitor/CheckDriveActivity`) - manual trigger — `src/Sections/Humans.Monitor/Controllers/`
+- `Views/AuditLog/Index.cshtml` view — `src/Sections/Humans.AuditLog/Views/AuditLog/`
 
 ### Service Registration
 
-Registered unconditionally in `GoogleIntegrationSectionExtensions`:
+Registered unconditionally in `Humans.Monitor`'s `Section.cs`:
 `services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>()`.
 
 ### NuGet Package
 
-`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and `Humans.Infrastructure.csproj`.
+`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and referenced from `Humans.GoogleIntegration.csproj` — the connector implementation (`GoogleDriveActivityClient`) lives in the GoogleIntegration section; Monitor consumes it cross-section via `IGoogleDriveActivityClient`.
 
 ## Drive Activity API Integration
 

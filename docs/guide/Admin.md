@@ -2,22 +2,22 @@
   src/Humans.Web/Views/Admin/**
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/ViewComponents/AdminNavTree.cs
-  src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
-  src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml
-  src/Humans.Web/Views/UsersAdminAccountMerges/**
+  src/Sections/Humans.Users/Views/UsersAdmin/AdminList.cshtml
+  src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
+  src/Sections/Humans.Users/Views/UsersAdminAccountMerges/**
   src/Sections/Humans.Notifications/Views/**
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
-  src/Humans.Web/Controllers/UsersAdminController.cs
+  src/Sections/Humans.Users/Controllers/UsersAdminAccountMergesController.cs
+  src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
   src/Sections/Humans.Notifications/Controllers/NotificationsController.cs
   src/Sections/Humans.AuditLog/Services/**
   src/Sections/Humans.Notifications/Services/**
-  src/Humans.Application/Services/Users/AccountMergeService.cs
-  src/Humans.Application/Services/Users/DuplicateAccountService.cs
+  src/Sections/Humans.Users/Services/AccountMergeService.cs
+  src/Sections/Humans.Users/Services/DuplicateAccountService.cs
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
-  src/Humans.Application/Services/Users/AccountProvisioningService.cs
-  src/Humans.Application/Services/GoogleIntegration/SyncSettingsService.cs
+  src/Sections/Humans.Users/Services/AccountProvisioningService.cs
+  src/Sections/Humans.GoogleIntegration/Services/SyncSettingsService.cs
 -->
 <!-- freshness:flag-on-change
   Global control panel — humans list, audit log, notifications, sync settings, duplicate/merge resolution, and admin diagnostics. Review when admin views, role-management surface, or sync-mode plumbing changes.

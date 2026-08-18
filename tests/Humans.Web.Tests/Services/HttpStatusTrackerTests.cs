@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 
 namespace Humans.Web.Tests.Services;
 

@@ -1,15 +1,15 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Application/Services/Users/AccountProvisioningService.cs
-  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users/Services/AccountProvisioningService.cs
+  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
-  src/Humans.Web/Views/Profile/Emails.cshtml
-  src/Humans.Domain/Entities/UserEmail.cs
-  src/Humans.Domain/Entities/User.cs
+  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Sections/Humans.Users.Contracts/User.cs
 -->
 <!-- freshness:flag-on-change
   UserEmail verification flow, GoogleEmail/notification-target rules, manage-emails routes, and workspace provisioning hooks — review when UserEmailService or workspace user/email services change.

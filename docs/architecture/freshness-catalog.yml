@@ -183,8 +183,8 @@ mechanical:
       - "src/Humans.Web/Services/**/*.cs"
       # SystemDbContext and the admin diagnostics repository followed the rest of
       # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
-      - "src/Humans.Web/Infrastructure/Repositories/**/*.cs"
-      - "src/Humans.Web/Infrastructure/Data/*DbContext.cs"
+      - "src/Humans.Web/Repositories/**/*.cs"
+      - "src/Humans.Web/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
       # The section DbContexts were already triggers, but the services and
       # repositories that read through them were not — so a repository or ctor
@@ -205,7 +205,7 @@ mechanical:
       2. Which database tables those repositories ultimately access, and which
          DbContext maps each one. Since the per-section split
          (nobodies-collective/Humans#858) there is no single context: resolve
-         the DbSet<> declarations across every src/Humans.Infrastructure/Data/
+         the DbSet<> declarations across src/Humans.Web/Data/
          *DbContext.cs plus each G5 section's own Data/*DbContext.cs, and
          report the owning context per table. Do not assume a table is on
          HumansDbContext because a previous revision of this doc said so —
@@ -229,7 +229,7 @@ mechanical:
       # the platform side is SystemDbContext (DataProtectionKeys), which the doc
       # lists and which now lives in Shell; section-owned entities and
       # configurations are covered by the two src/Sections globs below.
-      - "src/Humans.Web/Infrastructure/Data/**/*.cs"
+      - "src/Humans.Web/Data/**/*.cs"
       # G5 sections own their entities and EF configurations outright (24 Domain/
       # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
       # Without these, this entry reported "not dirty" on 2026-08-13 while 39
@@ -323,6 +323,15 @@ editorial_trees:
   # whose whole value is being terse. Stale symbol references in atoms get noticed
   # and fixed when an agent goes to apply the rule — not worth a daily proactive check.
 
+# The sweep's own verifier lives at docs/scripts/freshness-checks/ and is NOT
+# listed here — it holds .sh files, and both walks below are .md-only. It is in
+# scope regardless: /freshness-sweep owns those scripts and repairs them in its
+# own PR without asking (memory/process/freshness-sweep-owns-its-verifier.md,
+# authorised 2026-08-18). Two sweeps running treated a broken verifier as
+# out-of-scope and paused; a verifier that under-reports is the most expensive
+# defect the sweep can carry, because a dead trigger makes a stale doc look
+# clean rather than unchecked.
+
 # Files to exclude from both mechanical and editorial walks.
 ignore:
   - docs/sections/SECTION-TEMPLATE.md
@@ -342,7 +351,7 @@ ignore:
   # design records (historical, same genre as docs/superpowers/specs/).
   - src/Sections/*/Docs/20*.md
   - src/Sections/*/Contracts/README.md
-  # Section-doctor machine-owned files: scorecards + plan/log/report. The doctor run
+  # Section-doctor machine-owned files: scorecards + plan + per-run files. The doctor run
   # maintains them itself (docs/superpowers/specs/2026-08-17-section-doctor-design.md).
   - src/Sections/*/Docs/health.md
   - docs/health/**

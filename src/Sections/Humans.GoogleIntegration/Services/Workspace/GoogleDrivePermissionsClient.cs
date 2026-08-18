@@ -26,55 +26,13 @@ internal sealed class GoogleDrivePermissionsClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleDrivePermissionsClient> logger) : IGoogleDrivePermissionsClient
 {
-    private const string FolderMimeType = "application/vnd.google-apps.folder";
     private const string PermissionListFields =
         "nextPageToken, permissions(id, emailAddress, role, type, permissionDetails)";
     private const string FileFields = "id, name, parents, driveId, inheritedPermissionsDisabled";
-    private const string CreateFolderFields = "id, name, webViewLink";
 
     private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
     private DriveService? _driveService;
-
-    public async Task<DriveFolderCreateResult> CreateFolderAsync(
-        string folderName,
-        string? parentFolderId,
-        CancellationToken ct = default)
-    {
-        using var _ = logger.TimeOperation();
-        try
-        {
-            var drive = await GetDriveServiceAsync(ct);
-            var metadata = new SdkFile
-            {
-                Name = folderName,
-                MimeType = FolderMimeType
-            };
-
-            if (!string.IsNullOrEmpty(parentFolderId))
-            {
-                metadata.Parents = [parentFolderId];
-            }
-
-            var request = drive.Files.Create(metadata);
-            request.Fields = CreateFolderFields;
-            request.SupportsAllDrives = true;
-            var folder = await request.ExecuteAsync(ct);
-
-            return new DriveFolderCreateResult(
-                new DriveFolder(folder.Id, folder.Name, folder.WebViewLink),
-                Error: null);
-        }
-        catch (Google.GoogleApiException ex)
-        {
-            logger.LogWarning(ex,
-                "Google API error creating folder '{Name}' under parent {ParentId}: Code={Code} Message={Message}",
-                folderName, parentFolderId ?? "(none)", ex.Error?.Code, ex.Error?.Message);
-            return new DriveFolderCreateResult(
-                Folder: null,
-                Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
-        }
-    }
 
     public async Task<DrivePermissionListResult> ListPermissionsAsync(
         string fileId,

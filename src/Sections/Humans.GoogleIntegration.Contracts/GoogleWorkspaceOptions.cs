@@ -35,12 +35,6 @@ public sealed class GoogleWorkspaceOptions
     public string CustomerId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Parent folder id for team folders in Drive. Empty means the Shared
-    /// Drive root is used.
-    /// </summary>
-    public string? TeamFoldersParentId { get; set; }
-
-    /// <summary>
     /// Default group settings applied to every Google Group the system creates
     /// and used as the source of truth for drift detection.
     /// </summary>

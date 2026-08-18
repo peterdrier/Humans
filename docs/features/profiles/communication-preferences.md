@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/CommunicationPreferenceService.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/UnsubscribeController.cs
-  src/Humans.Domain/Entities/CommunicationPreference.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/CommunicationPreferenceConfiguration.cs
+  src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users/Data/Configurations/CommunicationPreferenceConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Category list, always-on/locked rules, ticketing lock, or facilitated-message opt-out behavior may have shifted.
@@ -48,6 +48,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 - `InboxEnabled` (bool) — true = user receives in-app alerts for this category
 - `UpdatedAt` (Instant) — when preference was last changed
 - `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (lazy seed), "DataMigration"
+- `SubscribedAt` (Instant, nullable) — earliest known opt-in instant for this category; stamped on first opt-in transition or import from a source with a real subscribe date, preserved across later opt-out/re-opt cycles
 
 **Enum:** `MessageCategory` — stored as string in DB
 - Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing
@@ -56,7 +57,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 ## Routes
 
 - `GET /Profile/Me/CommunicationPreferences` — view/edit preferences
-- `POST /Profile/Me/CommunicationPreferences` — save preferences
+- `POST /Profile/Me/CommunicationPreferences/Update` — save one category's preference
 - `GET /Profile/Me/Notifications` — permanent redirect to above (backwards compat)
 
 ## Migration History

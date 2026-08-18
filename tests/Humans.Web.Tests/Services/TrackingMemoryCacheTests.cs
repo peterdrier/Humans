@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Tests.Services;

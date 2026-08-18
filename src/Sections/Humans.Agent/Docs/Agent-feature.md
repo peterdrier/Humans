@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Agent/**
-  src/Humans.Infrastructure/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Interfaces/Services/GitHubCommunityKbContentSource.cs
 -->
 <!-- freshness:flag-on-change
   Agent user stories and acceptance criteria: the grounded-answer flow, the tool catalog (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue), community-KB grounding consulted before refusal, and the admin reload/prompt-preview surface — review when the agent feature's services, tools, preload/community-KB readers, or controllers change.

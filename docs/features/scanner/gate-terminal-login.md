@@ -3,10 +3,10 @@
   src/Sections/Humans.Tickets/Controllers/TicketsOnsiteAdminController.cs
   src/Humans.Web/Views/Account/GateLogin.cshtml
   src/Humans.Web/Views/Tickets/Admin/Gate.cshtml
-  src/Humans.Web/Infrastructure/GateTerminalAccountSeeder.cs
-  src/Humans.Web/Infrastructure/GateLoginThrottle.cs
-  src/Humans.Domain/Constants/SystemUserIds.cs
-  src/Humans.UI/Authorization/PolicyNames.cs
+  src/Humans.Web/Hosting/GateTerminalAccountSeeder.cs
+  src/Humans.Web/Services/GateLoginThrottle.cs
+  src/Humans.Interfaces/Constants/SystemUserIds.cs
+  src/Humans.Interfaces/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
 -->
 <!-- freshness:flag-on-change

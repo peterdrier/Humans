@@ -4,7 +4,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;

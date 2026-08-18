@@ -1,7 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Web.Extensions;
-using Humans.Web.Infrastructure;
+using Humans.Web.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;

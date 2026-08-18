@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Models/ShiftViewModels.cs
-  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
-  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
-  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Shifts/Models/ShiftViewModels.cs
+  src/Sections/Humans.Shifts/Views/ShiftProfile/ShiftInfo.cshtml
+  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
 -->
 <!-- freshness:flag-on-change
   Wizard step content, quirk vocabulary (time-preference values), or the rule that dietary/medical lives elsewhere may have changed.
@@ -17,8 +17,8 @@ Volunteers need to tell coordinators about their skills, work style preferences,
 
 This is the first of three related features:
 - **33 — Shift Preference Wizard** (this feature): Collect skills, work style, languages
-- **34 — Shift Recommendation Engine**: Fuzzy-match preferences against available shifts (separate spec)
-- **35 — Dietary & Medical Nudge Modal**: Collect dietary/allergy/medical info when a human signs up for a 6+ hour shift where the cantina provides meals (separate spec)
+- **34 — Shift Recommendation Engine**: Fuzzy-match preferences against available shifts (not yet specced)
+- **[35 — Dietary & Medical Nudge](../profiles/dietary-medical-nudge.md)**: Collect dietary/allergy/medical info when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
 
 ## Authorization
 
@@ -34,9 +34,9 @@ Same as current `/Profile/Me/ShiftInfo` — any authenticated user can view and 
 **Acceptance Criteria:**
 - Wizard replaces the existing flat form at `GET /Profile/Me/ShiftInfo`
 - 3 steps: Skills, Work Style, Languages
-- Step 1 (Skills): emoji-prefixed chip multi-select — Bartending, Cooking, Sound, DJ, First Aid, Electrical, Driving, Construction, Art, Other
-- Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, No Heights, Physical Work OK, Quiet Work)
-- Step 3 (Languages): emoji-prefixed chip multi-select — English, Spanish, French, German, Italian, Portuguese, Other
+- Step 1 (Skills): emoji-prefixed chip multi-select — Bartending, First Aid, Driving, Sound, Electrical, Construction, Cooking, Art, DJ, Other
+- Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, Quiet Work, Physical Work OK, No Heights)
+- Step 3 (Languages): emoji-prefixed chip multi-select — English, Spanish, German, French, Italian, Portuguese, Catalan, Other
 - Progress dots in header show current/completed/future steps
 - Step label, title, and subtitle update per step
 - Back/Continue navigation buttons; "Save" on final step
@@ -85,7 +85,7 @@ The set of time preference values should be a `static readonly` array (like the 
 
 ### Fields Removed From This Page (Not Deleted)
 
-The following fields are no longer editable on `/Profile/Me/ShiftInfo` but remain on `VolunteerEventProfile` and in the database. Existing data is preserved. These will move to the Dietary & Medical Nudge Modal (Feature 35):
+The following fields are no longer editable on `/Profile/Me/ShiftInfo`. They moved to `Profile` (Feature 35 — [Dietary & Medical Nudge](../profiles/dietary-medical-nudge.md)); the corresponding `VolunteerEventProfile` columns are retained-only tombstones pending a deferred drop:
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`
@@ -114,9 +114,9 @@ The following fields are no longer editable on `/Profile/Me/ShiftInfo` but remai
 
 | File | Change |
 |------|--------|
-| `Views/Profile/ShiftInfo.cshtml` | Full rewrite — flat form → wizard |
+| `Views/ShiftProfile/ShiftInfo.cshtml` | Full rewrite — flat form → wizard |
 | `Models/ShiftViewModels.cs` | Remove dietary/allergy/medical properties; add `TimePreference` property (string); split `SelectedQuirks` to exclude time preferences |
-| `Controllers/ProfileController.cs` | POST stops writing dietary/medical fields; GET stops loading them into view model |
+| `Controllers/ShiftProfileController.cs` | POST stops writing dietary/medical fields; GET stops loading them into view model |
 
 ## Files NOT Modified
 
@@ -137,4 +137,4 @@ The following fields are no longer editable on `/Profile/Me/ShiftInfo` but remai
 - [Issue #273](https://github.com/nobodies-collective/Humans/issues/273): Dashboard "Things to do" wizard card
 - [Issue #186](https://github.com/nobodies-collective/Humans/issues/186): Custom labels/tags on rotas (future matching input)
 - Feature 34 — Shift Recommendation Engine (not yet specced)
-- [Feature 35 — Dietary & Medical Nudge Modal](../profiles/dietary-medical-nudge.md) (placeholder)
+- [Feature 35 — Dietary & Medical Nudge](../profiles/dietary-medical-nudge.md) (shipped)
