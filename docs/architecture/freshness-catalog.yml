@@ -205,6 +205,11 @@ mechanical:
       - "src/Sections/*/Data/*Repository.cs"
     update: prompt
     prompt: |
+      Document current state only — no move/migration history, no "new this
+      sweep", no PR archaeology, no generated-by header boilerplate
+      (memory/process/current-state-docs-no-history.md). A PR/date reference
+      is allowed only for a live pending item.
+
       Regenerate the per-section data-access maps and the cross-section rollup.
 
       Outputs: src/Sections/Humans.<X>/Docs/data-access.md for each section whose
