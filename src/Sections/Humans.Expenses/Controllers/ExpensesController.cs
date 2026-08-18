@@ -276,7 +276,7 @@ internal sealed class ExpensesController(
     }
 
     [HttpGet("{id:guid}/Lines/New")]
-    public async Task<IActionResult> NewLine(Guid id, ExpenseLineType type = ExpenseLineType.Receipt)
+    public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -290,11 +290,13 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        return View(new ExpenseLineNewViewModel
+        var model = new ExpenseLineNewViewModel
         {
             ReportId = id,
             IsInvoice = type == ExpenseLineType.Invoice,
-        });
+        };
+        // No type chosen yet → the invoice-or-receipt chooser comes first.
+        return type is null ? View("NewLineChoice", model) : View(model);
     }
 
     [HttpPost("{id:guid}/Lines/Add")]

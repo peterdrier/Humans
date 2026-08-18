@@ -21,8 +21,8 @@
                 @if (Model.IsInvoice)
                 {
                     <p class="text-muted">
-                        The company's invoice to the association. After saving you'll add the receipts
-                        behind it, so the Board can see what the invoiced amount covers.
+                        The company's invoice, made out to the NCA. After saving you'll add the
+                        receipts behind it, so the approver can see what the invoiced amount covers.
                     </p>
                 }
                 else
@@ -63,22 +63,10 @@
             </div>
         </div>
 
-        @if (Model.IsInvoice)
-        {
-            <p class="mt-3 text-center">
-                <a asp-action="NewLine" asp-route-id="@Model.ReportId" class="text-decoration-none">
-                    &larr; Just a receipt you paid yourself? Switch back
-                </a>
-            </p>
-        }
-        else
-        {
-            <div class="alert alert-light border mt-3">
-                <i class="fa-solid fa-file-invoice me-1"></i>
-                <strong>Have a business (ZZP / autónomo)?</strong> Invoice the association instead —
-                we can reclaim the VAT, which saves everyone 21%.
-                <a asp-action="NewLine" asp-route-id="@Model.ReportId" asp-route-type="@ExpenseLineType.Invoice">Add an invoice &rarr;</a>
-            </div>
-        }
+        <p class="mt-3 text-center">
+            <a asp-action="NewLine" asp-route-id="@Model.ReportId" class="text-decoration-none">
+                &larr; @(Model.IsInvoice ? "Not an invoice?" : "Not a receipt?") Change type
+            </a>
+        </p>
     </div>
 </div>
