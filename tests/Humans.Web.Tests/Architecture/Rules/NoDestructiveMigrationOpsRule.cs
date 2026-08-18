@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AwesomeAssertions;
 using Humans.Web.Tests.Architecture.Ratchet;
 
 namespace Humans.Web.Tests.Architecture.Rules;
@@ -46,6 +47,46 @@ public class NoDestructiveMigrationOpsRule
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
         var violations = ScanMigrations(repoRoot, MigrationDirectories(repoRoot));
         RatchetTestRunner.Run("NoDestructiveMigrationOps", BaselinePath, violations);
+    }
+
+    /// <summary>
+    /// Every baseline entry carries its approval in the comment block above it.
+    /// </summary>
+    /// <remarks>
+    /// Without this, the ledger is a convention rather than a guardrail: <c>ReadBaseline</c>
+    /// discards comments and diffs locators only, so a bare locator with no description, no
+    /// evidence and no approval would pass silently — which is the whole gate the rule rewrite
+    /// of 2026-08-18 depends on. This does not try to judge whether the evidence is *good*; a
+    /// human does that. It only refuses an entry that never claimed any.
+    /// </remarks>
+    [HumansFact]
+    public void Every_baseline_entry_is_covered_by_an_approval_note()
+    {
+        var path = Path.Combine(RatchetTestRunner.LocateRepoRoot(), BaselinePath);
+        if (!File.Exists(path)) return;
+
+        var unapproved = new List<string>();
+        var block = new List<string>();
+
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0) { block.Clear(); continue; }
+            if (line.StartsWith('#')) { block.Add(line); continue; }
+
+            var covered = block.Any(c =>
+                c.Contains("Approval:", StringComparison.Ordinal)
+                || c.Contains("Pre-existing:", StringComparison.Ordinal));
+            if (!covered) unapproved.Add(line);
+        }
+
+        unapproved.Should().BeEmpty(
+            because: "every locator in {0} needs the comment block above it to carry an "
+                   + "'Approval:' line (Peter's per-case written approval, with the description "
+                   + "and the evidence beside it) or a 'Pre-existing:' line for drops that "
+                   + "shipped before this rule. See memory/architecture/"
+                   + "no-drops-until-prod-verified.md. Uncovered: {1}",
+            BaselinePath, string.Join(", ", unapproved));
     }
 
     /// <summary>

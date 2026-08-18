@@ -28,7 +28,7 @@ namespace Humans.Finance.Data.Migrations
                 table: "holded_expense_docs",
                 type: "jsonb",
                 nullable: false,
-                defaultValue: "");
+                defaultValueSql: "'{}'::jsonb");
 
             migrationBuilder.AddColumn<Instant>(
                 name: "ArchivedAt",

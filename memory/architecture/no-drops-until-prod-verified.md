@@ -48,7 +48,11 @@ calendar.
   last built, which yields an empty migration; a following `migrations remove --force` then walks back
   the *wrong* migration. Recover by `git checkout` of the Migrations folder, then rebuild and
   regenerate.
-- **`Down()` must restore the shape.** EF writes it; check it is there.
+- **`Down()` must restore the shape.** EF writes it — check it is there *and that it would run*.
+  For a non-nullable string column EF scaffolds `defaultValue: ""`, which on a `jsonb` column is
+  `DEFAULT ''` and a Postgres syntax error, so the rollback fails the moment anyone tries it. The fix
+  is model-side, never a hand edit: declare the default (`HasDefaultValueSql("'{}'::jsonb")`) in a
+  preceding migration so the drop's `Down()` scaffolds a valid one.
 - [`event-deploy-freeze`](../process/event-deploy-freeze.md) still freezes schema-changing deploys
   during the event.
 - The restore procedure behind all of this is
@@ -63,8 +67,14 @@ migration's `Up()` and fails on any `Drop*` it does not find in
 
 Under this rule the baseline is **the approval ledger**: adding a locator to it is how an approved
 drop is recorded, and each entry carries a comment naming what was removed, the evidence, and
-Peter's approval. Adding a line without that comment is the thing the file forbids — it turns a
-guardrail into a rubber stamp. If you cannot write the three facts, you do not have approval yet.
+Peter's approval. If you cannot write the three facts, you do not have approval yet.
+
+That is enforced, not merely asked for: `Every_baseline_entry_is_covered_by_an_approval_note` fails
+any locator whose comment block above it carries no `Approval:` line (or `Pre-existing:`, for drops
+that shipped before this rule). The ratchet's own reader discards comments and diffs locators only,
+so without that second test a bare locator would pass silently and the ledger would be a convention
+rather than a guardrail. The test does not judge whether the evidence is *good* — a human does that;
+it only refuses an entry that never claimed any.
 
 **Related:** [`no-column-drops-for-decoupling`](no-column-drops-for-decoupling.md) — for *decoupling*
 work specifically, the property override is the migration and the column drop stays optional; that

@@ -13,7 +13,7 @@
 # A bare locator with no such comment is a rubber stamp, not an approval. If you cannot write
 # the three facts, you do not have approval yet — ask, do not add the line.
 
-# Three pre-existing, already-shipped drops in a G5 section's own Data/Migrations folder.
+# Pre-existing: three already-shipped drops in a G5 section's own Data/Migrations folder.
 # They are new to this file only because the rule's scan was widened to section migration
 # folders at Email's G5 move (nobodies-collective/Humans#866) — before that, every moved
 # section's migrations silently left the sweep and the rule reported success by finding
@@ -31,5 +31,5 @@ src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHo
 # re-added, so nothing has ever set it. Neither column is read anywhere.
 # Approval: Peter, 2026-08-18 — "drop both columns", and destructive migrations now ship on
 # description + evidence + his per-case approval.
-src/Sections/Humans.Finance/Data/Migrations/20260818190532_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload)#1
-src/Sections/Humans.Finance/Data/Migrations/20260818190532_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt)#1
+src/Sections/Humans.Finance/Data/Migrations/20260818195930_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload)#1
+src/Sections/Humans.Finance/Data/Migrations/20260818195930_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt)#1
