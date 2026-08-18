@@ -10,7 +10,7 @@ namespace Humans.Finance.Data;
 /// <c>holded_category_map</c>, <c>holded_creditor_contacts</c> and
 /// <c>holded_doc_sync_state</c> (the ledger mirror moved to the Holded section), with its own
 /// <c>__EFMigrationsHistory_Finance</c> table and migrations under
-/// <c>Migrations/Finance/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>

@@ -2,7 +2,7 @@
 
 **Status:** Draft — awaiting Peter's sign-off
 **Date:** 2026-08-10
-**Supersedes:** the sync mechanics of `2026-06-15-holded-ledger-single-source-design.md` (its "daybook is the single source, cache it, derive everything" decision stands; the v1 `dailyledger` transport and creditor-range scoping do not).
+**Supersedes:** the retired `2026-06-15-holded-ledger-single-source-design.md`. Its "daybook is the single source, cache it, derive everything" decision stands and now lives in `src/Sections/Humans.Finance/Docs/Finance.md`; the v1 `dailyledger` transport and creditor-range scoping do not.
 
 ## Context
 

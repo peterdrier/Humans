@@ -41,31 +41,26 @@ internal sealed class CreditorService(
             return null;
 
         var balance = LedgerBalance(lines);
-        var payments = LedgerPayments(lines);
+        var debits = lines.Where(l => l.Debit > 0m).ToList();
 
         return new HoldedCreditorStatus(
             SupplierAccountNum: num,
             Balance: balance,
-            OwedToMember: Math.Max(0m, -balance),
-            LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
-            TotalPaid: payments.Sum(p => p.Amount));
+            OwedToMember: OwedFrom(balance),
+            LastPaymentDate: debits.Count == 0 ? null : debits.Max(l => l.Date).InZone(Madrid).Date,
+            TotalPaid: debits.Sum(l => l.Debit));
     }
 
     // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
     //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
     //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
 
+    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
     private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
 
-    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLineInfo> lines)
-    {
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        return lines
-            .Where(l => l.Debit > 0m)
-            .Select(l => new HoldedPaymentInfo(l.Date.InZone(zone).Date, l.Debit, l.Type))
-            .ToList();
-    }
+    private static decimal OwedFrom(decimal? balance) => Math.Max(0m, -(balance ?? 0m));
 
     // ─── Creditor bindings + statement ──────────────────────────────────────────
 
@@ -140,7 +135,7 @@ internal sealed class CreditorService(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
                     Balance: balance,
-                    OwedToMember: balance is { } bal ? Math.Max(0m, -bal) : 0m,
+                    OwedToMember: OwedFrom(balance),
                     Bindings: bound ?? []);
             }).ToList();
 
@@ -317,7 +312,7 @@ internal sealed class CreditorService(
             SupplierAccountNum: supplierAccountNum,
             Name: contact?.Name,
             Balance: balance,
-            OwedToMember: Math.Max(0m, -balance),
+            OwedToMember: OwedFrom(balance),
             Lines: lines.Select(l => new CreditorLedgerLine
             {
                 EntryNumber = l.EntryNumber,

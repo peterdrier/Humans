@@ -3,45 +3,33 @@ using Humans.Application.Interfaces;
 namespace Humans.Finance.Contracts;
 
 /// <summary>
-/// What other sections may ask of Finance's creditor bindings. Binding and unbinding are admin
-/// operations and are deliberately absent — they live on the section's internal
-/// <c>ICreditorAdminService</c>, which only <c>FinanceController</c> sees.
+/// Finance's creditor surface for other sections. Binding and unbinding are admin operations and
+/// stay off this contract. Every rule below is stated once, in Docs/Finance.md.
 /// </summary>
 public interface ICreditorService : IApplicationService
 {
-    /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
-    /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>
+    /// <summary>Balance, owed and payment figures for a member's 400000xx, derived from the cached
+    /// daybook. Null when no lines are cached — unknown, not settled.</summary>
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Admin overview: every 400000xx creditor account — cached balances, member bindings and
-    /// Holded's own creditor contacts (which carry the account name and appear before any journal
-    /// activity exists). Names are blank when Holded is unreachable; the rest still renders.</summary>
-    /// <returns>
-    /// The two halves of one partition of the binding set, from one snapshot of the same inputs.
-    /// <c>Unresolved</c> is the remainder <c>Accounts</c> cannot represent: bindings whose 400000xx
-    /// never resolved — neither our one-shot push resolution nor Holded's live contact list has a
-    /// number for the contact — so there is no account row to place them on. There is no automatic
-    /// retry (nobodies-collective/Humans#972), so returning them here is what keeps them visible on
-    /// /Finance/Creditors, where an admin binds them.
-    /// </returns>
+    /// <summary>Every 400000xx account with its bindings, plus the bindings whose account never
+    /// resolved and so have no row to sit on. Account names go blank when Holded is unreachable.</summary>
     Task<(IReadOnlyList<HoldedCreditorAccountRow> Accounts, IReadOnlyList<CreditorContactBinding> Unresolved)>
         ListCreditorAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The member's creditor-account binding, if any.</summary>
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Per-account statement: balance + itemized journal lines over the last ~year. Null if unknown.</summary>
+    /// <summary>Per-account statement: balance plus itemized journal lines. Null if unknown.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Ensures the member has a Holded creditor contact + binding, returning the contact id.
-    /// Reuses the existing binding (PUT-updates the contact), else adopts <paramref name="seedContactId"/>
-    /// (lazy-seed from a prior pushed report), else creates a new Holded contact. The binding is the
-    /// single source of truth for the member→account link; a Manual binding is never downgraded to Auto.</summary>
+    /// <summary>Ensures the member has a Holded creditor contact and binding, returning the contact id.
+    /// Reuses the bound contact, else the seed from a prior report, else creates one.</summary>
     Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
         string? seedContactId, int? seedAccountNum, CancellationToken ct = default);
 
-    /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).</summary>
+    /// <summary>Records the resolved 400000xx on the member's binding, once the payable exists.</summary>
     Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
 }

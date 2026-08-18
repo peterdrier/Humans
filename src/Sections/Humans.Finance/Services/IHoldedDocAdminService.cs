@@ -3,14 +3,13 @@ using Humans.Finance.Contracts;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// The purchase-document surface <c>FinanceController</c> uses: the cross-section contract plus
-/// the treasurer's provisioning and unmatched-queue operations, which no other section calls and
-/// so never cross the assembly boundary.
+/// The purchase-document surface <c>FinanceController</c> uses: the cross-section contract plus the
+/// treasurer's provisioning and unmatched-queue operations, which never leave this project.
 /// </summary>
 internal interface IHoldedDocAdminService : IHoldedDocService
 {
-    /// <summary>Reconciles the live Holded chart of accounts against holded_category_map:
-    /// Mapped / ToAdd / Orphan, plus the next free account number.</summary>
+    /// <summary>Reconciles Holded's chart of accounts against holded_category_map — Mapped / ToAdd /
+    /// Orphan, plus the next free account number.</summary>
     Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
 
     /// <summary>Creates the plan's ToAdd accounts in Holded and maps them locally. Additive only;

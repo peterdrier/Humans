@@ -7,12 +7,11 @@ namespace Humans.Finance.Contracts;
 /// Holded call.</summary>
 /// <remarks>
 /// Finance's own boundary type, deliberately not the Holded connector's
-/// <c>HoldedLedgerLineDto</c>, which this shape otherwise mirrors. The connector is Base and
-/// stays there (nobodies-collective/Humans#866), this project may reference only the bottom of
-/// the graph, and re-exporting another component's DTO across a section boundary would make
-/// every consumer of a creditor statement a consumer of the Holded API's wire shape. The two
-/// types drifting apart is the point: a Holded API field that stops being a ledger-line field
-/// should not reach the statement page.
+/// <c>HoldedLedgerLineDto</c>, which this shape otherwise mirrors. That DTO belongs to the
+/// Holded section's contracts leaf, and re-exporting another section's wire shape across this
+/// boundary would make every consumer of a creditor statement a consumer of the Holded API. The
+/// two types drifting apart is the point: a Holded API field that stops being a ledger-line
+/// field should not reach the statement page.
 /// </remarks>
 public sealed record CreditorLedgerLine
 {
