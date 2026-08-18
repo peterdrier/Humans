@@ -62,6 +62,52 @@ public class HoldedFinanceServiceTests
         rows.Should().ContainSingle().Which.Should().Be(new HoldedActualRow(cat, 181.50m));
     }
 
+    [HumansFact]
+    public async Task Sync_BooksEachDocOnItsMadridDate_NotItsUtcDate()
+    {
+        // Actuals are filtered on Date.Year, and MapDoc is the only place the Madrid
+        // conversion happens. An invoice timestamped in the last hour of 31 December UTC is
+        // already 1 January in Madrid, so booking it on the UTC date would move it into the
+        // previous budget year and understate January.
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new HoldedDocSyncState());
+        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs((IReadOnlySet<string>)new HashSet<string>(StringComparer.Ordinal));
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs((IReadOnlyList<HoldedPurchaseDocListItemDto>)
+            [
+                // CET (UTC+1): 23:30Z on 31 Dec is 00:30 on 1 Jan in Madrid.
+                Doc("rolls-over", Instant.FromUtc(2025, 12, 31, 23, 30)),
+                // CEST (UTC+2) in summer, and a mid-day stamp that must not move at all.
+                Doc("stays-put", Instant.FromUtc(2026, 7, 15, 10, 0)),
+            ]);
+
+        IReadOnlyList<HoldedExpenseDoc>? captured = null;
+        await _repo.UpsertDocsAsync(
+            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => captured = d),
+            Arg.Any<Instant>(),
+            Arg.Any<CancellationToken>());
+
+        await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+        captured.Should().NotBeNull();
+        captured!.Single(d => string.Equals(d.HoldedDocId, "rolls-over", StringComparison.Ordinal))
+            .Date.Should().Be(new LocalDate(2026, 1, 1));
+        captured.Single(d => string.Equals(d.HoldedDocId, "stays-put", StringComparison.Ordinal))
+            .Date.Should().Be(new LocalDate(2026, 7, 15));
+    }
+
+    /// <summary>An otherwise-uninteresting purchase doc, for tests that care only about its date.</summary>
+    private static HoldedPurchaseDocListItemDto Doc(string id, Instant date) =>
+        new()
+        {
+            Id = id, DocNumber = id, ContactName = "Vendor", Date = date,
+            Subtotal = 10, Tax = 0, Total = 10, Currency = "eur",
+            Lines = [], Tags = [],
+        };
+
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
 
     [HumansFact]
@@ -956,6 +1002,28 @@ public class HoldedFinanceServiceTests
         row.SupplierAccountNum.Should().Be(40000004);
         row.OwedToMember.Should().Be(40m);
         row.Name.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_ReadsHoldedsContactListOncePerCacheWindow()
+    {
+        // The account name lives only in Holded, and /Finance/Creditors and /Expenses/{id}
+        // both read the same list on every load. It is cached for two minutes
+        // (design-rules §15 Option A), so a second read inside the window costs no Holded call.
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
+        });
+
+        var svc = MakeService();
+        await svc.ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await svc.ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _client.Received(1).ListContactsAsync(Arg.Any<CancellationToken>());
+        rows.Should().ContainSingle().Which.Name.Should().Be("Daniela Marquez");
     }
 
     [HumansFact]
