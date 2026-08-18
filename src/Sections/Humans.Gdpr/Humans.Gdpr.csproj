@@ -23,7 +23,7 @@
       went away at G5 lane 5c. (Humans.Domain, the other project this note used to name, no
       longer exists — deleted in G5 lane 3b.)
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 

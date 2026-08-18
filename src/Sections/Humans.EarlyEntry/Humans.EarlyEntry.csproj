@@ -28,7 +28,7 @@
       live in Humans.Base.Interfaces.Caching, and HumansControllerBase / PolicyNames
       in Humans.UI.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

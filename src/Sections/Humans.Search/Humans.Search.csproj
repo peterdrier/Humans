@@ -30,7 +30,7 @@
       on their owners' contracts leaves, plus IEventServiceRead off the Events leaf.
       Scanner's, Cantina's, Mailer's and Onboarding's shape.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />

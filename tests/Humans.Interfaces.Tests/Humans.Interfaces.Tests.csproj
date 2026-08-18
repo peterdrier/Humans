@@ -6,7 +6,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

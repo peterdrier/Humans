@@ -25,7 +25,7 @@
       webhook registrar reads to sweep endpoints for closed PRs. Those namespaces stayed put
       when G5 lane 3a-1 moved the files, so only the hub ProjectReference went away.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

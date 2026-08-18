@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
       Humans.Interfaces above now carries what the deleted Humans.Domain used to supply here:
       RoleNames, the shared value objects, and the enums that keep the Humans.Base.Enums
