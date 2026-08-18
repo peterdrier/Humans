@@ -12,3 +12,4 @@ description: After context cleanup, freshness sweep, NuGet check, /simplify pass
 - After the maintenance task lands, edit `docs/architecture/maintenance-log.md` and bump the row for that task: today's date in "Last Run", today + cadence in "Next Due".
 - Commit the log update with the maintenance work itself, not as a separate commit.
 - If a maintenance task type isn't yet in the log, add a new row.
+- **Exception: `/section-doctor` runs never touch this log** (nobodies-collective/Humans#1069). Its row is frozen; each run writes its own `docs/health/runs/<date>-<Section>.md` instead — concurrent unattended runs appending to a shared row was a guaranteed merge conflict.
