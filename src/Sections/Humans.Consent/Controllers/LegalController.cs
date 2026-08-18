@@ -1,5 +1,5 @@
 using Humans.Consent.Contracts;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

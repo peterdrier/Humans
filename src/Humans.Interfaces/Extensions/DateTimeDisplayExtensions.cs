@@ -1,7 +1,6 @@
-using Humans.Base.Extensions;
 using NodaTime;
 
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class DateTimeDisplayExtensions
 {

@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 /// <summary>
 /// Two pure-string search predicates. In <c>Humans.UI</c> rather than Shell because

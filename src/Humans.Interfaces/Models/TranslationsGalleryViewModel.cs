@@ -1,5 +1,5 @@
 using System.Globalization;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.UI.Models;

@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Encodings.Web;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 

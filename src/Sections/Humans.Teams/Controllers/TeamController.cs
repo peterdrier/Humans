@@ -15,7 +15,6 @@ using NodaTime;
 using Humans.Teams.Contracts;
 using Humans.UI;
 using Humans.UI.Authorization;
-using Humans.UI.Extensions;
 using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;

@@ -2,7 +2,7 @@ using Humans.Search.Models;
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 using Humans.UI.Controllers;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

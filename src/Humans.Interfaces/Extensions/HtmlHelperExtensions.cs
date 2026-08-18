@@ -4,7 +4,7 @@ using Markdig;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class HtmlHelperExtensions
 {

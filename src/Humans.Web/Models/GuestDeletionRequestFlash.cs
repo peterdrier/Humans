@@ -1,4 +1,4 @@
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 
 using Humans.Users.Contracts;
 

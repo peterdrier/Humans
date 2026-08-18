@@ -6,7 +6,7 @@ using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Surveys.Domain;
 using Humans.UI.Authorization;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

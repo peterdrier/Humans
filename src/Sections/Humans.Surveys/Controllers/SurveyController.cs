@@ -2,7 +2,7 @@ using Humans.UI.Controllers;
 using System.Globalization;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

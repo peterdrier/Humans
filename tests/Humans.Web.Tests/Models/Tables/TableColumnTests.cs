@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Humans.Base.Models.Tables;
 using Microsoft.AspNetCore.Html;
 using NodaTime;

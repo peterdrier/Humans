@@ -1,6 +1,6 @@
 using Humans.Users.Contracts;
 
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class PersonSearchOrderingExtensions
 {

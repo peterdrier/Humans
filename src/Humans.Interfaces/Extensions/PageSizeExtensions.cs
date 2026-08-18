@@ -1,4 +1,4 @@
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 public static class PageSizeExtensions
 {

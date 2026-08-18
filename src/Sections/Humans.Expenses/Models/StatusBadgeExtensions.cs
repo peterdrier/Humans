@@ -7,7 +7,7 @@ namespace Humans.Expenses.Models;
 /// Detail and Review pages.
 /// </summary>
 /// <remarks>
-/// This lived as an overload on <c>Humans.UI.Extensions.StatusBadgeExtensions</c> until the
+/// This lived as an overload on <c>Humans.Base.Extensions.StatusBadgeExtensions</c> until the
 /// section moved out. Its only two call sites were always this section's views, so it comes
 /// with them rather than making Base name a section enum — the same reasoning as
 /// <c>EnumBadgeMap.Register</c>, which covers the table-column half of the same page.

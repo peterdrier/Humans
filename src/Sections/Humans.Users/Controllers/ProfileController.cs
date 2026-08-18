@@ -18,7 +18,6 @@ using Microsoft.Extensions.Localization;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
-using Humans.UI.Extensions;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;

@@ -1,7 +1,7 @@
 using Humans.UI.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.Extensions;
+namespace Humans.Base.Extensions;
 
 /// <summary>
 /// Projects a person-search hit onto the row shape the canonical

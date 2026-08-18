@@ -31,7 +31,7 @@ using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
 using Humans.Base.Logging;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Serilog;
 using Serilog.Events;
 using Humans.Web.Hosting;

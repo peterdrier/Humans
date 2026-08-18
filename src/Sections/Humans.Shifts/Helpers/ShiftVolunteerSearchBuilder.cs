@@ -2,7 +2,7 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Humans.Shifts.Models;
 
 namespace Humans.Shifts.Helpers;
