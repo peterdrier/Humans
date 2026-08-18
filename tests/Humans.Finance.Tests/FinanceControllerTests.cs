@@ -186,7 +186,7 @@ public class FinanceControllerTests
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
-            new HoldedCreditorLedger(40000002, "Ada", -10m, 10m,
+            new HoldedCreditorLedger(40000002, -10m, 10m,
             [
                 Ledger(entry: 5, line: 1, day1),
                 Ledger(entry: 9, line: 2, day2),

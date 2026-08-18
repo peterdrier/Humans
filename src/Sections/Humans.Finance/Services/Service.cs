@@ -604,7 +604,6 @@ internal sealed class Service(
         var balance = LedgerBalance(lines);
         return new HoldedCreditorLedger(
             SupplierAccountNum: supplierAccountNum,
-            Name: contact?.Name,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
             Lines: lines.Select(l => new CreditorLedgerLine

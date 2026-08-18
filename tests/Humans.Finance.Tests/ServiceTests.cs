@@ -510,8 +510,8 @@ public class HoldedFinanceServiceTests
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
-        ledger.Name.Should().Be("Daniela Marquez");
         ledger.Contact.Should().NotBeNull();
+        ledger.Contact.Name.Should().Be("Daniela Marquez");
         ledger.Contact.TradeName.Should().Be("Dani");
         ledger.Contact.Email.Should().Be("dani@example.org");
         ledger.Contact.Phone.Should().Be("+34 600 000 000");
@@ -539,7 +539,6 @@ public class HoldedFinanceServiceTests
 
         ledger.Should().NotBeNull();
         ledger.Contact.Should().BeNull();
-        ledger.Name.Should().BeNull();
         ledger.Balance.Should().Be(-50m);
     }
 

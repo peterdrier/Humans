@@ -142,6 +142,11 @@ Specified, not built. Not ranked, not struck; items touching these callers are s
 - **No `.resx`.** English-only finance-admin pages with zero localizer call sites.
 - **No per-report paid state.** Payment is an account-level fact; attributing it to one report fakes
   an attribution that does not exist.
+- **No nullable `Balance` on the creditor DTOs.** Both reads return null wholesale when an account has
+  no cached lines, so a returned status or ledger always has a balance. `HoldedCreditorAccountRow`
+  keeps its `decimal?` — the admin list does carry accounts with no lines yet.
+- **No `Name` on `HoldedCreditorLedger`.** It was exactly `Contact?.Name`; the statement header reads
+  through the contact (Peter, 2026-08-18).
 - **No split of `Service.cs` into per-shape services.** The four shapes share the repository, the
   clock and the contact cache; splitting would trade one long file for four files and a fifth
   coordinating them.

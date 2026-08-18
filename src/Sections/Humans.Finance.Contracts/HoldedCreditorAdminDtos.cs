@@ -32,8 +32,7 @@ public sealed record CreditorContactBinding(
 /// the cached list has none — including when Holded is down, which costs the header, not the statement.</param>
 public sealed record HoldedCreditorLedger(
     int SupplierAccountNum,
-    string? Name,
-    decimal? Balance,
+    decimal Balance,
     decimal OwedToMember,
     IReadOnlyList<CreditorLedgerLine> Lines,
     HoldedContactInfo? Contact = null);
