@@ -5,13 +5,13 @@
 ## Assessment summary
 
 Finance is structurally healthy and documentationally rotten. Every hard-rule check passes —
-`Service` and `Repository` internal, one repository over all four tables, every cross-section
+`Service` and `Repository` internal, one repository over every table the section holds, every cross-section
 call through a contracts leaf, the Budget dependency already narrowed to `IBudgetServiceRead`,
 no grandfathers, no obsoletes. The creditor-binding invariants are among the best-tested things
-in the codebase: 31 tests across three write paths, including every concurrency window
+in the codebase: every write path is covered, including every concurrency window
 nobodies-collective/Humans#995 named.
 
-And the section doc still described the controller the G5 split deleted. `Finance.md` listed 23
+And the section doc still described the controller the G5 split deleted. `Finance.md` listed
 Budget-CRUD routes `FinanceController` does not serve, a `POST /Finance/Creditors/Resync`
 removed with the Holded v2 migration, an `ITicketServiceRead` cash-flow dependency the section
 no longer has, and a Budget read-split filed as future work that had already shipped — while its
@@ -20,7 +20,7 @@ contradicted itself, and the half a reader hits first was the wrong half. Full s
 `src/Sections/Humans.Finance/Docs/health.md`.
 
 Nothing structural was taken, so the reforge score is unchanged at 254. That is deliberate: the
-two findings behind it (an 856-line service, a fourteen-method interface) are one problem — a
+two findings behind it (an oversized service, a wide interface) are one problem — a
 class that merged the doc pipeline with the creditor bindings — and unpicking it adds a type and
 a DI registration, which is Peter's call.
 
@@ -48,12 +48,12 @@ a DI registration, which is Peter's call.
 
 - **Splitting `Service`** along the doc-pipeline / creditor-bindings seam — the ideal-shape move,
   and the cure for both reforge findings. Adds a type and a DI registration → Needs Peter.
-- **Narrowing `IHoldedFinanceService`** from fourteen methods to the nine with external callers.
-  The five admin-only ones want an internal interface → surface addition → Needs Peter.
+- **Narrowing `IHoldedFinanceService`** to the methods with external callers. The admin-only ones
+  want an internal interface → surface addition → Needs Peter.
 - **Dropping `RawPayload`**, a NOT NULL jsonb column that has only ever held `{}` → schema change.
-- **Trimming `Service.cs`'s rationale blocks.** ~200 lines of accurate but 10–14-line comment
-  essays, mostly restating `Finance.md` invariants → Needs Peter.
-- **Six unread contract properties** InspectCode flagged. Deliberately left: on a contract record
+- **Trimming `Service.cs`'s rationale blocks.** Accurate but multi-paragraph comment essays,
+  mostly restating `Finance.md` invariants → Needs Peter.
+- **The unread contract properties** InspectCode flagged. Deliberately left: on a contract record
   "no consumer reads it today" is weak evidence, and two of them are the natural key of their row.
 - **Stryker** — not run. The tests lane was not dispatched this run (see retro).
 

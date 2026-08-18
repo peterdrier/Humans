@@ -33,23 +33,23 @@ PR is still open.
 
 ### 2026-08-18 — Finance (peterdrier/Humans#1367)
 
-- [ ] **Split `Service` (856 lines) along the doc-pipeline / creditor-bindings seam?** They share
+- [ ] **Split `Service` along the doc-pipeline / creditor-bindings seam?** They share
       no state and no invariant — one is a nightly full-pull with attribution and an unmatched
       queue, the other a member↔account link with a three-way concurrency story. The split retires
       both of the section's reforge findings and is behaviour-preserving, but it adds a type and a
       DI registration.
-- [ ] **Take the five admin-only methods off the public `IHoldedFinanceService`?**
+- [ ] **Take the admin-only methods off the public `IHoldedFinanceService`?**
       `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetUnmatchedAsync`, `SetCreditorContactAsync`
       and `ClearCreditorContactAsync` have no caller outside this project — they cross an assembly
-      boundary for `FinanceController`'s benefit alone. The contract Budget, Expenses and Holded
-      consume is nine methods. Landing them on an internal interface is surface *addition*.
+      boundary for `FinanceController`'s benefit alone. Landing them on an internal interface is
+      surface *addition*.
 - [ ] **Drop `RawPayload`?** A NOT NULL jsonb column on `holded_expense_docs` that has only ever
       held the literal `{}` — `MapDoc` never wrote a payload and nothing reads it. Schema change.
-- [ ] **Trim `Service.cs`'s rationale blocks to 1–3 lines?** ~15 comment blocks, several 10–14
-      lines with decision history and issue archaeology inline, against `comments-stay-short`.
-      Every one is accurate and most restate a `Finance.md` invariant. ~200 lines; the judgment is
-      whether the doc is genuinely the right home for all of it.
-- [ ] **Six contract properties InspectCode reports as never read** —
+- [ ] **Trim `Service.cs`'s rationale blocks to 1–3 lines?** Multi-paragraph comment blocks with
+      decision history and issue archaeology inline, against `comments-stay-short`. Every one is
+      accurate and most restate a `Finance.md` invariant; the judgment is whether the doc is
+      genuinely the right home for all of it.
+- [ ] **Contract properties InspectCode reports as never read** —
       `HoldedCreditorStatus.SupplierAccountNum`, `HoldedPaymentInfo.DocumentType`,
       `HoldedUnmatchedRow.HoldedDocId`, `CreditorContactBinding.HoldedContactId`,
       `CreditorLedgerLine.AccountNum`, `HoldedMatchEntry.AccountNum`. Left alone: on a contract
