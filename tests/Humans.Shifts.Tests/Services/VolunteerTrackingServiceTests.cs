@@ -172,7 +172,7 @@ public class VolunteerTrackingServiceTests
         // has confirmed -5 only; -4..-1 are all unfilled. The cap on lastExpectedDay
         // used to render -1 as "Expected" (today is not in the past), but coordinators
         // need to see future unfilled commitments as gaps so they can voluntell
-        // ahead of time. Locks in spec docs/features/47-volunteer-tracking.md step 3.
+        // ahead of time. Locks in spec src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md step 3.
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var signups = new List<EligibleBuildSignup>

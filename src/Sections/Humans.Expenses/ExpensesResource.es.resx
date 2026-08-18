@@ -63,7 +63,9 @@
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Borrador</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Enviado</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirado</value></data>
+  <data name="Expenses_ColPayable" xml:space="preserve"><value>A pagar</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Informe</value></data>
+  <data name="Expenses_ColRequested" xml:space="preserve"><value>Solicitado</value></data>
   <data name="Expenses_ColSubject" xml:space="preserve"><value>Asunto</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Enviado</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Enviado por</value></data>

@@ -146,6 +146,9 @@ internal sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
+    /// <summary>Budget category id → department. Department-group categories are one per team, so
+    /// the category name is the department; other groups show as "Group / Category".</summary>
+    public required IReadOnlyDictionary<Guid, string> DepartmentNames { get; init; }
     /// <summary>Pushes to Holded that were written off and need a finance admin to look at them.
     /// Zero hides the banner.</summary>
     public required int FailedHoldedPushCount { get; init; }

@@ -363,7 +363,7 @@ Use the existing test project at `tests/Humans.Application.Tests/`.
 
 ## Phase 6: Documentation Review
 
-Review and update feature docs in `docs/features/` that were affected by refactoring. Focus on:
+Review and update feature docs in each section's `src/Sections/Humans.<Section>/Docs/features/` (and `docs/features/global/`) that were affected by refactoring. Focus on:
 - Any BRDs that reference moved or renamed services/controllers
 - Authorization rule changes documented in feature specs
 - Updated file paths in architectural references

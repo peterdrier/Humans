@@ -674,8 +674,7 @@ Opus.
 - **Invariant doc** — verify all `SECTION-TEMPLATE.md` sections. Correct any false claims surfaced in Phase 0 (e.g., "only repo writes the table" claims that turned out false until Phase 2 fixed them — restore once truly true).
 - **Cross-Section Dependencies** — record any §6 violations still pending an upstream API (consumer-side gaps not fixable in this PR), naming the supplier section as the follow-up target.
 - **`docs/architecture/dependency-graph.md`** — update the section's inbound/outbound edges to reflect actual state after Phase 2. Add new dependencies introduced; remove ones eliminated by the cross-section fixes. The dependency graph is the at-a-glance map reviewers consult; if it's stale, alignment work is invisible.
-- **Feature specs** (`docs/features/*.md`) — match implementation; rename if section name changed.
-- **`data-model.md`** — update owned-entity index.
+- **Feature specs** (the section's own `Docs/features/*.md`, or `docs/features/global/*.md` when cross-section) — match implementation; rename if section name changed.
 - **`maintenance-log.md`** — if a recurring task ran. Always update this section's **Section Refactor History** row: Last Lane (date + PR) and Post-Lane Score (the section's built `reforge surface-score` after the final commit).
 - **About page** — if dependencies changed.
 - **`/freshness-sweep`** — if catalog covers touched docs.

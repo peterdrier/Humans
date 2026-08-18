@@ -345,7 +345,7 @@ Coolify and its volume and backup configuration is not committed here, so from t
 there is no way to tell whether that directory is copied off-host.
 
 This matters because the directory holds real user data that exists nowhere else: profile
-pictures and camp images (`docs/features/profiles/profile-pictures-birthdays.md`). Coolify's
+pictures and camp images (`src/Sections/Humans.Users/Docs/features/profile-pictures-birthdays.md`). Coolify's
 database backups do **not** cover it — the bytes are on the filesystem, not in Postgres.
 
 **Owner verification step (needs the Coolify console):**

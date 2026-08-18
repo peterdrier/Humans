@@ -45,7 +45,7 @@ namespace Humans.Users.Tests.Controllers;
 ///
 /// The replay path is load-bearing because without it the redirect-then-replay
 /// flow strands the user on Home/Index with no signup performed, which is the
-/// exact UX failure US-35.6 in docs/features/profiles/dietary-medical-nudge.md
+/// exact UX failure US-35.6 in src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md
 /// exists to prevent. The
 /// "replay failed but dietary save persisted" test pins down that the dietary
 /// save is NOT rolled back on signup-replay failure — the user can retry the

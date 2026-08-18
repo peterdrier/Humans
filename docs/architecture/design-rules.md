@@ -269,7 +269,7 @@ If audit calls become noisy across many methods inside one service, the next evo
 
 Each section's service owns these tables. Cross-service access goes through the service interface, never through direct DB queries, never through another domain's repository or store.
 
-Ownership is now physical as well as conventional: the map below is **per DbContext**, not per single model, and every table belongs to exactly one section context. Users/Identity and Profiles merged into `UsersDbContext` at peel 15, which also deleted the root `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
+Ownership is now physical as well as conventional: the map below is **per DbContext**, not per single model, and every table belongs to exactly one section context. Users/Identity and Profiles merged into `UsersDbContext` at peel 15, which also deleted the root `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See the methodology block of [`service-data-access-map.md`](service-data-access-map.md) for the context-to-table listing.
 
 The 28 table-owning sections are listed below. The other 14 section projects own no tables and so have no row: Cantina, Debug, Development, EarlyEntry, Gdpr, Guide, Mailer, Monitor, Onboarding, Scanner, Search, Stripe, TicketTailor, Tour — several appear anyway, with an explicit *(no owned tables)* note, because a reader looking for them expects to find them here.
 

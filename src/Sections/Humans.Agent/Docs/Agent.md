@@ -144,7 +144,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 ### Touch-and-clean guidance
 
 - Do **not** call the Anthropic SDK directly outside `AnthropicClient`.
-- Do **not** fetch `docs/sections/`, `docs/features/` or `src/Sections/Humans.<Section>/Docs/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation.
+- Do **not** fetch `docs/sections/`, `docs/features/global/` or `src/Sections/Humans.<Section>/Docs/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation. `AgentFeatureSpecReader` derives its servable set from the repository tree — every section `Docs/features/*.md`, plus `docs/features/global/` — so a new spec needs no registration.
 - Do **not** add new tool names without updating both `AgentToolNames` and `IAgentToolDispatcher` whitelist; an unknown name must be a hard error, never a fallthrough.
 - Do **not** make `route_to_issue` (or any future handoff tool) write rows server-side. Handoffs are propose-only; the user submits.
 <!-- NOTE: The originally-planned Phase-2 AgentFaq entity and IAgentFaqService were never built. The community knowledge-base tool (fetch_community_faq) backed by GitHubCommunityKbContentSource (nobodies-collective/knowledge-base repo, cached in RAM) replaced that design entirely. There is no AgentFaq table; CommunityKbSettings holds the repo/branch config. -->

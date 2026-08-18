@@ -100,8 +100,7 @@ After running any recurring maintenance process, update [`docs/architecture/main
 | **Code review rules (reviewer handoff)** | **[`docs/architecture/code-review-rules.md`](docs/architecture/code-review-rules.md)** |
 | **Section invariants** | **[`docs/sections/`](docs/sections/)** |
 | **Section template** | [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md) |
-| **Feature specs** | [`docs/features/`](docs/features/) |
-| Data model | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
+| **Feature specs** | `src/Sections/<Project>/Docs/features/` (per section) · [`docs/features/global/`](docs/features/global/) (cross-section) |
 | Dependency graph | [`docs/architecture/dependency-graph.md`](docs/architecture/dependency-graph.md) |
 | Analyzers/ReSharper | [`docs/architecture/code-analysis.md`](docs/architecture/code-analysis.md) |
 | Maintenance log | [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) |
