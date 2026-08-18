@@ -174,4 +174,4 @@ Settled; do not re-litigate.
 
 | Run | Anchor | Headline | PR |
 |---|---|---|---|
-| [2026-08-18](../../../../docs/health/runs/2026-08-18-Finance.md) | `41fd7374d` | First target. Doc led with 23 routes the section does not serve; a tag-collision bug in provisioning; a published DTO with no consumer. Prod code −113 lines, tests 55 → 88, mutation 34.4% → 57.1%. | [#1374](https://github.com/peterdrier/Humans/pull/1374) |
+| [2026-08-18](../../../../docs/health/runs/2026-08-18-Finance.md) | `41fd7374d` | First target. Doc led with 23 routes the section does not serve; a tag-collision bug in provisioning; a published DTO with no consumer. Prod code −115 lines, tests 55 → 88, mutation 34.4% → 57.1%. | [#1374](https://github.com/peterdrier/Humans/pull/1374) |
