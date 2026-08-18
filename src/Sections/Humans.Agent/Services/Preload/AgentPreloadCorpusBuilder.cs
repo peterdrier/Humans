@@ -1,10 +1,7 @@
 using System.Text;
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Agent.Contracts;
 using Humans.Agent.Domain;
-using Humans.Agent.Services;
 
 namespace Humans.Agent.Services.Preload;
 

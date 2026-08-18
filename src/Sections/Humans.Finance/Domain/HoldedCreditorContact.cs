@@ -1,5 +1,4 @@
 using Humans.Finance.Contracts;
-using Humans.Finance.Domain;
 using NodaTime;
 
 namespace Humans.Finance.Domain;

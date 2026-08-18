@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -7,7 +6,6 @@ using Humans.Domain.Constants;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.UI.Models;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Models;

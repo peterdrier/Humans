@@ -1,7 +1,5 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
-
 using Humans.Shifts.Contracts;
 
 using NodaTime;

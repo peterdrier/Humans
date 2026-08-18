@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.AuditLog.ViewComponents;

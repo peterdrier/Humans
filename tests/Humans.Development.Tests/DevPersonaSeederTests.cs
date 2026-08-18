@@ -1,7 +1,5 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;

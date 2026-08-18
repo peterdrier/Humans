@@ -1,7 +1,6 @@
 using Humans.Shifts.Contracts;
 
 using NodaTime;
-using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Services.Dtos;
 

@@ -1,6 +1,5 @@
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Infrastructure.Hosting;
 

@@ -11,9 +11,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using GoogleAdminService = Humans.GoogleIntegration.Services.GoogleAdminService;
 using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
 
 namespace Humans.GoogleIntegration.Tests;
 

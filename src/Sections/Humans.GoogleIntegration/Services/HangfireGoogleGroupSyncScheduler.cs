@@ -1,9 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Hangfire;
-using Humans.Domain.Enums;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 

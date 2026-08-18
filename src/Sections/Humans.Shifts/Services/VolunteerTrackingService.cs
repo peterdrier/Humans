@@ -1,12 +1,8 @@
-using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
-using Humans.Application;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;

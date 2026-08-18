@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;

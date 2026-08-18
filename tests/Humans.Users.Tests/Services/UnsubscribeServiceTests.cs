@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
-using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

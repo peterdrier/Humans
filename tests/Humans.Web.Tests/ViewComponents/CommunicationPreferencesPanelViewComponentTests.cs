@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Http;

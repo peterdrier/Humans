@@ -1,7 +1,6 @@
 using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Mailer.Contracts;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Mailer.Jobs;
 

@@ -1,11 +1,8 @@
 using Humans.Users.Models;
-using Humans.UI.Helpers;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Controllers;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -14,7 +11,6 @@ using Humans.UI.Authorization;
 using Humans.UI.Models;
 using Humans.Users.Contracts;
 
-using Humans.Governance.Contracts;
 namespace Humans.Web.Controllers;
 
 /// <summary>

@@ -1,4 +1,3 @@
-using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;

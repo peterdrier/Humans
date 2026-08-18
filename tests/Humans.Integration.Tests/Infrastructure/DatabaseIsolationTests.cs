@@ -2,8 +2,6 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

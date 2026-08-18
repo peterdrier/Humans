@@ -1,9 +1,7 @@
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Notifications.Contracts;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;

@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Containers.Services;

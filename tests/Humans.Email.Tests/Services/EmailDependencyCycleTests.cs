@@ -4,7 +4,6 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Email.Contracts;

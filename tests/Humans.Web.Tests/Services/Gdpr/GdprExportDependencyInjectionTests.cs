@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using ProfilesAccountMergeService = Humans.Users.Services.AccountMergeService;
 using UsersUserService = Humans.Users.Services.UserService;
 using TeamService = Humans.Teams.Services.TeamService;
-using Humans.Users.Data;
-using Humans.Users.Services;
 
 namespace Humans.Web.Tests.Services.Gdpr;
 

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Events.Services;
 using NodaTime;
 using Humans.Events.Contracts;
-using Humans.Events.Domain;
 
 namespace Humans.Events.Tests;
 

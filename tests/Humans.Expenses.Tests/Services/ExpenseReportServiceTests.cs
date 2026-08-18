@@ -10,7 +10,6 @@ using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;

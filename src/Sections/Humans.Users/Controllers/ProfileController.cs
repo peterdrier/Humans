@@ -1,5 +1,4 @@
 using Humans.Application.Architecture;
-using Humans.UI.Models;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -15,7 +14,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -35,7 +33,6 @@ using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.UI;
 using Humans.UI.Authorization;
-using Humans.Users.Services;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618

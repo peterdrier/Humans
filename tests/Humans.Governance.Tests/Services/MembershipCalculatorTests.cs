@@ -1,4 +1,3 @@
-using Humans.Application;
 using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;

@@ -1,10 +1,8 @@
 using Hangfire;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Jobs;

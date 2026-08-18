@@ -8,7 +8,6 @@ using System.Text.Json.Nodes;
 using Humans.Application.Extensions;
 using Humans.Domain.Helpers;
 using Humans.Holded.Contracts;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;

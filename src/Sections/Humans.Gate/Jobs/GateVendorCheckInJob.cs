@@ -1,8 +1,6 @@
-using System.Net.Http;
 using Hangfire;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Gate.Jobs;

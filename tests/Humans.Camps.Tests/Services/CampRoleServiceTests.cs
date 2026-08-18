@@ -1,12 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.Users.Contracts;
-using Humans.Camps.Services;
-using Humans.Camps.Tests.Infrastructure;
-using Humans.Domain.Enums;
-using Humans.Camps.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

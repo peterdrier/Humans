@@ -1,7 +1,4 @@
-using Humans.Application;
-using Humans.Domain.Enums;
 using Humans.Gate.Controllers;
-using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Users.Contracts;

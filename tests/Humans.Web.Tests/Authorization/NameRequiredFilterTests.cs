@@ -1,8 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
-using Humans.Application;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;

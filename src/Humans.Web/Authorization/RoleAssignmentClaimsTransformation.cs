@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Humans.Application;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;

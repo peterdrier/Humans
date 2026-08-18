@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Agent;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Application.Interfaces.Repositories;

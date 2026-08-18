@@ -1,5 +1,3 @@
-using Humans.Domain.Enums;
-
 namespace Humans.Camps.Contracts;
 
 /// <summary>

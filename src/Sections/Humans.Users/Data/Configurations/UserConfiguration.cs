@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
+
 namespace Humans.Users.Data.Configurations;
 
 internal sealed class UserConfiguration : IEntityTypeConfiguration<User>

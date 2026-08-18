@@ -11,7 +11,6 @@ using Humans.Shifts.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Data;

@@ -1,4 +1,3 @@
-using Humans.Finance.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;

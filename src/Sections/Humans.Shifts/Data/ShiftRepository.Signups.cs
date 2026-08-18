@@ -1,13 +1,9 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Shifts.Data;
 
 namespace Humans.Shifts.Data;
 

@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Governance.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Governance.Services;
 

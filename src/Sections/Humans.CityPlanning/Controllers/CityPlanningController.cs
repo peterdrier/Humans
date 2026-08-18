@@ -7,8 +7,6 @@ using Humans.UI.Controllers;
 using Humans.CityPlanning.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using Humans.Application;
 using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Controllers;

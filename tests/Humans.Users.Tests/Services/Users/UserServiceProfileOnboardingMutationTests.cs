@@ -1,10 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
 using Humans.Users.Data.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

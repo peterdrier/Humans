@@ -1,8 +1,6 @@
 using Hangfire;
-using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Jobs;

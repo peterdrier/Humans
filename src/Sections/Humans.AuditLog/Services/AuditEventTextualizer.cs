@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Services;

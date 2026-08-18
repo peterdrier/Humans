@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Humans.Application.Threading;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Interfaces.Caching;
 

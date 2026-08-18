@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Agent.Data;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Stores;

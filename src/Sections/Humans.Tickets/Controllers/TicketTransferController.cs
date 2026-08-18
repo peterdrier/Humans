@@ -1,5 +1,4 @@
 using Humans.EarlyEntry.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.UI.Controllers;
 using Humans.Tickets.Models;

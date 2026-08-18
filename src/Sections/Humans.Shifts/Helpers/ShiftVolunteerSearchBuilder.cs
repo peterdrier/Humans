@@ -2,11 +2,8 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.Shifts.Models;
-using Humans.Shifts.Services.Dtos;
-using Humans.Application;
 
 namespace Humans.Shifts.Helpers;
 

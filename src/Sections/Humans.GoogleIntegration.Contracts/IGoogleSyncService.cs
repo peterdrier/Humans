@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Architecture;
-using Humans.Domain.Enums;
 
 namespace Humans.GoogleIntegration.Contracts;
 

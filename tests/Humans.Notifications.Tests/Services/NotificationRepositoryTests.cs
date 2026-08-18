@@ -1,6 +1,4 @@
-using Humans.Application;
 using Humans.Notifications.Data;
-using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;

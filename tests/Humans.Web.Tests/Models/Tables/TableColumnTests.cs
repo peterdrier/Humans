@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models.Tables;
-using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 

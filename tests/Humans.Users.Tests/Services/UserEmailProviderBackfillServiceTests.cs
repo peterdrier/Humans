@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;

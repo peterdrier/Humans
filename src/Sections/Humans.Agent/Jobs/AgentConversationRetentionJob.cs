@@ -1,6 +1,5 @@
 using Humans.Agent.Contracts;
 using Humans.Application.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Agent.Jobs;
 

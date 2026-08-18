@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Shifts.Services;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
-using Humans.Auth.Domain;
 using Humans.Auth.Data;
 using Humans.Application;
 using Humans.Application.Interfaces.Caching;

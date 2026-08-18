@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 using Humans.UI.Authorization;
-using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;
 

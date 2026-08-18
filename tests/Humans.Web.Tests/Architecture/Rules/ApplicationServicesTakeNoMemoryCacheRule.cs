@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Tests.Architecture.Rules;

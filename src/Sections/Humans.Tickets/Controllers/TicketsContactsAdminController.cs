@@ -1,4 +1,3 @@
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
 using Humans.UI.Authorization;

@@ -2,13 +2,11 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Humans.Events.Services.Dtos;
 using Humans.Application.Interfaces.Caching;
-using Humans.Events.Services;
 using Humans.Shifts.Contracts;
 using Humans.Application.Threading;
 using Humans.Events.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Events.Contracts;
 

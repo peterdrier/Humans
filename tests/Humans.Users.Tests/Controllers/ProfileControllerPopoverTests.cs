@@ -17,8 +17,6 @@ using Humans.Teams.Contracts;
 
 using Humans.Domain.Enums;
 using Humans.UI;
-using Humans.Web.Controllers;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

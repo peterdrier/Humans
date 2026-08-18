@@ -6,14 +6,9 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Humans.Domain.Enums;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
-using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
 
 namespace Humans.GoogleIntegration.Tests;
 

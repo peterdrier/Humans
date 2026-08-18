@@ -1,4 +1,3 @@
-using Humans.Application;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Onboarding;

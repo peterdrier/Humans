@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;

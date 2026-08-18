@@ -1,8 +1,5 @@
 using AwesomeAssertions;
-using Humans.Camps.Tests.Infrastructure;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Camps.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace Humans.Infrastructure.Hosting;

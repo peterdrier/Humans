@@ -1,5 +1,3 @@
-using Humans.Application;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Humans.Users.Contracts;

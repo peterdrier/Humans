@@ -3,9 +3,6 @@ using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
-using Humans.Governance.Data;
 using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;

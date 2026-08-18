@@ -4,12 +4,6 @@ using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Application;
 
 namespace Humans.GoogleIntegration.Services;
 

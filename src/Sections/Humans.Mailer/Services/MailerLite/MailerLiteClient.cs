@@ -5,10 +5,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Application.Extensions;
-using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Application.Threading;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Mailer.Services.MailerLite;

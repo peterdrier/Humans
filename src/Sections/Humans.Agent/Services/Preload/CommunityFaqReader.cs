@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Octokit;
 
 namespace Humans.Agent.Services.Preload;

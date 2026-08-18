@@ -1,5 +1,3 @@
-using Humans.Camps.Services;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Camps.Contracts;

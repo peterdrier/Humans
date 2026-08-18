@@ -1,8 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;

@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using Humans.UI.Authorization;
 
 namespace Humans.Web.ViewComponents;

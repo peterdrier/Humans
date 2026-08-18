@@ -1,5 +1,4 @@
 using Humans.Application.Architecture;
-using Microsoft.Extensions.Logging;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;

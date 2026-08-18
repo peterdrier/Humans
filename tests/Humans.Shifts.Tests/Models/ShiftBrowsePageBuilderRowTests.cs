@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 using Humans.Shifts.Models;
 using NodaTime;
 using NSubstitute;

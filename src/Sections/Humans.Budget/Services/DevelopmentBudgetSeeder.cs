@@ -1,7 +1,6 @@
 using Humans.Budget.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Budget.Services;

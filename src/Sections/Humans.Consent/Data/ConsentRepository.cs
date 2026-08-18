@@ -1,8 +1,5 @@
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Humans.Consent.Domain;
-using Humans.Consent.Services;
 
 namespace Humans.Consent.Data;
 

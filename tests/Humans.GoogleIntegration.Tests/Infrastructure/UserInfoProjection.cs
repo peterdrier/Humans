@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests.Infrastructure;

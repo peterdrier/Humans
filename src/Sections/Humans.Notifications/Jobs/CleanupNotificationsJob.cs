@@ -1,7 +1,6 @@
 using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Notifications.Contracts;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Notifications.Jobs;
 

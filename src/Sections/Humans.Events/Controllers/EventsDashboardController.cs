@@ -1,7 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Events.Domain;
 using Humans.UI.Controllers;
 using Humans.Events.Filters;
 using Humans.Events.Models;

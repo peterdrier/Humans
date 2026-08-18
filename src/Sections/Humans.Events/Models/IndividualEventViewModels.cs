@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Events.Domain;
 using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;

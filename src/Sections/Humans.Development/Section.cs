@@ -1,8 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Development.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace Humans.Development;
 

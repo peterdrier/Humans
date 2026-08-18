@@ -1,7 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Services;
-
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>

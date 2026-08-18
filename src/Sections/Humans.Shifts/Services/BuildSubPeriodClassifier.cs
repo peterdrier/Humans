@@ -1,6 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Services;
-using Humans.Domain.Enums;
 
 namespace Humans.Shifts.Services;
 

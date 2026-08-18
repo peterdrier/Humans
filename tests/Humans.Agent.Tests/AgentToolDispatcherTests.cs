@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Constants;
 using NSubstitute;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;

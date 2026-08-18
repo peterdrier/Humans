@@ -1,7 +1,6 @@
 using Humans.Gdpr.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
-using Humans.Expenses.Domain;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Infrastructure.Hosting;

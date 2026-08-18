@@ -1,11 +1,7 @@
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;

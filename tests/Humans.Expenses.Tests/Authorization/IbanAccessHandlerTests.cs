@@ -1,11 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Domain;
-using Humans.Expenses.Services;
-using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Expenses.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;

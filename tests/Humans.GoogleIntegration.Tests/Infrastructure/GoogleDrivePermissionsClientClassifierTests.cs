@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Google.Apis.Requests;
 using Humans.GoogleIntegration.Services.Workspace;
 using Xunit;
-using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 

@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Humans.Application;
-using Humans.Application.Constants;
 using Humans.Consent.Contracts;
-using Humans.Consent.Domain;
 
 namespace Humans.Consent.Services;
 

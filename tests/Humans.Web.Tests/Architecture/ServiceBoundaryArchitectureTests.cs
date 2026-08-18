@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Web.Tests.Architecture.Ratchet;
-using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 
 namespace Humans.Web.Tests.Architecture;

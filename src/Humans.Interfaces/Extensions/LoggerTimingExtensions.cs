@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Humans.Application.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Extensions;
 

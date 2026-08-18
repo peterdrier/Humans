@@ -4,7 +4,6 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;

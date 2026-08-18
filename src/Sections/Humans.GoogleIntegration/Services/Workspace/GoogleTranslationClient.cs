@@ -2,10 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Humans.Application.Extensions;
 using Humans.Infrastructure.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Services;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 

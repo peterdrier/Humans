@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;

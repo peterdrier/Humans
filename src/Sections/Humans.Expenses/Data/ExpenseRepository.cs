@@ -1,8 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Expenses.Domain;

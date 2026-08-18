@@ -1,6 +1,5 @@
 using Humans.Teams.Contracts;
 using AwesomeAssertions;
-using Humans.Domain.Enums;
 using Humans.Agent.Services;
 using NodaTime;
 using Humans.Agent.Models;

@@ -1,4 +1,3 @@
-using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;

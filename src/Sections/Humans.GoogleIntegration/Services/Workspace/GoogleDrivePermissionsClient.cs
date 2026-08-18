@@ -2,12 +2,9 @@ using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Application.Extensions;
 using Humans.Infrastructure.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SdkFile = Google.Apis.Drive.v3.Data.File;
 using SdkPermission = Google.Apis.Drive.v3.Data.Permission;
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Services;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 

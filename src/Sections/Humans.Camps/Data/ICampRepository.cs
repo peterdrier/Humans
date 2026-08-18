@@ -1,7 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Camps.Domain;
-
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Camps.Data;

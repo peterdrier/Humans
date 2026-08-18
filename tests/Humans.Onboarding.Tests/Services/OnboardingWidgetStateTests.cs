@@ -1,11 +1,9 @@
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Xunit;

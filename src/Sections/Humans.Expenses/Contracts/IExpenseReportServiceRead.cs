@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using NodaTime;
 
 namespace Humans.Expenses.Contracts;

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Mailer.Models;

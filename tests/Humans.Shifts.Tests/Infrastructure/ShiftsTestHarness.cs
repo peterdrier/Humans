@@ -1,10 +1,7 @@
-using Humans.Shifts.Tests.Infrastructure;
-using Humans.Application;
 using Humans.EarlyEntry.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;

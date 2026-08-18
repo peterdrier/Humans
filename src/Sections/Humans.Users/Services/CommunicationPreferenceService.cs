@@ -1,10 +1,7 @@
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Users.Services;
 

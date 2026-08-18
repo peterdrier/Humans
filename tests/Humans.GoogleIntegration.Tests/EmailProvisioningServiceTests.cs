@@ -10,10 +10,6 @@ using NodaTime;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
-using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
-using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests;
 

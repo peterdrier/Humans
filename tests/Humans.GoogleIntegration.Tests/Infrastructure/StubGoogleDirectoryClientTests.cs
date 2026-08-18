@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.Logging.Abstractions;
-using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 

@@ -1,8 +1,5 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Shifts.Tests.Infrastructure;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

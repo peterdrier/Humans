@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Authorization;
 

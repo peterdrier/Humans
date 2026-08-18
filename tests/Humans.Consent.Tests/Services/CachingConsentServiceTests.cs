@@ -1,7 +1,4 @@
 using AwesomeAssertions;
-using Humans.Consent.Data;
-using Humans.Consent.Domain;
-using Humans.Consent.Contracts;
 using Humans.Consent.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

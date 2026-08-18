@@ -1,5 +1,3 @@
-using Humans.Domain.Enums;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Domain;
 

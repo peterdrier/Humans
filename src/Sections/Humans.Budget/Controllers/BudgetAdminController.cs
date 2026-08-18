@@ -4,7 +4,6 @@ using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;

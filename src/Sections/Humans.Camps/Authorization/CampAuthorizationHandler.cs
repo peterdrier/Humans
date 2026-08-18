@@ -1,6 +1,5 @@
 using Humans.UI.Authorization;
 using System.Security.Claims;
-using Humans.Camps.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Camps.Authorization;

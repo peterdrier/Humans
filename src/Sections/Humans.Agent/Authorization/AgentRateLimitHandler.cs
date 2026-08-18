@@ -1,6 +1,4 @@
-using Humans.Application.Interfaces;
 using Humans.Agent.Services.Stores;
-using Humans.Agent.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using Humans.Agent.Services;

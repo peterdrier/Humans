@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 
 namespace Humans.Store.Services.Dtos;
 

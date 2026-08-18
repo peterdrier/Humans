@@ -5,7 +5,6 @@ using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Teams.Tests;
 

@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Camps.Resources;
-using Humans.Camps.Services;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;

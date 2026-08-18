@@ -1,9 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.Domain.Enums;
@@ -15,8 +13,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
-using Humans.Application;
-using Humans.GoogleIntegration.Tests.Infrastructure;
+
 // UserEmailMatch lives in the Profiles interface namespace, not DTOs.
 
 namespace Humans.GoogleIntegration.Tests;

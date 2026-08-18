@@ -13,7 +13,6 @@ using Humans.Domain.Enums;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;

@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Expenses.Data;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

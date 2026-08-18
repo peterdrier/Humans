@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.Web.Models;
 using Humans.Web.ViewComponents;

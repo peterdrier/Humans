@@ -1,5 +1,3 @@
-using Humans.Domain.Enums;
-
 using Humans.UI.Models;
 
 namespace Humans.AuditLog.Models;

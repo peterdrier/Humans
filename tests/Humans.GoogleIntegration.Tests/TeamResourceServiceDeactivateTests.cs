@@ -1,17 +1,13 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
-using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Application;
-using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;

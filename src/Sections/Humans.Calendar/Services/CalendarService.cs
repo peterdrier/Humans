@@ -2,14 +2,11 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Calendar.Services.Dtos;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Calendar.Services;
 using Humans.Calendar.Data;
 using Humans.Teams.Contracts;
 using Humans.Calendar.Domain;
-using Humans.Domain.Enums;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 

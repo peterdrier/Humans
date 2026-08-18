@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Consent.Domain;
-using Humans.Consent.Services;
 
 namespace Humans.Consent.Data;
 

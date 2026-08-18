@@ -1,4 +1,3 @@
-using Humans.Shifts.Domain;
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Shifts.Models;

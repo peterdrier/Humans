@@ -1,6 +1,5 @@
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;

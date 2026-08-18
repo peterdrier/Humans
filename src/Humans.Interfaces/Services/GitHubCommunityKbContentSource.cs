@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
 using Humans.Application.Configuration;

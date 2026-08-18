@@ -1,10 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application;
-using Humans.Monitor.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.SystemSettings.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

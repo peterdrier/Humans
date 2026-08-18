@@ -1,11 +1,7 @@
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;

@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.Logging;
@@ -7,10 +6,8 @@ using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Auth.Domain;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;

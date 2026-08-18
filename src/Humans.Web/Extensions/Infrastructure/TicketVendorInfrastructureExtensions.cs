@@ -1,5 +1,3 @@
-using Humans.Application.Configuration;
-
 using Humans.Tickets.Contracts;
 
 namespace Humans.Web.Extensions.Infrastructure;

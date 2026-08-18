@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using TeamResourceService = Humans.GoogleIntegration.Services.TeamResourceService;
-using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;

@@ -1,19 +1,13 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
-using Humans.Application;
-using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
-
-using static Humans.Notifications.Tests.NotificationTestFixtures;
 using Humans.Domain.Constants;
-using Humans.Notifications.Domain;
-using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Application;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;

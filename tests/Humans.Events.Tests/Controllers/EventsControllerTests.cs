@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
 using Humans.Shifts.Contracts;

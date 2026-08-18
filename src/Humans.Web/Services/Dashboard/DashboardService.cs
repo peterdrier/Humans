@@ -1,11 +1,7 @@
-using Humans.Application.Configuration;
-using Humans.Application.Helpers;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Users.Contracts;

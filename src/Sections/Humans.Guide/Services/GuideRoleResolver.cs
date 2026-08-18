@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Guide.Services;
 

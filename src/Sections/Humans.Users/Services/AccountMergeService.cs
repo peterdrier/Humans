@@ -1,17 +1,14 @@
 using Humans.Auth.Contracts;
 using System.Transactions;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Users.Services;
 

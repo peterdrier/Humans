@@ -6,7 +6,6 @@ using NodaTime;
 using NSubstitute;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.Users.Data;
 
 namespace Humans.Users.Tests.Services.Users;

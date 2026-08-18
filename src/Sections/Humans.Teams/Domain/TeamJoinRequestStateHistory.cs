@@ -1,6 +1,4 @@
 using NodaTime;
-using Humans.Domain.Enums;
-
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Domain;
 

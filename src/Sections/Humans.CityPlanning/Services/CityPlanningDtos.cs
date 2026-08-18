@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Domain.Enums;
 using NodaTime;
 
 using Humans.Camps.Contracts;

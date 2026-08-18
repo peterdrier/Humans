@@ -1,5 +1,4 @@
 @model Humans.GoogleIntegration.Contracts.AllGroupsResult
-@using Humans.GoogleIntegration.Services
 @{
     ViewData["Title"] = "All Domain Groups";
     var teams = ViewBag.Teams as IReadOnlyList<TeamSummary> ?? [];

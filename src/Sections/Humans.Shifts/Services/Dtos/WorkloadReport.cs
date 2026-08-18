@@ -1,4 +1,3 @@
-using Humans.Shifts.Services.Dtos;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>

@@ -7,7 +7,6 @@ using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Finance.Services;

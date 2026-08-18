@@ -1,8 +1,5 @@
 using Humans.Application.Architecture;
-using Humans.Application.Extensions;
 using Humans.CityPlanning.Contracts;
-using Humans.UI.Controllers;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;

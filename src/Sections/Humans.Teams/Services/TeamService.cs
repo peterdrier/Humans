@@ -1,9 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Application;
 using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
@@ -16,7 +14,6 @@ using Humans.Notifications.Contracts;
 using Humans.Teams.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Constants;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;

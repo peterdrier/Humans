@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Shifts.Services;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 
 namespace Humans.Shifts.Tests.Models;

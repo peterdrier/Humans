@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Testing;
 using Humans.Domain.Constants;
 using Humans.Auth.Domain;
 using Humans.Auth.Data;

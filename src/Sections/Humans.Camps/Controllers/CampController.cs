@@ -6,15 +6,10 @@ using Humans.Domain.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using Humans.Application;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Camps.Resources;
-using Humans.Camps.Services;
 using Humans.UI;
-
-
-using Humans.UI.Controllers;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Controllers;

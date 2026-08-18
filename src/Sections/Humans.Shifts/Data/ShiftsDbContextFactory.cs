@@ -1,7 +1,6 @@
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Humans.Shifts.Data;
 
 namespace Humans.Shifts.Data;
 

@@ -1,14 +1,10 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Humans.Application.Constants;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
 using Humans.Agent.Services.Preload;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Agent.Services.Anthropic;
 

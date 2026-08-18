@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

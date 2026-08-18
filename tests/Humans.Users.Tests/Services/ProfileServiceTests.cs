@@ -4,8 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
 using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

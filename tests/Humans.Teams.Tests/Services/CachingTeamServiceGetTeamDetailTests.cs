@@ -1,9 +1,7 @@
 using Humans.Auth.Contracts;
-using Humans.Application;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
 using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

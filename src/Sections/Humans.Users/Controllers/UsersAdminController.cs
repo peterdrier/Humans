@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Users.Authorization;
 using Humans.Application.Interfaces.Admin;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -13,7 +12,6 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;

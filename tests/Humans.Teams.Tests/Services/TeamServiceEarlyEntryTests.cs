@@ -12,11 +12,8 @@ using Humans.Application.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
-using Humans.Teams.Tests.Infrastructure;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
 using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Teams.Tests;

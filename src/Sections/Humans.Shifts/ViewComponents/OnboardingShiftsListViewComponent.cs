@@ -1,6 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Mvc;
 

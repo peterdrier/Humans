@@ -2,13 +2,9 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
 

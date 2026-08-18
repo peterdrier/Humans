@@ -5,7 +5,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Mailer.Models;
 using Microsoft.AspNetCore.Authorization;

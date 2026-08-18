@@ -1,12 +1,8 @@
-using Humans.Shifts.Domain;
-using Humans.Shifts.Services;
 using AwesomeAssertions;
-using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using Humans.Shifts.Models;
-using Humans.Shifts.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;

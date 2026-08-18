@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;

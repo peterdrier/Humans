@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
 using NodaTime;
 
 using Humans.Teams.Contracts;

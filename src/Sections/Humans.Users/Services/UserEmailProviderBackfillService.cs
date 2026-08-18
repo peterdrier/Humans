@@ -1,10 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
-using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Users.Services;

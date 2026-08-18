@@ -1,11 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 

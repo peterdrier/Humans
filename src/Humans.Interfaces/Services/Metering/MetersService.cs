@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Humans.Application.Interfaces.Metering;
 using Humans.Application.Metering;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Services.Metering;
 

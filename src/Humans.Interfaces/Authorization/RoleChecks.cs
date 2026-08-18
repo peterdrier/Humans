@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.UI.Authorization;

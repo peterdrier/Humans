@@ -1,7 +1,5 @@
 using Xunit;
-using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;

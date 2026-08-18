@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using EmailProvisioningService = Humans.GoogleIntegration.Services.EmailProvisioningService;
 using GoogleGroupSyncService = Humans.GoogleIntegration.Services.GoogleGroupSyncService;
-using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;

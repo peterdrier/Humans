@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Contracts;
 

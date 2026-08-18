@@ -14,7 +14,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using Humans.Application;
 using Humans.Users.Contracts;
 
 namespace Humans.Events.Tests;

@@ -1,7 +1,6 @@
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;
 using NodaTime;
 using NSubstitute;

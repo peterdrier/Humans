@@ -2,7 +2,6 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

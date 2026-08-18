@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
@@ -6,9 +5,7 @@ using Humans.UI.Controllers;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
-using Humans.Application;
 using Humans.Users.Contracts;
-using Humans.Gate.Contracts;
 using Humans.Gate.Jobs;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;

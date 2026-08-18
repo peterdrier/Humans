@@ -1,12 +1,9 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Data;
 using Humans.Teams.Contracts;
 using NodaTime;
-using Humans.GoogleIntegration.Services.Workspace;
 using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;

@@ -1,13 +1,11 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
@@ -21,7 +19,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using IssuesApplicationService = Humans.Issues.Services.IssuesService;
 
 #pragma warning disable CS0618 // User.DisplayName is the seeder's only way to name a person.

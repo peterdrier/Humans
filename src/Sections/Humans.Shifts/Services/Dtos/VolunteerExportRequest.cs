@@ -1,7 +1,4 @@
 using NodaTime;
-using Humans.Domain.Enums;
-using Humans.Shifts.Services.Dtos;
-
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 

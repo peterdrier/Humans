@@ -2,7 +2,6 @@ using System.Globalization;
 using Humans.Application.Csv;
 using Humans.Application.Extensions;
 using Humans.Cantina.Services.Dtos;
-using Humans.Domain.Constants;
 using NodaTime;
 using Humans.Users.Contracts;
 

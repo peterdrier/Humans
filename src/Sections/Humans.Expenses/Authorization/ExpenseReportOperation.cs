@@ -1,4 +1,3 @@
-using Humans.Expenses.Models;
 namespace Humans.Expenses.Authorization;
 
 /// <summary>

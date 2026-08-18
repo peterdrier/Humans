@@ -1,6 +1,5 @@
 using Humans.Users.Contracts;
 using Humans.Email.Contracts;
-using Humans.Domain.Enums;
 
 namespace Humans.Email.Services;
 

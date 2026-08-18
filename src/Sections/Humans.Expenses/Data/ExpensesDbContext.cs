@@ -1,4 +1,3 @@
-using Humans.Expenses.Data;
 using Microsoft.EntityFrameworkCore;
 using Humans.Expenses.Domain;
 

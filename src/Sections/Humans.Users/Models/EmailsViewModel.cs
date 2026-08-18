@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Application;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Users.Models;

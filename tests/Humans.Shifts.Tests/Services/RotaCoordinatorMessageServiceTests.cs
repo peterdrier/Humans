@@ -1,11 +1,9 @@
-using Humans.Application;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;

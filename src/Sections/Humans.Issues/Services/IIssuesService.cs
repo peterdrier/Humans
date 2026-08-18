@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using NodaTime;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;

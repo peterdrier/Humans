@@ -5,9 +5,6 @@ using Xunit;
 using GoogleWorkspaceUserService = Humans.GoogleIntegration.Services.GoogleWorkspaceUserService;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
-using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests;
 

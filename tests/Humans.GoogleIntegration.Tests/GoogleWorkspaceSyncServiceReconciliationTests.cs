@@ -1,8 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.Domain.Enums;
@@ -14,8 +12,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Application;
-using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests;
 

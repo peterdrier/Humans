@@ -1,19 +1,16 @@
 using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Users.Contracts;
 

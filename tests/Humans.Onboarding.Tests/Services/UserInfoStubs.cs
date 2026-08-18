@@ -1,4 +1,3 @@
-using Humans.Application;
 using NodaTime;
 using Humans.Users.Contracts;
 

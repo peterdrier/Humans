@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 

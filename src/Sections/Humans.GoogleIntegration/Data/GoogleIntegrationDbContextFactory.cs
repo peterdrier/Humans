@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
 
 namespace Humans.GoogleIntegration.Data;

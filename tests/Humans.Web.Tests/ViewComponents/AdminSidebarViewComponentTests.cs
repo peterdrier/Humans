@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Web.Tests.Infrastructure;
 using Humans.UI.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;

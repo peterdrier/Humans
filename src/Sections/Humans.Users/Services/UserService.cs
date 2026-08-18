@@ -6,11 +6,8 @@ using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 using Humans.Application.Threading;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Users.Services;

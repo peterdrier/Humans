@@ -1,8 +1,6 @@
-using Humans.Application.Configuration;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Jobs;
 using Humans.Infrastructure.Configuration;
-using Humans.Monitor.Contracts;
 using Humans.Monitor.Jobs;
 
 namespace Humans.Web.Extensions.Infrastructure;

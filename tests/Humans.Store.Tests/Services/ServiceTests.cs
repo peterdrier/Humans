@@ -1,8 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;

@@ -1,39 +1,24 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Agent.Contracts;
 using Humans.Agent.Jobs;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Consent.Contracts;
 using Humans.Consent.Jobs;
-using Humans.Expenses.Contracts;
 using Humans.Expenses.Jobs;
-using Humans.Gate.Contracts;
 using Humans.Gate.Jobs;
-using Humans.Governance.Contracts;
 using Humans.Governance.Jobs;
-using Humans.Holded.Contracts;
 using Humans.Holded.Jobs;
-using Humans.Mailer.Contracts;
 using Humans.Mailer.Jobs;
-using Humans.Surveys.Contracts;
 using Humans.Surveys.Jobs;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Jobs;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
-using Humans.Issues.Contracts;
 using Humans.Issues.Jobs;
-using Humans.Notifications.Contracts;
 using Humans.Notifications.Jobs;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
-using Humans.Users.Contracts;
 using Humans.Web.Services.Dashboard;
-
-using Humans.Teams.Contracts;
 
 namespace Humans.Web.Extensions;
 

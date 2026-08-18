@@ -1,6 +1,5 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Shifts.Contracts;

@@ -1,6 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services.Workspace;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>

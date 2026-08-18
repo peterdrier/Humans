@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Logging;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 using Humans.Application.Interfaces;
 
 namespace Humans.Users.Services;

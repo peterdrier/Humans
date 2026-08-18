@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -12,8 +11,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.GoogleIntegration.Data;
-using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 
 namespace Humans.GoogleIntegration.Tests;

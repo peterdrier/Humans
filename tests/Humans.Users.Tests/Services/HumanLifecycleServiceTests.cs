@@ -3,7 +3,6 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
