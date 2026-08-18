@@ -6,7 +6,7 @@ namespace Humans.Holded.Services;
 
 /// <summary>Nightly Holded pull: purchase docs (Finance) then the ledger mirror (Holded section).</summary>
 internal sealed class HoldedNightlySync(
-    IHoldedFinanceService finance,
+    IHoldedDocService financeDocs,
     IHoldedService holded,
     IOptions<HoldedClientOptions> holdedOptions,
     ILogger<HoldedNightlySync> logger) : IHoldedNightlySync
@@ -21,7 +21,7 @@ internal sealed class HoldedNightlySync(
             return;
         }
 
-        await finance.SyncAsync(ct);
+        await financeDocs.SyncAsync(ct);
         await holded.SyncLedgerAsync(full: false, ct);
     }
 }

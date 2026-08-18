@@ -27,7 +27,8 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IBudgetServiceRead _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
-    private readonly IHoldedFinanceService _holdedFinance;
+    private readonly IHoldedDocService _holdedDocs = Substitute.For<IHoldedDocService>();
+    private readonly ICreditorService _creditors;
     private readonly IFileStorage _fileStorage;
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock;
@@ -73,8 +74,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         // Contact enrichment now lives in Finance: ExpenseReportService delegates to
         // EnsureCreditorContactAsync for the contact id, then resolves its supplier-account number.
-        _holdedFinance = Substitute.For<IHoldedFinanceService>();
-        _holdedFinance.EnsureCreditorContactAsync(
+        _creditors = Substitute.For<ICreditorService>();
+        _creditors.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("holded-contact-1");
@@ -89,7 +90,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             _auditLog,
             _holdedClient,
-            _holdedFinance,
+            _holdedDocs,
+            _creditors,
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));
@@ -235,7 +237,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _holdedDocs.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -265,7 +267,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _holdedDocs.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -297,7 +299,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _holdedDocs.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-capped");
@@ -866,7 +868,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
-            _holdedFinance,
+            _holdedDocs,
+            _creditors,
             _clock,
             logger,
             Options.Create(new TravelReimbursementConfig()));

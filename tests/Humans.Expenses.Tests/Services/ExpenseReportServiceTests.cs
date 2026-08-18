@@ -52,7 +52,8 @@ public sealed class ExpenseReportServiceTests
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
-    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
+    private readonly IHoldedDocService _holdedDocs = Substitute.For<IHoldedDocService>();
+    private readonly ICreditorService _creditors = Substitute.For<ICreditorService>();
     private readonly ExpenseReportService _sut;
 
     private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
@@ -79,7 +80,8 @@ public sealed class ExpenseReportServiceTests
             _userService,
             AuditLog,
             _holdedClient,
-            _holdedFinance,
+            _holdedDocs,
+            _creditors,
             Clock,
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
@@ -452,7 +454,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedDocs, _creditors, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -493,7 +495,7 @@ public sealed class ExpenseReportServiceTests
 
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedDocs, _creditors, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -769,7 +771,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedDocs, _creditors, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -797,7 +799,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedDocs, _creditors, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1361,7 +1363,7 @@ public sealed class ExpenseReportServiceTests
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
-        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+        _creditors.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
@@ -1386,7 +1388,7 @@ public sealed class ExpenseReportServiceTests
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
-        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+        _creditors.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
@@ -1408,7 +1410,7 @@ public sealed class ExpenseReportServiceTests
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
-        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+        _creditors.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
                 LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m));
 
@@ -1491,7 +1493,7 @@ public sealed class ExpenseReportServiceTests
             }));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
-        _holdedFinance.EnsureCreditorContactAsync(
+        _creditors.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -1505,7 +1507,7 @@ public sealed class ExpenseReportServiceTests
         // First report links the member to contact-123 — this is the pre-existing Holded contact.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
         await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
-        _holdedFinance.ClearReceivedCalls();
+        _creditors.ClearReceivedCalls();
 
         // Act — a fresh report for the same member carries no contact id of its own.
         await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
@@ -1513,7 +1515,7 @@ public sealed class ExpenseReportServiceTests
 
         // Assert — the earlier report's contact id (and its account number) are passed as the seed,
         // so Finance updates the existing contact instead of creating a duplicate.
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _creditors.Received(1).EnsureCreditorContactAsync(
             userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
             "contact-123", 40000007, Arg.Any<CancellationToken>());
     }
@@ -1549,7 +1551,7 @@ public sealed class ExpenseReportServiceTests
         var line = reportBefore!.Lines[0];
 
         // Configure Holded substitutes — contact enrichment is delegated to Finance now.
-        _holdedFinance.EnsureCreditorContactAsync(
+        _creditors.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
@@ -1571,12 +1573,12 @@ public sealed class ExpenseReportServiceTests
 
         // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
         // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
-        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+        await _creditors.Received(1).EnsureCreditorContactAsync(
             userId, legalName, burnerName, iban,
             Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
         // Assert — the resolved 400000xx number is written back to the member's binding
-        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+        await _creditors.Received(1).SetCreditorAccountNumAsync(
             userId, 40000007, Arg.Any<CancellationToken>());
 
         // Assert — contact link mirrored onto the report

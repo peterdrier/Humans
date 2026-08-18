@@ -27,7 +27,7 @@ namespace Humans.Web.Tests.Architecture.Rules;
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
 ///   <item><c>Humans.Feedback.Services.FeedbackService</c> — feedback-badge count cache (nav badges)</item>
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
-///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
+///   <item><c>Humans.Finance.Services.CreditorService</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 ///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
 ///   <item><c>Humans.TicketTailor.Services.TicketTailorService</c> — vendor event-summary cache</item>
 ///   <item><c>Humans.Auth.Services.MagicLinkRateLimiter</c> — magic-link replay + signup-cooldown state</item>
@@ -67,7 +67,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).
-        SectionType("Humans.Finance.Services.Service"),
+        SectionType("Humans.Finance.Services.CreditorService"),
         // guide:<stem> — the rendered HTML of 28 markdown files fetched from GitHub, held
         // with a sliding TTL from Guide:CacheTtlHours. Not an entity read, so §15's
         // repository/decorator options do not apply: the service *is* the cache, and

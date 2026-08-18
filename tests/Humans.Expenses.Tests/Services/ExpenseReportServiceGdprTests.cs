@@ -56,7 +56,8 @@ public class ExpenseReportServiceGdprTests
             _userService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
-            Substitute.For<IHoldedFinanceService>(),
+            Substitute.For<IHoldedDocService>(),
+            Substitute.For<ICreditorService>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));

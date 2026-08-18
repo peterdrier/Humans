@@ -74,7 +74,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Budget.Services.BudgetService"),
         SectionType("Humans.Agent.Services.AgentService"),
         SectionType("Humans.Expenses.Services.ExpenseReportService"),
-        SectionType("Humans.Finance.Services.Service"),
+        SectionType("Humans.Finance.Services.CreditorService"),
         SectionType("Humans.Surveys.Services.SurveyService"),
         SectionType("Humans.Gate.Services.GateService")
     ];

@@ -26,7 +26,7 @@ public class FinanceArchitectureTests
         // Expenses as well as Finance. This leaf still may not name Humans.Application or
         // Humans.Domain, which is why HoldedCreditorLedger.Lines carries Finance's own
         // CreditorLedgerLine instead of the connector's HoldedLedgerLineDto.
-        typeof(IHoldedFinanceService).Assembly.GetReferencedAssemblies()
+        typeof(IHoldedDocService).Assembly.GetReferencedAssemblies()
             .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
                 because: "a section's contracts leaf references only the bottom of the graph "
                        + "(memory/architecture/section-project-cycle-fix.md)");

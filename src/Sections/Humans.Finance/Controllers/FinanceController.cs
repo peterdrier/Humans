@@ -1,5 +1,5 @@
-using Humans.Finance.Contracts;
 using Humans.Finance.Models;
+using Humans.Finance.Services;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -25,13 +25,14 @@ namespace Humans.Finance.Controllers;
 [Route("Finance")]
 internal sealed class FinanceController(
     IUserServiceRead userService,
-    IHoldedFinanceService holdedFinance,
+    IHoldedDocAdminService holdedDocs,
+    ICreditorAdminService creditors,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
-        var plan = await holdedFinance.GetProvisioningPlanAsync(blockStart);
+        var plan = await holdedDocs.GetProvisioningPlanAsync(blockStart);
         ViewBag.BlockStart = blockStart;
         return View(plan);
     }
@@ -42,7 +43,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            var n = await holdedFinance.ProvisionAsync(blockStart, addAll);
+            var n = await holdedDocs.ProvisionAsync(blockStart, addAll);
             SetSuccess($"Provisioned {n} Holded account(s).");
         }
         catch (Exception ex)
@@ -55,12 +56,12 @@ internal sealed class FinanceController(
 
     [HttpGet("HoldedUnmatched")]
     public async Task<IActionResult> HoldedUnmatched()
-        => View(await holdedFinance.GetUnmatchedAsync());
+        => View(await holdedDocs.GetUnmatchedAsync());
 
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
-        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync();
+        var (rows, unresolved) = await creditors.ListCreditorAccountsAsync();
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
@@ -117,7 +118,7 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
-        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
+        var ledger = await creditors.GetCreditorLedgerAsync(accountNum);
         if (ledger is null) return NotFound();
 
         // Controllers sort for display: newest activity first.
@@ -135,7 +136,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            var result = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            var result = await creditors.SetCreditorContactAsync(userId, supplierAccountNum);
             if (result.Succeeded)
                 SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
             else
@@ -158,7 +159,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            if (await holdedFinance.ClearCreditorContactAsync(userId))
+            if (await creditors.ClearCreditorContactAsync(userId))
                 SetSuccess("Cleared the member's creditor account binding.");
             else
                 SetError("That member has no creditor account binding to clear.");
@@ -180,7 +181,7 @@ internal sealed class FinanceController(
     {
         try
         {
-            var r = await holdedFinance.SyncAsync();
+            var r = await holdedDocs.SyncAsync();
             SetSuccess($"Synced {r.DocCount} docs ({r.Matched} matched, {r.Unmatched} unmatched).");
         }
         catch (Exception ex)

@@ -15,14 +15,14 @@ namespace Humans.Holded.Tests.Services;
 /// </summary>
 public class HoldedNightlySyncTests
 {
-    private static HoldedNightlySync MakeSync(IHoldedFinanceService finance, IHoldedService holded, string apiKey) =>
+    private static HoldedNightlySync MakeSync(IHoldedDocService finance, IHoldedService holded, string apiKey) =>
         new(finance, holded, Options.Create(new HoldedClientOptions { ApiKey = apiKey }),
             NullLogger<HoldedNightlySync>.Instance);
 
     [HumansFact]
     public async Task RunAsync_SkipsHolded_WhenNoApiKey()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedDocService>();
         var holded = Substitute.For<IHoldedService>();
         var sync = MakeSync(finance, holded, apiKey: "");
 
@@ -35,7 +35,7 @@ public class HoldedNightlySyncTests
     [HumansFact]
     public async Task RunAsync_RunsBothSyncs_WhenApiKeyPresent()
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IHoldedDocService>();
         var holded = Substitute.For<IHoldedService>();
         var sync = MakeSync(finance, holded, apiKey: "k");
 

@@ -33,7 +33,8 @@ internal sealed class ExpenseReportService(
     IUserService userService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
-    IHoldedFinanceService holdedFinance,
+    IHoldedDocService holdedDocs,
+    ICreditorService creditors,
     IClock clock,
     ILogger<ExpenseReportService> logger,
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
@@ -87,7 +88,7 @@ internal sealed class ExpenseReportService(
         // no ledger to read. The push half below still has something to say about why.
         if (!string.IsNullOrEmpty(report.HoldedContactId))
         {
-            var status = await holdedFinance.GetCreditorStatusAsync(
+            var status = await creditors.GetCreditorStatusAsync(
                 report.HoldedSupplierAccountNum, ct);
 
             var memberReports = await repo.GetForSubmitterAsync(report.SubmitterUserId, ct);
@@ -1024,7 +1025,7 @@ internal sealed class ExpenseReportService(
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }
 
-        var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
+        var holdedContactId = await creditors.EnsureCreditorContactAsync(
             report.SubmitterUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
@@ -1035,7 +1036,7 @@ internal sealed class ExpenseReportService(
         // Books items[].account directly at doc creation (Peter, 2026-08-10: the account IS the
         // category — tags were a v1 workaround from before double-entry was understood). Null when
         // the category has no active mapping; the doc still creates, just unbooked.
-        var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
+        var holdedAccountId = await holdedDocs.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
 
         var docLines = report.Lines
             .OrderBy(l => l.SortOrder)
@@ -1136,7 +1137,7 @@ internal sealed class ExpenseReportService(
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
         if (supplierAccountNum is not null)
-            await holdedFinance.SetCreditorAccountNumAsync(report.SubmitterUserId, supplierAccountNum.Value, ct);
+            await creditors.SetCreditorAccountNumAsync(report.SubmitterUserId, supplierAccountNum.Value, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 

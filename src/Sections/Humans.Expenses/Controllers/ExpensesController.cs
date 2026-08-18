@@ -20,7 +20,7 @@ internal sealed class ExpensesController(
     IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetServiceRead budgetService,
-    IHoldedFinanceService holdedFinance,
+    ICreditorService creditors,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {
@@ -51,11 +51,11 @@ internal sealed class ExpensesController(
             // returns null both for "not bound" and for "bound, but no journal activity cached yet",
             // and telling a correctly-bound member to go get bound again is worse than saying nothing.
             HoldedCreditorLedger? accountLedger = null;
-            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
+            var binding = await creditors.GetCreditorContactByUserAsync(user.Id);
             var boundAccountNum = binding?.SupplierAccountNum;
             if (boundAccountNum is { } accNum)
             {
-                var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
+                var led = await creditors.GetCreditorLedgerAsync(accNum);
                 if (led is not null)
                     accountLedger = led with
                     {
@@ -699,8 +699,8 @@ internal sealed class ExpensesController(
     {
         if (!isFinanceAdmin) return (null, null, false, []);
 
-        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId);
-        var accounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
+        var binding = await creditors.GetCreditorContactByUserAsync(submitterUserId);
+        var accounts = (await creditors.ListCreditorAccountsAsync()).Accounts
             .OrderBy(a => a.SupplierAccountNum)
             .ToList();
 

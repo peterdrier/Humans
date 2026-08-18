@@ -23,7 +23,7 @@ namespace Humans.Budget.Controllers;
 /// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
 /// </summary>
 /// <remarks>
-/// It still calls <c>IHoldedFinanceService</c> for one thing: the per-category actuals shown on
+/// It still calls <c>IHoldedDocService</c> for one thing: the per-category actuals shown on
 /// the year overview. That is an ordinary cross-section service call through the Finance
 /// section's contract, not a reason to keep the controllers merged.
 /// </remarks>
@@ -36,7 +36,7 @@ internal sealed class BudgetAdminController(
     ITicketServiceRead ticketQueryService,
     IClock clock,
     IUserServiceRead userService,
-    IHoldedFinanceService holdedFinance,
+    IHoldedDocService holdedDocs,
     ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -590,7 +590,7 @@ internal sealed class BudgetAdminController(
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {
-            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear);
+            var actuals = await holdedDocs.GetActualsForYearAsync(calendarYear);
             holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId, r => r.Actual);
         }
 
