@@ -73,9 +73,10 @@ drop is recorded, and each entry carries a comment naming what was removed, the 
 Peter's approval. If you cannot write the three facts, you do not have approval yet.
 
 That is enforced, not merely asked for: `Every_baseline_entry_is_covered_by_an_approval_note` fails
-any locator whose comment block above it carries no `Approval:` line (or `Pre-existing:`, for drops
-that shipped before this rule), or does not name every identifier in its locator — the table as
-well as the column. Naming is what stops a new locator appended inside an existing group from
+any locator whose comment block above it carries no `Approval:` + `Evidence:` pair (or
+`Pre-existing:`, for drops that shipped before this rule), or does not name every identifier in
+its locator — the table as well as the column, matched on token boundaries so `RawPayloadBackup`
+does not cover `RawPayload`. Naming is what stops a new locator appended inside an existing group from
 borrowing that group's approval, or one table's approval covering a same-named column on another
 table. The ratchet's own reader discards comments and diffs locators only,
 so without that second test a bare locator would pass silently and the ledger would be a convention

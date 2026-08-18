@@ -72,17 +72,21 @@ public class NoDestructiveMigrationOpsRule
     /// Without this, the ledger is a convention rather than a guardrail: <c>ReadBaseline</c>
     /// discards comments and diffs locators only, so a bare locator with no description, no
     /// evidence and no approval would pass silently — which is the whole gate the rule rewrite
-    /// of 2026-08-18 depends on. This does not try to judge whether the evidence is *good*; a
-    /// human does that. It only refuses an entry that never claimed any.
+    /// of 2026-08-18 depends on. An <c>Approval:</c> block must also carry an <c>Evidence:</c>
+    /// line (<c>Pre-existing:</c> is exempt — shipped history has nothing to prove). This does
+    /// not try to judge whether the evidence is *good*; a human does that. It only refuses an
+    /// entry that never claimed any. Deliberate deception — fake keywords, false claims — is
+    /// out of scope: that is what human review of the baseline diff is for.
     ///
     /// The block must also *name* each dropped object it covers — every identifier in the
     /// locator, the table included, not just the column. Coverage alone is inheritable: a bare
     /// locator appended directly under an approved group (no blank line) would sit inside that
     /// group's comment block and borrow its Approval line, and a column-name-only check would
     /// still let an approval for one table's column cover a same-named column on any other
-    /// table. Requiring every identifier in the block forces each new entry to put its own
-    /// names into the approval text — a visible, deliberate edit — instead of free-riding on a
-    /// neighbour's.
+    /// table. Identifiers match on token boundaries, not substrings, so a block naming
+    /// <c>RawPayloadBackup</c> does not cover <c>RawPayload</c>. Requiring every identifier in
+    /// the block forces each new entry to put its own names into the approval text — a visible,
+    /// deliberate edit — instead of free-riding on a neighbour's.
     /// </remarks>
     [HumansFact]
     public void Every_baseline_entry_is_covered_by_an_approval_note()
@@ -99,27 +103,29 @@ public class NoDestructiveMigrationOpsRule
             if (line.Length == 0) { block.Clear(); continue; }
             if (line.StartsWith('#')) { block.Add(line); continue; }
 
-            var covered = block.Any(c =>
-                c.Contains("Approval:", StringComparison.Ordinal)
-                || c.Contains("Pre-existing:", StringComparison.Ordinal));
+            var covered = block.Any(c => c.Contains("Pre-existing:", StringComparison.Ordinal))
+                || (block.Any(c => c.Contains("Approval:", StringComparison.Ordinal))
+                    && block.Any(c => c.Contains("Evidence:", StringComparison.Ordinal)));
             var identifiers = new[]
                 {
                     LocatorNameRegex.Match(line).Groups["name"].Value,
                     LocatorTableRegex.Match(line).Groups["table"].Value,
                 }
                 .Where(id => id.Length > 0);
-            var named = identifiers.All(id =>
-                block.Any(c => c.Contains(id, StringComparison.Ordinal)));
+            var named = identifiers.All(id => block.Any(c => Regex.IsMatch(
+                c,
+                $@"(?<![A-Za-z0-9_]){Regex.Escape(id)}(?![A-Za-z0-9_])",
+                RegexOptions.None,
+                TimeSpan.FromSeconds(2))));
             if (!covered || !named) unapproved.Add(line);
         }
 
         unapproved.Should().BeEmpty(
             because: "every locator in {0} needs the comment block above it to carry an "
-                   + "'Approval:' line (Peter's per-case written approval, with the description "
-                   + "and the evidence beside it) or a 'Pre-existing:' line for drops that "
-                   + "shipped before this rule, and that block must name the dropped "
-                   + "object/table itself — an entry cannot borrow a neighbouring group's "
-                   + "approval. See memory/architecture/"
+                   + "'Approval:' line (Peter's per-case written approval) plus an 'Evidence:' "
+                   + "line, or a 'Pre-existing:' line for drops that shipped before this rule, "
+                   + "and that block must name the dropped column and table exactly — an entry "
+                   + "cannot borrow a neighbouring group's approval. See memory/architecture/"
                    + "no-drops-until-prod-verified.md. Uncovered: {1}",
             BaselinePath, string.Join(", ", unapproved));
     }
