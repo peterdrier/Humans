@@ -1,20 +1,20 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Shifts/**
-  src/Humans.Web/Controllers/ShiftsController.cs
-  src/Humans.Web/Controllers/ShiftAdminController.cs
-  src/Humans.Web/Controllers/ShiftDashboardController.cs
-  src/Humans.UI/Authorization/ShiftRoleChecks.cs
-  src/Humans.UI/Authorization/PolicyNames.cs
-  src/Humans.Domain/Entities/EventSettings.cs
-  src/Humans.Domain/Entities/Rota.cs
-  src/Humans.Domain/Entities/Shift.cs
-  src/Humans.Domain/Entities/ShiftSignup.cs
-  src/Humans.Domain/Entities/ShiftTag.cs
-  src/Humans.Domain/Entities/GeneralAvailability.cs
-  src/Humans.Domain/Entities/VolunteerEventProfile.cs
-  src/Humans.Domain/Entities/VolunteerTagPreference.cs
-  src/Humans.Infrastructure/Data/Configurations/Shifts/**
-  src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs
+  src/Sections/Humans.Shifts/Services/**
+  src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
+  src/Humans.Interfaces/Authorization/ShiftRoleChecks.cs
+  src/Humans.Interfaces/Authorization/PolicyNames.cs
+  src/Sections/Humans.Shifts/Domain/EventSettings.cs
+  src/Sections/Humans.Shifts/Domain/Rota.cs
+  src/Sections/Humans.Shifts/Domain/Shift.cs
+  src/Sections/Humans.Shifts/Domain/ShiftSignup.cs
+  src/Sections/Humans.Shifts/Domain/ShiftTag.cs
+  src/Sections/Humans.Shifts/Domain/GeneralAvailability.cs
+  src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
+  src/Sections/Humans.Shifts/Domain/VolunteerTagPreference.cs
+  src/Sections/Humans.Shifts/Data/Configurations/**
+  src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Shift entities, state machine, urgency scoring, dashboard panels, routes, or coordinator/admin auth may have changed; reconcile US-25.* and the data model table.

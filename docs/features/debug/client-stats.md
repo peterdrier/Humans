@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Interfaces/IClientStatsTracker.cs
-  src/Humans.Application/Interfaces/IHttpStatusTracker.cs
-  src/Humans.Infrastructure/Services/ClientStatsTracker.cs
-  src/Humans.Infrastructure/Services/HttpStatusTracker.cs
-  src/Humans.Infrastructure/Services/UserAgentClassifier.cs
+  src/Humans.Interfaces/Interfaces/IClientStatsTracker.cs
+  src/Humans.Interfaces/Interfaces/IHttpStatusTracker.cs
+  src/Humans.Web/Infrastructure/Services/ClientStatsTracker.cs
+  src/Humans.Web/Infrastructure/Services/HttpStatusTracker.cs
+  src/Humans.Web/Infrastructure/Services/UserAgentClassifier.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
   src/Sections/Humans.Debug/**
   src/Humans.Web/wwwroot/js/client-metrics.js

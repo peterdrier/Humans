@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
-  src/Humans.Application/Services/GoogleIntegration/GoogleGroupSyncService.cs
-  src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs
+  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleGroupSyncService.cs
+  src/Sections/Humans.GoogleIntegration/Services/TeamResourceService.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Domain/Entities/UserEmail.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
   Who gets a mailbox, coordinator-created accounts, first-sign-in flow (temporary password + required 2FA), and shared team group addresses. Review when workspace-account provisioning or group membership sync change.

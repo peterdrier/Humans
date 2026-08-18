@@ -323,6 +323,15 @@ editorial_trees:
   # whose whole value is being terse. Stale symbol references in atoms get noticed
   # and fixed when an agent goes to apply the rule — not worth a daily proactive check.
 
+# The sweep's own verifier lives at docs/scripts/freshness-checks/ and is NOT
+# listed here — it holds .sh files, and both walks below are .md-only. It is in
+# scope regardless: /freshness-sweep owns those scripts and repairs them in its
+# own PR without asking (memory/process/freshness-sweep-owns-its-verifier.md,
+# authorised 2026-08-18). Two sweeps running treated a broken verifier as
+# out-of-scope and paused; a verifier that under-reports is the most expensive
+# defect the sweep can carry, because a dead trigger makes a stale doc look
+# clean rather than unchecked.
+
 # Files to exclude from both mechanical and editorial walks.
 ignore:
   - docs/sections/SECTION-TEMPLATE.md

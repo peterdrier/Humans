@@ -1,16 +1,24 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-13 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-18 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 92 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all in `Humans.UI` — and `HumansTeamControllerBase`, now in `Humans.Teams/Contracts` (moved off `Humans.Web` by the G5 batch below))
+- Controllers audited: 94 (excludes base classes: `ApiControllerBase` and `HumansControllerBase` in `Humans.Interfaces/Controllers`, `HumansCampControllerBase` in `Humans.Camps/Contracts`, and `HumansTeamControllerBase` in `Humans.Teams/Contracts`; none of these match the `*Controller.cs` naming this audit walks)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-13) re-verified the controller/action inventory against current source (`fa8b36737..c1a1076fb`, covering #1269, #1272, #1280): one **new** controller, **`TourController`** (`/Tour`, `src/Sections/Humans.Tour`) — a static, anonymous "what is Humans" demo page, single `Index` action, no services — bringing the audited count from 91 to 92 (#1272). The rest of that range was the continuing G5 section-extraction work (`Humans.AuditLog`, `Humans.Cantina`, `Humans.Consent`, `Humans.Debug`, `Humans.Email`, `Humans.Guide`, `Humans.Mailer`, `Humans.Search`, `Humans.Store`, `Humans.Teams`) relocating controller files and their `HumansTeamControllerBase` dependency out of `Humans.Web` — pure moves, no action/route/verb changes — plus two same-purpose behavior additions with unchanged signatures: `AboutController.Index` now renders a committed dev-stats snapshot (`purpose unchanged: "Public About page (license, packages, credits)"`) and `AdminController.Index` gained team/audit/email/store/expense dashboard tiles (#1272). No other controller in the inventory was added, removed, or renamed.
+This regeneration (2026-08-18) re-verified the full controller/action inventory against current source (94 `*Controller.cs` files under `src/Humans.Web/Controllers` and `src/Sections/*/Controllers`), independent of the 50 commits' git range — most of that range was G5 lane B (nobodies-collective/Humans#866) moving jobs, `.Contracts` leaves, and the last `Humans.Application`/`Humans.Infrastructure` residue into their section projects, none of which touch controller action surfaces. Four real deltas turned up:
+- **New controller `ShiftProfileController`** (`src/Sections/Humans.Shifts/Controllers/ShiftProfileController.cs`, route `/Profile/Me/ShiftInfo`) — the `ShiftInfo` GET/POST pair carved off `ProfileController` at Shifts' G5 move (nobodies-collective/Humans#866): both actions read/write the Shifts-owned `volunteer_event_profiles` table, so they moved sections without moving their URL (`[Route("Profile")]` stays on both halves). `ProfileController`'s two `ShiftInfo` rows below are removed accordingly — this was missed by the prior sweep.
+- **`ExpensesController` gained `HoldedRetry`** (`POST /Expenses/{id:guid}/HoldedRetry`) — manually requeue a failed Holded ledger push for one expense report (Finance-admin only); missed by the prior sweep.
+- **`FeedbackController` no longer has a `Submit` action** — Feedback stopped accepting new reports back at #1185/#977 (Issues superseded it; the controller is now full-Admin-only triage on existing reports) and the prior sweep never dropped the row.
+- Stale path annotations corrected: `BudgetAdminController` and `MailerAdminController` are under `src/Sections/Humans.Budget` and `src/Sections/Humans.Mailer` respectively (not `src/Humans.Web`), and `EventsApiController` is at `src/Sections/Humans.Events/Controllers/EventsApiController.cs` (no `Controllers/Api/` subfolder) — all pre-existing G5 moves the doc's inline path comments hadn't caught up to.
+
+No other controller in the inventory was added, removed, or renamed; no other action was added, removed, or renamed.
+
+The 2026-08-13 regeneration re-verified the controller/action inventory against current source (`fa8b36737..c1a1076fb`, covering #1269, #1272, #1280): one **new** controller, **`TourController`** (`/Tour`, `src/Sections/Humans.Tour`) — a static, anonymous "what is Humans" demo page, single `Index` action, no services — bringing the audited count from 91 to 92 (#1272). The rest of that range was the continuing G5 section-extraction work (`Humans.AuditLog`, `Humans.Cantina`, `Humans.Consent`, `Humans.Debug`, `Humans.Email`, `Humans.Guide`, `Humans.Mailer`, `Humans.Search`, `Humans.Store`, `Humans.Teams`) relocating controller files and their `HumansTeamControllerBase` dependency out of `Humans.Web` — pure moves, no action/route/verb changes — plus two same-purpose behavior additions with unchanged signatures: `AboutController.Index` now renders a committed dev-stats snapshot (`purpose unchanged: "Public About page (license, packages, credits)"`) and `AdminController.Index` gained team/audit/email/store/expense dashboard tiles (#1272). No other controller in the inventory was added, removed, or renamed.
 
 The 2026-08-12 re-verified the controller/action inventory against current source (`04d2490f0..fa8b36737`): the G5 overnight batch (`af9242150`, #1263) relocated `GateController`, `GateVendorBackfillAdminController`, `BudgetController`, `BudgetAdminController`, `CalendarController`, `CampaignController`, `CityPlanningController`, `CityPlanningApiController`, `FeedbackController`, `FeedbackApiController`, `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController`, `IssuesController`, `IssuesApiController`, `NotificationsController`, and `ScannerController` into their own `src/Sections/**` projects; `8018be9d3` (#1259) moved `AgentController`/`AgentApiController`/`AdminAgentController` into `Humans.Agent`; `cde511e4b` (#1251) moved `SurveyController`/`SurveyAdminController`/`SurveysApiController` into `Humans.Surveys` — all pure relocations, no action/route/verb changes in any of them. `4f65c7617` (#1261, "Holded API v2") added a **new** controller, `HoldedController` at `/Holded` (`src/Sections/Humans.Holded`), bringing the audited count from 90 to 91. `f5e4b8bdc` (#1267) added `sort`/`dir` query parameters to `FinanceController.Creditors` (same route/verb) and, together with `4f65c7617`, removed `FinanceController.ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`) — superseded by `HoldedController.FullSync`. `250fda95e` (#1265, "retire mileage and per-diem line creation") removed `ExpensesController.AddMileage`/`AddPerDiem` and updated this doc directly in the same commit — already reflected below. No other controller in the inventory was added, removed, or renamed.
 
@@ -107,7 +115,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 
 ## BudgetAdminController
 
-(`src/Humans.Web/Controllers/BudgetAdminController.cs`) — Budget's admin surface: years, groups, categories, line items, the ticketing projection, cash flow, and the audit log. Named for what it is; the `/Finance` route prefix is unchanged, so no URL moved when the Holded half split off into the Finance section's own `FinanceController` below (nobodies-collective/Humans#866, G5).
+(`src/Sections/Humans.Budget/Controllers/BudgetAdminController.cs`) — Budget's admin surface: years, groups, categories, line items, the ticketing projection, cash flow, and the audit log. Named for what it is; the `/Finance` route prefix is unchanged, so no URL moved when the Holded half split off into the Finance section's own `FinanceController` below (nobodies-collective/Humans#866, G5).
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
@@ -407,7 +415,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 
 ## EventsApiController
 
-(`Controllers/Api/EventsApiController.cs`)
+(`src/Sections/Humans.Events/Controllers/EventsApiController.cs`)
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
@@ -494,6 +502,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Review | /Expenses/Review | GET | Finance review queue | OK |
 | Approve | /Expenses/{id:guid}/Approve | POST | Approve an expense | OK |
 | Reject | /Expenses/{id:guid}/Reject | POST | Reject an expense | OK |
+| HoldedRetry | /Expenses/{id:guid}/HoldedRetry | POST | Manually requeue a failed Holded ledger push for an expense report | OK |
 
 ## FeedbackApiController
 
@@ -509,11 +518,12 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 
 ## FeedbackController
 
+Retired section (nobodies-collective/Humans#977, #1185) — Feedback no longer accepts new reports (Issues superseded it), so every remaining action is full-Admin-only read-and-triage on existing reports; there is deliberately no reporter-facing view and no creation route.
+
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Feedback | GET | Feedback list page | OK |
+| Index | /Feedback | GET | Feedback list page (Admin-only) | OK |
 | Detail | /Feedback/{id} | GET | Feedback detail (AJAX partial or redirect) | OK |
-| Submit | /Feedback | POST | Submit new feedback | OK |
 | PostMessage | /Feedback/{id}/Message | POST | Post message on feedback thread | OK |
 | UpdateStatus | /Feedback/{id}/Status | POST | Update feedback status | OK |
 | UpdateAssignment | /Feedback/{id}/Assignment | POST | Update assignee on feedback | OK |
@@ -521,7 +531,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 
 ## FinanceController
 
-(`src/Sections/Humans.Finance/Controllers/FinanceController.cs`) — the Finance section's own pages: Holded account provisioning, the unmatched-document queue, and the creditor-account admin. Shares the `/Finance` route prefix with `BudgetAdminController` above on disjoint action templates; the Budget-CRUD half of the old combined controller stayed in `Humans.Web` as `BudgetAdminController` (nobodies-collective/Humans#866, G5).
+(`src/Sections/Humans.Finance/Controllers/FinanceController.cs`) — the Finance section's own pages: Holded account provisioning, the unmatched-document queue, and the creditor-account admin. Shares the `/Finance` route prefix with `BudgetAdminController` above on disjoint action templates; the Budget-CRUD half of the old combined controller became `Humans.Budget`'s own `BudgetAdminController` (nobodies-collective/Humans#866, G5).
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
@@ -722,7 +732,7 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 
 ## MailerAdminController
 
-(`Controllers/Mailer/MailerAdminController.cs`)
+(`src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs`)
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
@@ -808,6 +818,8 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 
 ## ProfileController
 
+The `ShiftInfo` GET/POST pair moved to `ShiftProfileController` below (`Humans.Shifts`, G5) — same `/Profile/Me/ShiftInfo` route, Shifts-owned table.
+
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Profile | GET | Redirect to `Me` | OK |
@@ -840,8 +852,6 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 | MyOutbox | /Profile/Me/Outbox | GET | View own email outbox | OK |
 | Privacy | /Profile/Me/Privacy | GET | Privacy & data management page | → `DataPrivacy` ? (overlaps with `HomeController.Privacy`; this is the user's GDPR page, not the public privacy policy) |
 | RequestDeletion | /Profile/Me/Privacy/RequestDeletion | POST | Request account deletion | OK |
-| ShiftInfo | /Profile/Me/ShiftInfo | GET | Shift profile info form | OK |
-| ShiftInfo | /Profile/Me/ShiftInfo | POST | Submit shift profile info | OK |
 | DietaryMedical | /Profile/Me/DietaryMedical | GET | Dietary & medical info form (moved from Shifts profile) | OK |
 | DietaryMedical | /Profile/Me/DietaryMedical | POST | Submit dietary & medical info | OK |
 | CommunicationPreferences | /Profile/Me/CommunicationPreferences | GET | Communication preferences page | OK |
@@ -918,6 +928,15 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 | PostEventStats | /Shifts/Dashboard/PostEventStats | GET | Post-event shift statistics report | OK |
 | SearchVolunteers | /Shifts/Dashboard/SearchVolunteers | GET | Search volunteers for a shift (JSON) | OK |
 | Voluntell | /Shifts/Dashboard/Voluntell | POST | Assign volunteer from dashboard | OK |
+
+## ShiftProfileController
+
+(`src/Sections/Humans.Shifts/Controllers/ShiftProfileController.cs`) — the volunteer's own shift-matching profile (skills, quirks, languages) at `/Profile/Me/ShiftInfo`. Carved off `ProfileController` at Shifts' G5 move (nobodies-collective/Humans#866): both actions read/write the Shifts-owned `volunteer_event_profiles` table; `[Route("Profile")]` stays on both halves so the URL didn't move.
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| ShiftInfo | /Profile/Me/ShiftInfo | GET | Shift profile info form | OK |
+| ShiftInfo | /Profile/Me/ShiftInfo | POST | Submit shift profile info | OK |
 
 ## ShiftWorkloadAdminController
 

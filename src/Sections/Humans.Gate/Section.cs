@@ -21,7 +21,8 @@ namespace Humans.Gate;
 /// <remarks>
 /// <para>
 /// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> live in this project's
-/// <c>Contracts/</c> folder since G5 lane 5b-3 (nobodies-collective/Humans#866), but are
+/// <c>Jobs/</c> folder (moved there from <c>Contracts/</c> by the HUM0034 carve-out,
+/// nobodies-collective/Humans#1353), but are
 /// <em>not</em> registered here: jobs are named by concrete type in Shell's
 /// <c>UseHumansRecurringJobs</c> roll-call and by Hangfire's serialized method reference, and
 /// there is no discovery seam for them yet, so the registration stays in Shell (design

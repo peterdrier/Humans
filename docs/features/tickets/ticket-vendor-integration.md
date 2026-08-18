@@ -32,7 +32,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 ## Architecture
 
-- **ITicketVendorService** — vendor-agnostic interface (Application layer)
+- **ITicketVendorService** — vendor-agnostic interface, owned by `Humans.Tickets` (`Contracts/` folder) since G5 lane 4b-2g (nobodies-collective/Humans#866); previously sat in Base's Application layer
 - **TicketTailorService** — TicketTailor API client, the vendor adapter implementation of `ITicketVendorService` (`src/Sections/Humans.TicketTailor`, its own project — the only implementation of the vendor port; a future vendor swap adds `Humans.<NewVendor>` and deletes this one, per `TicketVendorPortArchitectureTests`). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets. Also implements the check-in and write surface: `GET /check_ins` (gate check-in sync — checkout/undo records with quantity −1 are netted out), `POST /check_ins` (best-effort mirror of Humans gate admits), `POST /issued_tickets/{id}/void` (void-to-hold for transfers), and `POST /issued_tickets` (reissue from a hold).
 - **IStripeService / StripeService** — Stripe API client (read-only). Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
 - **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees/check-ins, upsert, apply gate check-ins onto attendee rows (write-once `CheckedInAt`), email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
@@ -51,6 +51,7 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 
 ### Reporting
 - `/Tickets/SalesAggregates` — weekly and quarterly views with real Donations, VIP Donations, VAT, and Net columns
+- `/Tickets/SalesAggregates` — By Ticket Type card: paid attendees grouped by ticket type and price, with tickets-sold count and face value (listed price; excludes order-level discounts and donations, so it won't reconcile with Gross Revenue)
 - `/Tickets/Orders` — donation and VAT columns per order
 - `/Tickets/Attendees` — VIP badge and taxable/donation split per attendee
 

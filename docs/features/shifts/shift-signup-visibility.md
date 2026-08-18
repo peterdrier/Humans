@@ -1,11 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
-  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
-  src/Humans.Web/Controllers/ShiftsController.cs
-  src/Humans.Web/Controllers/ShiftAdminController.cs
-  src/Humans.UI/Authorization/ShiftRoleChecks.cs
-  src/Humans.Web/Views/Shifts/**
-  src/Humans.Web/Views/ShiftAdmin/**
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
+  src/Humans.Interfaces/Authorization/ShiftRoleChecks.cs
+  src/Sections/Humans.Shifts/Views/Shifts/**
+  src/Sections/Humans.Shifts/Views/ShiftAdmin/**
 -->
 <!-- freshness:flag-on-change
   Privileged-viewer signup display (name list / avatar row), the includeSignups flag, or column wiring on the browse/admin pages may have changed.
@@ -22,7 +22,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 > **Policy change (under evaluation):** Signup lists on the browse page (`/Shifts`) are temporarily visible to **all** authenticated viewers — not just coordinators/admins. The `isPrivileged` computation is intentionally retained in `ShiftsController` so the gate can be reinstated by flipping `ShowSignups` and `includeSignups` back to `isPrivileged` if folks object. Acceptance criteria below are written against the current (public) policy.
 
 - **Browse page (`/Shifts`):** Signup lists visible to every authenticated user. The `isPrivileged` variable still gates other admin-only behaviour (AdminOnly shift visibility, hidden rota visibility, browsing-while-closed).
-- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team. Unchanged.
+- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveDepartmentAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team. Unchanged.
 
 ## User Stories
 
@@ -33,8 +33,8 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 **Acceptance Criteria:**
 - A "Signed Up" column appears to the right of the Filled column on both `/Shifts` (browse) and `/Teams/{slug}/Shifts` (admin) for Event rotas
-- Column shows a row of small circular avatar thumbnails (~26px), reusing `<human-link mode="Avatar">`
-- Each avatar links to `/Human/{userId}` with a hover popover showing display name
+- Column shows a row of small circular avatar thumbnails (~26px), reusing the shared `<vc:human layout="Avatar" size="26">` component (`HumanViewComponent`)
+- Each avatar links to `/Profile/{userId}` with a hover popover showing display name
 - Confirmed avatars render at full opacity
 - Pending avatars render at 50% opacity with a dashed border (and the title carries the localized "Pending" label)
 - Only Confirmed and Pending signups are shown — Refused, Bailed, NoShow, and Cancelled are excluded
@@ -49,8 +49,8 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 **Acceptance Criteria:**
 - A "Signed Up" column appears after the Status column on both `/Shifts` (browse) and `/Teams/{slug}/Shifts` (admin) for Build/Strike rotas
-- Column shows a row of small circular avatar thumbnails (~24-28px), reusing `UserAvatarViewComponent` at reduced size
-- Each avatar links to `/Human/{userId}` with `title` attribute showing display name
+- Column shows a row of small circular avatar thumbnails, reusing the same `<vc:human layout="Avatar" size="26">` component as the Event rota column (no separate reduced-size component)
+- Each avatar links to `/Profile/{userId}` with a `title` attribute showing display name
 - Confirmed avatars render at full opacity
 - Pending avatars render at 50% opacity with a dashed border
 - Only Confirmed and Pending signups are shown
@@ -73,7 +73,7 @@ Add signup user data to `ShiftDisplayItem` (or a new nested DTO):
 public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
 ```
 
-The avatar is rendered from `UserId` via the `/Human/{userId}/Picture` route; the record carries no picture URL of its own.
+The avatar is rendered from `UserId` by the shared `<vc:human>` component, which resolves the profile picture via `/Profile/Picture?id={profileId}` (the `id` is the **profile** id, not the user id); the record carries no picture URL of its own.
 
 `ShiftDisplayItem` gains: `IReadOnlyList<ShiftSignupInfo> Signups`. The view chooses name-list vs avatar display based on the parent rota's `RotaPeriod`.
 

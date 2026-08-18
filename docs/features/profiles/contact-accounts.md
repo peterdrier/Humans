@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Application/Services/Users/UserService.cs
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users/Services/UserService.cs
   src/Humans.Web/Controllers/AccountController.cs
-  src/Humans.Domain/Entities/User.cs
-  src/Humans.Infrastructure/Data/Configurations/Users/UserConfiguration.cs
+  src/Sections/Humans.Users.Contracts/User.cs
+  src/Sections/Humans.Users/Data/Configurations/UserConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Contact identification (ContactSource/LastLoginAt), admin contact CRUD routes, or first-login claim flow may have changed.

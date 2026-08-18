@@ -66,7 +66,8 @@ editorial_docs() {
                -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
                -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
                -not -path '*/obj/*' -not -path '*/bin/*' \
-               -not -path '*/Docs/20*.md' 2>/dev/null
+               -not -path '*/Docs/20*.md' \
+               -not -name 'health.md' 2>/dev/null
         else
           # Unresolved entry: emit nothing here — test 3 reports it via
           # editorial_entries_unresolved. The explicit `:` matters: without an
@@ -272,18 +273,43 @@ dead_globs=0
 dead_docs=0
 checked_docs=0
 for f in $(editorial_docs); do
+  # `|| true` is load-bearing: under `set -o pipefail` the grep returns 1 for a
+  # doc with no trigger marker, which aborted the whole script at the first such
+  # file and left every doc after it unchecked while test 7 printed nothing at
+  # all. Silence from a test is not a pass.
   triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null \
-             | grep -vE '^\s*<!--|^-->' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-  [ -z "$triggers" ] && continue
+             | { grep -vE '^\s*<!--|^-->' || true; } \
+             | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  if [ -z "$triggers" ]; then continue; fi
   checked_docs=$((checked_docs+1))
   doc_dead=0
   doc_total=0
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
     doc_total=$((doc_total+1))
-    matches=( $glob )
-    if [ ${#matches[@]} -eq 0 ]; then
-      echo "  [test 7]: DEAD glob in $f -> $glob"
+    # A trigger is either a wildcard pattern or a literal path, and they need
+    # different checks. `matches=( $glob )` only detects a dead *pattern* (via
+    # nullglob); a literal path with no wildcard word-splits to itself, so the
+    # array always has one element and the check passes whether or not the file
+    # exists. That is how 307 dead literal triggers across 65 docs survived
+    # every sweep while test 7 reported green — the same class of bug as a dead
+    # glob, one layer down. Branch on the wildcard.
+    # Both branches must END on a successful command. Under `set -euo pipefail`
+    # a trailing `cond && assign` returns non-zero whenever cond is false, which
+    # aborts the whole script mid-test — the same way a bare trailing `if` once
+    # killed everything after test 2. Use explicit if/else, never `&&`.
+    trigger_dead=0
+    case "$glob" in
+      *'*'*)
+        matches=( $glob )
+        if [ ${#matches[@]} -eq 0 ]; then trigger_dead=1; else trigger_dead=0; fi
+        ;;
+      *)
+        if [ -e "$glob" ]; then trigger_dead=0; else trigger_dead=1; fi
+        ;;
+    esac
+    if [ "$trigger_dead" -eq 1 ]; then
+      echo "  [test 7]: DEAD trigger in $f -> $glob"
       dead_globs=$((dead_globs+1))
       doc_dead=$((doc_dead+1))
     fi
@@ -297,10 +323,10 @@ for f in $(editorial_docs); do
 done
 
 if [ "$dead_globs" -eq 0 ]; then
-  echo "PASS [test 7]: all trigger globs across $checked_docs editorial docs resolve"
+  echo "PASS [test 7]: all triggers across $checked_docs editorial docs resolve"
   PASS=$((PASS+1))
 else
-  echo "FAIL [test 7]: $dead_globs dead trigger globs across $dead_docs of $checked_docs docs"
+  echo "FAIL [test 7]: $dead_globs dead triggers across $dead_docs of $checked_docs docs"
   FAIL=$((FAIL+1))
 fi
 

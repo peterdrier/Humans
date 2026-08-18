@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Shifts/Workload/WorkloadService.cs
-  src/Humans.Application/Interfaces/Shifts/Workload/IWorkloadService.cs
-  src/Humans.Application/DTOs/Shifts/Workload/WorkloadReport.cs
-  src/Humans.Web/Controllers/ShiftWorkloadAdminController.cs
-  src/Humans.Web/Views/ShiftWorkloadAdmin/Index.cshtml
+  src/Sections/Humans.Shifts/Services/WorkloadService.cs
+  src/Sections/Humans.Shifts/Services/IWorkloadService.cs
+  src/Sections/Humans.Shifts/Services/Dtos/WorkloadReport.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftWorkloadAdminController.cs
+  src/Sections/Humans.Shifts/Views/ShiftWorkloadAdmin/Index.cshtml
 -->
 <!-- freshness:flag-on-change
   Workload math (Confirmed-only hours, MaxVolunteers cap, all-day window),
@@ -36,18 +36,19 @@ Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed 
 - Display order: descending by Total hours, then ascending by display name (sort is applied in the controller, not the service)
 - Click a column header to re-sort asc/desc client-side
 
-### US-WL.2: Admin Sees Per-Shift Coverage
+### US-WL.2: Admin Sees Per-Rota Coverage
 
 **As an** Admin / NoInfoAdmin / VolunteerCoordinator
-**I want to** see every shift in the active event with planned slots, Confirmed/Pending/Open counts
-**So that** I can find shifts that still need fills
+**I want to** see every rota with shifts in the active event, with planned/filled slots and hours, coverage %, and Pending count
+**So that** I can find rotas that still need fills
 
 **Acceptance Criteria:**
-- Row per shift in the active event
+- Row per rota with at least one shift in the active event
 - Includes shifts on `AdminOnly = true` and rotas with `IsVisibleToVolunteers = false` (admin view; coordinators need full visibility for balancing)
-- Columns: Date, start time (or "all-day"), Hours, Department, Rota, Slots (MaxVolunteers), Confirmed, Pending, Open (`max(0, MaxVolunteers - Confirmed)`)
+- Columns: Department, Rota, Shifts (count), Planned slots, Filled slots, Coverage %, Planned hours, Filled hours, Pending signups
+- `FilledSlots` and `FilledHours` cap at `MaxVolunteers` per shift, same as the department roll-up
 - All-day shifts contribute the standard **08:00–18:00** window's duration (10 h), not `Shift.Duration`
-- Default order: Day offset asc, start time asc, team name asc (sort is applied in the controller)
+- Default order: team name ascending, then rota name ascending (sort is applied in the controller)
 - Client-side column sort
 
 ### US-WL.3: Admin Sees Per-Department Roll-Up
@@ -73,8 +74,8 @@ No new tables. Derived from existing `event_settings`, `rotas`, `shifts`, `shift
 ```
 # Shift hours
 hours       = shift.IsAllDay ? (AllDayWindowEnd − AllDayWindowStart) : shift.Duration.TotalHours
-planned    += hours × shift.MaxVolunteers              # per-department
-filled     += hours × min(confirmed, MaxVolunteers)    # per-department
+planned    += hours × shift.MaxVolunteers              # per-department, and per-rota one level deeper
+filled     += hours × min(confirmed, MaxVolunteers)    # per-department, and per-rota one level deeper
 confirmed  += hours                                    # per-user, only for Confirmed signups, by shift period
 
 # Role hours (estimate = TeamRoleDefinition.EstimatedHours, whole hours/year)
@@ -103,7 +104,7 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 ## Architecture
 
-`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetEventShiftsAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamServiceRead.GetTeamsAsync` and `IUserService.GetUserInfosAsync`. Role hours come from `ITeamServiceRead.GetTeamsAsync` — the cached `TeamInfo` projection already carries each team's role definitions (with `EstimatedHours`, `RolePeriod`, `SlotCount`) and assignment holder ids, so no new cross-section method was added.
+`WorkloadService` lives in `Humans.Shifts.Services` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftRowView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetEventShiftsAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamServiceRead.GetTeamsAsync` and `IUserServiceRead.GetUserInfosAsync`. Role hours come from `ITeamServiceRead.GetTeamsAsync` — the cached `TeamInfo` projection already carries each team's role definitions (with `EstimatedHours`, `RolePeriod`, `SlotCount`) and assignment holder ids, so no new cross-section method was added.
 
 **Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (§15 Option B at the section level). Signup / shift / rota mutations evict the affected rota cache entries via `IShiftViewInvalidator`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
 
@@ -117,6 +118,6 @@ Role-based hours (the original #734 follow-up) are now implemented — see the p
 
 ## Related Features
 
-- [Shift Management](shift-management.md) — workload reads source data through the same `IShiftView` cache.
+- [Shift Management](shift-management.md) — workload reads source data through the same `IShiftRowView` cache.
 - [Department Coverage Pies](department-coverage-pies.md) — same shape (planned/filled hours) but volunteer-facing and on `/Shifts`.
 - Section invariants: [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md).

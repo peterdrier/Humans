@@ -189,12 +189,12 @@ nobodies-collective/Humans#933.)
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today"); and
-  `IShiftManagementService.GetActiveAsync`/`GetBrowseShiftsAsync` from `GateService`:
-  `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster (opt-in via
-  `Gate:RosterTeamId`; see Configuration — claim flow unreachable since peterdrier#1075), and the
-  Attended-participation write reads the active event's year. Read-only consumption of the
-  existing Shifts surface — no new Shifts surface.
+- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today"; also the active
+  event/year for the shift roster pre-fill and the Attended-participation write — `GateService`
+  reads the active event via BurnSettings, not Shifts); and `IShiftManagementServiceRead.GetBrowseShiftsAsync`
+  from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
+  (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
+  peterdrier#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserServiceRead` (scanner name; supervisor/claim display names; leaderboard
   rendering via `<vc:human>`); and `IUserService.SetParticipationFromTicketSyncAsync` — on an
@@ -237,7 +237,7 @@ and was deleted after that job came home at G5 lane 5b-3.
 `IUserDataContributor` and `IGateScanRetention`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
 **Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit), both in
-`Humans.Gate/Contracts/` since G5 lane 5b-3. Their *registration* stays in Shell — recurring jobs
+`Humans.Gate/Jobs/` since G5 lane 5b-3. Their *registration* stays in Shell — recurring jobs
 are named by concrete type in the roll-call and Hangfire serializes the enqueued method
 reference, so neither has a discovery seam yet.
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong

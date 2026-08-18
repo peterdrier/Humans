@@ -70,7 +70,7 @@ The section splits into a write side and a read+render side:
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
 
-Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<HumansDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails. `LogGoogleSyncAsync` is the third overload for permission-change events with the Google-specific nullable fields.
+Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails. `LogGoogleSyncAsync` is the third overload for permission-change events with the Google-specific nullable fields.
 
 **`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section (no per-call-site dance with `GetUserDisplayNamesAsync` / `GetTeamNamesAsync`). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
 
@@ -144,7 +144,7 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 
 ### Drive Activity Check (`/Monitor/CheckDriveActivity`)
 
-POST action on `AuditLogController`. Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
+POST action on `MonitorController` (moved from `AuditLogController` at nobodies-collective/Humans#866 — see [`AuditLog.md`](../../../src/Sections/Humans.AuditLog/Docs/AuditLog.md#routing)). Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
 ### Per-Resource Google Sync Audit (`/Monitor/Resource/{id}`)
 

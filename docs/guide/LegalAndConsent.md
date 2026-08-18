@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Consent/Views/Consent/**
   src/Sections/Humans.Consent/Views/Legal/**
-  src/Humans.Web/Views/Profile/Privacy.cshtml
+  src/Sections/Humans.Users/Views/Profile/Privacy.cshtml
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/LegalDocuments.cshtml
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/CreateLegalDocument.cshtml
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/EditLegalDocument.cshtml

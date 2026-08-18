@@ -1,15 +1,15 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
   src/Sections/Humans.Auth.Contracts/**
-  src/Humans.Domain/Constants/RoleNames.cs
-  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Interfaces/Constants/RoleNames.cs
+  src/Humans.Interfaces/Constants/RoleGroups.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
-  src/Humans.UI/Authorization/PolicyNames.cs
-  src/Humans.UI/Authorization/RoleChecks.cs
+  src/Humans.Interfaces/Authorization/PolicyNames.cs
+  src/Humans.Interfaces/Authorization/RoleChecks.cs
   src/Humans.Web/Authorization/Requirements/**
-  src/Humans.UI/Models/AccessMatrixDefinitions.cs
-  src/Humans.UI/ViewComponents/AccessMatrixViewComponent.cs
+  src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs
+  src/Humans.Interfaces/ViewComponents/AccessMatrixViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change.
@@ -23,7 +23,7 @@ Role assignments (temporal), magic-link login/signup, claims transformation.
 
 - **Role Assignment** is a temporal assignment of a role name (e.g. `Admin`, `Board`, `TeamsAdmin`, `HumanAdmin`, `ConsentCoordinator`, …) to a human, with a `ValidFrom` and optional `ValidTo`. `RoleAssignmentClaimsTransformation` reads active assignments on every request (cached 60 s per user) and projects them into ASP.NET role claims so `[Authorize(Roles = ...)]`, `[Authorize(Policy = …)]`, and `User.IsInRole()` work. The same transformation also stamps the stored `UserState` claim — the single source of truth for access (`UserState == Active`, i.e. the user entered their legal name, grants full app access). The former `ActiveMember` (Volunteers-membership-derived) and `HasProfile` claims were removed.
 - **Magic Link Auth** is the email-based login/signup flow handled by `MagicLinkService` + `AccountController`. Users enter an email address; the system sends a Data-Protection-token-protected link. Login links verify a user id; signup links carry the email address. Tokens are single-use (replay-protected 15-minute cache) and signup sends are rate-limited to 1 per 60 seconds per address; login-link sends are rate-limited to 1 per 60 seconds per user via `User.MagicLinkSentAt`. Token generation/validation/URL building sits behind `IMagicLinkUrlBuilder` and rate-limit/replay state behind `IMagicLinkRateLimiter` so `MagicLinkService` itself depends on no `HumansDbContext`, `IDataProtectionProvider`, or `IMemoryCache`.
-- **Access gating** — `MembershipRequiredFilter` (a global `IAsyncActionFilter`) routes authenticated users by their stored `UserState`: only `Active` reaches the app; `Bare` → `/OnboardingWidget`, `DeletePending` → `/User/Deletion`, and `Suspended`/`Rejected`/`Deleted`/`Merged` → `/User/Status`. It passes through endpoints carrying `[AllowAnonymous]` and the exempt controllers a non-Active user must still reach (`Account`, `OnboardingWidget`, `Profile`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`). Role-gated app controllers require `UserState == Active` before their role policies matter.
+- **Access gating** — `MembershipRequiredFilter` (a global `IAsyncActionFilter`) routes authenticated users by their stored `UserState`: only `Active` reaches the app; `Bare` → `/OnboardingWidget`, `DeletePending` → `/User/Deletion`, and `Suspended`/`AdminSuspended`/`Rejected`/`Deleted`/`Merged` → `/User/Status`. It passes through endpoints carrying `[AllowAnonymous]` and the exempt controllers a non-Active user must still reach (`Account`, `OnboardingWidget`, `Profile`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`). Role-gated app controllers require `UserState == Active` before their role policies matter.
 
 ### AccountController routes
 
@@ -67,7 +67,7 @@ Cross-domain navs `RoleAssignment.User` and `RoleAssignment.CreatedByUser` were 
 
 ### RoleNames (constants)
 
-Defined in `src/Humans.Domain/Constants/RoleNames.cs`.
+Defined in `src/Humans.Interfaces/Constants/RoleNames.cs`.
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -81,6 +81,8 @@ Defined in `src/Humans.Domain/Constants/RoleNames.cs`.
 | FinanceAdmin | `"FinanceAdmin"` | Full access to Finance section (budgets, audit log) |
 | NoInfoAdmin | `"NoInfoAdmin"` | Approve/voluntell shift signups (cannot create/edit shifts); access to volunteer-event-profile medical data |
 | StoreAdmin | `"StoreAdmin"` | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |
+| EventsAdmin | `"EventsAdmin"` | Approve, reject, and request edits on event guide submissions |
+| CantinaAdmin | `"CantinaAdmin"` | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
 | ConsentCoordinator | `"ConsentCoordinator"` | Safety gate for onboarding consent checks |
 | VolunteerCoordinator | `"VolunteerCoordinator"` | Facilitation contact for onboarding; read-only access to onboarding review queue |
 | EETeamAdmin | `"EETeamAdmin"` | Cross-team Early-Entry administrator — can grant/edit/revoke early-entry grants on ANY team that has `EarlyEntryEnabled`. Confers nothing else. Coordinators manage EE on their own team without this role |
@@ -91,7 +93,7 @@ Defined in `src/Humans.Domain/Constants/RoleNames.cs`.
 
 The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-authorization-transition.md`:
 
-- **Phase 1 — coarse policies** (`Humans.UI/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
+- **Phase 1 — coarse policies** (`Humans.Interfaces/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
 - **Phase 2 — resource-based authorization (first vertical slices):** shipped. Production handlers registered by `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` (`src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs`): `CampAuthorizationHandler` (resource: `Camp`) and `UserEmailAuthorizationHandler` (resource: `UserEmail`). Composite custom handlers (`HumanAdminOnlyHandler`, `IsAnyTeamManagerOrCoordinatorHandler`, and `CampComplianceAccessHandler` (policy `CampComplianceAccess`: succeeds for CampAdmin/Admin, or any team/sub-team coordinator via the cached `IShiftManagementService.GetCoordinatorTeamIdsAsync` lookup — gates the read-only Barrios role-staffing compliance matrix, broader than the CampAdmin-only `CampAdminOrAdmin` management surface)) are also registered here. The nav-visibility gate is the single `AppAccess` policy — a plain `RequireAssertion` (`UserState == Active`), no custom handler.
 
   Section-owned resource handlers now register themselves from inside their own section (each section's `Section.cs`), not from Auth's extension method — they reuse `PolicyNames`/`RoleChecks` from `Humans.UI.Authorization` but are not part of Auth's registration surface: `TeamAuthorizationHandler` (resource: `Team`; `src/Sections/Humans.Teams/Authorization/` — gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EETeamAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; `src/Sections/Humans.Auth/Authorization/` — moved with the rest of Auth at its own G5), `AgentRateLimitHandler` (+ its now-section-internal `AgentRateLimitRequirement`; `src/Sections/Humans.Agent/Authorization/` — the requirement and the `PolicyNames.AgentRateLimit` constant left Base with the G5 Agent move), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits; `src/Sections/Humans.Budget/Authorization/`), `IssuesAuthorizationHandler` (resource: `Issue`; `src/Sections/Humans.Issues/Authorization/`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`; `src/Sections/Humans.Containers/Authorization/`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/CategoryOverride) and `IbanAccessHandler` (gates raw IBAN access for self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page) (both `src/Sections/Humans.Expenses/Authorization/`), and `OrderAuthorizationHandler` (resource: `OrderDto` / `OrderCreateContext` / `OrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths; `src/Sections/Humans.Store/Authorization/`, renamed from `StoreOrderAuthorizationHandler` when Store moved into its own project, nobodies-collective/Humans#866).
@@ -144,7 +146,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 ## Access Matrix UI (per-section)
 
 
-Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.UI/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 
 - **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
 - **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.

@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Views/Profile/Emails.cshtml
-  src/Humans.Web/Views/Google/EmailFlagViolations.cshtml
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Users/Views/Profile/Emails.cshtml
+  src/Sections/Humans.GoogleIntegration/Views/Google/EmailFlagViolations.cshtml
 -->
 <!-- freshness:flag-on-change
   Clear / violations service surface, the admin EmailFlagViolations page, and the Profile Emails grid behavior on N>1 violations — review when these change.
@@ -26,7 +26,7 @@ Production data showed at least one user with two `IsGoogle = true` rows. The Pr
 This feature adds:
 
 1. Service-level recovery methods (`ClearGoogleAsync`, `ClearPrimaryAsync`) that drop a single row's flag without auto-promoting a successor — so the operator can deliberately resolve the duplicate state.
-2. UI exposure on the Emails grid (admin always; self only when in violation) so a stuck user can self-recover.
+2. UI exposure on the Emails grid, for both admin and self, surfaced only on rows in an N>1 violation state — so a stuck user can self-recover.
 3. A site-wide admin scan page (`/Google/EmailFlagViolations`) that lists every affected user and deep-links to their grid.
 
 ## User Stories
@@ -37,7 +37,7 @@ This feature adds:
 **So that** the user's row state matches the invariant again
 
 **Acceptance Criteria:**
-- On `/Profile/{id}/Admin/Emails`, every flagged row shows an inline `×` Clear button next to its flag icon.
+- On `/Profile/{id}/Admin/Emails`, a flagged row shows an inline `×` Clear button next to its flag icon when that flag is in an N>1 violation state (same gating as the self path — `hasMultipleGoogle` / `hasMultiplePrimary` over the user's rows).
 - Clicking Clear drops only that row's flag — the sibling row's flag stays unchanged.
 - `ClearPrimary` does not auto-promote a successor; the admin sets the new primary explicitly.
 - An audit row is written (`UserEmailGoogleCleared` / `UserEmailPrimaryCleared`).
@@ -60,6 +60,7 @@ This feature adds:
 **Acceptance Criteria:**
 - `/Google/EmailFlagViolations` (admin-only) lists every user where:
   - `IsGoogle` count across their rows > 1, OR
+  - they have at least one verified row but none of them is `IsGoogle`, OR
   - they have at least one verified row but verified `IsPrimary` count != 1.
 - Each row deep-links to that user's `/Profile/{id}/Admin/Emails` for one-click triage.
 - Page renders an empty success state when no violations exist.
@@ -72,7 +73,7 @@ New DTO:
 
 | Type | Field | Purpose |
 |------|-------|---------|
-| `UserEmailFlagViolation` | `UserId`, `DisplayName`, `IsGoogleCount`, `VerifiedCount`, `VerifiedPrimaryCount`, `HasMultipleGoogle`, `HasPrimaryProblem` | Per-user summary returned by `GetEmailFlagViolationsAsync`. |
+| `UserEmailFlagViolation` | `UserId`, `IsGoogleCount`, `VerifiedCount`, `VerifiedPrimaryCount`, `HasMultipleGoogle`, `HasZeroGoogle`, `HasPrimaryProblem` | Per-user summary returned by `GetEmailFlagViolationsAsync`. No display name — the view resolves it via `<vc:human user-id>`. |
 
 New service surface (`IUserEmailService`):
 
@@ -80,7 +81,7 @@ New service surface (`IUserEmailService`):
 |--------|-----------|
 | `ClearGoogleAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsGoogle` from a single row. Returns false if row not found or not flagged. Does not touch siblings. |
 | `ClearPrimaryAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsPrimary` from a single row. Returns false if row not found or not flagged. **Intentionally bypasses `EnsurePrimaryInvariantAsync`** — leaves the user with zero primary so the operator picks the new one explicitly. |
-| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users currently violating either invariant, unsorted. The controller sorts for display. |
+| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users currently violating any of the three invariants (multiple Google rows, zero Google row among verified emails, or verified-primary count != 1), sorted by burner name. |
 
 New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleared`.
 
@@ -96,11 +97,11 @@ New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleare
 
 ## Cross-Section Dependencies
 
-- **[Profiles section](../../sections/Profiles.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
+- **[Users section](../../../src/Sections/Humans.Users/Docs/Users.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
 - **[GoogleIntegration section](../../../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
 
 ## Related
 
 - [`docs/features/profiles/preferred-email.md`](../profiles/preferred-email.md) — base email management feature; the Set Primary / Set Google flow this remediation extends.
 - [`memory/code/localization-admin-exempt.md`](../../../memory/code/localization-admin-exempt.md) — why `/Google/EmailFlagViolations` uses inline literals rather than resx keys.
-- [`memory/architecture/display-sort-in-controllers.md`](../../../memory/architecture/display-sort-in-controllers.md) — why violation sort happens in `GoogleController.EmailFlagViolations`, not in the service.
+- [`memory/architecture/display-sort-in-controllers.md`](../../../memory/architecture/display-sort-in-controllers.md) — display-sort convention; `GetEmailFlagViolationsAsync` currently sorts by burner name in the service itself, not in `GoogleController.EmailFlagViolations`.

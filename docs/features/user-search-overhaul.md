@@ -1,12 +1,12 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
-  src/Humans.Application/Services/Profiles/PersonSearchFields.cs
-  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
+  src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
+  src/Sections/Humans.Users.Contracts/PersonSearchFields.cs
+  src/Sections/Humans.Users/Data/CachingUserService.cs
   src/Sections/Humans.Search/Controllers/SearchController.cs
-  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Sections/Humans.Users/Controllers/ProfileApiController.cs
   src/Sections/Humans.Teams/**
-  src/Humans.Web/Controllers/ShiftAdminController.cs
-  src/Humans.Web/Controllers/ShiftDashboardController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
+  src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
 -->
 <!-- freshness:flag-on-change
   Search scope authorization model (LegalName/Admin gating, never-searchable fields) and matcher semantics (resolved name, accent folding, token split). Review when the matcher, PersonSearchFields, or search endpoints change — especially the §Follow-up per-window scope flip landing.
@@ -60,7 +60,7 @@ All **profile information** searchable; **board/admin and private info excluded*
 - `Admin` — all verified emails + non-public ContactFields; admin/board only.
 - `PublicAll = Name | Bio`, `ManageAll = Name | Bio | LegalName`, `AdminAll = … | Admin`.
 
-`PersonSearchMatcher` (`src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs`) — a pure,
+`PersonSearchMatcher` (`src/Sections/Humans.Users/Services/PersonSearchMatcher.cs`) — a pure,
 unit-tested matcher over the cached `UserInfo` read-model. Accent-/case-fold (`Fold`: lowercase +
 NFD + strip combining marks); name matching token-splits the folded query and requires every token
 (order-independent). `CachingUserService` keeps the cache iteration + Guid fast-path and delegates
