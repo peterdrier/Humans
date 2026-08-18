@@ -75,6 +75,19 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
+    public async Task An_empty_EntityIds_list_means_no_matches_not_an_unscoped_query()
+    {
+        // A zero-line Store order supplies an empty list. Falling through to GetFilteredAsync
+        // with a null entityId would show every product's price changes on that order.
+        var (_, model) = Unwrap(await BuildSut().InvokeAsync(
+            entityType: "StoreProduct", entityIds: [], actions: "StoreProductPriceChanged"));
+
+        model.Events.Should().BeEmpty();
+        await _viewer.DidNotReceive().GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResourceId_routes_to_the_resource_predicate()
     {
         var resourceId = Guid.NewGuid();

@@ -94,8 +94,13 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         if (googleSyncOnly && userId.HasValue)
             return await auditViewer.GetGoogleSyncForUserAsync(userId.Value);
 
-        if (entityIds is { Count: > 0 })
+        // Non-null but empty means "no matches", never "drop the id filter": a zero-line Store
+        // order would otherwise render every product's price changes.
+        if (entityIds is not null)
         {
+            if (entityIds.Count == 0)
+                return [];
+
             var merged = new List<AuditEvent>();
             foreach (var id in entityIds.Distinct())
             {

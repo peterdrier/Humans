@@ -44,6 +44,9 @@
                 case "Subject": builder.Template(Model.Header("Subject"), subjectCell); break;
                 case "Description": builder.Column(Model.Header("Description"), ev => ev.Description); break;
                 case "Target": builder.Template(Model.Header("Target"), targetCell); break;
+                @* Model.Columns only ever holds AuditLogViewComponent.TableColumns names. A new
+                   one added there without a case here would silently drop its column. *@
+                default: throw new InvalidOperationException($"No cell mapped for audit column '{column}'.");
             }
         }
         table = builder.RowCss(ev => ev.Action.ToAuditEntryRowClass()).Build();
