@@ -599,6 +599,7 @@ internal sealed class ExpensesController(
             {
                 Reports = reports,
                 SubmitterNames = submitterNames,
+                DepartmentNames = await ResolveDepartmentNamesAsync(),
                 FailedHoldedPushCount = await service.CountFailedHoldedPushesAsync(),
             });
         }
@@ -723,6 +724,20 @@ internal sealed class ExpensesController(
             id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
                 ? u.BurnerName
                 : "(unknown)");
+    }
+
+    /// <summary>Active-year budget category id → department label. Categories in the department
+    /// group are one per team, so their own name is the department; anything else keeps its group
+    /// prefix so a non-department booking is still readable.</summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveDepartmentNamesAsync()
+    {
+        var activeYear = await budgetService.GetActiveYearAsync();
+        if (activeYear is null) return new Dictionary<Guid, string>();
+
+        return activeYear.Groups
+            .SelectMany(g => g.Categories.Select(c =>
+                (c.Id, Display: g.IsDepartmentGroup ? c.Name : $"{g.Name} / {c.Name}")))
+            .ToDictionary(x => x.Id, x => x.Display);
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
