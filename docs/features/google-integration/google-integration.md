@@ -10,7 +10,6 @@
   src/Sections/Humans.GoogleIntegration/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
-  src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceProvisionJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
@@ -24,22 +23,25 @@
 
 ## Business Context
 
-Nobodies Collective uses Google Workspace for collaboration. The system integrates with **Shared Drives** and **Google Groups** to manage shared resources for teams. Resources can be either provisioned automatically or linked manually by admins when pre-shared with the service account.
+Nobodies Collective uses Google Workspace for collaboration. The system integrates with **Shared Drives** and **Google Groups** to manage shared resources for teams. Google Groups are provisioned automatically for teams. Drive resources are never created by the system — an admin pre-shares an existing Shared Drive folder or file with the service account and links it.
 
 > **Important: All Drive resources are Shared Drives.** This system does not use regular (My Drive) folders. All permission logic accounts for Shared Drive behavior, including inherited permissions from the drive level.
 
 ## User Stories
 
-### US-7.1: Team Shared Drive Provisioning
+### US-7.1: Team Shared Drive Linking
 **As a** team
-**I want to** have a Shared Drive folder automatically created
-**So that** team members can collaborate on documents
+**I want to** have our Shared Drive folder linked to the team
+**So that** team members get access to it automatically
 
 **Acceptance Criteria:**
-- Folder created in the organization's Shared Drive
-- Named appropriately (e.g., "Team: [Team Name]")
+- Admin pre-shares an existing Shared Drive folder with the service account, then links it by URL
 - Tracked in system for permission management
 - All API calls use `SupportsAllDrives = true`
+
+> The system does not create Drive folders. Linking is the only way a Drive
+> resource enters the system (`ITeamResourceService.LinkDriveFolderAsync`);
+> only Google Groups are provisioned automatically.
 
 ### US-7.2: Automatic Access Grants
 **As a** new team member
@@ -189,9 +191,6 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 ```csharp
 public interface IGoogleSyncService
 {
-    // Shared Drive folder provisioning
-    Task<GoogleResource> ProvisionTeamFolderAsync(Guid teamId, string folderName, CancellationToken ct = default);
-
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct = default);
     Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct = default);
@@ -582,7 +581,7 @@ The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categorie
 
 ### Resource-Level Retry Strategy
 ```
-On Google API error (resource provisioning):
+On Google API error (resource sync):
   1. Log error with details
   2. Store error in GoogleResource.ErrorMessage
   3. Set IsActive = false if persistent
@@ -596,7 +595,7 @@ On Google API error (resource provisioning):
 | User not found (404) | Permanent — mark user email rejected |
 | Invalid email (400) | Permanent — mark user email rejected |
 | Permission denied (403) | Permanent — no Google account for address, mark rejected |
-| Folder not found | Re-provision |
+| Folder not found | Resource marked inactive — an admin re-links the folder |
 | Inherited permission delete | Excluded from the removal set before the delete is ever attempted — any permission with an inherited component (not just fully-inherited ones) is skipped. If Drive still 403s on a race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (#945) |
 
 ### Failed-Sync Admin Meter
@@ -621,7 +620,6 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
     "ServiceAccountKeyPath": "/secrets/google-sa.json",
     "ServiceAccountKeyJson": "",
     "Domain": "nobodies.team",
-    "TeamFoldersParentId": "",
     "UseSharedDrives": true,
     "Groups": {
       "WhoCanViewMembership": "ALL_MEMBERS_CAN_VIEW",
@@ -644,7 +642,7 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 ## Monitoring
 
 ### Metrics
-- Resources provisioned (counter)
+- Google Groups provisioned (counter)
 - Permission grants/revocations (counter)
 - API errors by type (counter)
 - Sync duration (histogram)
@@ -656,7 +654,7 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 
 ## Related Features
 
-- [Teams](../teams/teams.md) - Triggers resource provisioning
+- [Teams](../teams/teams.md) - Triggers Google Group provisioning and access sync
 - [Background Jobs](../global/background-jobs.md) - Resource sync job
 - [Authentication](../auth/authentication.md) - User Google identity
 - [Drive Activity Monitoring](../google-integration/drive-activity-monitoring.md) - Anomalous permission detection

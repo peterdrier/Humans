@@ -113,7 +113,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 | Action | AuditAction | Actor |
 |--------|-------------|-------|
-| Drive folder provisioned | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
+| Google Group linked or reactivated for a team | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 | Google Group provisioned | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 | User added to Group | GoogleResourceAccessGranted | GoogleWorkspaceSyncService |
 | User removed from Group | GoogleResourceAccessRevoked | GoogleWorkspaceSyncService |

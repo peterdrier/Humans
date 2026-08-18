@@ -17,16 +17,6 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 internal interface IGoogleDrivePermissionsClient
 {
     /// <summary>
-    /// Creates a new folder under <paramref name="parentFolderId"/> (when
-    /// provided) with the given <paramref name="folderName"/> and returns its
-    /// Google-assigned id, final name, and web-view link.
-    /// </summary>
-    Task<DriveFolderCreateResult> CreateFolderAsync(
-        string folderName,
-        string? parentFolderId,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Lists every permission on the Drive item identified by
     /// <paramref name="fileId"/>, paginating internally. The returned list
     /// includes both direct and inherited permissions so callers can decide
@@ -99,19 +89,6 @@ internal interface IGoogleDrivePermissionsClient
         string driveId,
         CancellationToken ct = default);
 }
-
-/// <summary>
-/// Outcome of <see cref="IGoogleDrivePermissionsClient.CreateFolderAsync"/>.
-/// Exactly one of <see cref="Folder"/> or <see cref="Error"/> is non-null.
-/// </summary>
-internal sealed record DriveFolderCreateResult(DriveFolder? Folder, GoogleClientError? Error);
-
-/// <summary>
-/// Shape-neutral projection of a newly-created Drive folder. <see cref="Id"/>
-/// and <see cref="Name"/> are nullable to match the underlying SDK's own
-/// nullability; on success Google always populates them.
-/// </summary>
-internal sealed record DriveFolder(string? Id, string? Name, string? WebViewLink);
 
 /// <summary>
 /// Outcome of <see cref="IGoogleDrivePermissionsClient.ListPermissionsAsync"/>.

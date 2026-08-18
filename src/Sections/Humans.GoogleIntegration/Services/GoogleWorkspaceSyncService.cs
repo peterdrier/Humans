@@ -39,58 +39,6 @@ internal sealed class GoogleWorkspaceSyncService(
 {
     private readonly GoogleWorkspaceOptions _options = options.Value;
 
-    /// <inheritdoc />
-    public async Task<GoogleResource> ProvisionTeamFolderAsync(
-        Guid teamId,
-        string folderName,
-        CancellationToken cancellationToken = default)
-    {
-        // Idempotent: return any existing active folder for the team.
-        var existingActive = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
-        var existing = existingActive.FirstOrDefault(r => r.ResourceType == GoogleResourceType.DriveFolder);
-        if (existing is not null)
-        {
-            logger.LogInformation("Team {TeamId} already has active Drive folder {FolderId}", teamId, existing.GoogleId);
-            return existing;
-        }
-
-        logger.LogInformation("Provisioning Drive folder '{FolderName}' for team {TeamId}", folderName, teamId);
-
-        var create = await drivePermissions.CreateFolderAsync(folderName, _options.TeamFoldersParentId, cancellationToken);
-        if (create.Folder is null)
-        {
-            var err = create.Error;
-            throw new InvalidOperationException(
-                $"Google Drive folder create failed (HTTP {err?.StatusCode}): {err?.RawMessage}");
-        }
-
-        var now = clock.GetCurrentInstant();
-        var resource = new GoogleResource
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            ResourceType = GoogleResourceType.DriveFolder,
-            GoogleId = create.Folder.Id ?? string.Empty,
-            Name = create.Folder.Name ?? folderName,
-            Url = create.Folder.WebViewLink,
-            ProvisionedAt = now,
-            LastSyncedAt = now,
-            IsActive = true
-        };
-
-        await resourceRepository.AddAsync(resource, cancellationToken);
-
-        await auditLogService.LogAsync(
-            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
-            $"Provisioned Drive folder '{resource.Name}' for team",
-            nameof(GoogleWorkspaceSyncService),
-            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
-            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
-            // cannot name it (memory/code/type-name-as-persisted-string.md).
-            relatedEntityId: teamId, relatedEntityType: "Team");
-
-        return resource;
-    }
 
     /// <summary>GATEWAY: only path that adds a user to a Drive resource. Skips when GoogleDrive mode is None. <paramref name="permissionLevelOverride"/>: resolved max across teams sharing the resource; null = use resource's level.</summary>
     private async Task AddUserToDriveAsync(
