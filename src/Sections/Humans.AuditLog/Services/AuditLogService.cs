@@ -268,13 +268,6 @@ internal sealed class AuditLogService(
         return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
 
-    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        Instant windowStart,
-        Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
-
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
         IReadOnlyList<AuditAction> actions,

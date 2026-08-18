@@ -78,20 +78,6 @@ public interface IAuditLogService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct entity ids for audit entries whose
-    /// <c>AuditLogEntry.Action</c> matches <paramref name="action"/>
-    /// and whose <c>AuditLogEntry.OccurredAt</c> falls inside the
-    /// half-open window <c>[windowStart, windowEnd)</c>. Used by the Board
-    /// daily digest to enumerate approvals without reading
-    /// <c>audit_log_entries</c> directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        Instant windowStart,
-        Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct set of <c>AuditLogEntry.EntityId</c> values
     /// across all-time audit entries whose <c>AuditLogEntry.EntityType</c>
     /// matches <paramref name="entityType"/> and whose
