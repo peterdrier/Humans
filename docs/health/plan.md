@@ -1,7 +1,30 @@
 # Section Doctor — Plan
 
-No standing plan yet. Both runs so far were `--section` invocations; the first scheduled run
-will write the 5–7 day table here.
+**Anchor:** `485a4714b` (origin/main, 2026-08-18). Scores from
+`reforge surface-score --format compact` on a built solution at that commit.
+
+**Rubric this cycle:** first cycle, so nothing but Containers and Guide has ever been
+doctored. Peter's steer (2026-08-18) is to work the **middle of the pack** rather than the
+biggest section first — Users at 2822 is five times the next section and would swallow many
+runs before showing a return, while the mid band is small enough that a single run can
+actually finish a section. Within the mid band, never-served-by-any-refactor-lane wins
+(from the Section Refactor History table), then score descending. Sections with in-flight
+or planned feature work are skipped.
+
+**Skipped and why:** Users (2822), Shifts (1081), GoogleIntegration (1014), Teams (777),
+Tickets (580) — top of the pack, deferred per the steer. Containers, Guide — already
+doctored. Store (220) — in-flight feature work (nobodies-collective/Humans#1029 Store
+Phase 5 Holded v2 invoicing, #158). Web/Interfaces/Analyzers/Development — not sections.
+
+| Date | Section | Score | Why now |
+|---|---|---|---|
+| [x] 2026-08-18 | Finance | 254 | Never served by any lane; reshaped by the Holded v2 split (#1306) and never re-examined; the live domain in the current post-event finance/cleanup phase |
+| [ ] 2026-08-19 | Expenses | 273 | Top of the mid band; last lane 2026-05-30 (#830), the longest-stale of the mid band |
+| [ ] 2026-08-20 | Budget | 257 | Last lane 2026-05-30 (#836); pairs with Expenses — same money domain, adjacent findings |
+| [ ] 2026-08-21 | Camps | 247 | Last lane 2026-05-29 (#822) |
+| [ ] 2026-08-22 | Mailer | 225 | Never served by any lane; absent from the Section Refactor History table entirely |
+| [ ] 2026-08-23 | Events | 173 | Last lane 2026-06-11 (#967) — most recently served of the band, so last |
+| [ ] 2026-08-24 | Notifications | 166 | Last lane 2026-06-01 (#852) |
 
 ## Needs Peter
 

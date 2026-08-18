@@ -5,7 +5,7 @@
   src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
 -->
 <!-- freshness:flag-on-change
-  FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
+  FinanceController routes and auth policy (FinanceAdminOrAdmin) — review when FinanceController or its IHoldedFinanceService / IUserServiceRead dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, or HoldedCategoryMap change.
 -->
 
 # Finance — Section Invariants
@@ -14,9 +14,9 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 ## Today vs Planned
 
-**Today — treasurer surface over Budget** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. Reads/writes route through `IBudgetService`, `ITicketServiceRead`.
+**Today — the `/Finance` prefix is shared, and Budget owns most of it** (built): the treasurer's window over Budget data — years, groups, categories, line items, ticketing projections, audit log, cash-flow view — is `BudgetAdminController` in the **Budget** section, at `[Route("Finance")]`. It is documented in [`Budget.md`](../../Humans.Budget/Docs/Budget.md), not here. This section's controller owns only the eight Holded/creditor actions below. Both are gated on `FinanceAdmin` or `Admin`.
 
-**Today — Holded actuals integration** (built, Feature 1): Finance-owned entities (`HoldedExpenseDoc`, `HoldedCategoryMap`, `HoldedSyncState`) with a dedicated repository, `IHoldedFinanceService`/`HoldedFinanceService`, nightly sync job, and treasurer UI pages for account provisioning and unmatched-doc resolution. Actuals displayed on the budget year detail view.
+**Today — Holded actuals integration** (built, Feature 1): Finance-owned entities (`HoldedExpenseDoc`, `HoldedCategoryMap`, `HoldedDocSyncState`, `HoldedCreditorContact`) with a dedicated repository, `IHoldedFinanceService`/`Service`, nightly sync job, and treasurer UI pages for account provisioning and unmatched-doc resolution. Actuals displayed on the budget year detail view.
 
 **Today — Holded creditor ledger cache** (built, Feature 2): nightly sync of the Holded daybook (dailyledger) journal lines into one table, `HoldedLedgerLine`. Creditor balance, owed, and payments are **derived** from these lines (no separate balance/payment tables, no live API call on page load); `GetCreditorStatusAsync` / `GetCreditorLedgerAsync` expose the read surface to Expenses. See [Feature 2](#feature-2--holded-creditor-ledger-cache) below.
 
@@ -55,7 +55,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | BudgetCategoryId | Guid? | Attributed category (null = unmatched) |
 | MatchStatus | HoldedMatchStatus | `Matched` or `Unmatched` |
 | MatchSource | HoldedMatchSource | `None`, `Account`, or `Tag` |
-| RawPayload | string (jsonb) | Full Holded JSON for debugging |
+| RawPayload | string (jsonb) | Always the literal `{}` — `Service.MapDoc` has never written a payload here, and nothing reads it. NOT NULL, so dropping it is a schema change (queued, not taken). |
 | LastSyncedAt | Instant | Updated every sync that touches this row |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
@@ -105,64 +105,46 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
-All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`.
+Two controllers share the `/Finance` prefix and their action templates are disjoint. Both are
+gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]`.
 
-### Today — treasurer surface over Budget
+### Budget's surface — not this section
+
+`GET /Finance`, `/Finance/Years/*`, `/Finance/Categories/*`, `/Finance/Groups/*`,
+`/Finance/LineItems/*`, `/Finance/CashFlow`, `/Finance/AuditLog/*`, `/Finance/Admin`,
+`/Finance/TicketingProjection/*` and `/Finance/TicketingBudget/*` are
+`BudgetAdminController` (`Humans.Budget.Controllers`). They are listed in
+[`Budget.md`](../../Humans.Budget/Docs/Budget.md); duplicating them here is what let this
+table drift.
+
+### This section — `FinanceController`
 
 | Route | Controller action |
 |-------|-------------------|
-| `GET /Finance` | `Index` — Budget year overview (active year) |
-| `GET /Finance/Years/{id}` | `YearDetail` — Budget year detail (includes Holded actuals column) |
-| `GET /Finance/Categories/{id}` | `CategoryDetail` — Budget category detail |
-| `GET /Finance/AuditLog/{yearId?}` | `AuditLog` — Budget audit log |
-| `GET /Finance/CashFlow` | `CashFlow` — Cash flow projection |
-| `GET /Finance/Admin` | `Admin` — Budget admin (years/groups) |
-| `POST /Finance/Years/{id}/SyncDepartments` | `SyncDepartments` |
-| `POST /Finance/Years/Create` | `CreateYear` |
-| `POST /Finance/Years/{id}/UpdateStatus` | `UpdateYearStatus` |
-| `POST /Finance/Years/{id}/Update` | `UpdateYear` |
-| `POST /Finance/Years/{id}/Delete` | `DeleteYear` |
-| `POST /Finance/Groups/Create` | `CreateGroup` |
-| `POST /Finance/Groups/{id}/Update` | `UpdateGroup` |
-| `POST /Finance/Groups/{id}/Delete` | `DeleteGroup` |
-| `POST /Finance/Categories/Create` | `CreateCategory` |
-| `POST /Finance/Categories/{id}/Update` | `UpdateCategory` |
-| `POST /Finance/Categories/{id}/Delete` | `DeleteCategory` |
-| `POST /Finance/LineItems/Create` | `CreateLineItem` |
-| `POST /Finance/LineItems/{id}/Update` | `UpdateLineItem` |
-| `POST /Finance/LineItems/{id}/Delete` | `DeleteLineItem` |
-| `POST /Finance/Years/{id}/EnsureTicketingGroup` | `EnsureTicketingGroup` |
-| `POST /Finance/TicketingProjection/{groupId}/Update` | `UpdateTicketingProjection` |
-| `POST /Finance/TicketingBudget/{yearId}/Sync` | `SyncTicketingBudget` |
+| `GET /Finance/HoldedAccounts` | `HoldedAccounts` — account provisioning UI (reconcile + apply) |
+| `GET /Finance/HoldedUnmatched` | `HoldedUnmatched` — unmatched-doc worklist with deep links and "Sync now" |
+| `GET /Finance/Creditors` | `Creditors` — admin overview of all cached 400000xx creditor accounts with member bindings |
+| `GET /Finance/Creditors/{accountNum:int}` | `CreditorStatement` — per-account statement (balance + itemized journal lines) |
+| `POST /Finance/HoldedAccounts/Provision` | `ProvisionHoldedAccounts` — add one or all pending Holded accounts + map rows |
+| `POST /Finance/HoldedSync/Run` | `RunHoldedSync` — manual purchase-doc sync trigger |
+| `POST /Finance/Creditors/Bind` | `BindCreditor` — manually bind a member to a Holded creditor account by 400000xx number |
+| `POST /Finance/Creditors/Unbind` | `UnbindCreditor` — clear a member's binding (the remedy for a wrong bind or a collision) |
 
-### Holded integration
-
-| Route | Purpose |
-|-------|---------|
-| `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
-| `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
-| `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
-| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (balance + itemized journal lines) |
-| `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
-| `POST /Finance/HoldedSync/Run` | Manual sync trigger |
-| `POST /Finance/Creditors/Bind` | Manually bind a member to a Holded creditor account by 400000xx number |
-| `POST /Finance/Creditors/Resync` | Full-history creditor-ledger resweep; the nightly job only covers a trailing year |
-| `POST /Finance/Creditors/Unbind` | Clear a member's creditor binding (the remedy for a wrong bind or a collision) |
+Ledger-mirror sync — including the full-history resweep — lives on `/Holded`, not here.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
-| FinanceAdmin, Admin | Full access to all `/Finance/*` routes. View budget data, manage years/groups/categories/line items, trigger ticketing sync. Provision Holded accounts, trigger Holded sync, inspect unmatched docs. |
+| FinanceAdmin, Admin | Full access to all `/Finance/*` routes, on both controllers. In this section: provision Holded accounts, trigger the purchase-doc sync, inspect unmatched docs, bind and unbind member creditor accounts, read creditor statements. |
 | Department coordinator | None — Finance routes are FinanceAdmin-only. |
 | Any other authenticated human | None |
 
 ## Invariants
 
-- A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedFinanceService.MapDoc`).
-- Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`FinanceController` → `GetActualsForYearAsync` → `HoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
+- A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`Service.MapDoc`).
+- Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `Repository.GetMatchedForYearAsync`). The Madrid conversion happens on write, in `Service.MapDoc`, so a doc timestamped just after Madrid midnight on 1 January books to the new year even though its UTC date is 31 December. A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
-- All budget mutations in `FinanceController` route through `IBudgetService` — the controller owns no Finance-domain tables beyond the Holded integration.
 - The sync job pulls all purchase docs from Holded each cycle (full-pull). Upsert is keyed on `HoldedDocId`; `CreatedAt` is preserved across re-syncs.
 - Full-pull is forced by a Holded API limitation (live probe, 2026-04-26): the purchase-documents endpoint's only date filters filter on `accountingDate`, which is null on most real purchase docs, so there is no reliable incremental-sync key for purchase documents. `ListPurchaseDocumentsAsync` therefore takes no date window at all — it walks `/api/v2/purchases` page by page internally under a 200-page safety cap. Approval state comes from a second full sweep, `ListDraftPurchaseIdsAsync` (`?approval_status=draft`): a doc absent from that set is marked `IsApproved`, so the set must be complete or a draft leaks into the actuals — the client throws rather than dropping an id-less row.
 - Attribution runs every sync. Fixing an account mapping or tag in Holded takes effect on next sync or via the manual "Sync Now" button.
@@ -189,20 +171,27 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 
 - Coordinators **cannot** view `/Finance/*` routes.
 - The sync job **cannot** delete `HoldedExpenseDoc` rows. Holded-side deletions are not handled in v1.
-- Finance **cannot** read or write Budget tables directly — all cross-section access goes through `IBudgetService` (tech debt: future read-split to `IBudgetServiceRead` noted as Feature 2 work).
+- Finance **cannot** read or write Budget tables directly — its only Budget access is `IBudgetServiceRead.GetActiveYearAsync`, for the provisioning plan's category list.
 - Finance **cannot** write to `holded_expense_docs` outside the sync job. No manual create/edit/delete UI for expense docs in v1.
 
 ## Triggers
 
-- None in the Finance domain layer for the budget side. Budget mutations via `FinanceController` trigger Budget-section side effects (audit log entries written by `IBudgetService`).
+- None in the Finance domain layer. This section mutates no Budget data, so it fires no Budget-section side effects.
 - When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies
 
-- **Budget:** `IBudgetService` (read + write — all budget year/group/category/line-item mutations in `FinanceController` route through it). Also used by `IHoldedFinanceService` for category lookups (tech debt; see Planned above).
-- **Tickets:** `ITicketServiceRead.GetTicketOrdersAsync` (cash flow view derives gross paid revenue from `TicketOrderInfo`).
+Outbound — the section's whole project-reference set:
 
-Budget never calls into Finance.
+- **Budget:** `IBudgetServiceRead.GetActiveYearAsync` — the active year's groups and categories, for the provisioning plan. Read-only.
+- **Holded:** `IHoldedService.GetLedgerLinesAsync` / `GetAccountBalancesAsync` for the ledger mirror, and `IHoldedClient` for the live chart of accounts, contact list and contact upsert.
+- **Users:** `IUserServiceRead.GetUserInfosAsync` — burner names for the bound members on `/Finance/Creditors`. Controller-side only.
+- **Gdpr:** `IUserDataContributor` — `Service` contributes the member's creditor binding to the Article 15 export.
+
+Inbound: **Budget** (`BudgetAdminController` → `GetActualsForYearAsync`), **Expenses**
+(`GetCreditorStatusAsync`, `GetCreditorLedgerAsync`, `GetHoldedAccountIdForCategoryAsync`,
+`EnsureCreditorContactAsync`, `SetCreditorAccountNumAsync`, `ListCreditorAccountsAsync`,
+`GetCreditorContactByUserAsync`) and **Holded** (`SyncAsync`, `GetDocSyncInfoAsync`).
 
 ## Architecture
 
@@ -213,11 +202,11 @@ Budget never calls into Finance.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`)  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`  
-**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **not this section's.** Since G5 lane 4b-2f it is only a shim: its body is `HoldedNightlySync` in `Humans.Holded`, which calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror. At G5 lane 5b-5 the shim followed its body into `src/Sections/Humans.Holded/Contracts/`; the "Hangfire serializes the declaring type name" claim that had kept it in Base is false — `AddOrUpdate<T>(id, …)` is keyed on the job id.  
+**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **not this section's.** Since G5 lane 4b-2f it is only a shim: its body is `HoldedNightlySync` in `Humans.Holded`, which calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror. At G5 lane 5b-5 the shim followed its body into the Holded section, and the HUM0034 Jobs carve-out put it at `src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs`; the "Hangfire serializes the declaring type name" claim that had kept it in Base is false — `AddOrUpdate<T>(id, …)` is keyed on the job id.  
 **Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline. Since then: `20260810195350_HoldedExpenseDocIsApproved` (swaps `ApprovedAt` for the nullable `IsApproved` flag) and `20260810204942_HoldedMirrorMovesToHoldedSection` (drops the ledger-mirror tables, which the Holded section now owns)  
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
-**Controllers.** `/Finance` is served by two controllers under one route prefix. `Humans.Finance.Controllers.FinanceController` owns the section's own eight actions — `HoldedAccounts`, `HoldedUnmatched`, `Creditors`, `CreditorStatement`, `Bind`, `Unbind`, `Provision`, `HoldedSync/Run`. The other 23 actions on the pre-G5 `FinanceController` were Budget CRUD (years, groups, categories, line items, ticketing projection, cash flow, audit log) and stayed in Shell as `BudgetAdminController`, keeping `[Route("Finance")]` so no URL moved. Moving them here would have put Budget's whole admin surface inside the Finance section and forced two Budget view models (`BudgetSlice`, `VatProjection`) down into Base to reach it. They reunite — or don't — at Budget's own G5.
+**Controllers.** `/Finance` is served by two controllers under one route prefix. `Humans.Finance.Controllers.FinanceController` owns the section's own eight actions — `HoldedAccounts`, `HoldedUnmatched`, `Creditors`, `CreditorStatement`, `Bind`, `Unbind`, `Provision`, `HoldedSync/Run`. The other 23 actions on the pre-G5 `FinanceController` were Budget CRUD (years, groups, categories, line items, ticketing projection, cash flow, audit log) and became `BudgetAdminController`, which now lives in the Budget section project (`Humans.Budget.Controllers`), keeping `[Route("Finance")]` so no URL moved. Moving them here would have put Budget's whole admin surface inside the Finance section and forced two Budget view models (`BudgetSlice`, `VatProjection`) down into Base to reach it. They reunite — or don't — at Budget's own G5.
 
 **The Holded connector is not this section.** `IHoldedClient`, `HoldedClient`, `HoldedClientOptions`, `HoldedApiException` and the connector DTOs belong to the **Holded** section — public on `Humans.Holded.Contracts`, implementation `internal` in `Humans.Holded/Services/` — with their own [`Holded-connector.md`](../../Humans.Holded/Docs/Holded-connector.md) (G5 lane 4b-2f, nobodies-collective/Humans#866). Finance consumes them through that leaf. Consequence for the boundary: `HoldedCreditorLedger.Lines` carries Finance's own `CreditorLedgerLine` rather than the connector's `HoldedLedgerLineDto`, because the contracts leaf may reference only the bottom of the graph and re-exporting another component's wire DTO across a section boundary is the thing the split exists to stop.
 
@@ -237,10 +226,10 @@ Budget never calls into Finance.
 > - `../Humans.Finance.Contracts/IHoldedFinanceService.cs`
 > - `Data/IHoldedRepository.cs`
 > - `Data/Repository.cs`
-> - `src/Sections/Humans.Holded/Services/HoldedClient.cs`
-> - `src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs`
 > - `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
-> - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
+> - EF migration `20260715103643_BaselineFinance` — the per-feature chain, `HoldedActuals` included, was squashed into it at #858
+>
+> Consumed, not owned: `Humans.Holded`'s `HoldedClient` and `HoldedSyncJob`.
 >
 > **What exists (Feature 2 — ledger single-source):**
 > - `Domain/HoldedCreditorContact.cs` — member → 400000xx binding (from #1021)
@@ -266,9 +255,10 @@ The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierA
 
 ### Current violations
 
-None. `FinanceController` calls Budget/Tickets via their service interfaces. `HoldedFinanceService` calls `IBudgetService` for cross-section reads (acknowledged tech debt; future read-split to `IBudgetServiceRead` noted). No cross-section DbContext reads.
+None. Every cross-section call goes through a contracts interface, and the Budget dependency is
+already the read half (`IBudgetServiceRead`). No cross-section DbContext reads.
 
 ### Touch-and-clean guidance
 
 - **Soft boundary:** `TicketingProjection` and `TicketingBudgetService` are conceptually "actuals materialization" but live in Budget today. Treat as known soft boundary — separate cleanup, not an active violation.
-- **Future:** split Holded's `IBudgetService` dependency to `IBudgetServiceRead` and introduce `IBudgetServiceRead` where only reads are needed.
+- **Public surface:** five of `IHoldedFinanceService`'s fourteen methods (`GetProvisioningPlanAsync`, `ProvisionAsync`, `GetUnmatchedAsync`, `SetCreditorContactAsync`, `ClearCreditorContactAsync`) have no caller outside this project — they are admin operations exported across an assembly boundary for `FinanceController`'s benefit alone. Splitting them onto an internal interface would take the public contract down to the nine methods Budget, Expenses and Holded actually use.
