@@ -3,9 +3,10 @@
   src/Sections/Humans.Finance.Contracts/**
   src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
+  src/Sections/Humans.Budget/Controllers/BudgetAdminController.cs
 -->
 <!-- freshness:flag-on-change
-  FinanceController routes and auth policy (FinanceAdminOrAdmin) — review when FinanceController or its IHoldedDocAdminService / ICreditorAdminService / IUserServiceRead dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedDocService, or HoldedCategoryMap change.
+  FinanceController routes and auth policy (FinanceAdminOrAdmin) — review when FinanceController or its IHoldedDocAdminService / ICreditorAdminService / IUserServiceRead dependencies change. Holded attribution logic (Account → Tag → Unmatched) and provisioning model reviewed when HoldedMatcher, IHoldedDocService, or HoldedCategoryMap change. The Routing section names BudgetAdminController's route families to say what is NOT this section's, so a change to that controller's templates must be reviewed here too even though the surface belongs to Budget.
 -->
 
 # Finance — Section Invariants
