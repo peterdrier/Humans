@@ -1,12 +1,12 @@
 <!-- freshness:triggers
-  src/Humans.Domain/Entities/VolunteerBuildStatus.cs
-  src/Humans.Application/Services/Shifts/VolunteerTrackingService.cs
-  src/Humans.Application/Interfaces/Shifts/IVolunteerTrackingService.cs
-  src/Humans.Application/Interfaces/Repositories/IVolunteerTrackingRepository.cs
-  src/Humans.Web/Controllers/VolunteerTrackingController.cs
-  src/Humans.Web/Views/VolunteerTracking/Index.cshtml
-  src/Humans.Web/Views/VolunteerTracking/_VolunteerHeatmap.cshtml
-  src/Humans.Web/Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml
+  src/Sections/Humans.Shifts/Domain/VolunteerBuildStatus.cs
+  src/Sections/Humans.Shifts/Services/VolunteerTrackingService.cs
+  src/Sections/Humans.Shifts/Services/IVolunteerTrackingService.cs
+  src/Sections/Humans.Shifts/Data/IVolunteerTrackingRepository.cs
+  src/Sections/Humans.Shifts/Controllers/VolunteerTrackingController.cs
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/Index.cshtml
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/_VolunteerHeatmap.cshtml
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml
 -->
 <!-- freshness:flag-on-change
   Volunteer Tracking heatmap algorithm, the two cohorts (signups-with-gaps vs declared-but-unbooked), and the camp set-up date semantics — review when these change.
@@ -14,7 +14,7 @@
 
 # Volunteer Tracking
 
-Adds a `/ShiftDashboard/VolunteerTracking` sub-page that surfaces volunteers whose build-period schedule has gaps, plus volunteers who declared participation and filled in availability but haven't signed up for any shifts.
+Adds a `/Shifts/Dashboard/VolunteerTracking` sub-page that surfaces volunteers whose build-period schedule has gaps, plus volunteers who declared participation and filled in availability but haven't signed up for any shifts.
 
 ## Business Context
 
@@ -52,7 +52,7 @@ Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design sp
 **So that** I can chase them up or backfill the slot before it becomes a real coverage problem
 
 **Acceptance Criteria:**
-- `/ShiftDashboard/VolunteerTracking` lists every volunteer with at least one build-period signup, sorted by gap count (descending), then last name.
+- `/Shifts/Dashboard/VolunteerTracking` lists every volunteer with at least one build-period signup, sorted by gap count (descending), then last eligible signup offset (ascending), then display name.
 - Each row shows one cell per day from the volunteer's first build signup through gate-open day. Cell colours: green = confirmed signup, light green = pending signup, red = gap, blue = on camp set-up, grey = outside their active window.
 - A red badge on the row shows the gap count (`{0} gaps`).
 - A header card shows aggregate counts: total tracked, total with gaps, total on camp set-up, total declared-but-unbooked.
@@ -86,6 +86,7 @@ Summary:
 | `SetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
 | `SetAt` | `Instant?` | When the marker was set |
 | `Notes` | `string?` | Free-text from the coordinator who set/cleared the date |
+| `DayOffs` | `List<DayOffEntry>` | Sparse day-off entries (jsonb); each carries `DayOffset`, `Reason`, `MarkedByUserId`, `MarkedAt` |
 
 **Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
@@ -106,6 +107,7 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
    - Day before the user's first build signup → `Outside` (grey).
    - User has at least one Confirmed signup that covers the day → `Confirmed` (green).
    - User has at least one Pending signup that covers the day → `Pending` (light green).
+   - Day is in the volunteer's `DayOffs` list → `DayOff` (striped grey).
    - Otherwise → `Gap` (red). Gaps are not capped by "today" — any unfilled day in the window counts so coordinators can plan ahead for future events, not just react during build.
 4. `GapCount` = number of `Gap` cells. Rows with `GapCount = 0` may still show (the filter toggle hides them).
 
@@ -121,15 +123,22 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 
+### Export
+
+An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator download the tracking data as `.xlsx`, filtered by department, period (Build/Event/Strike, with a Build sub-period breakdown), or an explicit date range. `VolunteerTrackingController.ExportXlsx` resolves the requested range and hands it to `IVolunteerTrackingExportService` → `VolunteerTrackingXlsxBuilder`.
+
 ## Routes
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/ShiftDashboard/VolunteerTracking` | GET | `VolunteerTrackingWrite` (read on the same gate) | Heatmap page |
-| `/ShiftDashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
-| `/ShiftDashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
-| `/ShiftDashboard/VolunteerTracking/SetDayOff` | POST | `VolunteerTrackingWrite` | Mark a single day off for a volunteer (with optional reason) |
-| `/ShiftDashboard/VolunteerTracking/ClearDayOff` | POST | `VolunteerTrackingWrite` | Clear a previously-marked day off |
+| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftDashboardAccess` | Heatmap page |
+| `/Shifts/Dashboard/VolunteerTracking/ExportXlsx` | GET | `ShiftDashboardAccess` | Export the tracking data (department/period/date-range filters) as an .xlsx file |
+| `/Shifts/Dashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
+| `/Shifts/Dashboard/VolunteerTracking/SetDayOff` | POST | `VolunteerTrackingWrite` | Mark a single day off for a volunteer (with optional reason) |
+| `/Shifts/Dashboard/VolunteerTracking/ClearDayOff` | POST | `VolunteerTrackingWrite` | Clear a previously-marked day off |
+| `/Shifts/Dashboard/VolunteerTracking/SetAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator marks a build-day offset available for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator clears a declared-available build-day offset |
 
 ## Related
 

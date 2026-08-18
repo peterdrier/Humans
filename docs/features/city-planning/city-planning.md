@@ -4,7 +4,7 @@
   src/Sections/Humans.Containers/Controllers/ContainerController.cs
   src/Sections/Humans.Containers/Domain/Container.cs
   src/Sections/Humans.CityPlanning/Contracts/CityPlanningHub.cs
-  src/Humans.UI/Authorization/RoleChecks.cs
+  src/Humans.Interfaces/Authorization/RoleChecks.cs
 -->
 <!-- freshness:flag-on-change
   Polygon entities, container entity, MVC/API/SignalR routes, sound-zone color encoding, or map-admin authorization may have shifted.

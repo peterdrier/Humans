@@ -1,11 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Onboarding/**
-  src/Humans.Application/Services/Profiles/ProfileService.cs
+  src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Governance/Services/**
   src/Humans.Web/Controllers/HomeController.cs
-  src/Humans.Web/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Consent/Controllers/ConsentController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
@@ -15,7 +15,7 @@
   src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
   src/Sections/Humans.Onboarding/Views/Shared/Components/OnboardingProgressBanner/**
   src/Sections/Humans.Onboarding/ViewComponents/OnboardingProgressBannerViewComponent.cs
-  src/Humans.Domain/Entities/Profile.cs
+  src/Sections/Humans.Users.Contracts/Profile.cs
   src/Sections/Humans.Governance/Domain/Application.cs
 -->
 <!-- freshness:flag-on-change

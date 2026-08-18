@@ -1,17 +1,17 @@
 <!-- freshness:triggers
-  src/Humans.UI/Controllers/HumansCampControllerBase.cs
-  src/Humans.Web/Views/Camp/**
-  src/Humans.Web/Views/CampAdmin/**
-  src/Humans.Web/Controllers/CampController.cs
-  src/Humans.Web/Controllers/CampAdminController.cs
-  src/Humans.Web/Controllers/CampApiController.cs
-  src/Humans.Application/Services/Camps/**
-  src/Humans.Domain/Entities/Camp.cs
-  src/Humans.Domain/Entities/CampSeason.cs
-  src/Humans.Domain/Entities/CampImage.cs
-  src/Humans.Domain/Entities/CampHistoricalName.cs
-  src/Humans.Domain/Entities/CampSettings.cs
-  src/Humans.Infrastructure/Data/Configurations/Camps/**
+  src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs
+  src/Sections/Humans.Camps/Views/Camp/**
+  src/Sections/Humans.Camps/Views/CampAdmin/**
+  src/Sections/Humans.Camps/Controllers/CampController.cs
+  src/Sections/Humans.Camps/Controllers/CampAdminController.cs
+  src/Sections/Humans.Camps/Controllers/CampApiController.cs
+  src/Sections/Humans.Camps/Services/**
+  src/Sections/Humans.Camps/Domain/Camp.cs
+  src/Sections/Humans.Camps/Domain/CampSeason.cs
+  src/Sections/Humans.Camps/Domain/CampImage.cs
+  src/Sections/Humans.Camps/Domain/CampHistoricalName.cs
+  src/Sections/Humans.Camps/Domain/CampSettings.cs
+  src/Sections/Humans.Camps/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
   Camps directory, registration, season lifecycle, lead/co-lead management, name lock, public JSON API, and Camp Admin dashboard. Review when camp views, controllers, services, or entities change.
@@ -79,7 +79,7 @@ Your camp profile is **persistent year to year** — next year you only update i
 If you are a **Camp Lead**, you can manage your specific camp. You cannot edit camps you don't lead.
 
 - **Edit your camp** at `/Camps/{slug}/Edit`. Update contact info, links, the current season's data (blurb, vibes, kids policy, space and sound needs, performance info), and camp-level fields like times at the event and the Swiss camp flag. Toggle **Hide historical names** to suppress the "Also known as" section on the public page.
-- **Manage names.** If a Camp Admin has set a name lock date for the year, name changes are blocked after that date. Any rename is automatically recorded as a historical name.
+- **Manage names.** If a Camp Admin has set a name lock date for the year, name changes are blocked after that date. Any rename is automatically recorded as a historical name; you can also add or remove historical names by hand from the Edit page.
 - **Manage co-leads** from the Members page, in the same Roles panel used for every other per-camp role: search for a human to add them as Camp Lead, or unassign one to remove them. The Camp Lead role's slot count (2 by default) is set on the shared role definition, not per camp — ask a Camp Admin to raise it if your camp needs more leads.
 - **Upload, delete, and reorder images** from the Edit page. Images appear on the directory card and detail page in the order you set.
 - **Opt into a new season** when Camp Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camp Admin review. Either way, review and update the season-specific fields before the event.

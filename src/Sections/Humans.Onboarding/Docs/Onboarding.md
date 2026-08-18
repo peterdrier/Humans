@@ -2,14 +2,14 @@
   src/Sections/Humans.Onboarding/**
   src/Sections/Humans.Onboarding.Contracts/**
   src/Sections/Humans.Users/Services/HumanLifecycleService.cs
-  src/Humans.Application/Services/Profiles/ProfileService.cs
-  src/Humans.Application/Services/Users/UserService.cs
-  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Sections/Humans.Users/Services/ProfileService.cs
+  src/Sections/Humans.Users/Services/UserService.cs
+  src/Sections/Humans.Users/Services/AccountProvisioningService.cs
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Governance/Services/ApplicationDecisionService.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
   src/Humans.Web/Controllers/AccountController.cs
-  src/Humans.Web/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->
 <!-- freshness:flag-on-change
@@ -56,7 +56,7 @@ Multiple controllers serve this section:
 | `MembershipRequiredFilter` | (global filter) | Routes by `UserState`: `Bare` → `/OnboardingWidget`, `DeletePending` → `/User/Deletion`, walled states → `/User/Status`, `Active` → app |
 | `NameRequiredFilter` | (global filter) | Name-gate: redirects any authenticated user without a real BurnerName to `/OnboardingWidget/Names` |
 
-Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only consumes `IApplicationDecisionService` for pending-application badges and detail context.
+Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only consumes `IApplicationServiceRead` for pending-application badges and detail context.
 
 ## Actors & Roles
 
@@ -102,12 +102,12 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 
 - **Profiles:** `IUserService` — profile reads, review-queue reads, profile mutations (clear/flag consent check, reject signup). The Profile caching decorator handles `FullProfile` + nav/notification cache invalidation.
 - **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
-- **Governance:** `IApplicationDecisionService` — pending-application lookup (review queue). Board-voting methods are now consumed directly by callers, not via OnboardingService.
+- **Governance:** `IApplicationServiceRead` — pending-application lookup (review queue); the narrow read slice of `IApplicationDecisionService`. Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag no longer sync.
 - **Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
 - **Lifecycle:** `IHumanLifecycleService` — used by `GetNextUnsignedConsentAsync` to self-heal a consent-suspended user who is already compliant (nothing left to sign after the required set shrank).
 - **Notifications / Email:** `IEmailService.SendAsync` (with `IEmailMessageFactory.SignupRejected`), `INotificationService` (`ProfileRejected`, `ConsentReviewNeeded` dispatch). The notification auto-resolve dependency moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
-- **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + review-queue snapshots), `ILogger`.
+- **Cross-cutting:** `IMembershipCalculatorRead` (consent-check eligibility + review-queue snapshots), `ILogger`.
 
 ## Architecture
 

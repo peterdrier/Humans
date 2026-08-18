@@ -100,8 +100,9 @@
             @* Events the camp is hosting this edition (logged-in users only; auto-hidden when empty) *@
             @if (User.Identity?.IsAuthenticated == true)
             {
-                @* EventsCardViewComponent injects IEventServiceRead and binds Humans.Web's events view
-       models; it stays in Shell and resolves by name. Its own doc comment says it is "invoked
+                @* EventsCardViewComponent injects IEventServiceRead and binds the Events section's view
+       models; it lives in Humans.Events/ViewComponents/ and resolves by name. Its own doc
+       comment says it is "invoked
        with ids only — no Event types cross into the host section's views", which is what makes
        invoke-by-name available here (design §15 step 6). *@
                 @await Component.InvokeAsync("EventsCard", new { campId = Model.Id })

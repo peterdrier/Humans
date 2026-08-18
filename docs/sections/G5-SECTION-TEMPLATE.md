@@ -1213,7 +1213,7 @@ Git Bash.)
      partial's own `@model` line, because Shell's `Views/_ViewImports.cshtml` already has the
      `@using` (proven: Search).
      **Fourth sighting, and it says `Humans.UI` is the rule's *example*, not its depth.**
-     `Humans.Web/Infrastructure/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
+     `Humans.Interfaces/Logging/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
      renders; `Program.cs`'s logger configuration writes to it and Shell's `LogApiController`
      reads it, so it cannot come into the section and the section cannot name it where it is.
      It carries no section vocabulary — which is the test — but it is also not presentation, so

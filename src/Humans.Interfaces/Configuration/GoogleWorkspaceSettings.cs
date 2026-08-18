@@ -33,12 +33,6 @@ public class GoogleWorkspaceSettings
     public string CustomerId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Parent folder ID for team folders in Drive.
-    /// If empty, folders are created in the root.
-    /// </summary>
-    public string? TeamFoldersParentId { get; set; }
-
-    /// <summary>
     /// Whether to use Shared Drives instead of regular folders.
     /// </summary>
     public bool UseSharedDrives { get; set; } = false;

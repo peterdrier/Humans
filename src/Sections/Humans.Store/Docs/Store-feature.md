@@ -28,7 +28,7 @@ The section invariant doc is [`Store.md`](Store.md).
 - `/Store/Admin/Catalog` lists every product for the current event year (active and inactive) with name, description, unit price, VAT rate, optional deposit, OrderableUntil deadline, and IsActive state.
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The authorization guard in `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable by Camp Leads; admins can extend or shorten it freely and are not blocked past the deadline.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `Service.AddLineAsync` rejects new lines against them with a clear error.
-- The active year is derived via `IShiftManagementService.GetActiveAsync()` (see Cross-Section Dependencies in `Store.md`).
+- The active year is derived via `IBurnSettingsService.GetActiveAsync()` (see Cross-Section Dependencies in `Store.md`).
 - Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)
@@ -97,7 +97,7 @@ The section invariant doc is [`Store.md`](Store.md).
 
 **Acceptance Criteria:**
 - `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog` and `/Store/Admin/Orders`); volunteers receive 403/redirect.
-- Year selector at the top defaults to the active event year via `IShiftManagementService.GetActiveAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
+- Year selector at the top defaults to the active event year via `IBurnSettingsService.GetActiveAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
 - Three projections render in this order, each as its own card:
   - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid. A footer summary row totals Total due / Paid / Balance across **camp counterparties only** (team orders are excluded so the totals reconcile: teams never pay, so their due would break `Total due = Paid + Balance`). **Totals use effective pricing** — Open orders use the live catalog price (same as the order page); InvoiceIssued orders use frozen snapshots.
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year. Amounts use effective pricing (live catalog for Open orders).
@@ -161,7 +161,7 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | Dependency | Used for |
 |---|---|
 | `ICampServiceRead` | resolve current user's lead camp season for the active year, fetch season name |
-| `IShiftManagementService` | derive the active event year + time zone for OrderableUntil deadline gate |
+| `IBurnSettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification |
 | `IHoldedClient` | factura issuance + treasury sync (Phase 5/7, paused) |

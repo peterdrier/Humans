@@ -17,12 +17,15 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
     private long _nextFileId = 1;
     private long _nextPermissionId = 1;
 
-    public Task<DriveFolderCreateResult> CreateFolderAsync(
-        string folderName,
-        string? parentFolderId,
-        CancellationToken ct = default)
+    /// <summary>
+    /// Seeds a folder into the in-memory store and returns its stub id.
+    /// Not part of <see cref="IGoogleDrivePermissionsClient"/> — the app never
+    /// creates Drive folders, it only manages permissions on folders linked by
+    /// hand. Dev/test callers use this to give the stub something to act on.
+    /// </summary>
+    public string SeedFolder(string folderName, string? parentFolderId = null)
     {
-        logger.LogInformation("[STUB] Create folder '{Name}' under parent {Parent}",
+        logger.LogInformation("[STUB] Seed folder '{Name}' under parent {Parent}",
             folderName, parentFolderId ?? "(root)");
 
         lock (_gate)
@@ -30,10 +33,7 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
             var id = $"stubfolder-{_nextFileId++}";
             _filesById[id] = new StubFile(id, folderName, parentFolderId, DriveId: null, InheritedPermissionsDisabled: null);
             _permissionsByFile[id] = [];
-            var link = $"https://drive.google.com/drive/folders/{id}";
-            return Task.FromResult(new DriveFolderCreateResult(
-                new DriveFolder(id, folderName, link),
-                Error: null));
+            return id;
         }
     }
 

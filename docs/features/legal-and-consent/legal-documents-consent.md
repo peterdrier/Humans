@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Consent/**
   src/Sections/Humans.Consent.Contracts/**
-  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Interfaces/Constants/SystemTeamIds.cs
 -->
 <!-- freshness:flag-on-change
   Document/consent data model, sync flow, immutability triggers, and admin CRUD routes — review when Legal/Consent services, controllers, or entities change.
@@ -112,7 +112,7 @@ LegalDocument
 +-- IsActive: bool
 +-- CreatedAt: Instant
 +-- LastSyncedAt: Instant
-+-- Navigation: Versions (team name resolved via ITeamService, stitched onto DTOs — not a nav property)
++-- Navigation: Versions (team name resolved via ITeamServiceRead, stitched onto DTOs — not a nav property)
 ```
 
 ### DocumentVersion Entity

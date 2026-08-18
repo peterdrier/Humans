@@ -12,19 +12,6 @@ namespace Humans.GoogleIntegration.Contracts;
 public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationService
 {
     /// <summary>
-    /// Provisions a new Google Drive folder for a team.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="folderName">The folder name.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created Google resource.</returns>
-    [ExternalWrite]
-    Task<GoogleResource> ProvisionTeamFolderAsync(
-        Guid teamId,
-        string folderName,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Drive sync entry point. Computes diff for all active Drive resources of the given
     /// type, then optionally executes adds/removes based on the action. Google Group
     /// membership is handled by <see cref="IGoogleGroupSync"/>.

@@ -1,18 +1,18 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Profile/**
-  src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
-  src/Humans.Application/Services/Profiles/**
-  src/Humans.Application/Services/Users/UserService.cs
+  src/Sections/Humans.Users/Views/Profile/**
+  src/Sections/Humans.Users/Controllers/ProfileController.cs
+  src/Sections/Humans.Users/Controllers/ProfileApiController.cs
+  src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs
+  src/Sections/Humans.Users/Services/**
+  src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Gdpr/Services/**
-  src/Humans.Domain/Entities/Profile.cs
-  src/Humans.Domain/Entities/ProfileLanguage.cs
-  src/Humans.Domain/Entities/ContactField.cs
-  src/Humans.Domain/Entities/UserEmail.cs
-  src/Humans.Domain/Entities/CommunicationPreference.cs
-  src/Humans.Domain/Entities/User.cs
-  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users.Contracts/ProfileLanguage.cs
+  src/Sections/Humans.Users.Contracts/ContactField.cs
+  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users.Contracts/User.cs
+  src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
   Personal profile, contact-field visibility, email management, communication preferences, search, GDPR export/deletion, and admin profile actions (suspend/reject/roles). Review when profile views, services, or entities change.

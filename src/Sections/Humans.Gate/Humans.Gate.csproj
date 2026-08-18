@@ -46,7 +46,7 @@
       staff-PIN hasher) and IMemoryCache arrive through the framework reference Sdk.Razor
       already adds (design §15 step 1).
       Hangfire is the vendor check-in mirror: both the enqueue sites and, since G5 lane 5b-3,
-      the two jobs themselves (Contracts/GateRetentionJob, Contracts/GateVendorCheckInJob).
+      the two jobs themselves (Jobs/GateRetentionJob, Jobs/GateVendorCheckInJob).
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
