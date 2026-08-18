@@ -76,7 +76,7 @@ internal sealed partial class AgentFeatureSpecReader(
 
         try
         {
-            var paths = await source.ListMarkdownPathsAsync(cancellationToken);
+            var (paths, isComplete) = await source.ListMarkdownPathsAsync(cancellationToken);
             var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var path in paths.Where(IsSpecPath))
             {
@@ -93,7 +93,21 @@ internal sealed partial class AgentFeatureSpecReader(
                 }
             }
 
-            cache.Set(IndexCacheKey, (IReadOnlyDictionary<string, string>)index, HoldForever);
+            // Held forever, so only a listing known to be the whole corpus may be stored:
+            // ReadAsync treats an absent stem as "does not exist", and a tree 404 or a
+            // GitHub-truncated tree would otherwise retire real specs until the process
+            // restarts. An incomplete index still serves this call, and is rebuilt on the next.
+            if (isComplete)
+            {
+                cache.Set(IndexCacheKey, (IReadOnlyDictionary<string, string>)index, HoldForever);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Feature spec index built from an incomplete repository listing ({Count} specs); not caching",
+                    index.Count);
+            }
+
             return index;
         }
         catch (Exception ex)

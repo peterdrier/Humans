@@ -160,7 +160,7 @@ public class AgentPreloadCorpusBuilderTests
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult(string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal) ? CommunityFiles : []);
 
-        public Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 }

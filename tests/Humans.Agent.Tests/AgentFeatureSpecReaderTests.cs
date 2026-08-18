@@ -60,6 +60,44 @@ public class AgentFeatureSpecReaderTests
         stems.Should().Contain("gdpr-export");
     }
 
+    /// <summary>
+    /// The index is held with <c>NeverRemove</c> and <c>ReadAsync</c> treats an absent stem as
+    /// "does not exist", so caching a tree 404 or a truncated tree would retire real specs for
+    /// the rest of the process lifetime. An incomplete listing must be rebuilt every call.
+    /// </summary>
+    [HumansFact]
+    public async Task An_incomplete_repository_listing_is_not_cached()
+    {
+        var source = new TreeSource(RepositoryMarkdownPaths(), isComplete: false);
+        var reader = new AgentFeatureSpecReader(
+            source,
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentFeatureSpecReader>.Instance);
+
+        await reader.KnownStemsAsync(TestContext.Current.CancellationToken);
+        var stems = await reader.KnownStemsAsync(TestContext.Current.CancellationToken);
+
+        source.ListCount.Should().Be(2);
+        // Still served from the partial listing rather than withheld.
+        stems.Should().Contain("shift-management");
+    }
+
+    /// <summary>The complement: a complete listing is indexed once and reused.</summary>
+    [HumansFact]
+    public async Task A_complete_repository_listing_is_cached()
+    {
+        var source = new TreeSource(RepositoryMarkdownPaths());
+        var reader = new AgentFeatureSpecReader(
+            source,
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentFeatureSpecReader>.Instance);
+
+        await reader.KnownStemsAsync(TestContext.Current.CancellationToken);
+        await reader.KnownStemsAsync(TestContext.Current.CancellationToken);
+
+        source.ListCount.Should().Be(1);
+    }
+
     /// <summary>Every markdown file tracked in the working tree, as repo-root-relative paths.</summary>
     private static IReadOnlyList<string> RepositoryMarkdownPaths()
     {
@@ -88,9 +126,14 @@ public class AgentFeatureSpecReaderTests
             "Could not locate repository root (no Humans.slnx above " + AppContext.BaseDirectory + ").");
     }
 
-    /// <summary>Serves a fixed markdown tree; no fetch path is exercised here.</summary>
-    private sealed class TreeSource(IReadOnlyList<string> paths) : IGuideContentSource
+    /// <summary>
+    /// Serves a fixed markdown tree, counting listings so a test can tell a cached index from a
+    /// rebuilt one. <paramref name="isComplete"/> mimics a tree 404 or a GitHub-truncated tree.
+    /// </summary>
+    private sealed class TreeSource(IReadOnlyList<string> paths, bool isComplete = true) : IGuideContentSource
     {
+        public int ListCount { get; private set; }
+
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
@@ -100,7 +143,10 @@ public class AgentFeatureSpecReaderTests
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
 
-        public Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(paths);
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default)
+        {
+            ListCount++;
+            return Task.FromResult((paths, isComplete));
+        }
     }
 }

@@ -172,8 +172,23 @@ mechanical:
          NotificationService, RoleAssignmentService, HumansMetrics) — place
          these on the right side of the graph as a separate cluster.
 
-      Preserve the document header ("How to read", classDef colors, and any
-      explanatory prose). Only regenerate the Mermaid diagram body.
+      5. A service with no cross-section edges at all is not drawn. List it in
+         the "Services with no cross-section edges" section instead, backtick-
+         quoted. Regenerate that roster from the same walk that produces the
+         diagram, in the same pass — it is the diagram's complement, not prose.
+         Every service must end up in exactly one of the two: the verifier
+         accepts an undrawn service only if it is named there, so a service that
+         loses its last cross-section dependency fails the check until it is
+         added, and one that gains its first must be removed from the roster as
+         it enters the diagram.
+
+      After regenerating the Mermaid body, recount the `linkStyle` line: it
+      indexes the lazy edges by position, so every added or removed eager edge
+      shifts them. Eager edges are numbered 0..n-1 in source order and the lazy
+      ones follow; the comment above it must state the new counts.
+
+      Preserve the document header ("How to read", classDef colors) and the
+      remaining explanatory prose — the cycles, fan-in and follow-up sections.
 
   - id: service-data-access-map
     # Split per-section 2026-08-18 (Peter): each section's map lives in its own

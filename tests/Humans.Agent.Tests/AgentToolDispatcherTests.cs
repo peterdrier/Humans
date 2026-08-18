@@ -491,7 +491,7 @@ public class AgentToolDispatcherTests
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("github unreachable");
 
-        public Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("github unreachable");
     }
 
@@ -565,8 +565,8 @@ public class AgentToolDispatcherTests
                     ? ["FAQ-general"]
                     : []);
 
-        public Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>(MarkdownPaths);
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>((MarkdownPaths, true));
     }
 
     private static IShiftView MakeViewFor(

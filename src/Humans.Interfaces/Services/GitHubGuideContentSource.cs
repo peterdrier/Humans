@@ -77,7 +77,8 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
         }
     }
 
-    public async Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(
+        CancellationToken cancellationToken = default)
     {
         var settings = _guideSettings.Value;
         try
@@ -95,17 +96,18 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
                     settings.Owner, settings.Repository, settings.Branch);
             }
 
-            return [.. tree.Tree
+            IReadOnlyList<string> paths = [.. tree.Tree
                 .Where(i => i.Type == TreeType.Blob &&
                             i.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
                 .Select(i => i.Path)];
+            return (paths, !tree.Truncated);
         }
         catch (NotFoundException)
         {
             _logger.LogWarning(
                 "Tree not found in GitHub: {Owner}/{Repository}@{Branch}",
                 settings.Owner, settings.Repository, settings.Branch);
-            return [];
+            return ([], false);
         }
     }
 }

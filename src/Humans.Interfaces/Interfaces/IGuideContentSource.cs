@@ -26,10 +26,17 @@ public interface IGuideContentSource
     /// (e.g. <c>src/Sections/Humans.Shifts/Docs/shift-management.md</c>), in one recursive tree
     /// request. For a corpus scattered across many folders — feature specs now live in each
     /// section's own <c>Docs/</c> — this is what lets the caller derive its file set from the
-    /// repository structure instead of paying a folder listing per section. Returns an empty
-    /// list when the tree cannot be read.
+    /// repository structure instead of paying a folder listing per section.
     /// </summary>
-    Task<IReadOnlyList<string>> ListMarkdownPathsAsync(CancellationToken cancellationToken = default);
+    /// <returns>
+    /// The paths found, and whether that listing is the whole corpus. <c>IsComplete</c> is
+    /// false when the tree could not be read (empty paths) or GitHub truncated the recursive
+    /// tree (partial paths). A caller that derives a set membership test from this — where an
+    /// absent path means "does not exist" — must not persist an incomplete listing, or one
+    /// transient failure silently removes real files for the process lifetime.
+    /// </returns>
+    Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lists the markdown file stems (filename without the <c>.md</c> extension) in a folder
