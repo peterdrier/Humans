@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Domain.Helpers;

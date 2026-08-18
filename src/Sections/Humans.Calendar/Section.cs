@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;

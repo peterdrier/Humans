@@ -1,7 +1,7 @@
 using Humans.Base.Architecture;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;

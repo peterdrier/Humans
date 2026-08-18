@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;

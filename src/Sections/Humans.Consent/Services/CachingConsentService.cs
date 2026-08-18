@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

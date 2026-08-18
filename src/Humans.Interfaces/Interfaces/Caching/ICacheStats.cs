@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Caching;
+namespace Humans.Base.Interfaces.Caching;
 
 /// <summary>
 /// Diagnostic snapshot for a single in-memory caching dictionary owned by a

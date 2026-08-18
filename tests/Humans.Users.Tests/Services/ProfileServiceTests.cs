@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

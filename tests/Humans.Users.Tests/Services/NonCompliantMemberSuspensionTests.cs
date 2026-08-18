@@ -6,7 +6,7 @@ using NSubstitute;
 using Humans.Domain.Enums;
 using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;

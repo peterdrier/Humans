@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Base.Architecture;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
 using Humans.Auth.Domain;

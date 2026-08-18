@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

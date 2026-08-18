@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Humans.Base.Threading;
 using Microsoft.Extensions.Hosting;
 
-namespace Humans.Application.Interfaces.Caching;
+namespace Humans.Base.Interfaces.Caching;
 
 /// <summary>
 /// Thread-safe in-memory cache primitive used by Singleton caching decorators (CachingUserService, etc).

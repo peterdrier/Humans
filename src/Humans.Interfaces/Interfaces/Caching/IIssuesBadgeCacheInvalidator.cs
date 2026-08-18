@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using Humans.Base.Architecture;
 
-namespace Humans.Application.Interfaces.Caching;
+namespace Humans.Base.Interfaces.Caching;
 
 /// <summary>
 /// Per-user invalidator for the cached actionable-issues count surfaced by the

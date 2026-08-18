@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;

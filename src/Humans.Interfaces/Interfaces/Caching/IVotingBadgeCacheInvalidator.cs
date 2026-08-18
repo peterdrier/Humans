@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using Humans.Base.Architecture;
 
-namespace Humans.Application.Interfaces.Caching;
+namespace Humans.Base.Interfaces.Caching;
 
 /// <summary>
 /// Cross-cutting invalidator for a single Board member's voting-badge cache

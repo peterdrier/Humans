@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 
 namespace Humans.Infrastructure.Caching;
 
 /// <summary>
 /// <see cref="IMemoryCache"/>-backed implementations of the cross-cutting
-/// invalidator interfaces in <c>Humans.Application.Interfaces.Caching</c>.
+/// invalidator interfaces in <c>Humans.Base.Interfaces.Caching</c>.
 /// Thin wrappers around the existing extension methods in
 /// <c>MemoryCacheExtensions</c> — exist so services/decorators in the
 /// Application layer can describe their cross-section cache dependencies

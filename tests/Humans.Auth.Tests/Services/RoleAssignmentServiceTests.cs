@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Auth.Tests.Infrastructure;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;

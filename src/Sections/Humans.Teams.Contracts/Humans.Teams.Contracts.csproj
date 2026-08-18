@@ -24,8 +24,8 @@
     them (Budget's rule). Measured, not assumed: CallToAction/CallToActionStyle/SlotPriority
     were filed under Camps and Shifts in the #866 appendix and have no consumer outside Teams.
 
-    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, still in
-    namespace Humans.Application.Interfaces.Caching. Its six IMemoryCache-backed siblings went
+    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, in
+    namespace Humans.Teams.Contracts. Its six IMemoryCache-backed siblings went
     to Base, but this one's implementation injects ITeamService and had to land in the section,
     where HUM0034 makes it internal. Humans.Users injects the interface (AccountMergeService,
     NonCompliantMemberSuspension) and already referenced this leaf, so it costs zero csproj

@@ -8,7 +8,7 @@ using NodaTime;
 using Humans.Governance.Services.Dtos;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Domain.Constants;
