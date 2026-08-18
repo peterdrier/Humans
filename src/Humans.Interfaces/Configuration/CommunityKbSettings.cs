@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Points the agent's community knowledge base at its own GitHub repo, kept separate from

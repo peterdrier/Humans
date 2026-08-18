@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.Guide.Services;
 using Xunit;
 

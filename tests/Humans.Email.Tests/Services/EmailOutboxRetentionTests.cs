@@ -9,7 +9,7 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.SystemSettings.Contracts;
 
 namespace Humans.Email.Tests.Services;

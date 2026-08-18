@@ -8,7 +8,7 @@ using Humans.Agent.Services.Preload;
 using Humans.Agent.Services.Stores;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Services;
 using Microsoft.AspNetCore.Authorization;

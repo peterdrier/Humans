@@ -4,7 +4,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// Non-sensitive Google Workspace configuration consumed by the
 /// Application-layer <c>GoogleWorkspaceSyncService</c> (§15 Part 2b, issue #575).
 /// Credential-sensitive values (service-account key path / inline JSON) stay on
-/// <c>Humans.Infrastructure.Configuration.GoogleWorkspaceSettings</c>; both
+/// <c>Humans.Base.Configuration.GoogleWorkspaceSettings</c>; both
 /// bind to the same <c>GoogleWorkspace</c> appsettings section at DI
 /// registration time.
 /// </summary>
@@ -19,7 +19,7 @@ public sealed class GoogleWorkspaceOptions
 {
     /// <summary>
     /// Configuration section name. Matches
-    /// <c>Humans.Infrastructure.Configuration.GoogleWorkspaceSettings.SectionName</c>.
+    /// <c>Humans.Base.Configuration.GoogleWorkspaceSettings.SectionName</c>.
     /// </summary>
     public const string SectionName = "GoogleWorkspace";
 
@@ -43,7 +43,7 @@ public sealed class GoogleWorkspaceOptions
 
 /// <summary>
 /// Default settings for Google Groups the system provisions. Mirrors
-/// <c>Humans.Infrastructure.Configuration.GroupSettings</c>.
+/// <c>Humans.Base.Configuration.GroupSettings</c>.
 /// </summary>
 public sealed class GoogleWorkspaceGroupOptions
 {

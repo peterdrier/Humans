@@ -7,7 +7,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using NodaTime;
 

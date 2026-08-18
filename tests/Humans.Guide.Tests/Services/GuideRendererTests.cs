@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.Options;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.Guide.Services;
 
 namespace Humans.Guide.Tests.Services;

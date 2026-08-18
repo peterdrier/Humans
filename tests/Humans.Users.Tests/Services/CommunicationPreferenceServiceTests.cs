@@ -4,7 +4,7 @@ using Humans.Users.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using NSubstitute;
 using Humans.Base.Enums;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.DataProtection;

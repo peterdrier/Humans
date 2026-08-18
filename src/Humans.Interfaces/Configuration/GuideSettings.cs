@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Configuration for the in-app Guide section. Source location and cache behaviour.

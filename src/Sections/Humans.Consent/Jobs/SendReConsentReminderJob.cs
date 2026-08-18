@@ -2,7 +2,7 @@ using Hangfire;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;

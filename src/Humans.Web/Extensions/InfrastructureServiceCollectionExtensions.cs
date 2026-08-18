@@ -12,7 +12,6 @@ using Humans.Mailer.Jobs;
 using Humans.Surveys.Jobs;
 using Humans.Tickets.Jobs;
 using Humans.Base.Caching;
-using Humans.Infrastructure.Configuration;
 using Humans.Base.Services;
 using Humans.Web.Services;
 using Humans.Issues.Jobs;

@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Humans.Base.Extensions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;

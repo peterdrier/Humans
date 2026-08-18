@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Configuration;
+namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Configuration for SMTP email service.

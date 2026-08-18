@@ -4,7 +4,7 @@ using Google.Apis.CloudIdentity.v1;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Base.Extensions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;

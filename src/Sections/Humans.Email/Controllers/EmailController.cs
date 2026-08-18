@@ -1,5 +1,5 @@
 using Humans.Email.Services;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Email.Models;

@@ -2,7 +2,6 @@ using Microsoft.Extensions.Options;
 using Octokit;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
-using Humans.Infrastructure.Configuration;
 
 namespace Humans.Base.Services;
 

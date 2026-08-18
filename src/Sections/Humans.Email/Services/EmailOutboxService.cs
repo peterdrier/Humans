@@ -1,6 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Email.Data;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using Humans.SystemSettings.Contracts;
 using Humans.Email.Domain;

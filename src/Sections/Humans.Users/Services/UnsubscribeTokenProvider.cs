@@ -1,7 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using Humans.Users.Contracts;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 

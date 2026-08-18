@@ -1,4 +1,4 @@
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;

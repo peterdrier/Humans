@@ -1,6 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Email.Jobs;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

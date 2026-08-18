@@ -3,7 +3,7 @@ using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Groupssettings.v1;
 using Google.Apis.Services;
 using Humans.Base.Extensions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using SdkGroup = Google.Apis.CloudIdentity.v1.Data.Group;
 using SdkGroupSettings = Google.Apis.Groupssettings.v1.Data.Groups;

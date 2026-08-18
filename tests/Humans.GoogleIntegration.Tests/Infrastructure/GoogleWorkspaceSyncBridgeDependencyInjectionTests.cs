@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
