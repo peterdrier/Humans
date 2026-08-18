@@ -10,7 +10,6 @@
   src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
-  src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceProvisionJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
@@ -189,9 +188,6 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 ```csharp
 public interface IGoogleSyncService
 {
-    // Shared Drive folder provisioning
-    Task<GoogleResource> ProvisionTeamFolderAsync(Guid teamId, string folderName, CancellationToken ct);
-
     // Drive resource sync (Groups are delegated to IGoogleGroupSync)
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct);
     Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct);
