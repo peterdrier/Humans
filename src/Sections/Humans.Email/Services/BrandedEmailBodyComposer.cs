@@ -1,4 +1,4 @@
-using Humans.Infrastructure.Helpers;
+using Humans.Base.Helpers;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;

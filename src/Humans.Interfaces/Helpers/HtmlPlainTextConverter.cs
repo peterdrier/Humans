@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
 
-namespace Humans.Infrastructure.Helpers;
+namespace Humans.Base.Helpers;
 
 public static partial class HtmlPlainTextConverter
 {
