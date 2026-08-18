@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.AuditLog.Domain;
 using Humans.AuditLog.Contracts;
 

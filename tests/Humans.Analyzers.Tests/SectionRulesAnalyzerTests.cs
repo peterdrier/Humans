@@ -466,7 +466,7 @@ public class SectionRulesAnalyzerTests
 
     private const string RepositoryStub = """
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
         }
@@ -479,7 +479,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Contracts
             {
-                public interface ITestRepository : Humans.Application.Interfaces.Repositories.IRepository { }
+                public interface ITestRepository : Humans.Base.Interfaces.Repositories.IRepository { }
             }
             """;
 
@@ -499,7 +499,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Data
             {
-                internal interface ITestRepository : Humans.Application.Interfaces.Repositories.IRepository { }
+                internal interface ITestRepository : Humans.Base.Interfaces.Repositories.IRepository { }
             }
             """;
 

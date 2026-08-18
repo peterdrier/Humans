@@ -203,7 +203,7 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Sentinel value written to the legacy User.DisplayName column by
-    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+    /// <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
     /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
     /// at creation time so the legacy name never becomes a public UserInfo field.
     /// </summary>
@@ -213,7 +213,7 @@ public sealed record UserInfo(
     /// True when the user row is a tombstone — a merge-source
     /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (legacy User.DisplayName
     /// resolved into <see cref="BurnerName"/> as <see cref="GdprAnonymizedBurnerName"/> by
-    /// <see cref="Humans.Application.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>),
+    /// <see cref="Humans.Base.Interfaces.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>),
     /// or a legacy tombstone whose <see cref="Email"/> still ends in the
     /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
     /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>

@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Repositories;
+namespace Humans.Base.Interfaces.Repositories;
 
 /// <summary>
 /// Marker for persistence boundary interfaces. Repositories may expose entities

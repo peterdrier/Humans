@@ -212,7 +212,7 @@ public class ArchitectureAttributeIdentityTests
     {
         var ns = typeof(GrandfatheredAttribute).Namespace;
         var source = $$"""
-            namespace Humans.Application.Interfaces.Repositories
+            namespace Humans.Base.Interfaces.Repositories
             {
                 public interface IRepository { }
                 public interface ICampRepository : IRepository { }
@@ -229,7 +229,7 @@ public class ArchitectureAttributeIdentityTests
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(
-                        Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
+                        Humans.Base.Interfaces.Repositories.ICampRepository repo) { }
                 }
             }
             """;

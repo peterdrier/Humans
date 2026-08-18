@@ -22,7 +22,7 @@ public class DbContextOwnershipRuleTests
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
             public interface IUserRepository : IRepository { }
@@ -113,7 +113,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Users
             {
-                public sealed class UserRepository : Humans.Application.Interfaces.Repositories.IUserRepository
+                public sealed class UserRepository : Humans.Base.Interfaces.Repositories.IUserRepository
                 {
                     public UserRepository(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {

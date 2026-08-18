@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
 using Humans.Domain.Enums;

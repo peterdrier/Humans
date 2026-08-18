@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class WebRepositoryInjectionAnalyzerTests
 {
     private const string Stubs = """
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
             public interface ICampRepository : IRepository { }
@@ -34,7 +34,7 @@ public class WebRepositoryInjectionAnalyzerTests
             {
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    public CampsController(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
+                    public CampsController(Humans.Base.Interfaces.Repositories.ICampRepository repo) { }
                 }
             }
             """;
@@ -88,7 +88,7 @@ public class WebRepositoryInjectionAnalyzerTests
                 [Humans.Application.Architecture.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    public CampsController(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
+                    public CampsController(Humans.Base.Interfaces.Repositories.ICampRepository repo) { }
                 }
             }
             """;
@@ -107,7 +107,7 @@ public class WebRepositoryInjectionAnalyzerTests
     public async Task Fires_on_indirect_repository_extension()
     {
         var source = """
-            namespace Humans.Application.Interfaces.Repositories
+            namespace Humans.Base.Interfaces.Repositories
             {
                 public interface IRepository { }
                 public interface IMid : IRepository { }
@@ -123,7 +123,7 @@ public class WebRepositoryInjectionAnalyzerTests
             {
                 public sealed class DeepController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    public DeepController(Humans.Application.Interfaces.Repositories.IDeepRepository repo) { }
+                    public DeepController(Humans.Base.Interfaces.Repositories.IDeepRepository repo) { }
                 }
             }
             """;

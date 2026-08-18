@@ -6,7 +6,7 @@ namespace Humans.Analyzers.Tests;
 public class OrchestratorRepositoryInjectionAnalyzerTests
 {
     // IOrchestrator and IApplicationService live in Humans.Application.Interfaces;
-    // IRepository in Humans.Application.Interfaces.Repositories; UsersDbContext
+    // IRepository in Humans.Base.Interfaces.Repositories; UsersDbContext
     // in Humans.Infrastructure.Data. All four are stubbed so the analyzer can
     // resolve them — production builds reference them transitively.
     private const string Stubs = """
@@ -16,7 +16,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             public interface IOrchestrator { }
         }
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
             public interface IUserRepository : IRepository { }
@@ -50,7 +50,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
                 {
-                    public DemoOrchestrator(Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                    public DemoOrchestrator(Humans.Base.Interfaces.Repositories.IUserRepository repo)
                     {
                     }
                 }
@@ -151,7 +151,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
                 {
-                    public DemoOrchestrator(Humans.Application.Interfaces.Repositories.IRepository repo)
+                    public DemoOrchestrator(Humans.Base.Interfaces.Repositories.IRepository repo)
                     {
                     }
                 }
@@ -181,7 +181,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
                 public sealed class DemoOrchestratorImpl : IDemoOrchestrator
                 {
-                    public DemoOrchestratorImpl(Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                    public DemoOrchestratorImpl(Humans.Base.Interfaces.Repositories.IUserRepository repo)
                     {
                     }
                 }
@@ -253,7 +253,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public sealed class SectionService : Humans.Application.Interfaces.IApplicationService
                 {
-                    public SectionService(Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                    public SectionService(Humans.Base.Interfaces.Repositories.IUserRepository repo)
                     {
                     }
                 }

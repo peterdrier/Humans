@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces.Admin;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Web.Repositories.Admin;
 

@@ -22,7 +22,7 @@ internal static class PublicSurfaceRule
 {
     private const string ISectionFullName = "Humans.Application.Interfaces.ISection";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
-    private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string IRecurringJobFullName = "Humans.Application.Interfaces.IRecurringJob";
     private const string ViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.ViewComponentAttribute";
     private const string NonViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.NonViewComponentAttribute";

@@ -32,7 +32,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private const string OrchestratorMarkerFullName = "Humans.Application.Interfaces.IOrchestrator";
     private const string ApplicationServiceMarkerFullName = "Humans.Application.Interfaces.IApplicationService";
-    private const string RepositoryMarkerFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string RepositoryMarkerFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string DbContextFactoryFullName = "Microsoft.EntityFrameworkCore.IDbContextFactory`1";
 
     private static readonly LocalizableString RepositoryInjectionTitle =

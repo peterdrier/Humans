@@ -1,6 +1,6 @@
 using Humans.Events.Services.Dtos;
 using Humans.Events.Domain;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Events.Contracts;
 
 namespace Humans.Events.Data;

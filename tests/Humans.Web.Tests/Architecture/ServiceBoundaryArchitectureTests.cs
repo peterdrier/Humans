@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Web.Tests.Architecture.Ratchet;
 using Humans.Users.Data.Repositories;
 

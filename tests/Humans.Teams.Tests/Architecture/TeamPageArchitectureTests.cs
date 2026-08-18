@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;

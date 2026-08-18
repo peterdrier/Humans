@@ -14,7 +14,7 @@ internal static class CachingDecoratorRule
 {
     public const string DiagnosticId = "HUM0020";
 
-    private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
         "Caching decorator references a repository directly";

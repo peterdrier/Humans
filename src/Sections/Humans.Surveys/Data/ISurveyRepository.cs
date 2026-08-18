@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Surveys.Domain;
 using Humans.Domain.Enums;
 using NodaTime;

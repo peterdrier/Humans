@@ -1,6 +1,6 @@
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Shifts.Data;
 

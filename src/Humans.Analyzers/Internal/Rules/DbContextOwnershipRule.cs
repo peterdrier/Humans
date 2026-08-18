@@ -6,7 +6,7 @@ namespace Humans.Analyzers.Internal.Rules;
 
 /// <summary>
 /// HUM0009 — Only repository classes (transitive implementers of
-/// <c>Humans.Application.Interfaces.Repositories.IRepository</c>) may use
+/// <c>Humans.Base.Interfaces.Repositories.IRepository</c>) may use
 /// a section DbContext. Every other class must go through a repository or
 /// service. Existing pre-rule violators may carry
 /// <c>[Grandfathered("HUM0009", …)]</c> — the analyzer downgrades the
@@ -44,7 +44,7 @@ internal static class DbContextOwnershipRule
             "[Grandfathered(\"HUM0009\", …)] which downgrades this diagnostic to a warning for the tagged " +
             "class only — the attribute is a TODO for migration, not a permanent exemption.");
 
-    private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string DesignTimeDbContextFactoryFullName =
         "Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory`1";
     private const string HostedLifecycleServiceFullName =

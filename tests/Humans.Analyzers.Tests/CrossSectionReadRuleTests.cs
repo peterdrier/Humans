@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class CrossSectionReadRuleTests
 {
     private const string Stubs = """
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class)]
             public sealed class CrossSectionWriteAttribute : System.Attribute
@@ -54,7 +54,7 @@ public class CrossSectionReadRuleTests
 
             namespace Humans.Application.Services.Camps
             {
-                [Humans.Application.Architecture.CrossSectionWrite("renames the team on camp rename")]
+                [Humans.Base.Attributes.CrossSectionWrite("renames the team on camp rename")]
                 public sealed class CampService
                 {
                     public CampService(Humans.Application.Interfaces.Teams.ITeamService teams) { }

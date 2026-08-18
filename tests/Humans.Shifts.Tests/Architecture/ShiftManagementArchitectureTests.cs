@@ -3,7 +3,7 @@ using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 using Humans.Users.Contracts;

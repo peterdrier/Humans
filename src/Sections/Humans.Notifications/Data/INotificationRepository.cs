@@ -1,7 +1,7 @@
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Notifications.Data;
 
