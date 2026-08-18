@@ -39,7 +39,7 @@ public class GuideArchitectureTests
         // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
         typeof(IGuideContentSource).Assembly.GetName().Name
-            .Should().Be("Humans.Interfaces");
+            .Should().Be("Humans.Base");
 
         typeof(Section).Assembly.GetTypes()
             .Should().NotContain(t => t.Name == "IGuideContentSource");

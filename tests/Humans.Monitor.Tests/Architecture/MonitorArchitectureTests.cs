@@ -36,7 +36,7 @@ public class MonitorArchitectureTests
             .Select(a => a.Name ?? string.Empty)
             .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
             // Humans.Infrastructure was in this list until G5 lane 5b-6 deleted it.
-            .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
+            .Where(n => n is not ("Humans.Base" or "Humans.Domain" or "Humans.Application"
                                  or "Humans.Analyzers"))
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
