@@ -1,4 +1,4 @@
-namespace Humans.Camps.Resources;
+namespace Humans.Camps;
 
 /// <summary>
 /// Marker for the Camps section's resource set (design §3). Must stay <c>public</c> — the boot
