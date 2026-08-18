@@ -125,7 +125,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_SoftDeletedTeamWithExtraPermission_RevokesAccessAndDeactivatesResource()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
         var googleId = await CreateGoogleFolderAsync("Doomed Folder");
         const string extraEmail = "ex-member@nobodies.team";
@@ -162,7 +162,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_SharedGoogleIdGroupErrors_NoRowInGroupIsDeactivated()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId1 = Guid.NewGuid();
         var teamId2 = Guid.NewGuid();
 
@@ -197,7 +197,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_PartialErrorWithinTeam_DefersDeactivationForBothRows()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
 
         var cleanGoogleId = await CreateGoogleFolderAsync("Clean Folder");
@@ -225,7 +225,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_DriveFolderPass_DoesNotDeactivateGroupOrDriveFileRowsForSameTeam()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
 
         var googleId = await CreateGoogleFolderAsync("Folder");
@@ -265,7 +265,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         // so soft-deleted teams' linked Drive *files* never had their Google
         // permissions revoked. Fixed by GetActiveByResourceTypeAsync (fetch by
         // the exact requested type instead of overfetching DriveFolder rows).
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
         var googleId = await CreateGoogleFolderAsync("Doomed File");
         const string extraEmail = "ex-member@nobodies.team";
@@ -298,7 +298,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
     [InlineData(SyncMode.None)]
     public async Task SyncResourcesByTypeAsync_WhenNotAddAndRemove_DoesNotDeactivateOrRevoke(SyncMode mode)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(mode);
 

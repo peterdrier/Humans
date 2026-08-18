@@ -18,17 +18,17 @@
     <div class="card mb-4">
         <div class="card-header">@Localizer["MyTeams_TeamMemberships"]</div>
         @{
-        Func<Humans.Teams.Models.MyTeamMembershipViewModel, IHtmlContent> membershipTeamCell = @<text>
+        Func<MyTeamMembershipViewModel, IHtmlContent> membershipTeamCell = @<text>
             <a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a>
             @if (item.IsSystemTeam)
             {
                 <span class="badge bg-secondary ms-1">@Localizer["Teams_System"]</span>
             }
         </text>;
-        Func<Humans.Teams.Models.MyTeamMembershipViewModel, IHtmlContent> membershipRoleCell = @<text>
+        Func<MyTeamMembershipViewModel, IHtmlContent> membershipRoleCell = @<text>
             <partial name="_RoleBadge" model="@(item.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)" />
         </text>;
-        Func<Humans.Teams.Models.MyTeamMembershipViewModel, IHtmlContent> membershipActionsCell = @<text>
+        Func<MyTeamMembershipViewModel, IHtmlContent> membershipActionsCell = @<text>
             <a asp-action="Details" asp-route-slug="@item.TeamSlug" class="btn btn-sm btn-outline-primary">@SharedLocalizer["MyTeams_View"]</a>
             @if (item.IsCoordinator)
             {
@@ -72,11 +72,11 @@ else
     <div class="card">
         <div class="card-header">@Localizer["MyTeams_PendingRequests"]</div>
         @{
-        Func<Humans.Teams.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestTeamCell =
+        Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestTeamCell =
             @<text><a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a></text>;
-        Func<Humans.Teams.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestStatusCell =
+        Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestStatusCell =
             @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
-        Func<Humans.Teams.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestWithdrawCell = @<text>
+        Func<TeamJoinRequestSummaryViewModel, IHtmlContent> requestWithdrawCell = @<text>
             <form asp-action="WithdrawRequest" asp-route-id="@item.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["MyTeams_WithdrawConfirm"].Value">

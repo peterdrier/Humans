@@ -6,7 +6,7 @@ namespace Humans.Camps.Services;
 /// for the requested role definition.
 /// </summary>
 internal sealed record CampRoleDrillDownData(
-    Humans.Camps.Contracts.CampRoleDefinitionInfo Definition,
+    CampRoleDefinitionInfo Definition,
     int Year,
     string? GroupEmail,
     IReadOnlyList<CampRoleDrillDownCampRow> Rows);

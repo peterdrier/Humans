@@ -514,7 +514,7 @@ public class ProfileControllerEditTests
                 AllergyOtherText = "Mango",
             }));
 
-        var result = await _controller.Edit(ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.Edit(ct: TestContext.Current.CancellationToken);
 
         var viewModel = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<ProfileViewModel>().Subject;

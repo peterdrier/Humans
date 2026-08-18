@@ -96,7 +96,7 @@ public class AgentToolDispatcherTests
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: Humans.AuditLog.Contracts.AuditAction.ShiftSignupVoluntold,
+            Action: AuditLog.Contracts.AuditAction.ShiftSignupVoluntold,
             ActorUserId: actor,
             ActorDisplayName: "Frank",
             EntityType: "ShiftSignup",
@@ -121,7 +121,7 @@ public class AgentToolDispatcherTests
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: Humans.AuditLog.Contracts.AuditAction.AnomalousPermissionDetected,
+            Action: AuditLog.Contracts.AuditAction.AnomalousPermissionDetected,
             ActorUserId: null,
             ActorDisplayName: null,
             EntityType: "GoogleResource",
@@ -155,7 +155,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -186,7 +186,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -211,7 +211,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -239,7 +239,7 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -266,7 +266,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static Humans.Shifts.Contracts.BurnSettingsInfo MakeEventSettings() => new(
+    private static BurnSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test",
         Year: 2026,
@@ -292,7 +292,7 @@ public class AgentToolDispatcherTests
     /// <c>RenderShiftDetails</c> reads resolved against
     /// <see cref="MakeEventSettings"/> exactly as the section's projection does.
     /// </summary>
-    private static Humans.Shifts.Contracts.ShiftSignupSummary MakeShift(
+    private static ShiftSignupSummary MakeShift(
         RotaStub rota, int dayOffset, bool isAllDay,
         NodaTime.LocalTime? startTime = null, double durationHours = 0)
     {
@@ -314,9 +314,9 @@ public class AgentToolDispatcherTests
             absoluteEnd: date.At(end).InZoneLeniently(tz).ToInstant());
     }
 
-    private static Humans.Shifts.Contracts.ShiftSignupSummary MakeSignup(
+    private static ShiftSignupSummary MakeSignup(
         Guid? signupBlockId,
-        Humans.Shifts.Contracts.ShiftSignupSummary shift,
+        ShiftSignupSummary shift,
         SignupStatus status) =>
         shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
@@ -455,7 +455,7 @@ public class AgentToolDispatcherTests
     }
 
     /// <summary>A source whose folder listing is broken (revoked token, GitHub outage).</summary>
-    private sealed class UnlistableGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    private sealed class UnlistableGuideSource : Application.Interfaces.IGuideContentSource
     {
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
@@ -469,9 +469,9 @@ public class AgentToolDispatcherTests
 
     private static AgentToolDispatcher MakeDispatcher(
         Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
-        Humans.Shifts.Contracts.IShiftView? shiftView = null,
-        Humans.Shifts.Contracts.IBurnSettingsService? burnSettings = null,
-        Humans.Application.Interfaces.IGuideContentSource? source = null)
+        IShiftView? shiftView = null,
+        IBurnSettingsService? burnSettings = null,
+        Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
@@ -494,12 +494,12 @@ public class AgentToolDispatcherTests
             features,
             community,
             auditViewer ?? new StubAuditViewer(),
-            shiftView ?? Substitute.For<Humans.Shifts.Contracts.IShiftView>(),
-            burnSettings ?? Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>(),
+            shiftView ?? Substitute.For<IShiftView>(),
+            burnSettings ?? Substitute.For<IBurnSettingsService>(),
             logger);
     }
 
-    private sealed class StubGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    private sealed class StubGuideSource : Application.Interfaces.IGuideContentSource
     {
         /// <summary>The only feature specs this stub repo contains — anything else 404s like GitHub would.</summary>
         internal static readonly string[] FeatureStems = ["26-events", "gate-admissions"];
@@ -526,13 +526,13 @@ public class AgentToolDispatcherTests
                         : []);
     }
 
-    private static Humans.Shifts.Contracts.IShiftView MakeViewFor(
-        Guid userId, IReadOnlyList<Humans.Shifts.Contracts.ShiftSignupSummary> signups)
+    private static IShiftView MakeViewFor(
+        Guid userId, IReadOnlyList<ShiftSignupSummary> signups)
     {
-        var view = Substitute.For<Humans.Shifts.Contracts.IShiftView>();
+        var view = Substitute.For<IShiftView>();
         var record = ShiftFixtures.UserSummary(userId, signups);
         view.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Shifts.Contracts.ShiftUserSummary>(record));
+            .Returns(new ValueTask<ShiftUserSummary>(record));
         return view;
     }
 

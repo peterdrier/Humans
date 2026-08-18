@@ -38,7 +38,7 @@ public sealed class IdentityFindByEmailAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> ForbiddenMethods =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "FindByEmailAsync",
             "FindByNameAsync");
 

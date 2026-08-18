@@ -3,7 +3,7 @@
 @* The placement strip's copy is City Planning's resource set, not SharedResource: the
    section carved its keys out at G5 (#866) and a Shell view cannot see them through the
    ambient Localizer. Shell references the section, so it injects the marker directly. *@
-@inject Microsoft.Extensions.Localization.IStringLocalizer<CityPlanningResource> CityPlanningLocalizer
+@inject IStringLocalizer<CityPlanningResource> CityPlanningLocalizer
 @{
     ViewData["Title"] = Model.Name;
     var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;

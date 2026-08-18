@@ -30,7 +30,7 @@ internal static class AssemblyScope
             return false;
 
         return entryPoint.AllInterfaces.Any(i =>
-            string.Equals(i.ToDisplayString(), ISectionFullName, System.StringComparison.Ordinal));
+            string.Equals(i.ToDisplayString(), ISectionFullName, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ internal static class AssemblyScope
             return false;
 
         var ns = symbol.ContainingNamespace?.ToDisplayString();
-        if (ns is not null && ns.Split('.').Any(segment => string.Equals(segment, DataFolder, System.StringComparison.Ordinal)))
+        if (ns is not null && ns.Split('.').Any(segment => string.Equals(segment, DataFolder, StringComparison.Ordinal)))
             return true;
 
         foreach (var syntaxRef in symbol.DeclaringSyntaxReferences)
@@ -65,7 +65,7 @@ internal static class AssemblyScope
                 continue;
 
             var normalized = "/" + filePath.Replace('\\', '/').TrimStart('/') + "/";
-            if (normalized.IndexOf("/" + DataFolder + "/", System.StringComparison.Ordinal) >= 0)
+            if (normalized.IndexOf("/" + DataFolder + "/", StringComparison.Ordinal) >= 0)
                 return true;
         }
 

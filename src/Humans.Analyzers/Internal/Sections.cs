@@ -24,7 +24,7 @@ internal static class Sections
     public static string? FromNamespace(INamedTypeSymbol type, string namespacePrefix)
     {
         var ns = type.ContainingNamespace?.ToDisplayString();
-        if (ns is null || !ns.StartsWith(namespacePrefix, System.StringComparison.Ordinal))
+        if (ns is null || !ns.StartsWith(namespacePrefix, StringComparison.Ordinal))
             return null;
 
         var startIndex = namespacePrefix.Length;
@@ -57,10 +57,10 @@ internal static class Sections
     public static string? FromAssembly(IAssemblySymbol? assembly)
     {
         var name = assembly?.Name;
-        if (name is null || !name.StartsWith(AssemblyPrefix, System.StringComparison.Ordinal))
+        if (name is null || !name.StartsWith(AssemblyPrefix, StringComparison.Ordinal))
             return null;
 
-        if (name.EndsWith(ContractsSuffix, System.StringComparison.Ordinal))
+        if (name.EndsWith(ContractsSuffix, StringComparison.Ordinal))
         {
             var length = name.Length - AssemblyPrefix.Length - ContractsSuffix.Length;
             return length > 0 ? name.Substring(AssemblyPrefix.Length, length) : null;

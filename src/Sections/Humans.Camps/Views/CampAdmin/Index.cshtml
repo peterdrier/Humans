@@ -169,13 +169,13 @@
 @* Withdrawn Camps *@
 @if (Model.WithdrawnCamps.Count > 0)
 {
-    Func<Humans.Camps.Models.CampCardViewModel, IHtmlContent> withdrawnNameCell =
+    Func<CampCardViewModel, IHtmlContent> withdrawnNameCell =
         @<text>
             <a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.Slug">
                 @item.Name
             </a>
         </text>;
-    Func<Humans.Camps.Models.CampCardViewModel, IHtmlContent> withdrawnReactivateCell =
+    Func<CampCardViewModel, IHtmlContent> withdrawnReactivateCell =
         @<text>
             <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@item.SeasonId" method="post" class="d-inline">
                 @Html.AntiForgeryToken()

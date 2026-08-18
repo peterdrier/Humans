@@ -8,7 +8,7 @@ internal static class SymbolExtensions
     {
         for (var current = type; current is not null; current = current.BaseType)
         {
-            if (string.Equals(current.ToDisplayString(), fullMetadataName, System.StringComparison.Ordinal))
+            if (string.Equals(current.ToDisplayString(), fullMetadataName, StringComparison.Ordinal))
                 return true;
         }
         return false;
@@ -18,7 +18,7 @@ internal static class SymbolExtensions
     {
         for (var current = type; current is not null; current = current.BaseType)
         {
-            if (current.Name.StartsWith(prefix, System.StringComparison.Ordinal))
+            if (current.Name.StartsWith(prefix, StringComparison.Ordinal))
                 return true;
         }
         return false;

@@ -32,7 +32,7 @@ public class AgentShiftViewReadTests
     ];
 
     private static Type SectionType(string fullName) =>
-        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(

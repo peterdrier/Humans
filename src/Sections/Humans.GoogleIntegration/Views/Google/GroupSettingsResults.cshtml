@@ -83,11 +83,11 @@
 
             @if (report.HasDrift)
             {
-                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftSettingCell =
+                Func<GroupSettingDrift, IHtmlContent> driftSettingCell =
                     @<text><code>@item.SettingName</code></text>;
-                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftExpectedCell =
+                Func<GroupSettingDrift, IHtmlContent> driftExpectedCell =
                     @<text><span class="badge bg-success">@item.ExpectedValue</span></text>;
-                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftActualCell =
+                Func<GroupSettingDrift, IHtmlContent> driftActualCell =
                     @<text><span class="badge bg-danger">@item.ActualValue</span></text>;
                 var driftTable = TableModel.For(report.Drifts)
                     .Template("Setting", driftSettingCell)

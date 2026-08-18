@@ -1142,7 +1142,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         }
 
         public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
-            string query, Humans.Users.Contracts.PersonSearchFields fields,
+            string query, PersonSearchFields fields,
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
         public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(

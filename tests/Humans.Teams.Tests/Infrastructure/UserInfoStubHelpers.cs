@@ -42,7 +42,7 @@ internal static class UserInfoStubHelpers
                 BurnerName = displayName,
                 CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
                 UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                State = Humans.Users.Contracts.ProfileState.Active,
+                State = ProfileState.Active,
                 IsApproved = true
             },
             [],

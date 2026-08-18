@@ -356,7 +356,7 @@
                                         : $"{a.SupplierAccountNum} — {a.Name}";
                                     if (a.OwedToMember > 0) label += $" (owed {a.OwedToMember.ToEuro()})";
                                     if (a.Bindings.Any(b => b.UserId != submitterId)) label += " — bound to another member";
-                                    return new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    return new SelectListItem
                                     {
                                         Value = a.SupplierAccountNum.ToString(),
                                         Text = label,

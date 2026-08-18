@@ -867,7 +867,7 @@ public sealed class GoogleGroupSyncServiceTests
     private static TeamInfo MakeTeamInfo(Guid id, string name, string slug, string? googleGroupPrefix = null) =>
         new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
             SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
-            IsPromotedToDirectory: false, NodaTime.SystemClock.Instance.GetCurrentInstant(), [],
+            IsPromotedToDirectory: false, SystemClock.Instance.GetCurrentInstant(), [],
             GoogleGroupPrefix: googleGroupPrefix);
 
 }

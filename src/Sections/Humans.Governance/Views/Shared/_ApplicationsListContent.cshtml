@@ -46,18 +46,18 @@
 <div class="card">
     <div class="card-body p-0">
         @{
-            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> applicantCell =
+            Func<AdminApplicationViewModel, IHtmlContent> applicantCell =
                 @<text>
                     <vc:human user-id="@item.UserId" />
                     <div><small class="text-muted">@item.UserEmail</small></div>
                 </text>;
-            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> tierCell =
+            Func<AdminApplicationViewModel, IHtmlContent> tierCell =
                 @<text><span class="badge bg-info">@item.MembershipTier</span></text>;
-            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> statusCell =
+            Func<AdminApplicationViewModel, IHtmlContent> statusCell =
                 @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
-            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> previewCell =
+            Func<AdminApplicationViewModel, IHtmlContent> previewCell =
                 @<text><small class="text-muted">@item.MotivationPreview</small></text>;
-            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> detailCell =
+            Func<AdminApplicationViewModel, IHtmlContent> detailCell =
                 @<text>
                     <a asp-action="AdminDetail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
                         @SharedLocalizer["AdminApp_Review"]

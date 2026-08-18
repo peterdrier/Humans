@@ -117,7 +117,7 @@ internal static class PublicSurfaceRule
     /// <summary>Matched the way <c>SectionResourceTypes()</c> matches it at runtime.</summary>
     private static bool IsResourceMarker(INamedTypeSymbol type) =>
         type is { TypeKind: TypeKind.Class, IsAbstract: false }
-        && type.Name.EndsWith(ResourceNameSuffix, System.StringComparison.Ordinal);
+        && type.Name.EndsWith(ResourceNameSuffix, StringComparison.Ordinal);
 
     /// <summary>The scaffolder emits migrations public and they are never hand-edited.</summary>
     private static bool IsEfMigration(INamedTypeSymbol type, INamedTypeSymbol? migrationBase) =>
@@ -134,7 +134,7 @@ internal static class PublicSurfaceRule
         if (HasAttribute(type, nonViewComponentAttr))
             return false;
 
-        return type.Name.EndsWith(ViewComponentNameSuffix, System.StringComparison.Ordinal)
+        return type.Name.EndsWith(ViewComponentNameSuffix, StringComparison.Ordinal)
             || HasAttribute(type, viewComponentAttr);
     }
 
@@ -172,7 +172,7 @@ internal static class PublicSurfaceRule
 
         return (recurringJobInterface is not null
                 && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, recurringJobInterface)))
-            || type.Name.EndsWith(JobNameSuffix, System.StringComparison.Ordinal);
+            || type.Name.EndsWith(JobNameSuffix, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ internal static class PublicSurfaceRule
     private static bool IsUnderFolder(INamedTypeSymbol type, string segment)
     {
         var ns = type.ContainingNamespace?.ToDisplayString();
-        if (ns is not null && ns.Split('.').Any(s => string.Equals(s, segment, System.StringComparison.Ordinal)))
+        if (ns is not null && ns.Split('.').Any(s => string.Equals(s, segment, StringComparison.Ordinal)))
             return true;
 
         foreach (var syntaxRef in type.DeclaringSyntaxReferences)
@@ -193,7 +193,7 @@ internal static class PublicSurfaceRule
                 continue;
 
             var normalized = "/" + filePath.Replace('\\', '/').TrimStart('/') + "/";
-            if (normalized.IndexOf("/" + segment + "/", System.StringComparison.Ordinal) >= 0)
+            if (normalized.IndexOf("/" + segment + "/", StringComparison.Ordinal) >= 0)
                 return true;
         }
         return false;

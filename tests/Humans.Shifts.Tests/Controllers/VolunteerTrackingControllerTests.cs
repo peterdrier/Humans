@@ -50,7 +50,7 @@ public class VolunteerTrackingControllerTests
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IVolunteerTrackingExportService _exportService =
         Substitute.For<IVolunteerTrackingExportService>();
-    private readonly Humans.Shifts.Models.VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
+    private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer =

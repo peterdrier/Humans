@@ -406,7 +406,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserAsync(userId);
         var request = MakeRequest() with
         {
-            Allergies = [Humans.Users.Contracts.DietaryOptions.OtherOption],
+            Allergies = [DietaryOptions.OtherOption],
             AllergyOtherText = "   ",
         };
 

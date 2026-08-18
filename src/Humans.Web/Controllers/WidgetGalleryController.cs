@@ -196,7 +196,7 @@ public sealed class TableDemoRow
 {
     public string Name { get; set; } = string.Empty;
     public decimal Amount { get; set; }
-    public NodaTime.Instant JoinedAt { get; set; }
+    public Instant JoinedAt { get; set; }
     public TicketAttendeeStatus Status { get; set; }
     public bool IsVip { get; set; }
 }

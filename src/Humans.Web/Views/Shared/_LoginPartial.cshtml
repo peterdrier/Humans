@@ -5,7 +5,7 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    Humans.Users.Contracts.UserInfo? currentUser = null;
+    UserInfo? currentUser = null;
     if (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
     {
         currentUser = await UserService.GetUserInfoAsync(currentUserId);

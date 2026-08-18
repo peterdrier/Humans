@@ -80,7 +80,7 @@ public interface IAuditViewerService : IApplicationService
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions,
+        IReadOnlyList<AuditAction>? actions,
         int limit,
         CancellationToken ct = default);
 }

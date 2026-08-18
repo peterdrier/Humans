@@ -4,7 +4,7 @@
 @{
     ViewData["Title"] = "Budget Audit Log";
     var yearId = ViewBag.YearId as Guid?;
-    var years = ViewBag.Years as IReadOnlyList<Humans.Budget.Services.BudgetYearSummarySnapshot> ?? [];
+    var years = ViewBag.Years as IReadOnlyList<BudgetYearSummarySnapshot> ?? [];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

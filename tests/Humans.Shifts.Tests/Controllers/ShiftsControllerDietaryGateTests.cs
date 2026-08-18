@@ -160,10 +160,10 @@ public class ShiftsControllerDietaryGateTests
         model.SignupsBlockedByMissingDietary.Should().BeFalse();
     }
 
-    private async Task<Humans.Shifts.Models.MyShiftsViewModel> GetMineViewModel()
+    private async Task<MyShiftsViewModel> GetMineViewModel()
     {
         var result = await _controller.Mine();
         return result.Should().BeOfType<ViewResult>()
-                     .Which.Model.Should().BeOfType<Humans.Shifts.Models.MyShiftsViewModel>().Subject;
+                     .Which.Model.Should().BeOfType<MyShiftsViewModel>().Subject;
     }
 }

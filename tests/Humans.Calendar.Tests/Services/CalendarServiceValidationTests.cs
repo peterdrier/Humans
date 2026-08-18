@@ -170,7 +170,7 @@ public class CalendarServiceValidationTests
         var repo = Substitute.For<ICalendarRepository>();
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
-                Arg.Any<Humans.AuditLog.Contracts.AuditAction>(),
+                Arg.Any<AuditAction>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
@@ -224,7 +224,7 @@ public class CalendarServiceValidationTests
 
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
-                Arg.Any<Humans.AuditLog.Contracts.AuditAction>(),
+                Arg.Any<AuditAction>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
@@ -258,7 +258,7 @@ public class CalendarServiceValidationTests
 
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
-                Arg.Any<Humans.AuditLog.Contracts.AuditAction>(),
+                Arg.Any<AuditAction>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
@@ -278,7 +278,7 @@ public class CalendarServiceValidationTests
         var repo = Substitute.For<ICalendarRepository>();
         var audit = Substitute.For<IAuditLogService>();
         audit.LogAsync(
-                Arg.Any<Humans.AuditLog.Contracts.AuditAction>(),
+                Arg.Any<AuditAction>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())

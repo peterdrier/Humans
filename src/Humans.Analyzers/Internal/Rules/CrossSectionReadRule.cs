@@ -75,13 +75,13 @@ internal static class CrossSectionReadRule
                     continue;
 
                 var readBase = fullInterface.AllInterfaces.FirstOrDefault(
-                    i => i.Name.EndsWith(ReadInterfaceSuffix, System.StringComparison.Ordinal));
+                    i => i.Name.EndsWith(ReadInterfaceSuffix, StringComparison.Ordinal));
                 if (readBase is null)
                     continue;
 
                 var dependencySection = Sections.Of(fullInterface, Sections.InterfaceNamespacePrefix);
                 if (dependencySection is null
-                    || string.Equals(dependencySection, callerSection, System.StringComparison.Ordinal))
+                    || string.Equals(dependencySection, callerSection, StringComparison.Ordinal))
                 {
                     continue;
                 }

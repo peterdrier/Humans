@@ -134,8 +134,8 @@ internal static class CachingDecoratorRule
         while (topLevel.ContainingType is not null)
             topLevel = topLevel.ContainingType;
 
-        if (!topLevel.Name.StartsWith("Caching", System.StringComparison.Ordinal)
-            || !topLevel.Name.EndsWith("Service", System.StringComparison.Ordinal))
+        if (!topLevel.Name.StartsWith("Caching", StringComparison.Ordinal)
+            || !topLevel.Name.EndsWith("Service", StringComparison.Ordinal))
             return null;
 
         return topLevel;

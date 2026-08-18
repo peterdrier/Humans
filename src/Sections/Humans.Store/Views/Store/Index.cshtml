@@ -122,9 +122,9 @@ else
 }
 else
 {
-    Func<Humans.Store.Services.Dtos.ProductDto, IHtmlContent> catalogDescriptionCell =
+    Func<ProductDto, IHtmlContent> catalogDescriptionCell =
         @<text>@Html.SanitizedMarkdown(item.Description)</text>;
-    Func<Humans.Store.Services.Dtos.ProductDto, IHtmlContent> catalogPriceCell =
+    Func<ProductDto, IHtmlContent> catalogPriceCell =
         @<text>
             @item.UnitPriceInclVatEur.ToEuro()
             <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>

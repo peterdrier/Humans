@@ -22,7 +22,7 @@ internal static class InterfaceMethodMatcher
         string interfaceFullName,
         string methodName)
     {
-        if (!string.Equals(method.Name, methodName, System.StringComparison.Ordinal))
+        if (!string.Equals(method.Name, methodName, StringComparison.Ordinal))
             return false;
 
         var containingType = method.ContainingType;
@@ -30,14 +30,14 @@ internal static class InterfaceMethodMatcher
             return false;
 
         // Direct interface call.
-        if (string.Equals(containingType.ToDisplayString(), interfaceFullName, System.StringComparison.Ordinal))
+        if (string.Equals(containingType.ToDisplayString(), interfaceFullName, StringComparison.Ordinal))
             return true;
 
         // Concrete-type or derived-class call — resolve via the interface map.
         foreach (var iface in containingType.AllInterfaces)
         {
-            if (!string.Equals(iface.ToDisplayString(), interfaceFullName, System.StringComparison.Ordinal) &&
-                !string.Equals(iface.OriginalDefinition.ToDisplayString(), interfaceFullName, System.StringComparison.Ordinal))
+            if (!string.Equals(iface.ToDisplayString(), interfaceFullName, StringComparison.Ordinal) &&
+                !string.Equals(iface.OriginalDefinition.ToDisplayString(), interfaceFullName, StringComparison.Ordinal))
                 continue;
 
             foreach (var iMember in iface.GetMembers(methodName).OfType<IMethodSymbol>())

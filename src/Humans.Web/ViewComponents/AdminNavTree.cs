@@ -176,7 +176,7 @@ internal static class PillCounts
         var idClaim = http.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (idClaim is null || !Guid.TryParse(idClaim.Value, out var userId))
             return null;
-        var applications = sp.GetRequiredService<Humans.Governance.Contracts.IApplicationServiceRead>();
+        var applications = sp.GetRequiredService<Governance.Contracts.IApplicationServiceRead>();
         var count = await applications.GetUnvotedApplicationCountAsync(userId);
         return count > 0 ? count : null;
     }
@@ -190,7 +190,7 @@ internal static class PillCounts
 
     public static async ValueTask<int?> FeedbackQueue(IServiceProvider sp)
     {
-        var feedback = sp.GetRequiredService<Humans.Feedback.Contracts.IFeedbackServiceRead>();
+        var feedback = sp.GetRequiredService<Feedback.Contracts.IFeedbackServiceRead>();
         var count = await feedback.GetActionableCountAsync(CancellationToken.None);
         return count > 0 ? count : null;
     }

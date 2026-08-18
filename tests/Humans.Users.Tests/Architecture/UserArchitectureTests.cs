@@ -75,7 +75,7 @@ public class UserArchitectureTests
         var typesToScan = new[]
         {
             typeof(IUserEmailService),
-            typeof(Humans.Users.Data.Repositories.UserRepository),
+            typeof(UserRepository),
             typeof(IUserRepository),
         };
 
@@ -146,7 +146,7 @@ public class UserArchitectureTests
     [HumansFact]
     public void User_HasNoCrossDomainNavigationProperties()
     {
-        var userType = typeof(Humans.Users.Contracts.User);
+        var userType = typeof(User);
         var declaredProps = userType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(p => p.Name)

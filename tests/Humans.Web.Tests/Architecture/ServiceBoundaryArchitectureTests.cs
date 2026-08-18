@@ -31,7 +31,7 @@ public class ServiceBoundaryArchitectureTests
     /// <c>Humans.Web</c> since G5 lane 5b-6 deleted <c>Humans.Infrastructure</c>.
     /// </summary>
     private static Type HostRepository(string fullName) =>
-        typeof(Web.Extensions.InfrastructureServiceCollectionExtensions).Assembly
+        typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly
             .GetType(fullName, throwOnError: false)
         ?? throw new InvalidOperationException(
             $"{fullName} not found in Humans.Web — did it move or get renamed?");
@@ -187,24 +187,24 @@ public class ServiceBoundaryArchitectureTests
     /// </remarks>
     private static readonly Type[] LeafResidentEntities =
     [
-        typeof(Humans.Users.Contracts.User),
-        typeof(Humans.Users.Contracts.UserEmail),
-        typeof(Humans.Users.Contracts.EventParticipation),
-        typeof(Humans.Users.Contracts.Profile),
-        typeof(Humans.Users.Contracts.ContactField),
-        typeof(Humans.Users.Contracts.ProfileLanguage),
-        typeof(Humans.Users.Contracts.VolunteerHistoryEntry),
-        typeof(Humans.Users.Contracts.CommunicationPreference),
-        typeof(Humans.Users.Contracts.AccountMergeRequest),
+        typeof(Users.Contracts.User),
+        typeof(Users.Contracts.UserEmail),
+        typeof(Users.Contracts.EventParticipation),
+        typeof(Users.Contracts.Profile),
+        typeof(Users.Contracts.ContactField),
+        typeof(Users.Contracts.ProfileLanguage),
+        typeof(Users.Contracts.VolunteerHistoryEntry),
+        typeof(Users.Contracts.CommunicationPreference),
+        typeof(Users.Contracts.AccountMergeRequest),
         // GoogleIntegration's three entities, same shape and same reason
         // (nobodies-collective/Humans#866, G5 lane 4b-2j): GoogleResource and
         // GoogleSyncOutboxEvent are public members of IGoogleSyncService /
         // IGoogleSyncOutboxService on Humans.GoogleIntegration.Contracts, and a leaf
         // cannot reference its own section project, so they live on the leaf rather
         // than under Humans.GoogleIntegration.Domain.
-        typeof(Humans.GoogleIntegration.Contracts.GoogleResource),
-        typeof(Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
-        typeof(Humans.GoogleIntegration.Contracts.SyncServiceSettings),
+        typeof(GoogleIntegration.Contracts.GoogleResource),
+        typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
+        typeof(GoogleIntegration.Contracts.SyncServiceSettings),
     ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
@@ -220,7 +220,7 @@ public class ServiceBoundaryArchitectureTests
         // Humans.Domain) so the sweep re-arms if anything lands back there before
         // phase 5a deletes the project. Coverage did not shrink — the three entities
         // are listed in LeafResidentEntities above.
-        var entityTypes = typeof(Humans.Domain.Enums.GoogleSyncSource).Assembly
+        var entityTypes = typeof(Domain.Enums.GoogleSyncSource).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()
@@ -291,7 +291,7 @@ public class ServiceBoundaryArchitectureTests
     /// never carries a hard-coded list of moved sections.
     /// </summary>
     private static IEnumerable<Assembly> SectionAssemblies() =>
-        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies();
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies();
 
     /// <summary>
     /// Every G5 contracts leaf. Discovered from the dependency graph by name rather than by

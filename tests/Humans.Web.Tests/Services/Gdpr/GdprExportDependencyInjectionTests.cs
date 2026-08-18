@@ -86,7 +86,7 @@ public class GdprExportDependencyInjectionTests
     /// list rather than dropping it — the silent-omission bug this class exists to prevent.
     /// </summary>
     private static Type SectionType(string fullName) =>
-        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
@@ -116,11 +116,11 @@ public class GdprExportDependencyInjectionTests
         // sweep the way it would with a hard-coded assembly list (design §10).
         // Humans.Infrastructure was the first entry until G5 lane 5b-6 deleted it; its residue
         // (and, at 5c, Dashboard's) lands in Humans.Web, so the host assembly takes its place.
-        var hostAssembly = typeof(Web.Extensions.InfrastructureServiceCollectionExtensions).Assembly;
+        var hostAssembly = typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly;
         var applicationAssembly = typeof(Humans.Users.Services.UserService).Assembly;
 
         var foundContributors = new[] { hostAssembly, applicationAssembly }
-            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())
+            .Concat(Extensions.SectionDiscoveryExtensions.SectionAssemblies())
             .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })
             .Where(t => typeof(IUserDataContributor).IsAssignableFrom(t))
@@ -141,7 +141,7 @@ public class GdprExportDependencyInjectionTests
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Web.Extensions.InfrastructureServiceCollectionExtensions
+        Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,
@@ -170,7 +170,7 @@ public class GdprExportDependencyInjectionTests
     public void GdprExportServiceIsRegistered()
     {
         var services = new ServiceCollection();
-        Web.Extensions.InfrastructureServiceCollectionExtensions
+        Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 BuildMinimalConfiguration(),
@@ -193,7 +193,7 @@ public class GdprExportDependencyInjectionTests
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Web.Extensions.InfrastructureServiceCollectionExtensions
+        Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,

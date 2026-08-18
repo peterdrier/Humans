@@ -474,7 +474,7 @@ public class AuthorizationPolicyTests : IDisposable
     /// or dropped controller fails the test rather than quietly leaving the sweep.
     /// </summary>
     private static Type SectionType(string fullName) =>
-        Humans.Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(

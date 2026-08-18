@@ -44,15 +44,15 @@
 <div class="card">
     <div class="card-body p-0">
         @{
-            Func<Humans.Users.Models.AdminRoleAssignmentViewModel, IHtmlContent> userCell =
+            Func<AdminRoleAssignmentViewModel, IHtmlContent> userCell =
                 @<text>
                     <vc:human user-id="@item.UserId" link="Admin" />
                     <br />
                     <small class="text-muted">@item.UserEmail</small>
                 </text>;
-            Func<Humans.Users.Models.AdminRoleAssignmentViewModel, IHtmlContent> roleCell =
+            Func<AdminRoleAssignmentViewModel, IHtmlContent> roleCell =
                 @<text><strong>@item.RoleName</strong></text>;
-            Func<Humans.Users.Models.AdminRoleAssignmentViewModel, IHtmlContent> validToCell =
+            Func<AdminRoleAssignmentViewModel, IHtmlContent> validToCell =
                 @<text>
                     @if (item.ValidTo.HasValue)
                     {
@@ -63,7 +63,7 @@
                         <span class="text-muted">-</span>
                     }
                 </text>;
-            Func<Humans.Users.Models.AdminRoleAssignmentViewModel, IHtmlContent> statusCell =
+            Func<AdminRoleAssignmentViewModel, IHtmlContent> statusCell =
                 @<text>
                     @if (item.IsActive)
                     {
@@ -74,7 +74,7 @@
                         <span class="badge bg-secondary">@Localizer["AdminHuman_Ended"]</span>
                     }
                 </text>;
-            Func<Humans.Users.Models.AdminRoleAssignmentViewModel, IHtmlContent> actionCell =
+            Func<AdminRoleAssignmentViewModel, IHtmlContent> actionCell =
                 @<text>
                     @if (item.IsActive)
                     {

@@ -8,7 +8,7 @@ namespace Humans.Camps.Services;
 /// </summary>
 internal sealed record CampComplianceMatrixData(
     int Year,
-    IReadOnlyList<Humans.Camps.Contracts.CampRoleDefinitionInfo> Roles,
+    IReadOnlyList<CampRoleDefinitionInfo> Roles,
     IReadOnlyList<CampComplianceMatrixRow> Rows);
 
 /// <summary>
