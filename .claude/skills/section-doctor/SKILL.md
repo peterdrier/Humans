@@ -84,18 +84,11 @@ not staleness). Exception: if **every** section has an open run PR, there is not
 report the open PRs and go straight to Phase 9 teardown. Nothing has been written at this point,
 so the worktree is clean and `git worktree remove` succeeds without `--force`.
 
-**Replan lock — at most one open replan PR.** Before replanning, check whether any open
-section-doctor PR touches `docs/health/plan.md` (`git fetch` the branch,
-`git diff --name-only origin/main...<branch> -- docs/health/plan.md`). If one does, this run
-must **not** replan — that branch's plan is the live one; select from it. `--replan` and the
-staleness trigger defer until that PR merges (note the deferral in this run's run file). If on
-top of that no row is selectable, exit like the all-blocked case and report. Without this lock a
-second replan is a second concurrent writer of every shared file — the exact failure this design
-removes.
-
-**Replanning** (mid-level signals only — no deep reading). With the lock above, the replanning
-run is the **only** open writer of shared files: its PR stays open while later runs execute
-against its branch state, and no second replan can start until it merges.
+**Replanning** (mid-level signals only — no deep reading). Replans are the only writers of
+shared files, and they are rare: a full-cycle plan outlasts ~2 weeks of 2×/day runs, scheduled
+invocations run one at a time, and a later run reads the open replan's plan from its branch
+(newest anchor wins) rather than writing its own. **No locking** (Peter's call, PR #1366) — if
+two replans ever do overlap, the cost is one hand-resolved conflict, not corruption.
 
 1. `dotnet build Humans.slnx -v quiet` first — an unbuilt solution silently under-reports
    Reforge scores — then `reforge surface-score --format compact` for size + deltas. (The build
@@ -284,10 +277,11 @@ Present the open items inline, then apply each answer:
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
   unticked run file would resurface as a merged-queue item after the PR lands and get re-asked
   or applied twice. Push.
-- **Merged item** — fresh worktree + branch off `origin/main`, apply the answer, tick the entry
-  in that run's file under `docs/health/runs/`, push, **open its own PR** (an answer pushed to a
-  branch with no PR is stranded), tear the worktree down. Run files are per-run, so these edits
-  cannot conflict with concurrent doctor runs.
+- **Merged items** — group by run file: one fresh worktree + branch off `origin/main` **per run
+  file**, applying all of that file's answers and ticking each entry, push, one PR per run file
+  (an answer pushed to a branch with no PR is stranded), tear the worktree down. One writer per
+  run file — several same-file answers in separate PRs would conflict with each other; grouped,
+  these PRs cannot conflict with each other or with concurrent doctor runs.
 
 ## Standing constraints
 
@@ -298,9 +292,9 @@ Present the open items inline, then apply each answer:
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - **A run touches only:** the section's files (+ callers where a play requires), the section's
   `Docs/health.md`, and its own `docs/health/runs/<date>-<Section>.md`. **A replanning run
-  additionally touches** (as the sole open replan, per the replan lock): `docs/health/plan.md`,
-  this skill's files, `docs/architecture/debt-ledger.yml`, `memory/` — never the run files it
-  sweeps. Nothing writes `docs/architecture/maintenance-log.md`.
+  additionally touches**: `docs/health/plan.md`, this skill's files,
+  `docs/architecture/debt-ledger.yml`, `memory/` — never the run files it sweeps. Nothing
+  writes `docs/architecture/maintenance-log.md`.
 
 ## Lessons
 
