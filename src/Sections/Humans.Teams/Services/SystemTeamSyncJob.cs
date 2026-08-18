@@ -7,6 +7,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
+using Humans.Base.Attributes;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;

@@ -1,5 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Attributes;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Domain.Constants;

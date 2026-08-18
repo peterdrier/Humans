@@ -18,8 +18,7 @@ internal static class CrossSectionReadRule
     public const string DiagnosticId = "HUM0032";
 
     private const string ReadInterfaceSuffix = "ServiceRead";
-    private const string CrossSectionWriteAttributeFullName =
-        "Humans.Application.Architecture.CrossSectionWriteAttribute";
+    private const string CrossSectionWriteAttributeFullName = "Humans.Base.Attributes.CrossSectionWriteAttribute";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

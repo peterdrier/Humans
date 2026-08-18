@@ -1,6 +1,7 @@
 using Humans.Application.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Attributes;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;

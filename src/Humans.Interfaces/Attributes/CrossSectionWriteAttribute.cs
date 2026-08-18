@@ -1,4 +1,4 @@
-namespace Humans.Application.Architecture;
+namespace Humans.Base.Attributes;
 
 /// <summary>
 /// Marks a class that legitimately holds another section's <b>write</b> service

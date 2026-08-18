@@ -1,4 +1,5 @@
 using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;

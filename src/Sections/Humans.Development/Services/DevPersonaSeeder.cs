@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Attributes;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;

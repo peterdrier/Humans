@@ -3,6 +3,7 @@ using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Metering;
 using Humans.Application.Metering;
+using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
 using Humans.Domain.Enums;
 using Humans.Email.Contracts;
