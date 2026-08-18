@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Diagnostics;
+using Humans.Base.Diagnostics;
 
 namespace Humans.Interfaces.Tests.Diagnostics;
 

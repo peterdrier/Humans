@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Humans.Application.Diagnostics;
+using Humans.Base.Diagnostics;
 
 namespace Humans.Application.Extensions;
 

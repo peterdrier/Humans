@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Diagnostics;
+using Humans.Base.Diagnostics;
 using Humans.Application.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

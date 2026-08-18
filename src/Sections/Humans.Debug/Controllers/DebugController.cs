@@ -1,5 +1,5 @@
 using Humans.Application.Configuration;
-using Humans.Application.Diagnostics;
+using Humans.Base.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;

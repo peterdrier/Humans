@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Diagnostics;
+namespace Humans.Base.Diagnostics;
 
 /// <summary>
 /// In-process registry of operation timing aggregates and swallowed-exception counts.
