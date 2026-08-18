@@ -1,6 +1,7 @@
+using Humans.UI.Models;
 using Microsoft.AspNetCore.Html;
 
-namespace Humans.UI.Models.Tables;
+namespace Humans.Base.Models.Tables;
 
 /// <summary>
 /// Non-generic render contract consumed by <c>Views/Shared/_Table.cshtml</c>.

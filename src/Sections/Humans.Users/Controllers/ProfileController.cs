@@ -1,5 +1,5 @@
 using Humans.Base.Attributes;
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.UI.Controllers;

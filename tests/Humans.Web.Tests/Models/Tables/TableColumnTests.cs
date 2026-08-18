@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.UI.Extensions;
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 using Humans.Base.Enums;
 
-namespace Humans.UI.Models.Tables;
+namespace Humans.Base.Models.Tables;
 
 /// <summary>
 /// Central enum-value → Bootstrap badge class registry for <see cref="CellFormat.EnumBadge"/> columns.

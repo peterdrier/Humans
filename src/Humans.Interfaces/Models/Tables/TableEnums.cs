@@ -1,4 +1,4 @@
-namespace Humans.UI.Models.Tables;
+namespace Humans.Base.Models.Tables;
 
 public enum TableMode
 {

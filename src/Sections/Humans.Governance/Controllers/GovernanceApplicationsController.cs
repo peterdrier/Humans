@@ -1,4 +1,4 @@
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 using Humans.Governance.Services;
 using Humans.UI.Controllers;
 using System.Globalization;

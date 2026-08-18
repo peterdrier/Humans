@@ -4,7 +4,7 @@ using Humans.UI.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 
-namespace Humans.UI.Models.Tables;
+namespace Humans.Base.Models.Tables;
 
 /// <summary>
 /// Fluent per-column configuration captured by <see cref="TableModelBuilder{TRow}.Column"/> /

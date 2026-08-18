@@ -1,6 +1,7 @@
+using Humans.UI.Models;
 using Microsoft.AspNetCore.Html;
 
-namespace Humans.UI.Models.Tables;
+namespace Humans.Base.Models.Tables;
 
 /// <summary>Entry point: <c>TableModel.For(rows).Column(...).Build()</c> in a view code block.</summary>
 public static class TableModel
