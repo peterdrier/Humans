@@ -84,9 +84,18 @@ not staleness). Exception: if **every** section has an open run PR, there is not
 report the open PRs and go straight to Phase 9 teardown. Nothing has been written at this point,
 so the worktree is clean and `git worktree remove` succeeds without `--force`.
 
-**Replanning** (mid-level signals only — no deep reading). The replanning run is the **only**
-run that touches shared files, and it is single-writer by construction: its PR stays open while
-later runs execute against its branch state, so no concurrent run ever writes these files.
+**Replan lock — at most one open replan PR.** Before replanning, check whether any open
+section-doctor PR touches `docs/health/plan.md` (`git fetch` the branch,
+`git diff --name-only origin/main...<branch> -- docs/health/plan.md`). If one does, this run
+must **not** replan — that branch's plan is the live one; select from it. `--replan` and the
+staleness trigger defer until that PR merges (note the deferral in this run's run file). If on
+top of that no row is selectable, exit like the all-blocked case and report. Without this lock a
+second replan is a second concurrent writer of every shared file — the exact failure this design
+removes.
+
+**Replanning** (mid-level signals only — no deep reading). With the lock above, the replanning
+run is the **only** open writer of shared files: its PR stays open while later runs execute
+against its branch state, and no second replan can start until it merges.
 
 1. `dotnet build Humans.slnx -v quiet` first — an unbuilt solution silently under-reports
    Reforge scores — then `reforge surface-score --format compact` for size + deltas. (The build
@@ -103,10 +112,15 @@ later runs execute against its branch state, so no concurrent run ever writes th
 4. Write anchor (commit + UTC date) and the full table to `docs/health/plan.md` — **no status
    column**; done-ness stays derived. The plan is advisory — run-day findings may extend a
    section's stay.
-5. **Sweep merged run files:** for every unticked `## Sweep queue` item in
-   `docs/health/runs/*.md` on `origin/main`, apply it — `lesson:` → this skill's Lessons,
-   `debt:` → `debt-ledger.yml`, `memory:` → the named atom + INDEX line — and tick it in the run
-   file, same commit. This is the only path by which runs amend shared files.
+5. **Sweep merged run files by anchor window:** the previous plan's anchor commit (from the
+   `plan.md` being replaced; if none exists, all of history) to this plan's new anchor bounds
+   the sweep — `git diff --name-only <prev-anchor>..origin/main -- docs/health/runs/`. For every
+   `## Sweep queue` item in those files, apply it — `lesson:` → this skill's Lessons, `debt:` →
+   `debt-ledger.yml`, `memory:` → the named atom + INDEX line — skipping any item already
+   present in its target (a late-merging run can straddle windows; idempotence beats
+   bookkeeping). **Never edit the swept run files** — resume is their only post-merge editor,
+   which is what keeps resume conflict-free. This sweep is the only path by which runs amend
+   shared files.
 
 Then select again from the new plan.
 
@@ -201,8 +215,8 @@ surfaces mid-run → stop striking, ship the assessment-only PR, note it in the 
   timestamp; if the path already exists at the branch point, suffix `-<HHMMZ>`). Sections:
   run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, worked,
   skipped + why (including plan rows passed over as blocked), retro (Phase 6), `## Needs Peter`
-  checklist, `## Sweep queue` (`lesson:` / `debt:` / `memory:` items for the next replan to
-  apply).
+  checklist, `## Sweep queue` (`lesson:` / `debt:` / `memory:` items as plain bullets — the
+  next replan whose window covers this run's merge applies them; nothing ever ticks them).
 
 The runs directory **is** the log and the newest file **is** the last report. There is no
 `log.md`, `last-report.md`, or generated index — never recreate them — and daily runs never
@@ -284,9 +298,9 @@ Present the open items inline, then apply each answer:
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - **A run touches only:** the section's files (+ callers where a play requires), the section's
   `Docs/health.md`, and its own `docs/health/runs/<date>-<Section>.md`. **A replanning run
-  additionally touches** (as the cycle's single writer): `docs/health/plan.md`, merged run
-  files it sweeps, this skill's files, `docs/architecture/debt-ledger.yml`, `memory/`.
-  Nothing writes `docs/architecture/maintenance-log.md`.
+  additionally touches** (as the sole open replan, per the replan lock): `docs/health/plan.md`,
+  this skill's files, `docs/architecture/debt-ledger.yml`, `memory/` — never the run files it
+  sweeps. Nothing writes `docs/architecture/maintenance-log.md`.
 
 ## Lessons
 

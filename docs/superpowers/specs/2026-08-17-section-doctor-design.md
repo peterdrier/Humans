@@ -61,9 +61,11 @@ under `src/Sections/` and can be reviewed as a unit.
     report, and no generated index replaces them. `plan.md` carries no tick/status column;
     done-ness is derived (health.md date vs. plan anchor) so selection can be recomputed fresh
     every run. Shared files (`plan.md`, the skill's own files, `debt-ledger.yml`, `memory/`) are
-    written only by replanning runs, which are single-writer by construction; other runs queue
-    such writes in their run file's `## Sweep queue` for the next replan to apply. Daily runs no
-    longer write `docs/architecture/maintenance-log.md` at all.
+    written only by replanning runs, made single-writer by the **replan lock** (no replan while
+    an open section-doctor PR touches `plan.md`); other runs queue such writes in their run
+    file's `## Sweep queue` for a later replan to apply — sweeps are windowed by anchor commit
+    and never edit the swept run files, leaving `resume` their only post-merge editor. Daily
+    runs no longer write `docs/architecture/maintenance-log.md` at all.
 
 ## Invocation
 
@@ -140,10 +142,10 @@ Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 ## Retro
 ## Needs Peter
 - [ ] <one-line question>  ← authoritative in the PR body while open; here after merge
-## Sweep queue             ← shared-file writes, applied + ticked by the next replan
-- [ ] lesson: <dated one-liner for the skill's Lessons>
-- [ ] debt: <debt-ledger inbox entry>
-- [ ] memory: <bucket>/<name> — <rule>
+## Sweep queue             ← shared-file writes; a later replan's window applies them (no ticks)
+- lesson: <dated one-liner for the skill's Lessons>
+- debt: <debt-ledger inbox entry>
+- memory: <bucket>/<name> — <rule>
 ```
 
 ## The planner
@@ -153,11 +155,17 @@ stale. Staleness is a judgment call with a guideline: a merged change since the 
 materially reshapes an upcoming scheduled section (move, rename, major feature) justifies
 replanning; routine churn does not. Threshold expected to be tuned by the learning loop.
 
-**The replanning run is the single writer of every shared file** — its PR stays open while later
-runs execute against its branch state, so no concurrent run writes `plan.md`, the skill's files,
-`debt-ledger.yml`, or `memory/`. Besides writing the plan, it **sweeps merged run files**:
-every unticked `## Sweep queue` item in `docs/health/runs/*.md` on `origin/main` is applied to
-its shared target and ticked in the run file, same commit.
+**The replanning run is the single writer of every shared file**, enforced by the **replan
+lock**: no run may replan while an open section-doctor PR touches `plan.md` (`--replan` and the
+staleness trigger defer until it merges). Its PR stays open while later runs execute against its
+branch state, so no concurrent run writes `plan.md`, the skill's files, `debt-ledger.yml`, or
+`memory/`. Besides writing the plan, it **sweeps merged run files by anchor window** — files
+that landed under `docs/health/runs/` between the previous plan's anchor commit and the new
+anchor (`git diff --name-only <prev-anchor>..origin/main -- docs/health/runs/`; all of history
+when no previous plan exists): every `## Sweep queue` item is applied to its shared target,
+skipping items already present (idempotence covers a run that merges late and straddles
+windows). The swept run files themselves are **never edited** — `resume` is their only
+post-merge editor, so resume's edits cannot collide with a concurrent sweep.
 
 Signals (mid-level — no deep reading):
 
@@ -251,8 +259,9 @@ conflict with concurrent doctor runs. No new assessment work.
 - Section projects only (`src/Sections/`); pre-G5 remnants are out of scope.
 - A run touches only: the section's files, its callers where a play requires (e.g. read-split
   migrations), the section's `health.md`, and its own `docs/health/runs/` file. A replanning run
-  additionally touches, as the cycle's single writer: `plan.md`, merged run files it sweeps, the
-  skill's own files, `debt-ledger.yml`, and `memory/`. Nothing writes `maintenance-log.md`.
+  additionally touches, as the sole open replan (replan lock): `plan.md`, the skill's own files,
+  `debt-ledger.yml`, and `memory/` — never the run files it sweeps. Nothing writes
+  `maintenance-log.md`.
 
 ## Relationship to existing skills — cutover checklist
 
