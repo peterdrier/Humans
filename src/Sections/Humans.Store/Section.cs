@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Store.Authorization;
 using Humans.Store.Contracts;
 using Humans.Store.Data;

@@ -6,7 +6,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

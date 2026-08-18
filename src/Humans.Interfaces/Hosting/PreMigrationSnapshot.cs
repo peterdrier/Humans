@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Npgsql;
 
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Base.Hosting;
 
 /// <summary>
 /// Captures a <c>pg_dump</c> snapshot immediately before the first schema change of a boot,

@@ -158,7 +158,7 @@ public class DbContextOwnershipRuleTests
     {
         var source = Stubs + """
 
-            namespace Humans.Infrastructure.Hosting
+            namespace Humans.Base.Hosting
             {
                 public sealed class DatabaseMigrationHostedService :
                     Microsoft.Extensions.Hosting.IHostedLifecycleService

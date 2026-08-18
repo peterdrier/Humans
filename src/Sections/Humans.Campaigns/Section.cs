@@ -4,7 +4,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

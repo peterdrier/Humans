@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;

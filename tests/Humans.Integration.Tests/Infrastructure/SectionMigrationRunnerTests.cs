@@ -14,7 +14,7 @@ using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Infrastructure.Data;
 using Humans.Web.Data;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.CityPlanning.Data;
 using Humans.Containers.Data;
 using Humans.Expenses.Data;

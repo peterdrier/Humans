@@ -2,7 +2,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Caching;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Authorization;

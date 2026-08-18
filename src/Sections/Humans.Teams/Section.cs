@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;

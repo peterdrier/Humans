@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Base.Hosting;
 
 /// <summary>
 /// Descriptor for a per-section DbContext registered via

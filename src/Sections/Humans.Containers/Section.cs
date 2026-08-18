@@ -3,7 +3,7 @@ using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

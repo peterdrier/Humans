@@ -1,7 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Models;

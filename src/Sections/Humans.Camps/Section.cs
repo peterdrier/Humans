@@ -4,7 +4,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Camps.Authorization;
 using Humans.CityPlanning.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

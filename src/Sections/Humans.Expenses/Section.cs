@@ -3,7 +3,7 @@ using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.UI.Models.Tables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;

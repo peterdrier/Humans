@@ -9,7 +9,7 @@ using Humans.Agent.Services.Stores;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Base.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;

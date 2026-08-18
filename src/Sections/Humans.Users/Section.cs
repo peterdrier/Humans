@@ -3,7 +3,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;

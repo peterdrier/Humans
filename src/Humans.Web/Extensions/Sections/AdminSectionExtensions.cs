@@ -1,4 +1,4 @@
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Users.Jobs;
 using Humans.Web.Filters;
 

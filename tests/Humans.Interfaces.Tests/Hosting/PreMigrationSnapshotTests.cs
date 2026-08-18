@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Interfaces.Tests.Hosting;

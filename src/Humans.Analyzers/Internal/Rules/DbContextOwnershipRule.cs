@@ -49,7 +49,7 @@ internal static class DbContextOwnershipRule
         "Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory`1";
     private const string HostedLifecycleServiceFullName =
         "Microsoft.Extensions.Hosting.IHostedLifecycleService";
-    private const string InfrastructureHostingNamespace = "Humans.Infrastructure.Hosting";
+    private const string BaseHostingNamespace = "Humans.Base.Hosting";
 
     public static void Register(CompilationStartAnalysisContext context)
     {
@@ -156,7 +156,7 @@ internal static class DbContextOwnershipRule
                 SymbolEqualityComparer.Default.Equals(iface, hostedLifecycleService) &&
                 string.Equals(
                     type.ContainingNamespace?.ToDisplayString(),
-                    InfrastructureHostingNamespace,
+                    BaseHostingNamespace,
                     StringComparison.Ordinal))
             {
                 return true;

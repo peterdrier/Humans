@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Base.Hosting;
 
 /// <summary>
 /// Migrates a per-section DbContext with real-up baseline detection

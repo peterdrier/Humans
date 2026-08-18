@@ -3,7 +3,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

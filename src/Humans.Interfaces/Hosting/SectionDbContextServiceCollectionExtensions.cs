@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Base.Hosting;
 
 /// <summary>
 /// The per-section DbContext registration seam. Lives in Base (this assembly) because all 28

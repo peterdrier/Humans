@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Services;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

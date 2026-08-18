@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Humans.Infrastructure.Hosting;
+namespace Humans.Base.Hosting;
 
 /// <summary>
 /// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup

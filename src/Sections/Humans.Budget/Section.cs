@@ -5,7 +5,7 @@ using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Budget.Jobs;
 using Humans.Budget.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -4,7 +4,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
