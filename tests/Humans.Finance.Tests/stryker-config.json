@@ -5,6 +5,9 @@
     "coverage-analysis": "off",
     "mutation-level": "Standard",
     "concurrency": 16,
+    "mutate": [
+      "!**/Data/Migrations/**"
+    ],
     "reporters": [
       "ClearText",
       "Json"
