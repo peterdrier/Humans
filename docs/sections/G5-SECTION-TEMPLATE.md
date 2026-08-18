@@ -1370,7 +1370,7 @@ Git Bash.)
    leave the file where it is (proven: Gate, whose `gate-admissions.md` stayed).
    Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
-   `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
+   **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and

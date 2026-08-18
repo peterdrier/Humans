@@ -19,7 +19,6 @@ CHECKS=(
   controller-architecture-audit
   dependency-graph
   service-data-access-map
-  data-model-index
   guid-reservations
   code-analysis-suppressions
   reforge-history

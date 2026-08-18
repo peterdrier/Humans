@@ -3,8 +3,9 @@
 #
 # Verifies that every service class under src/Sections/*/Services/ and the
 # cross-section orchestrators in src/Humans.Web/Services/ appear as a
-# `### <ServiceName>` heading (or row) in
-# docs/architecture/service-data-access-map.md.
+# `### <ServiceName>` heading (or row) in the per-section maps
+# (src/Sections/*/Docs/data-access.md) or the cross-section rollup
+# (docs/architecture/service-data-access-map.md). Split per-section 2026-08-18.
 #
 # Humans.Application, which this check used to walk, was emptied and
 # dereferenced at G5 lane 5c (nobodies-collective/Humans#866).
@@ -23,6 +24,10 @@ if [ ! -f "$DOC" ]; then
   echo "FAIL [service-data-access-map]: $DOC does not exist"
   exit 1
 fi
+
+# The global rollup plus every per-section map.
+DOCS=("$DOC")
+while IFS= read -r F; do DOCS+=("$F"); done < <(ls src/Sections/*/Docs/data-access.md 2>/dev/null)
 
 # shellcheck source=lib-service-classes.sh
 . "$(cd "$(dirname "$0")" && pwd)/lib-service-classes.sh"
@@ -45,7 +50,7 @@ while IFS='|' read -r PRIMARY NAMES FILE; do
   # enforce a per-service narrative.
   FOUND=false
   for NAME in $(echo "$NAMES" | tr ',' ' '); do
-    if grep -qE "^### ${NAME}( |\$)" "$DOC"; then
+    if grep -qE "^### ${NAME}( |\$)" "${DOCS[@]}"; then
       FOUND=true
       break
     fi

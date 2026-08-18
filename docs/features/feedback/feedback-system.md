@@ -91,7 +91,7 @@ Every creation path below was deleted: the floating widget item and its modal, `
 
 ## Data Model
 
-See `docs/architecture/data-model.md` — `FeedbackReport` and `FeedbackMessage` entities.
+Entities: `FeedbackReport` and `FeedbackMessage` (owned by this section).
 
 **Table:** `feedback_reports`
 

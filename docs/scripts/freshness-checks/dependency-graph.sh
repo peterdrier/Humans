@@ -15,7 +15,10 @@
 # service class is named `Service`.
 #
 # Mermaid node syntax used: `<Alias>[<ServiceName>]` — we look for the service
-# name inside square brackets.
+# name inside square brackets. Since the 2026-08-18 cross-section-only rewrite,
+# a service with zero cross-section edges is legitimately absent from the
+# Mermaid but MUST be named in the doc's "Services with no cross-section edges"
+# list — so a backtick-quoted mention anywhere in the doc also counts.
 
 set -euo pipefail
 
@@ -50,6 +53,11 @@ while IFS='|' read -r PRIMARY NAMES FILE; do
   FOUND=false
   for NAME in $(echo "$NAMES" | tr ',' ' '); do
     if echo "$NODE_LABELS" | grep -qx "$NAME"; then
+      FOUND=true
+      break
+    fi
+    # Zero-cross-section-edge services are listed (backtick-quoted) instead of drawn.
+    if grep -q "\`${NAME}\`" "$DOC"; then
       FOUND=true
       break
     fi

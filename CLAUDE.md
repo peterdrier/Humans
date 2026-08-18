@@ -101,7 +101,6 @@ After running any recurring maintenance process, update [`docs/architecture/main
 | **Section invariants** | **[`docs/sections/`](docs/sections/)** |
 | **Section template** | [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md) |
 | **Feature specs** | [`docs/features/`](docs/features/) |
-| Data model | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
 | Dependency graph | [`docs/architecture/dependency-graph.md`](docs/architecture/dependency-graph.md) |
 | Analyzers/ReSharper | [`docs/architecture/code-analysis.md`](docs/architecture/code-analysis.md) |
 | Maintenance log | [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) |

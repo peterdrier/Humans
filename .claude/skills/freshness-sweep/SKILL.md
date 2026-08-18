@@ -143,7 +143,7 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft 
 - `docs/sections/`, `docs/features/`, `docs/guide/` as deletion targets (these are migration *destinations*, never sources)
 - `docs/architecture/{design-rules,code-review-rules,coding-rules,conventions}.md` as deletion targets (same — these are destinations)
 - `docs/freshness/last-report.md`
-- the `freshness:auto` blocks in `data-model.md` and `code-analysis.md` (Phase 5 owns those)
+- the `freshness:auto` block in `code-analysis.md` (Phase 5 owns it)
 
 ### Sizing
 

@@ -157,16 +157,18 @@ mechanical:
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
 
-      Walk every service class under src/Sections/*/Services/ AND the cross-section
-      orchestrators left in src/Humans.Web/Services/. Humans.Application is gone —
-      G5 lane 5c emptied it and dropped every reference to it — so there is no
-      Application/Services/ folder to walk. For each:
+      This graph shows CROSS-SECTION edges only (Peter, 2026-08-18): omit any
+      edge whose consumer and target implementation live in the same section
+      project, omit nodes left with zero edges, and never re-add intra-section
+      detail. Walk every service class under src/Sections/*/Services/ AND the
+      cross-section orchestrators left in src/Humans.Web/Services/. For each:
       1. Read the constructor; identify every injected interface.
       2. For each injected interface, follow it to its implementing service to
          identify the owning section. The section is the project name: an
          implementation under src/Sections/Humans.Teams/Services/ belongs to Teams.
          Note the interface may be declared in a separate Humans.<X>.Contracts
          project; the section is where the IMPLEMENTATION lives, not the contract.
+         Drop the edge if both ends resolve to the same section.
       3. Distinguish ctor-injected (solid arrow) from
          IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
          label).
@@ -178,6 +180,15 @@ mechanical:
       explanatory prose). Only regenerate the Mermaid diagram body.
 
   - id: service-data-access-map
+    # Split per-section 2026-08-18 (Peter): each section's map lives in its own
+    # project at src/Sections/Humans.<X>/Docs/data-access.md so a change inside
+    # one section only regenerates that section's file. The global target below
+    # keeps ONLY the cross-section content (Dashboard orchestrator, cross-section
+    # analysis, cache inventory, appendices). When this entry fires, regenerate
+    # only the data-access.md of the sections whose files changed, plus the
+    # global rollup if cross-section findings changed. The per-section files are
+    # mechanical outputs — they carry no editorial freshness markers and are not
+    # hand-edited.
     target: docs/architecture/service-data-access-map.md
     triggers:
       - "src/Humans.Web/Services/**/*.cs"
@@ -194,11 +205,16 @@ mechanical:
       - "src/Sections/*/Data/*Repository.cs"
     update: prompt
     prompt: |
-      Regenerate docs/architecture/service-data-access-map.md.
+      Regenerate the per-section data-access maps and the cross-section rollup.
 
-      For every service under src/Sections/*/Services/ AND the cross-section
-      orchestrators left in src/Humans.Web/Services/ — Humans.Application is gone,
-      emptied and dereferenced at G5 lane 5c — identify:
+      Outputs: src/Sections/Humans.<X>/Docs/data-access.md for each section whose
+      source files changed in the diff window, and
+      docs/architecture/service-data-access-map.md (Dashboard orchestrator +
+      cross-section analysis + cache inventory + appendices) when cross-section
+      findings changed. Do NOT regenerate untouched sections' files.
+
+      For every service in a touched section (and the cross-section orchestrators
+      left in src/Humans.Web/Services/), identify:
       1. Which repository interfaces it depends on. Note that a G5 section's
          repository is often a class literally named `Repository` implementing
          `I<Section>Repository`, not `<Section>Repository`; use the real class name.
@@ -212,44 +228,18 @@ mechanical:
          re-resolve it from the context sources.
       3. Which IMemoryCache keys the service reads/writes.
 
-      Group by section (use folder name under Services/). Match the existing
-      section headings and table layout. Preserve the intro paragraph and
-      Table of Contents.
+      Match each per-section file's existing header and table layout. In the
+      global rollup, preserve the intro/methodology block and the
+      "Per-Section Maps" pointer section.
 
       Note: at scale ~500 users with single-server deployment, this map is
       diagnostic — call out cross-section table reads (a service reading a
       table owned by another section's repository) as a design rule
       violation per docs/architecture/design-rules.md §"Services own their data".
 
-  - id: data-model-index
-    target: docs/architecture/data-model.md
-    triggers:
-      # Humans.Domain and Humans.Infrastructure were deleted across G5, so their
-      # Entities/ and Data/Configurations/ globs matched nothing. What survives of
-      # the platform side is SystemDbContext (DataProtectionKeys), which the doc
-      # lists and which now lives in Shell; section-owned entities and
-      # configurations are covered by the two src/Sections globs below.
-      - "src/Humans.Web/Infrastructure/Data/**/*.cs"
-      # G5 sections own their entities and EF configurations outright (24 Domain/
-      # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
-      # Without these, this entry reported "not dirty" on 2026-08-13 while 39
-      # section-owned entity/configuration files had changed — a false clean, not
-      # a real one. A trigger that cannot see the code makes a doc look fresh.
-      - "src/Sections/*/Domain/**/*.cs"
-      # Whole Data/ tree, not just Data/Configurations/: four configurations sit
-      # directly under Data/ (Consent's three, Email's EmailOutboxMessage), so a
-      # Configurations-only glob still left this entry falsely clean for them.
-      - "src/Sections/*/Data/**/*.cs"
-    update: prompt
-    # NOTE — the authoritative instruction for this entry is NOT this file. The
-    # prompt-file below explicitly defers to the inline `freshness:auto
-    # id="entity-index"` marker in docs/architecture/data-model.md, so that
-    # marker is what actually runs. Three places must agree (triggers here,
-    # prompt-file, inline marker); editing only the prompt-file is dead code —
-    # exactly the trap hit on 2026-08-13. If you widen these triggers, widen the
-    # INLINE MARKER first. Both currently cover src/Sections/*/Domain/ and
-    # src/Sections/*/Data/Configurations/ alongside the src/Humans.* roots.
-    prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
+  # data-model-index retired 2026-08-18 (Peter): docs/architecture/data-model.md
+  # deleted — each section's Docs/ owns its data model; the DbContext→tables
+  # rollup lives in service-data-access-map's methodology block. Do not re-add.
 
   - id: guid-reservations
     target: docs/guid-reservations.md
@@ -355,3 +345,6 @@ ignore:
   # maintains them itself (docs/superpowers/specs/2026-08-17-section-doctor-design.md).
   - src/Sections/*/Docs/health.md
   - docs/health/**
+  # Per-section data-access maps: mechanical outputs of the service-data-access-map
+  # entry (split from the global file 2026-08-18). No editorial markers; never hand-edited.
+  - src/Sections/*/Docs/data-access.md
