@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// One row of a "who is this assigned to" person dropdown: an id and the label to

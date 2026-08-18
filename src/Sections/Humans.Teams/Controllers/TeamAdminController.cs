@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Extensions;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Teams.Models;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;

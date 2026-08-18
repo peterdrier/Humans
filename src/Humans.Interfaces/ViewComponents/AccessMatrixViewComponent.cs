@@ -1,4 +1,4 @@
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Base.ViewComponents;

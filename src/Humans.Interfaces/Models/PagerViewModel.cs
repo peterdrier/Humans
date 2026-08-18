@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 public sealed class PagerViewModel(int totalPages, int currentPage, string action)
 {

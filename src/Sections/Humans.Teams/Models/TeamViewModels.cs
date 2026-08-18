@@ -5,7 +5,7 @@ using Humans.Teams.Domain;
 using Humans.Base.Enums;
 using NodaTime;
 
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Teams.Models;
 

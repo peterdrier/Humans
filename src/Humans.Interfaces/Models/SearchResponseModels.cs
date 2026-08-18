@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 // JSON row shapes for the person-search endpoints. In Humans.UI rather than Shell because
 // Humans.Teams' admin controller returns RoleAssignmentSearchResult and a section cannot

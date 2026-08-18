@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Contracts;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Web.Services.Agent;
 
 namespace Humans.Web.Tests.Services;

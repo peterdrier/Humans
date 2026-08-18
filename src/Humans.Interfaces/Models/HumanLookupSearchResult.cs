@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// One row of a person-lookup JSON response: the id, what to show, an optional disambiguating

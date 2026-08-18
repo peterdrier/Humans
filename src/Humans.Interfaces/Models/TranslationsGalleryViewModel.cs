@@ -1,8 +1,9 @@
 using System.Globalization;
 using Humans.Base.Extensions;
+using Humans.UI;
 using Microsoft.Extensions.Localization;
 
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// Every SharedResource key with its value in each supported culture, grouped by key

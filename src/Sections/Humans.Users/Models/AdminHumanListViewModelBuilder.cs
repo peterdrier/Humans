@@ -1,4 +1,4 @@
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;

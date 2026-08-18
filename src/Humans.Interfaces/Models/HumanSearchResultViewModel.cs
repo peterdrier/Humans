@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// One projected person-search row, as rendered by the canonical

@@ -1,6 +1,6 @@
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Search.Models;
 

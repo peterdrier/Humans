@@ -5,7 +5,7 @@ using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
 using Humans.Feedback.Services.Dtos;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Teams.Contracts;
 using Humans.UI.Authorization;
 using Humans.Users.Contracts;

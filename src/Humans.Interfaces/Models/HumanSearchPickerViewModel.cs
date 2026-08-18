@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// View model for the HumanSearch ViewComponent (inline person picker).

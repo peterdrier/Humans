@@ -9,7 +9,7 @@ using Humans.Users.Contracts;
 using Humans.Gate.Jobs;
 using Humans.UI.Authorization;
 using Humans.Base.Extensions;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;

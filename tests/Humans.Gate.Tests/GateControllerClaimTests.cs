@@ -2,7 +2,7 @@ using Humans.Gate.Controllers;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Users.Contracts;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;

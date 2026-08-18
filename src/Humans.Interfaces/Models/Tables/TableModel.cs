@@ -1,4 +1,3 @@
-using Humans.UI.Models;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Base.Models.Tables;

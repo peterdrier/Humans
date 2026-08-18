@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Base.Models.Tables;
 using Microsoft.AspNetCore.Html;
 

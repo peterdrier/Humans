@@ -1,4 +1,4 @@
-namespace Humans.UI.Models;
+namespace Humans.Base.Models;
 
 /// <summary>
 /// Search scope for the inline person picker (<c>&lt;vc:human-search&gt;</c>).

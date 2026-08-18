@@ -1,6 +1,6 @@
 using System.Text;
 using Humans.Agent.Contracts;
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Web.Services.Agent;
 

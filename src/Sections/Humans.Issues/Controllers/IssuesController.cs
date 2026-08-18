@@ -9,7 +9,7 @@ using Humans.Issues.Domain;
 using Humans.Issues.Models;
 using Humans.Issues.Services;
 using Humans.Issues.Services.Dtos;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Users.Contracts;
 
 namespace Humans.Issues.Controllers;
