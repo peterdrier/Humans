@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
-namespace Humans.UI.TagHelpers;
+namespace Humans.Base.TagHelpers;
 
 /// <summary>
 /// Renders a <c>&lt;textarea&gt;</c> upgraded with the EasyMDE WYSIWYG-ish Markdown

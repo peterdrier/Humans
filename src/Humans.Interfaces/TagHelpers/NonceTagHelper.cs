@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
-namespace Humans.UI.TagHelpers;
+namespace Humans.Base.TagHelpers;
 
 [HtmlTargetElement("script")]
 public class NonceTagHelper(IHttpContextAccessor httpContextAccessor) : TagHelper
