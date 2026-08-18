@@ -292,7 +292,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        var result = await service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
+        var result = await service.AddLineWithResultAsync(
+            id, user.Id, input.Description, input.Amount, input.LineType, input.ParentLineId);
         SetMutationResultWithDetails(result, "Line added.", "Failed to add line");
 
         return RedirectToAction(nameof(Edit), new { id });
@@ -488,7 +489,16 @@ internal sealed class ExpensesController(
     }
 
     [HttpGet("Attachment/{attachmentId:guid}")]
-    public async Task<IActionResult> Attachment(Guid attachmentId)
+    public Task<IActionResult> Attachment(Guid attachmentId)
+        => StreamAttachmentAsync(attachmentId, inline: false);
+
+    /// <summary>Same file, rendered in the browser tab (images + PDFs) instead of downloaded, so a
+    /// reviewer can check receipts without saving them. Non-renderable types fall back to download.</summary>
+    [HttpGet("Attachment/{attachmentId:guid}/View")]
+    public Task<IActionResult> AttachmentView(Guid attachmentId)
+        => StreamAttachmentAsync(attachmentId, inline: true);
+
+    private async Task<IActionResult> StreamAttachmentAsync(Guid attachmentId, bool inline)
     {
         try
         {
@@ -505,6 +515,11 @@ internal sealed class ExpensesController(
 
             var attachment = await expenseReadService.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
+
+            // Inline only for the browser-renderable subset of the upload whitelist — no filename
+            // means no Content-Disposition: attachment, so the browser shows it in the tab.
+            if (inline && ExpenseAttachmentDto.IsInlineViewableType(attachment.ContentType))
+                return File(attachment.Bytes, attachment.ContentType);
 
             return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }

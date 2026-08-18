@@ -110,7 +110,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (report is null) return false;
         line.ExpenseReportId = reportId;
         line.SortOrder = await ctx.ExpenseLines.CountAsync(l => l.ExpenseReportId == reportId, ct);
-        report.Total += line.Amount;
+        // Proof rows back an invoice line for review only — they never count toward the total.
+        if (line.ParentLineId is null) report.Total += line.Amount;
         ctx.ExpenseLines.Add(line);
         await ctx.SaveChangesAsync(ct);
         return true;
@@ -125,7 +126,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == line.Id && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return false;
-        report.Total = report.Total - tracked.Amount + line.Amount;
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount + line.Amount;
         tracked.Description = line.Description;
         tracked.Amount = line.Amount;
         await ctx.SaveChangesAsync(ct);
@@ -142,7 +144,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return false;
         ctx.ExpenseLines.Remove(tracked);
-        report.Total = report.Total - tracked.Amount;
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount;
         await ctx.SaveChangesAsync(ct);
         return true;
     }

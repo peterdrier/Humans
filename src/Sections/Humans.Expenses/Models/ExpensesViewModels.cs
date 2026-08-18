@@ -116,6 +116,12 @@ internal sealed class AddLineInputModel
 
     [Required, Range(0.01, 1_000_000)]
     public decimal Amount { get; set; }
+
+    /// <summary>Receipt (default) or Invoice; the service rejects travel types on this path.</summary>
+    public ExpenseLineType LineType { get; set; } = ExpenseLineType.Receipt;
+
+    /// <summary>Set when adding a proof row under an invoice line.</summary>
+    public Guid? ParentLineId { get; set; }
 }
 
 internal sealed class EditLineInputModel

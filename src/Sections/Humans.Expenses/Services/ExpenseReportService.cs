@@ -271,9 +271,21 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
         CancellationToken ct = default)
     {
-        await RequireEditableReportAsync(reportId, submitterUserId, ct);
+        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+
+        if (parentLineId is { } parentId)
+        {
+            // A proof row is a Receipt backing an Invoice line on the same report. One level only.
+            if (lineType != ExpenseLineType.Receipt)
+                throw new ExpenseValidationException("Proof rows must be receipt lines.");
+            var parent = report.Lines.FirstOrDefault(l => l.Id == parentId)
+                ?? throw new ExpenseValidationException("Parent line not found on this report.");
+            if (parent.LineType != ExpenseLineType.Invoice)
+                throw new ExpenseValidationException("Proof rows can only be added to an invoice line.");
+        }
 
         var line = new ExpenseLine
         {
@@ -281,7 +293,8 @@ internal sealed class ExpenseReportService(
             ExpenseReportId = reportId,
             Description = description,
             Amount = amount,
-            LineType = lineType
+            LineType = lineType,
+            ParentLineId = parentLineId
         };
         var ok = await repo.AddLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to add line.");
@@ -291,10 +304,16 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
         CancellationToken ct = default) =>
         RunMutationAsync(async () =>
         {
-            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Receipt, ct);
+            // Travel lines are computed and can no longer be created; this path takes free-text
+            // amounts, so it accepts only the receipt-backed types.
+            if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
+                throw new ExpenseValidationException("Only receipt and invoice lines can be added.");
+            await AddLineAsync(reportId, submitterUserId, description, amount, lineType, parentLineId, ct);
             return ExpenseMutationResult.Success;
         }, "Error adding line to report {ReportId}", null, reportId);
 
@@ -311,7 +330,7 @@ internal sealed class ExpenseReportService(
                 $"{km.ToString("0.#", CultureInfo.InvariantCulture)} km @ " +
                 $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
                 $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
-            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Mileage, ct);
+            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Mileage, ct: ct);
             return ExpenseMutationResult.Success;
         }, "Error adding mileage line to report {ReportId}", null, reportId);
 
@@ -331,7 +350,7 @@ internal sealed class ExpenseReportService(
                 $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
             if (!string.IsNullOrWhiteSpace(note))
                 description += $" — {note.Trim()}";
-            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.PerDiem, ct);
+            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.PerDiem, ct: ct);
             return ExpenseMutationResult.Success;
         }, "Error adding per-diem line to report {ReportId}", null, reportId);
 
@@ -348,7 +367,7 @@ internal sealed class ExpenseReportService(
         // receipt requirement on that basis. A free-text amount/description edit here would let a
         // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
         // remove it and re-add so the amount is always recomputed from its inputs.
-        if (existing.LineType != ExpenseLineType.Receipt)
+        if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
             throw new ExpenseValidationException(
                 "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
 
@@ -379,27 +398,38 @@ internal sealed class ExpenseReportService(
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
+        // An invoice line takes its proof rows with it — each cleaned up like any other line.
+        foreach (var proof in report.Lines.Where(l => l.ParentLineId == lineId))
+        {
+            await CleanLineAttachmentAsync(proof, ct);
+            var proofOk = await repo.RemoveLineAsync(reportId, proof.Id, ct);
+            if (!proofOk) throw new InvalidOperationException("Failed to remove proof row.");
+        }
+
         // Clean attachment first to avoid orphan row + file blob.
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-        if (line?.Attachment is not null)
-        {
-            await repo.SetLineAttachmentAsync(lineId, null, ct);
-            await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
-            try
-            {
-                await fileStorage.DeleteAsync(
-                    AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                    line.Attachment.Id, lineId);
-            }
-        }
+        if (line is not null) await CleanLineAttachmentAsync(line, ct);
 
         var ok = await repo.RemoveLineAsync(reportId, lineId, ct);
         if (!ok) throw new InvalidOperationException("Failed to remove line.");
+    }
+
+    private async Task CleanLineAttachmentAsync(ExpenseLineDto line, CancellationToken ct)
+    {
+        if (line.Attachment is null) return;
+        await repo.SetLineAttachmentAsync(line.Id, null, ct);
+        await repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
+        try
+        {
+            await fileStorage.DeleteAsync(
+                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Could not delete attachment file {AttachmentId} while removing line {LineId}",
+                line.Attachment.Id, line.Id);
+        }
     }
 
     public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
@@ -518,8 +548,10 @@ internal sealed class ExpenseReportService(
         if (!report.Lines.Any())
             throw new ExpenseValidationException("Report must have at least one line.");
 
-        if (report.Lines.Any(l => l.LineType == ExpenseLineType.Receipt && l.AttachmentId is null))
-            throw new ExpenseValidationException("Receipt lines must have an attachment before submitting.");
+        // Receipt lines (proof rows included) need their receipt; invoice lines need the invoice file.
+        if (report.Lines.Any(l => l.LineType is ExpenseLineType.Receipt or ExpenseLineType.Invoice
+                                  && l.AttachmentId is null))
+            throw new ExpenseValidationException("Receipt and invoice lines must have an attachment before submitting.");
 
         var profile = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
@@ -1037,8 +1069,14 @@ internal sealed class ExpenseReportService(
         // the category has no active mapping; the doc still creates, just unbooked.
         var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
 
-        var docLines = report.Lines
+        // Proof rows back an invoice line for review only — they are not booked and their
+        // files are not uploaded. What Holded gets is the invoice itself.
+        var bookableLines = report.Lines
+            .Where(l => l.ParentLineId is null)
             .OrderBy(l => l.SortOrder)
+            .ToList();
+
+        var docLines = bookableLines
             .Select(l => new HoldedPurchaseDocumentLineInput
             {
                 Description = l.Description,
@@ -1084,7 +1122,7 @@ internal sealed class ExpenseReportService(
         // 3. Upload attachments. Each upload is recorded so a re-run — after a failure partway
         // through this loop, or after a finance admin requeues the event — resumes instead of
         // adding a second copy of every earlier file to the same doc.
-        foreach (var line in report.Lines.OrderBy(l => l.SortOrder))
+        foreach (var line in bookableLines)
         {
             if (line.AttachmentId is null || line.Attachment is null) continue;
             if (line.Attachment.HoldedUploadedAt is not null) continue;
@@ -1242,6 +1280,7 @@ internal sealed class ExpenseReportService(
                     l.Description,
                     l.Amount,
                     l.LineType,
+                    l.ParentLineId,
                     l.SortOrder,
                     Attachment = l.Attachment is null
                         ? null

@@ -63,97 +63,190 @@
     </div>
 </div>
 
+@{
+    var proofsByParent = r.Lines.Where(l => l.ParentLineId is not null)
+        .GroupBy(l => l.ParentLineId!.Value)
+        .ToDictionary(g => g.Key, g => g.OrderBy(l => l.SortOrder).ToList());
+    var topLevelLines = r.Lines.Where(l => l.ParentLineId is null).OrderBy(l => l.SortOrder).ToList();
+
+    async Task AttachmentBlock(ExpenseLineDto line, string uploadLabel)
+    {
+        if (line.Attachment is not null)
+        {
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @if (line.Attachment.IsImage)
+                {
+                    <a href="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })" target="_blank">
+                        <img src="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })"
+                             alt="@line.Attachment.OriginalFileName" class="rounded border"
+                             style="max-height:60px; max-width:100px; object-fit:cover;" loading="lazy" />
+                    </a>
+                }
+                <a href="@Url.Action(line.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = line.Attachment.Id })"
+                   class="text-decoration-none small" target="_blank">
+                    <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                    <span class="text-muted">(@(line.Attachment.SizeBytes / 1024) KB)</span>
+                </a>
+                @if (line.Attachment.IsInlineViewable)
+                {
+                    <a href="@Url.Action("Attachment", new { attachmentId = line.Attachment.Id })"
+                       class="text-decoration-none small text-muted" title="Download">
+                        <i class="fa-solid fa-download"></i>
+                    </a>
+                }
+                @if (Model.CanEditLines)
+                {
+                    <form action="@Url.Action("RemoveAttachment", new { id = r.Id, lineId = line.Id })"
+                          method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Remove attachment</button>
+                    </form>
+                }
+            </div>
+        }
+        else if (Model.CanEditLines)
+        {
+            <form action="@Url.Action("AttachFile", new { id = r.Id, lineId = line.Id })"
+                  method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
+                @Html.AntiForgeryToken()
+                <input type="file" name="file" class="form-control form-control-sm" style="max-width:260px;"
+                       accept=".pdf,.jpg,.jpeg,.png,.heic" />
+                <button type="submit" class="btn btn-sm btn-outline-primary">@uploadLabel</button>
+            </form>
+            <div class="form-text text-warning mt-1">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment — required before submit.
+            </div>
+        }
+        else
+        {
+            <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+        }
+    }
+
+    async Task EditLineForm(ExpenseLineDto line)
+    {
+        if (!Model.CanEditLines || line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem) return;
+        <details class="mt-2">
+            <summary class="text-muted small" style="cursor:pointer;">Edit description / amount</summary>
+            <form action="@Url.Action("UpdateLine", new { id = r.Id })" method="post" class="mt-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="LineId" value="@line.Id" />
+                <div class="row g-2">
+                    <div class="col-md-7">
+                        <input type="text" name="Description" value="@line.Description"
+                               class="form-control form-control-sm" maxlength="500" required />
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" name="Amount" value="@line.Amount.ToString("F2")"
+                               class="form-control form-control-sm" step="0.01" min="0.01" required />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Save</button>
+                    </div>
+                </div>
+            </form>
+        </details>
+    }
+
+    async Task RemoveLineButton(ExpenseLineDto line, string confirmText)
+    {
+        if (!Model.CanEditLines) return;
+        <form action="@Url.Action("RemoveLine", new { id = r.Id, lineId = line.Id })"
+              method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    data-confirm="@confirmText">Remove line</button>
+        </form>
+    }
+}
+
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Expense lines</strong>
-        <span class="badge bg-secondary">@r.Lines.Count line(s) — @r.Total.ToEuro()</span>
+        <span class="badge bg-secondary">@topLevelLines.Count line(s) — @r.Total.ToEuro()</span>
     </div>
     <div class="card-body p-0">
-        @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
+        @foreach (var line in topLevelLines)
         {
             <div class="border-bottom p-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
+                        @if (line.LineType == ExpenseLineType.Invoice)
+                        {
+                            <span class="badge bg-primary me-1">Invoice</span>
+                        }
                         <strong>@line.Description</strong>
                         <span class="ms-2 text-muted">@line.Amount.ToEuro()</span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap justify-content-end">
-                        @if (Model.CanEditLines)
-                        {
-                            <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                                  method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger"
-                                        data-confirm="Remove this line and its attachment?">Remove line</button>
-                            </form>
-                        }
+                        @{ await RemoveLineButton(line, line.LineType == ExpenseLineType.Invoice
+                               ? "Remove this invoice line, its attachment, and all its proof rows?"
+                               : "Remove this line and its attachment?"); }
                     </div>
                 </div>
 
-                @if (line.LineType != ExpenseLineType.Receipt)
+                @if (line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
                 {
                     <span class="badge bg-info text-dark">
                         <i class="fa-solid fa-route me-1"></i>@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem") — no receipt needed
                     </span>
                 }
-                else if (line.Attachment is not null)
+                else
                 {
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
-                           class="text-decoration-none small" target="_blank">
-                            <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
-                            <span class="text-muted">(@(line.Attachment.SizeBytes / 1024) KB)</span>
-                        </a>
+                    await AttachmentBlock(line, line.LineType == ExpenseLineType.Invoice ? "Upload invoice" : "Upload receipt");
+                    await EditLineForm(line);
+                }
+
+                @if (line.LineType == ExpenseLineType.Invoice)
+                {
+                    var proofs = proofsByParent.TryGetValue(line.Id, out var p) ? p : [];
+                    var proofTotal = proofs.Sum(x => x.Amount);
+                    <div class="ms-4 mt-3 border-start ps-3">
+                        <div class="small mb-2">
+                            <strong>Proof of expenses</strong>
+                            <span class="badge @(proofTotal >= line.Amount ? "bg-success" : "bg-warning text-dark") ms-2">
+                                @proofTotal.ToEuro() of @line.Amount.ToEuro() invoiced
+                            </span>
+                            <span class="text-muted ms-1">— reviewed with the report, not sent to Holded.</span>
+                        </div>
+                        @foreach (var proof in proofs)
+                        {
+                            <div class="border-bottom py-2">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        @proof.Description
+                                        <span class="ms-2 text-muted">@proof.Amount.ToEuro()</span>
+                                    </div>
+                                    <div>
+                                        @{ await RemoveLineButton(proof, "Remove this proof row and its attachment?"); }
+                                    </div>
+                                </div>
+                                @{ await AttachmentBlock(proof, "Upload receipt"); await EditLineForm(proof); }
+                            </div>
+                        }
                         @if (Model.CanEditLines)
                         {
-                            <form asp-action="RemoveAttachment" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                                  method="post" class="d-inline">
+                            <form action="@Url.Action("AddLine", new { id = r.Id })" method="post" class="mt-2">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">Remove attachment</button>
+                                <input type="hidden" name="ParentLineId" value="@line.Id" />
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <input type="text" name="Description" class="form-control form-control-sm"
+                                               maxlength="500" placeholder="Underlying expense (what the invoice covers)" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" name="Amount" class="form-control form-control-sm"
+                                               step="0.01" min="0.01" placeholder="0.00" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                            <i class="fa-solid fa-plus me-1"></i>Add proof
+                                        </button>
+                                    </div>
+                                </div>
                             </form>
                         }
                     </div>
-                }
-                else if (Model.CanEditLines)
-                {
-                    <form asp-action="AttachFile" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                          method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
-                        @Html.AntiForgeryToken()
-                        <input type="file" name="file" class="form-control form-control-sm" style="max-width:260px;"
-                               accept=".pdf,.jpg,.jpeg,.png,.heic" />
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Upload receipt</button>
-                    </form>
-                    <div class="form-text text-warning mt-1">
-                        <i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment — required before submit.
-                    </div>
-                }
-                else
-                {
-                    <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
-                }
-
-                @if (Model.CanEditLines && line.LineType == ExpenseLineType.Receipt)
-                {
-                    <details class="mt-2">
-                        <summary class="text-muted small" style="cursor:pointer;">Edit description / amount</summary>
-                        <form asp-action="UpdateLine" asp-route-id="@r.Id" method="post" class="mt-2">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="LineId" value="@line.Id" />
-                            <div class="row g-2">
-                                <div class="col-md-7">
-                                    <input type="text" name="Description" value="@line.Description"
-                                           class="form-control form-control-sm" maxlength="500" required />
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="number" name="Amount" value="@line.Amount.ToString("F2")"
-                                           class="form-control form-control-sm" step="0.01" min="0.01" required />
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-sm btn-primary w-100">Save</button>
-                                </div>
-                            </div>
-                        </form>
-                    </details>
                 }
             </div>
         }
@@ -165,21 +258,32 @@
             <form asp-action="AddLine" asp-route-id="@r.Id" method="post">
                 @Html.AntiForgeryToken()
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label form-label-sm">Description</label>
                         <input type="text" name="Description" class="form-control form-control-sm"
                                maxlength="500" placeholder="What was bought / paid for?" required />
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label form-label-sm">Amount (EUR)</label>
                         <input type="number" name="Amount" class="form-control form-control-sm"
                                step="0.01" min="0.01" placeholder="0.00" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Type</label>
+                        <select name="LineType" class="form-select form-select-sm">
+                            <option value="@ExpenseLineType.Receipt" selected>Receipt</option>
+                            <option value="@ExpenseLineType.Invoice">Supplier invoice</option>
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">
                             <i class="fa-solid fa-plus me-1"></i>Add line
                         </button>
                     </div>
+                </div>
+                <div class="form-text mt-1">
+                    Choose <em>Supplier invoice</em> when the payee invoices us (ZZP / autónomo) — you can then
+                    attach the underlying receipts as proof rows under it.
                 </div>
             </form>
         </div>

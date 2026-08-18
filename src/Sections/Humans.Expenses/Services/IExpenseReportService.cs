@@ -15,9 +15,16 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Adds a Receipt or Invoice line. A non-null <paramref name="parentLineId"/> adds a proof row
+    /// backing that Invoice line — reviewed with the report but excluded from the total and never
+    /// pushed to Holded. Travel line types are rejected (their creation paths were removed).
+    /// </summary>
     Task<ExpenseMutationResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateLineWithResultAsync(

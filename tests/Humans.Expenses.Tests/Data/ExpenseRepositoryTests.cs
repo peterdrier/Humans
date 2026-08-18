@@ -99,6 +99,63 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
+    public async Task AddLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = Guid.NewGuid(), Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task UpdateLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        var proofId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof edited", Amount = 999m }, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Single(l => l.Id == proofId).Amount.Should().Be(999m);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        var proofId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        var ok = await _sut.RemoveLineAsync(report.Id, proofId, Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Should().HaveCount(1);
+    }
+
+    [HumansFact]
     public async Task SetLineAttachmentAsync_LinksAttachment()
     {
         var report = MakeReport();

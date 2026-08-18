@@ -98,30 +98,86 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
-                            {
-                                <tr>
-                                    <td>@(line.SortOrder + 1)</td>
-                                    <td>@line.Description</td>
-                                    <td class="text-end">@line.Amount.ToEuro()</td>
-                                    <td>
-                                        @if (line.LineType != ExpenseLineType.Receipt)
+                            @{
+                                var proofsByParent = r.Lines.Where(l => l.ParentLineId is not null)
+                                    .GroupBy(l => l.ParentLineId!.Value)
+                                    .ToDictionary(g => g.Key, g => g.OrderBy(l => l.SortOrder).ToList());
+                                var topLevelLines = r.Lines.Where(l => l.ParentLineId is null).OrderBy(l => l.SortOrder).ToList();
+
+                                async Task AttachmentCell(ExpenseLineDto line)
+                                {
+                                    if (line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
+                                    {
+                                        <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
+                                    }
+                                    else if (line.Attachment is not null)
+                                    {
+                                        if (line.Attachment.IsImage)
                                         {
-                                            <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
-                                        }
-                                        else if (line.Attachment is not null)
-                                        {
-                                            <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
-                                               class="text-decoration-none" target="_blank">
-                                                <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                            <a href="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })" target="_blank" class="me-2">
+                                                <img src="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })"
+                                                     alt="@line.Attachment.OriginalFileName" class="rounded border"
+                                                     style="max-height:48px; max-width:80px; object-fit:cover;" loading="lazy" />
                                             </a>
                                         }
-                                        else
+                                        <a href="@Url.Action(line.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = line.Attachment.Id })"
+                                           class="text-decoration-none" target="_blank">
+                                            <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                        </a>
+                                        if (line.Attachment.IsInlineViewable)
                                         {
-                                            <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                            <a href="@Url.Action("Attachment", new { attachmentId = line.Attachment.Id })"
+                                               class="text-decoration-none small text-muted ms-1" title="Download">
+                                                <i class="fa-solid fa-download"></i>
+                                            </a>
                                         }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                    }
+                                }
+                            }
+                            @foreach (var line in topLevelLines)
+                            {
+                                <tr>
+                                    <td>@(topLevelLines.IndexOf(line) + 1)</td>
+                                    <td>
+                                        @if (line.LineType == ExpenseLineType.Invoice)
+                                        {
+                                            <span class="badge bg-primary me-1">Invoice</span>
+                                        }
+                                        @line.Description
                                     </td>
+                                    <td class="text-end">@line.Amount.ToEuro()</td>
+                                    <td>@{ await AttachmentCell(line); }</td>
                                 </tr>
+                                @if (line.LineType == ExpenseLineType.Invoice)
+                                {
+                                    var proofs = proofsByParent.TryGetValue(line.Id, out var p) ? p : [];
+                                    foreach (var proof in proofs)
+                                    {
+                                        <tr class="text-muted">
+                                            <td></td>
+                                            <td class="ps-4"><i class="fa-solid fa-turn-up fa-rotate-90 me-1 small"></i>@proof.Description</td>
+                                            <td class="text-end">(@proof.Amount.ToEuro())</td>
+                                            <td>@{ await AttachmentCell(proof); }</td>
+                                        </tr>
+                                    }
+                                    var proofTotal = proofs.Sum(x => x.Amount);
+                                    <tr class="small">
+                                        <td></td>
+                                        <td class="ps-4 text-muted" colspan="2">
+                                            @* Display-only for the approvers: VAT and fees mean the proofs need not match. *@
+                                            Proof of expenses:
+                                            <span class="badge @(proofTotal >= line.Amount ? "bg-success" : "bg-warning text-dark")">
+                                                @proofTotal.ToEuro() of @line.Amount.ToEuro() invoiced
+                                            </span>
+                                            — reviewed only, not sent to Holded.
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                         <tfoot>
