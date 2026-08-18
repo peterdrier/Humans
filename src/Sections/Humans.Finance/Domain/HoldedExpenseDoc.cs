@@ -22,7 +22,6 @@ internal sealed class HoldedExpenseDoc
     public Guid? BudgetCategoryId { get; set; }     // FK-only, null = unmatched
     public HoldedMatchStatus MatchStatus { get; set; }
     public HoldedMatchSource MatchSource { get; set; }
-    public string RawPayload { get; set; } = "{}";  // jsonb, debugging
     public Instant LastSyncedAt { get; set; }
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }

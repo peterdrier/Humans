@@ -9,8 +9,7 @@ internal sealed class HoldedCategoryMap
     public int HoldedAccountNumber { get; set; }
     public string HoldedAccountId { get; set; } = "";
     public string Tag { get; set; } = "";          // dash-free normalized fallback key
-    public bool IsActive { get; set; } = true;
-    public Instant? ArchivedAt { get; set; }
+    public bool IsActive { get; set; } = true;   // never set false — nothing retires a row (see Docs/Finance.md)
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 }
