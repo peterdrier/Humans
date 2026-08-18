@@ -1,4 +1,4 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -316,5 +316,54 @@ public class TempDataCookieValidationMiddlewareTests
         logger.Entries.Should().ContainSingle()
             .Which.Message.Should().Contain("HasChunkSiblings=True",
                 "no marker survived to parse, so this must come from the siblings actually present");
+    }
+    [HumansFact]
+    public async Task OrphanChunkSiblings_WithoutMainCookie_AreStrippedAndDeleted()
+    {
+        var context = new DefaultHttpContext();
+        // The marker cookie is the one that was lost; its siblings survive. CookieTempDataProvider
+        // can never reassemble them, so left alone they are re-sent on every request until expiry.
+        context.Request.Headers.Cookie = $"{CookieName}C1=AAAA; {CookieName}C2=BBBB";
+
+        HttpContext? seenByNext = null;
+        var logger = new CapturingLogger<TempDataCookieValidationMiddleware>();
+        var middleware = new TempDataCookieValidationMiddleware(
+            ctx =>
+            {
+                seenByNext = ctx;
+                return Task.CompletedTask;
+            },
+            Options.Create(new CookieTempDataProviderOptions()),
+            logger);
+
+        await middleware.InvokeAsync(context);
+
+        seenByNext.Should().NotBeNull();
+        seenByNext!.Request.Cookies.ContainsKey($"{CookieName}C1").Should().BeFalse();
+        seenByNext.Request.Cookies.ContainsKey($"{CookieName}C2").Should().BeFalse();
+
+        var deleted = ParseSetCookies(context.Response).Select(c => c.Name.Value).ToArray();
+        deleted.Should().Contain([$"{CookieName}C1", $"{CookieName}C2"]);
+        deleted.Should().NotContain(CookieName, "the main cookie was never sent, so there is nothing to expire");
+
+        logger.Entries.Should().BeEmpty(
+            "no main cookie means no decode and so no FormatException — logging here would only " +
+            "add noise to the stream #1038 is diagnosed from");
+    }
+
+    [HumansFact]
+    public async Task NoncanonicalChunkSuffix_IsNotAcceptedAsAChunk()
+    {
+        var context = new DefaultHttpContext();
+        // "C01" is not the name the framework wrote, and it is the exact name it looks up. Parsing
+        // the suffix as index 1 reassembled a valid-looking value here and waved the request
+        // through — while CookieTempDataProvider still saw an incomplete chunked cookie and threw.
+        context.Request.Headers.Cookie = $"{CookieName}=chunks-1; {CookieName}C01=AAAA";
+
+        var (nextCalled, logger) = await RunAsync(context);
+
+        nextCalled.Should().BeTrue();
+        logger.Entries.Should().ContainSingle()
+            .Which.Exception.Should().BeNull();
     }
 }

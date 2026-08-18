@@ -1,4 +1,4 @@
-using System.Buffers.Text;
+﻿using System.Buffers.Text;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -45,6 +45,16 @@ public sealed class TempDataCookieValidationMiddleware(
 
         if (!requestCookies.TryGetValue(cookieName, out var rawValue) || string.IsNullOrEmpty(rawValue))
         {
+            // The marker cookie is the one CookieTempDataProvider looks up; siblings that outlive
+            // it are weight it can never reassemble, re-sent on every request until they expire.
+            // Swept without logging: with no main cookie there is no decode and so no #1038
+            // FormatException, and this must not add noise to the stream that issue is read from.
+            var orphans = ChunkNames(CollectChunkSiblings(requestCookies, cookieName), cookieName);
+            if (orphans.Count > 0)
+            {
+                RemoveFromRequestAndResponse(context, orphans);
+            }
+
             await next(context);
             return;
         }
@@ -74,15 +84,39 @@ public sealed class TempDataCookieValidationMiddleware(
             rawValue.Length,
             hasChunkSiblings);
 
-        context.Request.Cookies = new FilteredRequestCookieCollection(requestCookies, relatedNames);
+        RemoveFromRequestAndResponse(context, relatedNames);
+
+        await next(context);
+    }
+
+    /// <summary>
+    /// Hides <paramref name="names"/> from the downstream request and expires them on the
+    /// response, so neither MVC nor the next request from this client sees them again.
+    /// </summary>
+    private void RemoveFromRequestAndResponse(HttpContext context, HashSet<string> names)
+    {
+        context.Request.Cookies = new FilteredRequestCookieCollection(context.Request.Cookies, names);
 
         var deleteOptions = tempDataOptions.Value.Cookie.Build(context);
-        foreach (var name in relatedNames)
+        foreach (var name in names)
         {
             context.Response.Cookies.Delete(name, deleteOptions);
         }
+    }
 
-        await next(context);
+    private static string ChunkName(string cookieName, int index)
+        => cookieName + ChunkKeySuffix + index.ToString(CultureInfo.InvariantCulture);
+
+    private static HashSet<string> ChunkNames(Dictionary<int, string> siblings, string cookieName)
+    {
+        // Cookie names are case-sensitive, so ordinal is the framework's own comparison.
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var index in siblings.Keys)
+        {
+            names.Add(ChunkName(cookieName, index));
+        }
+
+        return names;
     }
 
     /// <summary>
@@ -128,12 +162,13 @@ public sealed class TempDataCookieValidationMiddleware(
                 continue;
             }
 
-            if (int.TryParse(
-                    name.AsSpan(prefix.Length),
-                    NumberStyles.None,
-                    CultureInfo.InvariantCulture,
-                    out var index)
-                && index > 0)
+            // The suffix must round-trip: the framework looks up the exact name it wrote, so
+            // "C01" is not its C1. Treating it as index 1 would let this middleware reassemble a
+            // valid-looking value and wave through a request the framework still fails on.
+            var suffix = name.AsSpan(prefix.Length);
+            if (int.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
+                && index > 0
+                && suffix.SequenceEqual(index.ToString(CultureInfo.InvariantCulture)))
             {
                 siblings[index] = value;
             }
@@ -165,11 +200,8 @@ public sealed class TempDataCookieValidationMiddleware(
     {
         var siblings = CollectChunkSiblings(requestCookies, cookieName);
 
-        relatedNames = [cookieName];
-        foreach (var index in siblings.Keys)
-        {
-            relatedNames.Add(cookieName + ChunkKeySuffix + index.ToString(CultureInfo.InvariantCulture));
-        }
+        relatedNames = ChunkNames(siblings, cookieName);
+        relatedNames.Add(cookieName);
 
         if (!TryParseChunkCount(rawValue, out var chunkCount))
         {
