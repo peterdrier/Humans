@@ -156,7 +156,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
 - On **Holded push success**: audit entry `ExpenseHoldedPushed` written (actor: the job). On **write-off**: `ExpenseHoldedFailed`. On **finance re-queue**: `ExpenseHoldedRequeued` (actor: the admin). These carry the push history past outbox-row cleanup — the outbox columns themselves are not readable outside the database.
 - **`HoldedExpenseOutboxJob`** runs every minute.
-- **GDPR export** (`IUserDataContributor`): contributes `ExpenseReports` and `ExpenseAuditLog` slices. Chain-follows merge tombstones. (Historical `ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` audit entries are still surfaced for accounts that have them — the audit log is immutable; only the writers were removed.)
+- **GDPR export** (`IUserDataContributor`): contributes one `ExpenseReports` slice (`{ MaskedIban, Reports }`). Chain-follows merge tombstones. Expense audit rows are not re-read here — they come from the canonical `AuditLog` slice, which the audit section owns.
 
 ## Cross-Section Dependencies
 
