@@ -54,6 +54,7 @@ graph LR
     classDef holded fill:#ca8a04,color:#fff
     classDef guide fill:#65a30d,color:#fff
     classDef crosscut fill:#334155,color:#fff
+    classDef platform fill:#52525b,color:#fff
 
     %% ── Cross-cutting services (hub) ──
     Audit[AuditLogService]:::crosscut
@@ -144,6 +145,7 @@ graph LR
     Cal[CalendarService]:::calendar
     ICalFeed[ICalFeedService]:::icalfeed
 
+    AdminDbDiag[AdminDatabaseDiagnosticsService]:::platform
     Dash[DashboardService]:::dashboard
     AdminDash[AdminDashboardService]:::dashboard
 
@@ -483,6 +485,10 @@ graph LR
     %% Email (admin outbox — pause flag lives in SystemSettings)
     EmailOutbox --> SysSettings
 
+    %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
+    AdminDbDiag --> User
+    AdminDbDiag --> TicketQ
+
     %% Guide
     Guide --> Team
 
@@ -510,9 +516,9 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 261 (indices 0..260);
-    %% the 18 lazy edges are indices 261..278. Recompute whenever edges change.
-    linkStyle 261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. Eager count: 263 (indices 0..262);
+    %% the 18 lazy edges are indices 263..280. Recompute whenever edges change.
+    linkStyle 263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Services with no cross-section edges

@@ -168,6 +168,16 @@ genuinely cross-section: the Dashboard orchestrator (no project of its own), the
 cross-section analysis, the cache inventory, and the out-of-service access appendices.
 
 ---
+## Web Platform Services
+
+### AdminDatabaseDiagnosticsService (Scoped — `src/Humans.Web/Services/`)
+
+Repository: `IAdminDatabaseDiagnosticsRepository` (`src/Humans.Web/Repositories/`) —
+raw diagnostics over the database (migration-history status across every section's
+`__EFMigrationsHistory*` table, Hangfire lock clearing). No owning section, no owned
+application tables. Cross-section reads via `IUserServiceRead` and `ITicketServiceRead`
+(audience segmentation). No `IMemoryCache`.
+
 ## Dashboard
 
 Folder: `src/Humans.Web/Services/Dashboard/` — moved from
