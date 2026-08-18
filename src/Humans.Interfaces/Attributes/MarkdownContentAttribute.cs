@@ -1,4 +1,4 @@
-namespace Humans.Domain.Attributes;
+namespace Humans.Base.Attributes;
 
 /// <summary>
 /// Marks a string property as containing Markdown content.

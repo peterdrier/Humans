@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Domain.Attributes;
+using Humans.Base.Attributes;
 
 namespace Humans.Store.Models;
 

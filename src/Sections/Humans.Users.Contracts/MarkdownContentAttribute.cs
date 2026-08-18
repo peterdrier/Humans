@@ -5,7 +5,7 @@ namespace Humans.Users.Contracts;
 /// Views rendering these properties should use Html.SanitizedMarkdown() rather than raw output.
 /// </summary>
 /// <remarks>
-/// A deliberate internal twin of <c>Humans.Domain.Attributes.MarkdownContentAttribute</c>
+/// A deliberate internal twin of <c>Humans.Base.Attributes.MarkdownContentAttribute</c>
 /// (G5 lane 3b, nobodies-collective/Humans#866). The original lives in Humans.Interfaces and
 /// stays there — eight section projects apply it and it is a generic concern, not a Users one —
 /// but this leaf must reach zero &lt;ProjectReference&gt; so Base may reference it

@@ -1,4 +1,4 @@
-using Humans.Domain.Attributes;
+using Humans.Base.Attributes;
 using NodaTime;
 
 using Humans.Shifts.Contracts;
