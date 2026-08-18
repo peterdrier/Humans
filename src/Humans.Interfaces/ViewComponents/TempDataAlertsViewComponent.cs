@@ -1,7 +1,7 @@
 using Humans.UI.Constants;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.UI.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 public class TempDataAlertsViewComponent : ViewComponent
 {

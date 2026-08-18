@@ -1,7 +1,7 @@
 using Humans.UI.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.UI.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 public class AccessMatrixViewComponent : ViewComponent
 {

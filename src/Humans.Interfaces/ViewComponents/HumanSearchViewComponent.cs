@@ -2,7 +2,7 @@ using Humans.UI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 /// <summary>
 /// Inline person picker — visible search box + hidden value input + type-ahead

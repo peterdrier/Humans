@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.ViewComponents;
+namespace Humans.Base.ViewComponents;
 
 public enum HumanLayout { Text, Avatar, AvatarName, Card }
 

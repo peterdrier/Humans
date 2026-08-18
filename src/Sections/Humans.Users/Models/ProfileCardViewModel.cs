@@ -1,6 +1,6 @@
 using NodaTime;
+using Humans.Base.Enums;
 using Humans.Base.Extensions;
-using Humans.UI.ViewComponents;
 using Humans.Users.Contracts;
 
 using Humans.Governance.Contracts;

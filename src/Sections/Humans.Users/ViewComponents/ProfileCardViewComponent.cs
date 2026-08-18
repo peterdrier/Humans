@@ -5,7 +5,6 @@ using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Enums;
-using Humans.UI.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

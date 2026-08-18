@@ -1,7 +1,7 @@
-namespace Humans.UI.ViewComponents;
+namespace Humans.Base.Enums;
 
 /// <summary>
-/// Audience the profile card renders for. Lives in <c>Humans.UI</c> rather than beside
+/// Audience the profile card renders for. Lives in <c>Humans.Base.Enums</c> rather than beside
 /// <c>ProfileCardViewComponent</c> in Shell because a section that invokes the card by name
 /// — <c>Component.InvokeAsync("ProfileCard", new { userId, viewMode })</c> — has to name the
 /// argument's type, and a section cannot reference <c>Humans.Web</c> (design §15 step 6). The
