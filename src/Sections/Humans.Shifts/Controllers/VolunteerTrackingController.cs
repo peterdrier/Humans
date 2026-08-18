@@ -4,7 +4,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Base.Controllers;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

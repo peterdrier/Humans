@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Users.Contracts;
 
-namespace Humans.UI.Authorization;
+namespace Humans.Base.Authorization;
 
 public static class RoleChecks
 {

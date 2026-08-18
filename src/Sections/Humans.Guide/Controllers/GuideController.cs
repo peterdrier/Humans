@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Guide.Models;
 using Humans.Guide.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 
 namespace Humans.Guide.Controllers;
 

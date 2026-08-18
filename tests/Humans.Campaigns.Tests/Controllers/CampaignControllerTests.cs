@@ -1,7 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

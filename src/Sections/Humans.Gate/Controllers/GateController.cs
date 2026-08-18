@@ -7,7 +7,7 @@ using System.Text;
 using Hangfire;
 using Humans.Users.Contracts;
 using Humans.Gate.Jobs;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;

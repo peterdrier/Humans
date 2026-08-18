@@ -3,7 +3,7 @@ using Humans.Base.Csv;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Tickets.Models;

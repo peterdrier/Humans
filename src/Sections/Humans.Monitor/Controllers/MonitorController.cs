@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Monitor.Contracts;
 using Humans.Monitor.Models;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

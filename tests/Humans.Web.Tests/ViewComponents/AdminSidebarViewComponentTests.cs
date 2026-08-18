@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;

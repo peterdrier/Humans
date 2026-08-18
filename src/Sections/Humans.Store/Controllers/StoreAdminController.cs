@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Store.Controllers;

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;
 
 namespace Humans.Users.Controllers;

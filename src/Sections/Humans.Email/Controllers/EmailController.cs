@@ -1,6 +1,6 @@
 using Humans.Email.Services;
 using Humans.Base.Configuration;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;

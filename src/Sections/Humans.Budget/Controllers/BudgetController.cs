@@ -1,5 +1,5 @@
 using Humans.Budget.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Budget.Authorization;
 using Humans.Budget.Models;

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;

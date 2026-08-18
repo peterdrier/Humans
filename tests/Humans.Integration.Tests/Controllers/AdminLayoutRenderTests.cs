@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

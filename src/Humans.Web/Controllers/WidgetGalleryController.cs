@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Models;
 using Humans.Users.Contracts;
 

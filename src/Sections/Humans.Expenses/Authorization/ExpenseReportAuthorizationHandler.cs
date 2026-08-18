@@ -1,4 +1,4 @@
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;

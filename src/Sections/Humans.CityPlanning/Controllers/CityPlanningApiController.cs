@@ -1,4 +1,4 @@
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using System.Text.Json;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;

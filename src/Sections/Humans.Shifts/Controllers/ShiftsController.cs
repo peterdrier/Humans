@@ -10,7 +10,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Onboarding;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

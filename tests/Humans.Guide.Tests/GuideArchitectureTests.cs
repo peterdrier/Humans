@@ -4,7 +4,7 @@ using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Guide.Controllers;
 using Humans.Guide.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Guide.Tests;

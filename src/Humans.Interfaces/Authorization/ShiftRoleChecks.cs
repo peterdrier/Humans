@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
 
-namespace Humans.UI.Authorization;
+namespace Humans.Base.Authorization;
 
 /// <summary>
 /// Role predicates for the volunteer-shift surface. In <c>Humans.UI</c> beside

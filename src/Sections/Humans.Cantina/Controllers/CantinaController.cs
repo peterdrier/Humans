@@ -1,7 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.Cantina.Services;
 using Humans.Shifts.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
 using Microsoft.AspNetCore.Authorization;

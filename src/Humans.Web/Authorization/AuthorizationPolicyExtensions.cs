@@ -1,6 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 

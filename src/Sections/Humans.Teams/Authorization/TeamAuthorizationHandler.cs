@@ -1,4 +1,4 @@
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;

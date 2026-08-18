@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

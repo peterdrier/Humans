@@ -2,7 +2,7 @@ using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Holded.Models;
 using Humans.Holded.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -9,7 +9,7 @@ using Humans.Base.Data;
 using Humans.Base.Logging;
 using Humans.Base.Controllers;
 using Humans.UI;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
