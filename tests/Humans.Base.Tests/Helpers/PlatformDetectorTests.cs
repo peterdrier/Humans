@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Base.Helpers;
 using Xunit;
 
-namespace Humans.Interfaces.Tests.Helpers;
+namespace Humans.Base.Tests.Helpers;
 
 public class PlatformDetectorTests
 {

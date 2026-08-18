@@ -109,7 +109,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Humans.Interfaces.Tests" />
+    <InternalsVisibleTo Include="Humans.Base.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--

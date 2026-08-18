@@ -52,13 +52,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Humans.Interfaces\Attributes\GrandfatheredAttribute.cs"
+    <Compile Include="..\Humans.Base\Attributes\GrandfatheredAttribute.cs"
              Link="Attributes\GrandfatheredAttribute.cs" />
-    <Compile Include="..\Humans.Interfaces\Attributes\SurfaceBudgetAttribute.cs"
+    <Compile Include="..\Humans.Base\Attributes\SurfaceBudgetAttribute.cs"
              Link="Attributes\SurfaceBudgetAttribute.cs" />
-    <Compile Include="..\Humans.Interfaces\Attributes\ExternalWriteAttribute.cs"
+    <Compile Include="..\Humans.Base\Attributes\ExternalWriteAttribute.cs"
              Link="Attributes\ExternalWriteAttribute.cs" />
-    <Compile Include="..\Humans.Interfaces\Attributes\ExpiresOnAttribute.cs"
+    <Compile Include="..\Humans.Base\Attributes\ExpiresOnAttribute.cs"
              Link="Attributes\ExpiresOnAttribute.cs" />
   </ItemGroup>
 

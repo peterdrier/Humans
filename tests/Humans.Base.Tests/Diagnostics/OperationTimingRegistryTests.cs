@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Diagnostics;
 
-namespace Humans.Interfaces.Tests.Diagnostics;
+namespace Humans.Base.Tests.Diagnostics;
 
 public class OperationTimingRegistryTests
 {

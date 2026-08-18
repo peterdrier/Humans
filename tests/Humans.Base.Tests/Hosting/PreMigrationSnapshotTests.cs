@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Humans.Interfaces.Tests.Hosting;
+namespace Humans.Base.Tests.Hosting;
 
 /// <summary>
 /// Covers the part of <see cref="PreMigrationSnapshot"/> that decides whether a boot dumps at

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Humans.Interfaces.Tests.Caching;
+namespace Humans.Base.Tests.Caching;
 
 public class TrackedCacheStartupSafetyTests
 {

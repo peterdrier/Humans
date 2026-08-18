@@ -2,7 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 
-namespace Humans.Interfaces.Tests.Constants;
+namespace Humans.Base.Tests.Constants;
 
 public class RoleNamesTests
 {

@@ -3,7 +3,7 @@ using Humans.Base.Logging;
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Humans.Interfaces.Tests.Logging;
+namespace Humans.Base.Tests.Logging;
 
 public class PiiRedactionEnricherTests
 {

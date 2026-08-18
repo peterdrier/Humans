@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Helpers;
 
-namespace Humans.Interfaces.Tests.Helpers;
+namespace Humans.Base.Tests.Helpers;
 
 public class IbanFormatterTests
 {

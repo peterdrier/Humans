@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Base.Enums;
 using Xunit;
 
-namespace Humans.Interfaces.Tests.Enums;
+namespace Humans.Base.Tests.Enums;
 
 /// <summary>
 /// Guards against renaming enum members that are stored as strings in the database.
@@ -15,7 +15,7 @@ namespace Humans.Interfaces.Tests.Enums;
 /// moved to the test project of the section that owns the enum, one file per section
 /// (nobodies-collective/Humans#866): Teams, Shifts, Users, GoogleIntegration and AuditLog, beside
 /// the Budget/Campaigns/Feedback/Governance/Issues/Notifications/Tickets halves that had already
-/// split out. Neither of these two has a home yet — there is no <c>Humans.Interfaces.Tests</c>,
+/// split out. Neither of these two has a home yet — there is no <c>Humans.Base.Tests</c>,
 /// which is what still blocks retiring this project.
 /// </remarks>
 public class EnumStringStabilityTests

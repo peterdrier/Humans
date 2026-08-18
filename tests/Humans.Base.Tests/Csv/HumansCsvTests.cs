@@ -4,7 +4,7 @@ using CsvHelper;
 using Humans.Base.Csv;
 using Xunit;
 
-namespace Humans.Interfaces.Tests.Csv;
+namespace Humans.Base.Tests.Csv;
 
 /// <summary>
 /// Pins the app-wide CSV conventions every export now relies on: UTF-8 BOM,

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace Humans.Interfaces.Tests.Extensions;
+namespace Humans.Base.Tests.Extensions;
 
 public class LoggerTimingExtensionsTests
 {

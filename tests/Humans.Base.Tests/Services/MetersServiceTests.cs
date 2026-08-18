@@ -4,7 +4,7 @@ using Humans.Base.Metering;
 using Humans.Base.Services.Metering;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Humans.Interfaces.Tests.Services;
+namespace Humans.Base.Tests.Services;
 
 /// <summary>
 /// Exercises <see cref="MetersService"/> — the leaf OpenTelemetry gauge registry.

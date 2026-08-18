@@ -74,7 +74,7 @@
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
-    <Project Path="tests/Humans.Interfaces.Tests/Humans.Interfaces.Tests.csproj" />
+    <Project Path="tests/Humans.Base.Tests/Humans.Base.Tests.csproj" />
     <Project Path="tests/Humans.Testing/Humans.Testing.csproj" />
     <Project Path="tests/Humans.Testing.Tests/Humans.Testing.Tests.csproj" />
     <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />

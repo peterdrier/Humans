@@ -1,9 +1,12 @@
 {
   "stryker-config": {
-    "project": "Humans.Interfaces.csproj",
+    "project": "Humans.Base.csproj",
     "test-runner": "mtp",
     "coverage-analysis": "off",
     "mutation-level": "Standard",
+    "mutate": [
+      "**/SlugHelper.cs"
+    ],
     "concurrency": 16,
     "reporters": [
       "ClearText",

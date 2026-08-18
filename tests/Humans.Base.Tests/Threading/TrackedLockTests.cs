@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Interfaces.Tests.Threading;
+namespace Humans.Base.Tests.Threading;
 
 public class TrackedLockTests
 {
