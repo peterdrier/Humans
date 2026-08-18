@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 using Xunit;
 
-namespace Humans.Interfaces.Tests;
+namespace Humans.Testing.Tests;
 
 public class SkipAttributeSmokeTest
 {

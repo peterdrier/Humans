@@ -24,8 +24,10 @@
     <None Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- Common test packages -->
-  <ItemGroup>
+  <!-- Common test packages. Humans.Testing is the one non-test project here (a plain
+       library the group below must not turn into a test host); it declares its own
+       packages. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Testing'">
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
@@ -44,66 +46,17 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Shared HumansFact / HumansTheory attributes (5s default timeout, infinite forbidden)
-       plus BrokenFact and DebuggerOnlyFact skip helpers. -->
-  <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansFactAttribute.cs" Link="Humans.Testing\HumansFactAttribute.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\BrokenFactAttribute.cs" Link="Humans.Testing\BrokenFactAttribute.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\DebuggerOnlyFactAttribute.cs" Link="Humans.Testing\DebuggerOnlyFactAttribute.cs" />
-    <!-- Fluent IServiceProvider-substitute builder. Shared here (rather than left in
-         Humans.Application.Tests) so a section test project whose service resolves a
-         dependency through IServiceProvider inherits it — Governance's MembershipCalculator
-         does, to break a DI cycle (nobodies-collective/Humans#866). NSubstitute only. -->
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\ServiceLocatorBuilder.cs" Link="Humans.Testing\ServiceLocatorBuilder.cs" />
+  <!-- The shared harness (HumansFact/HumansTheory attributes, ServiceLocatorBuilder,
+       CapturingLogger, TestDbContextFactory, Shifts DTO fixtures) is a real project,
+       referenced once here rather than declared in every test csproj.
+       Humans.Analyzers.Tests is excluded: the reference would put Humans.*, EF and
+       AspNetCore assemblies on its TPA list, where AnalyzerTestHarness's synthetic
+       compilations collide with the stubs the tests declare (CS0433). It compiles the
+       four attribute files directly in its own csproj instead. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Testing'
+                        AND '$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Humans.Testing\Humans.Testing.csproj" />
     <Using Include="Humans.Testing" />
-  </ItemGroup>
-
-  <!-- In-memory ILogger. Unconditional: it needs Microsoft.Extensions.Logging and nothing
-       else, so a section test project with no EF on its compile path can still use it.
-       It was bundled with TestDbContextFactory below until Humans.Mailer.Tests wanted the
-       one without the other (nobodies-collective/Humans#866). -->
-  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'">
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\CapturingLogger.cs" Link="Humans.Testing\CapturingLogger.cs" />
-  </ItemGroup>
-
-  <!-- BurnSettingsInfo builder. Needs Humans.Shifts.Contracts, which every test project
-       below now declares directly: the transitive path ran through Humans.Application until
-       G5 lane 5c dropped that reference (nobodies-collective/Humans#866). The two exclusions
-       stay — Humans.Analyzers.Tests feeds synthetic compilations to analyzers, and
-       Humans.Interfaces.Tests sits at the bottom of the graph. Shared rather than
-       copied because fifteen call sites across six section test projects stub
-       IBurnSettingsService after the Shifts read boundary moved every cross-section burn
-       read off the entity-returning IShiftManagementService.GetActiveAsync
-       (nobodies-collective/Humans#866), and the record is positional with eighteen
-       members. -->
-  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Interfaces.Tests'">
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\BurnSettingsInfoFixtures.cs" Link="Humans.Testing\BurnSettingsInfoFixtures.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\ShiftUserSummaryFixtures.cs" Link="Humans.Testing\ShiftUserSummaryFixtures.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\UrgentShiftInfoFixtures.cs" Link="Humans.Testing\UrgentShiftInfoFixtures.cs" />
-  </ItemGroup>
-
-  <!-- Generic in-memory IDbContextFactory for per-section DbContexts. Shared here so a
-       section test project created at G5 (nobodies-collective/Humans#866) inherits it with
-       the rest of the harness. The projects listed below have no EF Core on their compile
-       path and are excluded: Humans.Analyzers.Tests feeds synthetic compilations to
-       analyzers, and Humans.Scanner.Tests / Humans.Cantina.Tests / Humans.Development.Tests
-       / Humans.Mailer.Tests cover sections that own no tables *and* pull no EF in
-       transitively. All would otherwise have to take an EF package purely so a fixture they
-       never use compiles.
-
-       The criterion is "no EF on the compile path", not "the section owns no tables" — the
-       two came apart at Humans.Debug.Tests, whose section owns no tables and still needs no
-       exclusion because the section names Base's QueryStatistics / InMemoryLogSink. Add a
-       clause only after a build actually fails. -->
-  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Scanner.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Cantina.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Development.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Mailer.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Monitor.Tests'">
-    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\TestDbContextFactory.cs" Link="Humans.Testing\TestDbContextFactory.cs" />
   </ItemGroup>
 
   <!-- BannedApiAnalyzers: forbid bare [Fact] and [Theory] in tests. RS0030 suppression

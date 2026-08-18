@@ -2,8 +2,7 @@
 
   <!--
     Base's test project. Holds what Humans.Application.Tests and Humans.Domain.Tests carried
-    for types that live here (nobodies-collective/Humans#866, rulings 49-51), plus the
-    tests/Humans.Testing attribute smoke tests, which belong to no production assembly.
+    for types that live here (nobodies-collective/Humans#866, rulings 49-51).
   -->
 
   <ItemGroup>

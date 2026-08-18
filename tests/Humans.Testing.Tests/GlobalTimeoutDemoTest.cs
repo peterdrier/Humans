@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace Humans.Interfaces.Tests;
+namespace Humans.Testing.Tests;
 
 /// <summary>
 /// Demonstration of xUnit v3's per-test <c>[Fact(Timeout = N)]</c>
