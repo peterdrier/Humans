@@ -8,7 +8,7 @@ using Humans.UI.Models.Tables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Expenses.Authorization;
 
 namespace Humans.Expenses;

@@ -88,7 +88,7 @@ internal sealed class ModerationActionFormModel
 /// Admin / moderator in-place edit form for any event in any state. One form
 /// serves both individual events (venue) and camp events (priority rank);
 /// <see cref="IsCampEvent"/> drives which block renders. Saving preserves the
-/// event's status — see <see cref="Humans.Application.Interfaces.Events.IEventService.AdminUpdateAsync"/>.
+/// event's status — see <see cref="Humans.Base.Interfaces.Events.IEventService.AdminUpdateAsync"/>.
 /// </summary>
 internal sealed class AdminEventFormViewModel
 {

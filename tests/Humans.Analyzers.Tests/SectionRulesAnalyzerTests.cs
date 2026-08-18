@@ -9,7 +9,7 @@ public class SectionRulesAnalyzerTests
     private const string SectionEntryPoint = """
         namespace Humans.Test
         {
-            public sealed class Section : Humans.Application.Interfaces.ISection { }
+            public sealed class Section : Humans.Base.Interfaces.ISection { }
         }
 
         """;
@@ -18,7 +18,7 @@ public class SectionRulesAnalyzerTests
     // they are compiled here as a referenced assembly rather than as symbols of the
     // compilation under test.
     private const string ReferencedStubs = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface ISection { }
 
@@ -186,7 +186,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Jobs
             {
-                public sealed class SyncStuffJob : Humans.Application.Interfaces.IRecurringJob
+                public sealed class SyncStuffJob : Humans.Base.Interfaces.IRecurringJob
                 {
                     public System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default) =>
                         System.Threading.Tasks.Task.CompletedTask;

@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;

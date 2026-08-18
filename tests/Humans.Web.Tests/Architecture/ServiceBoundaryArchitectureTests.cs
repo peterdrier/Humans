@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Web.Tests.Architecture.Ratchet;
 using Humans.Users.Data.Repositories;
@@ -256,7 +256,7 @@ public class ServiceBoundaryArchitectureTests
     // Humans.Interfaces assembly, keeping their namespaces. Section projects
     // (nobodies-collective/Humans#866) are scanned too: their service and repository
     // interfaces are internal and live under Humans.<Section>.*, so a namespace filter
-    // anchored on Humans.Application.Interfaces alone would stop seeing a section the
+    // anchored on Humans.Base.Interfaces alone would stop seeing a section the
     // moment it moves, quietly shrinking every ratchet built on this.
     // …and the contracts leaves, which carry neither the namespace nor the [Section]
     // attribute the two clauses above key on. A service interface that lives *entirely* on
@@ -270,7 +270,7 @@ public class ServiceBoundaryArchitectureTests
     // types, so the anchor it needed no longer exists. Every interface it used to contribute
     // has landed either on a section, on a contracts leaf, or in Humans.Interfaces.
     // COVERAGE NOTE: the marker/infra interfaces that now live in Humans.Interfaces under
-    // Humans.Application.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
+    // Humans.Base.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
     // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
     // Humans.Interfaces declares no entity type to expose. It stopped being EF-free at G5
     // lane 3a-2, which put the AddSectionDbContext cluster there, but that cluster is

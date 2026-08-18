@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Identity;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Users.Contracts;
 

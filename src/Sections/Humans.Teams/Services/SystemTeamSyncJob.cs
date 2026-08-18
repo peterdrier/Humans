@@ -4,7 +4,7 @@ using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Attributes;

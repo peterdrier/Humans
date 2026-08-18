@@ -29,14 +29,14 @@ public class CachingDecoratorRuleTests
     // Section : ISection entry point in the assembly's root namespace, exactly as boot
     // discovery finds it. Paired with the "Humans.Teams" assembly name below.
     private const string SectionEntryPoint = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface ISection { }
         }
 
         namespace Humans.Teams
         {
-            public sealed class Section : Humans.Application.Interfaces.ISection { }
+            public sealed class Section : Humans.Base.Interfaces.ISection { }
         }
         """;
 

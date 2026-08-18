@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// A section's single DI entry point. Shell discovers implementations by walking the

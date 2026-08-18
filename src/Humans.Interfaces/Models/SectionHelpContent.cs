@@ -17,7 +17,7 @@ public static class SectionHelpContent
 
     /// <summary>
     /// Frequently-asked questions distilled from real production agent conversations
-    /// (audit 2026-05-23). Preloaded every turn via <see cref="Humans.Application.Interfaces.IAgentPreloadAugmentor"/>
+    /// (audit 2026-05-23). Preloaded every turn via <see cref="Humans.Base.Interfaces.IAgentPreloadAugmentor"/>
     /// so the agent answers these directly instead of routing to support. Routes, button
     /// labels, and procedures were verified against the live controllers and views; the
     /// ticket-policy answers were confirmed with the organisers.

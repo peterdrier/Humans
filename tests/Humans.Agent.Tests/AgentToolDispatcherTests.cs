@@ -480,7 +480,7 @@ public class AgentToolDispatcherTests
     }
 
     /// <summary>A source whose listing is broken (revoked token, GitHub outage).</summary>
-    private sealed class UnlistableGuideSource : Application.Interfaces.IGuideContentSource
+    private sealed class UnlistableGuideSource : Humans.Base.Interfaces.IGuideContentSource
     {
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
@@ -499,7 +499,7 @@ public class AgentToolDispatcherTests
         Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
         IShiftView? shiftView = null,
         IBurnSettingsService? burnSettings = null,
-        Application.Interfaces.IGuideContentSource? source = null)
+        Humans.Base.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
@@ -527,7 +527,7 @@ public class AgentToolDispatcherTests
             logger);
     }
 
-    private sealed class StubGuideSource : Application.Interfaces.IGuideContentSource
+    private sealed class StubGuideSource : Humans.Base.Interfaces.IGuideContentSource
     {
         /// <summary>
         /// This stub repo's whole markdown tree. Specs sit in the Docs/features/ folder of two

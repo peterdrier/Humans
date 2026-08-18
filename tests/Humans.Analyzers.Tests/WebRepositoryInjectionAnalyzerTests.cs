@@ -11,7 +11,7 @@ public class WebRepositoryInjectionAnalyzerTests
             public interface ICampRepository : IRepository { }
         }
 
-        namespace Humans.Application.Interfaces.Camps
+        namespace Humans.Base.Interfaces.Camps
         {
             public interface ICampService { }
         }
@@ -56,7 +56,7 @@ public class WebRepositoryInjectionAnalyzerTests
             {
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    public CampsController(Humans.Application.Interfaces.Camps.ICampService service) { }
+                    public CampsController(Humans.Base.Interfaces.Camps.ICampService service) { }
                 }
             }
             """;

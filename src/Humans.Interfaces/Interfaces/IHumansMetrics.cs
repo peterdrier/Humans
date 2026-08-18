@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Records Prometheus metrics for business operations.

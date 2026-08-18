@@ -18,7 +18,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Base.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;

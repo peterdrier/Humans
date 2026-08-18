@@ -1,7 +1,7 @@
 using Humans.Base.Architecture;
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Attributes;

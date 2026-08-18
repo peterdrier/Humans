@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Process-local "who's online" registry. Stamps the current instant against a

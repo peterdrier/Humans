@@ -1,6 +1,6 @@
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Expenses.Services;
 

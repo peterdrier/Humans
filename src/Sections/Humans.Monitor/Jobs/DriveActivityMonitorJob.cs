@@ -1,6 +1,6 @@
 using Hangfire;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Monitor.Contracts;
 
 namespace Humans.Monitor.Jobs;

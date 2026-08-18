@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Process-local tally of HTTP response status codes, fed by a

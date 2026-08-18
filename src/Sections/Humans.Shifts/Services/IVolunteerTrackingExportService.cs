@@ -1,5 +1,5 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Shifts.Services;
 

@@ -1,5 +1,5 @@
 using Humans.Base.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Metering;
 using Humans.Web.Services;
 using Humans.Infrastructure.Services.Metering;

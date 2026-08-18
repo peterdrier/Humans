@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Marker for an Orchestrator: a service that coordinates ≥2 sections

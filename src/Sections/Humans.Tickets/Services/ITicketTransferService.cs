@@ -1,5 +1,5 @@
 using Humans.Base.Architecture;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;

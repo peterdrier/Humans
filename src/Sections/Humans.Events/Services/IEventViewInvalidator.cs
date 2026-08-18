@@ -1,7 +1,7 @@
 using Humans.Base.Architecture;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Events.Services;
 

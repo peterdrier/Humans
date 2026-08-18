@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Provides cache hit/miss statistics grouped by cache key type.

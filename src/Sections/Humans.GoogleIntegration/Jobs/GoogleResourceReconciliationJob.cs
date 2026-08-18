@@ -1,6 +1,6 @@
 using Hangfire;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Domain.Constants;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;

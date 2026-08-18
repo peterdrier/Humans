@@ -1,5 +1,5 @@
 using System.Globalization;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Infrastructure.Hosting;

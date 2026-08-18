@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Single, key-addressed file/blob persistence abstraction. The implementation

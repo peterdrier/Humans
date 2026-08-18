@@ -5,12 +5,12 @@ namespace Humans.Analyzers.Tests;
 
 public class OrchestratorRepositoryInjectionAnalyzerTests
 {
-    // IOrchestrator and IApplicationService live in Humans.Application.Interfaces;
+    // IOrchestrator and IApplicationService live in Humans.Base.Interfaces;
     // IRepository in Humans.Base.Interfaces.Repositories; UsersDbContext
     // in Humans.Infrastructure.Data. All four are stubbed so the analyzer can
     // resolve them — production builds reference them transitively.
     private const string Stubs = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface IApplicationService { }
             public interface IOrchestrator { }
@@ -48,7 +48,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Humans.Base.Interfaces.Repositories.IUserRepository repo)
                     {
@@ -74,7 +74,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Humans.Infrastructure.Data.UsersDbContext db)
                     {
@@ -98,7 +98,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Humans.Infrastructure.Data.SystemSettingsDbContext db)
                     {
@@ -122,7 +122,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Microsoft.EntityFrameworkCore.IDbContextFactory<Humans.Infrastructure.Data.UsersDbContext> factory)
                     {
@@ -149,7 +149,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Humans.Base.Interfaces.Repositories.IRepository repo)
                     {
@@ -177,7 +177,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public interface IDemoOrchestrator : Humans.Application.Interfaces.IOrchestrator { }
+                public interface IDemoOrchestrator : Humans.Base.Interfaces.IOrchestrator { }
 
                 public sealed class DemoOrchestratorImpl : IDemoOrchestrator
                 {
@@ -203,8 +203,8 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public interface IDemoOrchestrator : Humans.Application.Interfaces.IOrchestrator { }
-                public interface IDemoSection : Humans.Application.Interfaces.IApplicationService { }
+                public interface IDemoOrchestrator : Humans.Base.Interfaces.IOrchestrator { }
+                public interface IDemoSection : Humans.Base.Interfaces.IApplicationService { }
 
                 public sealed class DualMarkerService : IDemoOrchestrator, IDemoSection { }
             }
@@ -227,7 +227,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public interface ISomeService { }
 
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class DemoOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(ISomeService inner)
                     {
@@ -251,7 +251,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class SectionService : Humans.Application.Interfaces.IApplicationService
+                public sealed class SectionService : Humans.Base.Interfaces.IApplicationService
                 {
                     public SectionService(Humans.Base.Interfaces.Repositories.IUserRepository repo)
                     {
@@ -276,8 +276,8 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             namespace Humans.Application.Services.Demo
             {
                 public sealed class HybridService
-                    : Humans.Application.Interfaces.IApplicationService,
-                      Humans.Application.Interfaces.IOrchestrator
+                    : Humans.Base.Interfaces.IApplicationService,
+                      Humans.Base.Interfaces.IOrchestrator
                 {
                 }
             }
@@ -300,7 +300,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Demo
             {
-                public sealed class PureOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                public sealed class PureOrchestrator : Humans.Base.Interfaces.IOrchestrator
                 {
                 }
             }

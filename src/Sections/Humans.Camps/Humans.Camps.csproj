@@ -22,7 +22,7 @@
     <!--
       The section's own layers, global because the move renamed every one of them at once:
       the entities left Humans.Domain.Entities, the enums and read models left
-      Humans.Domain.Enums / Humans.Application.Interfaces.Camps, and the view models left
+      Humans.Domain.Enums / Humans.Base.Interfaces.Camps, and the view models left
       Humans.Web.Models. Declaring them here is what keeps the ~40 moved files' using blocks
       byte-identical to their originals.
     -->
@@ -31,7 +31,7 @@
     <Using Include="Humans.Camps.Services" />
     <Using Include="Humans.Camps.Models" />
     <Using Include="Humans.Camps.Data" />
-    <Using Include="Humans.Application.Interfaces" />
+    <Using Include="Humans.Base.Interfaces" />
     <Using Include="Humans.Base.Interfaces.Repositories" />
     <Using Include="Humans.Base" />
     <Using Include="Humans.Base.Extensions" />

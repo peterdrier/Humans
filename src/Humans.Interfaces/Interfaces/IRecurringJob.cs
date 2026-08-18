@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Marker interface for Hangfire recurring jobs. All jobs must expose ExecuteAsync

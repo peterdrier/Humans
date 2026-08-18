@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using NodaTime;

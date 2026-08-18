@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Governance.Services;
 using Humans.Domain.Enums;

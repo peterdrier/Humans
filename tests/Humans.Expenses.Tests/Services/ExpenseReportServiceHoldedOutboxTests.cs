@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;

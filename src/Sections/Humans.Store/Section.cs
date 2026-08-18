@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Infrastructure.Hosting;
 using Humans.Store.Authorization;
 using Humans.Store.Contracts;

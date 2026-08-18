@@ -1,5 +1,5 @@
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Services;
 

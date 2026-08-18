@@ -1,5 +1,5 @@
 using Humans.Base.Architecture;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.EarlyEntry.Contracts;
 

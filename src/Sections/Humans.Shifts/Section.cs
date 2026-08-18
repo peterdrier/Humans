@@ -11,7 +11,7 @@ using Humans.Shifts.Services;
 using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts;

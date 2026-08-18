@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;

@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;

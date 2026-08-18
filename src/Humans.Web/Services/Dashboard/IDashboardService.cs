@@ -2,7 +2,7 @@ using Humans.Governance.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Web.Services.Dashboard;
 

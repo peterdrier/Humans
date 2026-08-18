@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Diagnostics.Metrics;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;

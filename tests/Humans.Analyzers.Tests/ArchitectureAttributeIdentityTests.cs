@@ -135,7 +135,7 @@ public class ArchitectureAttributeIdentityTests
                 public sealed class HttpPostAttribute : System.Attribute { }
             }
 
-            namespace Humans.Application.Interfaces
+            namespace Humans.Base.Interfaces
             {
                 public interface ISyncService
                 {
@@ -148,7 +148,7 @@ public class ArchitectureAttributeIdentityTests
             {
                 public sealed class SyncController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    private readonly Humans.Application.Interfaces.ISyncService _sync = null!;
+                    private readonly Humans.Base.Interfaces.ISyncService _sync = null!;
 
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public System.Threading.Tasks.Task Execute() =>

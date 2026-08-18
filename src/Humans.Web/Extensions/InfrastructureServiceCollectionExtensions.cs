@@ -1,7 +1,7 @@
 using Humans.Agent.Contracts;
 using Humans.Agent.Jobs;
 using Humans.Base.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Consent.Jobs;
 using Humans.Expenses.Jobs;

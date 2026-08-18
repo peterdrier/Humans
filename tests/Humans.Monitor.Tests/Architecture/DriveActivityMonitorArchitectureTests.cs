@@ -46,7 +46,7 @@ public class DriveActivityMonitorArchitectureTests
     [HumansFact]
     public void IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf()
     {
-        // It was in Humans.Application.Interfaces.GoogleIntegration until GoogleIntegration's
+        // It was in Humans.Base.Interfaces.GoogleIntegration until GoogleIntegration's
         // own G5 move, which turned every other connector abstraction internal to that
         // section. This one could not follow them: DriveActivityMonitorService is here, and a
         // section cannot see another section's internals — so the interface and its

@@ -12,7 +12,7 @@ namespace Humans.Analyzers.Internal;
 /// </summary>
 internal static class AssemblyScope
 {
-    private const string ISectionFullName = "Humans.Application.Interfaces.ISection";
+    private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
     private const string SectionEntryPointTypeName = "Section";
 
     /// <summary>

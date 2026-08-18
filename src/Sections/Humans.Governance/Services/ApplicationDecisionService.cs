@@ -7,7 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Governance.Services.Dtos;
 using Humans.Base.Extensions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;

@@ -43,7 +43,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
             }
         }
 
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface ISyncService
             {
@@ -75,7 +75,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
         {
             public sealed class SyncController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                private readonly Humans.Application.Interfaces.ISyncService _sync = null!;
+                private readonly Humans.Base.Interfaces.ISyncService _sync = null!;
 
         {{body}}
             }
@@ -167,7 +167,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
 
             namespace Humans.Application.Services
             {
-                public sealed class SyncService : Humans.Application.Interfaces.ISyncService
+                public sealed class SyncService : Humans.Base.Interfaces.ISyncService
                 {
                     public System.Threading.Tasks.Task SyncAsync(System.Threading.CancellationToken ct) =>
                         System.Threading.Tasks.Task.CompletedTask;
@@ -216,21 +216,21 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
         // The Section : ISection entry point is what makes AssemblyScope.IsSection
         // recognise the "Humans.Store" compilation below as a section.
         const string Source = """
-            namespace Humans.Application.Interfaces
+            namespace Humans.Base.Interfaces
             {
                 public interface ISection { }
             }
 
             namespace Humans.Store
             {
-                public sealed class Section : Humans.Application.Interfaces.ISection { }
+                public sealed class Section : Humans.Base.Interfaces.ISection { }
             }
 
             namespace Humans.Store.Controllers
             {
                 public sealed class StoreController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    private readonly Humans.Application.Interfaces.ISyncService _sync = null!;
+                    private readonly Humans.Base.Interfaces.ISyncService _sync = null!;
 
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public System.Threading.Tasks.Task Execute() =>

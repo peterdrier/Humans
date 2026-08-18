@@ -1,5 +1,5 @@
 using Humans.Agent.Models;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services.Anthropic;
 

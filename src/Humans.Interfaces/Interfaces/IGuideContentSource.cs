@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces;
+namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// Abstracts a GitHub markdown fetch against the configured Humans repo/branch so callers

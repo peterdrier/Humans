@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;

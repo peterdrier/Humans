@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 

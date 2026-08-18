@@ -6,7 +6,7 @@ using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 using Humans.Agent.Services.Stores;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Hosting;

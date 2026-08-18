@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 
 namespace Humans.Auth.Contracts;

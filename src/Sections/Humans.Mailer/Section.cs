@@ -1,5 +1,5 @@
 using System.Net.Http.Headers;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Mailer.Contracts;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Audiences;

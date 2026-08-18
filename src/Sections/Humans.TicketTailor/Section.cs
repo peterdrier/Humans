@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.TicketTailor.Services;
 using Microsoft.Extensions.Configuration;

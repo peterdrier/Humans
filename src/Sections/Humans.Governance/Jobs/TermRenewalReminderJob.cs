@@ -1,7 +1,7 @@
 using Hangfire;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;

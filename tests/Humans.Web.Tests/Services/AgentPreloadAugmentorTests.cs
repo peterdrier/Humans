@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Agent.Contracts;
 using Humans.UI.Models;
 using Humans.Web.Services.Agent;

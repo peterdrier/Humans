@@ -1,5 +1,5 @@
 using System.Reflection;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.DependencyModel;
 
 namespace Humans.Web.Extensions;

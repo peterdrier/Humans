@@ -6,7 +6,7 @@ using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;

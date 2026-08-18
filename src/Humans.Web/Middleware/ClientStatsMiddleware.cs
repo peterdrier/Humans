@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Extensions;
 using NodaTime;

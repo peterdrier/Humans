@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Microsoft.Extensions.Configuration;

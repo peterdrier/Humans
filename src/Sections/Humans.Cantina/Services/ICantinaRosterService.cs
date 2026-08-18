@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;

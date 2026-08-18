@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Infrastructure.Hosting;
 using Humans.SystemSettings.Contracts;
 using Humans.SystemSettings.Data;

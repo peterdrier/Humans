@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Tests.Architecture.Rules;

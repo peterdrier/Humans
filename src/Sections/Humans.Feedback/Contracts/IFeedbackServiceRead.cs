@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Feedback.Contracts;
 

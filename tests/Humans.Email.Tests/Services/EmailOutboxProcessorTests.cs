@@ -13,7 +13,7 @@ using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Infrastructure.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Infrastructure.Services.Metering;
 using Humans.SystemSettings.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;

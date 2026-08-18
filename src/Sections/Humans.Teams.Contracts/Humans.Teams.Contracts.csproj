@@ -53,7 +53,7 @@
     dependency this project does not have.
 
     G5 lane 5c added ISystemTeamSync and its SyncReport result shape, from
-    Humans.Application.Interfaces.GoogleIntegration. The interface names Google nowhere, every
+    Humans.Base.Interfaces.GoogleIntegration. The interface names Google nowhere, every
     write its implementation makes lands in Teams' tables, and six sections outside Teams
     inject it (Auth, Camps, Development, GoogleIntegration, Governance, Onboarding) — which is
     what a leaf is for. It had sat in the hub on the belief that Hangfire pinned its

@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Octokit;
 
