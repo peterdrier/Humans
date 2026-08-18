@@ -3,7 +3,6 @@ using Humans.Application.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
 using Humans.Debug.Models;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Logging;
@@ -16,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Serilog.Events;
+using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 
@@ -25,7 +25,7 @@ namespace Humans.Debug.Controllers;
 /// </summary>
 /// <remarks>
 /// Internal, and routed anyway: Shell registers <c>SectionControllerFeatureProvider</c>, which
-/// relaxes MVC's <c>IsPublic</c> check for assemblies carrying <c>[assembly: Section("…")]</c>
+/// relaxes MVC's <c>IsPublic</c> check for discovered section assemblies
 /// (memory/architecture/section-controllers-need-feature-provider.md — do not "fix" a 404 by
 /// making this public).
 /// </remarks>
@@ -215,9 +215,7 @@ internal sealed class DebugController(
         try
         {
             var snapshot = cacheStatsProvider.GetSnapshot();
-            var entryCounts = (cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
-                ?.GetActiveEntryCounts()
-                ?? new Dictionary<string, int>(StringComparer.Ordinal);
+            var entryCounts = cacheStatsProvider.GetActiveEntryCounts();
 
             var model = new CacheStatsViewModel
             {
@@ -227,7 +225,7 @@ internal sealed class DebugController(
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
-                    Humans.Application.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                    Application.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
                     return new CacheStatEntryViewModel
                     {
                         KeyType = e.KeyType,

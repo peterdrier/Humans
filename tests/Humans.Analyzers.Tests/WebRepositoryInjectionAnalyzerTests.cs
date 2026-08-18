@@ -15,6 +15,11 @@ public class WebRepositoryInjectionAnalyzerTests
         {
             public interface ICampService { }
         }
+
+        namespace Microsoft.AspNetCore.Mvc
+        {
+            public abstract class ControllerBase { }
+        }
         """;
 
     private static bool IsHum0014(Microsoft.CodeAnalysis.Diagnostic d) =>
@@ -27,31 +32,9 @@ public class WebRepositoryInjectionAnalyzerTests
 
             namespace Humans.Web.Controllers
             {
-                public sealed class CampsController
+                public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new WebRepositoryInjectionAnalyzer(),
-            "Humans.Web",
-            source);
-
-        diagnostics.Should().ContainSingle(d => IsHum0014(d));
-    }
-
-    [HumansFact]
-    public async Task Fires_when_view_component_injects_repository()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Web.ViewComponents
-            {
-                public sealed class CampSummaryViewComponent
-                {
-                    public CampSummaryViewComponent(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
                 }
             }
             """;
@@ -71,7 +54,7 @@ public class WebRepositoryInjectionAnalyzerTests
 
             namespace Humans.Web.Controllers
             {
-                public sealed class CampsController
+                public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(Humans.Application.Interfaces.Camps.ICampService service) { }
                 }
@@ -81,28 +64,6 @@ public class WebRepositoryInjectionAnalyzerTests
         var diagnostics = await AnalyzerTestHarness.RunAsync(
             new WebRepositoryInjectionAnalyzer(),
             "Humans.Web",
-            source);
-
-        diagnostics.Where(IsHum0014).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task Does_not_fire_outside_Web_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Infrastructure.Repositories.Camps
-            {
-                public sealed class CachingCampRepository
-                {
-                    public CachingCampRepository(Humans.Application.Interfaces.Repositories.ICampRepository inner) { }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new WebRepositoryInjectionAnalyzer(),
-            "Humans.Infrastructure",
             source);
 
         diagnostics.Where(IsHum0014).Should().BeEmpty();
@@ -125,7 +86,7 @@ public class WebRepositoryInjectionAnalyzerTests
             namespace Humans.Web.Controllers
             {
                 [Humans.Application.Architecture.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
-                public sealed class CampsController
+                public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
                 }
@@ -153,9 +114,14 @@ public class WebRepositoryInjectionAnalyzerTests
                 public interface IDeepRepository : IMid { }
             }
 
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public abstract class ControllerBase { }
+            }
+
             namespace Humans.Web.Controllers
             {
-                public sealed class DeepController
+                public sealed class DeepController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public DeepController(Humans.Application.Interfaces.Repositories.IDeepRepository repo) { }
                 }

@@ -1,14 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Calendar.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Scanner.Controllers;
 using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Scanner.Tests.Controllers;
 

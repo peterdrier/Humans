@@ -1,7 +1,4 @@
 @model Humans.Expenses.Models.ExpensesIndexViewModel
-@using Humans.Expenses.Services.Dtos
-@using Humans.UI.Extensions
-@using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Localizer["Expenses_MyReportsTitle"].Value;
@@ -114,6 +111,7 @@ else
     var reportsTable = TableModel.For(reportRows)
         .Column(SharedLocalizer["Common_Created"].Value, r => r.CreatedAt, c => c.Date())
         .Column(BudgetLocalizer["Budget_ColCategory"].Value, r => Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())
+        .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 60 } n ? n[..60] + "…" : r.Note)
         .Column(SharedLocalizer["Common_Status"].Value, r => r.Status, c => c.EnumBadge())
         .Column(SharedLocalizer["Common_Total"].Value, r => r.Total, c => c.Currency().End())
         .Template("", reportActionCell, c => c.NoSort().End())

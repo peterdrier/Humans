@@ -49,79 +49,25 @@ public class AuditLogArchitectureTests
 
     // ── Section boundary (G5, nobodies-collective/Humans#866) ────────────────
 
-    private static System.Reflection.Assembly SectionAssembly => typeof(IAuditLogRepository).Assembly;
+    // Anchored on Section rather than IAuditLogRepository: Section is the ISection registration
+    // and cannot leave Humans.AuditLog, so this anchor is immune by construction. A repository
+    // interface anchor would silently retarget onto Humans.AuditLog.Contracts the day the
+    // interface moves there, after which every sweep below goes near-empty and still passes.
+    private static System.Reflection.Assembly SectionAssembly => typeof(Section).Assembly;
 
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // The section deliberately ships no Resources/ folder and no AuditLogResource:
-        // its two pages are admin-only English and carry no Localizer[...] call
-        // (G5-SECTION-TEMPLATE.md step 3b's first question). Assert it structurally so the
-        // day someone adds copy the build says "carve a resource set first" rather than
-        // silently resolving against Humans.UI's SharedResource.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                .Select(param => (Type: t, param.ParameterType)))
-            .Where(x => x.ParameterType.IsGenericType
-                        && string.Equals(
-                            x.ParameterType.GetGenericTypeDefinition().FullName,
-                            "Microsoft.Extensions.Localization.IStringLocalizer`1",
-                            StringComparison.Ordinal))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "AuditLog has no resource set; a localizer here means copy was added without carving one");
-    }
-
-    [HumansFact]
-    public void SectionServicesTakeNoDbContext()
-    {
-        // Restates the old "GetReferencedAssemblies() does not contain EntityFrameworkCore"
-        // assertion, which stops meaning anything once the repository ships in the same
-        // assembly as the service (G5-SECTION-TEMPLATE.md step 11). The real invariant is
-        // that only the repository touches a context.
-        var offenders = SectionAssembly
-            .GetTypes()
-            .Where(t => t.IsClass && t.Namespace?.StartsWith("Humans.AuditLog.Services", StringComparison.Ordinal) == true)
-            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()).Select(param => (Type: t, param.ParameterType)))
-            .Where(x => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(x.ParameterType)
-                        || (x.ParameterType.IsGenericType
-                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)))
-            .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "only AuditLogRepository may touch AuditLogDbContext (peters-hard-rules.md)");
-    }
-
-    [HumansFact]
-    public void SectionReferencesNoVerticalSection()
-    {
-        // AuditLog is a *horizontal* section. peters-hard-rules.md: horizontals "are
-        // strictly forbidden from referencing vertical sections ... as that will cause
-        // loops in the call graph". The referenced-assembly list is where that stops being
-        // a convention: the only section assembly AuditLog may name is Gdpr's leaf, which
-        // is itself horizontal. This is what keeps the name-resolving read path
-        // (AuditViewerService, which injects ITeamServiceRead) in Humans.Application.
-        var sectionRefs = SectionAssembly
-            .GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
-            .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.UI" or "Humans.Analyzers"
-                                 or "Humans.AuditLog.Contracts"))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        sectionRefs.Should().BeEquivalentTo(
-            ["Humans.Gdpr.Contracts"],
-            because: "a horizontal section may reference only Base and other horizontals");
-    }
+    // ── Retired: SectionReferencesNoVerticalSection ──────────────────────────
+    //
+    // This test pinned the referenced-assembly list of Humans.AuditLog to
+    // ["Humans.Gdpr.Contracts", "Humans.Users.Contracts"], on the premise that AuditLog is a
+    // horizontal section and therefore may not name a vertical one — which is what kept the
+    // name-resolving read path (AuditViewerService, injecting ITeamServiceRead) in
+    // Humans.Application.
+    //
+    // Peter reversed that premise in the Base-floor decision of 2026-08-14: a former Base
+    // resident that names another section's read interface moves to its own section, and Base
+    // gets no Humans.Teams.Contracts reference to keep it. AuditLog now takes Teams',
+    // GoogleIntegration's and Users' contracts leaves, and the assertion asserts the opposite
+    // of the decision. Retired deliberately rather than re-baselined: re-listing the three new
+    // leaves would restate whatever the csproj happens to say, which is not an invariant.
+    // (nobodies-collective/Humans#866, G5 lane 4b-2h.)
 }

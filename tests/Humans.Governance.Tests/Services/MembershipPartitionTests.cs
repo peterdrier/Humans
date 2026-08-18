@@ -1,16 +1,12 @@
 using Humans.Governance.Tests.Infrastructure;
-using Humans.Application;
 using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Governance.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Governance.Contracts;
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Tests.Services;
 

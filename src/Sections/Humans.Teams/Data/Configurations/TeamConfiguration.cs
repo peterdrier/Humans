@@ -4,11 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NodaTime;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Data.Configurations;
 
 internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>

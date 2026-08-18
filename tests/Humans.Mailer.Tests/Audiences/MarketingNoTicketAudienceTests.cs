@@ -1,13 +1,10 @@
-using Humans.Application;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
 using Humans.Mailer.Tests.Infrastructure;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Audiences;
 

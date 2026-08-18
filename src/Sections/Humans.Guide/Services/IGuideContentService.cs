@@ -15,7 +15,9 @@ internal interface IGuideContentService : IApplicationService
     Task<string> GetRenderedAsync(string fileStem, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Evicts all cached entries and re-fetches every known guide file from GitHub.
+    /// Re-fetches every known guide file from GitHub and overwrites its cache entry. Nothing is
+    /// evicted first: a file that fails to fetch keeps the copy already cached, so a GitHub
+    /// outage degrades to stale content rather than to an empty guide.
     /// </summary>
     Task RefreshAllAsync(CancellationToken cancellationToken = default);
 }

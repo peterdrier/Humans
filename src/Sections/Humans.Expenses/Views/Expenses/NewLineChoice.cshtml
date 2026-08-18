@@ -1,0 +1,51 @@
+@model Humans.Expenses.Models.ExpenseLineNewViewModel
+@{
+    ViewData["Title"] = "Add Line";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@Model.ReportId">Edit Report</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Add line</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <h1 class="h4 mb-4">What are you adding?</h1>
+
+        <a asp-action="NewLine" asp-route-id="@Model.ReportId" asp-route-type="@ExpenseLineType.Invoice"
+           class="card mb-3 text-decoration-none text-body">
+            <div class="card-body d-flex gap-3">
+                <div class="fs-2 text-primary"><i class="fa-solid fa-file-invoice"></i></div>
+                <div>
+                    <h2 class="h6 mb-1">An invoice <span class="badge bg-success ms-1">preferred</span></h2>
+                    <p class="mb-0 text-muted small">
+                        A business (ZZP / autónomo) invoices the association for the work or goods.
+                        The invoice must be made out to the NCA. Much preferred — the association can
+                        reclaim the VAT, saving 21%. You'll attach the invoice, then the receipts
+                        behind it for the approver.
+                    </p>
+                </div>
+            </div>
+        </a>
+
+        <a asp-action="NewLine" asp-route-id="@Model.ReportId" asp-route-type="@ExpenseLineType.Receipt"
+           class="card mb-3 text-decoration-none text-body">
+            <div class="card-body d-flex gap-3">
+                <div class="fs-2 text-secondary"><i class="fa-solid fa-receipt"></i></div>
+                <div>
+                    <h2 class="h6 mb-1">A receipt</h2>
+                    <p class="mb-0 text-muted small">
+                        You paid for something yourself and want to be reimbursed. Receipts are only
+                        approved in certain circumstances — generally when an invoice wasn't
+                        possible, or the amount is small.
+                    </p>
+                </div>
+            </div>
+        </a>
+
+        <a asp-action="Edit" asp-route-id="@Model.ReportId" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</div>

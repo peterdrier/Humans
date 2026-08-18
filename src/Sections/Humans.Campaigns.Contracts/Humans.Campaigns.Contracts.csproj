@@ -1,30 +1,34 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Campaigns' cross-section surface, carved into its own leaf project because three of its
+    Campaigns' cross-section surface, carved into its own leaf project because two of its
     consumers are still in Base: TicketSyncService and TicketQueryService
-    (Humans.Application) mark redeemed discount codes and build the code-tracking dashboard,
-    and ProcessEmailOutboxJob (Humans.Infrastructure/Jobs) records Sent/Failed against a
-    grant — recurring jobs are named by concrete type in Shell's roll-call and there is no
-    discovery seam for them yet (design §15.6b). A Contracts/ *folder* inside Humans.Campaigns
-    would therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    (Humans.Application) mark redeemed discount codes and build the code-tracking dashboard.
+    A Contracts/ *folder* inside Humans.Campaigns would therefore make Base reference a
+    section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    The grant Sent/Failed mirror is no longer a Base consumer and was already mis-attributed
+    here: the body moved into Humans.Email's EmailOutboxProcessor at Email's own G5 move, and
+    the ProcessEmailOutboxJob shim that used to name it followed it into
+    Humans.Email/Contracts/ at G5 lane 5b-1. Humans.Email references this leaf directly, and
+    the section-to-leaf edge is what keeps the graph acyclic.
 
     It holds the four members other assemblies actually call — two grant reads for the
     profile and admin-detail pages, and the two writes above — out of ICampaignService's
     twenty. Campaign/code CRUD, wave sending, the resend and retry paths and the whole admin
     page surface have no consumer outside the section and stay internal to Humans.Campaigns.
 
-    References Humans.Interfaces and Humans.Domain — both below Humans.Application, so this
-    cannot cycle. Humans.Domain is here because EmailOutboxStatus, the Email section's enum,
-    appears in CampaignGrantSummary and UpdateGrantEmailStatusAsync: the delivery state is
+    References Humans.Interfaces and nothing else — it is below Humans.Application, so this
+    cannot cycle. EmailOutboxStatus, the Email section's enum, appears in CampaignGrantSummary
+    and UpdateGrantEmailStatusAsync; it keeps the Humans.Domain.Enums namespace but lives in
+    the Humans.Interfaces assembly since G5 lane 3a-1, so the separate Humans.Domain reference
+    went with that project when lane 3b deleted it. The delivery state is
     Base vocabulary the section re-exports rather than owns, so it does not move onto the
     leaf the way Budget's own enums did.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

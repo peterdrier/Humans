@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Consent.Domain;
 
 namespace Humans.Consent.Services;
 

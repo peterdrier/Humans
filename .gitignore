@@ -1,6 +1,6 @@
 # Build results. NOTE: we intentionally do NOT ignore directories merely named
 # "Debug" — build output lands under bin/ and obj/ (ignored below), and /Debug is a
-# real source section (src/Humans.Web/Views/Debug, docs/features/debug).
+# real source section (src/Humans.Web/Views/Debug, src/Sections/Humans.Debug).
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/

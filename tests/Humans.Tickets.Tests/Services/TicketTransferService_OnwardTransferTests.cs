@@ -1,22 +1,16 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.TicketVendor;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application;
 
 namespace Humans.Tickets.Tests.Services;
 

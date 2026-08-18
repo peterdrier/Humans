@@ -1,14 +1,10 @@
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using Humans.Mailer.Controllers;
 using Humans.Mailer.Models;
 using Microsoft.AspNetCore.Http;

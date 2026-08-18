@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Humans.Infrastructure.Data;
+using Humans.Users.Data;
 
 namespace Humans.Teams.Tests.Infrastructure;
 

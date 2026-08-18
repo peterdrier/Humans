@@ -1,11 +1,10 @@
 using Humans.Notifications.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Controllers;
-using Humans.UI;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Controllers;
 

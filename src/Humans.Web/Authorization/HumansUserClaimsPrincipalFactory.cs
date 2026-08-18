@@ -1,8 +1,7 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Authorization;
 

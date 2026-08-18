@@ -1,12 +1,11 @@
+using Humans.Users.Contracts;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 // Humans.Application is a sibling namespace inside this project, so the bare name
 // `Application` resolves to it rather than to the entity.
 using MemberApplication = Humans.Governance.Domain.Application;
-using Humans.Domain.Enums;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -127,12 +126,13 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         AssertRenderedCleanly(html, "GET /Governance");
 
         html.Should().Contain("Who Should Apply?");            // Governance_WhoShouldApply
-        // <vc:access-matrix> cannot bind from a section view — the component reads Shell-owned
-        // registries and is invoked by name. An unresolvable invocation throws, so a 200 here
-        // is the assertion; the modal id proves it ran with the section argument.
+        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
+        // <vc:access-matrix section="Governance" /> binds through @addTagHelper *, Humans.Interfaces.
+        // An unbound <vc:> ships as inert literal markup with a green build and no log line, so
+        // the emitted modal id is the proof — the 200 alone is not.
         html.Should().Contain("sectionHelp-Governance",
             because: "the access-matrix component renders a modal id built from the section key; "
-                   + "a component that failed to resolve throws rather than degrading");
+                   + "an unbound tag helper renders nothing at all");
     }
 
     [HumansFact(Timeout = 120000)]

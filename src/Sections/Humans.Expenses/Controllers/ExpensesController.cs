@@ -2,9 +2,6 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
@@ -12,7 +9,7 @@ using Humans.Expenses.Authorization;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Expenses.Controllers;
 
@@ -176,22 +173,17 @@ internal sealed class ExpensesController(
             // someone else's report would answer "has the *submitter* got payment details" with the
             // viewer's answer — see PayeeName/PayeeIban below for the submitter's own.
             var iban = isSubmitter ? await GetIbanViewAsync(user.Id) : (HasIban: false, MaskedIban: null);
-            var timeline = isSubmitter
-                ? await expenseReadService.GetHoldedTimelineAsync(report)
-                : null;
 
             // Finance admins reviewing a report can bind the submitter to a Holded creditor account
             // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            CreditorContactBinding? submitterBinding = null;
-            IReadOnlyList<HoldedCreditorAccountRow> creditorAccounts = [];
-            if (isFinanceAdmin)
-            {
-                submitterBinding = await holdedFinance.GetCreditorContactByUserAsync(report.SubmitterUserId);
-                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
-                    .OrderBy(a => a.SupplierAccountNum)
-                    .ToList();
-            }
+            // The submitter reads the payment half of the timeline; the finance admin reads the push
+            // half — and is the only one who can act on a failed push, so withholding it from them
+            // was backwards (nobodies-collective/Humans#1045).
+            var timeline = isSubmitter || isFinanceAdmin
+                ? await expenseReadService.GetHoldedTimelineAsync(report)
+                : null;
+            var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin);
 
             var model = new ExpenseDetailViewModel
             {
@@ -205,12 +197,10 @@ internal sealed class ExpensesController(
                 MaskedIban = iban.MaskedIban,
                 HoldedTimeline = timeline,
                 CanBindCreditor = isFinanceAdmin,
-                BoundAccountNum = submitterBinding?.SupplierAccountNum,
-                BoundAccountName = submitterBinding?.SupplierAccountNum is { } boundNum
-                    ? creditorAccounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
-                    : null,
-                HasCreditorContact = submitterBinding is not null,
-                CreditorAccounts = creditorAccounts,
+                BoundAccountNum = creditor.BoundAccountNum,
+                BoundAccountName = creditor.BoundAccountName,
+                HasCreditorContact = creditor.HasContact,
+                CreditorAccounts = creditor.Accounts,
             };
             return View(model);
         }
@@ -285,9 +275,34 @@ internal sealed class ExpensesController(
         return View(model);
     }
 
+    [HttpGet("{id:guid}/Lines/New")]
+    public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+        if (report.SubmitterUserId != user.Id) return Forbid();
+        if (report.Status != ExpenseReportStatus.Draft)
+        {
+            SetError("This report can no longer be edited.");
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        var model = new ExpenseLineNewViewModel
+        {
+            ReportId = id,
+            IsInvoice = type == ExpenseLineType.Invoice,
+        };
+        // No type chosen yet → the invoice-or-receipt chooser comes first.
+        return type is null ? View("NewLineChoice", model) : View(model);
+    }
+
     [HttpPost("{id:guid}/Lines/Add")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input)
+    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
+    public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input, IFormFile? file)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -296,16 +311,90 @@ internal sealed class ExpensesController(
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
+        // Where the submitter came from — and returns to on a validation error.
+        IActionResult BackToForm() => input.ParentLineId is { } parent
+            ? RedirectToAction(nameof(LineProofs), new { id, lineId = parent })
+            : RedirectToAction(nameof(NewLine), new { id, type = input.LineType });
+
         if (!ModelState.IsValid)
         {
             SetError("Invalid line data.");
-            return RedirectToAction(nameof(Edit), new { id });
+            return BackToForm();
         }
 
-        var result = await service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
-        SetMutationResultWithDetails(result, "Line added.", "Failed to add line");
+        await using var stream = file?.OpenReadStream();
+        var upload = file is null || stream is null
+            ? null
+            : new ExpenseFileUpload(file.FileName, file.ContentType, stream);
 
+        var result = await service.AddLineWithResultAsync(
+            id, user.Id, input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
+
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage is null ? "Failed to add line" : $"Failed to add line: {result.ErrorMessage}");
+            return BackToForm();
+        }
+
+        if (input.ParentLineId is { } parentId)
+        {
+            SetSuccess("Receipt added.");
+            return RedirectToAction(nameof(LineProofs), new { id, lineId = parentId });
+        }
+        if (input.LineType == ExpenseLineType.Invoice)
+        {
+            SetSuccess("Invoice added. Now add the receipts behind it.");
+            return RedirectToAction(nameof(LineProofs), new { id, lineId = result.LineId });
+        }
+        SetSuccess("Line added.");
         return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    [HttpGet("{id:guid}/Lines/{lineId:guid}")]
+    public async Task<IActionResult> LineEdit(Guid id, Guid lineId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+        if (report.SubmitterUserId != user.Id) return Forbid();
+
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null) return NotFound();
+
+        return View(new ExpenseLineEditViewModel
+        {
+            Report = report,
+            Line = line,
+            CanEditLines = report.Status == ExpenseReportStatus.Draft,
+        });
+    }
+
+    [HttpGet("{id:guid}/Lines/{lineId:guid}/Proofs")]
+    public async Task<IActionResult> LineProofs(Guid id, Guid lineId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+        if (report.SubmitterUserId != user.Id) return Forbid();
+
+        var invoiceLine = report.Lines.FirstOrDefault(
+            l => l.Id == lineId && l.LineType == ExpenseLineType.Invoice);
+        if (invoiceLine is null) return NotFound();
+
+        return View(new ExpenseLineProofsViewModel
+        {
+            Report = report,
+            InvoiceLine = invoiceLine,
+            Proofs = report.Lines
+                .Where(l => l.ParentLineId == lineId)
+                .OrderBy(l => l.SortOrder)
+                .ToList(),
+            CanEditLines = report.Status == ExpenseReportStatus.Draft,
+        });
     }
 
     // Mileage and per-diem lines can no longer be created: the Add mileage / Add per diem forms and
@@ -328,13 +417,13 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             SetError("Invalid line data.");
-            return RedirectToAction(nameof(Edit), new { id });
+            return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
         var result = await service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
         SetMutationResultWithDetails(result, "Line updated.", "Failed to update line");
 
-        return RedirectToAction(nameof(Edit), new { id });
+        return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
     }
 
     [HttpPost("{id:guid}/Lines/{lineId:guid}/Remove")]
@@ -348,10 +437,15 @@ internal sealed class ExpensesController(
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
+        // A removed proof row returns the submitter to its invoice's proofs page.
+        var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
+
         var result = await service.RemoveLineWithResultAsync(id, user.Id, lineId);
         SetMutationResultWithDetails(result, "Line removed.", "Failed to remove line");
 
-        return RedirectToAction(nameof(Edit), new { id });
+        return parentLineId is { } parent
+            ? RedirectToAction(nameof(LineProofs), new { id, lineId = parent })
+            : RedirectToAction(nameof(Edit), new { id });
     }
 
     [HttpPost("{id:guid}/Lines/{lineId:guid}/Attach")]
@@ -369,7 +463,7 @@ internal sealed class ExpensesController(
         if (file is null || file.Length == 0)
         {
             SetError("Please select a file.");
-            return RedirectToAction(nameof(Edit), new { id });
+            return RedirectToAction(nameof(LineEdit), new { id, lineId });
         }
 
         await using var stream = file.OpenReadStream();
@@ -378,7 +472,7 @@ internal sealed class ExpensesController(
 
         SetMutationResult(result, "Attachment uploaded.", "Failed to upload attachment.");
 
-        return RedirectToAction(nameof(Edit), new { id });
+        return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
 
     [HttpPost("{id:guid}/Lines/{lineId:guid}/RemoveAttachment")]
@@ -402,7 +496,7 @@ internal sealed class ExpensesController(
             logger.LogError(ex, "Error removing attachment from line {LineId} on report {ReportId}", lineId, id);
             SetError($"Failed to remove attachment: {ex.Message}");
         }
-        return RedirectToAction(nameof(Edit), new { id });
+        return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
 
     [HttpPost("{id:guid}/Submit")]
@@ -498,7 +592,16 @@ internal sealed class ExpensesController(
     }
 
     [HttpGet("Attachment/{attachmentId:guid}")]
-    public async Task<IActionResult> Attachment(Guid attachmentId)
+    public Task<IActionResult> Attachment(Guid attachmentId)
+        => StreamAttachmentAsync(attachmentId, inline: false);
+
+    /// <summary>Same file, rendered in the browser tab (images + PDFs) instead of downloaded, so a
+    /// reviewer can check receipts without saving them. Non-renderable types fall back to download.</summary>
+    [HttpGet("Attachment/{attachmentId:guid}/View")]
+    public Task<IActionResult> AttachmentView(Guid attachmentId)
+        => StreamAttachmentAsync(attachmentId, inline: true);
+
+    private async Task<IActionResult> StreamAttachmentAsync(Guid attachmentId, bool inline)
     {
         try
         {
@@ -515,6 +618,11 @@ internal sealed class ExpensesController(
 
             var attachment = await expenseReadService.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
+
+            // Inline only for the browser-renderable subset of the upload whitelist — no filename
+            // means no Content-Disposition: attachment, so the browser shows it in the tab.
+            if (inline && ExpenseAttachmentDto.IsInlineViewableType(attachment.ContentType))
+                return File(attachment.Bytes, attachment.ContentType);
 
             return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }
@@ -547,7 +655,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Endorse")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Endorse(Guid id)
+    public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -559,7 +667,13 @@ internal sealed class ExpensesController(
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id);
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid maximum amount.");
+            return RedirectToAction(nameof(Coordinator));
+        }
+
+        var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id, input.MaxAmount);
         SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
         return RedirectToAction(nameof(Coordinator));
@@ -599,7 +713,13 @@ internal sealed class ExpensesController(
         {
             var reports = await expenseReadService.GetReviewQueueAsync();
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
-            return View(new ExpenseReviewViewModel { Reports = reports, SubmitterNames = submitterNames });
+            return View(new ExpenseReviewViewModel
+            {
+                Reports = reports,
+                SubmitterNames = submitterNames,
+                DepartmentNames = await ResolveDepartmentNamesAsync(),
+                FailedHoldedPushCount = await service.CountFailedHoldedPushesAsync(),
+            });
         }
         catch (Exception ex)
         {
@@ -624,7 +744,14 @@ internal sealed class ExpensesController(
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
         if (!authResult.Succeeded) return Forbid();
 
-        var result = await service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid approval input.");
+            return RedirectToAction(nameof(Review));
+        }
+
+        var result = await service.ApproveWithResultAsync(
+            id, user.Id, input.OverrideCategoryId, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
         return RedirectToAction(nameof(Review));
@@ -657,6 +784,52 @@ internal sealed class ExpensesController(
         return RedirectToAction(nameof(Review));
     }
 
+    [HttpPost("{id:guid}/HoldedRetry")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> HoldedRetry(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.RequeueHoldedPush));
+        if (!authResult.Succeeded) return Forbid();
+
+        var result = await service.RequeueHoldedPushWithResultAsync(id, user.Id);
+        SetMutationResult(result,
+            "Holded push re-queued — it runs on the next drain pass.",
+            "Could not re-queue the Holded push.");
+
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
+    /// <summary>
+    /// Finance admins reviewing a report can bind the submitter to a Holded creditor account before
+    /// approval, so the push reuses the right 400000xx instead of minting a duplicate. Empty for
+    /// everyone else — the binding is not theirs to see.
+    /// </summary>
+    private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
+        IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
+        Guid submitterUserId, bool isFinanceAdmin)
+    {
+        if (!isFinanceAdmin) return (null, null, false, []);
+
+        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId);
+        var accounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
+            .OrderBy(a => a.SupplierAccountNum)
+            .ToList();
+
+        var boundName = binding?.SupplierAccountNum is { } boundNum
+            ? accounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
+            : null;
+
+        return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
+    }
+
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports)
     {
@@ -669,6 +842,20 @@ internal sealed class ExpensesController(
             id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
                 ? u.BurnerName
                 : "(unknown)");
+    }
+
+    /// <summary>Active-year budget category id → department label. Categories in the department
+    /// group are one per team, so their own name is the department; anything else keeps its group
+    /// prefix so a non-department booking is still readable.</summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveDepartmentNamesAsync()
+    {
+        var activeYear = await budgetService.GetActiveYearAsync();
+        if (activeYear is null) return new Dictionary<Guid, string>();
+
+        return activeYear.Groups
+            .SelectMany(g => g.Categories.Select(c =>
+                (c.Id, Display: g.IsDepartmentGroup ? c.Name : $"{g.Name} / {c.Name}")))
+            .ToDictionary(x => x.Id, x => x.Display);
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)

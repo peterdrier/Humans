@@ -1,19 +1,18 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.ViewComponents;
 
 public class ThingsToDoViewComponent(
     IUserServiceRead userService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IMembershipCalculatorRead membershipCalculator,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ThingsToDoViewComponent> logger) : ViewComponent
@@ -99,8 +98,8 @@ public class ThingsToDoViewComponent(
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId);
-                    needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
+                    var shiftProfile = await shiftProfiles.GetShiftProfileAsync(userId);
+                    needsShiftInfo = shiftProfile is null || shiftProfile.IsEmpty;
                 }
                 catch (Exception ex)
                 {
@@ -115,7 +114,7 @@ public class ThingsToDoViewComponent(
                         ? localizer["Todo_ShiftInfo_Pending"].Value
                         : localizer["Todo_ShiftInfo_Done"].Value,
                     IsDone = !needsShiftInfo,
-                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "Profile") : null,
+                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "ShiftProfile") : null,
                     ActionText = needsShiftInfo ? localizer["Todo_ShiftInfo_Action"].Value : null,
                     IconClass = "fa-solid fa-calendar-check"
                 });
@@ -125,7 +124,7 @@ public class ThingsToDoViewComponent(
             // Copy varies by whether the user has an active qualifying signup; the
             // item is the same Key either way so it disappears with the rest of the
             // card when DietaryPreference becomes non-empty.
-            // See docs/features/profiles/dietary-medical-nudge.md (US-35.5)
+            // See src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.5)
             try
             {
                 // Dietary now lives on Profile (already loaded as `profile` above).
@@ -168,10 +167,4 @@ public class ThingsToDoViewComponent(
         return View(model);
     }
 
-    private static bool IsShiftProfileEmpty(VolunteerEventProfile profile)
-    {
-        return profile.Skills.Count == 0
-            && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0;
-    }
 }

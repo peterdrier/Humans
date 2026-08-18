@@ -2,7 +2,6 @@ using Humans.Application;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 
 namespace Humans.Notifications.Tests.Services;

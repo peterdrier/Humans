@@ -1,4 +1,3 @@
-using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -49,7 +48,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                 cur.BudgetCategoryId = d.BudgetCategoryId;
                 cur.MatchStatus = d.MatchStatus;
                 cur.MatchSource = d.MatchSource;
-                cur.RawPayload = d.RawPayload;
                 cur.LastSyncedAt = now;
                 cur.UpdatedAt = now;
             }

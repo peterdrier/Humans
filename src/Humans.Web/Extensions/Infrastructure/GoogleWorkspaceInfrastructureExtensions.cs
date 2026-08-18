@@ -1,14 +1,33 @@
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Services.GoogleIntegration;
+using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Jobs;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.GoogleIntegration;
-using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
-using Humans.Infrastructure.Services.GoogleWorkspace;
+using Humans.Monitor.Jobs;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
+/// <summary>
+/// The three Google Workspace lines that did <em>not</em> move into
+/// <c>Humans.GoogleIntegration</c>'s <c>Section.Register</c> at that section's G5
+/// (nobodies-collective/Humans#866).
+/// </summary>
+/// <remarks>
+/// Both settings types are Base's and are read from outside the section — <c>CampRoleService</c>
+/// and <c>ProfileController</c> take <see cref="GoogleWorkspaceOptions"/>,
+/// <c>GoogleWorkspaceHealthCheck</c> takes <see cref="GoogleWorkspaceSettings"/> — so the
+/// section that owns the connectors does not own these bindings (Governance's rule). The
+/// credentials guard stays for a second reason: <c>ISection.Register</c> is handed no
+/// <c>IHostEnvironment</c>, and pushing the check into a service factory would first throw on
+/// a real Google call instead of at boot (Email's split, G5-SECTION-TEMPLATE.md step 4). The
+/// section reads the same two configuration keys to decide which of its own connector sets to
+/// bind.
+/// <para>
+/// The three recurring jobs now live in their owning sections' <c>Jobs/</c> folders —
+/// two in <c>Humans.GoogleIntegration</c>, and <c>DriveActivityMonitorJob</c> in
+/// <c>Humans.Monitor</c>, whose service it is the only caller of. The registrations stay here
+/// because <c>UseHumansRecurringJobs</c> and this method both name them by concrete type,
+/// which is also why they are public rather than internal (HUM0034).
+/// </para>
+/// </remarks>
 internal static class GoogleWorkspaceInfrastructureExtensions
 {
     internal static IServiceCollection AddGoogleWorkspaceInfrastructure(
@@ -18,62 +37,17 @@ internal static class GoogleWorkspaceInfrastructureExtensions
     {
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
-        services.AddSingleton(_ =>
-        {
-            var opts = new TeamResourceManagementOptions();
-            configuration.GetSection(TeamResourceManagementOptions.SectionName).Bind(opts);
-            return opts;
-        });
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
                                    !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
 
-        services.AddScoped<ITeamResourceService, TeamResourceService>();
-
-        if (hasGoogleCredentials)
-        {
-            services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
-            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
-            services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
-            services.AddScoped<IGoogleDriveActivityClient, GoogleDriveActivityClient>();
-
-            services.AddScoped<IWorkspaceUserDirectoryClient, WorkspaceUserDirectoryClient>();
-            services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
-
-            services.AddScoped<IGoogleGroupMembershipClient, GoogleGroupMembershipClient>();
-            services.AddScoped<IGoogleGroupProvisioningClient, GoogleGroupProvisioningClient>();
-            services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
-            services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
-
-            services.AddHttpClient<IGoogleTranslationClient, GoogleTranslationClient>();
-        }
-        else if (environment.IsProduction())
+        if (!hasGoogleCredentials && environment.IsProduction())
         {
             throw new InvalidOperationException(
                 "Google Workspace credentials are required in production. " +
                 "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
         }
-        else
-        {
-            services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
-            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
-            services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
-            services.AddScoped<IGoogleDriveActivityClient, StubGoogleDriveActivityClient>();
-
-            services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();
-            services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
-
-            services.AddSingleton<IGoogleGroupMembershipClient, StubGoogleGroupMembershipClient>();
-            services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
-            services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
-            services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
-            services.AddSingleton<IGoogleTranslationClient, StubGoogleTranslationClient>();
-        }
-
-        services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
-        services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
-        services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();

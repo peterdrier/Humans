@@ -1,22 +1,17 @@
 using AwesomeAssertions;
-using Humans.Application.Configuration;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.TicketVendor;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Domain;
+using Humans.Stripe.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -33,7 +28,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
     private readonly IUserService _userService;
-    private readonly IShiftManagementService _shiftManagementService;
+    private readonly IBurnSettingsService _shiftManagementService;
     private readonly ITicketRepository _ticketRepository;
     private readonly TicketSyncService _service;
 
@@ -53,7 +48,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
-        _shiftManagementService = Substitute.For<IShiftManagementService>();
+        _shiftManagementService = Substitute.For<IBurnSettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory);
 

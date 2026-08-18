@@ -1,12 +1,10 @@
-using Humans.Application;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Tickets.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests;
 

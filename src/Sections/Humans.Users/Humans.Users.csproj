@@ -1,0 +1,148 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!-- Shell-level tests over the moved controllers. -->
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
+    <!--
+      Three unmoved sections' harnesses seed this section's rows through an in-memory
+      UsersDbContext (Teams' two-way pattern, design §15 step 8). Each drops out at the lane
+      that stops its harness building another section's context directly.
+    -->
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <!--
+      TEMPORARY, and down to a single blocker: every Users controller, view model and view
+      component now lives here, so the only Humans.Web file left naming an internal Users type
+      is Controllers/WidgetGalleryController.cs — its WidgetGalleryViewModel holds
+      SampleProfileSummary (ProfileSummaryViewModel) and SampleHumanSearchResults
+      (HumanSearchResultViewModel, still Humans.UI's — only the _HumanSearchResults *partial*
+      moved here at G5 lane 4b-i, nobodies-collective/Humans#866) to render the _ProfileCard /
+      _HumanPopover / _HumanSearchResults sample cards in the Shell-owned widget catalogue.
+
+      Removing the grant therefore needs a decision, not a move: either the catalogue's
+      Users cards are fed by the section (a "section contributes gallery samples" seam) or
+      those three cards leave the Shell gallery. Whichever lands, delete this line in that
+      commit — and in the same commit collapse the folder-level Views/*/_ViewImports.cshtml
+      into one Views/_ViewImports.cshtml, which cannot exist while this grant does (a root
+      _ViewImports in both assemblies generates the same internal Views__ViewImports type and
+      Humans.Web fails with CS0436).
+    -->
+    <InternalsVisibleTo Include="Humans.Web" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <!--
+      Humans.Interfaces above now carries what the deleted Humans.Domain used to supply here:
+      RoleNames, the shared value objects, and the enums that keep the Humans.Domain.Enums
+      namespace because more than one section names or persists them. G5 lane 3b finished the
+      job — GoogleEmailStatus, MembershipTier and MessageCategory went to
+      Humans.Users.Contracts (this section's own vocabulary, each named by a public leaf type),
+      joining ContactSource, LanguageProficiency, ParticipationSource and ParticipationStatus
+      which left in lane 4b-2l for the same reason. MembershipStatus is Governance's and sits
+      on its leaf.
+    -->
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
+    <!--
+      Outbound section references, all through leaves and all acyclic — none of these
+      leaves names a Humans.Users type. Note the reverse direction is sanctioned and
+      deliberate: consumers reference *this* project for IUserService's write surface
+      (Peter, 2026-08-14). IUserService itself sits on Humans.Users.Contracts, not here —
+      seven Base files inject it and Humans.Users references Base, so a section-resident
+      IUserService is a cycle (design §15 step 5b: "a consumer in Base forces
+      Humans.<Section>.Contracts"). No consumer needed a new ProjectReference.
+        AuditLog      — every write path records an audit entry.
+        Auth          — role assignment on provisioning and merge.
+        Consent       — profile completeness gates on the consent state.
+        Email         — verification, unsubscribe and merge-notification mail.
+        Gdpr          — UserService and AccountMergeService are Article 15 contributors.
+        Notifications — merge requests and email problems notify the human.
+        Onboarding    — profile editing reports onboarding progress.
+        Shifts        — participation backfill reads the burn settings.
+        Teams         — account merge folds team memberships.
+        Tickets       — participation is derived from ticket sync.
+    -->
+    <!--
+      Views/Profile/Index.cshtml renders <vc:my-camps />, whose MyCampsViewComponent is
+      public in Humans.Camps/Contracts/ but whose tag helper Razor only generates from
+      the declaring assembly — @addTagHelper needs the assembly, not its Contracts leaf.
+      Same shape as the Humans.Shifts reference below. Acyclic — Humans.Camps names
+      nothing in Humans.Users.
+    -->
+    <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- ProfileController injects IAuditViewerService and AdminDetail.cshtml renders
+         <vc:audit-log>; both moved out of Humans.Application / Humans.UI into the AuditLog
+         section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches back only
+         to Humans.Users.Contracts, never to this project — no cycle. -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <!--
+      Both added at G5 lane 4b-2d with the body of SuspendNonCompliantMembersJob:
+      Governance for IMembershipCalculatorRead (who is now non-compliant) and
+      GoogleIntegration for IGoogleSyncService (drop the suspended human from their
+      teams' Drive/Groups). Both edges are acyclic: neither leaf names a Humans.Users type.
+      Note that Humans.Governance.Contracts gained a reference to Humans.Users.Contracts at
+      G5 lane 3b (MembershipTier followed the deleted Humans.Domain to its owner) — still
+      acyclic, since the *leaf* is not this section project.
+    -->
+    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <!--
+      Views/Profile/Edit.cshtml injects IStringLocalizer<ShiftsResource> for the two
+      shift-preference strings on the profile edit page; ShiftsResource lives in
+      Humans.Shifts, not its Contracts leaf. Acyclic — Humans.Shifts names nothing in
+      Humans.Users. Drops out when the Users resx carve gives these keys a Users home.
+    -->
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Contracts/ProcessAccountDeletionsJob.cs and Contracts/SuspendNonCompliantMembersJob.cs —
+         [DisableConcurrentExecution] and IRecurringJob, since G5 lane 5b-4. Package, not
+         project, so no cycle is possible; it was already arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
+    <!-- Helpers/ProfilePictureProcessor.cs — profile-picture resize/orient on upload. -->
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

@@ -1,11 +1,11 @@
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Containers.Controllers;
 
@@ -101,7 +101,6 @@ internal sealed class ContainerController(
         var camp = await campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return NotFound();
 
-        // Place includes the phase-gate for leads — write actions need it.
         var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
         if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 

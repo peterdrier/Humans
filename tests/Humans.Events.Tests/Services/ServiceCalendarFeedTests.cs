@@ -1,17 +1,17 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
-using Humans.Events.Data;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
-using Humans.Events.Services;
-using Humans.Events.Domain;
 using Humans.Events.Contracts;
+using Humans.Events.Data;
+using Humans.Events.Domain;
+using Humans.Events.Services;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Services;
 
 public class EventServiceCalendarFeedTests
 {

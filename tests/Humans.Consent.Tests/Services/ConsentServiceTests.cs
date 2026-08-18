@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Humans.Application;
 using Humans.Consent.Services;
 using System.Text;
 using AwesomeAssertions;
@@ -8,16 +7,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
-using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
-using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Tests.Services;
 

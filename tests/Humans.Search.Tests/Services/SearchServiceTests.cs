@@ -1,11 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
@@ -39,7 +37,7 @@ public sealed class SearchServiceTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagementServiceRead _shifts = Substitute.For<IShiftManagementServiceRead>();
     private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
 
     public SearchServiceTests()

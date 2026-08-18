@@ -4,30 +4,51 @@
     Email's cross-section surface, carved into its own leaf project because almost all of
     its consumers are still in Base: nine Humans.Application services and six
     Humans.Infrastructure jobs build messages through IEmailMessageFactory and send them
-    through IEmailService, Shell's ProfileController and UsersAdminController read a
-    human's outbox through IEmailOutboxServiceRead, and ProcessEmailOutboxJob /
-    CleanupEmailOutboxJob drive IEmailOutboxProcessor / IEmailOutboxRetention. A
-    Contracts/ *folder* inside Humans.Email would therefore make Base reference a section
-    and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    through IEmailService, and Shell's ProfileController and UsersAdminController read a
+    human's outbox through IEmailOutboxServiceRead. A Contracts/ *folder* inside
+    Humans.Email would therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
 
-    IImmediateOutboxProcessor is here for the opposite reason: Base *implements* it
-    (HangfireImmediateOutboxProcessor enqueues the recurring job), and the section's
-    OutboxEmailService consumes it.
+    IEmailOutboxProcessor / IEmailOutboxRetention no longer count towards that: their only
+    consumers, ProcessEmailOutboxJob and CleanupEmailOutboxJob, moved into
+    Humans.Email/Contracts/ at G5 lane 5b-1 once the "Hangfire pins a job to its assembly"
+    claim was re-measured and found false (AddOrUpdate<T>(id, …) rewrites the stored type
+    string at every startup, so the job id is the stable key). Both interfaces could follow
+    them inward; that is a later pass, not this lane's.
+
+    IImmediateOutboxProcessor was here for the opposite reason — Base *implemented* it.
+    HangfireImmediateOutboxProcessor followed ProcessEmailOutboxJob into
+    Humans.Email/Contracts/ at the same lane (it names the job's concrete type, and Base
+    cannot reference Humans.Email), so both sides of this interface are now section-side
+    and it, too, could go internal in a later pass.
 
     Everything with no consumer outside the section stays internal: the outbox admin
     surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,
     the repository and the entity.
 
-    References Humans.Interfaces (IApplicationService), Humans.Domain (MembershipTier,
-    MessageCategory and EmailOutboxStatus — Base vocabulary the DTOs name, Campaigns'
-    rule), and Humans.Events.Contracts (EventStatus, named by EventLifecycleNotification).
-    All three sit below Humans.Application, so the graph stays acyclic.
+    References Humans.Interfaces (IApplicationService, and EmailOutboxStatus which stayed
+    there because three sections persist it), Humans.Events.Contracts (EventStatus, named by
+    EventLifecycleNotification), and — new at G5 lane 3b (nobodies-collective/Humans#866) —
+    Humans.Users.Contracts, for MembershipTier and MessageCategory.
+
+    That third edge was NOT disclosed by the phase-3 recon, which predicted only Governance
+    and Teams would gain one; it is the same mechanical consequence, found by the compiler.
+    Both enums used to sit in Humans.Domain, which lane 3b emptied and deleted; both are
+    Users' own vocabulary (MessageCategory is the communication-preference axis, MembershipTier
+    the membership one) and both are named here by IEmailMessageFactory's audience parameters
+    and EmailMessage's Category. This is the enums following their owner, not Email taking a
+    dependency on Users' services.
+
+    All three leaf-to-leaf edges are acyclic. Humans.Events.Contracts has zero
+    ProjectReference; Humans.Users.Contracts has exactly one, to the equally
+    zero-reference Humans.Onboarding.Contracts. Both chains terminate. Note that Base
+    references Humans.Users.Contracts, so nothing in that project may ever reference this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

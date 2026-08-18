@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # Block migrations in the wrong directory.
-# All EF Core migrations must live in src/Humans.Infrastructure/Migrations/
-# not src/Humans.Infrastructure/Data/Migrations/.
+# The host's EF Core migrations must live in src/Humans.Web/Migrations/
+# not src/Humans.Web/Data/Migrations/.
+# (Was src/Humans.Infrastructure/... until G5 lane 5b-6 deleted that project.)
 
-bad_files=$(git diff --cached --name-only --diff-filter=ACR | grep 'src/Humans.Infrastructure/Data/Migrations/')
+bad_files=$(git diff --cached --name-only --diff-filter=ACR | grep 'src/Humans.Web/Data/Migrations/')
 
 if [ -n "$bad_files" ]; then
     echo ""
     echo "ERROR: Migration files staged in the wrong directory!"
     echo ""
-    echo "  All migrations must be in: src/Humans.Infrastructure/Migrations/"
-    echo "  NOT in:                    src/Humans.Infrastructure/Data/Migrations/"
+    echo "  All host migrations must be in: src/Humans.Web/Migrations/"
+    echo "  NOT in:                         src/Humans.Web/Data/Migrations/"
     echo ""
     echo "  Offending files:"
     echo "$bad_files" | sed 's/^/    /'
     echo ""
-    echo "  Regenerate with: dotnet ef migrations add <Name> --project src/Humans.Infrastructure --startup-project src/Humans.Web"
+    echo "  Regenerate with: dotnet ef migrations add <Name> --project src/Humans.Web --startup-project src/Humans.Web"
     echo "  (no --output-dir flag needed — default is correct)"
     echo ""
     exit 1

@@ -1,4 +1,3 @@
-@using Humans.UI.Extensions
 @model Humans.Expenses.Models.ExpenseDetailViewModel
 @{
     ViewData["Title"] = "Expense Report";
@@ -53,11 +52,20 @@
                     <dt class="col-sm-4">Category</dt>
                     <dd class="col-sm-8">@Model.CategoryDisplayName</dd>
 
-                    <dt class="col-sm-4">Note</dt>
+                    <dt class="col-sm-4">Subject</dt>
                     <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
 
-                    <dt class="col-sm-4">Total</dt>
-                    <dd class="col-sm-8 fw-semibold">@r.Total.ToEuro()</dd>
+                    <dt class="col-sm-4">Receipts total</dt>
+                    <dd class="col-sm-8">@r.Total.ToEuro()</dd>
+
+                    @if (r.MaxAmount is { } cap)
+                    {
+                        <dt class="col-sm-4">Authorized maximum</dt>
+                        <dd class="col-sm-8">@cap.ToEuro()</dd>
+                    }
+
+                    <dt class="col-sm-4">Payable</dt>
+                    <dd class="col-sm-8 fw-semibold">@r.Payable.ToEuro()</dd>
 
                     <dt class="col-sm-4">Created</dt>
                     <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>
@@ -90,30 +98,86 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
-                            {
-                                <tr>
-                                    <td>@(line.SortOrder + 1)</td>
-                                    <td>@line.Description</td>
-                                    <td class="text-end">@line.Amount.ToEuro()</td>
-                                    <td>
-                                        @if (line.LineType != ExpenseLineType.Receipt)
+                            @{
+                                var proofsByParent = r.Lines.Where(l => l.ParentLineId is not null)
+                                    .GroupBy(l => l.ParentLineId!.Value)
+                                    .ToDictionary(g => g.Key, g => g.OrderBy(l => l.SortOrder).ToList());
+                                var topLevelLines = r.Lines.Where(l => l.ParentLineId is null).OrderBy(l => l.SortOrder).ToList();
+
+                                async Task AttachmentCell(ExpenseLineDto line)
+                                {
+                                    if (line.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
+                                    {
+                                        <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
+                                    }
+                                    else if (line.Attachment is not null)
+                                    {
+                                        if (line.Attachment.IsImage)
                                         {
-                                            <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
-                                        }
-                                        else if (line.Attachment is not null)
-                                        {
-                                            <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
-                                               class="text-decoration-none" target="_blank">
-                                                <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                            <a href="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })" target="_blank" class="me-2">
+                                                <img src="@Url.Action("AttachmentView", new { attachmentId = line.Attachment.Id })"
+                                                     alt="@line.Attachment.OriginalFileName" class="rounded border"
+                                                     style="max-height:48px; max-width:80px; object-fit:cover;" loading="lazy" />
                                             </a>
                                         }
-                                        else
+                                        <a href="@Url.Action(line.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = line.Attachment.Id })"
+                                           class="text-decoration-none" target="_blank">
+                                            <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                        </a>
+                                        if (line.Attachment.IsInlineViewable)
                                         {
-                                            <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                            <a href="@Url.Action("Attachment", new { attachmentId = line.Attachment.Id })"
+                                               class="text-decoration-none small text-muted ms-1" title="Download">
+                                                <i class="fa-solid fa-download"></i>
+                                            </a>
                                         }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                    }
+                                }
+                            }
+                            @foreach (var line in topLevelLines)
+                            {
+                                <tr>
+                                    <td>@(topLevelLines.IndexOf(line) + 1)</td>
+                                    <td>
+                                        @if (line.LineType == ExpenseLineType.Invoice)
+                                        {
+                                            <span class="badge bg-primary me-1">Invoice</span>
+                                        }
+                                        @line.Description
                                     </td>
+                                    <td class="text-end">@line.Amount.ToEuro()</td>
+                                    <td>@{ await AttachmentCell(line); }</td>
                                 </tr>
+                                @if (line.LineType == ExpenseLineType.Invoice)
+                                {
+                                    var proofs = proofsByParent.TryGetValue(line.Id, out var p) ? p : [];
+                                    foreach (var proof in proofs)
+                                    {
+                                        <tr class="text-muted">
+                                            <td></td>
+                                            <td class="ps-4"><i class="fa-solid fa-turn-up fa-rotate-90 me-1 small"></i>@proof.Description</td>
+                                            <td class="text-end">(@proof.Amount.ToEuro())</td>
+                                            <td>@{ await AttachmentCell(proof); }</td>
+                                        </tr>
+                                    }
+                                    var proofTotal = proofs.Sum(x => x.Amount);
+                                    <tr class="small">
+                                        <td></td>
+                                        <td class="ps-4 text-muted" colspan="2">
+                                            @* Display-only for the approvers: VAT and fees mean the proofs need not match. *@
+                                            Proof of expenses:
+                                            <span class="badge @(proofTotal >= line.Amount ? "bg-success" : "bg-warning text-dark")">
+                                                @proofTotal.ToEuro() of @line.Amount.ToEuro() invoiced
+                                            </span>
+                                            — reviewed only, not sent to Holded.
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                         <tfoot>
@@ -163,7 +227,9 @@
             </div>
         }
 
-        @if (Model.HoldedTimeline is { RegisteredInHolded: true } tl)
+        @* Submitter-voiced ("owed to you"), so it stays with the submitter even though finance
+           admins now also load the timeline for the sync card below. *@
+        @if (Model.IsSubmitter && Model.HoldedTimeline is { RegisteredInHolded: true } tl)
         {
             <div class="card mb-3">
                 <div class="card-header"><strong>Payment status</strong></div>
@@ -202,6 +268,89 @@
                             </li>
                         }
                     </ul>
+                </div>
+            </div>
+        }
+
+        @* Finance admins are the only people who can act on a failed push, so they are the ones who
+           get told about it. Before this the state was rendered only as the presence or absence of
+           the payment card above, and only for the submitter (nobodies-collective/Humans#1045). *@
+        @if (Model.CanBindCreditor && Model.HoldedTimeline is { } sync)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong><i class="fa-solid fa-right-left me-1"></i>Holded sync</strong> <small class="text-muted">(Finance admin only)</small></div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        @switch (sync.SyncState)
+                        {
+                            case ExpenseHoldedSyncState.NotQueued:
+                                <span class="badge text-bg-secondary">Not queued</span>
+                                <span class="small text-muted ms-1">Queued when the report is approved.</span>
+                                break;
+                            case ExpenseHoldedSyncState.Queued:
+                                <span class="badge text-bg-info">Queued</span>
+                                <span class="small text-muted ms-1">Waiting for the next drain pass (runs every minute).</span>
+                                break;
+                            case ExpenseHoldedSyncState.Retrying:
+                                <span class="badge text-bg-warning">Retrying</span>
+                                <span class="small text-muted ms-1">
+                                    Attempt @sync.RetryCount of @sync.MaxRetries failed@(sync.NextRetryAt is { } next ? $"; next try {next.ToDateTime()}" : "").
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.Failed:
+                                <span class="badge text-bg-danger">Failed</span>
+                                @* The doc is created before the attachments upload, so a write-off
+                                   partway through leaves a real payable in Holded. Saying "not in
+                                   Holded" there invites a duplicate. *@
+                                <span class="small text-muted ms-1">
+                                    Given up after @sync.RetryCount attempt@(sync.RetryCount == 1 ? "" : "s").
+                                    @if (string.IsNullOrEmpty(Model.Report.HoldedDocId))
+                                    {
+                                        @:This report is not in Holded.
+                                    }
+                                    else
+                                    {
+                                        @:Document @Model.Report.HoldedDocId exists in Holded but the push did not finish — its receipts may be missing. Re-queue rather than creating a second payable.
+                                    }
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.Pushed:
+                                <span class="badge text-bg-success">Pushed</span>
+                                <span class="small text-muted ms-1">
+                                    @(sync.SettledAt is { } at ? at.ToDateTime() : "")@(string.IsNullOrEmpty(Model.Report.HoldedDocId) ? "" : $" — document {Model.Report.HoldedDocId}")
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.NotConfigured:
+                                <span class="badge text-bg-secondary">Not configured</span>
+                                <span class="small text-muted ms-1">
+                                    Queued, but no Holded API key is set on this environment, so nothing is draining.
+                                </span>
+                                break;
+                        }
+                    </p>
+
+                    @if (sync.QueuedAt is { } queuedAt)
+                    {
+                        <p class="small text-muted mb-2">Queued @queuedAt.ToDateTime().</p>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(sync.LastError))
+                    {
+                        <p class="small mb-2">
+                            <span class="text-muted">Last error:</span>
+                            <span class="font-monospace">@sync.LastError</span>
+                        </p>
+                    }
+
+                    @if (sync.CanRetry)
+                    {
+                        <form asp-action="HoldedRetry" asp-route-id="@r.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fa-solid fa-rotate-right me-1"></i>Re-queue push
+                            </button>
+                        </form>
+                        <div class="form-text">Resets the retry budget and pushes again on the next drain pass. Fix the cause first.</div>
+                    }
                 </div>
             </div>
         }
@@ -263,7 +412,7 @@
                                         : $"{a.SupplierAccountNum} — {a.Name}";
                                     if (a.OwedToMember > 0) label += $" (owed {a.OwedToMember.ToEuro()})";
                                     if (a.Bindings.Any(b => b.UserId != submitterId)) label += " — bound to another member";
-                                    return new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    return new SelectListItem
                                     {
                                         Value = a.SupplierAccountNum.ToString(),
                                         Text = label,

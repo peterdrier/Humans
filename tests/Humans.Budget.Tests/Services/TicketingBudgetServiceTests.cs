@@ -1,10 +1,6 @@
 using AwesomeAssertions;
 using Humans.Budget.Services;
-using Humans.Budget.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application;
-using Humans.Application.DTOs;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

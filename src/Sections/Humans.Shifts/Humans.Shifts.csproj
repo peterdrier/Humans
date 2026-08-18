@@ -1,0 +1,102 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      Same shape, same expiry: Humans.Teams.Tests' harness seeds this section's rows
+      through its own copy of ServiceTestHarness (Teams finding 36's two-way pattern).
+    -->
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <!--
+      Humans.Interfaces above carries whatever of the section's persisted-string vocabulary
+      is still shared. The separate Humans.Domain reference is gone: lane 4b-2k took
+      SignupStatus, ShiftPriority, SignupPolicy and RotaPeriod onto Humans.Shifts.Contracts,
+      lane 3a-1 moved the rest of the shared enums into the Humans.Interfaces assembly with
+      their namespaces unchanged, and lane 3b deleted the Humans.Domain project. Their
+      EnumStringStabilityTests rows are unaffected (Teams' rule, design §15 step 5).
+    -->
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!--
+      Outbound section references, all through leaves and all acyclic — none of these
+      leaves names a Humans.Shifts type (they may name Humans.Shifts.Contracts, which is
+      below this project).
+        AuditLog      — every write path records an audit entry.
+        Auth          — the coordinator/manager authorization surface.
+        Email         — the "email a rota" coordinator message.
+        Gdpr          — ShiftSignupService is an Article 15 contributor.
+        Governance    — early-entry capacity reads the membership tier.
+        Notifications — signup approval/refusal notifies the volunteer.
+        Onboarding    — the section project, not the leaf: /Shifts renders Onboarding's
+                        name-gate copy through IStringLocalizer&lt;OnboardingResource&gt;, and a
+                        resource marker is a section type (CityPlanning's rule, design
+                        §15 step 3b). Acyclic: Humans.Onboarding names only
+                        Humans.Shifts.Contracts.
+        Teams         — a rota's department is a team row. The *section* project, not
+                        only the leaf: ShiftAdminController derives from
+                        HumansTeamControllerBase, which Teams ships public under its own
+                        Contracts/ folder (design §15 step 5b). Acyclic — Humans.Teams
+                        names no Humans.Shifts type at all.
+        Tickets       — early entry gates on the volunteer holding a ticket.
+    -->
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <!--
+      Calendar owns the personal iCal feed; ShiftSignupService implements its
+      ICalendarFeedContributor. Calendar's Contracts/ is a folder, not a leaf, so the
+      reference is to the section project — acyclic because the contributor fan-out
+      inverts the arrow: Calendar names no section but Users.Contracts
+      (nobodies-collective/Humans#866, G5 lane 4b-2c).
+    -->
+    <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
+    <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ClosedXML: the volunteer-tracking XLSX export builder. -->
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <!-- VolunteerBuildStatusConfiguration's JSON column converter. Arrived transitively
+         through Humans.Application until G5 lane 5c dropped that reference. -->
+    <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

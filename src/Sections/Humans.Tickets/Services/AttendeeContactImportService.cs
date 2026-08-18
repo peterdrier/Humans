@@ -1,25 +1,21 @@
+using Humans.Application.Architecture;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Tickets.Contracts;
+using Humans.Users.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Services;
 
+[CrossSectionWrite("Ticket import writes participation onto the imported attendee's user.")]
 internal sealed class AttendeeContactImportService(
     ITicketRepository ticketRepository,
     IUserEmailService userEmails,
     IAccountProvisioningService provisioning,
     IUserService users,
-    IShiftManagementService shifts,
+    IBurnSettingsService burnSettings,
     ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
     IClock clock,
@@ -111,7 +107,7 @@ internal sealed class AttendeeContactImportService(
         // Evict before participation loop so attendee mutation always invalidates caches.
         ticketCacheInvalidator.InvalidateAfterContactImport();
 
-        var active = await shifts.GetActiveAsync();
+        var active = await burnSettings.GetActiveAsync();
         if (active is not null && importState.NewlyMatchedUserIds.Count > 0)
         {
             foreach (var userId in importState.NewlyMatchedUserIds)

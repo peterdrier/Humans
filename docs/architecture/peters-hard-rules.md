@@ -6,13 +6,16 @@ These superceed all other docs and are the final word on how to write code in th
 * "Surgical fixes" are not allowed.  Fix it right, or record an issue to track fixing it later.
 
 ## Principles
+* (in progress, nearly final..) The application is split into a number of sections and this is implemented as a number of projects in the solution. 
+* Each section may have its own ui, services, domain model and database tables, and is responsible for its own data integrity and invariants. 
+* Sections may only interact through well-defined interfaces and APIs. The public surface area of the project is what's exposed to other sections, and should be minimal following standard api design principles.  The public surface area should be documented and reviewed for each section. 
 * The application is split into a number of vertical sections, each with its own domain model and database tables. Each section is responsible for its own data integrity and invariants, and **must** not reach into other sections' data or logic. Sections may only interact through well-defined interfaces and APIs. 
-* There are horizontal sections for cross-cutting concerns like Auth, and Audit.  They are strictly forbidden from referencing vertical sections beyond their current state as that will cause loops in the call graph. 
-* The application layers from my pov, are DbContext → Repository → Service → Controller. The DbContext is the lowest-level data access layer, and the Controller is the highest-level presentation layer. Each layer may only call the layer directly below it, and may not skip layers.  Calls between sections may happen at the services layer, and must be via the I<section>ServiceRead when available.
+* There are horizontal sections for cross-cutting concerns like Auth, and Audit.  It is a bad smell if a horizontal section reaches into a vertical section's data or logic.  Horizontal sections should only interact with vertical sections through well-defined interfaces and APIs.  Existing exceptions to this rule are considered tech debt and should be refactored to comply with the rules over time. 
 * Repositories must derive from IRepository, and only the repository may read or write to its section's tables. No other class may reference the DbContext directly or indirectly. 
 * A table must only exist in one repository. 
 * Services must derive from IApplicationService.  
 * Services may only call repositories on their own section, and may only call other services through their public interfaces. No service may reach into another section's repository or internal logic.
+* EF Objects must not be publically accessible at the project level, relegating them to private or internal as is appropriate for the section. Services may only pass DTOs or domain objects across section boundaries.  Repositories may only return EF objects to their own service, and services must map them to DTOs or domain objects before returning them to other sections.
 * Some services are orchestrators, organizing calls to multiple services. These should not call repositories.  
 * Controllers should not contain any logic beyond parsing the request, calling the appropriate service(s), and formatting the response. They can not call repositories.  They are responsible for formatting, sorting, filtering.  
 * CachingDecorators may not call repositories directly. They must call the inner service via the interface, and the inner service is responsible for calling the repository. This ensures that all calls to the repository go through the service layer, and that caching decorators do not bypass any business logic in the service.

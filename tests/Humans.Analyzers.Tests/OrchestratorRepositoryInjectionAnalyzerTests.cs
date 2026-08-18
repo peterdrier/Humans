@@ -314,27 +314,4 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
         diagnostics.Where(IsHum0027).Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Analyzer_does_not_fire_outside_Application_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Web.Demo
-            {
-                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
-                {
-                    public DemoOrchestrator(Humans.Application.Interfaces.Repositories.IUserRepository repo)
-                    {
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new OrchestratorRepositoryInjectionAnalyzer(),
-            "Humans.Web",
-            source);
-
-        diagnostics.Where(d => IsHum0026(d) || IsHum0027(d)).Should().BeEmpty();
-    }
 }

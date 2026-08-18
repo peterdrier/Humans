@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 
@@ -11,7 +11,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// cached <see cref="IShiftManagementService.GetCoordinatorTeamIdsAsync"/> lookup
 /// used by <see cref="IsAnyTeamManagerOrCoordinatorHandler"/>.
 /// </summary>
-public class CampComplianceAccessHandler(IShiftManagementService shiftManagement)
+public class CampComplianceAccessHandler(IShiftManagementServiceRead shiftManagement)
     : AuthorizationHandler<CampComplianceAccessRequirement>
 {
     protected override async Task HandleRequirementAsync(

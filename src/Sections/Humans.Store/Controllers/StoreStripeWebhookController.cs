@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
 using Humans.Store.Services;
+using Humans.Stripe.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

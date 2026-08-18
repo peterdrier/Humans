@@ -1,19 +1,19 @@
 using Humans.Application.Extensions;
 using Humans.Cantina.Services;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Cantina.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
 /// Cantina coordinator surface — weekly roster page and CSV export
-/// (feature #36 — docs/features/cantina/daily-roster.md). View-only.
+/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). View-only.
 /// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
 /// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
 /// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans

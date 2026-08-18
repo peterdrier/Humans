@@ -14,12 +14,12 @@ namespace Humans.Finance;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> is an external
-/// API connector with its own section doc, consumed by Expenses as well as Finance, and stays
-/// in Base exactly as <c>IStripeService</c> did for Store — Shell still registers it. The same
-/// goes for <c>HoldedSyncJob</c>: recurring jobs are named by type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call, and there is no discovery seam for them yet, so it
-/// stays in <c>Humans.Infrastructure/Jobs</c> and reaches Finance through the contract.
+/// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
+/// Holded section, which registers it; Finance consumes it through
+/// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> is not registered here either, and is
+/// not this section's: it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
+/// section's <c>IHoldedFinanceService.SyncAsync</c> first, and it lives in
+/// <c>src/Sections/Humans.Holded/Jobs/</c> since G5 lane 5b-5 (nobodies-collective/Humans#866).
 /// </remarks>
 public sealed class Section : ISection
 {

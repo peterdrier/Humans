@@ -15,11 +15,9 @@ namespace Humans.Scanner;
 /// which are registered by their own owners, and builds its view model inline. There was no
 /// <c>AddScannerSection</c> in Shell to drain either.
 /// <para>
-/// The type still exists because <c>ISection</c> is what puts the assembly in
-/// <c>SectionDiscoveryExtensions</c>'s discovered-sections log, which is the first thing you
-/// read when one of a section's pages 404s (design §6). Its <c>[assembly: Section("Scanner")]</c>
-/// marker — the analyzer, controller-discovery and resource-set seam — is in
-/// <c>Properties/AssemblyInfo.cs</c> and is independent of this class.
+/// The type still exists because it is the whole marker: implementing <c>ISection</c> is what
+/// makes the assembly a section for discovery, controller routing, the resource-set scan and
+/// the analyzers. Drop it and the section's pages 404 with a green build.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

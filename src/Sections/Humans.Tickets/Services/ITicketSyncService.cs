@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Controllers;
 
 namespace Humans.Tickets.Services;
 

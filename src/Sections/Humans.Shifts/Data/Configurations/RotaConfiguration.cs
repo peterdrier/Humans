@@ -1,0 +1,39 @@
+using Humans.Shifts.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Humans.Shifts.Data.Configurations;
+
+internal sealed class RotaConfiguration : IEntityTypeConfiguration<Rota>
+{
+    public void Configure(EntityTypeBuilder<Rota> builder)
+    {
+        builder.ToTable("rotas");
+        builder.HasKey(r => r.Id);
+
+        builder.Property(r => r.Name).HasMaxLength(256).IsRequired();
+        builder.Property(r => r.Description).HasMaxLength(2000);
+        builder.Property(r => r.Priority).HasConversion<string>().HasMaxLength(50).IsRequired();
+        builder.Property(r => r.Policy).HasConversion<string>().HasMaxLength(50).IsRequired();
+
+        builder.Property(e => e.Period)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(e => e.PracticalInfo)
+            .HasMaxLength(2000);
+
+        builder.Property(r => r.IsVisibleToVolunteers)
+            .HasDefaultValue(true)
+            .HasSentinel(true);
+
+        builder.HasIndex(r => new { r.EventSettingsId, r.TeamId });
+
+        builder.HasOne(r => r.EventSettings)
+            .WithMany(e => e.Rotas)
+            .HasForeignKey(r => r.EventSettingsId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // TeamId is a bare cross-section Guid column — no FK constraint, no nav.
+    }
+}

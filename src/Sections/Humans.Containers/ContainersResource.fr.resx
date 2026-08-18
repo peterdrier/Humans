@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Container_AddModal_Title" xml:space="preserve">
+    <value>Ajouter Conteneur</value>
+  </data>
+  <data name="Container_Breadcrumb" xml:space="preserve">
+    <value>Conteneurs</value>
+  </data>
+  <data name="Container_DeleteConfirm" xml:space="preserve">
+    <value>Supprimer le conteneur {0} ?</value>
+  </data>
+  <data name="Container_DescPlaceholder" xml:space="preserve">
+    <value>Taille, type, exigences spéciales…</value>
+  </data>
+  <data name="Container_EditModal_Title" xml:space="preserve">
+    <value>Modifier Conteneur</value>
+  </data>
+  <data name="Container_Empty" xml:space="preserve">
+    <value>Pas encore de conteneurs enregistrés pour cette saison.</value>
+  </data>
+  <data name="Container_FieldDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Container_FieldMainImage" xml:space="preserve">
+    <value>Image principale (JPEG, PNG ou WebP — max 10 Mo)</value>
+  </data>
+  <data name="Container_FieldName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="Container_FieldPlacementImage" xml:space="preserve">
+    <value>Croquis de placement (JPEG, PNG ou WebP — max 10 Mo)</value>
+  </data>
+  <data name="Container_FieldPlacementNotes" xml:space="preserve">
+    <value>Notes de placement</value>
+  </data>
+  <data name="Container_NamePlaceholder" xml:space="preserve">
+    <value>ex. Conteneur #1</value>
+  </data>
+  <data name="Container_PlacementClosed" xml:space="preserve">
+    <value>Le placement des conteneurs est actuellement fermé. Vous pouvez gérer vos conteneurs, mais pas encore les placer sur la carte.</value>
+  </data>
+  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve">
+    <value>Contraintes, accès requis, orientation…</value>
+  </data>
+  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve">
+    <value>Notes de placement</value>
+  </data>
+  <data name="Container_PlacementNotes_Title" xml:space="preserve">
+    <value>Notes de placement</value>
+  </data>
+  <data name="Container_RemoveMainImage_Label" xml:space="preserve">
+    <value>Supprimer l'image principale</value>
+  </data>
+  <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
+    <value>Supprimer l'image de placement</value>
+  </data>
+
+  <data name="ContainerMap_Unplaced" xml:space="preserve">
+    <value>Non placé</value>
+  </data>
+  <data name="ContainerMap_Placed" xml:space="preserve">
+    <value>Placé</value>
+  </data>
+  <data name="ContainerMap_ClearPlacement" xml:space="preserve">
+    <value>Retirer le placement</value>
+  </data>
+  <data name="ContainerMap_PlaceOnMap" xml:space="preserve">
+    <value>Placer sur la carte</value>
+  </data>
+  <data name="ContainerMap_ConfirmClear" xml:space="preserve">
+    <value>Retirer le placement de «{0}» ? Cette action est irréversible.</value>
+  </data>
+  <data name="ContainerMap_Legend_Title" xml:space="preserve">
+    <value>Légende des conteneurs</value>
+  </data>
+  <data name="ContainerMap_Legend_Body" xml:space="preserve">
+    <value>Corps 6 m × 2,4 m</value>
+  </data>
+  <data name="ContainerMap_Legend_Door" xml:space="preserve">
+    <value>Triangle = côté porte</value>
+  </data>
+</root>

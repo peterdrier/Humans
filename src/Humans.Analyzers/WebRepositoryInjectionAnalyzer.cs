@@ -6,13 +6,14 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0014 — No class in <c>Humans.Web</c> may inject a repository directly.
-/// Web depends on application services; services depend on repositories.
+/// HUM0014 — a controller must not inject a repository. It calls the section's
+/// application service (peters-hard-rules: "Controllers … can not call repositories").
 /// </summary>
 /// <remarks>
-/// Runs in <c>Humans.Web</c> only. Replaces the reflection test
-/// <c>ServiceBoundaryArchitectureTests.Web_classes_do_not_inject_repositories</c>
-/// with compile-time enforcement.
+/// The subject was every class in <c>Humans.Web</c>; it is the controller itself now,
+/// matched by <c>ControllerBase</c>. Deliberately no wider — who else inside a section
+/// holds its own repository is that section's business, and cross-section access is
+/// already impossible now that repositories are <c>internal</c>.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
@@ -23,10 +24,11 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
-        "Web class injects a repository directly";
+        "Controller injects a repository directly";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' injects '{1}'. Web depends on application services, not persistence repositories.";
+        "'{0}' injects '{1}'. A controller calls the section's application service; "
+        + "the service owns the repository.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -36,10 +38,9 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "Classes in Humans.Web (controllers, view components, filters, etc.) must call " +
-            "application services, never repositories directly. Repositories are the persistence " +
-            "boundary owned by Application/Infrastructure; reaching past services collapses the " +
-            "layer (design-rules §2b, §3).");
+            "A repository is the persistence boundary its own section's application service " +
+            "owns. A controller parses the request and calls the service; reaching past it " +
+            "to the repository collapses the layer (design-rules §2b, §3).");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -52,38 +53,27 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
-            return;
-
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
         if (repositoryMarker is null)
             return;
 
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
-        // In Humans.Web every class is Web-layer, so assembly identity is the whole test.
-        // A section assembly holds all three layers at once (nobodies-collective/Humans#866),
-        // so there the subject has to be identified structurally — otherwise the section's
-        // own service, whose entire job is to hold the repository, trips the rule.
-        var controllersOnly = !string.Equals(
-            context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal);
-
         context.RegisterSymbolAction(
-            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr, controllersOnly),
+            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
     private static void AnalyzeNamedType(
         SymbolAnalysisContext context,
         INamedTypeSymbol repositoryMarker,
-        INamedTypeSymbol? grandfatheredAttr,
-        bool controllersOnly)
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsAbstract)
             return;
 
-        if (controllersOnly && !type.InheritsFromOrEquals(ControllerBaseFullName))
+        if (!type.InheritsFromOrEquals(ControllerBaseFullName))
             return;
 
         // The grandfather decision is made on the containing class, not the
@@ -94,7 +84,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         {
             foreach (var parameter in ctor.Parameters)
             {
-                if (!ImplementsRepositoryMarker(parameter.Type, repositoryMarker))
+                if (!Implements(parameter.Type, repositoryMarker))
                     continue;
 
                 context.ReportDiagnostic(Diagnostic.Create(
@@ -108,17 +98,17 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool ImplementsRepositoryMarker(ITypeSymbol type, INamedTypeSymbol repositoryMarker)
+    private static bool Implements(ITypeSymbol type, INamedTypeSymbol marker)
     {
         if (type is not INamedTypeSymbol named)
             return false;
 
-        if (SymbolEqualityComparer.Default.Equals(named, repositoryMarker))
+        if (SymbolEqualityComparer.Default.Equals(named, marker))
             return true;
 
         foreach (var iface in named.AllInterfaces)
         {
-            if (SymbolEqualityComparer.Default.Equals(iface, repositoryMarker))
+            if (SymbolEqualityComparer.Default.Equals(iface, marker))
                 return true;
         }
         return false;

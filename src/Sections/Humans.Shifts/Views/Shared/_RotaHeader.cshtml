@@ -1,0 +1,7 @@
+@model Humans.Shifts.Models.RotaHeaderViewModel
+
+<h6 class="mt-3">
+    @Model.Rota.Name
+    @await Html.PartialAsync("_RotaBadges", Model)
+</h6>
+@await Html.PartialAsync("_RotaDetails", Model)

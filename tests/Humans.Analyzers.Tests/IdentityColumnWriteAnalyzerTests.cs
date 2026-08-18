@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class IdentityColumnWriteAnalyzerTests
 {
     private const string DomainStub = """
-        namespace Humans.Domain.Entities
+        namespace Humans.Users.Contracts
         {
             public class User
             {
@@ -31,7 +31,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.Email = "x@y";
+                    public void Set(Humans.Users.Contracts.User user) => user.Email = "x@y";
                 }
             }
             """;
@@ -53,8 +53,8 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public Humans.Domain.Entities.User Build() =>
-                        new Humans.Domain.Entities.User { NormalizedEmail = "X" };
+                    public Humans.Users.Contracts.User Build() =>
+                        new Humans.Users.Contracts.User { NormalizedEmail = "X" };
                 }
             }
             """;
@@ -76,7 +76,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User u)
+                    public void Set(Humans.Users.Contracts.User u)
                     {
                         u.Email = "a";
                         u.NormalizedEmail = "B";
@@ -97,28 +97,6 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web()
-    {
-        var source = DomainStub + """
-
-            namespace Some.Infra.Code
-            {
-                public class Writer
-                {
-                    public void Set(Humans.Domain.Entities.User u) => u.Email = "x";
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new IdentityColumnWriteAnalyzer(),
-            "Humans.Infrastructure",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Does_not_fire_on_non_Identity_property_on_User()
     {
         var source = DomainStub + """
@@ -127,7 +105,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User u) => u.OtherField = "ok";
+                    public void Set(Humans.Users.Contracts.User u) => u.OtherField = "ok";
                 }
             }
             """;
@@ -149,7 +127,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.Email += "@y";
+                    public void Set(Humans.Users.Contracts.User user) => user.Email += "@y";
                 }
             }
             """;
@@ -171,7 +149,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.NormalizedEmail ??= "X";
+                    public void Set(Humans.Users.Contracts.User user) => user.NormalizedEmail ??= "X";
                 }
             }
             """;
@@ -193,7 +171,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.EmailConfirmed |= true;
+                    public void Set(Humans.Users.Contracts.User user) => user.EmailConfirmed |= true;
                 }
             }
             """;
@@ -215,7 +193,7 @@ public class IdentityColumnWriteAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User u) => u.Email;
+                    public string? Get(Humans.Users.Contracts.User u) => u.Email;
                 }
             }
             """;

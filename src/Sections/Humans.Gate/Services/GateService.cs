@@ -1,22 +1,18 @@
+using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Gate.Services;
 
@@ -28,12 +24,13 @@ namespace Humans.Gate.Services;
 /// back leaderboard/settings. The cutoff is always evaluated against the server
 /// clock (<see cref="IClock"/>), never a device clock.
 /// </summary>
+[CrossSectionWrite("A gate scan records participation for the scanned user.")]
 internal sealed class GateService(
     IGateRepository repository,
     ITicketServiceRead tickets,
     IEarlyEntryService earlyEntry,
     IBurnSettingsService burnSettings,
-    IShiftManagementService shifts,
+    IShiftManagementServiceRead shifts,
     IRoleAssignmentService roles,
     IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
@@ -156,7 +153,7 @@ internal sealed class GateService(
         // same fact). Log and move on; the next sync converges the row.
         try
         {
-            var activeEvent = await shifts.GetActiveAsync();
+            var activeEvent = await burnSettings.GetActiveAsync();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -245,7 +242,7 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         if (activeEvent is null)
             return [];
 
@@ -271,7 +268,7 @@ internal sealed class GateService(
             .ToList();
     }
 
-    private static bool StartsWithinWindow(LocalDate openingDate, Shift shift, DateTimeZone zone, Instant now)
+    private static bool StartsWithinWindow(LocalDate openingDate, ShiftInfo shift, DateTimeZone zone, Instant now)
     {
         var start = openingDate.PlusDays(shift.DayOffset).At(shift.StartTime)
             .InZoneLeniently(zone).ToInstant();

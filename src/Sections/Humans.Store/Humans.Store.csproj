@@ -23,11 +23,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, which moved out of Humans.UI into
+         the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <!--
+      Checkout Session creation, webhook signature verification and payment
+      reconciliation, through Humans.Stripe.Contracts. A direct section reference rather
+      than a .Contracts leaf: Humans.Stripe references no section, so the edge is
+      acyclic (design 2026-08-14 — a section depending on another section's project is
+      sanctioned). Stripe.net does not cross the seam.
+    -->
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,18 +1,13 @@
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 
@@ -30,7 +25,7 @@ internal sealed partial class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
     IGitHubLegalDocumentConnector gitHub,
     INotificationEmitter notificationService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserServiceRead userService,
     ILegalDocumentCacheInvalidator invalidator,
     IOptions<GitHubSettings> githubSettings,

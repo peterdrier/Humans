@@ -22,14 +22,14 @@
 }
 
 @functions {
-    private static NodaTime.LocalDate ComputeVatSettlementDate(NodaTime.LocalDate expectedDate)
+    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
     {
         var quarterEnd = expectedDate.Month switch
         {
-            >= 1 and <= 3 => new NodaTime.LocalDate(expectedDate.Year, 3, 31),
-            >= 4 and <= 6 => new NodaTime.LocalDate(expectedDate.Year, 6, 30),
-            >= 7 and <= 9 => new NodaTime.LocalDate(expectedDate.Year, 9, 30),
-            _ => new NodaTime.LocalDate(expectedDate.Year, 12, 31)
+            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
+            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
+            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
+            _ => new LocalDate(expectedDate.Year, 12, 31)
         };
         return quarterEnd.PlusDays(45);
     }

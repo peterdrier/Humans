@@ -1,11 +1,11 @@
 @model Humans.Finance.Contracts.HoldedCreditorLedger
 @{
     ViewData["Title"] = $"Creditor {Model.SupplierAccountNum}";
-    var lines = (IReadOnlyList<Humans.Finance.Contracts.CreditorLedgerLine>)ViewBag.Lines;
+    var lines = (IReadOnlyList<CreditorLedgerLine>)ViewBag.Lines;
 
     // Shown from the member's side: positive = the organisation owes them. The mirror keeps
     // Holded's sign (Σdebit − Σcredit); /Holded/Accounts/{num} below shows it unflipped.
-    var owedBalance = Model.Balance is { } b ? -b : (decimal?)null;
+    var owedBalance = -Model.Balance;
     var c = Model.Contact;
 
     // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
@@ -13,7 +13,7 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Model.SupplierAccountNum@(string.IsNullOrEmpty(Model.Name) ? "" : $" · {Model.Name}")</h1>
+    <h1 class="mb-0">@Model.SupplierAccountNum@(string.IsNullOrEmpty(c?.Name) ? "" : $" · {c!.Name}")</h1>
     <div class="d-flex gap-2">
         <a href="/Holded/Accounts/@Model.SupplierAccountNum" class="btn btn-outline-secondary"
            title="The same account in Holded's own sign convention — debit and credit as posted.">
@@ -29,7 +29,7 @@
     <div class="col-md-4">
         <div class="card text-center"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Balance</h6>
-            <span class="fs-4 @(owedBalance > 0 ? "text-danger" : "")">@(owedBalance.HasValue ? owedBalance.Value.ToEuro() : "—")</span>
+            <span class="fs-4 @(owedBalance > 0 ? "text-danger" : "")">@owedBalance.ToEuro()</span>
             <div class="text-muted small mt-1">positive = owed to the member</div>
         </div></div>
     </div>
@@ -78,10 +78,10 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Ledger — last 12 months (credit = owed/in, debit = paid/out)</div>
+    <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out)</div>
     @if (lines.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No ledger lines in the last year.</div>
+        <div class="card-body text-muted text-center py-4">No cached ledger lines for this account.</div>
     }
     else
     {

@@ -1,6 +1,5 @@
-using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
+using Humans.Calendar.Contracts;
 using NodaTime;
 
 namespace Humans.Scanner.Models;

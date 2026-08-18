@@ -5,17 +5,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Auth.Tests.Infrastructure;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
-using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Constants;
 using NSubstitute;
 
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Users.Contracts;
 
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Tests.Services;
 
@@ -302,7 +301,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
-            Humans.Gdpr.Contracts.GdprExportSections.RoleAssignments);
+            Gdpr.Contracts.GdprExportSections.RoleAssignments);
     }
 
     private Task SeedUserAsync(Guid userId, string displayName)

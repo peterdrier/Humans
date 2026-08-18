@@ -1,9 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Infrastructure.Data;
 using Humans.Surveys.Data;
-using Humans.Surveys.Domain;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

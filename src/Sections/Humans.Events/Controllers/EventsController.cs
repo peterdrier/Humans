@@ -1,9 +1,8 @@
 using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Camps.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
 using Humans.UI.Authorization;
 using Humans.Events.Filters;
@@ -14,7 +13,7 @@ using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using Humans.Events.Contracts;
-using Humans.UI.Controllers;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 

@@ -1,8 +1,4 @@
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Application;
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using NSubstitute;
 
 namespace Humans.Notifications.Tests;

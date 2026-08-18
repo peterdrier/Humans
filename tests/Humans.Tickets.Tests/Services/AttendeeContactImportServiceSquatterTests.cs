@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

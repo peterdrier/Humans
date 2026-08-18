@@ -1,6 +1,5 @@
 using System.Reflection;
 using Humans.Application.Interfaces;
-using Humans.Domain.Attributes;
 using Microsoft.Extensions.DependencyModel;
 
 namespace Humans.Web.Extensions;
@@ -55,26 +54,43 @@ public static class SectionDiscoveryExtensions
 
     /// <summary>Every section's entry point, paired with its section name.</summary>
     /// <remarks>
-    /// Named by the assembly's <c>[Section("…")]</c> rather than by the type. The types
-    /// are distinct — <c>Humans.Store.Section</c>, <c>Humans.Agent.Section</c> — but the
-    /// attribute carries the canonical section name the analyzers and HUM0017/HUM0018
-    /// already key on, so one identity serves discovery, logging and enforcement.
+    /// Named by the assembly rather than by the type. The types are distinct —
+    /// <c>Humans.Store.Section</c>, <c>Humans.Agent.Section</c> — but <c>Humans.Store</c>
+    /// <em>is</em> section Store, so one identity serves discovery, logging and the
+    /// analyzers without anything having to declare it twice.
     /// </remarks>
     private static IReadOnlyList<(string Name, ISection Section)> DiscoverSections() =>
         [.. SectionAssemblies()
-            .SelectMany(a => a.GetExportedTypes()
-                .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISection).IsAssignableFrom(t))
+            .SelectMany(a => SectionEntryPoints(a)
                 .Select(t => (
-                    Name: a.GetCustomAttribute<SectionAttribute>()!.Name,
+                    Name: SectionName(a),
                     Section: (ISection)Activator.CreateInstance(t)!)))
             // Assembly-enumeration order is not stable; sort so registration order is.
             // Nothing depends on it today — #858 §6 establishes that no section baseline
             // carries a cross-section FK, so the contexts migrate independently.
             .OrderBy(s => s.Name, StringComparer.Ordinal)];
 
+    private static readonly Lazy<HashSet<Assembly>> SectionAssemblySet = new(() => [.. SectionAssemblies()]);
+
     /// <summary>
-    /// Assemblies in the entry assembly's dependency graph carrying
-    /// <c>[assembly: Section("…")]</c> — the same marker the analyzers key on, so a
+    /// True for a section assembly. Used by the MVC feature providers, which see one
+    /// type at a time and would otherwise re-walk the dependency graph per type.
+    /// </summary>
+    internal static bool IsSectionAssembly(Assembly assembly) => SectionAssemblySet.Value.Contains(assembly);
+
+    /// <summary>The section a <paramref name="assembly"/> is: its name without the
+    /// <c>Humans.</c> prefix.</summary>
+    private static string SectionName(Assembly assembly) =>
+        assembly.GetName().Name!["Humans.".Length..];
+
+    /// <summary>The <c>Section : ISection</c> entry points an assembly declares.</summary>
+    private static IEnumerable<Type> SectionEntryPoints(Assembly assembly) =>
+        assembly.GetExportedTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISection).IsAssignableFrom(t));
+
+    /// <summary>
+    /// Assemblies in the entry assembly's dependency graph declaring an
+    /// <see cref="ISection"/> entry point — the same test the analyzers apply, so a
     /// project cannot be a section for one and not the other.
     /// </summary>
     /// <remarks>
@@ -93,7 +109,7 @@ public static class SectionDiscoveryExtensions
             .OfType<Assembly>()
             ?? [Assembly.GetExecutingAssembly()];
 
-        return [.. candidates.Where(a => a.GetCustomAttribute<SectionAttribute>() is not null)];
+        return [.. candidates.Where(a => SectionEntryPoints(a).Any())];
     }
 
     private static Assembly? TryLoad(string name)

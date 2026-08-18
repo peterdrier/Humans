@@ -1,9 +1,7 @@
-using Humans.Application.Interfaces.Holded;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using Humans.Holded.Models;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 

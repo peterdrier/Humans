@@ -1,4 +1,4 @@
-using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Services;
 

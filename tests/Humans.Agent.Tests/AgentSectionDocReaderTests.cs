@@ -85,8 +85,8 @@ public class AgentSectionDocReaderTests
     /// (nobodies-collective/Humans#949).
     /// </summary>
     [HumansTheory]
-    [InlineData("Profile", "Profiles")]
-    [InlineData("profile", "Profiles")]
+    [InlineData("Profile", "Users")]
+    [InlineData("profile", "Users")]
     [InlineData("Barrios", "Camps")]
     [InlineData("CityPlanningOverview", "CityPlanning")]
     [InlineData("CityPlanningBarrioMap", "CityPlanning")]
@@ -200,6 +200,9 @@ public class AgentSectionDocReaderTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
     /// <summary>

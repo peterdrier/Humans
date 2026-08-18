@@ -1,4 +1,3 @@
-using Humans.Expenses.Models;
 namespace Humans.Expenses.Authorization;
 
 /// <summary>
@@ -15,5 +14,7 @@ internal enum ExpenseReportOperation
     CoordinatorReject,
     Approve,
     FinanceReject,
-    CategoryOverride
+    CategoryOverride,
+    /// <summary>Re-queue a stuck Holded push. Finance-admin only, and only after approval.</summary>
+    RequeueHoldedPush
 }

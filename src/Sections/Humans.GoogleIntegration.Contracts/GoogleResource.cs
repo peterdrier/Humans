@@ -1,0 +1,74 @@
+using NodaTime;
+
+namespace Humans.GoogleIntegration.Contracts;
+
+/// <summary>
+/// Represents a Google resource (Drive folder or Group) provisioned for a team.
+/// </summary>
+public class GoogleResource
+{
+    /// <summary>
+    /// Unique identifier for the resource record.
+    /// </summary>
+    public Guid Id { get; init; }
+
+    /// <summary>
+    /// Type of Google resource.
+    /// </summary>
+    public GoogleResourceType ResourceType { get; set; }
+
+    /// <summary>
+    /// Google resource ID.
+    /// </summary>
+    public string GoogleId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Human-readable name of the resource.
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// URL to access the resource.
+    /// </summary>
+    public string? Url { get; set; }
+
+    /// <summary>
+    /// Foreign key to the owning team.
+    /// </summary>
+    public Guid TeamId { get; set; }
+
+    /// <summary>
+    /// When the resource was provisioned.
+    /// </summary>
+    public Instant ProvisionedAt { get; init; }
+
+    /// <summary>
+    /// When the resource was last synced with Google.
+    /// </summary>
+    public Instant? LastSyncedAt { get; set; }
+
+    /// <summary>
+    /// Whether the resource is active and synced.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Error message if provisioning or sync failed.
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Permission level for team members on this Drive resource.
+    /// Only applicable to Drive resources (folders, files, shared drives), not Groups.
+    /// None (CLR default) for Groups; Drive resources must set an explicit level.
+    /// </summary>
+    public DrivePermissionLevel DrivePermissionLevel { get; set; }
+
+    /// <summary>
+    /// When true, the system enforces inheritedPermissionsDisabled on the corresponding
+    /// Google Drive folder, preventing parent permission inheritance. The reconciliation
+    /// job detects and corrects drift if someone re-enables inheritance manually.
+    /// Only applicable to Drive folders.
+    /// </summary>
+    public bool RestrictInheritedAccess { get; set; }
+}

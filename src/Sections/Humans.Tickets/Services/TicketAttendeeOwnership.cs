@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Services;

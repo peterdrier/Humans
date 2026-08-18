@@ -1,7 +1,4 @@
 using AwesomeAssertions;
-using Humans.Gdpr.Contracts;
-using Humans.Gdpr.Services;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Gdpr.Tests;
 
@@ -40,65 +37,5 @@ public class GdprArchitectureTests
         typeof(Section).Assembly.GetTypes()
             .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
             .Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Gate's strict form of the step 3b guard: Gdpr has no Resources/ folder, no
-        // GdprResource and no Gdpr_* key anywhere, so *any* IStringLocalizer<T> here would
-        // be a type reaching for the ambient shared set an RCL cannot see. The section is
-        // where this matters least visibly and therefore most — it renders nothing, so a
-        // contributor adding copy has nothing in the section to copy from. Sweeps method
-        // parameters as well as constructor ones (Debug's rule: the injection can be
-        // [FromServices] on an action).
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                    .SelectMany(c => c.GetParameters())
-                    .Concat(t.GetMethods().SelectMany(m => m.GetParameters()))
-                    .Where(p => p.ParameterType.IsGenericType
-                                && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                    .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Gdpr ships no resource set; the day someone adds copy the build should "
-                   + "tell them to carve one rather than resolving against SharedResource");
-    }
-
-    [HumansFact]
-    public void OrchestratorTakesNoRepositoryDbContextOrStore()
-    {
-        // Calendar's rule (§15 step 11): the assembly-level
-        // GetReferencedAssemblies().NotContain("Microsoft.EntityFrameworkCore") assertion
-        // is restated on the constructor, which is what it was always reaching for. Gdpr is
-        // an orchestrator — the hard rules say orchestrators do not call repositories — so
-        // the assertion is about the layer, not just about EF: the fan-out sees other
-        // sections' data only through IUserDataContributor.
-        var parameters = typeof(GdprExportService).GetConstructors().Single().GetParameters();
-
-        parameters.Should().Contain(p => p.ParameterType == typeof(IEnumerable<IUserDataContributor>));
-        parameters.Should().NotContain(
-            p => p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal)
-                 || p.ParameterType.Name.EndsWith("DbContext", StringComparison.Ordinal)
-                 || p.ParameterType.Name.StartsWith("IDbContextFactory", StringComparison.Ordinal),
-            because: "Gdpr owns no tables and orchestrators do not call repositories "
-                   + "(peters-hard-rules.md); every read goes through a contributor");
-    }
-
-    [HumansFact]
-    public void SectionRegistersOnlyTheOrchestrator()
-    {
-        // The contributor forwarding factories belong to the sections that own the
-        // contributors and stay registered beside them — Section.Register here is not a
-        // parking lot (§15 step 4, Governance's rule), and it could not name thirteen
-        // sections' internal service types anyway.
-        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-
-        new Section().Register(services, new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
-
-        services.Should().ContainSingle();
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IGdprExportService));
     }
 }

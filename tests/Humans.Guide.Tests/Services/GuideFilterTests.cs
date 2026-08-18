@@ -135,6 +135,23 @@ public class GuideFilterTests
     }
 
     [HumansFact]
+    public void Apply_AdminOnFileWithNoBoardAdminBlock_StillSeesCoordinator()
+    {
+        // Every other Admin/Board case in this file also contains a boardadmin block, so the
+        // within-file superset promotion could carry them and IsCoordinatorVisible's own
+        // Board/Admin grant would never be exercised. This file has no boardadmin block at all.
+        const string coordOnly = """
+            <div data-guide-role="coordinator" data-guide-roles="">
+              <p>Coord-only content.</p>
+            </div>
+            """;
+
+        var result = GuideFilter.Apply(coordOnly, Roles(isCoord: false, RoleNames.Admin));
+
+        result.Should().Contain("Coord-only content.");
+    }
+
+    [HumansFact]
     public void Apply_NoRoleDivs_ReturnsUnchanged()
     {
         const string plain = "<p>Glossary entries.</p>";

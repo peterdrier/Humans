@@ -1,0 +1,15 @@
+@model Humans.Monitor.Models.SyncAuditViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<page-header title="@Model.Title">
+    @if (Model.BackUrl != null)
+    {
+        <a href="@Model.BackUrl" class="btn btn-outline-secondary">@(Model.BackLabel ?? "Back")</a>
+    }
+</page-header>
+
+<vc:audit-log resource-id="@Model.ResourceId" user-id="@Model.UserId"
+              google-sync-only="@(Model.UserId.HasValue)" layout="sync"
+              title="Sync entries" empty-text="No sync audit entries found." />

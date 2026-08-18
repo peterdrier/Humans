@@ -4,13 +4,12 @@ using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
-using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests.Services;
 

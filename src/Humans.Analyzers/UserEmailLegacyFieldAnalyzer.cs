@@ -36,19 +36,19 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> UserEmailForbiddenMembers =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "IsOAuth",
             "DisplayOrder");
 
     private static readonly ImmutableHashSet<string> UserForbiddenMembers =
-        ImmutableHashSet.Create(System.StringComparer.Ordinal,
+        ImmutableHashSet.Create(StringComparer.Ordinal,
             "GoogleEmail",
             "GetGoogleServiceEmail");
 
     // Strings built from segments to keep architecture scans that operate on
     // source text from confusing these metadata-name constants with User navs.
-    private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
-    private const string UserEmailFullName = "Humans.Domain.Entities" + "." + "UserEmail";
+    private const string UserFullName = "Humans.Users.Contracts" + "." + "User";
+    private const string UserEmailFullName = "Humans.Users.Contracts" + "." + "UserEmail";
 
     public override void Initialize(AnalysisContext context)
     {
@@ -59,9 +59,6 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!AssemblyScope.IsApplicationOrWeb(context.Compilation.Assembly))
-            return;
-
         context.RegisterOperationAction(AnalyzePropertyReference, OperationKind.PropertyReference);
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
     }

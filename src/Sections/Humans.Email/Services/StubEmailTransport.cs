@@ -1,6 +1,3 @@
-using Humans.Email.Contracts;
-using Microsoft.Extensions.Logging;
-
 namespace Humans.Email.Services;
 
 internal sealed class StubEmailTransport(ILogger<StubEmailTransport> logger) : IEmailTransport

@@ -1,7 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Expenses/**
-  src/Sections/Humans.Expenses.Contracts/**
-  src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
   src/Sections/Humans.Finance.Contracts/**
 -->
 <!-- freshness:flag-on-change
@@ -10,17 +8,19 @@
 
 # Expenses — Section Invariants
 
-Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md` and `src/Sections/Humans.Finance/Docs/2026-06-15-holded-ledger-single-source-design.md`.
+Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md`; the ledger side — why the daybook is the single source and paid state is derived from it rather than stamped — is in `src/Sections/Humans.Holded/Docs/2026-08-10-holded-v2-migration-design.md` and `src/Sections/Humans.Finance/Docs/Finance.md`.
 
 ## Concepts
 
 - An **ExpenseReport** is the top-level reimbursement request. It moves through a state machine (see Invariants) and is owned by the submitter until submitted.
-- An **ExpenseLine** is one line item within a report — a description, amount, and optional attachment. Each line has a `LineType` (Receipt / Mileage / PerDiem). **Receipt** lines require an attachment at submit time. **Mileage** lines are computed server-side as km × the configured per-km rate (€0.26/km, 2026 Spanish IRPF tax-exempt rate); **PerDiem** lines are computed as days × the Spanish day-trip (€26.67) or overnight (€53.34) rate. Both travel types have their amount and rate written into the description at creation time and never require an attachment. Rates live in `TravelReimbursementConfig` (bound from `appsettings.json` `TravelReimbursement` section; defaults are the 2026 values).
+- An **ExpenseLine** is one line item within a report — a description, amount, and optional attachment. Each line has a `LineType` (Receipt / Mileage / PerDiem / Invoice). **Receipt** lines require an attachment at submit time. **Mileage** lines are computed server-side as km × the configured per-km rate (€0.26/km, 2026 Spanish IRPF tax-exempt rate); **PerDiem** lines are computed as days × the Spanish day-trip (€26.67) or overnight (€53.34) rate. Both travel types have their amount and rate written into the description at creation time and never require an attachment. Rates live in `TravelReimbursementConfig` (bound from `appsettings.json` `TravelReimbursement` section; defaults are the 2026 values).
+- An **Invoice** line is a supplier invoice from a payee who invoices the org (ZZP / autónomo contractor). It requires the invoice file attached at submit time and is what gets booked into Holded. Because these are reimbursements (not just payments), an invoice line can carry **proof rows**: Receipt lines with `ParentLineId` pointing at the invoice line, each with its own attachment, showing the underlying expenses behind the invoiced amount. Proof rows are reviewed with the report but are **excluded from `Total`** and **never pushed to Holded** (neither as document lines nor as attachments). The detail view shows the proof sum vs the invoice amount to the approvers — display-only, never enforced (VAT and fees mean the two need not match).
 - **Travel lines can no longer be created.** The Add mileage / Add per diem forms and the `Lines/AddMileage` + `Lines/AddPerDiem` endpoints have been removed, so no new Mileage or PerDiem line can enter the system. The service-layer plumbing (`AddMileageLineWithResultAsync`, `AddPerDiemLineWithResultAsync`, `ExpenseLineType.Mileage`/`PerDiem`, `PerDiemKind`, `TravelReimbursementConfig`) is retained: pre-existing travel lines still render, submit, and total correctly, and the feature is re-enabled by restoring the two controller actions and the two `Edit.cshtml` forms.
 - An **ExpenseAttachment** is a receipt or supporting document uploaded to a line item. Files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/expense-attachments/{attachmentId}{.ext}`); the download route at `/Expenses/Attachment/{id}` re-authorizes the caller and streams bytes with the original filename via `Content-Disposition`. Metadata only in the DB.
 - A **HoldedExpenseOutboxEvent** is an async task queued when a report is approved or its category tag changes — drained by `HoldedExpenseOutboxJob` to create/update Holded purchase documents.
 - **Payment is external.** There is no SEPA-file generation in the app. Once a report is `Approved` (and booked into Holded as a payable), the treasurer pays the member's creditor account outside the app (bank/Holded). The app only *shows* the ledger: paid/owed is derived from the member's Holded daybook lines (Finance section) via `IHoldedFinanceService.GetCreditorStatusAsync` (balance ≥ 0 = settled).
 - **IBAN** — snapshotted from `Profile.Iban` at submit time into `ExpenseReport.PayeeIban`. Raw IBAN appears only in Holded API request bodies. All log/audit/error output goes through `IbanFormatter.Mask`.
+- **Payable vs Total.** `Total` is the receipts total; `MaxAmount` is an optional cap a decider authorizes. `ExpenseReportDto.Payable` = `min(Total, MaxAmount)` and is the only amount payment math may use.
 
 ## Data Model
 
@@ -35,10 +35,11 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | BudgetCategoryId | Guid | FK → Budget.BudgetCategory (cross-domain, scalar only) |
 | BudgetYearId | Guid | FK → Budget.BudgetYear (cross-domain, scalar only) |
 | Status | ExpenseReportStatus | see enum below |
-| Note | string? | optional submitter note |
+| Note | string? | optional submitter-written **Subject**; becomes the Holded document `Description` |
 | PayeeName | string | snapshotted at submit |
 | PayeeIban | string | snapshotted at submit; MUST be masked in all log/audit output |
-| Total | decimal | sum of line amounts |
+| Total | decimal | sum of line amounts — the receipts total, not what is paid |
+| MaxAmount | decimal? | payout cap authorized by a decider; null = uncapped |
 | SubmittedAt | Instant? | |
 | CoordinatorEndorsedByUserId | Guid? | scalar FK |
 | CoordinatorEndorsedAt | Instant? | |
@@ -62,8 +63,9 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | ExpenseReportId | Guid | FK → expense_reports |
 | Description | string | |
 | Amount | decimal | |
-| LineType | ExpenseLineType | Receipt \| Mileage \| PerDiem; default Receipt |
+| LineType | ExpenseLineType | Receipt \| Mileage \| PerDiem \| Invoice; default Receipt |
 | AttachmentId | Guid? | FK → expense_attachments |
+| ParentLineId | Guid? | self-FK → expense_lines; non-null marks a proof row backing that Invoice line |
 | SortOrder | int | |
 
 ### ExpenseAttachment
@@ -76,7 +78,7 @@ Metadata only; bytes on disk managed by the shared `IFileStorage` (key `uploads/
 
 **Table:** `holded_expense_outbox_events`
 
-Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `FailedPermanently`, `ProcessedAt`, `LastError`.
+Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `NextRetryAt`, `FailedPermanently`, `ProcessedAt`, `LastError`.
 
 ### ExpenseReportStatus
 
@@ -96,17 +98,22 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
+| `/Expenses/{id}/Lines/New` | GET | Authenticated (owner, Draft only) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
+| `/Expenses/{id}/Lines/{lineId}` | GET | Authenticated (owner) | Focused line page — edit description/amount, view/replace/remove the file, remove the line |
+| `/Expenses/{id}/Lines/{lineId}/Proofs` | GET | Authenticated (owner) | Invoice line's proofs page — coverage vs invoice amount, list, add/remove proof rows |
 | `/Expenses/{id}/Lines/*` | POST | Authenticated (owner) | Line mutations |
 | `/Expenses/{id}/Submit` | POST | Authenticated (owner) | Submit |
 | `/Expenses/{id}/Withdraw` | POST | Authenticated (owner, submitted states) | Withdraw |
 | `/Expenses/{id}/Iban` | GET/POST | Authenticated (resource-based: self, FinanceAdmin with report context) | View/set IBAN |
 | `/Expenses/Attachment/{id}` | GET | Authenticated (resource-based) | Download attachment |
+| `/Expenses/Attachment/{id}/View` | GET | Authenticated (resource-based) | Same file inline (images + PDFs render in the tab; other types fall back to download) |
 | `/Expenses/Coordinator` | GET | Authenticated (coordinator) | Coordinator queue |
 | `/Expenses/{id}/Endorse` | POST | Authenticated (coordinator, resource-based) | Endorse |
 | `/Expenses/{id}/CoordinatorReject` | POST | Authenticated (coordinator, resource-based) | Coordinator reject |
 | `/Expenses/Review` | GET | FinanceAdminOrAdmin | Finance review queue |
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
+| `/Expenses/{id}/HoldedRetry` | POST | FinanceAdminOrAdmin (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
 | `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
 
 ## Actors & Roles
@@ -121,14 +128,20 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Invariants
 
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved. `Approved` is terminal for the report — paid/unpaid is read from the member's Holded creditor ledger, never stamped on the report. Terminal alternate: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.
-- A report cannot be submitted without at least one line. Every **Receipt** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
+- A report cannot be submitted without at least one line. Every **Receipt** line (proof rows included) and every **Invoice** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
+- A proof row must reference an Invoice line on the same report, must itself be a Receipt line, and nests one level only (enforced at add time). Removing an invoice line removes its proof rows and their attachments. Proof rows never contribute to `Total`, never appear as Holded document lines, and their files are never uploaded to the Holded doc. Proof coverage vs the invoice amount is displayed to reviewers but never enforced.
 - Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
+- Only the deciders set `MaxAmount` — the coordinator on Endorse, a finance admin on Approve. Each decision form is prefilled with the current cap and its submitted value replaces it outright: blank clears the cap (the approve form's "Leave blank for no cap" is literal). The submitter can never set or see a cap input, and neither decider path may lower it below 0.01 or above 1,000,000. A cap is recorded in the decision's own `ExpenseEndorse` / `ExpenseApprove` audit entry, not a separate action.
+- Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review and coordinator queues, and the detail view all read the payable; `Total` renders only as the receipts total.
+- A capped report pushes to Holded with one extra negative line ("Authorized maximum €X — adjustment", amount `MaxAmount − Total`, same account as the receipt lines) so the purchase document totals the payable. No adjustment line when the report is uncapped or the cap is at or above `Total`.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
 - The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report, and the Set/Change IBAN buttons render only for the submitter (the `Iban` action Forbids everyone else).
 - `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
 - The coordinator endorsement step is required only if the report's category has at least one budget coordinator (`CategoryRequiresCoordinatorEndorsementAsync`). Finance Admin may approve directly from Submitted if no coordinator is assigned.
 - Resource-based authorization (`IbanAccessRequirement` / `IbanAccessHandler`) gates raw IBAN access: self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page.
-- `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. Transient errors increment `RetryCount`; permanent errors set `FailedPermanently` and stop retrying.
+- `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. A transient error increments `RetryCount` and sets `NextRetryAt` to `now + 2^(RetryCount+1)` minutes, so the event is held back rather than re-hitting Holded every minute; the tenth failure, and any permanent error, sets `FailedPermanently`. A written-off event is never silently dropped — it shows on `/Expenses/Review` as a banner and on `/Expenses/{id}` as the Holded sync card, where a finance admin re-queues it.
+- Attachment uploads are stamped on `ExpenseAttachment.HoldedUploadedAt`, so a re-run after a partial failure or a re-queue resumes rather than adding a second copy of every earlier file to the same Holded document.
+- The drain does nothing at all when no `HOLDED_API_KEY_V2` is configured (`IHoldedClient.IsConfigured`): every call would 401, which is a permanent error, so draining would write off the whole queue. The sync card reports that state as "Not configured" rather than "Queued".
 - Holded API request bodies are the only code path that may contain a raw IBAN (not masked).
 
 ## Negative Access Rules
@@ -136,6 +149,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - Regular members **cannot** see other users' expense reports or attachments.
 - Regular members **cannot** approve, reject, or endorse (unless they are a coordinator for the relevant category).
 - Coordinators **cannot** approve — that requires FinanceAdmin/Admin.
+- Submitters **cannot** set `MaxAmount` — there is no submitter-facing input and no service path that accepts one outside Endorse/Approve.
 - FinanceAdmin **cannot** reveal a raw IBAN on the admin user page — that action is Admin-only.
 - No role **can** transition a report backwards in the state machine (e.g., un-approve, un-submit).
 - No code path **may** log or emit a raw IBAN in logs, audit entries, or error messages — only masked form via `IbanFormatter.Mask`.
@@ -143,9 +157,11 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Triggers
 
 - On **submit**: `Profile.Iban` and the profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written.
-- On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written.
+- On **endorse**: any max amount the coordinator supplied is stored on the report and named in the `ExpenseEndorse` audit entry.
+- On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written, naming any max amount the finance admin supplied (which overrides the coordinator's).
 - On **category override**: `HoldedExpenseOutboxEvent` (UpdateIncomingDocTag) queued. Audit entry `ExpenseCategoryOverride` written.
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
+- On **Holded push success**: audit entry `ExpenseHoldedPushed` written (actor: the job). On **write-off**: `ExpenseHoldedFailed`. On **finance re-queue**: `ExpenseHoldedRequeued` (actor: the admin). These carry the push history past outbox-row cleanup — the outbox columns themselves are not readable outside the database.
 - **`HoldedExpenseOutboxJob`** runs every minute.
 - **GDPR export** (`IUserDataContributor`): contributes `ExpenseReports` and `ExpenseAuditLog` slices. Chain-follows merge tombstones. (Historical `ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` audit entries are still surfaced for accounts that have them — the audit log is immutable; only the writers were removed.)
 
@@ -155,7 +171,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Teams**: `ITeamService.IsUserCoordinatorOfTeamAsync` — coordinator endorsement gate.
 - **Profiles**: `IProfileService.GetProfileAsync` — IBAN snapshot at submit time; masked IBAN for GDPR export.
 - **Users/Identity**: `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
-- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. `GetFilteredEntriesAsync` — GDPR export.
+- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. Write-only; the GDPR export no longer re-reads audit here.
 - **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor status derived from the cached Holded daybook ledger, for the submitter's owed/paid timeline (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
 - **Admin (Users section)**: `/Users/Admin/{id}/RevealIban` lives in `UsersAdminController` and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
 
@@ -163,9 +179,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 **Owning services:** `ExpenseReportService`
 **Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
-**Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866), with the cross-section leaf `Humans.Expenses.Contracts`.
+**Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866); the cross-section leaf `Humans.Expenses.Contracts` later folded into the project's own `Contracts/` folder (ruling 44).
 
-- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the internal read surface (`[SurfaceBudget(7)]`); `IExpenseReportService` adds the mutations. The only public surface is `Section` plus the contracts leaf's `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`), which is how `HoldedExpenseOutboxJob` — still in `Humans.Infrastructure/Jobs`, because recurring jobs are named by concrete type in Shell's roll-call — reaches the section.
+- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the public cross-section read surface in `Contracts/` (no `[SurfaceBudget]` — budgets are off for the duration of the #866 migration); `IExpenseReportService` adds the mutations. The public surface is `Section` plus everything under `Contracts/`: `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`, how `HoldedExpenseOutboxJob` reaches the section), `IExpenseReportServiceRead`, and its DTO/enum graph. The job moved into this project's `Jobs/` folder at G5 lane 5b-5; only its DI registration and roll-call entry stay in Shell, because recurring jobs are named by concrete type there.
 - `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
 - **DbContext** — `ExpensesDbContext` (`src/Sections/Humans.Expenses/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Data/Migrations/` (baseline `20260715101338_BaselineExpenses`). Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. It also registers the section's `ExpenseReportStatus` badge colours into `EnumBadgeMap` rather than Base holding a literal row per section enum.

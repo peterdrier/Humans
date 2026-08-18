@@ -1,7 +1,6 @@
 using Humans.Gdpr.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
-using Humans.Expenses.Domain;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Infrastructure.Hosting;
@@ -19,13 +18,13 @@ namespace Humans.Expenses;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> is an external
-/// API connector with its own section doc and stays in Base, consumed by Expenses and Finance
-/// alike (memory/architecture/vendor-connectors-own-sections.md). Nor is
-/// <c>HoldedExpenseOutboxJob</c>: recurring jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and there is no discovery seam for them yet, so it
-/// stays in <c>Humans.Infrastructure/Jobs</c> and reaches the section through
-/// <c>IExpenseReportBackgroundProcessor</c> (design §15.6b).
+/// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
+/// Holded section, which registers it; Expenses consumes it through
+/// <c>Humans.Holded.Contracts</c> (memory/architecture/vendor-connectors-own-sections.md).
+/// Nor is <c>HoldedExpenseOutboxJob</c>: recurring jobs are named by concrete type in Shell's
+/// roll-call, so the registration stays there (design §15.6b). The job itself is this
+/// section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and drives <c>IExpenseReportBackgroundProcessor</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

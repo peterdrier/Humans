@@ -2,8 +2,9 @@
 
 > **Status:** Plan of record for Q3-2026 (post-event quarter). Drafted 2026-06-13 from the
 > 46 open `schedule:q3-2026` issues plus Peter's program framing. Companion to the
-> [Q3 UI refactoring plan](2026-06-11-q3-ui-refactoring-plan.md) (which is one workstream
-> inside this one, tracked as nobodies-collective/Humans#861).
+> Q3 UI refactoring plan (historical, since deleted — one workstream inside this one,
+> tracked as nobodies-collective/Humans#861; its durable rationale lives in
+> [`conventions.md`](../architecture/conventions.md)).
 >
 > **How to use:** Sections move through the gate ladder below one gate at a time. Audits
 > are parallel across sections; migration-bearing gates are turnstiles (one section at a

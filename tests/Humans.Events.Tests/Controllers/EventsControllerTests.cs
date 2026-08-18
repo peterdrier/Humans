@@ -1,24 +1,22 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Camps;
-using Humans.Events.Services;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Camps.Contracts;
 using Humans.Domain.Constants;
-using Humans.Events.Domain;
 using Humans.Events.Contracts;
 using Humans.Events.Controllers;
+using Humans.Events.Domain;
 using Humans.Events.Models;
+using Humans.Events.Services;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Domain.Entities;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Controllers;
 
 /// <summary>
 /// Authorization coverage for the individual-event edit route

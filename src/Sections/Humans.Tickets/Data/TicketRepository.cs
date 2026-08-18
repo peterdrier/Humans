@@ -1,17 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces.TicketVendor;
-using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 
@@ -587,6 +579,23 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
                         a.Price > TicketConstants.VipThresholdEuros)
                     .Sum(a => a.Price - TicketConstants.VipThresholdEuros),
+            })
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<PaidAttendeeTypePriceRow>> GetPaidAttendeeTypePriceRowsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Where(a =>
+                a.TicketOrder.PaymentStatus == TicketPaymentStatus.Paid &&
+                (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+            .Select(a => new PaidAttendeeTypePriceRow
+            {
+                TicketTypeName = a.TicketTypeName,
+                Price = a.Price,
             })
             .ToListAsync(ct);
     }

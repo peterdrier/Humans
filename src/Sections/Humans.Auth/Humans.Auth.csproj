@@ -20,38 +20,49 @@
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      Temporary, both directions of Teams finding 36's trade. ServiceTestHarness and its
-      copy TeamsTestHarness seed role_assignments rows for tests belonging to sections that
-      have not moved (Shifts, GoogleIntegration, Users) and for Teams' own role tests.
-      Both entries come out when those sections' own G5 lanes rewrite their fixtures.
+      Temporary, one direction of Teams finding 36's trade. TeamsTestHarness seeds
+      role_assignments rows for Teams' own role tests. Comes out when that fixture is
+      rewritten.
     -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
-      Every outbound section reference here is to a *horizontal* section's leaf, which is
-      what peters-hard-rules.md permits: Auth may not reference a vertical section.
+      Three horizontal leaves:
       AuditLog  — RoleAssignmentService writes an audit row per assign/end.
       Gdpr      — role assignments are an Article 15 export slice.
       Notifications — best-effort in-app notice to the human whose role changed.
 
-      There is deliberately no Humans.Teams.Contracts, Humans.Email.Contracts or
-      Humans.Onboarding.Contracts reference. The sign-in orchestrator (MagicLinkService)
-      injects Humans.Email.Contracts and stayed in Humans.Application; ISystemTeamSync and
-      IUserServiceRead are still Humans.Application interfaces, so Teams and Users cost no
-      reference today. AuthArchitectureTests.SectionReferencesNoVerticalSection is what
-      keeps it that way.
+      Two *vertical* leaves are also here, both for the magic-link sign-in path that came home
+      at nobodies-collective/Humans#866 G5 lane 4b-2i:
+
+      Users.Contracts — already required before that lane (IUserServiceRead for assignee/creator
+                        display stitching); MagicLinkService adds UserManager<User> and
+                        IUserEmailService on top.
+      Email.Contracts — IEmailService + IEmailMessageFactory, which MagicLinkService injects to
+                        send the login/signup mail. This reference is exactly what the old
+                        "a horizontal may not reference a vertical" reading forbade, and it is
+                        why the orchestrator sat in Humans.Application until now. Peter's
+                        Base-floor decision of 2026-08-14 supersedes that reading: leaves are
+                        referenceable from anywhere, so hosting a section's own sign-in path in
+                        the hub bought nothing. AuthArchitectureTests.SectionReferencesNoVerticalSection,
+                        which pinned this list on the old premise, was retired in the same lane —
+                        this comment is the record now, so keep a reason beside every name.
+
+      Humans.Teams.Contracts arrived at G5 lane 5c: ISystemTeamSync moved onto that leaf when
+      Humans.Application was emptied, and RoleAssignmentService injects it to reconcile the
+      Board system team. A leaf, not the section — the horizontal/vertical rule still holds.
+      There is still deliberately no Humans.Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

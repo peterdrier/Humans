@@ -3,10 +3,8 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;
 

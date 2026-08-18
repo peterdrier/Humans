@@ -6,7 +6,7 @@
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
         <h1 class="mb-0">Tickets</h1>
-        @await Component.InvokeAsync("AccessMatrix", new { section = "Tickets" })
+        <vc:access-matrix section="Tickets" />
     </div>
 
     <partial name="_TicketNav" />
@@ -134,9 +134,60 @@
                 <div class="px-3 py-2">
                     <small class="text-muted">
                         <i class="fa-solid fa-circle-info"></i>
-                        VAT is computed at 10% on ticket revenue only (up to @(Humans.Domain.Constants.TicketConstants.VipThresholdEuros.ToString("N0")) EUR per ticket).
+                        VAT is computed at 10% on ticket revenue only (up to @TicketConstants.VipThresholdEuros.ToString("N0") EUR per ticket).
                         Amounts above this threshold are classified as VIP donations (VAT-free).
                         Standalone donations from TicketTailor are also VAT-free.
+                    </small>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">No paid orders yet.</div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-ticket"></i> By Ticket Type
+        </div>
+        <div class="card-body p-0">
+            @if (Model.ByTicketType.Count > 0)
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ticket Type</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Tickets</th>
+                            <th class="text-end">Face Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var type in Model.ByTicketType)
+                        {
+                            <tr>
+                                <td>@type.TicketTypeName</td>
+                                <td class="text-end">@Model.Currency @type.Price.ToString("N2")</td>
+                                <td class="text-end">@type.TicketsSold.ToString("N0")</td>
+                                <td class="text-end">@Model.Currency @type.FaceValue.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td></td>
+                            <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0")</td>
+                            <td class="text-end">@Model.Currency @Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="px-3 py-2">
+                    <small class="text-muted">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Face value is the listed ticket price — order-level discounts and donations are excluded,
+                        so totals here won't match Gross Revenue in the tables above.
                     </small>
                 </div>
             }

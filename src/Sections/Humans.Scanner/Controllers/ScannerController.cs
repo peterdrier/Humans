@@ -1,17 +1,16 @@
-using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Calendar.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Scanner.Controllers;
 

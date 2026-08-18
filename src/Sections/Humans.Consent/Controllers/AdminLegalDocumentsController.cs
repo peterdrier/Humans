@@ -2,13 +2,12 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Teams.Contracts;
 
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Consent.Models;
 using Humans.Consent.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Controllers;
 

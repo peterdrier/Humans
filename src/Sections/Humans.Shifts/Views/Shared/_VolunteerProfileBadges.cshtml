@@ -1,0 +1,29 @@
+@model Humans.Shifts.Contracts.VolunteerBadgesViewModel
+
+@if (Model != null)
+{
+    <span class="volunteer-badges">
+        @foreach (var skill in Model.Skills)
+        {
+            <span class="badge bg-info me-1">@skill</span>
+        }
+        @foreach (var quirk in Model.Quirks)
+        {
+            <span class="badge bg-secondary me-1">@quirk</span>
+        }
+        @if (!string.IsNullOrEmpty(Model.DietaryPreference))
+        {
+            <span class="badge bg-success me-1">@Model.DietaryPreference</span>
+        }
+        @foreach (var lang in Model.Languages)
+        {
+            <span class="badge bg-primary me-1">@lang</span>
+        }
+        @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.MedicalConditions))
+        {
+            @* Medical_Badge stayed in SharedResource — Shifts' Localizer is ShiftsResource, so
+               this call site must be SharedLocalizer or the key renders raw in all six languages. *@
+            <span class="badge bg-danger" title="@Model.MedicalConditions">@SharedLocalizer["Medical_Badge"]</span>
+        }
+    </span>
+}

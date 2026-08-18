@@ -18,8 +18,10 @@ namespace Humans.Surveys;
 /// <remarks>
 /// <c>SendSurveyReminderJob</c> is <em>not</em> registered here: recurring jobs are named by
 /// concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no discovery
-/// seam for them yet, so it stays in <c>Humans.Infrastructure/Jobs</c> and reaches the section
-/// through <see cref="ISurveyReminderSender"/> (design §15.6b).
+/// seam for them yet, so the registration stays in Shell (design §15.6b). The job itself is
+/// this section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and then into <c>Jobs/</c> with the HUM0034 carve-out
+/// (nobodies-collective/Humans#1353), and drives <see cref="ISurveyReminderSender"/>.
 /// </remarks>
 public sealed class Section : ISection
 {

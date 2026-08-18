@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using Humans.Agent.Domain;
 
 namespace Humans.Agent.Models;

@@ -42,9 +42,14 @@
     <PackageVersion Include="MailKit" Version="4.17.0" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
+    <!-- Direct pin over Octokit's transitive Newtonsoft.Json 11.0.1 (GHSA-5crp-9r3c-p9vr,
+         NU1903 fails restore). Stripe.net used to float this to 13.x for the whole graph;
+         moving it into Humans.Stripe (nobodies-collective/Humans#866) took that away and
+         exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4227" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4185" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4232" />
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.75.0.4218" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
@@ -101,6 +106,7 @@
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
     <PackageVersion Include="AngleSharp" Version="1.6.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />

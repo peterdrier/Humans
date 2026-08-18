@@ -1,14 +1,12 @@
 using Humans.Application;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Finance.Services;
@@ -29,6 +27,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor
 {
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
 
@@ -57,7 +56,10 @@ internal sealed class Service(
             .ToHashSet();
 
         var rows = new List<HoldedProvisioningRow>();
-        var usedTags = new HashSet<string>(StringComparer.Ordinal);
+        // Seeded up front like usedNumbers, not as the walk encounters them: a ToAdd category
+        // sorting before a mapped one whose tag it collides with would otherwise be handed that
+        // tag verbatim, and two active rows sharing a tag make tag attribution arbitrary.
+        var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
         // Track the rolling "next free" number across ToAdd assignments.
@@ -78,7 +80,6 @@ internal sealed class Service(
                     ProposedAccountNum: null,
                     Tag: existing.Tag,
                     State: "Mapped"));
-                usedTags.Add(existing.Tag);
             }
             else
             {
@@ -181,7 +182,7 @@ internal sealed class Service(
             var map = await repo.GetCategoryMapAsync(ct);
             var entries = map
                 .Where(m => m.IsActive)
-                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.HoldedAccountNumber, m.Tag))
+                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
                 .ToArray();
 
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
@@ -231,11 +232,8 @@ internal sealed class Service(
         IReadOnlySet<string> draftIds,
         Instant now)
     {
-        // v1 attributes the whole doc by its FIRST line's account (+ union of doc/line tags)
-        // and assigns the full doc.Total to that one category. Per spec §6, virtually all
-        // purchase docs today are single-line, so this is correct in practice. Line-level
-        // attribution (splitting a mixed-account doc's total across categories) is a
-        // deliberate later refinement, not a v1 requirement.
+        // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
+        // real purchase docs are single-line today. Line-level attribution is a later refinement.
         var bookedAccount = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null;
         var tags = doc.Tags
             .Concat(doc.Lines.SelectMany(l => l.Tags))
@@ -243,9 +241,7 @@ internal sealed class Service(
 
         var matchResult = HoldedMatcher.Match(bookedAccount, tags, entries);
 
-        var localDate = doc.Date
-            .InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
-            .Date;
+        var localDate = doc.Date.InZone(MadridZone).Date;
 
         return new HoldedExpenseDoc
         {
@@ -259,14 +255,13 @@ internal sealed class Service(
             Total = doc.Total,
             Currency = doc.Currency,
             IsApproved = !draftIds.Contains(doc.Id),
-            TagsJson = System.Text.Json.JsonSerializer.Serialize(tags),
+            TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
             MatchStatus = matchResult.CategoryId is null
                 ? HoldedMatchStatus.Unmatched
                 : HoldedMatchStatus.Matched,
             MatchSource = matchResult.Source,
-            RawPayload = "{}",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -277,10 +272,8 @@ internal sealed class Service(
     public async Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(
         int calendarYear, CancellationToken ct = default)
     {
-        // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive
-        // (Budget/CategoryDetail.cshtml) while a 629 balance is net — the IVA sits on 472 —
-        // and ledger lines can exist for drafts Holded hasn't approved yet. The doc mirror
-        // carries the gross Total and IsApproved, so it is the basis that matches the UI.
+        // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
+        // balance is net, and the ledger carries drafts Holded has not approved.
         var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
         return docs
             .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
@@ -317,10 +310,8 @@ internal sealed class Service(
     private static string ReasonFor(HoldedExpenseDoc d)
     {
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
-        // Tags are stored as JSON; a non-empty array means at least one tag existed.
-        var hasTags = d.TagsJson is not null
-            && !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal)
-            && !string.Equals(d.TagsJson, "null", StringComparison.Ordinal);
+        // MapDoc always serializes a list, so "[]" is the only empty spelling.
+        var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal);
 
         if (!hasAccount && !hasTags)
             return "No account, no tag";
@@ -347,31 +338,22 @@ internal sealed class Service(
             return null;
 
         var balance = LedgerBalance(lines);
-        var payments = LedgerPayments(lines);
+        var payments = lines.Where(l => l.Debit > 0m).ToList();
 
         return new HoldedCreditorStatus(
             SupplierAccountNum: num,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
-            LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
-            TotalPaid: payments.Sum(p => p.Amount));
+            LastPaymentDate: payments.Count == 0
+                ? null
+                : payments.Max(l => l.Date).InZone(MadridZone).Date,
+            TotalPaid: payments.Sum(l => l.Debit));
     }
 
-    // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
-    //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
-    //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
-
+    // Sign confirmed against live data (Daniela 40000001: credit 12720 − debit 9540 = 3180 owed,
+    // chart showed −3180). Payments out are the debit lines.
     private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
-
-    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLineInfo> lines)
-    {
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        return lines
-            .Where(l => l.Debit > 0m)
-            .Select(l => new HoldedPaymentInfo(l.Date.InZone(zone).Date, l.Debit, l.Type))
-            .ToList();
-    }
 
     // ─── Creditor bindings + statement ──────────────────────────────────────────
 
@@ -381,33 +363,23 @@ internal sealed class Service(
     {
         var byAccount = await holded.GetAccountBalancesAsync(ct: ct);
 
-        // Holded is the only place the chart-account label lives — nothing caches it locally.
-        // Range filter is load-bearing: Holded assigns a supplier number to every supplier contact,
-        // so an ordinary org vendor would otherwise become a bindable "creditor account" here.
-        // Group-by-first: a duplicate account number must not throw the whole list.
+        // Holded is the only place the account label lives. The range filter is load-bearing: Holded
+        // numbers every supplier contact, so unfiltered, an org vendor becomes a bindable creditor
+        // account. Group-by-first so a duplicate number cannot throw the whole list.
         var contacts = (await ListContactsOrEmptyAsync(ct))
             .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
-        // Which 400000xx a contact carries is Holded's fact, so this map — not the number cached on the
-        // binding — decides the row, and it does two jobs. A binding whose one-shot number resolution
-        // missed carries a contact id and a null 400000xx; keyed on the number alone its account renders
-        // "unbound" while a member in fact holds the contact behind it, which is both a lie and the
-        // reason such a binding could not be unbound from here. And the two columns are independent, so
-        // bindings sharing a contact can carry numbers that disagree — resolving through the contact
-        // lands them on one row, which is what makes the contact-id half of the at-most-one-member
-        // invariant (the half FindConflictingBinding enforces on writes) visible as a collision instead
-        // of two innocent-looking single-member rows. The stored number is the fallback, for a contact
-        // Holded's list does not carry.
+        // Which 400000xx a contact holds is Holded's fact, so it — not the number cached on the binding
+        // — decides the row: a binding whose number never resolved still reaches its account, and two
+        // bindings on one contact land together as the collision they are. Stored number is the fallback.
         var accountByContactId = contacts
             .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
 
-        // Resolve every binding to its account once, then split on the outcome. The two halves are one
-        // partition of one snapshot rather than two independently-derived filters: an account row and
-        // the unresolved card must never both claim the same binding, and deriving them separately
-        // would let a mid-read change to either input produce exactly that.
+        // Resolved once and split, not filtered twice: one partition of one snapshot, so no binding can
+        // appear both on an account row and on the unresolved card.
         var resolved = (await repo.GetCreditorContactsAsync(ct))
             .Select(b => (Account: accountByContactId.TryGetValue(b.HoldedContactId, out var viaContact)
                               ? viaContact
@@ -437,10 +409,9 @@ internal sealed class Service(
             .Select(x => ToBinding(x.Binding))
             .ToList();
 
-        // Every creditor account with ledger activity, plus bound accounts that have no lines yet,
-        // plus every Holded creditor contact — a first-time submitter's account exists in Holded
-        // before it has any journal activity, and that is exactly the row an admin needs to see.
-        // The mirror now spans the whole chart, so its balances are range-filtered here.
+        // Accounts with ledger activity, plus bound ones with no lines yet, plus every Holded creditor
+        // contact — a first-time submitter's account exists before it has any journal activity. The
+        // mirror spans the whole chart, so its balances are range-filtered here.
         var rows = byAccount.Keys
             .Where(num => num is >= CreditorAccountMin and <= CreditorAccountMax)
             .Union(bindings.Keys).Union(contacts.Keys)
@@ -457,10 +428,9 @@ internal sealed class Service(
                     Bindings: bound ?? []);
             }).ToList();
 
-        // Not one account named, yet accounts exist: the contact list came back empty or unusable, and
-        // the bind card is down to bare numbers an admin cannot check a member against. That state was
-        // silent until a human reported it (nobodies-collective/Humans#994). One row without a name is a
-        // real gap in Holded, not a fault here — only the all-or-nothing signature is logged.
+        // Accounts but not one name is the signature of an unusable contact list, which leaves the bind
+        // card as bare numbers. Silent until a human reported it (nobodies-collective/Humans#994). One
+        // missing name is a real gap in Holded, so only the all-or-nothing case is logged.
         if (rows.Count > 0 && rows.TrueForAll(r => string.IsNullOrWhiteSpace(r.Name)))
             logger.LogWarning(
                 "None of the {Count} creditor accounts resolved a Holded contact name; the bind card and " +
@@ -469,13 +439,9 @@ internal sealed class Service(
         return (rows, unresolved);
     }
 
-    /// <summary>Holded's contact list, or empty when the Holded call fails. Cached for
-    /// <see cref="ContactsCacheDuration"/> (design-rules §15 Option A — short-TTL <see cref="IMemoryCache"/>,
-    /// same pattern as the nav-badge counts) since the same identical list is read on every
-    /// /Finance/Creditors and /Expenses/{id} load; the TTL keeps a contact created today visible
-    /// within minutes without a live call on every page load. The creditor overviews are otherwise
-    /// cache-backed reads embedded in admin pages, so a vendor failure must cost the account names,
-    /// not the page. Only vendor-call failures are absorbed — anything else is a bug and throws.</summary>
+    /// <summary>Holded's contact list, cached for <see cref="ContactsCacheDuration"/> (design-rules §15
+    /// Option A) because every /Finance/Creditors and /Expenses/{id} load reads the same list. A vendor
+    /// failure costs the account names, not the page; anything else is a bug and throws.</summary>
     private async Task<IReadOnlyList<HoldedContactDto>> ListContactsOrEmptyAsync(CancellationToken ct) =>
         await cache.GetOrCreateAsync(CacheKeys.HoldedContacts, async entry =>
         {
@@ -516,23 +482,10 @@ internal sealed class Service(
 
     // ─── The at-most-one-member invariant (nobodies-collective/Humans#975) ───────
     //
-    // A 400000xx account — and the Holded contact behind it — binds to at most one member; a second
-    // binding silently points one person's expense payments at another person's creditor account.
-    // All three write paths test for it with FindConflictingBinding, and they diverge only in what
-    // they do about it, because only one of them is a guess:
-    //
-    //   SetCreditorContactAsync (manual bind)  — an admin picked the account, so the pick can be
-    //       wrong. Refuse and write nothing; the admin re-picks or unbinds the other member.
-    //   SetCreditorAccountNumAsync / EnsureCreditorContactAsync (automatic, during an expense push)
-    //       — Holded assigned the number to the contact we just pushed, so Holded is authoritative
-    //       and the *older* binding is the wrong guess. Refusing would leave a real payable pointing
-    //       at nothing to preserve a wrong row. Record the truth, log Error, and let the collision
-    //       stand visibly on /Finance/Creditors until an admin resolves it with Unbind.
-    //
-    // Deliberately not a DB unique index: the automatic writers run unattended inside outbox drain,
-    // where a constraint violation would strand a created Holded doc as permanently-failed, and the
-    // index would have to be created against production rows that may already collide. Enforcement
-    // lives in the service (memory/architecture/db-enforcement-minimal.md).
+    // An account, and the Holded contact behind it, binds to at most one member. All three write paths
+    // check with FindConflictingBinding and differ only in the remedy, by whether the value is our guess
+    // (refuse) or Holded's own statement (write it and let the collision show); each says so at its own
+    // call site. Not a unique DB index — see Docs/health.md, "deliberately not done".
 
     /// <summary>Another member's binding already claiming this 400000xx and/or this Holded contact.
     /// Either kind of overlap merges two members' payables, so both are conflicts.</summary>
@@ -559,17 +512,10 @@ internal sealed class Service(
             "both now show on /Finance/Creditors and one must be unbound.",
             writePath, userId, holdedContactId, supplierAccountNum, conflict.UserId, conflict.Source);
 
-    /// <summary>True when the member's creditor row is still exactly what <paramref name="asRead"/>
-    /// holds — same row, same content, or still absent when nothing was read.
-    ///
-    /// <para>The automatic write paths carry the contact id, Source and account number straight off the
-    /// binding they opened with, so their write is only safe while that binding is still the one in the
-    /// table; an admin Bind, Unbind or rebind landing in the window turns it into a silent revert, and
-    /// holded_creditor_contacts has no audit trail to reconstruct the loss from. Row identity alone is
-    /// not enough to detect that: UpsertCreditorContactAsync is keyed by UserId and mutates in place, so
-    /// an admin rebinding a member to a different Holded contact keeps the row and its Id and changes
-    /// only the columns being clobbered. Absence is not enough either — a member unbound at the opening
-    /// read who is manually bound during the round-trip has a row to lose too.</para></summary>
+    /// <summary>True when the member's creditor row is still exactly what <paramref name="asRead"/> holds
+    /// — same row, same content, or still absent. Compared field by field, not by row identity: the upsert
+    /// is keyed by UserId and mutates in place, so an admin's rebind keeps the Id and changes only the
+    /// columns a stale write would clobber (nobodies-collective/Humans#995).</summary>
     private async Task<bool> BindingUnchangedAsync(
         string writePath, Guid userId, HoldedCreditorContact? asRead, CancellationToken ct)
     {
@@ -646,8 +592,7 @@ internal sealed class Service(
     public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
         int supplierAccountNum, CancellationToken ct = default)
     {
-        // Lines come from the mirror — no Holded call. The contact header rides the same 2-minute
-        // cached contact list /Finance/Creditors already reads, so a warm page costs nothing either.
+        // Lines come from the mirror and the header off the cached contact list: no Holded call.
         var lines = await holded.GetLedgerLinesAsync(supplierAccountNum, ct);
         if (lines.Count == 0)
             return null;
@@ -658,7 +603,6 @@ internal sealed class Service(
         var balance = LedgerBalance(lines);
         return new HoldedCreditorLedger(
             SupplierAccountNum: supplierAccountNum,
-            Name: contact?.Name,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
             Lines: lines.Select(l => new CreditorLedgerLine
@@ -686,13 +630,9 @@ internal sealed class Service(
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         var allBindings = await repo.GetCreditorContactsAsync(ct);
 
-        // The seed is this member's own cached contact id / 400000xx off a prior report — our guess,
-        // not something Holded just told us — so it gets the manual bind's treatment, not
-        // SetCreditorAccountNumAsync's: a seed landing on another member's binding is refused rather
-        // than recorded. Dropping it makes the push mint this member their own Holded contact, which
-        // is the correct split. It is also what makes Unbind durable: the cleared member's old reports
-        // still carry the other member's contact id and account number, and adopting those would
-        // silently restore the very binding an admin just cleared.
+        // The seed is our own guess off a prior report, not Holded's word, so it gets the manual
+        // bind's remedy: refuse, and let the push mint this member their own contact. That is also
+        // what makes Unbind durable — an old report still carries the contact just unbound.
         if (binding is null
             && FindConflictingBinding(allBindings, userId, seedAccountNum, seedContactId) is { } seedConflict)
         {
@@ -727,36 +667,25 @@ internal sealed class Service(
             ExistingContactId = existingContactId,
         }, ct);
 
-        // A refused seed cannot collide, so what is left here is a member whose *own* existing binding
-        // already overlaps someone else's — a pre-existing collision this push does not create and
-        // must not silently carry forward unreported.
+        // A refused seed cannot collide, so anything left is a pre-existing overlap on the member's own
+        // binding — not this push's doing, but not to be carried forward unreported either.
         var accountNum = binding?.SupplierAccountNum ?? seedAccountNum;
         var conflict = FindConflictingBinding(allBindings, userId, accountNum, contactId);
         if (conflict is not null)
             LogBindingCollision(
                 nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);
 
-        // Nothing left to write once the member already held this contact, and writing anyway is worse
-        // than wasteful. UpsertContactAsync PUTs to ExistingContactId and returns the id it was given,
-        // and Source and the account number are carried straight off the binding just read, so the only
-        // column that would change is UpdatedAt — which nothing reads. Meanwhile this write sits on the
-        // far side of a multi-second Holded round-trip, holding a copy of the binding read before it:
-        // an admin who hits Unbind during that window would get their success message and then have the
-        // binding they just cleared resurrected from that stale copy. Skipping the empty write is what
-        // makes Unbind hold against an in-flight push in the steady state — a member already bound, with
-        // their 400000xx already resolved, does no binding write on a push at all.
+        // A member who already holds this contact has nothing to write but UpdatedAt, which nothing
+        // reads — and this write sits on the far side of a multi-second Holded round-trip, holding a
+        // copy read before it. Skipping it is what makes Unbind hold against an in-flight push.
         if (binding is not null
             && string.Equals(binding.HoldedContactId, contactId, StringComparison.Ordinal)
             && accountNum == binding.SupplierAccountNum)
             return contactId;
 
-        // A binding still missing its account number does write real content, so it cannot be skipped
-        // the way the steady state above is — but it can still lose whatever an admin did during the
-        // Holded round-trip above. UpsertCreditorContactAsync is keyed by UserId, so it inserts over an
-        // Unbind and mutates over a Bind, either way undoing the admin's action from the copy read
-        // before the round-trip (nobodies-collective/Humans#995). Re-reading right before the write
-        // shrinks that window to the gap between this read and the write call, without a version column
-        // (no-concurrency-tokens.md).
+        // A binding still missing its number writes real content, so it cannot be skipped — but it can
+        // still undo an admin's Bind or Unbind from the copy read before the round-trip. Re-reading
+        // here shrinks that window without a version column (nobodies-collective/Humans#995).
         if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
 
@@ -781,8 +710,7 @@ internal sealed class Service(
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         if (binding is null) return;
 
-        // Holded just told us this number belongs to the contact we pushed against, so it is written
-        // either way; only the contact-id overlap is already covered upstream by EnsureCreditorContact.
+        // Holded's own word, so it is written either way; the contact-id overlap is covered upstream.
         var conflict = FindConflictingBinding(
             await repo.GetCreditorContactsAsync(ct), userId, supplierAccountNum, holdedContactId: null);
         if (conflict is not null)
@@ -790,12 +718,9 @@ internal sealed class Service(
                 nameof(SetCreditorAccountNumAsync), userId, binding.HoldedContactId,
                 supplierAccountNum, conflict);
 
-        // Re-check immediately before writing: an Unbind or a rebind landing between the read above and
-        // here must not be undone the same way EnsureCreditorContactAsync guards against it
-        // (Humans#995) — the row below carries the contact id, Source and CreatedAt of the binding read
-        // above, so writing it over an admin's newer one reverts it wholesale. This runs at the end of a
-        // long push with no I/O since the read above, so the remaining window is sub-millisecond;
-        // closing it fully would need a version column (no-concurrency-tokens.md).
+        // Same re-check as EnsureCreditorContactAsync: the row below carries the contact id, Source and
+        // CreatedAt read above, so writing it over an admin's newer binding reverts it wholesale
+        // (nobodies-collective/Humans#995). No I/O since that read, so the window is sub-millisecond.
         if (!await BindingUnchangedAsync(nameof(SetCreditorAccountNumAsync), userId, binding, ct)) return;
 
         var now = clock.GetCurrentInstant();

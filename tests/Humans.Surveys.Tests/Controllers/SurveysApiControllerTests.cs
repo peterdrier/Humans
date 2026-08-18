@@ -1,7 +1,5 @@
 using AwesomeAssertions;
 using Humans.Surveys.Services;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Controllers;
 using Humans.Surveys.Filters;
@@ -11,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Tests.Controllers;
 

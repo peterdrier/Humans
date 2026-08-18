@@ -1,20 +1,17 @@
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
-using Humans.Application;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -27,7 +24,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _shiftManagementService = Substitute.For<IBurnSettingsService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -157,6 +154,117 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         weekly.VatAmount.Should().Be(9.09m);
         weekly.TicketsSold.Should().Be(1);
         weekly.VipDonations.Should().Be(0m);
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_GroupsByTicketTypeAndPrice()
+    {
+        var orderId = Guid.NewGuid();
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_by_type",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 700m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            Attendees =
+            [
+                MakePricedAttendee(orderId, "tkt_fw_1", "Full Week", 100m, TicketAttendeeStatus.Valid),
+                MakePricedAttendee(orderId, "tkt_fw_2", "Full Week", 100m, TicketAttendeeStatus.CheckedIn),
+                MakePricedAttendee(orderId, "tkt_fw_early", "Full Week", 80m, TicketAttendeeStatus.Valid),
+                MakePricedAttendee(orderId, "tkt_vip", "VIP", 420m, TicketAttendeeStatus.Valid)
+            ]
+        });
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        result.ByTicketType.Should().HaveCount(3);
+
+        // Ordered by face value descending.
+        var vip = result.ByTicketType[0];
+        vip.TicketTypeName.Should().Be("VIP");
+        vip.Price.Should().Be(420m);
+        vip.TicketsSold.Should().Be(1);
+        vip.FaceValue.Should().Be(420m);
+
+        var fullWeek = result.ByTicketType[1];
+        fullWeek.TicketTypeName.Should().Be("Full Week");
+        fullWeek.Price.Should().Be(100m);
+        fullWeek.TicketsSold.Should().Be(2);
+        fullWeek.FaceValue.Should().Be(200m);
+
+        var earlyBird = result.ByTicketType[2];
+        earlyBird.TicketTypeName.Should().Be("Full Week");
+        earlyBird.Price.Should().Be(80m);
+        earlyBird.TicketsSold.Should().Be(1);
+        earlyBird.FaceValue.Should().Be(80m);
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_ByTicketType_ExcludesUnpaidOrdersAndVoidAttendees()
+    {
+        var paidOrderId = Guid.NewGuid();
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = paidOrderId,
+            VendorOrderId = "ord_paid",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 200m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            Attendees =
+            [
+                MakePricedAttendee(paidOrderId, "tkt_valid", "Full Week", 100m, TicketAttendeeStatus.Valid),
+                MakePricedAttendee(paidOrderId, "tkt_void", "Full Week", 100m, TicketAttendeeStatus.Void)
+            ]
+        });
+
+        var refundedOrderId = Guid.NewGuid();
+        TicketsDb.TicketOrders.Add(new TicketOrder
+        {
+            Id = refundedOrderId,
+            VendorOrderId = "ord_refunded",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 400m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Refunded,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 12, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 12, 0),
+            Attendees =
+            [
+                MakePricedAttendee(refundedOrderId, "tkt_refunded", "VIP", 400m, TicketAttendeeStatus.Valid)
+            ]
+        });
+
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        var row = result.ByTicketType.Should().ContainSingle().Subject;
+        row.TicketTypeName.Should().Be("Full Week");
+        row.Price.Should().Be(100m);
+        row.TicketsSold.Should().Be(1);
+        row.FaceValue.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_ByTicketType_IsEmptyWithoutData()
+    {
+        var result = await _service.GetSalesAggregatesAsync();
+
+        result.ByTicketType.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -615,7 +723,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(new Dictionary<Guid, TeamInfo>());
 
         _shiftManagementService.GetActiveAsync()
-            .Returns((EventSettings?)null);
+            .Returns((BurnSettingsInfo?)null);
     }
 
     private static User CreateUser(string name, string email)
@@ -699,6 +807,23 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             Status = TicketAttendeeStatus.Valid,
             VendorEventId = "ev_test",
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+        };
+
+    private static TicketAttendee MakePricedAttendee(
+        Guid orderId, string vendorTicketId, string ticketTypeName,
+        decimal price, TicketAttendeeStatus status) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = vendorTicketId,
+            TicketOrderId = orderId,
+            TicketOrder = null!,
+            AttendeeName = vendorTicketId,
+            TicketTypeName = ticketTypeName,
+            Price = price,
+            Status = status,
+            VendorEventId = "ev_test",
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
         };
 
     private static TeamInfo VolunteersTeam(IEnumerable<Guid> userIds) =>

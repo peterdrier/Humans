@@ -1,14 +1,11 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
 using Humans.Cantina.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests.Services;
 
@@ -21,7 +18,7 @@ namespace Humans.Cantina.Tests.Services;
 /// </summary>
 public class CantinaDailyRosterServiceTests
 {
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IBurnSettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
@@ -32,7 +29,7 @@ public class CantinaDailyRosterServiceTests
 
     public CantinaDailyRosterServiceTests()
     {
-        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
         _burnSettings = Substitute.For<IBurnSettingsService>();
         _userRead = Substitute.For<IUserServiceRead>();
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));

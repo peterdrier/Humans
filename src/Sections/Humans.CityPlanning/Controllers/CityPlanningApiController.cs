@@ -1,16 +1,15 @@
 using Humans.UI.Authorization;
 using System.Text.Json;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
-using Humans.Domain.Entities;
 using Humans.UI.Extensions;
-using Humans.UI.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Controllers;
 

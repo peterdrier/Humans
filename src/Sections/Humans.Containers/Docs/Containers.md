@@ -27,7 +27,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 |----------|------|-------|
 | Id | Guid | PK |
 | CampId | Guid | **Non-null**. Bare FK (no nav) — Camp lives in a different section (no-cross-section-ef-joins). |
-| Name | string | max 256; required |
+| Name | string | max 256; required; must not contain `<`, `>` or `$` (names travel into JS/HTML on the map pages — enforced in `Service.ValidateName` + form model) |
 | Description | string? | max 2000 |
 | ImageStoragePath | string? | max 512; relative path from `wwwroot/` |
 | ImageContentType | string? | max 64 |
@@ -62,17 +62,17 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View containers on the map overview (`/CityPlanning/`) |
-| Camp lead (own camp, placement phase open) | Create, edit, delete containers for their camp; place / clear / annotate placements for their camp's containers |
+| Camp lead (own camp) | Create, edit, delete containers for their camp any time; place / clear / annotate placements only while the placement phase is open |
 | CampAdmin role | All camp lead capabilities on every camp's containers. Placement phase toggle |
 | City-planning team member (team slug: `city-planning`) | Same as CampAdmin on containers |
 
 ## Invariants
 
 - A container belongs to its `CampId`; the owning camp's leads and Map Admins (CampAdmin or city-planning team) may manage it.
-- Write access for barrio leads is gated by `CityPlanningSettings.IsContainerPlacementOpen`. Map Admins are never gated.
+- Placement writes (place / clear / annotate) for barrio leads are gated by `CityPlanningSettings.IsContainerPlacementOpen`; container CRUD is not phase-gated (`ContainerOperation.Manage` vs `.Place`). Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.
 - `ContainerPlacement.LocationGeoJson` stores a GeoJSON Feature whose Polygon is the container footprint (20 ft container: 6 m × 2.4 m body plus a door triangle whose tip marks the door bearing — a 7-vertex ring built client-side with Turf.js, tip at vertex index 4) and whose `properties` must carry `center_lng`, `center_lat`, `rotation_degrees` (presence enforced server-side by `CityPlanningApiController` on placement PUT). Rotation deliberately lives inside the Feature — there is no separate rotation column — so the client rebuilds the drag/rotate handle state without re-deriving orientation from vertex geometry.
-- Image storage uses the shared `IFileStorage`; container main images live at `wwwroot/uploads/containers/{containerId}/main-{guid}.{ext}`; placement images at `wwwroot/uploads/containers/{containerId}/placement-{guid}.{ext}`. Uploading a new image of a given kind deletes the prior file of that kind only.
+- Image storage uses the shared `IFileStorage`; both main and placement images are saved by the same `SaveImageAsync` helper under `wwwroot/uploads/containers/{containerId}/{guid}.{ext}` — the two kinds are distinguished by which entity field holds the key (`Container.ImageStoragePath` vs `ContainerPlacement.PlacementImageStoragePath`), not by a filename prefix. Uploading a new image of a given kind deletes the prior file of that kind only.
 - Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampServiceRead.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the settings year).
 - Deleting a container deletes all its `ContainerPlacement` rows in the same transaction.
 - Documented limitation: when a container is deleted, placement-image files on disk for years other than the deleted-row scan window may be orphaned. At ~500-user scale this is acceptable; a periodic disk sweep can reclaim space.
@@ -80,7 +80,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Negative Access Rules
 
 - Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies the user leads a season of the container's `CampId` (via `ICampServiceRead.GetCampsForYearAsync` + `Season.IsLead`).
-- Barrio leads **cannot** create, edit, delete, or place containers when the placement phase is closed (`IsContainerPlacementOpen == false`).
+- Barrio leads **cannot** place, clear, or annotate placements when the placement phase is closed (`IsContainerPlacementOpen == false`). Container CRUD stays available to them year-round.
 - Non-admins **cannot** toggle the placement phase open or closed.
 - Non-admins **cannot** access `/CityPlanning/ContainerMap/{year}` when the placement phase is closed (controller returns 403 for non-admins who are not barrio leads or when the phase is closed).
 - Regular authenticated humans **cannot** write any container data.
@@ -95,7 +95,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
+- **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
 - **City Planning:** `ICityPlanningServiceRead` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container placement API endpoints (`PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `GET /api/city-planning/containers/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 
 ## Architecture
@@ -106,11 +106,11 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 - `Service` (`Humans.Containers.Services`) never imports `Microsoft.EntityFrameworkCore`.
 - `IContainerRepository` / `Repository` (`Humans.Containers.Data`, `IDbContextFactory<ContainersDbContext>`) is the only code path that touches `containers` and `container_placements` via `DbContext`.
-- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: both tables match the section name.
+- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as every other section context — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: both tables match the section name.
 - Images are written through the shared `IFileStorage` under the `uploads/containers/` key prefix (`memory/architecture/one-ifilestorage`). There is no container-specific storage interface.
 - **Decorator decision — no caching decorator.** Small dataset, admin/lead facing, low write frequency.
 - DI: `Section.Register` (project root, discovered by Shell) registers `IContainerRepository` (Singleton), `IContainerService` (Scoped) and `ContainerAuthorizationHandler`. Nothing is added to Shell.
 - **`Contracts/` is a folder, not a project.** Every consumer outside the section — `CityPlanningController` and `CityPlanningApiController` — sits in `Humans.CityPlanning`, which references this project directly, so no downward carve is needed (design §15 step 5b). The reverse edge is the leaf only: this project references `Humans.CityPlanning.Contracts` (the authorization handler and the list page gate on the placement phase), and that leaf references `Humans.Interfaces` alone, so the pair stays acyclic. The folder is unusually wide for the same reason: City Planning drives container CRUD from its own controllers and views, so the service interface, its DTOs, the authorization requirement/target and the shared card view models are all cross-section surface. Narrowing it means moving the `/CityPlanning/BarrioMap/Admin/Containers` pages into this section, which is a URL change and out of scope for a G5 move.
-- **Shared card partials live here.** `Views/Shared/_ContainerCardRow.cshtml`, `_ContainerCardModals.cshtml` and `_ContainerFormFields.cshtml` are rendered by both this section's `Container/Index` and Shell's `CityPlanning/Containers`. They stay in the section rather than in `Humans.UI` precisely so they can localize from `ContainersResource`; a Base partial cannot see a section's resource set and would have to take every label in on its model (Events' `_FavouriteButton` lesson, design §15 step 3b).
+- **Shared card partials live here.** `Views/Shared/_ContainerCardRow.cshtml`, `_ContainerCardModals.cshtml` and `_ContainerFormFields.cshtml` are rendered by both this section's `Container/Index` and Shell's `CityPlanning/Containers`. They stay in the section rather than in `Humans.UI` precisely so they can localize from `ContainersResource`; a Base partial cannot see a section's resource set and would have to take every label in on its model (the `_FavouriteButton` lesson — that partial has since moved into `Humans.Events` at G5 lane 4b-i, nobodies-collective/Humans#866, but keeps its caller-supplies-labels shape because Shell's EventsCard renders it too; design §15 step 3b).
 - **Resources.** The 20 `Container_*` keys and the 9 `ContainerMap_*` keys are both `ContainersResource` — the map page is City Planning's URL over Containers' data, so the vocabulary stays in this set. `Humans.CityPlanning`'s `_ViewImports` binds an `IStringLocalizer<ContainersResource>` alongside its own, so which set a key comes from is visible at the call site.
 - **Audit discriminators are literals** (`Services/AuditEntityTypes.cs`), not `nameof`. `Camp` in particular is not nameable from this assembly after the move.

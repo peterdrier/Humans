@@ -1,6 +1,10 @@
+@using Humans.Teams.Contracts
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.UI.Authorization
 @using Humans.UI.Models.Tables
+@* VolunteerBadgesViewModel and ShiftsSummaryCardViewModel moved to their owning sections'
+   Contracts/ at G5 lane 4b-i (nobodies-collective/Humans#866); Humans.Shifts.Contracts and
+   Humans.Teams.Contracts are already imported above. *@
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -291,7 +295,7 @@
                             <span class="wg-card-name">&lt;vc:profile-card&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Full profile card. The view mode controls which sensitive fields render — legal name, board notes, emergency contacts.
@@ -304,7 +308,7 @@
                     <div class="wg-variants">
                         <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
                         <div class="wg-variant-render" style="display:block;">
-                            <vc:profile-card user-id="@Model.CurrentUserId" view-mode="@ProfileCardViewMode.Admin" />
+                            @await Component.InvokeAsync("ProfileCard", new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Admin })
                         </div>
                     </div>
                 </div>
@@ -315,7 +319,7 @@
                             <span class="wg-card-name">_ProfileCard.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_ProfileCard.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_ProfileCard.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Compact profile summary line — avatar + name + email + status badges. Used in admin tables.
@@ -362,7 +366,7 @@
                             <span class="wg-card-name">_HumanPopover.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanPopover.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanPopover.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Hover popover content rendered by JS when a <code>&lt;vc:human&gt;</code> element with
@@ -384,7 +388,7 @@
                             <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSummaryViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/HumanSummaryViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
@@ -396,7 +400,7 @@
                     <div class="wg-variants">
                         <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
                         <div class="wg-variant-render" style="display:block;">
-                            <vc:human-summary user-id="@Model.CurrentUserId" />
+                            @await Component.InvokeAsync("HumanSummary", new { userId = Model.CurrentUserId })
                         </div>
                     </div>
                 </div>
@@ -438,7 +442,7 @@
                             <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_VolunteerProfileBadges.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
@@ -484,9 +488,9 @@
                         ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketServiceRead</code>")
                     )
                     <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
-                        <vc:ticket-stub stub="@(new Humans.Tickets.Contracts.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
-                        <vc:ticket-stub stub="@(new Humans.Tickets.Contracts.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
-                        <vc:ticket-stub stub="@(new Humans.Tickets.Contracts.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
                     </div>
                 </div>
 
@@ -539,13 +543,17 @@
                             <span class="wg-card-name">&lt;vc:my-google-resources&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.GoogleIntegration/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Google Drive / Calendar / Group resources the current human can access via team membership.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only.")
                     <div class="wg-card-example">
-                        <vc:my-google-resources />
+                        @* Invoked by name: the component is internal to Humans.GoogleIntegration and
+                           routed by SectionViewComponentFeatureProvider, so the compile-time <vc:>
+                           tag helper cannot see it and would ship as inert literal markup. The
+                           dashboard's call site already used this form (step 6). *@
+                        @await Component.InvokeAsync("MyGoogleResources")
                     </div>
                 </div>
 
@@ -576,7 +584,7 @@
                             <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Calendar/Contracts/UserCalendarViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
                     @ParamsBlock(
@@ -648,7 +656,7 @@
                             <span class="wg-card-name">_ShiftsSummaryCard.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_ShiftsSummaryCard.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</span>
                     </div>
                     <div class="wg-card-note">Compact shift-staffing card — progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
                     @ParamsBlock(
@@ -659,123 +667,11 @@
                     </div>
                 </div>
 
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_RotaHeader.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaHeader.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">Rota title block — name, description, priority, signup-policy line. Used at the top of rota detail pages.</div>
-                    @ParamsBlock(
-                        ("@@model", "<code>RotaHeaderViewModel</code> — Rota (entity), ShowPreferenceStar (bool)")
-                    )
-                    <div class="wg-card-example @(Model.SampleRota is null ? "is-empty" : "")">
-                        @if (Model.SampleRota is not null)
-                        {
-                            @await Html.PartialAsync("_RotaHeader", new RotaHeaderViewModel
-                            {
-                                Rota = Model.SampleRota,
-                                ShowPreferenceStar = true,
-                            })
-                        }
-                        else
-                        {
-                            <text>(No rota in the active event — visit <a href="/Admin/Events">/Admin/Events</a> and create a rota under any department to see this populated.)</text>
-                        }
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_RotaBadges.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaBadges.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">Priority, period, visibility, preference, and tag badges shared by rota headers and the public shifts browser.</div>
-                    @ParamsBlock(
-                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowPreferenceStar, ShowPeriodBadge, ShowTags, BadgeSpacingClass")
-                    )
-                    <div class="wg-card-example">
-                        @{
-                            var widgetGalleryBadgeRota = new Rota
-                            {
-                                Name = "Gate Support",
-                                Priority = ShiftPriority.Essential,
-                                Period = RotaPeriod.Build,
-                                IsVisibleToVolunteers = false,
-                            };
-                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Outdoor" });
-                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Radio" });
-                        }
-                        @await Html.PartialAsync("_RotaBadges", new RotaHeaderViewModel
-                        {
-                            Rota = widgetGalleryBadgeRota,
-                            ShowPreferenceStar = true,
-                            BadgeSpacingClass = "me-1",
-                        })
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_RotaDetails.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaDetails.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">Optional rota description and practical-info markdown block shared by rota headers and the public shifts browser.</div>
-                    @ParamsBlock(
-                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowDescription, ShowPracticalInfo, DescriptionCssClass, PracticalInfoCssClass")
-                    )
-                    <div class="wg-card-example">
-                        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
-                        {
-                            Rota = new Rota
-                            {
-                                Name = "Gate Support",
-                                Description = "Welcome volunteers, check wristbands, and keep arrivals moving.",
-                                PracticalInfo = "Meet at the gate desk. Bring water and a charged phone.",
-                            },
-                            DescriptionCssClass = "text-muted small mb-2",
-                            PracticalInfoCssClass = "text-muted small mb-0",
-                        })
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_EventRotaTable.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_EventRotaTable.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">The shifts table — one row per shift with phase badge, slot count, and signup chips. Rendered here for the first rota of the first department in the active event (up to 8 shifts).</div>
-                    @ParamsBlock(
-                        ("@@model", "<code>EventRotaTableViewModel</code> — Shifts (List&lt;ShiftDisplayItem&gt;), EventSettings, UserSignupShiftIds, UserSignupStatuses, ShowSignups, plus filter state (FilterDepartmentId, FilterFromDate/ToDate, FilterPeriod, FilterPeriods, FilterTagIds, Sort)")
-                    )
-                    <div class="wg-card-example @(Model.SampleRotaShifts.Count == 0 ? "is-empty" : "")">
-                        @if (Model.SampleRotaShifts.Count > 0 && Model.SampleEventSettings is not null)
-                        {
-                            @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
-                            {
-                                Shifts = Model.SampleRotaShifts.ToList(),
-                                EventSettings = Model.SampleEventSettings,
-                                UserSignupShiftIds = Model.SampleUserSignupShiftIds.ToHashSet(),
-                                ShowSignups = true,
-                            })
-                        }
-                        else
-                        {
-                            <text>(No rota with shifts found in the active event — create a rota under any department in <a href="/Admin/Events">/Admin/Events</a> with at least one shift.)</text>
-                        }
-                    </div>
-                </div>
+                @* The four rota cards live in Humans.Shifts: they construct RotaHeaderViewModel,
+                   RotaInfo, ShiftTag and EventRotaTableViewModel, all internal to that section
+                   since its G5. Resolved by name across application parts
+                   (nobodies-collective/Humans#866). *@
+                @await Component.InvokeAsync("ShiftsGallery", new { currentUserId = Model.CurrentUserId })
 
                 <div class="wg-card">
                     <div class="wg-card-header">
@@ -941,14 +837,14 @@
                             <span class="wg-card-name">&lt;vc:access-matrix&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.UI/ViewComponents/AccessMatrixViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Section-help bundle: guide markdown + glossary + access matrix. Renders nothing for sections with no help content registered.</div>
                     @ParamsBlock(
                         ("section", "<code>string</code> — section key from <code>AccessMatrixDefinitions.Sections</code> (e.g. teams, shifts, profile)")
                     )
                     <div class="wg-card-example">
-                        <vc:access-matrix section="teams" />
+                        <vc:access-matrix section="Teams" />
                     </div>
                 </div>
 
@@ -958,20 +854,30 @@
                             <span class="wg-card-name">&lt;vc:audit-log&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AuditLogViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.AuditLog/ViewComponents/AuditLogViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Filtered audit log. Filters can stack — entity type/id, human id, comma-separated actions.</div>
+                    <div class="wg-card-note">Filtered audit log — the only sanctioned way for a section to <em>show</em> audit history. Filters can stack; the AuditLog section owns the read and the render.</div>
                     @ParamsBlock(
                         ("entityType", "<code>string?</code> — e.g. <code>User</code>, <code>Team</code>, <code>Application</code>"),
                         ("entityId", "<code>Guid?</code> — scoped to one entity"),
+                        ("entityIds", "<code>IReadOnlyList&lt;Guid&gt;?</code> — several entities of one type, merged newest-first"),
                         ("userId", "<code>Guid?</code> — scoped to actions taken by/on a user"),
+                        ("resourceId", "<code>Guid?</code> — scoped to one Google resource"),
+                        ("googleSyncOnly", "<code>bool</code> — with <code>userId</code>, only Google-sync entries"),
                         ("actions", "<code>string?</code> — CSV of <code>AuditAction</code> values"),
+                        ("since", "<code>Instant?</code> — drop entries older than this"),
                         ("limit", "<code>int</code> — page size (default 20)"),
+                        ("layout", "<code>string</code> — <code>line</code> (default, narrative), <code>table</code>, or <code>sync</code>"),
+                        ("columns", "<code>string?</code> — CSV subset of When/Actor/Action/Subject/Description/Target; <code>table</code> only"),
+                        ("columnLabels", "<code>string?</code> — keyed header overrides, <code>when:Fecha,actor:Remitente</code>; <code>table</code> only. Unknown/unsupplied keys keep the English name"),
                         ("title", "<code>string</code> — heading text (default \"Audit History\")"),
+                        ("emptyText", "<code>string</code> — no-rows copy (default \"No audit history.\")"),
                         ("showCard", "<code>bool</code> — wrap in a Bootstrap card (default true)")
                     )
                     <div class="wg-card-example">
                         <vc:audit-log user-id="@Model.CurrentUserId" limit="10" title="Recent audit entries for current human" />
+                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" layout="table" columns="when,actor,description"
+                                      title="Same entries, layout=&quot;table&quot;" />
                     </div>
                 </div>
             </section>
@@ -1012,7 +918,7 @@
                             <span class="wg-card-name">_HumanSearchResults.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchResults.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml</span>
                     </div>
                     <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Users/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
                     @ParamsBlock(
@@ -1099,7 +1005,7 @@
                             <span class="wg-card-name">_RoleBadge.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RoleBadge.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_RoleBadge.cshtml</span>
                     </div>
                     <div class="wg-card-note">Badge for a TeamMemberRole. Coordinator = warning gold; Member = secondary.</div>
                     @ParamsBlock(

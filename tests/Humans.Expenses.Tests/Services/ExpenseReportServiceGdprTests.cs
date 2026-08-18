@@ -1,25 +1,21 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Humans.Expenses.Data;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Expenses.Tests.Services;
 

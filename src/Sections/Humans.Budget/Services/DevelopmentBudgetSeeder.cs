@@ -1,7 +1,6 @@
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Budget.Services;
@@ -24,7 +23,7 @@ internal sealed record DevelopmentBudgetSeedResult(
 
 internal sealed class DevelopmentBudgetSeeder(
     IBudgetService budgetService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITeamSeeding teamSeeding,
     ICampServiceRead campService,
     IClock clock,

@@ -1,13 +1,9 @@
 using System.Net;
-using Humans.Consent.Services;
-using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
-using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -20,11 +16,12 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Mailer.Services;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Services;
+using Humans.Users.Contracts;
+using Humans.Stripe.Contracts;
+using Humans.Stripe.Services;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

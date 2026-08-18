@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Users;
 using Humans.Search.Controllers;
 using Humans.Search.Models;
 using Humans.Search.Services;
@@ -13,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Tests.Controllers;
 

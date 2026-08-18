@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Development/**
-  src/Humans.Web/Infrastructure/DevLoginControllerExclusionProvider.cs
+  src/Humans.Web/Hosting/DevLoginControllerExclusionProvider.cs
   src/Humans.Web/Views/Account/Login.cshtml
 -->
 
@@ -24,9 +24,9 @@ This section owns no entities and no tables. Everything it creates belongs to an
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/dev/login/{persona}` | GET | Anonymous | Seed (idempotently) and sign in as a named persona; `guest` mints a fresh profileless account per click |
+| `/dev/login/{persona}` | GET | Anonymous | Seed (idempotently) and sign in as a named persona; `guest` mints a fresh profileless account per click. The `admin` persona 404s outside a dev host |
 | `/dev/login/users` | GET | Anonymous | User chooser - first 100 humans by burner name, ephemeral guests filtered out |
-| `/dev/login/users/{id}` | GET | Anonymous | Sign in as an existing user by id |
+| `/dev/login/users/{id}` | GET | Anonymous | Sign in as an existing user by id; 404s outside a dev host when that human holds an active Admin assignment |
 | `/dev/seed/budget` | POST | `FinanceAdminOrAdmin` | Budget demo data, via `IBudgetDemoSeeder` on Budget's contracts leaf |
 | `/dev/seed/camp-roles` | POST | `CampAdminOrAdmin` | Five system camp-role definitions |
 | `/dev/seed/dashboard` | POST | `ShiftDashboardAccess` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
@@ -49,7 +49,8 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.
 - **`Section.Register` fails closed.** `ISection.Register` takes no `IHostEnvironment`, so it reads `HostDefaults.EnvironmentKey` from the configuration Shell hands it. An environment name it cannot read registers *nothing* - the failure lands as dev login 404ing in the test host, not as dev seeders reaching Production. Pinned by `DevelopmentArchitectureTests`.
-- **The dashboard seed is stricter than the rest**: `IsDevelopment()` **and** `DevAuth:Enabled`. QA, preview and production cannot invoke it regardless of role. (`docs/sections/Shifts.md` states the same invariant from the other side; `DevSeedControllerTests` covers both branches.)
+- **The dashboard seed is stricter than the rest**: `IsDevelopment()` **and** `DevAuth:Enabled`. QA, preview and production cannot invoke it regardless of role. (`src/Sections/Humans.Shifts/Docs/Shifts.md` states the same invariant from the other side; `DevSeedControllerTests` covers both branches.)
+- **Dev login never yields an Admin session outside a dev host.** A "dev host" is `Development` or the in-process `Testing` integration host - QA and previews run `Staging` with `DevAuth:Enabled` on and real Google Workspace data, so an anonymous URL that mints Admin there is a live privilege escalation. Both doors are shut: the `admin` persona (matched by resolving the slug back through `DevPersonaSeeder.RoleNameFromSlug`, before any seeding runs) and impersonation of any human with an active `RoleNames.Admin` assignment (`IRoleAssignmentService.IsUserAdminAsync`). `_DevLoginPanel` renders `DevLoginController.PersonasFor(env)` so the button and the route share one predicate. Covered by `DevLoginControllerTests`.
 - **Every write goes through the owning section's service.** No `DbContext`, no repository, no cross-section table access - `DevelopmentArchitectureTests.SectionTakesNoDbContextOrRepository` asserts it on the constructors.
 - **Persona seeding is idempotent and repairs.** `EnsurePersonaAsync` returns the existing user when there is one, and `EnsureActiveAsync` runs on *every* sign-in: it submits any missing required consents through the canonical consent path and lifts a consent suspension, because personas hold governance roles and the nightly `SuspendNonCompliantMembersJob` suspends them otherwise (nobodies-collective/Humans#867).
 - **The `no-name` persona is re-blanked on every sign-in** so the onboarding name gate (#812) re-triggers each time.
@@ -60,6 +61,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - A non-privileged authenticated human cannot invoke any `/dev/seed/*` action: `302 -> /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, app-wide - not a bare `403`). Pinned by `DevelopmentPageRenderTests`.
 - No type in the section may take `IStringLocalizer<T>` for **any** `T`. The section carries no resource set, no `Development_*` key and no `Enum_Development*` key: every string is English developer copy. Adding localized copy must start by carving a resource set. Enforced by `DevelopmentArchitectureTests`.
 - The seeders must not be reachable from production code paths. They are `internal` to this assembly and registered only outside Production.
+- No anonymous visitor to a deployed host may reach an Admin session through `/dev/login/*`, with `DevAuth:Enabled` on or off: `GET /dev/login/admin` and `GET /dev/login/users/{id}` for an active Admin both `404`. `Development` and `Testing` are the only environments that allow either. Consequence: the Playwright suite runs against QA (`Staging`) and so has **no admin persona** - `AdminOnly` routes are covered in-process by `Humans.Integration.Tests` (`DevPersona.Admin`, a `Testing` host) instead.
 
 ## Triggers
 
@@ -73,11 +75,11 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` (the §2a Identity exception, see [`Users.md`](../../../../docs/sections/Users.md)), `IUserService`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator` |
+| Users / Profiles | `UserManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator` |
 | Auth | `IRoleAssignmentService` |
-| Teams | `ITeamService`, `ISystemTeamSync` |
-| Camps | `ICampService`, `ICampRoleService` |
-| Shifts | `IShiftManagementService`, `IShiftSignupService` |
+| Teams | `ITeamService`, `ITeamSeeding`, `ISystemTeamSync` |
+| Camps | `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding` |
+| Shifts | `IShiftSeeding`, `IBurnSettingsService`, `IShiftSignupSeeding` |
 | Audit Log | `IAuditLogService` |
 | Human Lifecycle | `IHumanLifecycleService` |
 | Consent | `IConsentSubmission` (contracts leaf) |
@@ -98,7 +100,7 @@ Nothing depends on Development in the other direction. Shell reaches it twice an
 - `Contracts/` is an empty folder. Folder-vs-project is decided by where the consumer lives, and there is no compile-time consumer at all.
 - `DevPersonaSeeder` is on the `ApplicationServicesTakeNoMemoryCacheRule` allowlist. It does not *hold* a cache - it calls `MemoryCacheExtensions.InvalidateUserAccess(userId)` after changing a persona's roles or teams, the same call Shell's `GateTerminalAccountSeeder` makes. It entered that sweep at the move, because the rule scans `Humans.Application` plus the section assemblies and this code used to sit in `Humans.Web/Infrastructure`, which it covers neither before nor after.
 - **Known deviation, carried from the G0 audit (gap #5):** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create Identity accounts through `UserManager<User>` rather than `IUserService`. This is the §2a framework exception applied to a dev fixture; it is invisible to the analyzers because `UserManager` is neither a repository nor a `DbContext`. Sanctioned here rather than left implicit.
-- **Known deviation, carried from the G0 audit (gap #6):** `DevelopmentDashboardSeeder` reads `IShiftManagementService.GetByIdAsync`/`GetActiveAsync` and `ITeamService.GetTeamEntityBySlugAsync`, all of which are baselined entity-returning reads, and it mutates the `EventSettings` it gets back before writing it again. Those are Shifts' and Teams' baseline rows to retire; this section follows their read-splits rather than leading them.
+- **Gap #6 from the G0 audit is closed.** Shifts and Teams carried out their read-splits: `DevelopmentDashboardSeeder` now creates/deactivates the seeded event through `IShiftSeeding.CreateBurnAsync`/`DeactivateActiveBurnAsync` (input records, not a mutated `EventSettings` entity), resolves it via `IBurnSettingsService.GetByIdAsync`, and resolves teams via `ITeamServiceRead.GetTeamBySlugAsync` (`TeamInfo`, not the `Team` entity). No baselined entity-returning read remains in this section.
 - **Known deviation, carried from the G0 audit (gap #4):** the Production exclusion covers `DevLoginController` only. `DevSeedController` stays in the MVC graph in Production behind its action-level guards. Generalising the provider to the whole section's controller surface is behavioural and out of a G5 move's scope.
 - **No renames.** `DevelopmentCampRoleSeeder` and `DevelopmentDashboardSeeder` duplicate the section name, which is normally step 5's collapse case - but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping half of them would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.
 - **Decorator decision - no caching decorator.** Owns no data.

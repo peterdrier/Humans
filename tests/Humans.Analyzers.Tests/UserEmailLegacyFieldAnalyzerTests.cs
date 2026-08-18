@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class UserEmailLegacyFieldAnalyzerTests
 {
     private const string DomainStub = """
-        namespace Humans.Domain.Entities
+        namespace Humans.Users.Contracts
         {
             public class UserEmail
             {
@@ -34,7 +34,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             {
                 public class Reader
                 {
-                    public bool Check(Humans.Domain.Entities.UserEmail email) => email.IsOAuth;
+                    public bool Check(Humans.Users.Contracts.UserEmail email) => email.IsOAuth;
                 }
             }
             """;
@@ -56,8 +56,8 @@ public class UserEmailLegacyFieldAnalyzerTests
             {
                 public class Writer
                 {
-                    public Humans.Domain.Entities.UserEmail Build() =>
-                        new Humans.Domain.Entities.UserEmail { DisplayOrder = 1 };
+                    public Humans.Users.Contracts.UserEmail Build() =>
+                        new Humans.Users.Contracts.UserEmail { DisplayOrder = 1 };
                 }
             }
             """;
@@ -79,7 +79,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.GoogleEmail = "x@y";
+                    public void Set(Humans.Users.Contracts.User user) => user.GoogleEmail = "x@y";
                 }
             }
             """;
@@ -101,7 +101,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User user) => user.GetGoogleServiceEmail();
+                    public string? Get(Humans.Users.Contracts.User user) => user.GetGoogleServiceEmail();
                 }
             }
             """;
@@ -112,28 +112,6 @@ public class UserEmailLegacyFieldAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0001(d));
-    }
-
-    [HumansFact]
-    public async Task Does_not_fire_outside_Application_or_Web_assemblies()
-    {
-        var source = DomainStub + """
-
-            namespace Some.Domain.Code
-            {
-                public class Reader
-                {
-                    public bool Check(Humans.Domain.Entities.UserEmail email) => email.IsOAuth;
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new UserEmailLegacyFieldAnalyzer(),
-            "Humans.Domain",
-            source);
-
-        diagnostics.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -174,7 +152,7 @@ public class UserEmailLegacyFieldAnalyzerTests
             {
                 public class Reader
                 {
-                    public bool IsOAuth(Humans.Domain.Entities.UserEmail email) => email.Provider != null;
+                    public bool IsOAuth(Humans.Users.Contracts.UserEmail email) => email.Provider != null;
                 }
             }
             """;

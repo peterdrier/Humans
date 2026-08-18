@@ -1,7 +1,6 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Events.Domain;
 using Humans.UI.Controllers;
 using Humans.Events.Filters;
 using Humans.Events.Models;
@@ -10,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Events.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 

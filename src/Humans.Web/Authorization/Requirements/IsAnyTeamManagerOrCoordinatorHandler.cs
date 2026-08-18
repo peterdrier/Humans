@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +16,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// so it picks up the existing 60-second per-user cache (CacheKeys.ShiftAuthorization)
 /// rather than hitting the DB on every request.
 /// </summary>
-public class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementService shiftManagement)
+public class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementServiceRead shiftManagement)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
     protected override async Task HandleRequirementAsync(

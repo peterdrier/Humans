@@ -1,24 +1,21 @@
-using Humans.Auth.Contracts;
-using Humans.Teams.Data;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Caching;
+using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
+using Humans.EarlyEntry.Contracts;
+using Humans.GoogleIntegration.Contracts;
+using Humans.Notifications.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Teams.Tests.Infrastructure;
-using Humans.Domain.Entities;
-using Humans.Teams.Domain;
 using TeamService = Humans.Teams.Services.TeamService;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 /// <summary>
 /// Regression tests for Codex PR#300 P2: the create-team slug retry loop

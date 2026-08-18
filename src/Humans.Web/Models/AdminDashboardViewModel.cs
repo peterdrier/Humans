@@ -1,6 +1,7 @@
-using Humans.Application.DTOs;
-using Humans.Domain.Enums;
 using NodaTime;
+using Humans.AuditLog.Contracts;
+
+using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Models;
 

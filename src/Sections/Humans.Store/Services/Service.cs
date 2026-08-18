@@ -1,15 +1,12 @@
-using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Enums;
+using Humans.Camps.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
-using Microsoft.Extensions.Logging;
+using Humans.Stripe.Contracts;
 using NodaTime;
 using NodaTime.Text;
 
@@ -21,7 +18,7 @@ internal sealed class Service(
     ICampServiceRead campService,
     ITeamServiceRead teamService,
     IClock clock,
-    IShiftManagementService shifts,
+    IBurnSettingsService burnSettings,
     IStripeService stripeService,
     ILogger<Service> logger) : IStoreServiceRead
 {
@@ -36,7 +33,7 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
@@ -135,14 +132,12 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var activeEvent = await shifts.GetActiveAsync();
+            var activeEvent = await burnSettings.GetActiveAsync();
             var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
             catalog = (await GetActiveCatalogAsync(year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
         }
-
-        var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
 
         // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from
         // BalanceEur, so without this guard the full balance would stay payable a second time
@@ -155,34 +150,7 @@ internal sealed class Service(
             order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
-            stripeService.IsStoreCheckoutConfigured,
-            priceChanges);
-    }
-
-    /// <summary>
-    /// Price-change audit events (<see cref="AuditAction.StoreProductPriceChanged"/>) for the
-    /// products on this order, recorded since the order was created — the order page's
-    /// "price changes" view (#816). Reuses the existing per-entity audit query; the product
-    /// count per order is tiny.
-    /// </summary>
-    private async Task<IReadOnlyList<AuditLogEntrySnapshot>> LoadOrderPriceChangesAsync(OrderDto order, CancellationToken ct)
-    {
-        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        if (productIds.Count == 0)
-            return [];
-
-        var changes = new List<AuditLogEntrySnapshot>();
-        foreach (var productId in productIds)
-        {
-            var entries = await audit.GetFilteredEntriesAsync(
-                entityType: AuditEntityTypes.Product,
-                entityId: productId,
-                actions: [AuditAction.StoreProductPriceChanged],
-                limit: 50,
-                ct: ct);
-            changes.AddRange(entries.Where(e => e.OccurredAt >= order.CreatedAt));
-        }
-        return changes.OrderByDescending(e => e.OccurredAt).ToList();
+            stripeService.IsStoreCheckoutConfigured);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
@@ -405,7 +373,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
 
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
@@ -433,7 +401,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (order is null) return null;
@@ -606,7 +574,7 @@ internal sealed class Service(
 
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1141,7 +1109,7 @@ internal sealed class Service(
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var catalogYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
         foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))

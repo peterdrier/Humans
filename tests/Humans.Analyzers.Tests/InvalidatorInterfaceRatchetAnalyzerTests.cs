@@ -144,25 +144,4 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
         diagnostics.Where(IsHum0028).Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_Application_assembly()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Web.Demo
-            {
-                public interface INewInvalidator : Humans.Application.Interfaces.IInvalidator
-                {
-                    void Invalidate();
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new InvalidatorInterfaceRatchetAnalyzer(),
-            "Humans.Web",
-            source);
-
-        diagnostics.Where(IsHum0028).Should().BeEmpty();
-    }
 }

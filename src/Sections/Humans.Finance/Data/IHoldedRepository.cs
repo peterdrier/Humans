@@ -1,11 +1,9 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Attributes;
 using Humans.Finance.Domain;
 using NodaTime;
 
 namespace Humans.Finance.Data;
 
-[Section("Finance")]
 internal interface IHoldedRepository : IRepository
 {
     // Category map

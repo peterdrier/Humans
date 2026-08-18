@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
 using Humans.Tickets.Services.Stores;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

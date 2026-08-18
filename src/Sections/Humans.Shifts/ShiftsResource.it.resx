@@ -1,0 +1,1117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shifts_SignedUp" xml:space="preserve">
+    <value>Iscritti</value>
+  </data>
+  <data name="Shifts_Pending" xml:space="preserve">
+    <value>(in attesa)</value>
+  </data>
+  <data name="ShiftInfo_Title" xml:space="preserve">
+    <value>Preferenze turni</value>
+  </data>
+  <data name="ShiftInfo_StepOf" xml:space="preserve">
+    <value>Passaggio {0} di {1}</value>
+    <comment>{0} = current step, {1} = total steps</comment>
+  </data>
+  <data name="ShiftInfo_SkillsTitle" xml:space="preserve">
+    <value>In cosa sei bravo/a?</value>
+  </data>
+  <data name="ShiftInfo_SkillsSubtitle" xml:space="preserve">
+    <value>Seleziona le abilità che vorresti usare. Puoi cambiarle in qualsiasi momento.</value>
+  </data>
+  <data name="ShiftInfo_WorkStyleTitle" xml:space="preserve">
+    <value>Come ti piace lavorare?</value>
+  </data>
+  <data name="ShiftInfo_WorkStyleSubtitle" xml:space="preserve">
+    <value>Aiuta i coordinatori ad assegnarti turni adatti al tuo stile e disponibilità.</value>
+  </data>
+  <data name="ShiftInfo_LanguagesTitle" xml:space="preserve">
+    <value>Quali lingue parli?</value>
+  </data>
+  <data name="ShiftInfo_LanguagesSubtitle" xml:space="preserve">
+    <value>Questo ci aiuta ad inserirti in team dove puoi comunicare bene.</value>
+  </data>
+  <data name="ShiftInfo_OtherSkills" xml:space="preserve">
+    <value>Quali altre abilità hai?</value>
+  </data>
+  <data name="ShiftInfo_WorkTime" xml:space="preserve">
+    <value>Quando preferisci lavorare?</value>
+  </data>
+  <data name="ShiftInfo_OtherPrefs" xml:space="preserve">
+    <value>Altre preferenze</value>
+  </data>
+  <data name="ShiftInfo_OtherLanguages" xml:space="preserve">
+    <value>Quali altre lingue parli?</value>
+  </data>
+  <data name="ShiftInfo_Continue" xml:space="preserve">
+    <value>Continua</value>
+  </data>
+  <data name="Shifts_Title" xml:space="preserve">
+    <value>Turni</value>
+  </data>
+  <data name="Shifts_BrowseTitle" xml:space="preserve">
+    <value>Sfoglia opzioni di volontariato</value>
+  </data>
+  <data name="Shifts_Department" xml:space="preserve">
+    <value>Dipartimento</value>
+  </data>
+  <data name="Shifts_AllDepartments" xml:space="preserve">
+    <value>Tutti i dipartimenti</value>
+  </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Copertura per dipartimento — clicca su un cerchio per filtrare</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0}: {1}% coperto, {2} di {3} ore</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Suggerimento — clicca su un grafico per filtrare quel dipartimento; clicca di nuovo per cancellare.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Ignora il suggerimento</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtro:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Rimuovi filtro dipartimento</value>
+  </data>
+  <data name="Shifts_From" xml:space="preserve">
+    <value>Da</value>
+  </data>
+  <data name="Shifts_To" xml:space="preserve">
+    <value>A</value>
+  </data>
+  <data name="Shifts_ClearFilters" xml:space="preserve">
+    <value>Cancella filtri</value>
+  </data>
+  <data name="Shifts_FilterByTag" xml:space="preserve">
+    <value>Filtra per tag:</value>
+  </data>
+  <data name="Shifts_SetPreferences" xml:space="preserve">
+    <value>Imposta le tue preferenze</value>
+  </data>
+  <data name="Shifts_PreferencesHelp" xml:space="preserve">
+    <value>Seleziona i tag che corrispondono al tipo di lavoro che ti piace. I turni corrispondenti saranno evidenziati con una stella.</value>
+  </data>
+  <data name="Shifts_SavePreferences" xml:space="preserve">
+    <value>Salva preferenze</value>
+  </data>
+  <data name="Shifts_HeroTitle" xml:space="preserve">
+    <value>Trova il tuo turno perfetto</value>
+  </data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve">
+    <value>Esplora le opzioni di volontariato, filtra per fase o reparto e iscriviti ai turni più adatti a te.</value>
+  </data>
+  <data name="Shifts_LearnMore" xml:space="preserve">
+    <value>Scopri di più</value>
+  </data>
+  <data name="Shifts_EditPreferences" xml:space="preserve">
+    <value>Modifica preferenze</value>
+  </data>
+  <data name="Shifts_NotOpenYet" xml:space="preserve">
+    <value>I turni non sono ancora aperti. Solo coordinatori e admin possono vedere questa pagina.</value>
+  </data>
+  <data name="Shifts_AllShiftsFull" xml:space="preserve">
+    <value>Tutti i turni di {0} sono completi.</value>
+    <comment>{0} = period name</comment>
+  </data>
+  <data name="Shifts_Start" xml:space="preserve">
+    <value>Inizio</value>
+  </data>
+  <data name="Shifts_End" xml:space="preserve">
+    <value>Fine</value>
+  </data>
+  <data name="Shifts_SignUpForDates" xml:space="preserve">
+    <value>Iscriviti per le date di {0}</value>
+    <comment>{0} = period name (e.g. set-up, strike)</comment>
+  </data>
+  <data name="Shifts_Date" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="Shifts_Filled" xml:space="preserve">
+    <value>Occupati</value>
+  </data>
+  <data name="Shifts_Days" xml:space="preserve">
+    <value>giorni</value>
+  </data>
+  <data name="Shifts_Total" xml:space="preserve">
+    <value>totale</value>
+  </data>
+  <data name="Shifts_SignedUpAllDays" xml:space="preserve">
+    <value>Iscritto (tutti i {0} giorni)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Shifts_SignedUpPartial" xml:space="preserve">
+    <value>Iscritto ({0} di {1})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Shifts_Full" xml:space="preserve">
+    <value>Completo</value>
+  </data>
+  <data name="Shifts_NeedsHelp" xml:space="preserve">
+    <value>Serve aiuto</value>
+  </data>
+  <data name="Shifts_DayNeedsHelp" xml:space="preserve">
+    <value>{0} giorno ha bisogno di aiuto</value>
+    <comment>{0} = number of days</comment>
+  </data>
+  <data name="Shifts_DaysNeedHelp" xml:space="preserve">
+    <value>{0} giorni hanno bisogno di aiuto</value>
+    <comment>{0} = number of days</comment>
+  </data>
+  <data name="Shifts_ClickToExpand" xml:space="preserve">
+    <value>clicca per espandere</value>
+  </data>
+  <data name="Shifts_Shift" xml:space="preserve">
+    <value>Turno</value>
+  </data>
+  <data name="Shifts_Phase" xml:space="preserve">
+    <value>Fase</value>
+  </data>
+  <data name="Shifts_Time" xml:space="preserve">
+    <value>Ora</value>
+  </data>
+  <data name="Shifts_Duration" xml:space="preserve">
+    <value>Durata</value>
+  </data>
+  <data name="Shifts_AllDay" xml:space="preserve">
+    <value>Tutto il giorno</value>
+  </data>
+  <data name="Shifts_FullDay" xml:space="preserve">
+    <value>Giornata intera</value>
+  </data>
+  <data name="Shifts_Essential" xml:space="preserve">
+    <value>Essenziale</value>
+  </data>
+  <data name="Shifts_Important" xml:space="preserve">
+    <value>Importante</value>
+  </data>
+  <data name="Shifts_HiddenBadge" xml:space="preserve">
+    <value>Nascosto</value>
+  </data>
+  <data name="Shifts_MatchesPrefs" xml:space="preserve">
+    <value>Corrisponde alle tue preferenze</value>
+  </data>
+  <data name="Shifts_SortUrgency" xml:space="preserve">
+    <value>Più urgenti</value>
+  </data>
+  <data name="Shifts_SortDept" xml:space="preserve">
+    <value>Per reparto</value>
+  </data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve">
+    <value>I turni che hanno più bisogno di persone per primi</value>
+  </data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve">
+    <value>Raggruppa i turni per reparto</value>
+  </data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve">
+    <value>posti occupati</value>
+  </data>
+  <data name="Shifts_RotaSingular" xml:space="preserve">
+    <value>turno</value>
+  </data>
+  <data name="Shifts_RotaPlural" xml:space="preserve">
+    <value>turni</value>
+  </data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve">
+    <value>fascia</value>
+  </data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve">
+    <value>fasce</value>
+  </data>
+  <data name="Shifts_SignUpButton" xml:space="preserve">
+    <value>Iscriviti</value>
+  </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Iscrivimi</value>
+  </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Richiesto — in attesa</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>Sei iscritto.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Richiesto — ti faremo sapere.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Rimosso.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Qualcosa è andato storto. Riprova.</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Sei iscritto — tocca per rimuoverti</value>
+  </data>
+  <data name="Shifts_BrowsingClosed" xml:space="preserve">
+    <value>La consultazione dei turni non è ancora aperta. Torna più tardi!</value>
+  </data>
+  <data name="Shifts_NoActiveEvent" xml:space="preserve">
+    <value>Nessun evento attivo configurato. Un amministratore deve prima configurare le impostazioni dell'evento.</value>
+  </data>
+  <data name="Shifts_ConfigureEvent" xml:space="preserve">
+    <value>Configura impostazioni evento</value>
+  </data>
+  <data name="Shifts_MyShiftsTitle" xml:space="preserve">
+    <value>I miei turni</value>
+  </data>
+  <data name="Shifts_UpcomingShifts" xml:space="preserve">
+    <value>Prossimi turni</value>
+  </data>
+  <data name="Shifts_PendingApproval" xml:space="preserve">
+    <value>In attesa di approvazione</value>
+  </data>
+  <data name="Shifts_Past" xml:space="preserve">
+    <value>Passati</value>
+  </data>
+  <data name="Shifts_Bail" xml:space="preserve">
+    <value>Ritirati</value>
+  </data>
+  <data name="Shifts_WithdrawButton" xml:space="preserve">
+    <value>Ritira</value>
+  </data>
+  <data name="Shifts_NoSignups" xml:space="preserve">
+    <value>Nessuna iscrizione ai turni ancora.</value>
+  </data>
+  <data name="Shifts_BrowseAvailable" xml:space="preserve">
+    <value>Sfoglia turni disponibili</value>
+  </data>
+  <data name="Shifts_NoActiveEventConfigured" xml:space="preserve">
+    <value>Nessun evento attivo configurato.</value>
+  </data>
+  <data name="Shifts_GeneralAvailability" xml:space="preserve">
+    <value>Disponibilità generale</value>
+  </data>
+  <data name="Shifts_AvailabilityHelp" xml:space="preserve">
+    <value>Segna i giorni in cui sei disponibile. I coordinatori possono vedere chi è disponibile quando assegnano i turni.</value>
+  </data>
+  <data name="Shifts_SaveAvailability" xml:space="preserve">
+    <value>Salva disponibilità</value>
+  </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Prima di cercare i turni, segna i giorni in cui sei disponibile: i coordinatori li usano per assegnarti i turni.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indica la tua disponibilità</value>
+  </data>
+  <data name="Shifts_DaysSelected" xml:space="preserve">
+    <value>giorni selezionati</value>
+  </data>
+  <data name="Shifts_SlotsFull" xml:space="preserve">
+    <value>Alcuni giorni hanno ancora bisogno di aiuto, ma tutti i posti disponibili sono al completo. Riprova più tardi nel caso si liberino dei posti.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve">
+    <value>Conferma la tua iscrizione al {0}</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve">
+    <value>Ti stai iscrivendo a {0} (fase di {1}).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve">
+    <value>Dal {0} al {1} ({2} giorni).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve">
+    <value>Per il {0} (1 giorno).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve">
+    <value>Ti aspettiamo sul posto entro il {0}.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve">
+    <value>È questo il periodo per cui volevi iscriverti?</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve">
+    <value>Conferma iscrizione</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve">
+    <value>Alcuni giorni di questo intervallo sono in conflitto con turni a cui sei già iscritto/a:</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve">
+    <value>{0} — già iscritto/a a {1} ({2}–{3})</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve">
+    <value>Sei già iscritto/a in alcuni di questi giorni, quindi aggiungeremo solo quelli liberi.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve">
+    <value>Sembra che tu abbia già un turno prenotato per ogni giorno di questo intervallo, quindi non possiamo aggiungerne nessuno.</value>
+  </data>
+  <data name="ShiftDash_Title" xml:space="preserve">
+    <value>Dashboard turni</value>
+  </data>
+  <data name="ShiftDash_ShiftsCount" xml:space="preserve">
+    <value>{0} turni</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftDash_Date" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="ShiftDash_Department" xml:space="preserve">
+    <value>Dipartimento</value>
+  </data>
+  <data name="ShiftDash_AllDepartments" xml:space="preserve">
+    <value>Tutti i dipartimenti</value>
+  </data>
+  <data name="ShiftDash_Filter" xml:space="preserve">
+    <value>Filtra</value>
+  </data>
+  <data name="ShiftDash_Clear" xml:space="preserve">
+    <value>Cancella</value>
+  </data>
+  <data name="ShiftDash_NoShiftsMatch" xml:space="preserve">
+    <value>Nessun turno corrisponde ai filtri attuali.</value>
+  </data>
+  <data name="ShiftDash_Shift" xml:space="preserve">
+    <value>Turno</value>
+  </data>
+  <data name="ShiftDash_DateTime" xml:space="preserve">
+    <value>Data / Ora</value>
+  </data>
+  <data name="ShiftDash_Slots" xml:space="preserve">
+    <value>Posti</value>
+  </data>
+  <data name="ShiftDash_Priority" xml:space="preserve">
+    <value>Priorità</value>
+  </data>
+  <data name="ShiftDash_Voluntell" xml:space="preserve">
+    <value>Voluntell</value>
+  </data>
+  <data name="ShiftDash_SearchHumans" xml:space="preserve">
+    <value>Cerca humans per: {0}</value>
+    <comment>{0} = shift/rota name</comment>
+  </data>
+  <data name="ShiftDash_SearchPlaceholder" xml:space="preserve">
+    <value>Digita un nome (min. 2 caratteri)...</value>
+  </data>
+  <data name="ShiftDash_NoHumansFound" xml:space="preserve">
+    <value>Nessun humans trovato.</value>
+  </data>
+  <data name="ShiftDash_SearchFailed" xml:space="preserve">
+    <value>Ricerca fallita.</value>
+  </data>
+  <data name="ShiftDash_ScheduleConflict" xml:space="preserve">
+    <value>Conflitto di orario</value>
+  </data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve">
+    <value>Posti coperti</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve">
+    <value>Con biglietto</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve">
+    <value>humans che hanno pagato</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve">
+    <value>Humans con biglietto</value>
+  </data>
+  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve">
+    <value>{0} humans non si sono iscritti</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve">
+    <value>Iscritti senza biglietto</value>
+  </data>
+  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve">
+    <value>iscritti senza biglietto (ancora)</value>
+  </data>
+  <data name="ShiftDash_Overview_StalePending" xml:space="preserve">
+    <value>In sospeso da tempo</value>
+  </data>
+  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve">
+    <value>in sospeso &gt; 3 giorni</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve">
+    <value>dati biglietti non ancora condivisi</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve">
+    <value>Visualizzazione:</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve">
+    <value>Tutto</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve">
+    <value>Montaggio</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve">
+    <value>Evento</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve">
+    <value>Smontaggio</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve">
+    <value>Fase di montaggio:</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve">
+    <value>Tutto il montaggio</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve">
+    <value>Primo team</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve">
+    <value>Settimana di montaggio</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve">
+    <value>Settimana pre-evento</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve">
+    <value>Weekend finale</value>
+  </data>
+  <data name="ShiftDash_Departments_Title" xml:space="preserve">
+    <value>Dipartimenti</value>
+  </data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve">
+    <value>ordinati per % più basso di posti coperti</value>
+  </data>
+  <data name="ShiftDash_Countdown_Label" xml:space="preserve">
+    <value>Conto alla rovescia per l'arrivo</value>
+  </data>
+  <data name="ShiftDash_Countdown_Days" xml:space="preserve">
+    <value>{0} giorni</value>
+    <comment>{0} = whole days</comment>
+  </data>
+  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve">
+    <value>{0} settimane</value>
+  </data>
+  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve">
+    <value>{0} settimane e {1} giorni</value>
+  </data>
+  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve">
+    <value>primo giorno di montaggio: {0}</value>
+  </data>
+  <data name="ShiftDash_Countdown_Today" xml:space="preserve">
+    <value>Oggi</value>
+  </data>
+  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve">
+    <value>Evento in corso — giorno {0} dall'inizio del montaggio</value>
+  </data>
+  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve">
+    <value>Persone sul posto per giorno</value>
+  </data>
+  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve">
+    <value>raggruppate per dipartimento — solo iscrizioni confermate</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Title" xml:space="preserve">
+    <value>Shift duration mix</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve">
+    <value>how shifts are split between full-day and hourly, for this period</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve">
+    <value>Slots</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve">
+    <value>Filled</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve">
+    <value>Full day</value>
+  </data>
+  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve">
+    <value>{0} h</value>
+    <comment>{0} = whole hours</comment>
+  </data>
+  <data name="ShiftDash_DurationMix_Total" xml:space="preserve">
+    <value>Totale</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Title" xml:space="preserve">
+    <value>Mappa di calore</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve">
+    <value>Copertura turni per squadra e giorno</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve">
+    <value>Squadra</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve">
+    <value>{0} — {1} / {2} posti occupati</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve">
+    <value>{0} — nessun turno in questo giorno</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve">
+    <value>Legenda</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve">
+    <value>Dipartimento</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve">
+    <value>Totale</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve">
+    <value>Coperti</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve">
+    <value>Posti liberi</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve">
+    <value>Periodo</value>
+  </data>
+  <data name="ShiftDash_Departments_Direct" xml:space="preserve">
+    <value>Diretto</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Title" xml:space="preserve">
+    <value>Attività dei coordinatori</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve">
+    <value>team con iscrizioni in sospeso, accesso più vecchio prima</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve">
+    <value>Coordinatori</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve">
+    <value>In sospeso</value>
+  </data>
+  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve">
+    <value>nessun coordinatore</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Never" xml:space="preserve">
+    <value>mai</value>
+  </data>
+  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve">
+    <value>{0} min fa</value>
+    <comment>{0} = minutes</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve">
+    <value>{0} h fa</value>
+    <comment>{0} = hours</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve">
+    <value>{0} g fa</value>
+    <comment>{0} = days</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve">
+    <value>{0} diretti</value>
+    <comment>{0} = pending count at this team level only</comment>
+  </data>
+  <data name="ShiftDash_Trends_Title" xml:space="preserve">
+    <value>Tendenze</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve">
+    <value>7g</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve">
+    <value>30g</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve">
+    <value>90g</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_All" xml:space="preserve">
+    <value>Tutto</value>
+  </data>
+  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve">
+    <value>Nuove iscrizioni</value>
+  </data>
+  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve">
+    <value>Nuove vendite di biglietti</value>
+  </data>
+  <data name="ShiftDash_Trends_DAU" xml:space="preserve">
+    <value>Accessi unici (DAU)</value>
+  </data>
+  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve">
+    <value>Viene salvato solo l'ultimo accesso per human — i periodi più vecchi sono sottostimati.</value>
+  </data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve">
+    <value>In linea</value>
+  </data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve">
+    <value>A rischio</value>
+  </data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve">
+    <value>Sotto obiettivo</value>
+  </data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve">
+    <value>Inattivo da più di 7 giorni</value>
+  </data>
+  <data name="VolTrack_Title" xml:space="preserve">
+    <value>Monitoraggio Volontari</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
+    <value>Turni</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
+    <value>Dashboard turni</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
+    <value>Tracciamento volontari</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_NoActiveEvent" xml:space="preserve">
+    <value>Nessun evento attivo.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AllClear" xml:space="preserve">
+    <value>Tutti sono in linea.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_UnknownUser" xml:space="preserve">
+    <value>(sconosciuto)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AsOfToday" xml:space="preserve">
+    <value>A partire dal {0}</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Counts_MainTotal" xml:space="preserve">
+    <value>Volontari tracciati</value>
+  </data>
+  <data name="VolTrack_Counts_WithGaps" xml:space="preserve">
+    <value>Con buchi</value>
+  </data>
+  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve">
+    <value>Al montaggio del camp oggi</value>
+  </data>
+  <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
+    <value>Dichiarati ma non prenotati</value>
+  </data>
+  <data name="VolTrack_Export_Title" xml:space="preserve">
+    <value>Esporta griglia dei volontari</value>
+  </data>
+  <data name="VolTrack_Export_Department" xml:space="preserve">
+    <value>Reparto</value>
+  </data>
+  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+    <value>Tutti i reparti</value>
+  </data>
+  <data name="VolTrack_Export_Period" xml:space="preserve">
+    <value>Periodo</value>
+  </data>
+  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+    <value>Intervallo personalizzato</value>
+  </data>
+  <data name="VolTrack_Export_From" xml:space="preserve">
+    <value>Da</value>
+  </data>
+  <data name="VolTrack_Export_To" xml:space="preserve">
+    <value>A</value>
+  </data>
+  <data name="VolTrack_Export_Download" xml:space="preserve">
+    <value>Scarica XLSX</value>
+  </data>
+  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+    <value>Righe = humans con &#x2265;1 fascia confermata nell'intervallo. Colore della cella = il team con cui hanno lavorato pi&#xF9; ore quel giorno. Cella bianca = giorno prima della loro prima fascia confermata (giorno di arrivo). Riga dei totali = humans presenti quel giorno (usato per il conteggio dei pasti). I nomi mostrati sono nomi playa.</value>
+  </data>
+  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
+    <value>Nascondi volontari senza buchi</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve">
+    <value>Nascondi volontari con data di montaggio del camp</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve">
+    <value>Nascondi sezione dichiarati ma non prenotati</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Apply" xml:space="preserve">
+    <value>Applica</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Active" xml:space="preserve">
+    <value>Filtri attivi</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Clear" xml:space="preserve">
+    <value>Cancella filtri</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Main_Title" xml:space="preserve">
+    <value>Buchi in agenda</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Main_Subtitle" xml:space="preserve">
+    <value>{0} volontari mostrati</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_Main_Empty" xml:space="preserve">
+    <value>Nessun volontario con iscrizioni nel periodo di montaggio.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Search_Placeholder" xml:space="preserve">
+    <value>Cerca per nome o nome playa…</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Search_NoMatch" xml:space="preserve">
+    <value>Nessun volontario corrisponde a “{0}”.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Col_Volunteer" xml:space="preserve">
+    <value>Volontario</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_GapBadge" xml:space="preserve">
+    <value>{0} buchi</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_CampSetupTooltip" xml:space="preserve">
+    <value>Al montaggio del camp dal {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Heading" xml:space="preserve">
+    <value>Partecipazione dichiarata, non ancora prenotati</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve">
+    <value>Volontari che hanno indicato la loro presenza e disponibilità, ma non si sono iscritti ad alcun turno.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Title" xml:space="preserve">
+    <value>Disponibili ma non prenotati</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve">
+    <value>{0} volontari mostrati</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Empty" xml:space="preserve">
+    <value>Nessun volontario dichiarato ma non prenotato.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve">
+    <value>{0} disp.</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve">
+    <value>Giorni disponibili nel periodo di montaggio</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_UnbookedBadge" xml:space="preserve">
+    <value>{0} non prenotati</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_UnbookedTooltip" xml:space="preserve">
+    <value>Giorni disponibili non prenotati</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_DayOff" xml:space="preserve">
+    <value>Giorno di riposo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_DayOff" xml:space="preserve">
+    <value>Giorno di riposo (confermato)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve">
+    <value>Segna giorno di riposo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve">
+    <value>Annulla giorno di riposo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve">
+    <value>Motivo (opzionale)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve">
+    <value>Annulla questa iscrizione prima di segnare un giorno di riposo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve">
+    <value>Giorno di riposo segnato.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve">
+    <value>Giorno di riposo annullato.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_DayOffBadge" xml:space="preserve">
+    <value>{0} giorno/i di riposo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve">
+    <value>Il volontario ha iscrizioni in quel giorno — annullale prima.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve">
+    <value>Il giorno di riposo deve essere all'interno del periodo di montaggio.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve">
+    <value>Giorno di riposo segnato</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve">
+    <value>Giorno di riposo annullato</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Confirmed" xml:space="preserve">
+    <value>Confermato</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Pending" xml:space="preserve">
+    <value>In attesa</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Gap" xml:space="preserve">
+    <value>Buco</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_CampSetup" xml:space="preserve">
+    <value>Montaggio camp</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Outside" xml:space="preserve">
+    <value>Fuori periodo</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Expected" xml:space="preserve">
+    <value>Atteso</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve">
+    <value>Disponibile, non prenotato</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_AvailableExpected" xml:space="preserve">
+    <value>Disponibile (futuro)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_NotAvailable" xml:space="preserve">
+    <value>Non disponibile</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_Rotas" xml:space="preserve">
+    <value>Turni (rota):</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_Available" xml:space="preserve">
+    <value>Volontario segnato come disponibile</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve">
+    <value>Segna andato al montaggio del camp da questo giorno</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve">
+    <value>Sposta il montaggio del camp a questo giorno</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve">
+    <value>Cancella montaggio del camp</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve">
+    <value>Trova turni per voluntell</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Scroll_Left" xml:space="preserve">
+    <value>Scorri a sinistra</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Scroll_Right" xml:space="preserve">
+    <value>Scorri a destra</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Title" xml:space="preserve">
+    <value>Legenda</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Confirmed" xml:space="preserve">
+    <value>Iscrizione confermata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Pending" xml:space="preserve">
+    <value>Iscrizione in attesa</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Gap" xml:space="preserve">
+    <value>Nessuna copertura in un giorno in cui dovrebbero essere qui</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve">
+    <value>Disponibile, nessuna iscrizione ancora</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_CampSetup" xml:space="preserve">
+    <value>Al montaggio del camp</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve">
+    <value>Fuori o Previsto</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve">
+    <value>Configurazione Barrio salvata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve">
+    <value>Configurazione Barrio cancellata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Msg_AvailabilityCleared" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve">
+    <value>Mark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve">
+    <value>Unmark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Err_BadRequest" xml:space="preserve">
+    <value>Richiesta errata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_BadDate" xml:space="preserve">
+    <value>Data errata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_Unknown" xml:space="preserve">
+    <value>Errore sconosciuto</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve">
+    <value>La configurazione deve avvenire prima dell'apertura dei cancelli</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
+    <value>La configurazione non può avvenire prima del primo iscritto</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve">
+    <value>Monitoraggio Volontari</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
+    <value>Stato configurazione Barrios</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve">
+    <value>Apri</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve">
+    <value>Configurazione montaggio camp impostata</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
+    <value>Configurazione montaggio camp rimossa</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>Invia email al turno: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>Email al turno</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>Invia email a tutti nel turno: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Destinatari ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>Nessuno si &#xE8; ancora iscritto a questo turno.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>Il tuo messaggio</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce di questo turno.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>Invia email a un turno</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>Invia a {0} destinatario/i</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>Accodate {0} email per i destinatari del turno '{1}'.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Questo turno non ha iscrizioni attive a cui inviare email.</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>Invia email al team: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>Email al team</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>Invia email a tutti nei prossimi turni: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Destinatari ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>in {0} turno/i</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>Nessuno si &#xE8; ancora iscritto ai prossimi turni di questo team.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>Il tuo messaggio</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce nei prossimi turni del team.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>Invia a {0} destinatario/i</value>
+  </data>
+  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
+  <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montaggio chiuso</value></data>
+  <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Le iscrizioni al montaggio sono chiuse — siamo già sul posto.</value></data>
+  <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>I turni di montaggio sono bloccati — contatta il tuo coordinamento se non puoi esserci.</value></data>
+  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
+</root>

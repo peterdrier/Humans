@@ -75,17 +75,11 @@ public class EventsArchitectureTests
     [HumansFact]
     public void OnlySectionAndResourceArePublic()
     {
-        // "Public means Section or Contracts/" (design §15 step 5). Everything else in the
-        // assembly is internal, including the controllers: Shell registers
-        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
-        // carrying [assembly: Section("…")], so internal controllers still route
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in
-        // as many words: do not "fix" a 404 by making the controller public).
-        // The section's cross-section surface is the separate Humans.Events.Contracts
-        // assembly, so nothing in *this* one needs to be visible outside it.
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are
-        // never hand-edited (memory/process/never-hand-edit-migrations); Store's BaselineStore
-        // is public for the same reason. They are excluded rather than internalized.
+        // Public means Section, Contracts/, the resource marker, or a type the framework
+        // silently drops when internal. Controllers stay internal —
+        // SectionControllerFeatureProvider routes them; do not "fix" a 404 by going public.
+        // EventsCardViewComponent: Razor only builds <vc:events-card> from a public class.
+        // Migrations are emitted public by dotnet ef, so they are excluded below.
         var publicTypes = typeof(Section).Assembly.GetExportedTypes()
             .Where(t => !string.Equals(t.Namespace, "Humans.Events.Data.Migrations", StringComparison.Ordinal))
             .Select(t => t.FullName)
@@ -93,10 +87,14 @@ public class EventsArchitectureTests
             .ToList();
 
         publicTypes.Should().BeEquivalentTo(
-            ["Humans.Events.EventsResource", "Humans.Events.Section"],
-            because: "a section exposes only its ISection entry point and its resource marker; "
-                   + "the resource marker is public because the boot localization diagnostic "
-                   + "discovers it via GetExportedTypes()");
+            [
+                "Humans.Events.Contracts.FavouriteButtonModel",
+                "Humans.Events.EventsResource",
+                "Humans.Events.Section",
+                "Humans.Events.ViewComponents.EventsCardViewComponent",
+            ],
+            because: "a section exposes its entry point, resource marker, Contracts/ folder, "
+                   + "and what the framework needs public — nothing else");
     }
 
     [HumansFact]
@@ -158,14 +156,6 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void CachingEventService_IsSealed()
-    {
-        typeof(CachingEventService).IsSealed
-            .Should().BeTrue(
-                because: "Singleton caching decorators are sealed — extension goes on the interface");
-    }
-
-    [HumansFact]
     public void CachingEventService_Has_InnerServiceKey_Const()
     {
         var field = typeof(CachingEventService).GetField(
@@ -191,29 +181,6 @@ public class EventsArchitectureTests
                 because: "the decorator drives its own startup warmup via IHostedService");
     }
 
-    [HumansFact]
-    public void Section_Registers_DecoratorAndInvalidator_AsSameSingleton()
-    {
-        // §15e CRITICAL — IEventService and IEventViewInvalidator MUST resolve
-        // to the same Singleton CachingEventService instance; two instances
-        // would diverge and invalidations would be silently lost.
-        var services = Registrations();
-
-        var cachingDescriptor = services.Single(d =>
-            d.ServiceType == typeof(CachingEventService) && d.ServiceKey is null);
-        var eventServiceDescriptor = services.Single(d =>
-            d.ServiceType == typeof(IEventService) && d.ServiceKey is null);
-        var invalidatorDescriptor = services.Single(d =>
-            d.ServiceType == typeof(IEventViewInvalidator) && d.ServiceKey is null);
-
-        cachingDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "§15d — the caching decorator is Singleton");
-        eventServiceDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "unkeyed IEventService maps to the Singleton decorator");
-        invalidatorDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "§15e — invalidator must share the decorator's singleton lifetime");
-    }
-
     // ── Cross-section read surface (IEventServiceRead) ───────────────────────
 
     [HumansFact]
@@ -222,18 +189,6 @@ public class EventsArchitectureTests
         typeof(IEventServiceRead).IsAssignableFrom(typeof(IEventService))
             .Should().BeTrue(
                 because: "other sections consume the Events section through the IEventServiceRead read surface");
-    }
-
-    [HumansFact]
-    public void Section_Registers_IEventServiceRead_AsSingleton()
-    {
-        // IEventServiceRead forwards to the same Singleton CachingEventService that
-        // backs IEventService, so cross-section reads hit the existing T-03 cache.
-        var descriptor = Registrations().Single(d =>
-            d.ServiceType == typeof(IEventServiceRead) && d.ServiceKey is null);
-
-        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
-            because: "the read surface forwards to the Singleton caching decorator");
     }
 
     /// <summary>

@@ -1,16 +1,15 @@
 using Hangfire;
 using Humans.Application.Csv;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Jobs;
 using Humans.Tickets.Services;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
-using Humans.Infrastructure.Jobs;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.UI.Extensions;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
@@ -246,6 +245,13 @@ internal sealed class TicketController(
                 Donations = q.Donations,
                 VatAmount = q.VatAmount,
                 VipDonations = q.VipDonations,
+            }).ToList(),
+            ByTicketType = aggregates.ByTicketType.Select(t => new TicketTypeSalesRow
+            {
+                TicketTypeName = t.TicketTypeName,
+                Price = t.Price,
+                TicketsSold = t.TicketsSold,
+                FaceValue = t.FaceValue,
             }).ToList(),
         };
 

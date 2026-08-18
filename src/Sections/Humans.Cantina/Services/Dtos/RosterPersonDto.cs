@@ -36,7 +36,7 @@ namespace Humans.Cantina.Services.Dtos;
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in
-/// <see cref="Humans.Domain.Constants.DietaryOptions.DietaryPreferences"/>,
+/// <see cref="Humans.Users.Contracts.DietaryOptions.DietaryPreferences"/>,
 /// or null/empty if the human has not answered yet (counted as "Unanswered").
 /// </param>
 /// <param name="Allergies">

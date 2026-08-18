@@ -1,11 +1,11 @@
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using NSubstitute;
 using NSubstitute.Extensions;
 using Humans.Events.Contracts;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Tests.Services;
 

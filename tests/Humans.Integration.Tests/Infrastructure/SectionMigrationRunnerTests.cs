@@ -1,24 +1,19 @@
+using Humans.Shifts.Data;
+using Humans.Camps.Data;
 using Humans.Auth.Data;
-using Humans.Auth.Domain;
 using Humans.AuditLog.Data;
-using Humans.AuditLog.Domain;
 using Humans.Teams.Data;
-using Humans.Teams.Domain;
 using Humans.Email.Data;
 using Humans.Tickets.Data;
-using Humans.Consent.Services;
-using Humans.Consent.Contracts;
-using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using Humans.Notifications.Data;
-using Humans.Notifications.Domain;
-using Humans.Notifications.Contracts;
 using Humans.Budget.Data;
 using Humans.Calendar.Data;
 using Humans.Campaigns.Data;
 using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Infrastructure.Data;
+using Humans.Web.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.CityPlanning.Data;
 using Humans.Containers.Data;
@@ -37,6 +32,8 @@ using Npgsql;
 using Xunit;
 using Humans.Events.Data;
 using Humans.Surveys.Data;
+using Humans.GoogleIntegration.Data;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

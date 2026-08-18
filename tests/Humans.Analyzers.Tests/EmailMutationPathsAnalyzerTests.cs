@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class EmailMutationPathsAnalyzerTests
 {
     private const string InterfaceStubs = """
-        namespace Humans.Application.Interfaces.Profiles
+        namespace Humans.Users.Contracts
         {
             public interface IUserEmailService
             {
@@ -13,7 +13,7 @@ public class EmailMutationPathsAnalyzerTests
             }
         }
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Users.Data.Repositories
         {
             public interface IUserRepository
             {
@@ -38,7 +38,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -64,7 +64,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class ExternalLoginService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -94,7 +94,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class AccountController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -120,7 +120,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                        Humans.Users.Data.Repositories.IUserRepository repo)
                     {
                         await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
@@ -141,12 +141,12 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profiles
+            namespace Humans.Users.Services
             {
                 public class UserEmailService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                        Humans.Users.Data.Repositories.IUserRepository repo)
                     {
                         await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
@@ -167,12 +167,12 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Users
+            namespace Humans.Users.Services
             {
                 public class UserService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                        Humans.Users.Data.Repositories.IUserRepository repo)
                     {
                         await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
@@ -196,9 +196,9 @@ public class EmailMutationPathsAnalyzerTests
         // ContainingType was the class, not the interface.
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profiles
+            namespace Humans.Users.Services
             {
-                public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
+                public class UserEmailService : Humans.Users.Contracts.IUserEmailService
                 {
                     public async System.Threading.Tasks.Task<int> ReconcileOAuthIdentityAsync(
                         System.Guid userId, string provider, string providerKey, string email, bool emailVerified)
@@ -214,7 +214,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Services.Profiles.UserEmailService concrete)
+                        Humans.Users.Services.UserEmailService concrete)
                     {
                         await concrete.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -237,7 +237,7 @@ public class EmailMutationPathsAnalyzerTests
 
             namespace Humans.Infrastructure.Repositories.Users
             {
-                public class UserRepository : Humans.Application.Interfaces.Repositories.IUserRepository
+                public class UserRepository : Humans.Users.Data.Repositories.IUserRepository
                 {
                     public async System.Threading.Tasks.Task ApplyUserEmailReconcilePlanAsync(
                         object? a, object? b, object? c, object? d)
@@ -272,9 +272,8 @@ public class EmailMutationPathsAnalyzerTests
     public async Task Fires_HUM0005_when_service_called_from_Infrastructure_non_allowed_caller()
     {
         // Positive scope test for Infrastructure — mirrors the HUM0006 canary below.
-        // Same regression risk: a future scope narrowing from
-        // IsApplicationWebOrInfrastructure to IsApplicationOrWeb would silently pass
-        // every Application/Web HUM0005 test.
+        // The rule is unscoped; this pins that a caller outside Application/Web
+        // is still checked.
         var source = InterfaceStubs + """
 
             namespace Humans.Infrastructure.Jobs
@@ -282,7 +281,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeBackgroundJob
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -301,10 +300,9 @@ public class EmailMutationPathsAnalyzerTests
     [HumansFact]
     public async Task Fires_HUM0006_when_repository_called_from_Infrastructure_non_UserEmailService()
     {
-        // Positive scope test for Infrastructure. The analyzer's
-        // IsApplicationWebOrInfrastructure guard means a future narrowing of
-        // that scope to ApplicationOrWeb would pass every test that lives in
-        // Application/Web — this case is the canary for that regression.
+        // Positive scope test for Infrastructure. The rule is unscoped; a future
+        // narrowing that only kept Application/Web would pass every other test
+        // here — this case is the canary for that regression.
         var source = InterfaceStubs + """
 
             namespace Humans.Infrastructure.Jobs
@@ -312,7 +310,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeBackgroundJob
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                        Humans.Users.Data.Repositories.IUserRepository repo)
                     {
                         await repo.ApplyUserEmailReconcilePlanAsync(null, null, null, null);
                     }
@@ -328,29 +326,4 @@ public class EmailMutationPathsAnalyzerTests
         diagnostics.Should().ContainSingle(d => IsHum0006(d));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_outside_scope_assemblies()
-    {
-        var source = InterfaceStubs + """
-
-            namespace Some.Domain.Code
-            {
-                public class Caller
-                {
-                    public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
-                    {
-                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
-                    }
-                }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new EmailMutationPathsAnalyzer(),
-            "Humans.Domain",
-            source);
-
-        diagnostics.Should().BeEmpty();
-    }
 }

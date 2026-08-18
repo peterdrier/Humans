@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Immutable;
 using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
@@ -62,16 +61,16 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [ServiceCallerRule, RepositoryCallerRule
     ];
 
-    private const string ServiceInterface = "Humans.Application.Interfaces.Profiles.IUserEmailService";
-    private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserRepository";
+    private const string ServiceInterface = "Humans.Users.Contracts.IUserEmailService";
+    private const string RepositoryInterface = "Humans.Users.Data.Repositories.IUserRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyUserEmailReconcilePlanAsync";
     private const string AllowedServiceCaller = "Humans.Application.Services.Users.ExternalLoginService";
     private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
         ImmutableHashSet.Create(
             StringComparer.Ordinal,
-            "Humans.Application.Services.Profiles.UserEmailService",
-            "Humans.Application.Services.Users.UserService");
+            "Humans.Users.Services.UserEmailService",
+            "Humans.Users.Services.UserService");
 
     public override void Initialize(AnalysisContext context)
     {
@@ -87,9 +86,6 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
         // allowlisted callers are in Application — neither is excluded from the scope,
         // instead the type-name guard below admits them. Web stays in scope so a
         // controller reaching for the primitive directly still fails the build.
-        if (!AssemblyScope.IsApplicationWebOrInfrastructure(context.Compilation.Assembly))
-            return;
-
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
     }
 
@@ -98,15 +94,15 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
         var op = (IInvocationOperation)context.Operation;
         var method = op.TargetMethod;
         var name = method.Name;
-        if (!string.Equals(name, ServiceMethodName, System.StringComparison.Ordinal) &&
-            !string.Equals(name, RepositoryMethodName, System.StringComparison.Ordinal))
+        if (!string.Equals(name, ServiceMethodName, StringComparison.Ordinal) &&
+            !string.Equals(name, RepositoryMethodName, StringComparison.Ordinal))
             return;
 
         var callerTopLevel = context.ContainingSymbol.ContainingTopLevelType()?.ToDisplayString();
 
         if (InterfaceMethodMatcher.Targets(method, ServiceInterface, ServiceMethodName))
         {
-            if (!string.Equals(callerTopLevel, AllowedServiceCaller, System.StringComparison.Ordinal))
+            if (!string.Equals(callerTopLevel, AllowedServiceCaller, StringComparison.Ordinal))
                 context.ReportDiagnostic(Diagnostic.Create(ServiceCallerRule, op.Syntax.GetLocation()));
             return;
         }

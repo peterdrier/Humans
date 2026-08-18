@@ -1,10 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Domain;
 using Humans.Budget.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Expenses.Authorization;

@@ -1,6 +1,6 @@
 using Humans.AuditLog.Domain;
-using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 
@@ -206,23 +206,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
                 (a.ActorUserId.HasValue && userIds.Contains(a.ActorUserId.Value)))
             // arch:db-sort-ok GDPR export stable chronology
             .OrderByDescending(a => a.OccurredAt)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e => e.Action == action
-                && e.OccurredAt >= windowStart
-                && e.OccurredAt < windowEnd)
-            .Select(e => e.EntityId)
-            .Distinct()
             .ToListAsync(ct);
     }
 

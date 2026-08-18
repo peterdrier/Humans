@@ -21,10 +21,11 @@ namespace Humans.AuditLog;
 /// </para>
 /// <para>
 /// The read+render owner — <c>IAuditViewerService</c> / <c>AuditEvent</c> — is registered
-/// by Shell, not here. It resolves actor, subject and team display names through
-/// <c>IUserServiceRead</c>, <c>ITeamServiceRead</c> and <c>ITeamResourceService</c>, which
-/// makes it a cross-section orchestrator; AuditLog is a horizontal section and
-/// <c>peters-hard-rules.md</c> forbids one from referencing a vertical.
+/// here since G5 lane 4b-2h (nobodies-collective/Humans#866). It resolves actor, subject,
+/// team and Google-resource display names through <c>IUserServiceRead</c>,
+/// <c>ITeamServiceRead</c> and <c>ITeamResourceService</c>; the section takes those three
+/// contracts leaves, per Peter's 2026-08-14 Base-floor decision. Shell registered it until
+/// then.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -39,7 +40,13 @@ public sealed class Section : ISection
         services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<AuditLogService>();
         services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
+        // Section-internal reads (AuditViewerService only) — off the cross-section contract.
+        services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
         // Audit rows carry an actor id → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+
+        // Read+render owner: wraps the raw entry queries with actor/subject/team/resource
+        // name resolution. No DB, no cache — see AuditViewerService.
+        services.AddScoped<IAuditViewerService, AuditViewerService>();
     }
 }

@@ -8,10 +8,9 @@ with them, so there is no cross-section surface left to publish. The one Base ty
 the "Guide" name — `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` — is
 not the section's: it is a GitHub-markdown fetcher whose signatures name only `string`, with
 three consumers outside Guide (the Agent section's preload readers, Shell's
-`AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`), so it stayed in
-`Humans.Application/Interfaces` + `Humans.Infrastructure/Services` and the section consumes it
-inward like any other Base abstraction.
+`AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`), so it lives in
+`Humans.Interfaces` and the section consumes it inward like any other Base abstraction.
 
-Links into the section are by *route* (`asp-controller="Guide"` in `Humans.UI`'s
-`_LoginPartial`) and by *string* (`GuideHtmlPostprocessor` rewriting sibling `.md` links to
+Links into the section are by *route* (`asp-controller="Guide"` in `Humans.Web`'s
+`Views/Shared/_LoginPartial.cshtml`) and by *string* (`GuideHtmlPostprocessor` rewriting sibling `.md` links to
 `/Guide/{stem}`), neither of which needs a type.

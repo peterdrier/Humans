@@ -1,12 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Services;
-using Humans.Expenses.Services.Dtos;
 using Humans.Finance.Contracts;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using NodaTime;
-using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Models;
 
@@ -114,6 +109,29 @@ internal sealed class ExpenseDetailViewModel
     public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
 }
 
+internal sealed class ExpenseLineNewViewModel
+{
+    public required Guid ReportId { get; init; }
+    /// <summary>Invoice mode: the payee is a business invoicing the association (VAT-recoverable).</summary>
+    public required bool IsInvoice { get; init; }
+}
+
+internal sealed class ExpenseLineEditViewModel
+{
+    public required ExpenseReportDto Report { get; init; }
+    public required ExpenseLineDto Line { get; init; }
+    public required bool CanEditLines { get; init; }
+}
+
+internal sealed class ExpenseLineProofsViewModel
+{
+    public required ExpenseReportDto Report { get; init; }
+    public required ExpenseLineDto InvoiceLine { get; init; }
+    public required IReadOnlyList<ExpenseLineDto> Proofs { get; init; }
+    public required bool CanEditLines { get; init; }
+    public decimal ProofTotal => Proofs.Sum(p => p.Amount);
+}
+
 internal sealed class AddLineInputModel
 {
     [Required, StringLength(500)]
@@ -121,6 +139,12 @@ internal sealed class AddLineInputModel
 
     [Required, Range(0.01, 1_000_000)]
     public decimal Amount { get; set; }
+
+    /// <summary>Receipt (default) or Invoice; the service rejects travel types on this path.</summary>
+    public ExpenseLineType LineType { get; set; } = ExpenseLineType.Receipt;
+
+    /// <summary>Set when adding a proof row under an invoice line.</summary>
+    public Guid? ParentLineId { get; set; }
 }
 
 internal sealed class EditLineInputModel
@@ -151,12 +175,29 @@ internal sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
+    /// <summary>Budget category id → department. Department-group categories are one per team, so
+    /// the category name is the department; other groups show as "Group / Category".</summary>
+    public required IReadOnlyDictionary<Guid, string> DepartmentNames { get; init; }
+    /// <summary>Pushes to Holded that were written off and need a finance admin to look at them.
+    /// Zero hides the banner.</summary>
+    public required int FailedHoldedPushCount { get; init; }
 }
 
 internal sealed class ApproveInputModel
 {
     /// <summary>Optional category override applied at approval time.</summary>
     public Guid? OverrideCategoryId { get; set; }
+
+    /// <summary>Optional payout cap; overrides whatever the coordinator authorized at endorsement.</summary>
+    [Range(0.01, 1_000_000)]
+    public decimal? MaxAmount { get; set; }
+}
+
+internal sealed class EndorseInputModel
+{
+    /// <summary>Optional payout cap authorized by the coordinator.</summary>
+    [Range(0.01, 1_000_000)]
+    public decimal? MaxAmount { get; set; }
 }
 
 internal sealed class FinanceRejectInputModel

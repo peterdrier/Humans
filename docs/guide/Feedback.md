@@ -32,7 +32,7 @@ Nothing. You cannot file feedback and you cannot open your old reports. File an 
 
 If an admin replies to one of your historical reports you still get an email with their response in your preferred language, and a notification in your inbox telling you a response arrived. Neither links back to the report, because the report is admin-only now; the reply text is in the email itself.
 
-## As an Admin
+## As a Board member / Admin
 
 These screens require the full **Admin** role. `FeedbackAdmin` on its own no longer grants any feedback access.
 

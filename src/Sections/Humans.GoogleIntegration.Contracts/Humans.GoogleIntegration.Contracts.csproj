@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    GoogleIntegration's cross-section surface, carved into its own leaf project because the
+    section is referenced in both directions: it consumes Humans.Teams.Contracts,
+    Humans.Auth.Contracts, Humans.AuditLog.Contracts, Humans.Email.Contracts,
+    Humans.Notifications.Contracts and Humans.SystemSettings.Contracts, while Teams,
+    Notifications, Surveys and Monitor inject its services. A Contracts/ *folder* inside
+    Humans.GoogleIntegration would therefore cycle at the assembly level (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md) — and would cycle a second way, because
+    Humans.Application's IGoogleGroupSync and Humans.Infrastructure's HumansMetricsService
+    consume it from Base — re-derived at G5 lane 5b-4 (nobodies-collective/Humans#866), which
+    settled the last of the three names this line used to list: AuditViewerService went to
+    Humans.AuditLog, SystemTeamSyncJob to Humans.Teams, and SuspendNonCompliantMembersJob's
+    Google fan-out is now NonCompliantMemberSuspension inside Humans.Users.
+
+    It holds exactly the eight interfaces something outside the section injects, plus the flat
+    projections their signatures name. The rest — the Google API connector abstractions
+    (IGoogleDirectoryClient, IGoogleDrivePermissionsClient, ITeamResourceGoogleClient, …),
+    IGoogleAdminService, IGoogleWorkspaceUserService, ISyncSettingsService and
+    IGoogleRemovalNotificationService — have no consumer outside
+    Humans.{Application,Infrastructure,Web} and stay with the section.
+
+    Two absences are load-bearing. ISystemTeamSync is NOT here: it syncs system-team
+    membership, names Google nowhere in its signature, and its implementation
+    (SystemTeamSyncJob) is Teams'. G5 lane 5c put it on Humans.Teams.Contracts, so Auth,
+    Camps, Development, Governance and Onboarding reference that leaf rather than this one.
+    And IDriveActivityMonitorService is not here because it moved to Humans.Monitor for the
+    same reason, one lane earlier.
+
+    IGoogleGroupSync came here at G5 lane 5c, from Humans.Application. Its only consumer
+    outside this section is Teams' SystemTeamSyncJob, which already referenced this leaf.
+
+    GoogleWorkspaceOptions came in the same lane: Camps' CampRoleService and Users'
+    ProfileController both bind it, so it cannot be internal to the section.
+
+    G5 lane 4b-2j moved the section's own vocabulary onto this leaf: the three EF entities
+    (GoogleResource, GoogleSyncOutboxEvent, SyncServiceSettings) and five enums/constants
+    (GoogleResourceType, DrivePermissionLevel, SyncMode, SyncServiceType,
+    GoogleSyncOutboxEventTypes). They are here rather than under Humans.GoogleIntegration/Domain/
+    because IGoogleSyncService and IGoogleSyncOutboxService expose the first two as public
+    members and a leaf cannot reference its own section project — the same forcing move that put
+    the nine Users entities on Humans.Users.Contracts. GoogleIntegrationDbContext maps them from
+    the section project, which references this leaf; the tables, columns and migrations are
+    untouched (namespace-only change, verified: has-pending-model-changes reports none).
+
+    SyncAction lagged the rest of that set by one lane and is here now (G5 lane 3b). Lane 4b-2j
+    moved it and was reverted on a Codex P1 against peterdrier/Humans#1310, on the grounds that
+    it is a parameter type of IGoogleGroupSync.ReconcileOneAsync, which
+    HangfireGoogleGroupSyncScheduler enqueues and schedules, and Hangfire serializes parameter
+    types as assembly-qualified names. Peter's ruling, 2026-08-15: that premise is dead.
+    ReconcileOneAsync is fire-and-forget/delayed and never a recurring job, so no recurring-job
+    id is affected and RecurringJobExtensions needed no 'retired' entry; the only exposure is a
+    job already queued at the moment of deploy, which fails visibly into Hangfire's Failed list
+    and re-converges on the next reconciliation. See the remarks on the enum itself.
+
+    References Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and nothing else.
+    The old Humans.Domain edge is gone with the project itself (lane 3b):
+      - GoogleSyncSource — did not come here. It keeps the Humans.Domain.Enums namespace inside
+        the Humans.Interfaces assembly, because Humans.AuditLog.Contracts names it in
+        IAuditLogService's signature and Base's AuditEvent names it too; Base and another leaf
+        cannot reach this one, so a shared home below both is the only place it fits.
+      - GoogleEmailStatus — went to Humans.Users.Contracts with the rest of the UserInfo object
+        graph. It was named here in a <see cref> only, so no reference was needed.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

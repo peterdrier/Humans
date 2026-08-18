@@ -1,0 +1,2705 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common_ReturnHome" xml:space="preserve">
+    <value>Volver al inicio</value>
+  </data>
+  <data name="Common_Status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="Common_EditProfile" xml:space="preserve">
+    <value>Editar perfil</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="Common_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Guardar cambios</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Common_Add" xml:space="preserve">
+    <value>Agregar</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="Common_Back" xml:space="preserve">
+    <value>Volver</value>
+  </data>
+  <data name="Common_ExportGeoJson" xml:space="preserve">
+    <value>Exportar GeoJSON</value>
+  </data>
+  <data name="Common_Submit" xml:space="preserve">
+    <value>Enviar</value>
+  </data>
+  <data name="Common_NotProvided" xml:space="preserve">
+    <value>No proporcionado</value>
+  </data>
+  <data name="Common_Error" xml:space="preserve">
+    <value>Algo salió mal. Por favor, inténtalo de nuevo más tarde.</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Desconocido</value>
+  </data>
+  <data name="Nav_Brand" xml:space="preserve">
+    <value>Humans</value>
+  </data>
+  <data name="Nav_Home" xml:space="preserve">
+    <value>Inicio</value>
+  </data>
+  <data name="Nav_MyProfile" xml:space="preserve">
+    <value>Mi perfil</value>
+  </data>
+  <data name="Nav_Teams" xml:space="preserve">
+    <value>Equipos</value>
+  </data>
+  <data name="Nav_Shifts" xml:space="preserve">
+    <value>Voluntariado</value>
+  </data>
+  <data name="Nav_Roster" xml:space="preserve">
+    <value>Lista</value>
+  </data>
+  <data name="Nav_Consents" xml:space="preserve">
+    <value>Acuerdos</value>
+  </data>
+  <data name="Nav_Governance" xml:space="preserve">
+    <value>Gobernanza</value>
+  </data>
+  <data name="Nav_Privacy" xml:space="preserve">
+    <value>Privacidad</value>
+  </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>Acerca de</value>
+  </data>
+  <data name="Nav_Admin" xml:space="preserve">
+    <value>Administración</value>
+  </data>
+  <data name="Nav_OnboardingReview" xml:space="preserve">
+    <value>Cola de revisión</value>
+  </data>
+  <data name="Nav_Issues" xml:space="preserve">
+    <value>Incidencias</value>
+  </data>
+  <data name="CookieBanner_Title" xml:space="preserve">
+    <value>Aviso de cookies</value>
+  </data>
+  <data name="CookieBanner_Text" xml:space="preserve">
+    <value>Este sitio utiliza cookies esenciales necesarias para la autenticación y la seguridad. No se utilizan cookies de seguimiento ni de análisis.</value>
+  </data>
+  <data name="CookieBanner_LearnMore" xml:space="preserve">
+    <value>Más información</value>
+  </data>
+  <data name="CookieBanner_Accept" xml:space="preserve">
+    <value>Aceptar</value>
+  </data>
+  <data name="Login_Hello" xml:space="preserve">
+    <value>Hola, {0}</value>
+    <comment>{0} = user name</comment>
+  </data>
+  <data name="Login_Logout" xml:space="preserve">
+    <value>Cerrar sesión</value>
+  </data>
+  <data name="Login_Login" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="Login_Title" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="Login_Description" xml:space="preserve">
+    <value>Inicia sesión para acceder a Humans.</value>
+  </data>
+  <data name="Login_SignInWithGoogle" xml:space="preserve">
+    <value>Iniciar sesión con Google</value>
+  </data>
+  <data name="Login_SignInFailed" xml:space="preserve">
+    <value>Error de inicio de sesión. Esto puede ocurrir si tardaste demasiado o tu navegador bloqueó las cookies. Por favor, inténtalo de nuevo.</value>
+  </data>
+  <data name="AccessDenied_Title" xml:space="preserve">
+    <value>Acceso denegado</value>
+  </data>
+  <data name="AccessDenied_Description" xml:space="preserve">
+    <value>No tiene permiso para acceder a esta página.</value>
+  </data>
+  <data name="Error_Title" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Error_Oops" xml:space="preserve">
+    <value>¡Vaya!</value>
+  </data>
+  <data name="Error_SomethingWentWrong" xml:space="preserve">
+    <value>Algo salió mal</value>
+  </data>
+  <data name="Error_TryAgainLater" xml:space="preserve">
+    <value>Se ha producido un error al procesar su solicitud. Por favor, inténtelo de nuevo más tarde.</value>
+  </data>
+  <data name="Error404_Title" xml:space="preserve">
+    <value>Página no encontrada</value>
+  </data>
+  <data name="Error404_Description" xml:space="preserve">
+    <value>La página que busca no existe o ha sido trasladada.</value>
+  </data>
+  <data name="Home_Title" xml:space="preserve">
+    <value>Inicio</value>
+  </data>
+  <data name="Home_Tagline" xml:space="preserve">
+    <value>Donde Nobodies Collective se organiza</value>
+  </data>
+  <data name="Home_HeroDescription" xml:space="preserve">
+    <value>La plataforma comunitaria para nuestros humans — apúntate a turnos, únete a equipos, registra tu campamento y ayuda a que las cosas sucedan.</value>
+  </data>
+  <data name="Home_CTA" xml:space="preserve">
+    <value>Empezar</value>
+  </data>
+  <data name="Home_FeaturesTitle" xml:space="preserve">
+    <value>Todo lo que necesitas para participar</value>
+  </data>
+  <data name="Home_ShiftsTitle" xml:space="preserve">
+    <value>Turnos y voluntariado</value>
+  </data>
+  <data name="Home_ShiftsDescription" xml:space="preserve">
+    <value>Consulta los turnos disponibles, apúntate a roles en eventos y lleva el control de tu horario. Mira qué es urgente y dónde se necesita más ayuda.</value>
+  </data>
+  <data name="Home_TeamsTitle" xml:space="preserve">
+    <value>Equipos y grupos de trabajo</value>
+  </data>
+  <data name="Home_TeamsDescription" xml:space="preserve">
+    <value>Grupos de trabajo autoorganizados con coordinadores, recursos compartidos y flujos de aprobación. Encuentra tu equipo.</value>
+  </data>
+  <data name="Home_CampsTitle" xml:space="preserve">
+    <value>Campamentos y barrios</value>
+  </data>
+  <data name="Home_CampsDescription" xml:space="preserve">
+    <value>Registra tu campamento, descubre vecinos por ambiente o zona de sonido, y confirma tu participación cada temporada.</value>
+  </data>
+  <data name="Home_TicketsTitle" xml:space="preserve">
+    <value>Entradas y eventos</value>
+  </data>
+  <data name="Home_TicketsDescription" xml:space="preserve">
+    <value>Integración con venta de entradas, emparejamiento de asistentes y campañas de descuento — todo vinculado a tu perfil.</value>
+  </data>
+  <data name="Home_BudgetTitle" xml:space="preserve">
+    <value>Transparencia presupuestaria</value>
+  </data>
+  <data name="Home_BudgetDescription" xml:space="preserve">
+    <value>Consulta cómo se asignan los fondos por departamento. Planificación presupuestaria abierta con resúmenes públicos.</value>
+  </data>
+  <data name="Home_ProfilesTitle" xml:space="preserve">
+    <value>Perfiles y directorio</value>
+  </data>
+  <data name="Home_ProfilesDescription" xml:space="preserve">
+    <value>Perfiles completos con nombres de playa, ubicaciones y contactos de emergencia. Un calendario de cumpleaños y directorio para la comunidad.</value>
+  </data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve">
+    <value>Registro rápido</value>
+  </data>
+  <data name="Home_Step1" xml:space="preserve">
+    <value>&lt;strong&gt;Inicia sesión&lt;/strong&gt; con tu cuenta de Google</value>
+  </data>
+  <data name="Home_Step2" xml:space="preserve">
+    <value>&lt;strong&gt;Configura tu perfil&lt;/strong&gt; — nombre, ubicación y cómo prefieres que te contacten</value>
+  </data>
+  <data name="Home_Step3" xml:space="preserve">
+    <value>&lt;strong&gt;Acepta lo básico&lt;/strong&gt; — nosotros nos encargamos del papeleo para que tú puedas participar</value>
+  </data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve">
+    <value>Son un par de minutos. Después, ya estás dentro — consulta turnos, únete a equipos y empieza a contribuir.</value>
+  </data>
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Panel de control</value>
+  </data>
+  <data name="Dashboard_Welcome" xml:space="preserve">
+    <value>Bienvenido/a, {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Dashboard_PendingConsentsAlert" xml:space="preserve">
+    <value>&lt;strong&gt;Acción requerida:&lt;/strong&gt; Tiene {0} consentimiento(s) pendiente(s). &lt;a href="/Consent" class="alert-link"&gt;Revíselos y otorgue su consentimiento&lt;/a&gt; para mantener Su estado de voluntario activa.</value>
+    <comment>{0} = pending consent count</comment>
+  </data>
+  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
+    <value>&lt;strong&gt;Complete su perfil:&lt;/strong&gt; Su perfil está incompleto. &lt;a href="/Profile/Edit" class="alert-link"&gt;Añada su información&lt;/a&gt; para que podamos conocerle mejor.</value>
+  </data>
+  <data name="Dashboard_ProfileCard" xml:space="preserve">
+    <value>Perfil</value>
+  </data>
+  <data name="Dashboard_ProfileComplete" xml:space="preserve">
+    <value>Su perfil está completo.</value>
+  </data>
+  <data name="Dashboard_ProfileIncomplete" xml:space="preserve">
+    <value>Complete su perfil para que podamos conocerle mejor.</value>
+  </data>
+  <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
+    <value>Perfil completado al {0}%</value>
+    <comment>{0} = percentage 0-99</comment>
+  </data>
+  <data name="Dashboard_FinishProfile" xml:space="preserve">
+    <value>Completa tu perfil</value>
+  </data>
+  <data name="Dashboard_ViewProfile" xml:space="preserve">
+    <value>Ver perfil</value>
+  </data>
+  <data name="Dashboard_ConsentsCard" xml:space="preserve">
+    <value>Acuerdos</value>
+  </data>
+  <data name="Dashboard_ConsentsNeeded" xml:space="preserve">
+    <value>&lt;strong&gt;{0}&lt;/strong&gt; de {1} documentos necesitan su consentimiento.</value>
+    <comment>{0} = pending count, {1} = total required</comment>
+  </data>
+  <data name="Dashboard_ReviewConsents" xml:space="preserve">
+    <value>Revisar acuerdos</value>
+  </data>
+  <data name="Dashboard_ConsentsUpToDate" xml:space="preserve">
+    <value>Todos los consentimientos están al día.</value>
+  </data>
+  <data name="Dashboard_ViewConsents" xml:space="preserve">
+    <value>Ver acuerdos</value>
+  </data>
+  <data name="Dashboard_NoConsentsRequired" xml:space="preserve">
+    <value>No se requiere consentimiento en este momento.</value>
+  </data>
+  <data name="Dashboard_LatestApplication" xml:space="preserve">
+    <value>Última solicitud:</value>
+  </data>
+  <data name="Dashboard_ViewApplicationHistory" xml:space="preserve">
+    <value>Ver historial de solicitudes</value>
+  </data>
+  <data name="Dashboard_GovernanceDescription" xml:space="preserve">
+    <value>Los asociados son humans con derecho a voto que participan en las decisiones de gobernanza como asambleas y elecciones. Esto está destinado a líderes comunitarios y humans comprometidos a largo plazo.</value>
+  </data>
+  <data name="Dashboard_GovernanceOptional" xml:space="preserve">
+    <value>La participación en la gobernanza es opcional y no afecta a su acceso a los recursos.</value>
+  </data>
+  <data name="Dashboard_LearnMore" xml:space="preserve">
+    <value>Más información</value>
+  </data>
+  <data name="Dashboard_OnboardingTitle" xml:space="preserve">
+    <value>Primeros pasos</value>
+  </data>
+  <data name="Dashboard_OnboardingDescription" xml:space="preserve">
+    <value>Completa estos pasos para ser voluntario:</value>
+  </data>
+  <data name="Dashboard_Step_Profile" xml:space="preserve">
+    <value>Completa tu perfil</value>
+  </data>
+  <data name="Dashboard_Step_Consents" xml:space="preserve">
+    <value>Revisa y acepta los documentos requeridos</value>
+  </data>
+  <data name="Dashboard_Step_Approval" xml:space="preserve">
+    <value>La junta revisa y aprueba tu cuenta</value>
+  </data>
+  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve">
+    <value>Un coordinador revisa y aprueba tus documentos</value>
+  </data>
+  <data name="Dashboard_MembershipTier" xml:space="preserve">
+    <value>Nivel de membresía</value>
+  </data>
+  <data name="Dashboard_TierApplicationPending" xml:space="preserve">
+    <value>Tu solicitud de nivel está pendiente de revisión por la Junta.</value>
+  </data>
+  <data name="Dashboard_TierActive" xml:space="preserve">
+    <value>Tu nivel de membresía está activo.</value>
+  </data>
+  <data name="Dashboard_YourMembership" xml:space="preserve">
+    <value>Su estado de voluntario</value>
+  </data>
+  <data name="Dashboard_MemberSince" xml:space="preserve">
+    <value>Miembro desde</value>
+  </data>
+  <data name="Dashboard_LastLogin" xml:space="preserve">
+    <value>Último acceso</value>
+  </data>
+  <data name="Dashboard_QuickLinks" xml:space="preserve">
+    <value>Accesos rápidos</value>
+  </data>
+  <data name="Dashboard_ManageConsents" xml:space="preserve">
+    <value>Revisar acuerdos</value>
+  </data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve">
+    <value>{0} acuerdo por revisar</value>
+  </data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve">
+    <value>{0} acuerdos por revisar</value>
+  </data>
+  <data name="Dashboard_RejectedTitle" xml:space="preserve">
+    <value>Registro rechazado</value>
+  </data>
+  <data name="Dashboard_RejectedMessage" xml:space="preserve">
+    <value>Su registro ha sido revisado y no fue aprobado. Si tiene preguntas, contacte al equipo de administración.</value>
+  </data>
+  <data name="Dashboard_RejectionReason" xml:space="preserve">
+    <value>Motivo</value>
+  </data>
+  <data name="Dashboard_Subtitle" xml:space="preserve">
+    <value>Esto es lo que pasa.</value>
+  </data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve">
+    <value>acuerdo por revisar</value>
+  </data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve">
+    <value>acuerdos por revisar</value>
+  </data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve">
+    <value>plaza</value>
+  </data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve">
+    <value>plazas</value>
+  </data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
+    <value>Esto no se monta solo.</value>
+  </data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
+    <value>Mira qué hace falta y apúntate.</value>
+  </data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve">
+    <value>Encuentra a tu gente. O conviértete en la gente de alguien.</value>
+  </data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve">
+    <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
+  </data>
+  <data name="Dashboard_YourStuff" xml:space="preserve">
+    <value>Tus cosas</value>
+  </data>
+  <data name="Dashboard_YourStuffSubtitle" xml:space="preserve">
+    <value>Perfil, acuerdos, y lo que es solo tuyo.</value>
+  </data>
+  <data name="Dashboard_ProfileCardDescription" xml:space="preserve">
+    <value>Actualiza tu info, foto, y todo eso.</value>
+  </data>
+  <data name="Dashboard_ConsentsCardDescription" xml:space="preserve">
+    <value>El papeleo de ser human.</value>
+  </data>
+  <data name="Dashboard_PrivacyCard" xml:space="preserve">
+    <value>Privacidad</value>
+  </data>
+  <data name="Dashboard_PrivacyCardDescription" xml:space="preserve">
+    <value>Controla lo que otros pueden ver de ti.</value>
+  </data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
+    <value>Asambleas, elecciones, y lo serio.</value>
+  </data>
+  <data name="Dashboard_TicketNotConfigured" xml:space="preserve">
+    <value>La info de entradas aún no está disponible. Paciencia.</value>
+  </data>
+  <data name="Dashboard_TicketConfirmed" xml:space="preserve">
+    <value>Estás dentro. Entrada lista.</value>
+  </data>
+  <data name="Dashboard_TicketCount" xml:space="preserve">
+    <value>Tienes {0} entradas</value>
+    <comment>{0} = ticket count</comment>
+  </data>
+  <data name="Dashboard_NotAttending" xml:space="preserve">
+    <value>No vienes este año.</value>
+  </data>
+  <data name="Dashboard_NotAttendingHint" xml:space="preserve">
+    <value>¿Has cambiado de opinión? Sin juicio.</value>
+  </data>
+  <data name="Dashboard_UndoNotAttending" xml:space="preserve">
+    <value>Bueno, igual sí voy</value>
+  </data>
+  <data name="Dashboard_TicketMissing" xml:space="preserve">
+    <value>Aún sin entrada</value>
+  </data>
+  <data name="Dashboard_TicketMissingHint" xml:space="preserve">
+    <value>No vemos ninguna vinculada a tu cuenta.</value>
+  </data>
+  <data name="Dashboard_BuyTicket" xml:space="preserve">
+    <value>Consigue tu entrada</value>
+  </data>
+  <data name="Dashboard_DifferentEmail" xml:space="preserve">
+    <value>¿Compraste con otro email?</value>
+  </data>
+  <data name="Dashboard_DeclareNotAttending" xml:space="preserve">
+    <value>No voy este año</value>
+  </data>
+  <data name="Guest_Greeting" xml:space="preserve">
+    <value>Hola, {0}.</value>
+  </data>
+  <data name="Guest_Subtitle" xml:space="preserve">
+    <value>Bienvenido/a a Humans — donde Nobodies Collective gestiona todo para Elsewhere.</value>
+  </data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve">
+    <value>¿Listo/a para dejar de ser un fantasma?</value>
+  </data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve">
+    <value>Ahora mismo existes… pero nadie te ve. Crea tu perfil y de repente:</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve">
+    <value>Puedes unirte a equipos</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve">
+    <value>Puedes coger turnos</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve">
+    <value>La gente sabe quién eres</value>
+  </data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve">
+    <value>Son ~2 minutos.</value>
+  </data>
+  <data name="Guest_CreateProfile" xml:space="preserve">
+    <value>Crear mi perfil</value>
+  </data>
+  <data name="Guest_Explore" xml:space="preserve">
+    <value>Echa un vistazo</value>
+  </data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve">
+    <value>No necesitas perfil. Solo curiosidad.</value>
+  </data>
+  <data name="Guest_BarriosDescription" xml:space="preserve">
+    <value>Los barrios que la gente construye y donde vive durante el evento</value>
+  </data>
+  <data name="Guest_TeamsDescription" xml:space="preserve">
+    <value>Los equipos que hacen que todo funcione — sonido, seguridad, construcción, todo</value>
+  </data>
+  <data name="Guest_Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Guest_LegalDescription" xml:space="preserve">
+    <value>Política de privacidad, términos, consentimientos — lo aburrido pero importante</value>
+  </data>
+  <data name="Guest_AccountTitle" xml:space="preserve">
+    <value>Tus cosas</value>
+  </data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve">
+    <value>Aunque no tengas perfil, puedes gestionar tu cuenta y tus datos.</value>
+  </data>
+  <data name="Guest_CommsTitle" xml:space="preserve">
+    <value>Comunicaciones</value>
+  </data>
+  <data name="Guest_CommsDescription" xml:space="preserve">
+    <value>Elige qué emails y notificaciones quieres recibir</value>
+  </data>
+  <data name="Guest_DataTitle" xml:space="preserve">
+    <value>Tus datos</value>
+  </data>
+  <data name="Guest_DataDescription" xml:space="preserve">
+    <value>Descarga todo lo que tenemos sobre ti — es tuyo</value>
+  </data>
+  <data name="Guest_DeleteTitle" xml:space="preserve">
+    <value>Desaparecer</value>
+  </data>
+  <data name="Guest_DeleteDescription" xml:space="preserve">
+    <value>Solicita la eliminación de tu cuenta — 30 días para cambiar de opinión</value>
+  </data>
+  <data name="Guest_TicketsTitle" xml:space="preserve">
+    <value>Tus entradas</value>
+  </data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve">
+    <value>Comprado</value>
+  </data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve">
+    <value>Comprador</value>
+  </data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve">
+    <value>Importe</value>
+  </data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve">
+    <value>Tienes entrada para el evento.</value>
+  </data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve">
+    <value>Vas de salida</value>
+  </data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve">
+    <value>Solicitado el {0}.</value>
+  </data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve">
+    <value>Lo borraremos todo después del {0} — esperando a que termine el evento.</value>
+  </data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve">
+    <value>Todo desaparece el {0}. En serio.</value>
+  </data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve">
+    <value>He cambiado de opinión</value>
+  </data>
+  <data name="Privacy_Title" xml:space="preserve">
+    <value>Política de privacidad</value>
+  </data>
+  <data name="Profile_Title" xml:space="preserve">
+    <value>Mi perfil</value>
+  </data>
+  <data name="ProfileEdit_Title" xml:space="preserve">
+    <value>Editar perfil</value>
+  </data>
+  <data name="ProfilePrivacy_Title" xml:space="preserve">
+    <value>Mis datos</value>
+  </data>
+  <data name="Emails_Title" xml:space="preserve">
+    <value>Direcciones de correo</value>
+  </data>
+  <data name="VerifyEmail_Title" xml:space="preserve">
+    <value>Verificación de correo electrónico</value>
+  </data>
+  <data name="VerifyEmail_GoToSettings" xml:space="preserve">
+    <value>Ir a ajustes de correo preferido</value>
+  </data>
+  <data name="VerifyEmail_GoHome" xml:space="preserve">
+    <value>Ir a la página de inicio</value>
+  </data>
+  <data name="Profile_ActionRequired" xml:space="preserve">
+    <value>Acción requerida:</value>
+  </data>
+  <data name="Profile_PendingConsents" xml:space="preserve">
+    <value>Tiene {0} consentimiento(s) pendiente(s) por revisar.</value>
+    <comment>{0} = pending count</comment>
+  </data>
+  <data name="Profile_ReviewNow" xml:space="preserve">
+    <value>Revisar ahora</value>
+  </data>
+  <data name="Profile_PendingApproval" xml:space="preserve">
+    <value>Pendiente de aprobación:</value>
+  </data>
+  <data name="Profile_PendingApprovalDescription" xml:space="preserve">
+    <value>Su cuenta está pendiente de aprobación por la Junta Directiva. Una vez aprobada, se le inscribirá en el equipo de Voluntarios y recibirá acceso a los recursos de la organización.</value>
+  </data>
+  <data name="Profile_TierApplicationStatus" xml:space="preserve">
+    <value>Su solicitud de {0}:</value>
+    <comment>{0} = tier name (Colaborador/Asociado)</comment>
+  </data>
+  <data name="Profile_TierApplicationDetails" xml:space="preserve">
+    <value>Ver detalles</value>
+  </data>
+  <data name="Profile_Information" xml:space="preserve">
+    <value>Información del perfil</value>
+  </data>
+  <data name="Profile_LegalName" xml:space="preserve">
+    <value>Nombre legal</value>
+  </data>
+  <data name="Profile_OnlyVisibleToYouAndBoard" xml:space="preserve">
+    <value>solo visible para usted y la junta</value>
+  </data>
+  <data name="Profile_Phone" xml:space="preserve">
+    <value>Teléfono</value>
+  </data>
+  <data name="Profile_Location" xml:space="preserve">
+    <value>Ubicación</value>
+  </data>
+  <data name="Profile_Bio" xml:space="preserve">
+    <value>Biografía</value>
+  </data>
+  <data name="Profile_ChooseVisibility" xml:space="preserve">
+    <value>-- Elegir visibilidad --</value>
+  </data>
+  <data name="Profile_ContactInformation" xml:space="preserve">
+    <value>Información de contacto</value>
+  </data>
+  <data name="Profile_NoContactInfo" xml:space="preserve">
+    <value>Aún no se ha añadido información de contacto.</value>
+  </data>
+  <data name="Profile_AddSome" xml:space="preserve">
+    <value>Añadir información</value>
+  </data>
+  <data name="Profile_NotificationTarget" xml:space="preserve">
+    <value>Las notificaciones del sistema se envían a esta dirección</value>
+  </data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve">
+    <value>Notificaciones</value>
+  </data>
+  <data name="Profile_Teams" xml:space="preserve">
+    <value>Equipos</value>
+  </data>
+  <data name="Profile_Coordinator" xml:space="preserve">
+    <value>Coordinador</value>
+  </data>
+  <data name="Profile_MembershipTier" xml:space="preserve">
+    <value>Nivel de membresía</value>
+  </data>
+  <data name="Profile_Motivation" xml:space="preserve">
+    <value>Motivación</value>
+  </data>
+  <data name="Profile_AdditionalInfo" xml:space="preserve">
+    <value>Información adicional (opcional)</value>
+  </data>
+  <data name="Profile_MotivationRequired" xml:space="preserve">
+    <value>Se requiere una declaración de motivación para las solicitudes de Colaborador y Asociado.</value>
+  </data>
+  <data name="ProfileEdit_TierDescription" xml:space="preserve">
+    <value>Elige cómo quieres participar:</value>
+  </data>
+  <data name="ProfileEdit_TierVolunteerDesc" xml:space="preserve">
+    <value>Quieres venir al evento, contribuir con tu energía, trabajar un turno o unirte a un equipo. Sin compromiso formal con la gobernanza de la asociación. La mayoría de la gente está aquí y es completamente válido.</value>
+  </data>
+  <data name="ProfileEdit_TierColaboradorDesc" xml:space="preserve">
+    <value>Quieres involucrarte más: unirte a grupos de trabajo, asistir a las Asambleas Generales y ser parte de las conversaciones organizativas. Aún no estás listo/a (o no eres elegible) para derechos de voto, pero quieres un asiento sin voto en la mesa.</value>
+  </data>
+  <data name="ProfileEdit_TierAsociadoDesc" xml:space="preserve">
+    <value>Has liderado o contribuido de manera significativa a un área del evento o la comunidad, entiendes que este rol se trata de tomar decisiones de gobernanza en nombre de toda la comunidad, y estás preparado/a para asumir esa responsabilidad en serio. Si no estás seguro/a, colaborador es probablemente la mejor opción por ahora.</value>
+  </data>
+  <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve">
+    <value>miembro con voto</value>
+  </data>
+  <data name="ProfileEdit_TierChangeNote" xml:space="preserve">
+    <value>Nota: Siempre puedes solicitar cambiar esto más adelante.</value>
+  </data>
+  <data name="ProfileEdit_TierLocked" xml:space="preserve">
+    <value>Tu nivel está bloqueado porque tienes una solicitud activa o pendiente.</value>
+  </data>
+  <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
+    <value>Solicitud</value>
+  </data>
+  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve">
+    <value>Cuéntanos sobre tu motivación. Esto será revisado por la Junta junto con tu perfil.</value>
+  </data>
+  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve">
+    <value>¿Por qué quieres ser Colaborador/Asociado? ¿Qué esperas aportar?</value>
+  </data>
+  <data name="ProfileEdit_MotivationHelp" xml:space="preserve">
+    <value>Mínimo 50 caracteres. Esto ayuda a la Junta a entender tus objetivos.</value>
+  </data>
+  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Preguntas adicionales para solicitantes de Asociado</value>
+  </data>
+  <data name="Application_SignificantContribution" xml:space="preserve">
+    <value>¿Cuál ha sido tu contribución más significativa a Nowhere?</value>
+  </data>
+  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Si no se te ocurre ninguna, pero has contribuido significativamente a otro Burn, cuéntanos sobre eso.</value>
+  </data>
+  <data name="Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Por favor describe tu contribución más significativa para una solicitud de Asociado.</value>
+  </data>
+  <data name="Application_RoleUnderstanding" xml:space="preserve">
+    <value>En tus propias palabras, ¿qué entiendes que es el rol de un asociado y por qué quieres esa responsabilidad?</value>
+  </data>
+  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Cuéntanos qué significa este rol para ti y por qué estás preparado/a.</value>
+  </data>
+  <data name="Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Por favor describe tu comprensión del rol de asociado.</value>
+  </data>
+  <data name="Profile_BurnerCV" xml:space="preserve">
+    <value>Burner CV</value>
+  </data>
+  <data name="Profile_NoCVEntries" xml:space="preserve">
+    <value>Aún no hay entradas.</value>
+  </data>
+  <data name="Profile_AddFirstEntry" xml:space="preserve">
+    <value>Añadir su primera entrada</value>
+  </data>
+  <data name="Profile_QuickActions" xml:space="preserve">
+    <value>Acciones rápidas</value>
+  </data>
+  <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
+    <value>El nombre por el que se le conoce</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve">
+    <value>Este es su nombre público, visible para todos.</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
+    <value>Tu burner name parece coincidir con tu nombre legal. Considera usar un nombre diferente para proteger tu privacidad — este nombre es visible para todos los humans.</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Hay 1 human más con el nombre '{1}' — ¡asegúrate de que podamos distinguir cuál eres tú!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Hay {0} humans más con el nombre '{1}' — ¡asegúrate de que podamos distinguir cuál eres tú!</value>
+  </data>
+  <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
+    <value>Necesario para documentos oficiales y firmas.</value>
+  </data>
+  <data name="ProfileEdit_Select" xml:space="preserve">
+    <value>Seleccionar</value>
+  </data>
+  <data name="ProfileEdit_City" xml:space="preserve">
+    <value>Ciudad</value>
+  </data>
+  <data name="ProfileEdit_CityHelp" xml:space="preserve">
+    <value>Busque su ciudad para establecer su ubicación.</value>
+  </data>
+  <data name="ProfileEdit_CurrentLocation" xml:space="preserve">
+    <value>Ubicación actual:</value>
+  </data>
+  <data name="ProfileEdit_BioHelp" xml:space="preserve">
+    <value>Cuéntenos un poco sobre usted.</value>
+  </data>
+  <data name="Profile_Languages" xml:space="preserve">
+    <value>Idiomas hablados</value>
+  </data>
+  <data name="ProfileEdit_LanguagesHelp" xml:space="preserve">
+    <value>¿Qué idiomas hablas? Esto ayuda a coordinar nuestra comunidad multilingüe.</value>
+  </data>
+  <data name="ProfileEdit_AddLanguage" xml:space="preserve">
+    <value>Añadir idioma</value>
+  </data>
+  <data name="Profile_Pronouns" xml:space="preserve">
+    <value>Pronombres</value>
+  </data>
+  <data name="ProfileEdit_PronounsPlaceholder" xml:space="preserve">
+    <value>p. ej., elle, ella, él</value>
+  </data>
+  <data name="ProfileEdit_ContactInfoHelp" xml:space="preserve">
+    <value>Añada formas de contacto para que otros humans puedan comunicarse con usted. Controle quién puede ver cada dato.</value>
+  </data>
+  <data name="ProfileEdit_AddContactField" xml:space="preserve">
+    <value>Añadir campo de contacto</value>
+  </data>
+  <data name="ProfileEdit_BurnerCVHelp" xml:space="preserve">
+    <value>Documente su participación en eventos, roles y campamentos. Las entradas se ordenan por fecha (más recientes primero).</value>
+  </data>
+  <data name="ProfileEdit_AddEntry" xml:space="preserve">
+    <value>Añadir entrada</value>
+  </data>
+  <data name="ProfileEdit_ManageEmails" xml:space="preserve">
+    <value>Direcciones de correo</value>
+  </data>
+  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve">
+    <value>Agregar direcciones de correo, establecer preferencias de notificación y controlar la visibilidad del perfil.</value>
+  </data>
+  <data name="ProfilePrivacy_Lead" xml:space="preserve">
+    <value>Gestione sus datos personales y ajustes de privacidad.</value>
+  </data>
+  <data name="ProfilePrivacy_ExportTitle" xml:space="preserve">
+    <value>Exportar sus datos</value>
+  </data>
+  <data name="ProfilePrivacy_ExportDescription" xml:space="preserve">
+    <value>Descargue una copia de todos sus datos personales en formato JSON. Esto incluye:</value>
+  </data>
+  <data name="ProfilePrivacy_ExportAccountInfo" xml:space="preserve">
+    <value>Información de la cuenta</value>
+  </data>
+  <data name="ProfilePrivacy_ExportProfileDetails" xml:space="preserve">
+    <value>Datos del perfil</value>
+  </data>
+  <data name="ProfilePrivacy_ExportContactFields" xml:space="preserve">
+    <value>Campos de contacto</value>
+  </data>
+  <data name="ProfilePrivacy_ExportApplications" xml:space="preserve">
+    <value>Solicitudes de membresía</value>
+  </data>
+  <data name="ProfilePrivacy_ExportConsents" xml:space="preserve">
+    <value>Registros de consentimiento</value>
+  </data>
+  <data name="ProfilePrivacy_ExportTeams" xml:space="preserve">
+    <value>Membresías de equipo</value>
+  </data>
+  <data name="ProfilePrivacy_ExportRoles" xml:space="preserve">
+    <value>Asignaciones de roles</value>
+  </data>
+  <data name="ProfilePrivacy_DownloadMyData" xml:space="preserve">
+    <value>Descargar mis datos</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteTitle" xml:space="preserve">
+    <value>Eliminar su cuenta</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteDescription" xml:space="preserve">
+    <value>Solicite la eliminación de su cuenta y datos personales.</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteImmediateRevocation" xml:space="preserve">
+    <value>Sus membresías de equipo, asignaciones de roles y acceso a recursos compartidos (Google Drive, Grupos) serán revocados inmediatamente</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteGracePeriod" xml:space="preserve">
+    <value>Un periodo de gracia de 30 días le permite cancelar la solicitud</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteAnonymized" xml:space="preserve">
+    <value>Después de 30 días, su información personal será anonimizada y el acceso bloqueado permanentemente</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteRetained" xml:space="preserve">
+    <value>Los registros anonimizados se conservan con fines de cumplimiento legal y auditoría, pero no pueden vincularse a su identidad</value>
+  </data>
+  <data name="ProfilePrivacy_RequestDeletion" xml:space="preserve">
+    <value>Solicitar eliminación de cuenta</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionPending" xml:space="preserve">
+    <value>Eliminación pendiente</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionScheduledFor" xml:space="preserve">
+    <value>Su cuenta está programada para ser eliminada el {0}.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="ProfilePrivacy_DeletionCancelInfo" xml:space="preserve">
+    <value>Puede cancelar esta solicitud antes de la fecha de eliminación si cambia de opinión.</value>
+  </data>
+  <data name="ProfilePrivacy_CancelDeletion" xml:space="preserve">
+    <value>Cancelar solicitud de eliminación</value>
+  </data>
+  <data name="ProfilePrivacy_DPOContact" xml:space="preserve">
+    <value>Si tiene preguntas sobre sus datos o derechos de privacidad, contacte con nuestro Delegado de Protección de Datos:</value>
+  </data>
+  <data name="ProfilePrivacy_Email" xml:space="preserve">
+    <value>Correo electrónico:</value>
+  </data>
+  <data name="ProfilePrivacy_ViewFullPolicy" xml:space="preserve">
+    <value>Ver política de privacidad completa</value>
+  </data>
+  <data name="ProfilePrivacy_ConfirmDeletion" xml:space="preserve">
+    <value>Confirmar eliminación de cuenta</value>
+  </data>
+  <data name="ProfilePrivacy_ConfirmDeletionQuestion" xml:space="preserve">
+    <value>¿Está seguro de que desea solicitar la eliminación de su cuenta?</value>
+  </data>
+  <data name="ProfilePrivacy_YesDeleteMyAccount" xml:space="preserve">
+    <value>Sí, eliminar mi cuenta</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve">
+    <value>Sus membresías de equipo y asignaciones de roles han sido revocadas.</value>
+  </data>
+  <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve">
+    <value>Cancelar no restaurará sus membresías de equipo anteriores. Deberá volver a unirse a los equipos.</value>
+  </data>
+  <data name="Emails_Description" xml:space="preserve">
+    <value>Gestiona tus direcciones de correo electrónico. Tu correo de inicio de sesión siempre está incluido. Agrega correos adicionales, elige cuál recibe notificaciones y controla la visibilidad del perfil.</value>
+  </data>
+  <data name="Emails_YourEmails" xml:space="preserve">
+    <value>Tus direcciones de correo</value>
+  </data>
+  <data name="Emails_AddNew" xml:space="preserve">
+    <value>Agregar dirección de correo</value>
+  </data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve">
+    <value>¿Fusionar cuentas?</value>
+  </data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve">
+    <value>La fusión de cuentas sirve para combinar dos cuentas que pertenecen a la misma persona (por ejemplo, un correo antiguo y uno nuevo, ambos tuyos). No es una forma de compartir o transferir entradas, reservas u otros elementos entre dos personas distintas. Para transferir una entrada a otro humano, utiliza la función de transferencia de entradas en /Tickets/Transfers.</value>
+  </data>
+  <data name="Emails_VerificationWillBeSent" xml:space="preserve">
+    <value>Se enviará un correo de verificación a esta dirección.</value>
+  </data>
+  <data name="Emails_SendVerification" xml:space="preserve">
+    <value>Enviar correo de verificación</value>
+  </data>
+  <data name="Emails_ResendCooldown" xml:space="preserve">
+    <value>Puedes solicitar un nuevo correo de verificación en {0} minuto(s).</value>
+  </data>
+  <data name="Emails_BackToEdit" xml:space="preserve">
+    <value>Volver a editar perfil</value>
+  </data>
+  <data name="Emails_ManageEmails" xml:space="preserve">
+    <value>Direcciones de correo</value>
+  </data>
+  <data name="Emails_ManageEmailsHelp" xml:space="preserve">
+    <value>Agregar direcciones de correo adicionales, controlar notificaciones y establecer la visibilidad del perfil.</value>
+  </data>
+  <data name="Emails_ManageLater" xml:space="preserve">
+    <value>Puedes agregar y gestionar direcciones de correo adicionales desde tu perfil después de completar la configuración.</value>
+  </data>
+  <data name="Profile_Updated" xml:space="preserve">
+    <value>Perfil actualizado correctamente.</value>
+  </data>
+  <data name="Profile_EnterEmail" xml:space="preserve">
+    <value>Por favor, introduzca una dirección de correo electrónico.</value>
+  </data>
+  <data name="Profile_AlreadySignInEmail" xml:space="preserve">
+    <value>Esta ya es su dirección de inicio de sesión. No es necesario establecerla como preferida.</value>
+  </data>
+  <data name="Profile_VerificationCooldown" xml:space="preserve">
+    <value>Por favor, espere {0} minuto(s) antes de solicitar otro correo de verificación.</value>
+    <comment>{0} = minutes remaining</comment>
+  </data>
+  <data name="Profile_EmailInUse" xml:space="preserve">
+    <value>Esta dirección de correo ya está en uso por otra cuenta.</value>
+  </data>
+  <data name="Profile_VerificationSent" xml:space="preserve">
+    <value>Correo de verificación enviado a {0}. Por favor, revise su bandeja de entrada.</value>
+    <comment>{0} = email address</comment>
+  </data>
+  <data name="Profile_InvalidVerificationLink" xml:space="preserve">
+    <value>Enlace de verificación no válido.</value>
+  </data>
+  <data name="Profile_NoEmailPending" xml:space="preserve">
+    <value>No hay ningún correo pendiente de verificación.</value>
+  </data>
+  <data name="Profile_VerificationExpired" xml:space="preserve">
+    <value>El enlace de verificación no es válido o ha expirado.</value>
+  </data>
+  <data name="Profile_EmailClaimed" xml:space="preserve">
+    <value>Esta dirección de correo ha sido reclamada por otra cuenta.</value>
+  </data>
+  <data name="Profile_EmailVerified" xml:space="preserve">
+    <value>La dirección de correo {0} ha sido verificada.</value>
+    <comment>{0} = email address</comment>
+  </data>
+  <data name="Profile_PreferredEmailCleared" xml:space="preserve">
+    <value>El correo preferido ha sido eliminado. Los correos del sistema se enviarán a su dirección de inicio de sesión.</value>
+  </data>
+  <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
+    <value>Ya existe una solicitud de eliminación pendiente.</value>
+  </data>
+  <data name="Profile_DeletionRequested" xml:space="preserve">
+    <value>Se ha solicitado la eliminación de la cuenta. Su cuenta será eliminada el {0} a menos que cancele la solicitud.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Profile_NoDeletionPending" xml:space="preserve">
+    <value>No hay ninguna solicitud de eliminación pendiente.</value>
+  </data>
+  <data name="Profile_DeletionCancelled" xml:space="preserve">
+    <value>La eliminación de la cuenta ha sido cancelada.</value>
+  </data>
+  <data name="ApplicationStatus_Submitted" xml:space="preserve">
+    <value>Enviada</value>
+  </data>
+  <data name="ApplicationStatus_Approved" xml:space="preserve">
+    <value>Aprobada</value>
+  </data>
+  <data name="ApplicationStatus_Rejected" xml:space="preserve">
+    <value>Rechazada</value>
+  </data>
+  <data name="ApplicationStatus_Withdrawn" xml:space="preserve">
+    <value>Retirada</value>
+  </data>
+  <data name="Admin_ApplicationStats" xml:space="preserve">
+    <value>Estadísticas de solicitudes</value>
+  </data>
+  <data name="Admin_StatsTotal" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="Admin_StatsApproved" xml:space="preserve">
+    <value>Aprobadas</value>
+  </data>
+  <data name="Admin_StatsRejected" xml:space="preserve">
+    <value>Rechazadas</value>
+  </data>
+  <data name="Admin_StatsPending" xml:space="preserve">
+    <value>Pendientes</value>
+  </data>
+  <data name="Application_AlreadyPending" xml:space="preserve">
+    <value>Ya tiene una solicitud pendiente.</value>
+  </data>
+  <data name="Application_InvalidTier" xml:space="preserve">
+    <value>Seleccione Colaborador o Asociado para su solicitud.</value>
+  </data>
+  <data name="Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Debe confirmar la veracidad de su información.</value>
+  </data>
+  <data name="Application_Submitted" xml:space="preserve">
+    <value>¡Su solicitud ha sido enviada correctamente!</value>
+  </data>
+  <data name="Application_SubmitError" xml:space="preserve">
+    <value>Algo salió mal al enviar su solicitud. Por favor, inténtelo de nuevo.</value>
+  </data>
+  <data name="Application_CannotWithdraw" xml:space="preserve">
+    <value>Esta solicitud no puede ser retirada.</value>
+  </data>
+  <data name="Application_Withdrawn" xml:space="preserve">
+    <value>Su solicitud ha sido retirada.</value>
+  </data>
+  <data name="Teams_Title" xml:space="preserve">
+    <value>Equipos</value>
+  </data>
+  <data name="Teams_Member" xml:space="preserve">
+    <value>Miembro</value>
+  </data>
+  <data name="TeamDetail_Actions" xml:space="preserve">
+    <value>Acciones</value>
+  </data>
+  <data name="MyTeams_Role" xml:space="preserve">
+    <value>Rol</value>
+  </data>
+  <data name="MyTeams_View" xml:space="preserve">
+    <value>Ver</value>
+  </data>
+  <data name="AdminDashboard_Title" xml:space="preserve">
+    <value>Panel de administración</value>
+  </data>
+  <data name="AdminHumans_Title" xml:space="preserve">
+    <value>Miembros</value>
+  </data>
+  <data name="AdminHumans_AllStatuses" xml:space="preserve">
+    <value>Todos</value>
+  </data>
+  <data name="AdminHumans_Active" xml:space="preserve">
+    <value>Activos</value>
+  </data>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
+  </data>
+  <data name="AdminHumans_Suspended" xml:space="preserve">
+    <value>Suspendidos</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="AdminHumans_Deleting" xml:space="preserve">
+    <value>Pendiente de borrado</value>
+  </data>
+  <data name="AdminHumans_Merged" xml:space="preserve">
+    <value>Fusionado</value>
+  </data>
+  <data name="AdminHumans_Deleted" xml:space="preserve">
+    <value>Eliminado</value>
+  </data>
+  <data name="AdminHumanDetail_Title" xml:space="preserve">
+    <value>Miembro: {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="AdminRoles_Title" xml:space="preserve">
+    <value>Asignaciones de roles</value>
+  </data>
+  <data name="AdminAddRole_Title" xml:space="preserve">
+    <value>Añadir rol</value>
+  </data>
+  <data name="AdminGoogleSync_Title" xml:space="preserve">
+    <value>Estado de sincronización con Google</value>
+  </data>
+  <data name="Admin_CannotStartReview" xml:space="preserve">
+    <value>No se puede iniciar la revisión. La solicitud no está en estado Enviada.</value>
+  </data>
+  <data name="Admin_ReviewStarted" xml:space="preserve">
+    <value>Revisión iniciada para esta solicitud.</value>
+  </data>
+  <data name="Admin_CannotApprove" xml:space="preserve">
+    <value>No se puede aprobar. La solicitud debe estar en revisión.</value>
+  </data>
+  <data name="Admin_ApplicationApproved" xml:space="preserve">
+    <value>Solicitud aprobada.</value>
+  </data>
+  <data name="Admin_CannotReject" xml:space="preserve">
+    <value>No se puede rechazar. La solicitud debe estar en revisión.</value>
+  </data>
+  <data name="Admin_ProvideRejectionReason" xml:space="preserve">
+    <value>Por favor, indique un motivo para el rechazo.</value>
+  </data>
+  <data name="Admin_ApplicationRejected" xml:space="preserve">
+    <value>Solicitud rechazada.</value>
+  </data>
+  <data name="Admin_CannotRequestInfo" xml:space="preserve">
+    <value>No se puede solicitar más información. La solicitud debe estar en revisión.</value>
+  </data>
+  <data name="Admin_SpecifyInfoNeeded" xml:space="preserve">
+    <value>Por favor, especifique qué información se necesita.</value>
+  </data>
+  <data name="Admin_MoreInfoRequested" xml:space="preserve">
+    <value>Se ha solicitado más información al solicitante.</value>
+  </data>
+  <data name="Admin_UnknownAction" xml:space="preserve">
+    <value>Acción desconocida.</value>
+  </data>
+  <data name="Admin_MemberSuspended" xml:space="preserve">
+    <value>El human ha sido suspendido.</value>
+  </data>
+  <data name="Admin_MemberUnsuspended" xml:space="preserve">
+    <value>Se ha levantado la suspensión del human.</value>
+  </data>
+  <data name="Admin_VolunteerApproved" xml:space="preserve">
+    <value>El human ha sido aprobado.</value>
+  </data>
+  <data name="Admin_TeamCreated" xml:space="preserve">
+    <value>Equipo “{0}” creado correctamente.</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Admin_TeamCreateError" xml:space="preserve">
+    <value>Se ha producido un error al crear el equipo.</value>
+  </data>
+  <data name="Admin_TeamUpdated" xml:space="preserve">
+    <value>Equipo actualizado correctamente.</value>
+  </data>
+  <data name="Admin_TeamDeactivated" xml:space="preserve">
+    <value>Equipo desactivado.</value>
+  </data>
+  <data name="Admin_RoleAlreadyActive" xml:space="preserve">
+    <value>El usuario ya tiene una asignación activa del rol “{0}”.</value>
+    <comment>{0} = role name</comment>
+  </data>
+  <data name="Admin_RoleAssigned" xml:space="preserve">
+    <value>Rol “{0}” asignado correctamente.</value>
+    <comment>{0} = role name</comment>
+  </data>
+  <data name="Admin_RoleNotActive" xml:space="preserve">
+    <value>Esta asignación de rol no está activa actualmente.</value>
+  </data>
+  <data name="Admin_RoleEnded" xml:space="preserve">
+    <value>Rol “{0}” finalizado para {1}.</value>
+    <comment>{0} = role name, {1} = user display name</comment>
+  </data>
+  <data name="Admin_GoogleSyncSuccess" xml:space="preserve">
+    <value>Recursos de Google sincronizados correctamente.</value>
+  </data>
+  <data name="Admin_GoogleSyncFailed" xml:space="preserve">
+    <value>La sincronización ha fallado. Consulte los registros para más detalles.</value>
+  </data>
+  <data name="Admin_TotalMembers" xml:space="preserve">
+    <value>Humans en total</value>
+  </data>
+  <data name="Admin_ActiveMembers" xml:space="preserve">
+    <value>Humans activos</value>
+  </data>
+  <data name="Admin_PendingVolunteers" xml:space="preserve">
+    <value>Voluntarios pendientes</value>
+  </data>
+  <data name="Admin_PendingApplications" xml:space="preserve">
+    <value>Solicitudes pendientes</value>
+  </data>
+  <data name="Admin_PendingConsents" xml:space="preserve">
+    <value>Acuerdos pendientes</value>
+  </data>
+  <data name="Admin_QuickActions" xml:space="preserve">
+    <value>Acciones rápidas</value>
+  </data>
+  <data name="Admin_ReviewPendingVolunteers" xml:space="preserve">
+    <value>Revisar voluntarios pendientes</value>
+  </data>
+  <data name="Admin_ReviewApplications" xml:space="preserve">
+    <value>Revisar solicitudes</value>
+  </data>
+  <data name="Admin_ManageMembers" xml:space="preserve">
+    <value>Gestionar Humans</value>
+  </data>
+  <data name="Admin_ManageTeams" xml:space="preserve">
+    <value>Gestionar equipos</value>
+  </data>
+  <data name="Admin_ManageRoles" xml:space="preserve">
+    <value>Gestionar roles</value>
+  </data>
+  <data name="Admin_GoogleSyncStatus" xml:space="preserve">
+    <value>Estado de sincronización con Google</value>
+  </data>
+  <data name="Admin_BackgroundJobs" xml:space="preserve">
+    <value>Tareas en segundo plano</value>
+  </data>
+  <data name="Admin_SystemHealth" xml:space="preserve">
+    <value>Estado del sistema</value>
+  </data>
+  <data name="Admin_DatabaseConnection" xml:space="preserve">
+    <value>Conexión a base de datos</value>
+  </data>
+  <data name="Admin_ViewHealthCheck" xml:space="preserve">
+    <value>Ver estado de salud</value>
+  </data>
+  <data name="Admin_RecentActivity" xml:space="preserve">
+    <value>Actividad reciente</value>
+  </data>
+  <data name="Admin_NoRecentActivity" xml:space="preserve">
+    <value>No se ha registrado actividad reciente.</value>
+  </data>
+  <data name="Admin_TotalCount" xml:space="preserve">
+    <value>{0} en total</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Admin_SearchPlaceholder" xml:space="preserve">
+    <value>Buscar por correo o nombre...</value>
+  </data>
+  <data name="Admin_Search" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="Admin_Clear" xml:space="preserve">
+    <value>Limpiar</value>
+  </data>
+  <data name="Admin_NoMembersFound" xml:space="preserve">
+    <value>No se encontraron humans.</value>
+  </data>
+  <data name="Admin_Joined" xml:space="preserve">
+    <value>Incorporación</value>
+  </data>
+  <data name="Admin_LastLogin" xml:space="preserve">
+    <value>Último acceso</value>
+  </data>
+  <data name="Admin_Never" xml:space="preserve">
+    <value>Nunca</value>
+  </data>
+  <data name="Admin_NoProfile" xml:space="preserve">
+    <value>Sin perfil</value>
+  </data>
+  <data name="AdminHuman_Information" xml:space="preserve">
+    <value>Información del miembro</value>
+  </data>
+  <data name="AdminHuman_Suspended" xml:space="preserve">
+    <value>Suspendido</value>
+  </data>
+  <data name="AdminHuman_PendingApproval" xml:space="preserve">
+    <value>Pendiente de aprobación</value>
+  </data>
+  <data name="AdminHuman_Approved" xml:space="preserve">
+    <value>Aprobado</value>
+  </data>
+  <data name="AdminHuman_MembershipTier" xml:space="preserve">
+    <value>Nivel de membresía</value>
+  </data>
+  <data name="AdminHuman_ConsentCheck" xml:space="preserve">
+    <value>Verificación de consentimiento</value>
+  </data>
+  <data name="AdminHuman_NotStarted" xml:space="preserve">
+    <value>No iniciado</value>
+  </data>
+  <data name="AdminHuman_UserId" xml:space="preserve">
+    <value>ID de usuario</value>
+  </data>
+  <data name="AdminHuman_FullName" xml:space="preserve">
+    <value>Nombre completo</value>
+  </data>
+  <data name="AdminHuman_AdminNotes" xml:space="preserve">
+    <value>Notas de la junta</value>
+  </data>
+  <data name="AdminHuman_AdminNotesGdprHint" xml:space="preserve">
+    <value>Este miembro puede solicitar ver estas notas según el RGPD.</value>
+  </data>
+  <data name="AdminHuman_RecentApplications" xml:space="preserve">
+    <value>Solicitudes recientes</value>
+  </data>
+  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
+    <value>Asignaciones de roles</value>
+  </data>
+  <data name="AdminHuman_AddRole" xml:space="preserve">
+    <value>Añadir rol</value>
+  </data>
+  <data name="AdminHuman_Active" xml:space="preserve">
+    <value>Activo</value>
+  </data>
+  <data name="AdminHuman_Ended" xml:space="preserve">
+    <value>Finalizado</value>
+  </data>
+  <data name="AdminHuman_From" xml:space="preserve">
+    <value>Desde</value>
+  </data>
+  <data name="AdminHuman_To" xml:space="preserve">
+    <value>hasta</value>
+  </data>
+  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
+    <value>¿Finalizar esta asignación de rol?</value>
+  </data>
+  <data name="AdminHuman_End" xml:space="preserve">
+    <value>Finalizar</value>
+  </data>
+  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
+    <value>Sin asignaciones de roles.</value>
+  </data>
+  <data name="AdminHuman_AuditHistory" xml:space="preserve">
+    <value>Historial de auditoría</value>
+  </data>
+  <data name="AdminHuman_NoAuditHistory" xml:space="preserve">
+    <value>Sin historial de auditoría.</value>
+  </data>
+  <data name="AdminHuman_Statistics" xml:space="preserve">
+    <value>Estadísticas</value>
+  </data>
+  <data name="AdminHuman_ApplicationCount" xml:space="preserve">
+    <value>Solicitudes</value>
+  </data>
+  <data name="AdminHuman_ConsentCount" xml:space="preserve">
+    <value>Acuerdos</value>
+  </data>
+  <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
+    <value>Levantar suspensión del human</value>
+  </data>
+  <data name="AdminHuman_SuspendConfirm" xml:space="preserve">
+    <value>¿Está seguro de que desea suspender a este human?</value>
+  </data>
+  <data name="AdminHuman_SuspendReasonPlaceholder" xml:space="preserve">
+    <value>Motivo de la suspensión (opcional)</value>
+  </data>
+  <data name="AdminHuman_SuspendMember" xml:space="preserve">
+    <value>Suspender human</value>
+  </data>
+  <data name="AdminApp_Pending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="AdminApp_Rejected" xml:space="preserve">
+    <value>Rechazada</value>
+  </data>
+  <data name="AdminApp_Withdrawn" xml:space="preserve">
+    <value>Retirada</value>
+  </data>
+  <data name="AdminApp_NoApplicationsFound" xml:space="preserve">
+    <value>No se encontraron solicitudes.</value>
+  </data>
+  <data name="AdminApp_Applicant" xml:space="preserve">
+    <value>Solicitante</value>
+  </data>
+  <data name="AdminApp_Preview" xml:space="preserve">
+    <value>Vista previa</value>
+  </data>
+  <data name="AdminApp_Review" xml:space="preserve">
+    <value>Revisar</value>
+  </data>
+  <data name="AdminRoles_All" xml:space="preserve">
+    <value>Todos</value>
+  </data>
+  <data name="AdminRoles_HideInactive" xml:space="preserve">
+    <value>Ocultar inactivos</value>
+  </data>
+  <data name="AdminRoles_ShowInactive" xml:space="preserve">
+    <value>Mostrar inactivos</value>
+  </data>
+  <data name="AdminRoles_User" xml:space="preserve">
+    <value>Usuario</value>
+  </data>
+  <data name="AdminRoles_ValidFrom" xml:space="preserve">
+    <value>Válido desde</value>
+  </data>
+  <data name="AdminRoles_ValidTo" xml:space="preserve">
+    <value>Válido hasta</value>
+  </data>
+  <data name="AdminAddRole_Heading" xml:space="preserve">
+    <value>Añadir rol a {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="AdminAddRole_SelectRole" xml:space="preserve">
+    <value>Seleccionar un rol...</value>
+  </data>
+  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
+    <value>Acceso completo al sistema</value>
+  </data>
+  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
+    <value>Permisos de miembro de la junta</value>
+  </data>
+  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
+    <value>Gestionar todos los equipos y membresías</value>
+  </data>
+  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
+    <value>Verificaciones de seguridad durante la incorporación</value>
+  </data>
+  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
+    <value>Gestionar el mapa del campamento y las fases de colocación</value>
+  </data>
+  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
+    <value>Facilitación de incorporación, gestión de turnos global</value>
+  </data>
+  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
+    <value>Aprobar inscripciones en turnos, ver datos médicos de voluntarios</value>
+  </data>
+  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
+    <value>Notas (opcional)</value>
+  </data>
+  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
+    <value>Motivo de la asignación</value>
+  </data>
+  <data name="GoogleSync_SyncNow" xml:space="preserve">
+    <value>Sincronizar ahora</value>
+  </data>
+  <data name="GoogleSync_TotalResources" xml:space="preserve">
+    <value>Recursos totales</value>
+  </data>
+  <data name="GoogleSync_InSync" xml:space="preserve">
+    <value>Sincronizado</value>
+  </data>
+  <data name="GoogleSync_Drifted" xml:space="preserve">
+    <value>Desviado</value>
+  </data>
+  <data name="GoogleSync_Errors" xml:space="preserve">
+    <value>Errores</value>
+  </data>
+  <data name="GoogleSync_NoResources" xml:space="preserve">
+    <value>No se encontraron recursos activos de Google.</value>
+  </data>
+  <data name="GoogleSync_Resource" xml:space="preserve">
+    <value>Recurso</value>
+  </data>
+  <data name="GoogleSync_Details" xml:space="preserve">
+    <value>Detalles</value>
+  </data>
+  <data name="GoogleSync_BackToDashboard" xml:space="preserve">
+    <value>Volver al panel de administración</value>
+  </data>
+  <data name="Profile_ProfilePicture" xml:space="preserve">
+    <value>Foto de perfil</value>
+  </data>
+  <data name="Profile_DateOfBirth" xml:space="preserve">
+    <value>Cumpleaños</value>
+  </data>
+  <data name="Profile_PictureTooLarge" xml:space="preserve">
+    <value>La foto de perfil debe ser inferior a 20MB.</value>
+  </data>
+  <data name="Profile_PictureInvalidFormat" xml:space="preserve">
+    <value>La foto de perfil debe estar en formato JPEG, PNG, WebP o HEIC.</value>
+  </data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve">
+    <value>Suba una imagen JPEG, PNG, WebP o HEIC (máx. 20MB). Las imágenes grandes se redimensionan automáticamente.</value>
+  </data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve">
+    <value>Eliminar foto personalizada</value>
+  </data>
+  <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve">
+    <value>Solo visible para usted y la junta directiva. Se usa para el calendario de cumpleaños.</value>
+  </data>
+  <data name="Profile_Month" xml:space="preserve">
+    <value>Mes</value>
+  </data>
+  <data name="Profile_Day" xml:space="preserve">
+    <value>Día</value>
+  </data>
+  <data name="Profile_EmergencyContact" xml:space="preserve">
+    <value>Contacto de emergencia</value>
+  </data>
+  <data name="Profile_EmergencyContactName" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="Profile_EmergencyContactPhone" xml:space="preserve">
+    <value>Teléfono</value>
+  </data>
+  <data name="Profile_EmergencyContactRelationship" xml:space="preserve">
+    <value>Relación</value>
+  </data>
+  <data name="ProfileEdit_EmergencyContactHelp" xml:space="preserve">
+    <value>Proporcione una persona de contacto para emergencias en eventos.</value>
+  </data>
+  <data name="Profile_EmergencyContactBoardOnly" xml:space="preserve">
+    <value>Solo visible para usted y la junta directiva.</value>
+  </data>
+  <data name="Nav_City" xml:space="preserve">
+    <value>Mapa</value>
+  </data>
+  <data name="ProfileEdit_SectionGeneral" xml:space="preserve">
+    <value>Información general</value>
+  </data>
+  <data name="ProfileEdit_SectionContributor" xml:space="preserve">
+    <value>Información de contribución</value>
+  </data>
+  <data name="ProfileEdit_ContributorNote" xml:space="preserve">
+    <value>Puede ser considerada para solicitudes de Colaborador o Asociado.</value>
+  </data>
+  <data name="Profile_NoPriorBurnExperience" xml:space="preserve">
+    <value>No tengo experiencia previa en burns</value>
+  </data>
+  <data name="Profile_BurnerCVRequired" xml:space="preserve">
+    <value>Por favor, añade al menos una entrada de Burner CV o marca la casilla de 'sin experiencia previa en burns'.</value>
+  </data>
+  <data name="Profile_LegalFirstNames" xml:space="preserve">
+    <value>Nombre(s) legal(es)</value>
+  </data>
+  <data name="Profile_LegalLastNames" xml:space="preserve">
+    <value>Apellido(s) legal(es)</value>
+  </data>
+  <data name="Profile_ContributionInterests" xml:space="preserve">
+    <value>Como me gustaría contribuir</value>
+  </data>
+  <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve">
+    <value>Comparte tus habilidades, intereses y cómo te gustaría participar. Visible para todos los humans.</value>
+  </data>
+  <data name="Profile_BoardNotes" xml:space="preserve">
+    <value>Notas para la Junta</value>
+  </data>
+  <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve">
+    <value>Notas privadas para la Junta.</value>
+  </data>
+  <data name="Validation_PhoneE164" xml:space="preserve">
+    <value>{0} debe empezar con + y código de país (ej. +34 612 345 678)</value>
+  </data>
+  <data name="Validation_PhonePlaceholder" xml:space="preserve">
+    <value>+34 612 345 678</value>
+  </data>
+  <data name="Validation_PhoneHint" xml:space="preserve">
+    <value>Debe empezar con + y código de país (ej. +34 612 345 678)</value>
+  </data>
+  <data name="Profile_BoardInformation" xml:space="preserve">
+    <value>Información privada y de la Junta</value>
+  </data>
+  <data name="Profile_WhatsApp" xml:space="preserve">
+    <value>WhatsApp</value>
+  </data>
+  <data name="Nav_BoardVoting" xml:space="preserve">
+    <value>Votación de la Junta</value>
+  </data>
+  <data name="Dashboard_TermExpires" xml:space="preserve">
+    <value>El mandato expira: {0}</value>
+    <comment>{0} = formatted date</comment>
+  </data>
+  <data name="Dashboard_TermExpiresSoon" xml:space="preserve">
+    <value>Tu mandato expira el {0}. Por favor, envía una solicitud de renovación para continuar.</value>
+    <comment>{0} = formatted date</comment>
+  </data>
+  <data name="Dashboard_TermExpired" xml:space="preserve">
+    <value>Tu mandato ha expirado. Envía una solicitud de renovación para restaurar tu nivel.</value>
+  </data>
+  <data name="Dashboard_RenewNow" xml:space="preserve">
+    <value>Renovar ahora</value>
+  </data>
+  <data name="Nav_Review" xml:space="preserve">
+    <value>Revisión</value>
+  </data>
+  <data name="Nav_Voting" xml:space="preserve">
+    <value>Votación</value>
+  </data>
+  <data name="Nav_Board" xml:space="preserve">
+    <value>Board</value>
+  </data>
+  <data name="Nav_Scanner" xml:space="preserve">
+    <value>Escáner</value>
+  </data>
+  <data name="SendMessage_Title" xml:space="preserve">
+    <value>Enviar un mensaje a {0}</value>
+  </data>
+  <data name="SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Enviar mensaje</value>
+  </data>
+  <data name="SendMessage_Heading" xml:space="preserve">
+    <value>Enviar un mensaje a {0}</value>
+  </data>
+  <data name="SendMessage_MessageLabel" xml:space="preserve">
+    <value>Mensaje</value>
+  </data>
+  <data name="SendMessage_PlainTextOnly" xml:space="preserve">
+    <value>Solo texto. Máximo 2000 caracteres.</value>
+  </data>
+  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Incluir mi información de contacto</value>
+  </data>
+  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Tu nombre y correo electrónico se incluirán para que puedan responderte directamente.</value>
+  </data>
+  <data name="SendMessage_Send" xml:space="preserve">
+    <value>Enviar mensaje</value>
+  </data>
+  <data name="SendMessage_Success" xml:space="preserve">
+    <value>Tu mensaje ha sido enviado a {0}.</value>
+  </data>
+  <data name="SendMessage_Button" xml:space="preserve">
+    <value>Enviar un mensaje a {0}</value>
+  </data>
+  <data name="Search_Title" xml:space="preserve">
+    <value>Buscar Humans</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Buscar por nombre, ciudad, intereses, bio...</value>
+  </data>
+  <data name="Search_NoResults" xml:space="preserve">
+    <value>No se encontraron humans con esa búsqueda.</value>
+  </data>
+  <data name="Search_MatchedIn" xml:space="preserve">
+    <value>Coincidencia en</value>
+  </data>
+  <data name="Search_MinChars" xml:space="preserve">
+    <value>Escribe al menos 2 caracteres para buscar.</value>
+  </data>
+  <data name="Camp_Plural" xml:space="preserve">
+    <value>Barrios</value>
+  </data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve">
+    <value>Pregunta cómo funciona el sistema…</value>
+  </data>
+  <data name="Agent_PanelTitle" xml:space="preserve">
+    <value>Asistente</value>
+  </data>
+  <data name="Agent_TermsLink" xml:space="preserve">
+    <value>Términos IA</value>
+  </data>
+  <data name="Agent_Send" xml:space="preserve">
+    <value>Enviar</value>
+  </data>
+  <data name="Agent_ViewHistory" xml:space="preserve">
+    <value>Historial</value>
+  </data>
+  <data name="Agent_WidgetButton" xml:space="preserve">
+    <value>Abrir el asistente</value>
+  </data>
+  <data name="Help_WidgetButton" xml:space="preserve">
+    <value>Ayuda</value>
+  </data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve">
+    <value>Hablar con el Asistente</value>
+  </data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve">
+    <value>Crear incidencia</value>
+  </data>
+  <data name="Help_Agent_IssueProposed" xml:space="preserve">
+    <value>No puedo responder a esto por mí mismo. He redactado una incidencia para el equipo — revísala y envíala, por favor.</value>
+  </data>
+  <data name="Nav_Agent" xml:space="preserve">
+    <value>Asistente</value>
+  </data>
+  <data name="Login_MagicLink_Title" xml:space="preserve">
+    <value>O iniciar sesión con correo</value>
+  </data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve">
+    <value>tu@email.com</value>
+  </data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve">
+    <value>Enviarme un enlace de inicio de sesión</value>
+  </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Terminal de puerta</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Inicia sesión en el portátil compartido de puerta para consultar entradas. Pide las credenciales al equipo de entradas.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Nombre de usuario</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Nombre de usuario o contraseña incorrectos. El nombre de usuario es "gate"; la contraseña la establece el equipo de entradas — pídeles la actual.</value>
+  </data>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>El inicio de sesión desde esta red está pausado durante {0} segundos: se hicieron demasiados intentos con contraseña incorrecta desde aquí. Si no fuiste tú, alguien que comparte esta conexión está probando contraseñas en esta página. Espera, y luego introduce la contraseña correcta — pregunta al equipo de entradas si no estás seguro. La cuenta NO está bloqueada; los administradores de entradas pueden comprobar o cambiar la contraseña en Tickets → Gate terminal.</value>
+    <comment>{0}=seconds remaining</comment>
+  </data>
+  <data name="MagicLinkSent_Title" xml:space="preserve">
+    <value>Revisa tu correo</value>
+  </data>
+  <data name="MagicLinkSent_Message" xml:space="preserve">
+    <value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value>
+  </data>
+  <data name="MagicLinkError_Title" xml:space="preserve">
+    <value>Enlace expirado o inválido</value>
+  </data>
+  <data name="MagicLinkError_Message" xml:space="preserve">
+    <value>Este enlace de inicio de sesión ha expirado o ya ha sido utilizado.</value>
+  </data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve">
+    <value>Solicitar un nuevo enlace</value>
+  </data>
+  <data name="CompleteSignup_Title" xml:space="preserve">
+    <value>Completa tu registro</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve">
+    <value>Nombre burner</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve">
+    <value>Es el nombre que todos verán en Humans. Usa el que utilices en la comunidad.</value>
+  </data>
+  <data name="CompleteSignup_FirstNameLabel" xml:space="preserve">
+    <value>Nombre legal</value>
+  </data>
+  <data name="CompleteSignup_LastNameLabel" xml:space="preserve">
+    <value>Apellidos legales</value>
+  </data>
+  <data name="CompleteSignup_LegalNameNote" xml:space="preserve">
+    <value>Te pedimos tu nombre legal para saber quién es quién detrás de los nombres burner, y para que puedas firmar el acuerdo de voluntariado más adelante. Solo es visible para los administradores dentro de Humans, nunca se comparte fuera de la aplicación, y en el resto de sitios siempre se te mostrará con tu nombre burner.</value>
+  </data>
+  <data name="CompleteSignup_PrivacyLink" xml:space="preserve">
+    <value>Lee nuestra política de privacidad</value>
+  </data>
+  <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve">
+    <value>Por favor, rellena tu nombre burner y tu nombre y apellidos legales.</value>
+  </data>
+  <data name="CompleteSignup_Submit" xml:space="preserve">
+    <value>Crear cuenta</value>
+  </data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve">
+    <value>Volver al inicio de sesión</value>
+  </data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve">
+    <value>Tu enlace expira a las {0}.</value>
+  </data>
+  <data name="MagicLinkConfirm_Title" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="MagicLinkConfirm_Message" xml:space="preserve">
+    <value>Haz clic en el botón de abajo para iniciar sesión en tu cuenta.</value>
+  </data>
+  <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="Todo_Title" xml:space="preserve">
+    <value>Tareas pendientes</value>
+  </data>
+  <data name="Todo_PendingBadge" xml:space="preserve">
+    <value>{0} pendiente(s)</value>
+  </data>
+  <data name="Todo_Profile_Title" xml:space="preserve">
+    <value>Completa tu perfil</value>
+  </data>
+  <data name="Todo_Profile_Done" xml:space="preserve">
+    <value>Tu perfil está completo.</value>
+  </data>
+  <data name="Todo_Profile_Pending" xml:space="preserve">
+    <value>Añade tu información para que la comunidad pueda conocerte.</value>
+  </data>
+  <data name="Todo_Profile_Action" xml:space="preserve">
+    <value>Editar perfil</value>
+  </data>
+  <data name="Todo_Consents_Title" xml:space="preserve">
+    <value>Aceptar acuerdos</value>
+  </data>
+  <data name="Todo_Consents_Done" xml:space="preserve">
+    <value>Todos los acuerdos están al día.</value>
+  </data>
+  <data name="Todo_Consents_Pending" xml:space="preserve">
+    <value>{0} de {1} documentos necesitan tu consentimiento.</value>
+  </data>
+  <data name="Todo_Consents_Action" xml:space="preserve">
+    <value>Revisar acuerdos</value>
+  </data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
+    <value>Revisión del coordinador</value>
+  </data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
+    <value>Un coordinador ha revisado y aprobado tus documentos.</value>
+  </data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
+    <value>Un coordinador revisará tus documentos una vez que el perfil y los acuerdos estén completos.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve">
+    <value>Configura tus preferencias de turno</value>
+  </data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve">
+    <value>Tus preferencias de turno están configuradas.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve">
+    <value>Completa tu información de turno para que los coordinadores conozcan tus habilidades y preferencias.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve">
+    <value>Completar info de turno</value>
+  </data>
+  <data name="GetInvolved_Title" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="GetInvolved_Intro" xml:space="preserve">
+    <value>El evento funciona con energía humana. Elige turnos que encajen en tu horario — cada hora cuenta.</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
+    <value>Montaje</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
+    <value>Construye el recinto antes de abrir puertas. Trabajo físico, horarios flexibles, ideal para conocer al equipo.</value>
+  </data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve">
+    <value>Evento</value>
+  </data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
+    <value>Mantén todo en marcha durante el evento. Barras, puertas, seguridad, arte — hay algo para todos.</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
+    <value>Desmontaje</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
+    <value>Desmonta todo y no dejes rastro. Trabajo gratificante, normalmente de menor duración.</value>
+  </data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
+    <value>Turnos que necesitan humans ahora</value>
+  </data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
+    <value>Ver todos los turnos</value>
+  </data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve">
+    <value>Mis turnos</value>
+  </data>
+  <data name="Unsub_Title" xml:space="preserve">
+    <value>Darse de baja de correos</value>
+  </data>
+  <data name="Unsub_Heading" xml:space="preserve">
+    <value>¿Darse de baja de correos de {0}?</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_Greeting" xml:space="preserve">
+    <value>Hola {0},</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Unsub_ConfirmMessage" xml:space="preserve">
+    <value>Si confirmas, dejarás de recibir correos de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_ConfirmButton" xml:space="preserve">
+    <value>Confirmar baja</value>
+  </data>
+  <data name="Unsub_DoneTitle" xml:space="preserve">
+    <value>Te has dado de baja</value>
+  </data>
+  <data name="Unsub_DoneMessage" xml:space="preserve">
+    <value>Ya no recibirás correos de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_DoneManage" xml:space="preserve">
+    <value>Puedes gestionar tus preferencias de comunicación desde tus</value>
+  </data>
+  <data name="Unsub_DoneManageLink" xml:space="preserve">
+    <value>preferencias de comunicación</value>
+  </data>
+  <data name="Unsub_BackHome" xml:space="preserve">
+    <value>Volver al inicio</value>
+  </data>
+  <data name="Unsub_ExpiredTitle" xml:space="preserve">
+    <value>Enlace de baja caducado</value>
+  </data>
+  <data name="Unsub_ExpiredHeading" xml:space="preserve">
+    <value>Este enlace de baja ha caducado</value>
+  </data>
+  <data name="Unsub_ExpiredMessage" xml:space="preserve">
+    <value>Usa el enlace de un correo más reciente, o</value>
+  </data>
+  <data name="Unsub_ExpiredSignIn" xml:space="preserve">
+    <value>inicia sesión para gestionar tus preferencias de comunicación</value>
+  </data>
+  <data name="CommPrefs_Title" xml:space="preserve">
+    <value>Preferencias de comunicación</value>
+  </data>
+  <data name="CommPrefs_Description" xml:space="preserve">
+    <value>Elige qué comunicaciones recibes y cómo.</value>
+  </data>
+  <data name="CommPrefs_Category" xml:space="preserve">
+    <value>Categoría</value>
+  </data>
+  <data name="CommPrefs_Email" xml:space="preserve">
+    <value>Correo</value>
+  </data>
+  <data name="CommPrefs_Alert" xml:space="preserve">
+    <value>Alerta</value>
+  </data>
+  <data name="CommPrefs_BackToProfile" xml:space="preserve">
+    <value>Volver al perfil</value>
+  </data>
+  <data name="CommPrefs_BackToDashboard" xml:space="preserve">
+    <value>Volver al panel</value>
+  </data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve">
+    <value>Has hecho clic en un enlace para darte de baja de los correos de {0}.</value>
+  </data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve">
+    <value>Date de baja con un solo clic, o ajusta los detalles en la matriz de abajo.</value>
+  </data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve">
+    <value>Darse de baja de {0}</value>
+  </data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve">
+    <value>Te has dado de baja. Puedes volver a activar cualquier categoría abajo.</value>
+  </data>
+  <data name="CommPrefs_UpdateSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="CommPrefs_UpdatedAt" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Emails_Header_Email" xml:space="preserve">
+    <value>Correo</value>
+  </data>
+  <data name="Emails_Header_Status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="Emails_Header_Notifications" xml:space="preserve">
+    <value>Notificaciones</value>
+  </data>
+  <data name="Emails_Header_Visibility" xml:space="preserve">
+    <value>Visibilidad del perfil</value>
+  </data>
+  <data name="Emails_MergePending" xml:space="preserve">
+    <value>Fusión pendiente</value>
+  </data>
+  <data name="Emails_Verified" xml:space="preserve">
+    <value>Verificado</value>
+  </data>
+  <data name="Emails_StatusPending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="Emails_Unverified" xml:space="preserve">
+    <value>No verificado</value>
+  </data>
+  <data name="Emails_NotifActive" xml:space="preserve">
+    <value>Activo</value>
+  </data>
+  <data name="Emails_SetAsTarget" xml:space="preserve">
+    <value>Establecer como destino</value>
+  </data>
+  <data name="Emails_VerifyFirst" xml:space="preserve">
+    <value>Verifica primero</value>
+  </data>
+  <data name="Emails_Visibility_Hidden" xml:space="preserve">
+    <value>Oculto</value>
+  </data>
+  <data name="Emails_Visibility_AllHumans" xml:space="preserve">
+    <value>Todos los humans</value>
+  </data>
+  <data name="Emails_Visibility_MyTeams" xml:space="preserve">
+    <value>Mis equipos</value>
+  </data>
+  <data name="Emails_Visibility_CoordinatorsBoard" xml:space="preserve">
+    <value>Coordinadores + Junta</value>
+  </data>
+  <data name="Emails_Visibility_BoardOnly" xml:space="preserve">
+    <value>Solo junta</value>
+  </data>
+  <data name="Emails_ConfirmRemove" xml:space="preserve">
+    <value>¿Seguro que quieres eliminar este correo?</value>
+  </data>
+  <data name="Emails_GoogleTitle" xml:space="preserve">
+    <value>Correo de servicios de Google</value>
+  </data>
+  <data name="Emails_GoogleDescription" xml:space="preserve">
+    <value>Este correo se usa para acceder a Grupos de Google y unidades compartidas.</value>
+  </data>
+  <data name="Emails_GoogleAutoNobodies" xml:space="preserve">
+    <value>Tu correo @nobodies.team se usa automáticamente.</value>
+  </data>
+  <data name="Emails_GoogleRejected" xml:space="preserve">
+    <value>La sincronización de Google falló. El correo actual fue rechazado por Google. Selecciona otro correo para reintentar.</value>
+  </data>
+  <data name="Emails_GoogleValid" xml:space="preserve">
+    <value>La sincronización de Google funciona con el correo actual.</value>
+  </data>
+  <data name="Emails_AutoSelected" xml:space="preserve">
+    <value>Seleccionado automáticamente</value>
+  </data>
+  <data name="Emails_GoogleRejectedBadge" xml:space="preserve">
+    <value>Rechazado</value>
+  </data>
+  <data name="Emails_UseThis" xml:space="preserve">
+    <value>Usar este</value>
+  </data>
+  <data name="Shifts_All" xml:space="preserve">
+    <value>Todos</value>
+  </data>
+  <data name="Shifts_SetUp" xml:space="preserve">
+    <value>Montaje</value>
+  </data>
+  <data name="Shifts_Event" xml:space="preserve">
+    <value>Evento</value>
+  </data>
+  <data name="Shifts_Strike" xml:space="preserve">
+    <value>Desmontaje</value>
+  </data>
+  <data name="Shifts_NoShiftsAvailable" xml:space="preserve">
+    <value>Aún no hay turnos disponibles.</value>
+  </data>
+  <data name="Shifts_AllPhases" xml:space="preserve">
+    <value>Todas las fases</value>
+  </data>
+  <data name="Nav_Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Nav_Staff" xml:space="preserve">
+    <value>Equipo</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Ayuda</value>
+  </data>
+  <data name="ProfileCard_Suspended" xml:space="preserve">
+    <value>Suspendido</value>
+  </data>
+  <data name="ProfileCard_PendingBadge" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="ProfileCard_Teams" xml:space="preserve">
+    <value>Equipos:</value>
+  </data>
+  <data name="ProfileCard_Joined" xml:space="preserve">
+    <value>Se unió en {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+  <data name="ProfileCard_LastLogin" xml:space="preserve">
+    <value>Último acceso {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Turnos</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} plazas ocupadas</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans inscritos</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} pendientes</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Aún no hay turnos configurados.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Incluye turnos de {0} subequipo(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Gestionar turnos</value>
+  </data>
+  <data name="Medical_Badge" xml:space="preserve">
+    <value>Médico</value>
+  </data>
+  <data name="Privacy_Lead" xml:space="preserve">
+    <value>Humans gestiona la membresía de Nobodies Collective y procesa datos personales conforme al RGPD y la ley española de protección de datos (LOPDGDD).</value>
+  </data>
+  <data name="Privacy_DataControllerTitle" xml:space="preserve">
+    <value>Responsable del tratamiento</value>
+  </data>
+  <data name="Privacy_DataControllerBody" xml:space="preserve">
+    <value>Una asociación sin ánimo de lucro española registrada en Andalucía.</value>
+  </data>
+  <data name="Privacy_DataControllerDPO" xml:space="preserve">
+    <value>Para consultas sobre protección de datos, contacta con nuestro Delegado de Protección de Datos en:</value>
+  </data>
+  <data name="Privacy_DataWeCollectTitle" xml:space="preserve">
+    <value>Datos que recopilamos</value>
+  </data>
+  <data name="Privacy_DataWeCollectIntro" xml:space="preserve">
+    <value>Recopilamos y procesamos las siguientes categorías de datos personales:</value>
+  </data>
+  <data name="Privacy_Collect_Identity" xml:space="preserve">
+    <value>Nombre, correo electrónico (de la autenticación de Google), nombre para mostrar</value>
+  </data>
+  <data name="Privacy_Collect_Contact" xml:space="preserve">
+    <value>Teléfono, ciudad, país (opcional)</value>
+  </data>
+  <data name="Privacy_Collect_Profile" xml:space="preserve">
+    <value>Biografía, pertenencia a equipos, asignaciones de roles</value>
+  </data>
+  <data name="Privacy_Collect_Technical" xml:space="preserve">
+    <value>Dirección IP y agente de usuario (para registros de consentimiento)</value>
+  </data>
+  <data name="Privacy_Collect_Application" xml:space="preserve">
+    <value>Solicitudes de membresía y declaraciones de motivación</value>
+  </data>
+  <data name="Privacy_Collect_Consent" xml:space="preserve">
+    <value>Registros de tu aceptación de documentos legales</value>
+  </data>
+  <data name="Privacy_LegalBasisTitle" xml:space="preserve">
+    <value>Base legal del tratamiento</value>
+  </data>
+  <data name="Privacy_LegalBasisIntro" xml:space="preserve">
+    <value>Procesamos tus datos en base a:</value>
+  </data>
+  <data name="Privacy_Legal_Contract" xml:space="preserve">
+    <value>Tratamiento necesario para la gestión de membresía</value>
+  </data>
+  <data name="Privacy_Legal_LegitimateInterest" xml:space="preserve">
+    <value>Mantenimiento de registros organizativos y comunicación</value>
+  </data>
+  <data name="Privacy_Legal_LegalObligation" xml:space="preserve">
+    <value>Cumplimiento de la normativa española sobre asociaciones</value>
+  </data>
+  <data name="Privacy_Legal_Consent" xml:space="preserve">
+    <value>Para datos opcionales que elijas proporcionar</value>
+  </data>
+  <data name="Privacy_HowWeUseTitle" xml:space="preserve">
+    <value>Cómo usamos tus datos</value>
+  </data>
+  <data name="Privacy_Use_Membership" xml:space="preserve">
+    <value>Para gestionar tu membresía y participación en equipos</value>
+  </data>
+  <data name="Privacy_Use_Communicate" xml:space="preserve">
+    <value>Para comunicarnos contigo sobre actividades de la organización</value>
+  </data>
+  <data name="Privacy_Use_LegalCompliance" xml:space="preserve">
+    <value>Para mantener registros de cumplimiento legal</value>
+  </data>
+  <data name="Privacy_Use_Connections" xml:space="preserve">
+    <value>Para facilitar conexiones entre humans (según tu configuración de visibilidad)</value>
+  </data>
+  <data name="Privacy_DataRetentionTitle" xml:space="preserve">
+    <value>Retención de datos</value>
+  </data>
+  <data name="Privacy_DataRetentionIntro" xml:space="preserve">
+    <value>Conservamos tus datos según las siguientes políticas:</value>
+  </data>
+  <data name="Privacy_Retention_Active" xml:space="preserve">
+    <value>Datos conservados mientras tu cuenta esté activa</value>
+  </data>
+  <data name="Privacy_Retention_Inactive" xml:space="preserve">
+    <value>Datos conservados hasta 7 años por cumplimiento legal</value>
+  </data>
+  <data name="Privacy_Retention_Consent" xml:space="preserve">
+    <value>Conservados indefinidamente según lo requiere el RGPD</value>
+  </data>
+  <data name="Privacy_Retention_Deleted" xml:space="preserve">
+    <value>Anonimizados después de un periodo de gracia de 30 días</value>
+  </data>
+  <data name="Privacy_YourRightsTitle" xml:space="preserve">
+    <value>Tus derechos</value>
+  </data>
+  <data name="Privacy_YourRightsIntro" xml:space="preserve">
+    <value>Según el RGPD, tienes los siguientes derechos:</value>
+  </data>
+  <data name="Privacy_Rights_Access" xml:space="preserve">
+    <value>Solicitar una copia de tus datos personales</value>
+  </data>
+  <data name="Privacy_Rights_Rectification" xml:space="preserve">
+    <value>Solicitar la corrección de datos inexactos</value>
+  </data>
+  <data name="Privacy_Rights_Erasure" xml:space="preserve">
+    <value>Solicitar la eliminación de tus datos ("derecho al olvido")</value>
+  </data>
+  <data name="Privacy_Rights_Portability" xml:space="preserve">
+    <value>Recibir tus datos en formato legible por máquina</value>
+  </data>
+  <data name="Privacy_Rights_Restriction" xml:space="preserve">
+    <value>Solicitar la limitación del tratamiento</value>
+  </data>
+  <data name="Privacy_Rights_Objection" xml:space="preserve">
+    <value>Oponerte a ciertos tipos de tratamiento</value>
+  </data>
+  <data name="Privacy_YourRightsExercise" xml:space="preserve">
+    <value>Para ejercer estos derechos, visita tu configuración de {0} o contáctanos en {1}.</value>
+    <comment>{0} = Privacy &amp; Data link, {1} = DPO email</comment>
+  </data>
+  <data name="Privacy_PrivacyAndData" xml:space="preserve">
+    <value>Privacidad y datos</value>
+  </data>
+  <data name="Privacy_CookiesTitle" xml:space="preserve">
+    <value>Cookies</value>
+  </data>
+  <data name="Privacy_CookiesIntro" xml:space="preserve">
+    <value>Este sitio solo usa cookies esenciales necesarias para:</value>
+  </data>
+  <data name="Privacy_Cookies_Auth" xml:space="preserve">
+    <value>Autenticación de usuario y gestión de sesiones</value>
+  </data>
+  <data name="Privacy_Cookies_Antiforgery" xml:space="preserve">
+    <value>Tokens anti-falsificación para seguridad de formularios</value>
+  </data>
+  <data name="Privacy_Cookies_Consent" xml:space="preserve">
+    <value>Preferencia de consentimiento de cookies</value>
+  </data>
+  <data name="Privacy_CookiesNoTracking" xml:space="preserve">
+    <value>No usamos cookies de análisis, publicidad ni seguimiento de terceros.</value>
+  </data>
+  <data name="Privacy_DataSecurityTitle" xml:space="preserve">
+    <value>Seguridad de datos</value>
+  </data>
+  <data name="Privacy_DataSecurityIntro" xml:space="preserve">
+    <value>Implementamos medidas técnicas y organizativas apropiadas para proteger tus datos, incluyendo:</value>
+  </data>
+  <data name="Privacy_Security_Encryption" xml:space="preserve">
+    <value>Cifrado en tránsito (HTTPS)</value>
+  </data>
+  <data name="Privacy_Security_OAuth" xml:space="preserve">
+    <value>Autenticación segura vía Google OAuth</value>
+  </data>
+  <data name="Privacy_Security_AccessControls" xml:space="preserve">
+    <value>Controles de acceso y registro de auditoría</value>
+  </data>
+  <data name="Privacy_Security_Reviews" xml:space="preserve">
+    <value>Revisiones de seguridad periódicas</value>
+  </data>
+  <data name="Privacy_ThirdPartyTitle" xml:space="preserve">
+    <value>Servicios de terceros</value>
+  </data>
+  <data name="Privacy_ThirdPartyIntro" xml:space="preserve">
+    <value>Usamos los siguientes servicios de terceros:</value>
+  </data>
+  <data name="Privacy_ThirdParty_GoogleOAuth" xml:space="preserve">
+    <value>Para autenticación segura</value>
+  </data>
+  <data name="Privacy_ThirdParty_GoogleWorkspace" xml:space="preserve">
+    <value>Para provisión de recursos de equipo (unidades compartidas, grupos)</value>
+  </data>
+  <data name="Privacy_ChangesTitle" xml:space="preserve">
+    <value>Cambios a esta política</value>
+  </data>
+  <data name="Privacy_ChangesBody" xml:space="preserve">
+    <value>Podemos actualizar esta política de privacidad periódicamente. Notificaremos a los humans activos sobre cambios significativos por correo.</value>
+  </data>
+  <data name="Privacy_ContactTitle" xml:space="preserve">
+    <value>Contacto y reclamaciones</value>
+  </data>
+  <data name="Privacy_ContactBody" xml:space="preserve">
+    <value>Para preguntas o dudas sobre esta política, contacta con nuestro Delegado de Protección de Datos en {0}.</value>
+    <comment>{0} = DPO email</comment>
+  </data>
+  <data name="Privacy_ComplaintBody" xml:space="preserve">
+    <value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value>
+    <comment>{0} = AEPD URL</comment>
+  </data>
+  <data name="Common_NotAvailable" xml:space="preserve">
+    <value>N/D</value>
+  </data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve">
+    <value>Gestionando correos de otro usuario</value>
+  </data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve">
+    <value>Gestionando correos de {0}</value>
+    <comment>{0} = target user display name</comment>
+  </data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve">
+    <value>otro usuario</value>
+  </data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve">
+    <value>otro usuario</value>
+  </data>
+  <data name="EmailGrid_Email" xml:space="preserve">
+    <value>Correo</value>
+  </data>
+  <data name="EmailGrid_Status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="EmailGrid_Primary" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="EmailGrid_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
+    <value>Correo usado para la sincronización con Google Workspace.</value>
+  </data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
+    <value>Problema de sincronización con Google</value>
+  </data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve">
+    <value>Google correcto</value>
+  </data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
+    <value>Reintentar</value>
+  </data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
+    <value>Principal y Google los gestiona Google Workspace mientras tu dirección @nobodies.team esté presente.</value>
+  </data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve">
+    <value>Verificación de correo pendiente</value>
+  </data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
+    <value>Revisa tu bandeja de entrada y haz clic en el enlace del correo de verificación para confirmar tu dirección.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Sincronización de Google pausada para esta dirección.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google rechazó el correo de Google seleccionado al intentar conceder acceso a Drive o añadirte a un grupo — normalmente porque la dirección no está vinculada a una cuenta de Google. Los nuevos intentos de sincronización se suprimen hasta que un administrador lo resuelva. Selecciona otro correo respaldado por Google y pide a un administrador que borre el estado rechazado.</value>
+  </data>
+  <data name="EmailGrid_Visibility" xml:space="preserve">
+    <value>Visibilidad</value>
+  </data>
+  <data name="EmailGrid_Actions" xml:space="preserve">
+    <value>Acciones</value>
+  </data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve">
+    <value>Fusión pendiente</value>
+  </data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve">
+    <value>Verificado</value>
+  </data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve">
+    <value>Vincular cuenta de Google</value>
+  </data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve">
+    <value>Inicia sesión con Google para vincular una cuenta de Google adicional a tu perfil.</value>
+  </data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve">
+    <value>Volver al detalle del usuario</value>
+  </data>
+  <data name="EmailGrid_Unlink" xml:space="preserve">
+    <value>Desvincular</value>
+  </data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve">
+    <value>¿Desvincular esta cuenta de Google?</value>
+  </data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve">
+    <value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value>
+  </data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve">
+    <value>No se pudo desvincular: la fila es desconocida o no tiene proveedor de inicio de sesión.</value>
+  </data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve">
+    <value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value>
+  </data>
+  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve">
+    <value>Google identity flag cleared from that row.</value>
+  </data>
+  <data name="EmailGrid_SetPrimary" xml:space="preserve">
+    <value>Set primary</value>
+  </data>
+  <data name="EmailGrid_SetGoogle" xml:space="preserve">
+    <value>Set Google</value>
+  </data>
+  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve">
+    <value>Could not clear Google flag — the row is unknown or not currently flagged.</value>
+  </data>
+  <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve">
+    <value>Primary flag cleared from that row.</value>
+  </data>
+  <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve">
+    <value>Could not clear primary flag — the row is unknown or not currently flagged.</value>
+  </data>
+  <data name="EmailGrid_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve">
+    <value>Clear the Google identity flag from this email row?</value>
+  </data>
+  <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve">
+    <value>Clear the primary flag from this email row?</value>
+  </data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve">
+    <value>Proveedor de inicio de sesión desvinculado.</value>
+  </data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
+    <value>Este correo está vinculado a un proveedor de inicio de sesión. Usa Desvincular en su lugar.</value>
+  </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Correo principal: establece otro como principal antes de eliminar este.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Vinculado a tu entrada del evento: no se puede eliminar.</value>
+  </data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
+    <value>Correo de verificación enviado al usuario.</value>
+  </data>
+  <data name="EmailGrid_AdminVerify" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve">
+    <value>Manually mark this email verified without the user clicking the link?</value>
+  </data>
+  <data name="EmailGrid_AdminVerifySuccess" xml:space="preserve">
+    <value>Email manually verified.</value>
+  </data>
+  <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
+    <value>This address is already verified on another account. A merge request was created instead of verifying.</value>
+  </data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve">
+    <value>No hemos podido vincular esta cuenta de Google. Inténtalo de nuevo.</value>
+  </data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve">
+    <value>Gestionar correos</value>
+  </data>
+  <data name="Welcome_Title" xml:space="preserve">
+    <value>Bienvenida</value>
+  </data>
+  <data name="Welcome_Heading" xml:space="preserve">
+    <value>Ya estás dentro.</value>
+  </data>
+  <data name="Welcome_Subtitle" xml:space="preserve">
+    <value>Tu entrada para Elsewhere 2026 está confirmada.</value>
+  </data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve">
+    <value>Ahora vamos a hacer que esto pase entre todos.</value>
+  </data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve">
+    <value>Elsewhere no es un festival al que vienes — es uno que ayudas a construir. Cada human elige turnos: montaje antes, operación durante y desmontaje después.</value>
+  </data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve">
+    <value>Para ver los turnos y apuntarte, necesitas una cuenta en Humans. Solo lleva un par de minutos.</value>
+  </data>
+  <data name="Welcome_CTA" xml:space="preserve">
+    <value>Iniciar sesión o crear cuenta</value>
+  </data>
+  <data name="Welcome_Footer" xml:space="preserve">
+    <value>¿Ya tienes cuenta? El mismo botón — inicia sesión y llegarás directamente a los turnos.</value>
+  </data>
+  <data name="Welcome_Contact" xml:space="preserve">
+    <value>¿Preguntas? Escríbenos a</value>
+  </data>
+  <data name="Profile_BuildStrip_Title" xml:space="preserve">
+    <value>Disponibilidad y seguimiento de montaje</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentimientos pendientes</value></data>
+  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registro incompleto</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importar mi foto de Google</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copia la foto de tu cuenta de Google como foto de perfil. Podr&#xE1;s reemplazarla m&#xE1;s tarde subiendo una nueva.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Tu foto de Google se ha importado como foto de perfil.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>No podemos importar una foto de Google: tu cuenta no est&#xE1; vinculada a Google o no se captur&#xF3; un avatar al iniciar sesi&#xF3;n.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Termina de configurar tu perfil primero y luego podr&#xE1;s importar tu foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ya tienes una foto de perfil personalizada. Elim&#xED;nala primero para importar tu foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No pudimos obtener tu foto de Google. Int&#xE9;ntalo m&#xE1;s tarde o sube una directamente.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No se pudo procesar tu foto de Google: formato no admitido o respuesta err&#xF3;nea.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No pudimos importar tu foto de Google: la URL del avatar guardado no parece ser una direcci&#xF3;n de Google. Sube una directamente.</value></data>
+  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Cuéntanos sobre tu alimentación</value></data>
+  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Lo necesitamos para planificar las comidas de la cantina</value></data>
+  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Gracias — ya tenemos lo necesario</value></data>
+  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Rellenar</value></data>
+  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Cuéntanos tus necesidades alimentarias para estar listos cuando te apuntes.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Necesitamos tus datos alimentarios</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás apuntada a un turno largo. La cantina no puede planificar tus comidas hasta que nos digas tus preferencias.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Información alimentaria y médica</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Preferencia alimentaria</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnívoro/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetariano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegano/a</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetariano/a</value></data>
+  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Alergias</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Otra alergia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerancias</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Otra intolerancia — describe cuál</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Solo visible para ti y los No-Info Admins. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Tu información alimentaria y médica se ha guardado.</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Describe la otra alergia.</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Describe la otra intolerancia.</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información alimentaria y médica.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información alimentaria y médica.</value></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Solo visible para ti y los No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Estado de la cuenta</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Tu cuenta ha sido rechazada</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Tu cuenta ha sido eliminada</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Tu cuenta ha sido fusionada</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Tu cuenta no está disponible</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta con un administrador para más información:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referencia:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminación de cuenta pendiente</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Tu cuenta está programada para eliminación</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Se eliminará permanentemente el {0} a menos que la canceles.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Se eliminará permanentemente a menos que la canceles.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancelar solicitud de eliminación</value></data>
+  <data name="About_AdditionalHelp" xml:space="preserve"><value>Con ayuda adicional de</value></data>
+  <data name="About_AdditionalHelpAnd" xml:space="preserve"><value>y</value></data>
+  <data name="About_AnthropicNote" xml:space="preserve"><value>Las respuestas del asistente conversacional las produce la API de Anthropic. No se usan datos para el entrenamiento de modelos, según el DPA de Anthropic.</value></data>
+  <data name="About_Cat_AILLM" xml:space="preserve"><value>IA/LLM</value></data>
+  <data name="About_Cat_BackgroundJobs" xml:space="preserve"><value>Trabajos en segundo plano</value></data>
+  <data name="About_Cat_Calendar" xml:space="preserve"><value>Calendario</value></data>
+  <data name="About_Cat_CSV" xml:space="preserve"><value>CSV</value></data>
+  <data name="About_Cat_Database" xml:space="preserve"><value>Base de datos</value></data>
+  <data name="About_Cat_DateTime" xml:space="preserve"><value>Fecha/Hora</value></data>
+  <data name="About_Cat_Email" xml:space="preserve"><value>Correo electrónico</value></data>
+  <data name="About_Cat_Framework" xml:space="preserve"><value>Framework</value></data>
+  <data name="About_Cat_GitHubAPI" xml:space="preserve"><value>API de GitHub</value></data>
+  <data name="About_Cat_GoogleAPIs" xml:space="preserve"><value>APIs de Google</value></data>
+  <data name="About_Cat_HealthChecks" xml:space="preserve"><value>Comprobaciones de estado</value></data>
+  <data name="About_Cat_ImageProcessing" xml:space="preserve"><value>Procesamiento de imágenes</value></data>
+  <data name="About_Cat_Logging" xml:space="preserve"><value>Registro</value></data>
+  <data name="About_Cat_Markdown" xml:space="preserve"><value>Markdown</value></data>
+  <data name="About_Cat_Observability" xml:space="preserve"><value>Observabilidad</value></data>
+  <data name="About_Cat_Payments" xml:space="preserve"><value>Pagos</value></data>
+  <data name="About_Cat_Resilience" xml:space="preserve"><value>Resiliencia</value></data>
+  <data name="About_Cat_Sanitization" xml:space="preserve"><value>Saneamiento</value></data>
+  <data name="About_Cat_Spreadsheet" xml:space="preserve"><value>Hoja de cálculo</value></data>
+  <data name="About_Cat_StateMachine" xml:space="preserve"><value>Máquina de estados</value></data>
+  <data name="About_Cat_UserAgent" xml:space="preserve"><value>User-Agent</value></data>
+  <data name="About_ColCategory" xml:space="preserve"><value>Categoría</value></data>
+  <data name="About_ColLibrary" xml:space="preserve"><value>Biblioteca</value></data>
+  <data name="About_ColLicense" xml:space="preserve"><value>Licencia</value></data>
+  <data name="About_ColPackage" xml:space="preserve"><value>Paquete</value></data>
+  <data name="About_ColVersion" xml:space="preserve"><value>Versión</value></data>
+  <data name="About_DotNetDesc" xml:space="preserve"><value>ASP.NET Core MVC con vistas Razor, Identity y todo el stack de Microsoft. El armazón que lo mantiene todo unido.</value></data>
+  <data name="About_FrontendHeading" xml:space="preserve"><value>Dependencias de frontend / CDN</value></data>
+  <data name="About_GoogleDesc" xml:space="preserve"><value>Admin Directory, Drive y Groups — aprovisionando Shared Drives, carpetas y listas de correo para que nadie tenga que hacerlo a mano.</value></data>
+  <data name="About_HangfireDesc" xml:space="preserve"><value>Trabajos en segundo plano para sincronización, conciliación y cualquier cosa que no deba bloquear una petición HTTP. Respaldado por PostgreSQL, panel incluido.</value></data>
+  <data name="About_IngredientsHeading" xml:space="preserve"><value>Los ingredientes</value></data>
+  <data name="About_IngredientsIntro" xml:space="preserve"><value>Todo taller necesita sus materiales. Esto es de lo que está hecho Humans:</value></data>
+  <data name="About_Intro" xml:space="preserve"><value>Humans es el sistema de membresía que mantiene en marcha a Nobodies Collective — incorporación de humans, aprovisionamiento de equipos, seguimiento de la gobernanza y toda la fontanería que permite a una asociación sin ánimo de lucro española operar con la memoria organizativa de algo diez veces su tamaño. Construido con esmero, mantenido con tozudez y desplegado con los dedos cruzados.</value></data>
+  <data name="About_License_Apache2" xml:space="preserve"><value>requiere aviso de copyright, copia de la licencia y declaración de cambios si se modifica. Todos los paquetes se usan sin modificar.</value></data>
+  <data name="About_License_BSD2" xml:space="preserve"><value>requiere aviso de copyright en la documentación.</value></data>
+  <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>requiere aviso de copyright; esta página cumple con esa obligación.</value></data>
+  <data name="About_License_ISC" xml:space="preserve"><value>permisiva, funcionalmente equivalente a BSD-2-Clause; requiere aviso de copyright.</value></data>
+  <data name="About_License_LGPL30" xml:space="preserve"><value>la biblioteca debe poder ser reemplazada por el usuario final. Se consume como paquetes NuGet sin modificar (enlazados dinámicamente), cumpliendo las obligaciones de la LGPL.</value></data>
+  <data name="About_License_MIT" xml:space="preserve"><value>requiere aviso de copyright; esta página cumple con esa obligación.</value></data>
+  <data name="About_License_PostgreSQL" xml:space="preserve"><value>permisiva, similar a MIT; requiere aviso de copyright.</value></data>
+  <data name="About_License_SILOFL" xml:space="preserve"><value>libre de usar y redistribuir; las fuentes no pueden venderse por separado.</value></data>
+  <data name="About_LicenseBody" xml:space="preserve"><value>Humans es software libre, publicado bajo la</value></data>
+  <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Resumen de cumplimiento de licencias</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Todas las dependencias de producción usan licencias permisivas o de copyleft débil. No se han encontrado infracciones.</value></data>
+  <data name="About_LicenseExplanation" xml:space="preserve"><value>Puedes usar, estudiar, modificar y redistribuir este software. Si ejecutas una versión modificada y permites que otros interactúen con ella a través de una red, debes poner tu código fuente modificado a disposición bajo la misma licencia.</value></data>
+  <data name="About_LicenseFullText" xml:space="preserve"><value>Texto completo de la licencia:</value></data>
+  <data name="About_LicenseHeading" xml:space="preserve"><value>Licencia</value></data>
+  <data name="About_LicenseSourceCode" xml:space="preserve"><value>Código fuente:</value></data>
+  <data name="About_MadeBy" xml:space="preserve"><value>Hecho por</value></data>
+  <data name="About_MadeByTail" xml:space="preserve"><value>con cariño para la comunidad de Nobodies.</value></data>
+  <data name="About_MailKitDesc" xml:space="preserve"><value>Correo transaccional para notificaciones e incorporación. La única biblioteca que hace que SMTP resulte casi agradable.</value></data>
+  <data name="About_MeetTheStaff" xml:space="preserve"><value>Conoce al equipo</value></data>
+  <data name="About_NeedHelp" xml:space="preserve"><value>¿Necesitas ayuda?</value></data>
+  <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>Paquetes NuGet</value></data>
+  <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Licencias de código abierto</value></data>
+  <data name="About_OpenSourceLicensesIntro" xml:space="preserve"><value>Humans está construido sobre los hombros de proyectos de código abierto. La tabla siguiente enumera cada dependencia de producción, su versión y su licencia.</value></data>
+  <data name="About_OtelDesc" xml:space="preserve"><value>Registro estructurado, trazas distribuidas y métricas de Prometheus. Porque "funciona en mi máquina" no es una estrategia de monitorización.</value></data>
+  <data name="About_PostgresDesc" xml:space="preserve"><value>Datos relacionales con Entity Framework Core y Npgsql. Tipos de NodaTime de arriba abajo — ni un DateTime a la vista.</value></data>
+  <data name="About_Staff_BackToAbout" xml:space="preserve"><value>Volver a Acerca de</value></data>
+  <data name="About_Staff_Empty" xml:space="preserve"><value>No se encontraron titulares de roles activos. El castillo parece estar vacío.</value></data>
+  <data name="About_Staff_Intro" xml:space="preserve"><value>Todo colectivo necesita a quienes lo cuidan. Estos son los humans que ofrecen su tiempo y energía para mantener Nobodies en marcha — desde la gobernanza al soporte técnico, desde la confianza y seguridad hasta la alquimia de las entradas.</value></data>
+  <data name="About_Staff_Title" xml:space="preserve"><value>Los humans detrás del telón</value></data>
+  <data name="About_Title" xml:space="preserve"><value>Acerca de Humans</value></data>
+  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Tu acceso está suspendido hasta que completes los consentimientos legales requeridos.</value></data>
+  <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida por un administrador</value></data>
+  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Revisar los consentimientos requeridos</value></data>
+  <data name="Common_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="Common_Admin" xml:space="preserve"><value>Administrador</value></data>
+  <data name="Common_Amount" xml:space="preserve"><value>Importe</value></data>
+  <data name="Common_Clear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="Common_Created" xml:space="preserve"><value>Creado</value></data>
+  <data name="Common_Date" xml:space="preserve"><value>Fecha</value></data>
+  <data name="Common_DeleteImage" xml:space="preserve"><value>Eliminar imagen</value></data>
+  <data name="Common_Department" xml:space="preserve"><value>Departamento</value></data>
+  <data name="Common_MoveDown" xml:space="preserve"><value>Bajar</value></data>
+  <data name="Common_MoveUp" xml:space="preserve"><value>Subir</value></data>
+  <data name="Common_Other" xml:space="preserve"><value>Otro</value></data>
+  <data name="Common_Preview" xml:space="preserve"><value>Vista previa</value></data>
+  <data name="Common_Remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="Common_Required" xml:space="preserve"><value>(obligatorio)</value></data>
+  <data name="Common_Sender" xml:space="preserve"><value>Remitente</value></data>
+  <data name="Common_Shift" xml:space="preserve"><value>Turno</value></data>
+  <data name="Common_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Common_View" xml:space="preserve"><value>Ver</value></data>
+  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Siempre activo</value></data>
+  <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Etiquetado con {0} pero sin fila correspondiente en AspNetUserLogins — se autocorrige en el próximo inicio de sesión por OAuth.</value></data>
+  <data name="EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Bloqueado por la fila de correo de Workspace</value></data>
+  <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Solo de noche</value></data>
+  <data name="Enum_AdultPlayspacePolicy_No" xml:space="preserve"><value>No</value></data>
+  <data name="Enum_AdultPlayspacePolicy_Yes" xml:space="preserve"><value>Sí</value></data>
+  <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
+  <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Otro</value></data>
+  <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Teléfono</value></data>
+  <data name="Enum_ContactFieldType_Signal" xml:space="preserve"><value>Signal</value></data>
+  <data name="Enum_ContactFieldType_Telegram" xml:space="preserve"><value>Telegram</value></data>
+  <data name="Enum_ContactFieldType_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Todos los humans activos</value></data>
+  <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Solo la Junta</value></data>
+  <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Coordinadores + Junta</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Mis equipos (+ coordinadores y Junta)</value></data>
+  <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
+  <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Suministro propio</value></data>
+  <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Roja</value></data>
+  <data name="Enum_ElectricalGrid_Unknown" xml:space="preserve"><value>Desconocida</value></data>
+  <data name="Enum_ElectricalGrid_Yellow" xml:space="preserve"><value>Amarilla</value></data>
+  <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Fallido</value></data>
+  <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>En cola</value></data>
+  <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Enviado</value></data>
+  <data name="Enum_KidsVisitingPolicy_DaytimeOnly" xml:space="preserve"><value>Solo de día</value></data>
+  <data name="Enum_KidsVisitingPolicy_No" xml:space="preserve"><value>No</value></data>
+  <data name="Enum_KidsVisitingPolicy_Yes" xml:space="preserve"><value>Sí</value></data>
+  <data name="Enum_LanguageProficiency_Basic" xml:space="preserve"><value>Básico</value></data>
+  <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversacional</value></data>
+  <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluido</value></data>
+  <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Nativo</value></data>
+  <data name="Enum_PerformanceSpaceStatus_No" xml:space="preserve"><value>No</value></data>
+  <data name="Enum_PerformanceSpaceStatus_WorkingOnIt" xml:space="preserve"><value>En ello</value></data>
+  <data name="Enum_PerformanceSpaceStatus_Yes" xml:space="preserve"><value>Sí</value></data>
+  <data name="Enum_RolePeriod_Build" xml:space="preserve"><value>Montaje</value></data>
+  <data name="Enum_RolePeriod_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Enum_RolePeriod_Strike" xml:space="preserve"><value>Desmontaje</value></data>
+  <data name="Enum_RolePeriod_YearRound" xml:space="preserve"><value>Todo el año</value></data>
+  <data name="Enum_SlotPriority_Critical" xml:space="preserve"><value>Crítica</value></data>
+  <data name="Enum_SlotPriority_Important" xml:space="preserve"><value>Importante</value></data>
+  <data name="Enum_SlotPriority_NiceToHave" xml:space="preserve"><value>Deseable</value></data>
+  <data name="Enum_SlotPriority_None" xml:space="preserve"><value>Ninguna</value></data>
+  <data name="Enum_SoundZone_Blue" xml:space="preserve"><value>Azul</value></data>
+  <data name="Enum_SoundZone_Green" xml:space="preserve"><value>Verde</value></data>
+  <data name="Enum_SoundZone_Orange" xml:space="preserve"><value>Naranja</value></data>
+  <data name="Enum_SoundZone_Red" xml:space="preserve"><value>Roja</value></data>
+  <data name="Enum_SoundZone_Surprise" xml:space="preserve"><value>Sorpresa</value></data>
+  <data name="Enum_SoundZone_Yellow" xml:space="preserve"><value>Amarilla</value></data>
+  <data name="Enum_SpaceSize_Sqm1000" xml:space="preserve"><value>1000 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1200" xml:space="preserve"><value>1200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm150" xml:space="preserve"><value>150 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1500" xml:space="preserve"><value>1500 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1800" xml:space="preserve"><value>1800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2200" xml:space="preserve"><value>2200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2800" xml:space="preserve"><value>2800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm300" xml:space="preserve"><value>300 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
+  <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Quizá</value></data>
+  <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>No</value></data>
+  <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Sí</value></data>
+  <data name="LinkedAccounts_Account" xml:space="preserve"><value>Cuenta</value></data>
+  <data name="LinkedAccounts_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="LinkedAccounts_ConfirmUnlink" xml:space="preserve"><value>¿Desvincular esta cuenta? Ya no podrás iniciar sesión con ella.</value></data>
+  <data name="LinkedAccounts_Description" xml:space="preserve"><value>Proveedores OAuth vinculados actualmente a tu cuenta. Puedes usar cualquiera de ellos para iniciar sesión.</value></data>
+  <data name="LinkedAccounts_Empty" xml:space="preserve"><value>No hay cuentas OAuth vinculadas.</value></data>
+  <data name="LinkedAccounts_LastSignInMethod" xml:space="preserve"><value>Único método de inicio de sesión — no se puede desvincular.</value></data>
+  <data name="LinkedAccounts_LinkedOn" xml:space="preserve"><value>Vinculada el</value></data>
+  <data name="LinkedAccounts_Provider" xml:space="preserve"><value>Proveedor</value></data>
+  <data name="LinkedAccounts_Title" xml:space="preserve"><value>Cuentas vinculadas</value></data>
+  <data name="LinkedAccounts_UnlinkBlockedLastSignInMethod" xml:space="preserve"><value>No se puede desvincular — este es tu único método de inicio de sesión restante.</value></data>
+  <data name="MarkdownHelp_Bold" xml:space="preserve"><value>negrita</value></data>
+  <data name="MarkdownHelp_ColYouGet" xml:space="preserve"><value>Obtienes</value></data>
+  <data name="MarkdownHelp_ColYouType" xml:space="preserve"><value>Escribes</value></data>
+  <data name="MarkdownHelp_EmbeddedImage" xml:space="preserve"><value>imagen incrustada</value></data>
+  <data name="MarkdownHelp_First" xml:space="preserve"><value>primero</value></data>
+  <data name="MarkdownHelp_Heading1" xml:space="preserve"><value>Encabezado 1</value></data>
+  <data name="MarkdownHelp_Heading2" xml:space="preserve"><value>Encabezado 2</value></data>
+  <data name="MarkdownHelp_InlineCode" xml:space="preserve"><value>código en línea</value></data>
+  <data name="MarkdownHelp_Intro" xml:space="preserve"><value>Markdown es una forma sencilla de dar formato al texto. Escribe la sintaxis de la izquierda y se mostrará como aparece a la derecha.</value></data>
+  <data name="MarkdownHelp_Italic" xml:space="preserve"><value>cursiva</value></data>
+  <data name="MarkdownHelp_ItemOne" xml:space="preserve"><value>elemento uno</value></data>
+  <data name="MarkdownHelp_ItemTwo" xml:space="preserve"><value>elemento dos</value></data>
+  <data name="MarkdownHelp_LinkText" xml:space="preserve"><value>texto del enlace</value></data>
+  <data name="MarkdownHelp_QuoteText" xml:space="preserve"><value>texto de cita</value></data>
+  <data name="MarkdownHelp_Second" xml:space="preserve"><value>segundo</value></data>
+  <data name="MarkdownHelp_Strikethrough" xml:space="preserve"><value>tachado</value></data>
+  <data name="MarkdownHelp_TableAdmin" xml:space="preserve"><value>Administrador</value></data>
+  <data name="MarkdownHelp_TableHuman" xml:space="preserve"><value>Human</value></data>
+  <data name="MarkdownHelp_TableName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="MarkdownHelp_TableRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="MarkdownHelp_TablesHeading" xml:space="preserve"><value>Tablas</value></data>
+  <data name="MarkdownHelp_TaskDone" xml:space="preserve"><value>Hecho</value></data>
+  <data name="MarkdownHelp_TaskListsHeading" xml:space="preserve"><value>Listas de tareas</value></data>
+  <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Por hacer</value></data>
+  <data name="MarkdownHelp_Title" xml:space="preserve"><value>Referencia rápida de Markdown</value></data>
+  <data name="Outbox_AdminTitle" xml:space="preserve"><value>Correos</value></data>
+  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Volver a Administración</value></data>
+  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Volver al perfil</value></data>
+  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>Correos que el sistema ha enviado a este human.</value></data>
+  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>Correos que el sistema te ha enviado (en los últimos 150 días).</value></data>
+  <data name="Outbox_Empty" xml:space="preserve"><value>No hay correos registrados.</value></data>
+  <data name="Outbox_Subject" xml:space="preserve"><value>Asunto</value></data>
+  <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Política de Privacidad de Google</value></data>
+  <data name="Profile_Assigned" xml:space="preserve"><value>Asignado</value></data>
+  <data name="Profile_Campaign" xml:space="preserve"><value>Campaña</value></data>
+  <data name="Profile_Code" xml:space="preserve"><value>Código</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Lácteos</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Huevo</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Cacahuete</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sésamo</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Marisco</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soja</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Frutos secos de árbol</value></data>
+  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Trigo/Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamina</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>
+  <data name="Profile_MarkedAt" xml:space="preserve"><value>Marcado el</value></data>
+  <data name="Profile_MarkedBy" xml:space="preserve"><value>Marcado por</value></data>
+  <data name="Profile_MyCodes" xml:space="preserve"><value>Mis códigos</value></data>
+  <data name="Profile_MyEmails" xml:space="preserve"><value>Mis correos</value></data>
+  <data name="Profile_NoSentMessages" xml:space="preserve"><value>No hay mensajes en la plataforma registrados.</value></data>
+  <data name="Profile_NoShowHistory" xml:space="preserve"><value>Historial de ausencias ({0})</value></data>
+  <data name="Profile_OnsiteSince" xml:space="preserve"><value>En el sitio desde {0}</value></data>
+  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in en la puerta realizado</value></data>
+  <data name="Profile_Redeemed" xml:space="preserve"><value>Canjeado</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Mensajes enviados</value></data>
+  <data name="Profile_ShiftInfo" xml:space="preserve"><value>Información del turno</value></data>
+  <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Empieza a escribir tu ciudad…</value></data>
+  <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="ProfileEdit_ContactValue" xml:space="preserve"><value>Valor</value></data>
+  <data name="ProfileEdit_ContactValuePlaceholder" xml:space="preserve"><value>Introduce la información de contacto</value></data>
+  <data name="ProfileEdit_ContactVisibility" xml:space="preserve"><value>Visibilidad</value></data>
+  <data name="ProfileEdit_CustomLabelPlaceholder" xml:space="preserve"><value>p. ej., Discord</value></data>
+  <data name="ProfileEdit_Description" xml:space="preserve"><value>Descripción</value></data>
+  <data name="ProfileEdit_DescriptionPlaceholder" xml:space="preserve"><value>p. ej., Líder de puerta</value></data>
+  <data name="ProfileEdit_EventName" xml:space="preserve"><value>Nombre del evento</value></data>
+  <data name="ProfileEdit_EventNamePlaceholder" xml:space="preserve"><value>p. ej., Burning Man 2024</value></data>
+  <data name="ProfileEdit_LanguageLabel" xml:space="preserve"><value>Idioma</value></data>
+  <data name="ProfileEdit_ProficiencyLabel" xml:space="preserve"><value>Nivel</value></data>
+  <data name="ProfileEdit_RelationshipPlaceholder" xml:space="preserve"><value>p. ej., pareja, madre/padre</value></data>
+  <data name="ProfileEdit_RemoveContactField" xml:space="preserve"><value>Quitar este campo de contacto</value></data>
+  <data name="ProfileEdit_RemoveEntry" xml:space="preserve"><value>Quitar esta entrada</value></data>
+  <data name="ProfileEdit_RemoveLanguage" xml:space="preserve"><value>Quitar este idioma</value></data>
+  <data name="ProfileEdit_SelectLanguage" xml:space="preserve"><value>— Selecciona idioma —</value></data>
+  <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nombre legal</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Apellidos legales</value></data>
+</root>

@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Expenses.Domain;
@@ -21,6 +20,7 @@ internal sealed class ExpenseReportConfiguration : IEntityTypeConfiguration<Expe
         b.Property(x => x.PayeeName).HasMaxLength(200).IsRequired();
         b.Property(x => x.PayeeIban).HasMaxLength(34).IsRequired();
         b.Property(x => x.Total).HasColumnType("decimal(12,2)");
+        b.Property(x => x.MaxAmount).HasColumnType("decimal(12,2)");
         b.Property(x => x.LastRejectionReason).HasMaxLength(1000);
         b.Property(x => x.HoldedDocId).HasMaxLength(64);
         b.Property(x => x.HoldedContactId).HasMaxLength(64);

@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using NodaTime;
-using Humans.Domain.Attributes;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 
@@ -28,7 +27,6 @@ namespace Humans.Consent.Data;
 /// <see cref="LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
-[Section("Legal")]
 internal interface ILegalDocumentRepository : IRepository
 {
     // ==========================================================================

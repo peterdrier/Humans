@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Store.Controllers;
 

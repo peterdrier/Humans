@@ -1,13 +1,15 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Ticket/**
-  src/Humans.Web/Controllers/TicketController.cs
-  src/Humans.Application/Services/Tickets/**
-  src/Humans.Domain/Entities/TicketAttendee.cs
-  src/Humans.Domain/Entities/TicketOrder.cs
-  src/Humans.Domain/Entities/TicketSyncState.cs
+  src/Sections/Humans.Tickets/Views/Ticket/**
+  src/Sections/Humans.Tickets/Controllers/TicketController.cs
+  src/Sections/Humans.Tickets/Services/**
+  src/Sections/Humans.Tickets/Domain/TicketAttendee.cs
+  src/Sections/Humans.Tickets/Domain/TicketOrder.cs
+  src/Sections/Humans.Tickets/Domain/TicketSyncState.cs
   src/Sections/Humans.Budget/Domain/TicketingProjection.cs
-  src/Humans.Domain/Constants/TicketConstants.cs
-  src/Humans.Infrastructure/Data/Configurations/Tickets/**
+  src/Sections/Humans.Tickets.Contracts/TicketConstants.cs
+  src/Sections/Humans.Tickets/Data/Configurations/**
+  src/Sections/Humans.TicketTailor/**
+  src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
 -->
 <!-- freshness:flag-on-change
   Ticket dashboard, sales/attendees/orders views, sync triggering, codes/redemption, gate list, and Volunteer Ticket Coverage. Review when ticket views, sync service, or ticket entities change.
@@ -76,7 +78,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 `/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaigns/Admin/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
 
-`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items.
+`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items. A By Ticket Type card breaks down tickets sold and face value (the listed price, before discounts and donations) per ticket type.
 
 ### Who hasn't bought yet
 
@@ -84,7 +86,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Backfilling participation
 
-When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year and writes through `IUserService.BackfillParticipationsAsync`. Ticket Admin and Board do not have access to this page.
+When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year. Ticket Admin and Board do not have access to this page.
 
 ### Process ticket transfers
 

@@ -2,6 +2,14 @@
 
 **Pilot section: Store.** Design only — no code changed by this doc.
 
+> **The `[assembly: Section("…")]` marker this doc designs no longer exists**
+> (nobodies-collective/Humans#1064). A section is an assembly declaring
+> `<AssemblyName>.Section : ISection`, and its name is the assembly name minus `Humans.` and any
+> `.Contracts` suffix — so §1, §6, §10 and §12's marker mechanics are history. Everything else
+> here stands. The live version is [`docs/sections/G5-SECTION-TEMPLATE.md`](../../sections/G5-SECTION-TEMPLATE.md)
+> for the recipe and [`docs/architecture/code-analysis.md`](../../architecture/code-analysis.md)
+> for the analyzers.
+
 #866's *policy* is settled and is not revisited here: `internal` by default with the public
 surface confined to `Contracts/`; cross-section deps are assembly references and cycles are
 compile errors; `<Section>.Contracts` carved only when the build forces it; primitives-only
@@ -23,6 +31,13 @@ first real test. Where this doc and `src/Sections/Humans.Store/` disagree, the c
 [`docs/sections/G5-SECTION-TEMPLATE.md`](../../sections/G5-SECTION-TEMPLATE.md), after five
 sections had executed it. The template is the living recipe and the authority on mechanics; this
 doc is the record and the rationale.
+
+**End-state design amended 2026-08-14** by
+[`2026-08-14-g5-endstate-design.md`](2026-08-14-g5-endstate-design.md): the `Platform/`
+tier is dropped, `Humans.UI` is retired, Base = `Humans.Interfaces` renamed (an RCL, may
+reference `Users.Contracts` only), every `.Contracts` leaf references nothing, "G5
+complete" is defined by graph predicates, and contracts fold-back happens at G6. Where
+that doc and this one disagree on the end state, the newer doc is right.
 
 ---
 
@@ -242,8 +257,12 @@ As shipped:
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<StoreResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.UI
+@addTagHelper *, Humans.Interfaces
 ```
+
+(`@addTagHelper` names an assembly, not a namespace. G5 lane 4b-iii B moved Base's tag helpers and
+view components from `Humans.UI` to `Humans.Interfaces` with every namespace kept — so the `@using`
+lines above are unchanged and only this one directive moved.)
 
 The extra `@using` lines over the predicted set are the section's own layer namespaces — a
 consequence of §6a's layer-as-folder move, since the host's file listed `Humans.Web.Models` but the
@@ -996,6 +1015,11 @@ deviation from an omission.
 ---
 
 ## 10. The enforcement apparatus after G5
+
+> **Superseded by nobodies-collective/Humans#1064** (see the banner at the top). The layer
+> predicates this section builds on (`IsApplicationOrWeb`, `IsLayerOrSection`, …) are gone —
+> `src/Directory.Build.props` already scopes the analyzers to `src/`. HUM0017 and HUM0018 are
+> retired, and the surviving section rules are consolidated in `SectionRulesAnalyzer`.
 
 ### `AssemblyScope` — the trap
 

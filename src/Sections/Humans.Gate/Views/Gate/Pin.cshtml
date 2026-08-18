@@ -44,7 +44,7 @@
     <a asp-action="Claim" class="gate-pin-back">&larr; Not you? Pick a different name</a>
 </div>
 
-@inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider
+@inject IFileVersionProvider FileVersionProvider
 @section Scripts {
     @* The keypad itself is a cache-busted classic script (no module import to go stale); the
        page module wires it to the claim form. *@

@@ -1,16 +1,14 @@
 using Humans.UI.Controllers;
 using System.Globalization;
 using Humans.Surveys.Services;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
-using Humans.UI;
 using Humans.UI.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Controllers;
 

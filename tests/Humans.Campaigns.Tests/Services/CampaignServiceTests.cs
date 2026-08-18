@@ -1,15 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -17,7 +13,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using CampaignServiceImpl = Humans.Campaigns.Services.CampaignService;
 
 namespace Humans.Campaigns.Tests.Services;
@@ -90,18 +85,12 @@ public sealed class CampaignServiceTests
                 .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
                 .ToDictionary(id => id, id => _people[id].Email!));
 
-        var commPrefService = Substitute.For<ICommunicationPreferenceService>();
-        commPrefService
-            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
         _service = new CampaignServiceImpl(
             repository,
             teamService,
             userEmailService,
             userService,
             Substitute.For<INotificationEmitter>(),
-            commPrefService,
             _emailService,
             _emailMessages,
             _ticketDiscountCodes,
@@ -619,7 +608,6 @@ public sealed class CampaignServiceTests
 
         preview.EligibleCount.Should().Be(2); // "Eligible" + "Other"
         preview.AlreadyGrantedExcluded.Should().Be(1);
-        preview.UnsubscribedExcluded.Should().Be(0);
         preview.CodesAvailable.Should().Be(4); // 5 total - 1 granted
         preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }

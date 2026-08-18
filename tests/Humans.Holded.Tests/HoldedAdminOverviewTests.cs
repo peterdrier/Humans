@@ -1,8 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
-using Humans.Holded.Models;
 using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -29,6 +29,9 @@ public class GuideContentServiceTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
     private sealed class StubRenderer : IGuideRenderer
@@ -74,7 +77,7 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task RefreshAllAsync_ClearsAndRefetches()
+    public async Task RefreshAllAsync_RefetchesEveryFile()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
@@ -115,8 +118,9 @@ public class GuideContentServiceTests
         var service = CreateService(source, out _);
         await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
-        // Simulate TTL-expired warm cache by clearing only the sentinel, leaving stale entries.
-        // Implementation detail: the service tracks a "populated" flag separately from entries.
+        // Nothing is evicted before the refetch, so the entries cached above are still present
+        // when every fetch below fails — which is what makes the refresh degrade to stale
+        // content instead of throwing.
         source.FailFor = _ => new InvalidOperationException("flaky");
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken); // should NOT throw — stale content present
 

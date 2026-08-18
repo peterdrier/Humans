@@ -1,16 +1,16 @@
+using Humans.Shifts.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Shifts;
+using Humans.Shifts.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>

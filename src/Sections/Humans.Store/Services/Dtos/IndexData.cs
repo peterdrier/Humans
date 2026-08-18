@@ -1,6 +1,4 @@
-using Humans.AuditLog.Contracts;
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 
 namespace Humans.Store.Services.Dtos;
 
@@ -23,5 +21,4 @@ internal sealed record OrderPageData(
     string CounterpartyDisplayName,
     bool CanEdit,
     bool CanPay,
-    bool IsStripeConfigured,
-    IReadOnlyList<AuditLogEntrySnapshot> PriceChanges);
+    bool IsStripeConfigured);

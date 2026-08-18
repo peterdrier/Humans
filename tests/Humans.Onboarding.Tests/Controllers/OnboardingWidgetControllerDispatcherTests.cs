@@ -1,14 +1,10 @@
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.UI;
+using Humans.Users.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Onboarding.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -30,8 +26,8 @@ public class OnboardingWidgetControllerDispatcherTests
     private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
-    private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
+    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();

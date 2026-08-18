@@ -1,11 +1,9 @@
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using NodaTime;
 
 using Humans.UI.Models;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
-using Humans.Tickets.Services;
-using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Models;
 
@@ -173,7 +171,16 @@ internal sealed class TicketSalesAggregatesViewModel
 {
     public List<WeeklySalesRow> WeeklySales { get; set; } = [];
     public List<QuarterlySalesRow> QuarterlySales { get; set; } = [];
+    public List<TicketTypeSalesRow> ByTicketType { get; set; } = [];
     public string Currency { get; set; } = "EUR";
+}
+
+internal sealed class TicketTypeSalesRow
+{
+    public string TicketTypeName { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int TicketsSold { get; set; }
+    public decimal FaceValue { get; set; }
 }
 
 internal sealed class WeeklySalesRow

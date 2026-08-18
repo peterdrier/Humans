@@ -1,10 +1,3 @@
-using Humans.Auth.Contracts;
-using Humans.Auth.Services;
-using Humans.Auth.Domain;
-using Humans.Auth.Data;
-using Humans.Application;
-using Humans.Application.Interfaces.Caching;
-using Humans.Teams.Services;
 // Tests seed TeamMember.User navs directly for DB-roundtrip verification.
 // TeamMember.User is Obsolete per Â§6c and is never populated by production
 // code (nobodies-collective/Humans#979 removed the in-memory stitcher); the
@@ -13,34 +6,36 @@ using Humans.Teams.Services;
 // instead of raw entity inserts.
 #pragma warning disable CS0618
 using AwesomeAssertions;
+using Humans.Application;
+using Humans.Application.Interfaces.Caching;
+using Humans.Auth.Contracts;
+using Humans.Auth.Data;
+using Humans.Auth.Services;
+using Humans.Domain.Constants;
+using Humans.Domain.Enums;
+using Humans.Email.Contracts;
+using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Services;
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Data;
+using Humans.Shifts.Domain;
+using Humans.Shifts.Services;
+using Humans.Teams.Contracts;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
+using Humans.Teams.Services;
+using Humans.Teams.Tests.Infrastructure;
+using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Teams.Domain;
-using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Services.Shifts;
-using Humans.Teams.Tests.Infrastructure;
-using Humans.Teams.Data;
 using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
 using TeamService = Humans.Teams.Services.TeamService;
-using Humans.Email.Contracts;
-using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Services.GoogleIntegration;
-using Humans.Application.Interfaces.Auth;
 
-using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Humans.Infrastructure.Repositories.Shifts;
-
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 public sealed class TeamServiceTests : TeamsTestHarness
 {
@@ -83,6 +78,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_teamResourceService)
             .With(userService)
+            .With<IUserServiceRead>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),

@@ -1,8 +1,6 @@
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
-using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Agent.Domain;
 

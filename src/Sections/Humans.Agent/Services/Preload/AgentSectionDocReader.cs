@@ -1,7 +1,5 @@
-using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Octokit;
 using Humans.Agent.Contracts;
 

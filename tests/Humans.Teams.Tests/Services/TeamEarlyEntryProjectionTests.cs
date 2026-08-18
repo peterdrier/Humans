@@ -1,10 +1,9 @@
 using AwesomeAssertions;
-using Humans.Teams.Services;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
+using Humans.Teams.Services;
 using NodaTime;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 public class TeamEarlyEntryProjectionTests
 {

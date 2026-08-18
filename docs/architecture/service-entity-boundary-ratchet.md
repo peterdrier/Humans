@@ -42,8 +42,10 @@ The marker interfaces make the boundary searchable by humans, reforge, and tests
 - all `I*Service` interfaces are marked as `IApplicationService`;
 - all `I*Repository` interfaces are marked as `IRepository`;
 - Web classes do not inject repositories;
-- service read methods that already expose entities are baselined and must ratchet down;
-- cross-section repository injection is enforced by analyzer `HUM0017`.
+- service read methods that already expose entities are baselined and must ratchet down.
+
+Cross-section repository injection needs no rule — a section's repository is `internal`,
+so naming one from another assembly does not compile.
 
 ## Audit Command
 

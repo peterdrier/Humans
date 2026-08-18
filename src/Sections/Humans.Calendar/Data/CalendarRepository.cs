@@ -1,6 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.Calendar.Domain;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

@@ -1,4 +1,3 @@
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 
 namespace Humans.Tickets.Models;

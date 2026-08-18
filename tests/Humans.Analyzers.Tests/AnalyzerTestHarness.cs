@@ -12,10 +12,9 @@ internal static class AnalyzerTestHarness
     /// <summary>
     /// Compiles <paramref name="source"/> as a synthetic assembly named
     /// <paramref name="assemblyName"/>, then runs <paramref name="analyzer"/> against it.
-    /// Tests typically use assembly names that match real production names
-    /// ("Humans.Application", "Humans.Web", "Humans.Infrastructure", or any other name
-    /// for the negative "scope excludes this assembly" cases) to exercise the
-    /// AssemblyScope guard in each analyzer.
+    /// The name is documentation in most tests — no rule scopes itself by assembly any more.
+    /// It is load-bearing only where a rule asks whether the compilation is a section, since
+    /// <c>AssemblyScope.IsSection</c> looks up <c>&lt;assemblyName&gt;.Section</c>.
     /// </summary>
     /// <param name="referencedSource">
     /// Optional: compiled into its own assembly and added as a reference, rather than
@@ -70,14 +69,27 @@ internal static class AnalyzerTestHarness
         return await withAnalyzers.GetAnalyzerDiagnosticsAsync(Xunit.TestContext.Current.CancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// No Humans.* assembly may be a reference of an analyzed compilation. The
+    /// analyzer assembly carries linked copies of the architecture attributes
+    /// (its name oracle — see nobodies-collective/Humans#1057), and the tests
+    /// declare their own stubs for production markers (ISection, IRecurringJob,
+    /// the attributes) — a real Humans assembly alongside them makes every such
+    /// name ambiguous: CS0433 in the snippet, and <c>GetTypeByMetadataName</c>
+    /// returning <c>null</c>, which quietly disables the rule under test.
+    /// </summary>
     private static ImmutableArray<MetadataReference> BuildBaseReferences()
     {
         var builder = ImmutableArray.CreateBuilder<MetadataReference>();
         var trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
         foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
         {
-            if (path.Length > 0)
-                builder.Add(MetadataReference.CreateFromFile(path));
+            if (path.Length == 0)
+                continue;
+            if (Path.GetFileName(path).StartsWith("Humans.", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            builder.Add(MetadataReference.CreateFromFile(path));
         }
         return builder.ToImmutable();
     }

@@ -57,4 +57,4 @@ Even when migrations apply correctly at runtime, the Designer snapshots embedded
 
 This is a structural property of EF Core's design, not a Humans bug. The mitigation is the workflow rule above: regen before rebase, not after.
 
-**Pre-commit hook coverage:** the existing pre-commit hook on `src/Humans.Infrastructure/Migrations/*.cs` catches some hand-edits but does not (and cannot easily) detect snapshot edits or timestamp renames. Self-discipline + this atom is the enforcement mechanism.
+**Pre-commit hook coverage:** the existing pre-commit hook on `src/Humans.Web/Migrations/*.cs` catches some hand-edits but does not (and cannot easily) detect snapshot edits or timestamp renames. Self-discipline + this atom is the enforcement mechanism.

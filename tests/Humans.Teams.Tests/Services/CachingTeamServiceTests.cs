@@ -1,19 +1,17 @@
-using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
-using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Teams.Tests.Infrastructure;
-using Humans.Domain.Entities;
-using Humans.Teams.Domain;
+using Humans.Auth.Contracts;
 using Humans.Domain.Enums;
+using Humans.Teams.Contracts;
+using Humans.Teams.Domain;
 using Humans.Teams.Services;
+using Humans.Teams.Tests.Infrastructure;
+using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Services;
 
 public sealed class CachingTeamServiceTests : TeamsTestHarness
 {

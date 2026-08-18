@@ -1,9 +1,11 @@
-using Humans.Teams.Services;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Teams.Services;
 using TeamPageService = Humans.Teams.Services.TeamPageService;
 
-namespace Humans.Teams.Tests;
+namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 Application-layer shape for
@@ -14,7 +16,7 @@ namespace Humans.Teams.Tests;
 /// TeamPageService owns no tables — it composes across <see cref="ITeamService"/>,
 /// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
 /// and <see cref="IUserService"/>. No repository is needed; the tests below
-/// guard that it never regains a <c>DbContext</c> dependency.
+/// guard that it never takes one.
 /// </para>
 /// </summary>
 public class TeamPageArchitectureTests
@@ -27,22 +29,13 @@ public class TeamPageArchitectureTests
     }
 
     [HumansFact]
-    public void TeamPageService_IsSealed()
-    {
-        typeof(TeamPageService).IsSealed
-            .Should().BeTrue(
-                because: "application services are terminal; behavior changes belong on the interface");
-    }
-
-    [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
-        // Orchestrator-no-repository guard. No universal enforcer covers this yet
-        // (A2 deferred); HUM0017 only catches cross-section repository injection.
+        // Orchestrator-no-repository guard. HUM0026 covers IOrchestrator implementers;
+        // this class is not one.
         var ctor = typeof(TeamPageService).GetConstructors().Single();
         var repoParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
 
         repoParam.Should().BeNull(
             because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");

@@ -6,7 +6,7 @@ namespace Humans.Finance.Services;
 
 [StructLayout(LayoutKind.Auto)]
 internal readonly record struct HoldedMatchEntry(
-    Guid CategoryId, string AccountId, int AccountNum, string Tag);
+    Guid CategoryId, string AccountId, string Tag);
 
 [StructLayout(LayoutKind.Auto)]
 internal readonly record struct HoldedMatchResult(Guid? CategoryId, HoldedMatchSource Source);

@@ -1,4 +1,3 @@
-using Humans.Finance.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
@@ -16,9 +15,19 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default);
 
-    Task<ExpenseMutationResult> AddLineWithResultAsync(
+    /// <summary>
+    /// Adds a Receipt or Invoice line, attaching <paramref name="file"/> in the same operation when
+    /// one is supplied (validated before the line is created, so a bad upload leaves nothing
+    /// half-made). A non-null <paramref name="parentLineId"/> adds a proof row backing that Invoice
+    /// line — reviewed with the report but excluded from the total and never pushed to Holded.
+    /// Travel line types are rejected (their creation paths were removed).
+    /// </summary>
+    Task<ExpenseAddLineResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
+        ExpenseFileUpload? file = null,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateLineWithResultAsync(
@@ -53,15 +62,18 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid submitterUserId, string? iban, CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> caps what this report pays out; null leaves it uncapped.</summary>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default);
 
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default);
 
+    /// <summary>A non-null <paramref name="maxAmount"/> overrides any cap the coordinator set.</summary>
     Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
@@ -78,6 +90,16 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         PerDiemKind kind, int days, string? note,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Puts a stuck Holded push back in the queue — written off, or waiting out a backoff a finance
+    /// admin no longer wants to wait for. Resets the retry budget; the next drain pass picks it up.
+    /// Fails when the report has no push in either state.
+    /// </summary>
+    Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Written-off Holded pushes across all reports — the /Expenses/Review banner count.</summary>
+    Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
@@ -86,6 +108,13 @@ internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessag
 
     public static ExpenseMutationResult Failure(string message) => new(false, message);
 }
+
+/// <summary>Line-add outcome; <see cref="LineId"/> is set on success so the caller can redirect
+/// into the new line's flow (an invoice line continues to its proofs page).</summary>
+internal sealed record ExpenseAddLineResult(bool Succeeded, string? ErrorMessage, Guid? LineId);
+
+/// <summary>An uploaded file passed through to the service untouched.</summary>
+internal sealed record ExpenseFileUpload(string FileName, string ContentType, Stream Content);
 
 internal sealed record ExpenseIbanSaveResult(
     bool Succeeded,

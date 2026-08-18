@@ -1,7 +1,4 @@
-using Humans.Email.Contracts;
 using Humans.Email.Services;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
@@ -9,6 +6,7 @@ using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Humans.Users.Contracts;
 
 namespace Humans.Email.Controllers;
 

@@ -7,7 +7,7 @@
 # Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
 # last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
-# HUM0009, HUM0020, HUM0025, HUM0029, HUM0032. The staleness check re-creates
+# HUM0009, HUM0020, HUM0025, HUM0032 (HUM0029 retired). The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
 # Deliberately excluded from staleness/inventory (not fixable debt):
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
@@ -252,10 +252,19 @@ themes:
     detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 10
+    remaining: 9
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-08-16
+    what: "21 classes carry [CrossSectionWrite(\"reason\")] (grep src/ --include=*.cs) — each is a cross-section write through another section's full I*Service, which HUM0032 accepts only because the marker is there. The preferred shape is the other way round: the section that owns the data ships a view component and writes its own rows, so the consumer never holds the write interface. Introduced with the marker in nobodies-collective/Humans#1064; every one is a pre-existing call newly made visible, not new coupling. Work them down per owning section, not as one sweep — several (GoogleIntegration's four sync services, Development's two dev seeders) are provisioning paths where a view component is the wrong answer and the marker is the final state."
+    review: panel
+  - added: 2026-08-16
+    what: "Humans.Users.Contracts (src/Sections/Humans.Users.Contracts/Humans.Users.Contracts.csproj) is the one `.Contracts` leaf where memory/architecture/service-read-no-ef.md's structural guarantee does not hold: it declares the public EF Identity entity `User : IdentityUser<Guid>` and references Microsoft.AspNetCore.Identity.EntityFrameworkCore (see the csproj's own reasoning block — ASP.NET Identity's generic surface, UserManager<User>/SignInManager<User>, can't be hidden). `IUserServiceRead` lives in the same project, so a future member returning `User` or another EF type would compile there, and HUM0029's retirement (peterdrier/Humans#1320) removed the only thing that ever would have caught it. Flagged by claude[bot] (Codex) on peterdrier/Humans#1320. Half the intended fix landed in nobodies-collective/Humans#1064 — the layer predicates are gone and the analyzers now run inside `.Contracts` assemblies with everything else under `src/`. What remains is writing the rule: measured at 21 diagnostics against this leaf, 5 of them Errors on `IdentityUser`'s own inherited members, so it needs an Identity carve-out."
+    review: panel
+  - added: 2026-08-15
+    what: "Humans.CityPlanning.Tests.CityPlanningArchitectureTests.CityPlanningEntities_HaveNoCrossSectionNavigationProperties (tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs) passes VACUOUSLY and must be re-keyed onto the real entity homes once Humans.Domain is deleted at G5 phase 5a. It asserts 'X names no type in Humans.Domain.Entities'; G5 lane 4b-2j moved the last types out of that namespace, so the predicate matches nothing and passes regardless of what the code does. The site carries a COVERAGE REDUCED comment. The rule it states — 'a section's entity types are not named across a section boundary' — should be rewritten once as a generic rule in tests/Humans.Application.Tests/Architecture/Rules/ keyed on the real entity homes (src/Sections/*/Domain plus the *.Contracts leaves holding framework-forced entities), not as another per-section decision. Raised by claude[bot] on peterdrier/Humans#1310: the original tracking pointed at local/g5-batch-4/state.md, which .gitignore excludes, so it would not have survived the session. The sibling site, TicketQueryArchitectureTests.ITicketServiceRead_ExposesNoEntityTypes, was deleted rather than re-keyed in the analyzer-enforcement-restore lane."
+    review: light
   - added: 2026-08-13
     what: "StorePayActionTests.Pay_with_amount_over_balance_redirects_back_to_order_without_calling_Stripe fails under full parallel-suite runs but passes in isolation — races something shared; surfaced twice during PR peterdrier/Humans#1272's full-suite runs"
     review: light
@@ -281,9 +290,15 @@ inbox:
   - added: 2026-08-05
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
     review: panel
-  - added: 2026-08-05
-    what: "GoogleResourceProvisionJob (src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs) has no enqueue site anywhere in src — no BackgroundJob.Enqueue, no RecurringJob.AddOrUpdate, no reference outside its own declaration. It calls IGoogleSyncService.ProvisionTeamFolderAsync (a Drive write), so it is not inert if something ever schedules it. Decide whether team-folder provisioning is meant to run through it or through the Google sync outbox, then wire it or delete it (found while auditing nobodies-collective/Humans#950)"
+  - added: 2026-08-17
+    what: "docs/guide/Expenses.md never got #1336's changes (ca4fb6e0b, same day): the nullable ExpenseReport.MaxAmount cap a coordinator sets on Endorse and a Finance Admin sets/overrides on Approve (Payable = min(Total, MaxAmount), pushed to Holded as a negative adjustment line), and the report-level Note field relabelled Subject (optional, 500 chars) now shown on New/Edit/Detail and as a column on My Expenses/Coordinator/Review. That commit updated only the internal invariant doc src/Sections/Humans.Expenses/Docs/Expenses.md; the user-facing guide page's 'As a Coordinator' and 'As a Board member / Admin (Finance Admin)' sections still describe neither. Guide pages are what members actually read, so a feature that ships without one is undocumented in practice (found by /section-doctor on Guide)"
+    review: light
+  - added: 2026-08-17
+    what: "~113 dead freshness:triggers lines across 16 of the 28 docs/guide/*.md pages, all pointing at the pre-G5 layout (src/Humans.Web/, src/Humans.Application/, src/Humans.Domain/, src/Humans.Infrastructure/, src/Humans.UI/ — every one deleted or emptied). Worst offenders: Shifts.md 20, Admin.md 13, Camps.md 13, Profiles.md 13, Onboarding.md 9, YourData.md 8. Each dead glob is a page the sweep can never flag as stale, which is how docs/guide/Expenses.md missed #1336 entirely. The section->project half of the rewrite is mechanical (src/Humans.Web/Controllers/CampController.cs -> src/Sections/Humans.Camps/Controllers/CampController.cs) but the internal subfolder (Domain/ vs Data/Configurations/ vs Services/) needs a per-file check, so this wants a scripted pass, not hand-editing. Overlaps nobodies-collective/Humans#1021, which has the intent but not this measured scope (found by /section-doctor on Guide, which repaired its own 2 dead globs)"
     review: panel
+  - added: 2026-08-17
+    what: "36 files still declare namespace Humans.Infrastructure.* after src/Humans.Infrastructure was deleted at G5 lane 5b-6 — 20 in Humans.Interfaces (Configuration/GuideSettings.cs, EmailSettings.cs, CommunityKbSettings.cs, GoogleWorkspaceSettings.cs, Services/GitHubGuideContentSource.cs, …) and 16 in Humans.Web. Consumers write `using Humans.Infrastructure.Configuration;` to reach a type in Humans.Interfaces, so the namespace actively misdirects anyone tracing a dependency, and every doc naming a src/Humans.Infrastructure/** path is a dead glob until someone checks. Mechanical rename, but it touches every consuming file, so it wants its own PR (found by /section-doctor on Guide; Guide's own dead trigger globs were repaired in that run)"
+    review: light
   - added: 2026-08-05
     what: "GitHubGuideContentSource.GetMarkdownAsync / ListMarkdownStemsAsync accept a CancellationToken they never forward — Octokit's GetRawContentByRef / GetAllContentsByRef expose no CT overload. Read-only so harmless, but the signature promises something it cannot deliver (found while auditing nobodies-collective/Humans#950)"
     review: light
@@ -331,4 +346,7 @@ inbox:
     review: light
   - added: 2026-06-29
     what: "TicketTailor inbound check-in detection is broken against the live API (Tickets section; pre-existing, issue #736). TicketTailorService.GetIssuedTicketsAsync maps check-in time from a nested `check_in` object (TtIssuedTicket.check_in -> TtCheckIn.checked_in_at) at line ~147/399-406, but the live TT API (verified read-only 2026-06-29 against /v1/issued_tickets/{id} and /v1/orders/{id}) returns NO nested `check_in` object — only a top-level string field `checked_in: \"true\"|\"false\"`. So ticket.CheckIn is always null and VendorTicketDto.CheckedInAt is always null; no ticket is ever detected as vendor-checked-in. Consequence for Gate: the secondary CheckedInAtVendor dedupe signal never fires from vendor data (the gate's own gate_scan_events local unique index remains the dedupe authority, so admission correctness is unaffected — only the cross-device/vendor signal is dead). Fix in Tickets (not the Gate PR): map the top-level `checked_in` boolean-string, and if a check-in timestamp is needed, fetch it from the dedicated GET /v1/check_ins collection (whose field is `check_in_at`, epoch seconds — note: different name from the dead nested `checked_in_at`). Found while verifying the Gate vendor-mirror payload for PR 895."
+    review: panel
+  - added: 2026-08-14
+    what: "SystemTeamSyncJob (src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs) makes two read-only cross-section calls through full service interfaces instead of a Read interface, contrary to memory/architecture/section-read-write-split.md: RoleAssignmentService.GetActiveUserIdsInRoleAsync (line 273, IRoleAssignmentService — Auth) and TeamResourceService.GetTeamResourcesAsync (line 620, ITeamResourceService — GoogleIntegration). Neither IRoleAssignmentServiceRead nor ITeamResourceServiceRead exists yet, so there is nothing to switch to today; the fix lands when Auth and GoogleIntegration get their Read splits. HUM0032 cannot catch this shape either way — both are resolved lazily via serviceProvider.GetRequiredService<T>() in computed properties (lines 62-66), and the analyzer only inspects constructor parameters. Pre-existing calls, newly reclassified: before peterdrier/Humans#1305 the job lived in Humans.Infrastructure (Base), where calling a full section interface is normal; the move into Humans.Teams makes them cross-section-from-a-section. Found by Claude review on peterdrier/Humans#1305."
     review: panel

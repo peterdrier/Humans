@@ -7,15 +7,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
-    <!--
-      Humans.Application.Tests, until Shifts and GoogleIntegration move. Five test files there
-      (ShiftDashboardMetricsTests, ShiftManagementReadMathTests, ShiftSummaryServiceTests,
-      WorkloadServiceTests, TeamResourceServiceDeactivateTests) seed team rows through
-      ServiceTestHarness because their own sections still live in Base. Rewriting their
-      fixtures inside this move commit would change five unrelated sections' tests and be
-      redone at those sections' own G5; the entry comes out with the second of them.
-    -->
-    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <!-- Shell-level GDPR-export wiring tests name this section's internal service. -->
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
@@ -33,16 +28,38 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>, which moved out of Humans.UI into the
+         AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
+         back only to Humans.Teams.Contracts, never to this project — no cycle. -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <!--
+      SystemTeamSyncJob's eligibility inputs (G5 lane 4b-2e). Camps supplies active camp
+      leads, Governance the approved-tier and consent reads, Users the person read model,
+      Email the added-to-team notice. All four are pure leaves (Interfaces + Domain only),
+      so none of these edges cycles back into Humans.Teams. They already arrived
+      transitively through Humans.Application; declared here so they survive its deletion.
+    -->
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      SystemTeamSyncJob's [DisableConcurrentExecution]. It arrived transitively through
+      Humans.Infrastructure until G5 lane 5b-6 deleted that project; declaring it makes it
+      honest (lane 5b-1's precedent on Email/Notifications/Issues). Package, not project.
+    -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

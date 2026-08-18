@@ -1,3 +1,5 @@
+using Humans.Camps.Data;
+using Humans.Camps.Domain;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -6,9 +8,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

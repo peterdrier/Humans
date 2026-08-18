@@ -1,10 +1,8 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Humans.Application.Extensions;
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
-using Humans.Infrastructure.Data;
 using NodaTime;
 
 namespace Humans.Budget.Data;

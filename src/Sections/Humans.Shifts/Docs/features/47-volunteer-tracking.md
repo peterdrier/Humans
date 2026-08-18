@@ -1,0 +1,150 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Shifts/Domain/VolunteerBuildStatus.cs
+  src/Sections/Humans.Shifts/Services/VolunteerTrackingService.cs
+  src/Sections/Humans.Shifts/Services/IVolunteerTrackingService.cs
+  src/Sections/Humans.Shifts/Data/IVolunteerTrackingRepository.cs
+  src/Sections/Humans.Shifts/Controllers/VolunteerTrackingController.cs
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/Index.cshtml
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/_VolunteerHeatmap.cshtml
+  src/Sections/Humans.Shifts/Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml
+-->
+<!-- freshness:flag-on-change
+  Volunteer Tracking heatmap algorithm, the two cohorts (signups-with-gaps vs declared-but-unbooked), and the camp set-up date semantics — review when these change.
+-->
+
+# Volunteer Tracking
+
+Adds a `/Shifts/Dashboard/VolunteerTracking` sub-page that surfaces volunteers whose build-period schedule has gaps, plus volunteers who declared participation and filled in availability but haven't signed up for any shifts.
+
+## Business Context
+
+Building the camp before gates open is a multi-week effort with rolling crew turnover. Volunteers commit to date ranges months ahead, then real life happens — they arrive late, leave early, or join camp set-up halfway through. The Volunteer Coordinator (VC) needs a single view that answers:
+
+- **Who said they'd be on build but isn't covered today?** (signup gaps)
+- **Who declared participation and gave availability but never signed up for anything?** (the unbooked cohort)
+- **Who left scheduled shifts to help with camp set-up?** (so coverage isn't flagged as a real gap)
+
+Before this feature the VC was reconstructing this state by hand from the rota grid and the participation list — error-prone and didn't scale.
+
+This feature adds:
+
+1. A heatmap view (one row per volunteer, one column per day in the build period) showing signup state, gaps, and camp-set-up days at a glance.
+2. A second heatmap below it for the declared-but-unbooked cohort, pulled from `EventParticipation` + `GeneralAvailability`.
+3. Coordinator write actions: mark "went to camp set-up" from a given day.
+
+### Day-off (single-day toggle, coord-only)
+
+A coordinator can mark any single build-window day as "day off" for a volunteer, with an optional reason. Day-offs are stored as a sorted jsonb list (`DayOffs`) on the same `VolunteerBuildStatus` row and render as striped-grey cells (`vt-dayoff`) on the heatmap. They do **not** count toward `GapCount`, so a volunteer who's e.g. at a doctor on day -5 is not flagged as a coverage gap that day.
+
+Negative-space rules:
+- Only Volunteer Coordinators can mark/clear day-offs (no volunteer self-service).
+- A day-off cannot be marked on a cell that already has a Confirmed/Pending signup — the popover surfaces a "Bail this signup before marking a day off" muted message instead of the Mark button.
+- A day-off cannot overlap an active camp-setup span; setting/extending camp-setup auto-clears any day-offs that fall on or after the new setup-start date (one `VolunteerDayOffCleared` audit row per cleared offset).
+- Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry is a silent no-op.
+
+Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design spec: [`src/Sections/Humans.Shifts/Docs/2026-05-09-day-off-redesign-design.md`](../2026-05-09-day-off-redesign-design.md).
+
+## User Stories
+
+### US-47.1: VC identifies a volunteer with a schedule gap
+**As a** Volunteer Coordinator
+**I want to** see at a glance which volunteers committed to build days and have no signup on a given day
+**So that** I can chase them up or backfill the slot before it becomes a real coverage problem
+
+**Acceptance Criteria:**
+- `/Shifts/Dashboard/VolunteerTracking` lists every volunteer with at least one build-period signup, sorted by gap count (descending), then last eligible signup offset (ascending), then display name.
+- Each row shows one cell per day from the volunteer's first build signup through gate-open day. Cell colours: green = confirmed signup, light green = pending signup, red = gap, blue = on camp set-up, grey = outside their active window.
+- A red badge on the row shows the gap count (`{0} gaps`).
+- A header card shows aggregate counts: total tracked, total with gaps, total on camp set-up, total declared-but-unbooked.
+- Filter toggles let the VC hide rows with no gaps, hide rows already on camp set-up, and hide the unbooked section.
+- An empty state ("Everyone is on track.") renders when no row has gaps after filtering.
+
+### US-47.2: VC marks a volunteer as gone to camp set-up
+**As a** Volunteer Coordinator
+**I want to** record that a volunteer left scheduled rotas to join camp set-up from a specific day
+**So that** the gap detection stops flagging their (now-irrelevant) build-period coverage as missing
+
+**Acceptance Criteria:**
+- Clicking any cell in the volunteer's heatmap row opens a popover with action buttons.
+- "Mark went to camp set-up from this day" submits a form with the cell's date; on success the row turns blue from that day forward and the gap count drops.
+- A "Clear set-up date" action on the popover reverts the row.
+- The set-up date must be inside the build period (before gate-open) and on or after the volunteer's first build signup — server-side validated; invalid submissions show a TempData error.
+- An audit row is written (`VolunteerCampSetupSet` / `VolunteerCampSetupCleared`) recording the actor.
+
+## Data Model
+
+One new entity, owned by the Shifts section: `VolunteerBuildStatus`. Full field-level invariants in [`src/Sections/Humans.Shifts/Docs/Shifts.md` § VolunteerBuildStatus](../Shifts.md#volunteerbuildstatus).
+
+Summary:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `Id` | `Guid` | PK |
+| `UserId` | `Guid` | Bare cross-section FK to `users.id` (no nav property) |
+| `EventSettingsId` | `Guid` | Same-section FK to `event_settings.id` (cascade delete) |
+| `BarrioSetupStartDate` | `LocalDate?` | Day the volunteer joined camp set-up; nullable |
+| `SetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
+| `SetAt` | `Instant?` | When the marker was set |
+| `Notes` | `string?` | Free-text from the coordinator who set/cleared the date |
+| `DayOffs` | `List<DayOffEntry>` | Sparse day-off entries (jsonb); each carries `DayOffset`, `Reason`, `MarkedByUserId`, `MarkedAt` |
+
+**Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
+
+`AuditAction` values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (Three additional values — `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved` — exist as positional reservations from the removed day-off feature.)
+
+## Workflows
+
+### Heatmap algorithm (high level)
+
+For the active event the service builds a `VolunteerTrackingViewModel` containing two cohorts. Sort order is the controller's job (per `memory/architecture/display-sort-in-controllers.md`).
+
+**Cohort A — main (signups-with-gaps):**
+
+1. Collect every user with at least one Confirmed or Pending signup on a Build-period rota for the active event.
+2. For each user, the heatmap window starts at `min(firstBuildSignupDate, BarrioSetupStartDate ?? +∞)` and ends at `GateOpeningDate - 1`.
+3. For each day in the window, compute the cell state in this priority order:
+   - `BarrioSetupStartDate` set and day ≥ that date → `CampSetup` (blue).
+   - Day before the user's first build signup → `Outside` (grey).
+   - User has at least one Confirmed signup that covers the day → `Confirmed` (green).
+   - User has at least one Pending signup that covers the day → `Pending` (light green).
+   - Day is in the volunteer's `DayOffs` list → `DayOff` (striped grey).
+   - Otherwise → `Gap` (red). Gaps are not capped by "today" — any unfilled day in the window counts so coordinators can plan ahead for future events, not just react during build.
+4. `GapCount` = number of `Gap` cells. Rows with `GapCount = 0` may still show (the filter toggle hides them).
+
+**Cohort B — declared-but-unbooked:**
+
+1. Collect every user where `EventParticipation.Status = Attending` for the active event AND `GeneralAvailability.AvailableDayOffsets` is non-empty AND they have **zero** Confirmed/Pending signups on any Build rota.
+2. Each cell renders `AvailableUnbooked` (yellow), `AvailableExpected` (light yellow), `CampSetup` (blue), or `NotAvailable` (grey) per `AvailableDayOffsets ∩ build window`.
+3. As soon as a user from this cohort confirms a signup, they migrate to Cohort A on the next page load.
+
+### Write paths
+
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
+
+All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
+
+### Export
+
+An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator download the tracking data as `.xlsx`, filtered by department, period (Build/Event/Strike, with a Build sub-period breakdown), or an explicit date range. `VolunteerTrackingController.ExportXlsx` resolves the requested range and hands it to `IVolunteerTrackingExportService` → `VolunteerTrackingXlsxBuilder`.
+
+## Routes
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftDashboardAccess` | Heatmap page |
+| `/Shifts/Dashboard/VolunteerTracking/ExportXlsx` | GET | `ShiftDashboardAccess` | Export the tracking data (department/period/date-range filters) as an .xlsx file |
+| `/Shifts/Dashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
+| `/Shifts/Dashboard/VolunteerTracking/SetDayOff` | POST | `VolunteerTrackingWrite` | Mark a single day off for a volunteer (with optional reason) |
+| `/Shifts/Dashboard/VolunteerTracking/ClearDayOff` | POST | `VolunteerTrackingWrite` | Clear a previously-marked day off |
+| `/Shifts/Dashboard/VolunteerTracking/SetAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator marks a build-day offset available for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator clears a declared-available build-day offset |
+
+## Related
+
+- [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
+- [`src/Sections/Humans.Shifts/Docs/features/shift-management.md`](shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
+- [`src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md`](shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
+- [`src/Sections/Humans.Tickets/Docs/features/event-participation.md`](../../../Humans.Tickets/Docs/features/event-participation.md) — `EventParticipation.Status = Attending` is the pre-filter for the declared-but-unbooked cohort.
+- [`memory/architecture/display-sort-in-controllers.md`](../../../../../memory/architecture/display-sort-in-controllers.md) — why the row sort lives in `VolunteerTrackingController`, not the service or repo.
+- [`memory/architecture/no-cross-section-ef-joins.md`](../../../../../memory/architecture/no-cross-section-ef-joins.md) — why `VolunteerBuildStatus.UserId` is a bare `Guid` with no nav.

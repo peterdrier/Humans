@@ -1,9 +1,8 @@
+using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Xunit;
 
 namespace Humans.Governance.Tests.Domain;

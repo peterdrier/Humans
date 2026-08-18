@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Extensions;
 using Humans.UI.Controllers;
 using Humans.Teams.Services;
@@ -11,14 +12,11 @@ using Humans.Domain.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Models;
 using NodaTime;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
-using Humans.UI.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;
 

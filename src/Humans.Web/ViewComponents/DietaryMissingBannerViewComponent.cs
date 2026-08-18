@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.ViewComponents;
 
@@ -8,16 +8,16 @@ namespace Humans.Web.ViewComponents;
 /// Renders a red banner on /Shifts and /Shifts/Mine when the user has a
 /// qualifying cantina signup but no dietary info on file. The visibility
 /// gate lives inside the component so callers can invoke it unconditionally.
-/// Spec: docs/features/profiles/dietary-medical-nudge.md (US-35.6)
+/// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6)
 /// </summary>
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IUserServiceRead _userRead;
     private readonly ILogger<DietaryMissingBannerViewComponent> _logger;
 
     public DietaryMissingBannerViewComponent(
-        IShiftManagementService shiftMgmt,
+        IShiftManagementServiceRead shiftMgmt,
         IUserServiceRead userRead,
         ILogger<DietaryMissingBannerViewComponent> logger)
     {

@@ -1,7 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Attributes;
 using Humans.Consent.Domain;
-using Humans.Consent.Services;
 
 namespace Humans.Consent.Data;
 
@@ -25,7 +23,6 @@ namespace Humans.Consent.Data;
 /// <c>LegalDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
-[Section("Consent")]
 internal interface IConsentRepository : IRepository
 {
     // ==========================================================================

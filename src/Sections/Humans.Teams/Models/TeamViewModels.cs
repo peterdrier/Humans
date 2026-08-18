@@ -1,10 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 using Humans.UI.Models;
@@ -190,9 +188,7 @@ internal sealed class PendingRequestsViewModel : PagedListViewModel
     public string? TeamNameFilter { get; set; }
 }
 
-internal sealed class CreateTeamViewModel : TeamFormViewModelBase
-{
-}
+internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
 
 internal sealed class EditTeamViewModel : TeamFormViewModelBase
 {

@@ -1,5 +1,4 @@
 using Humans.Expenses.Contracts;
-using Humans.Domain.Entities;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Data;
@@ -17,6 +16,7 @@ internal static class ExpenseReportMapper
         PayeeName = r.PayeeName,
         PayeeIban = r.PayeeIban,
         Total = r.Total,
+        MaxAmount = r.MaxAmount,
         SubmittedAt = r.SubmittedAt,
         CoordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
         CoordinatorEndorsedAt = r.CoordinatorEndorsedAt,
@@ -38,6 +38,7 @@ internal static class ExpenseReportMapper
             Amount = l.Amount,
             LineType = l.LineType,
             AttachmentId = l.AttachmentId,
+            ParentLineId = l.ParentLineId,
             Attachment = l.Attachment is null
                 ? null
                 : new ExpenseAttachmentDto
@@ -48,7 +49,8 @@ internal static class ExpenseReportMapper
                     ContentType = l.Attachment.ContentType,
                     SizeBytes = l.Attachment.SizeBytes,
                     UploadedByUserId = l.Attachment.UploadedByUserId,
-                    UploadedAt = l.Attachment.UploadedAt
+                    UploadedAt = l.Attachment.UploadedAt,
+                    HoldedUploadedAt = l.Attachment.HoldedUploadedAt
                 },
             SortOrder = l.SortOrder
         }).ToList()

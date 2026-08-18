@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Humans.Guide.Services;
 
 /// <summary>
@@ -47,9 +49,26 @@ internal static class GuideFiles
         "YourData"
     ];
 
-    public static readonly IReadOnlySet<string> All = BuildAll();
+    private static readonly HashSet<string> AllStems = BuildAll();
 
-    private static IReadOnlySet<string> BuildAll()
+    public static IReadOnlySet<string> All => AllStems;
+
+    /// <summary>
+    /// Resolves any casing of a requested stem to the canonical spelling used in routes,
+    /// cache keys and GitHub paths. False when the stem is not one of ours.
+    /// </summary>
+    public static bool TryCanonical(string? requested, [NotNullWhen(true)] out string? canonical)
+    {
+        if (string.IsNullOrWhiteSpace(requested))
+        {
+            canonical = null;
+            return false;
+        }
+
+        return AllStems.TryGetValue(requested, out canonical);
+    }
+
+    private static HashSet<string> BuildAll()
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

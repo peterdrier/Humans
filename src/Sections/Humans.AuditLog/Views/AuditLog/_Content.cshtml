@@ -1,10 +1,9 @@
-@using Humans.UI.Models
 @using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
 @model Humans.AuditLog.Models.AuditLogListViewModel
 
 <page-header title="Audit Log">
-    <form asp-controller="AuditLog" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
+    <form asp-controller="Monitor" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-warning" id="checkBtn">
             Check Drive Activity Now
@@ -61,9 +60,9 @@
 }
 else
 {
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> whenCell =
+    Func<AuditEvent, IHtmlContent> whenCell =
         @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actorCell = @<text>
+    Func<AuditEvent, IHtmlContent> actorCell = @<text>
         @if (!item.ActorUserId.HasValue)
         {
             <span class="badge bg-info">System</span>
@@ -73,15 +72,15 @@ else
             <vc:human user-id="@item.ActorUserId.Value" />
         }
     </text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actionCell =
+    Func<AuditEvent, IHtmlContent> actionCell =
         @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel()</span></text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> subjectCell = @<text>
+    Func<AuditEvent, IHtmlContent> subjectCell = @<text>
         @if (item.SubjectUserId.HasValue)
         {
             <vc:human user-id="@item.SubjectUserId.Value" />
         }
     </text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> targetCell = @<text>
+    Func<AuditEvent, IHtmlContent> targetCell = @<text>
         @if (item.TargetTeamId.HasValue && !string.IsNullOrEmpty(item.TargetTeamName))
         {
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none">@item.TargetTeamName</a>

@@ -1,9 +1,7 @@
 using AwesomeAssertions;
 using Humans.Surveys.Services;
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Models;
-using Xunit;
 
 namespace Humans.Surveys.Tests.Models;
 

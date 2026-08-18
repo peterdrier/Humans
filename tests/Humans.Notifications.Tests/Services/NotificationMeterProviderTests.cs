@@ -1,25 +1,18 @@
-using Humans.Domain.Entities;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
-using Humans.Application;
-using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
-
-using Humans.Application.Interfaces.Users;
-using static Humans.Notifications.Tests.NotificationTestFixtures;
 using Humans.Domain.Constants;
-using Humans.Notifications.Domain;
-using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests.Services;
 

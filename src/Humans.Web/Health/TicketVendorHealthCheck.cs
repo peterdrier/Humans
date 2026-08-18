@@ -1,5 +1,4 @@
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
@@ -7,7 +6,8 @@ namespace Humans.Web.Health;
 
 /// <summary>
 /// Health check that probes the ticket vendor connector (TicketTailor in Production).
-/// Mirrors <see cref="Humans.Infrastructure.Services.StripeStartupSmokeService"/>: authenticate +
+/// Mirrors <c>Humans.Stripe</c>'s <c>StripeStartupSmokeService</c> (internal to that section
+/// since nobodies-collective/Humans#866, so this is prose rather than a cref): authenticate +
 /// a cheap read so a broken/missing vendor connector surfaces in <c>/health</c>
 /// instead of silently no-opping at gate time.
 /// Returns <see cref="HealthCheckResult.Degraded"/> when unconfigured (missing API key or EventId)

@@ -1,14 +1,11 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -440,7 +437,7 @@ internal sealed class ApplyHarness
     public IUserEmailService UserEmails { get; } = Substitute.For<IUserEmailService>();
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
-    public IShiftManagementService Shifts { get; } = Substitute.For<IShiftManagementService>();
+    public IBurnSettingsService Shifts { get; } = Substitute.For<IBurnSettingsService>();
     public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));
@@ -460,7 +457,7 @@ internal sealed class ApplyHarness
 
     public void WithActiveYear(int year)
     {
-        Shifts.GetActiveAsync().Returns(new EventSettings { Year = year, IsActive = true });
+        Shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: year));
     }
 
     public AttendeeContactImportService Service => new(

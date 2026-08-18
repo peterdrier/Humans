@@ -46,7 +46,7 @@ internal static class IssueSectionInference
         "finance" or "budget" => IssueSectionRouting.Budget,
         "board" or "voting" => IssueSectionRouting.Governance,
         "legal" or "consent" => IssueSectionRouting.Legal,
-        "city" => IssueSectionRouting.CityPlanning,
+        "cityplanning" => IssueSectionRouting.CityPlanning,
         "scanner" => IssueSectionRouting.Scanner,
         _ => null
     };

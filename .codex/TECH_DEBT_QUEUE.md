@@ -71,11 +71,9 @@ Active entries as of this queue creation:
 | `DisplaySortInControllers.baseline.txt` | 105 | P3 | Move reusable domain ordering out of controllers; keep screen-only sort at web boundary if rule is noisy/intentional. |
 | `NoCrossSectionEfJoins.baseline.txt` | 26 | P1/P-blocked | Fix non-forbidden service/repository joins/includes. Entries in `EntityConfigurations/**` are blocked by storage limits. |
 | `NoDestructiveMigrationOps.baseline.txt` | 20 | Blocked by default | Migration-file entries are forbidden. Do not edit migrations; only classify/document unless a non-migration false positive appears. |
-| `NoLinqAtDbLayer.baseline.txt` | 2 | P2 | Inspect for repository/business LINQ leakage. Fix only if not storage-shape behavior. |
 | `CrossSectionRepositoryInjection.baseline.txt` | 1 | P1 | Replace cross-section repository injection with owning service call if not forbidden. |
 | `OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt` | 1 | P1 | Route direct audit writes through audit service/repository owner. |
 | `NoConcurrencyTokens.baseline.txt` | 0 | Done | Keep at zero. |
-| `NoStartupGuards.baseline.txt` | 0 | Done | Keep at zero. |
 | `OnlyNotificationRepositoryWritesNotificationDbSets.baseline.txt` | 0 | Done | Keep at zero. |
 
 Total active baseline entries: 640.

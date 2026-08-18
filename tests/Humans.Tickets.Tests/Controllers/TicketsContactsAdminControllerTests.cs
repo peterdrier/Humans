@@ -1,9 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application;
-
-using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services.Dtos;
-using Humans.Domain.Entities;
 using Humans.UI.Constants;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Models;
@@ -15,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Controllers;
 

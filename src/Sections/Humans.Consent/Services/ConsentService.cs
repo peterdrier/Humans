@@ -5,17 +5,12 @@ using Humans.Application.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 

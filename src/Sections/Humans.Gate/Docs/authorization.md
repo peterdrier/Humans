@@ -1,0 +1,11 @@
+# Gate — Authorization
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `GateController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate admissions terminal at `/Gate` — distinct from the read-only Scanner section: this one decides entry and writes the durable `gate_scan_events` record; the read actions `Index`, `Evaluate`, `Claim` GET, `Search`, `Leaderboard` inherit the class-level policy) |
+| `GateController.Decision` | Action | `TicketAdmin, Admin, Board` OR the gate-terminal shared account | `PolicyNames.GateAdmit` (POST — records the admission decision, attributed to the session-claimed scanner; supervisor overrides — too-early / unconfirmed-EE admit, child-without-ID waiver — additionally require the shared override PIN) |
+| `GateController.Claim` (POST) / `ClaimPin` / `EndShift` | Action | `TicketAdmin, Admin, Board` OR the gate-terminal shared account | `PolicyNames.GateAdmit` (claims/releases the scanning session; `ClaimPin` verifies or enrols the staffer's personal 4-digit PIN via `IGateService` with per-target-user `GatePinThrottle` buckets; the verified user id is stamped into the session server-side — never from the request body) |
+| `GateController.Admin` (GET/POST) / `SetStaffPin` / `ResetStaffPin` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` (gate settings + admin PIN enrolment/reset at `/Gate/Admin` — supervisor-authority PINs are never self-enrolled at the kiosk) |
+| `GateVendorBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` (one-off vendor check-in backfill page at `/Gate/Admin/VendorCheckInBackfill`; `Index`, `RunOne`, `Run` all inherit) |
+
+`GateAdmit` is deliberately a twin of `ScannerAccess` (same assertion body): the durable gate write surface must never inherit a future loosening of the read-only Scanner gate. Supervisor overrides inside `Decision` are a second factor on top of the policy — the shared `Gate:SupervisorPin` config value, server-verified with a fixed-time hash compare and brute-force-throttled via `GatePinThrottle` (fail-closed when unconfigured) — not an identity check. `GateController.Claim` (POST) / `ClaimPin` also requires the claimant to be a real active member (`UserService.GetUserInfoAsync(...).IsActive`).

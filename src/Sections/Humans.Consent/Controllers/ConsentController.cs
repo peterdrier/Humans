@@ -4,10 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.UI;
 using Humans.Consent.Models;
 using Humans.Consent.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Controllers;
 

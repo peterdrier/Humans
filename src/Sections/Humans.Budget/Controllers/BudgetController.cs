@@ -1,6 +1,4 @@
-using Humans.Budget.Contracts;
 using Humans.Budget.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Budget.Authorization;
@@ -8,6 +6,7 @@ using Humans.Budget.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;
 

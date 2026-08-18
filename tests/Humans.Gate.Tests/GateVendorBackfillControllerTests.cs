@@ -3,8 +3,7 @@ using Humans.Gate.Controllers;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Hangfire.Common;
-using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Jobs;
+using Humans.Gate.Jobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -15,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 

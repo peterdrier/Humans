@@ -1,15 +1,13 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Users.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Controllers;
 

@@ -1,24 +1,21 @@
 using AwesomeAssertions;
 using Humans.Application.Csv;
-using Humans.Events.Services.Dtos;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
-using Humans.Events.Data;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
-using Humans.Events.Services;
-
-using Humans.Events.Domain;
 using Humans.Events.Contracts;
+using Humans.Events.Data;
+using Humans.Events.Domain;
+using Humans.Events.Services;
+using Humans.Events.Services.Dtos;
+using Humans.Gdpr.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using Humans.Domain.Entities;
-using Humans.Application;
 
-namespace Humans.Events.Tests;
+namespace Humans.Events.Tests.Services;
 
 public sealed class EventServiceTests
 {

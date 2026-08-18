@@ -45,7 +45,12 @@ wrong home for one whose only cross-boundary use is a colour lookup. The test is
   Expenses' own views.
 
 First applied 2026-08-09 by Expenses' move (peterdrier/Humans#1240), for `EnumBadgeMap`.
-`StatusBadgeExtensions` still carries `ApplicationStatus`; that moves when Governance does.
+Shifts applied it late, at G5 lane 4b-i (nobodies-collective/Humans#866): its six
+`ShiftPeriod`/`SignupStatus` rows moved to `Humans.Shifts/Section.cs` and are pinned by
+`ShiftsArchitectureTests.SectionRegistersABadgeClassForEveryShiftPeriodAndSignupStatus`.
+The same lane retired Base's `StatusBadgeExtensions` outright — its only two call sites are
+Users' views, so it moved into `Humans.Users/Extensions/` as an `internal` class rather than
+becoming a registry. `EnumBadgeMap`'s literal now holds only `EmailOutboxStatus`.
 Budget took its `BudgetYearStatus` overload with it at its G5 move — an extension in the
 section rather than an `EnumBadgeMap.Register` row, because its three admin views call
 `GetBadgeClass()` directly and the map serves `CellFormat.EnumBadge` table columns.

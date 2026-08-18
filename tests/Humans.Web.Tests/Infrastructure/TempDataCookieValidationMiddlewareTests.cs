@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Web.Infrastructure;
+using Humans.Web.Hosting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

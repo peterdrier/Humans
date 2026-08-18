@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Filters;
@@ -8,6 +7,7 @@ using Humans.Feedback.Services;
 using Humans.Infrastructure.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Feedback;
 

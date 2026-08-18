@@ -2,14 +2,13 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using Humans.Issues.Filters;
 using Humans.Issues.Models;
 using Humans.Issues.Services;
 using Humans.Issues.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Issues.Controllers;
 

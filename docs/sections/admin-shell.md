@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.UI/Views/Shared/_AdminLayout.cshtml
+  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
 -->
 
 # Admin Shell — Section Invariants
@@ -40,7 +40,7 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 | ConsentCoordinator | Members (Review) |
 | VolunteerCoordinator | Tickets (Early entry), Members (Review), Shifts (Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
-| CampAdmin | Barrios (Overview, Roles, Barrio map) |
+| CampAdmin | Barrios (Overview, Roles, Compliance, Barrio map) |
 | NoInfoAdmin | Tickets (Early entry), Shifts (Volunteer tracking, Workload, Post-event stats) |
 
 ## Invariants

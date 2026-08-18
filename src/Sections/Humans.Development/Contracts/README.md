@@ -18,7 +18,7 @@ type:
   `@await Html.PartialAsync("_DevLoginPanel")`. Partial lookup resolves by name across
   application parts, so the persona list stays `internal` beside the controller that builds it
   (step 3b's "move the markup", the same mechanism as `_GateLayout` and `_IssueWidgetModal`).
-- `Humans.Web/Infrastructure/DevLoginControllerExclusionProvider` removes `DevLoginController`
+- `Humans.Web/Hosting/DevLoginControllerExclusionProvider` removes `DevLoginController`
   from MVC's controller feature in Production. It resolves the type by name through
   `SectionDiscoveryExtensions.SectionAssemblies()` and throws if it cannot find it, because the
   alternative — a silent miss — is the dev sign-in page reaching production.

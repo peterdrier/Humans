@@ -1,36 +1,42 @@
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 
 namespace Humans.Development.Services;
 
-internal sealed class DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
+internal sealed class DevelopmentCampRoleSeeder(ICampRoleSeeding campRoleSeeding)
 {
-    private static readonly CreateCampRoleDefinitionInput[] Seeds =
+    // The section's CreateCampRoleDefinitionInput turned internal at Camps' G5; the leaf takes
+    // the fields instead, so the fixture is a local shape (Finance's "own the boundary type").
+    private sealed record Seed(string Name, string Slug, int SlotCount, int MinimumRequired, int SortOrder);
+
+    private static readonly Seed[] Seeds =
     [
-        new("Consent Lead", "consent-lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
-        new("LNT", "lnt", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
-        new("Shit Ninja", "shit-ninja", null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
-        new("Power", "power", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
-        new("Build Lead", "build-lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
+        new("Consent Lead", "consent-lead", SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
+        new("LNT", "lnt", SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
+        new("Shit Ninja", "shit-ninja", SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
+        new("Power", "power", SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
+        new("Build Lead", "build-lead", SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
     ];
 
     public async Task<DevelopmentCampRoleSeedResult> SeedAsync(
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var existing = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
+        var existing = await campRoleSeeding.ListDefinitionsForSeedAsync(includeDeactivated: true, cancellationToken);
         var existingNames = existing.Select(d => d.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var created = 0;
         var skipped = 0;
-        foreach (var input in Seeds)
+        foreach (var seed in Seeds)
         {
-            if (existingNames.Contains(input.Name))
+            if (existingNames.Contains(seed.Name))
             {
                 skipped++;
                 continue;
             }
 
-            await campRoleService.CreateDefinitionAsync(input, actorUserId, cancellationToken);
+            await campRoleSeeding.CreateDefinitionForSeedAsync(
+                seed.Name, seed.Slug, description: null, seed.SlotCount, seed.MinimumRequired,
+                seed.SortOrder, actorUserId, cancellationToken);
             created++;
         }
 

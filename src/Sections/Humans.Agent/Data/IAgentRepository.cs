@@ -1,8 +1,4 @@
-using Humans.Application.Models;
-using Humans.Domain.Entities;
 using NodaTime;
-using Humans.Domain.Attributes;
-using Humans.Agent;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Application.Interfaces.Repositories;
@@ -15,7 +11,6 @@ namespace Humans.Agent.Data;
 /// and its EF model has no cross-section FK or nav wiring — owned-table joins
 /// only.
 /// </summary>
-[Section("Agent")]
 internal interface IAgentRepository : IRepository
 {
     // ---- Settings (singleton row, Id = 1) ------------------------------------

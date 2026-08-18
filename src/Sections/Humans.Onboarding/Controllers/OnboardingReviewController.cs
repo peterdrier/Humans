@@ -2,14 +2,12 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Onboarding.Models;
-using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.UI;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
 

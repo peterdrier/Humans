@@ -1,10 +1,9 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Users;
+using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;
 using Humans.Teams.Contracts;
@@ -12,6 +11,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams;
 
@@ -50,6 +50,17 @@ public sealed class Section : ISection
         services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamPageService>();
+
+        // The one invalidator in the MemoryCacheInvalidators family that is Teams' own: its six
+        // siblings wrap IMemoryCache and moved to Base at G5 lane 3a-1, but this one injects
+        // ITeamService, so the implementation lives here (and HUM0034 makes it internal, which
+        // is why Web can no longer register it). The interface stays on Humans.Teams.Contracts
+        // because Humans.Users evicts through it.
+        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
+
+        // The system-team reconciler. Its interface joined it on Humans.Teams.Contracts at
+        // lane 5c; Hangfire resolves the implementation from DI at execution time.
+        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).

@@ -1,16 +1,14 @@
-using Humans.Application;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
-using Humans.Domain.Constants;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Services;
 
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
 /// The on-site cohort (who is around each day) comes from
-/// <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>; dietary
+/// <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>; dietary
 /// data (preference, allergies, intolerances) is read from the cross-section
 /// <see cref="IUserServiceRead"/> (cached <see cref="UserInfo"/>/<see cref="ProfileInfo"/>),
 /// since dietary moved to <c>Profile</c>. The service unions the days into a
@@ -21,7 +19,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 {
     private const int DaysPerWeek = 7;
 
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IBurnSettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
@@ -30,7 +28,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
-        IShiftManagementService shiftMgmt,
+        IShiftManagementServiceRead shiftMgmt,
         IBurnSettingsService burnSettings,
         IUserServiceRead userRead,
         IClock clock)

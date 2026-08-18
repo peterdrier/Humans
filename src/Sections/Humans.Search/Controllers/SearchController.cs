@@ -6,7 +6,7 @@ using Humans.UI.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Controllers;
 

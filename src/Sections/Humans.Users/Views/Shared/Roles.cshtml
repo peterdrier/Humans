@@ -1,0 +1,7 @@
+@model Humans.Users.Models.AdminRoleAssignmentListViewModel
+@{
+    ViewData["Title"] = Localizer["AdminRoles_Title"].Value;
+    Layout = "_AdminLayout";
+}
+
+<partial name="~/Views/Shared/_RolesListContent.cshtml" model="Model" />

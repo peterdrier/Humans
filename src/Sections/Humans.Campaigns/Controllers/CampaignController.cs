@@ -1,10 +1,10 @@
-using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Controllers;
 

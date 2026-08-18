@@ -17,14 +17,14 @@ namespace Humans.Integration.Tests.Controllers;
 /// </para>
 /// <list type="number">
 /// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. Every page
-/// opens with <c>&lt;page-header&gt;</c> and two of them bind <c>&lt;vc:human&gt;</c> — an
+/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. Four pages
+/// open with <c>&lt;page-header&gt;</c> and two of them bind <c>&lt;vc:human&gt;</c> — an
 /// unbound tag helper survives into the response as inert literal markup with no error, so
 /// the assertions are on the *rendered* form, never on the page loading.
 /// </description></item>
 /// <item><description>
 /// The view models moved out of <c>Humans.Web/Models</c> and turned internal, while
-/// <c>TranslationsGalleryModelBuilder</c> went the other way, down to <c>Humans.UI</c>. One
+/// <c>TranslationsGalleryModelBuilder</c> went the other way, down to Base. One
 /// GET of each gallery is what proves both halves of that split still bind.
 /// </description></item>
 /// <item><description>
@@ -71,9 +71,11 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // <page-header> is Humans.UI's tag helper. A section can only addTagHelper against
-            // Humans.UI, and a helper the section's _ViewImports failed to bind survives into
-            // the body as its own element name — 200, correct-looking source, nothing on screen.
+            // <page-header> is Base's tag helper (namespace Humans.UI, assembly
+            // Humans.Interfaces since G5 lane 4b-iii B). A helper the section's _ViewImports
+            // failed to bind survives into the body as its own element name — 200,
+            // correct-looking source, nothing on screen. Four of these pages use it; the
+            // positive marker it emits is asserted on /Debug/Translations below.
             html.Should().NotContain("<page-header", $"GET {url} left a tag helper unrendered");
 
             // Same failure mode for a view component element.
@@ -85,11 +87,36 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         }
     }
 
+    /// <summary>
+    /// <c>/Debug/Maintenance</c>'s only control posts to a real action.
+    /// </summary>
+    /// <remarks>
+    /// The page-render sweep above matches the heading, which a page that lost its form still
+    /// carries. This was <c>tests/e2e/admin-shell.spec.ts</c>'s check until
+    /// nobodies-collective/Humans#1332 left the E2E suite with no Admin persona;
+    /// <c>/Debug/*</c> is <c>AdminOnly</c>, so there is no other role to port it to.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_maintenance_page_renders_its_clear_hangfire_locks_form()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var html = await (await Client.GetAsync("/Debug/Maintenance", ct)).Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("ClearHangfireLocks",
+            "asp-action must resolve to an href — a pair that routes nowhere renders a form "
+            + "that posts to the current page instead");
+        html.Should().Contain("Clear Hangfire Locks", "the page's only control must render");
+        html.Should().Contain("__RequestVerificationToken",
+            "the form posts, so it must carry its antiforgery token");
+    }
+
     [HumansFact(Timeout = 120000)]
     public async Task The_two_reflection_galleries_render_their_rows_from_both_sides_of_the_move()
     {
         // FormatGalleryModelBuilder moved into the section and turned internal;
-        // TranslationsGalleryModelBuilder went down to Humans.UI instead, because it enumerates
+        // TranslationsGalleryModelBuilder went down to Base instead, because it enumerates
         // SharedResource and a Base test asserts translation parity through it. Both pages are
         // reflection-built, so an empty table is the shape a broken binding takes — "the page
         // renders" would pass over either of them.
@@ -102,6 +129,11 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         formats.Should().Contain("Europe/Madrid");
 
         var translations = await (await Client.GetAsync("/Debug/Translations", ct)).Content.ReadAsStringAsync(ct);
+        // The positive half of the <page-header> check: the loop above only proves the element
+        // did not survive as literal markup, which a page that never had one also satisfies.
+        // This is the h1 the tag helper emits, and this page does carry a <page-header>.
+        translations.Should().Contain("<h1 class=\"mb-0\">",
+            because: "<page-header> must render its h1, not merely be absent from the body");
         translations.Should().Contain(" keys",
             because: "the gallery reports the SharedResource key count it enumerated");
         translations.Should().Contain("Common_",

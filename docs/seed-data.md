@@ -1,8 +1,8 @@
 <!-- freshness:triggers
-  src/Humans.Infrastructure/Data/Configurations/**
-  src/Humans.Domain/Constants/**
+  src/Sections/*/Data/**
+  src/Humans.Interfaces/Constants/**
   src/Sections/Humans.Development/**
-  src/Humans.Infrastructure/Migrations/**
+  src/Sections/*/Data/Migrations/**
   src/Sections/**/Data/**
 -->
 <!-- freshness:flag-on-change
@@ -22,16 +22,13 @@
 
 ## Existing Patterns
 
-**`HasData`** — stable bootstrap rows with deterministic IDs, part of migrations. Since the DbContext split and the G5 section moves these configurations sit in two places:
+**`HasData`** — stable bootstrap rows with deterministic IDs, part of migrations. `src/Humans.Infrastructure` was deleted outright (G5 lane 5b-6, nobodies-collective/Humans#866), so every configuration with `HasData` now lives in its owning section project's `Data/Configurations/`: shift tags (`ShiftTagConfiguration`, `Humans.Shifts`), sync settings (`SyncServiceSettingsConfiguration`, `Humans.GoogleIntegration`), camp settings (`CampSettingsConfiguration`, `Humans.Camps`), system teams (`TeamConfiguration`, `Humans.Teams`), ticket sync state (`TicketSyncStateConfiguration`, `Humans.Tickets`), system settings (`SystemSettingConfiguration`, the `IsEmailSendingPaused` row, `Humans.SystemSettings`), agent settings (`AgentSettingsConfiguration`, `Humans.Agent`), event-guide categories (`EventCategoryConfiguration`, `Humans.Events`).
 
-- `src/Humans.Infrastructure/Data/Configurations/` — system teams (`TeamConfiguration`), shift tags (`ShiftTagConfiguration`), sync settings (`SyncServiceSettingsConfiguration`), camp settings (`CampSettingsConfiguration`), ticket sync state (`TicketSyncStateConfiguration`).
-- `src/Sections/Humans.<Section>/Data/Configurations/` — system settings (`SystemSettingConfiguration`, the `IsEmailSendingPaused` row), agent settings (`AgentSettingsConfiguration`), event-guide categories (`EventCategoryConfiguration`).
-
-A `HasData` row seeded from a section project lands in that section's own migration chain, not in `HumansDbContext`'s.
+`HumansDbContext` was deleted outright (nobodies-collective/Humans#858; Peel 15, nobodies-collective/Humans#1273 folded Users and Profiles into the new `UsersDbContext`) — there is no shared root context left. A `HasData` row seeded from a section project lands in that section's own migration chain; every table belongs to exactly one section context, and every section context now lives in its own project's `Data/` (e.g. `Humans.Users`, `Humans.Camps`, `Humans.Shifts`, `Humans.GoogleIntegration`) except `SystemDbContext`, the platform context for framework-owned tables (`DataProtectionKeys`), which lives in `src/Humans.Web/Data/`.
 
 **Lazy singleton instead of `HasData`** — some single-row settings tables are deliberately *not* seeded and are created on first save instead (`GateSettingsConfiguration`, `HoldedSyncStateConfiguration` both carry a comment saying so). Prefer this when the row's shape is likely to change: it avoids a `HasData` value baked into an old migration drifting from the entity.
 
-**Migration SQL** — e.g., `20260311161510_SeedLeadRoleDefinitions.cs`. One-off backfills tied to schema changes.
+**Migration SQL** — one-off backfills tied to schema changes, written directly into a migration's `Up()`. These don't survive as standalone examples: a section move or DbContext peel squashes its migration chain into one baseline (see `memory/architecture/migration-regen-after-rebase.md`), absorbing any prior one-off backfill along with everything else.
 
 **Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Domain.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
 

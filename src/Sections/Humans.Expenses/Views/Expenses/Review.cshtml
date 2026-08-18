@@ -1,4 +1,3 @@
-@using Humans.UI.Extensions
 @model Humans.Expenses.Models.ExpenseReviewViewModel
 @{
     ViewData["Title"] = "Expense Reports — Finance Review";
@@ -16,6 +15,20 @@
     <h1>Finance Review</h1>
 </div>
 
+@* Approved reports whose Holded push was written off look identical to healthy ones in every
+   other view, so without this they are only discoverable by reconciling Holded by hand
+   (nobodies-collective/Humans#1045). *@
+@if (Model.FailedHoldedPushCount > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        <strong>@Model.FailedHoldedPushCount</strong>
+        approved @(Model.FailedHoldedPushCount == 1 ? "report" : "reports")
+        failed to finish pushing to Holded. Open the report to see the error, whether a payable was
+        created, and to re-queue the push.
+    </div>
+}
+
 
 @if (!Model.Reports.Any())
 {
@@ -31,7 +44,11 @@ else
                 <tr>
                     <th>Report</th>
                     <th>Submitter</th>
-                    <th>Total</th>
+                    <th>Department</th>
+                    <th>Subject</th>
+                    <th class="text-end">Requested</th>
+                    <th class="text-end">Max</th>
+                    <th class="text-end">Payable</th>
                     <th>Status</th>
                     <th>Submitted</th>
                     <th class="text-end">Actions</th>
@@ -47,7 +64,18 @@ else
                             </a>
                         </td>
                         <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                        <td>@r.Total.ToEuro()</td>
+                        <td>@(Model.DepartmentNames.TryGetValue(r.BudgetCategoryId, out var dept) ? dept : "(unknown)")</td>
+                        <td>@(r.Note is { Length: > 80 } n ? n[..80] + "…" : r.Note)</td>
+                        @* Requested is the receipts total; a capped report pays the cap instead, so all
+                           three columns stay visible rather than collapsing into one. *@
+                        <td class="text-end">@r.Total.ToEuro()</td>
+                        <td class="text-end">
+                            @if (r.MaxAmount is { } cap)
+                            {
+                                @cap.ToEuro()
+                            }
+                        </td>
+                        <td class="text-end @(r.Payable < r.Total ? "fw-semibold text-danger" : "")">@r.Payable.ToEuro()</td>
                         <td>
                             <span class="badge @badgeClass(r.Status)">@r.Status</span>
                         </td>
@@ -99,8 +127,15 @@ else
                         </div>
                         <div class="modal-body">
                             <p class="mb-3">
-                                Total: <strong>@r.Total.ToEuro()</strong>
+                                Receipts total: <strong>@r.Total.ToEuro()</strong>
                             </p>
+                            <div class="mb-3">
+                                <label class="form-label">Max amount (optional)</label>
+                                <input type="number" class="form-control" name="MaxAmount"
+                                       step="0.01" min="0.01" value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                       placeholder="Leave blank for no cap">
+                                <div class="form-text">Caps the payout below the receipts total. Overrides the coordinator's cap.</div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Category override (optional)</label>
                                 <input type="text" class="form-control" name="OverrideCategoryId"

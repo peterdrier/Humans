@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Users;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;
 using Humans.Tickets.Contracts;
@@ -11,6 +10,7 @@ using Humans.Tickets.Services.Stores;
 using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets;
 
@@ -19,12 +19,16 @@ namespace Humans.Tickets;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <c>TicketSyncJob</c>, <c>TicketingBudgetSyncJob</c> and <c>GateVendorCheckInJob</c> are
-/// <em>not</em> registered here: recurring jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and there is no discovery seam for them yet, so
-/// they stay in <c>Humans.Infrastructure/Jobs</c> and reach the section through the
-/// contracts leaf (design §15.6b). Shell's <c>TicketVendorHealthCheck</c> is the same
-/// shape, and it probes the Base vendor port deliberately.
+/// <c>TicketSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5 lane 5b-3
+/// (nobodies-collective/Humans#866) but is <em>not</em> registered here: recurring jobs are
+/// named by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no
+/// discovery seam for them yet, so the registration stays in Shell (design §15.6b). The
+/// other two jobs the section used to be credited with went to their real owners in the same
+/// move — <c>TicketingBudgetSyncJob</c> to <c>Humans.Budget</c> (both its collaborators are
+/// Budget's) and <c>GateVendorCheckInJob</c> to <c>Humans.Gate</c> (both its enqueue sites
+/// are Gate controllers). Shell's <c>TicketVendorHealthCheck</c> is the same shape, and it
+/// probes this section's vendor port deliberately — it is the one injection site of
+/// <c>ITicketVendorService</c> outside <c>Humans.Tickets</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

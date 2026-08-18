@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Internal;
@@ -26,7 +27,13 @@ namespace Humans.Analyzers.Internal;
 /// </remarks>
 internal static class GrandfatheredCheck
 {
-    public const string AttributeFullName = "Humans.Application.Architecture.GrandfatheredAttribute";
+    /// <summary>
+    /// Metadata name the attribute is resolved by, derived from the class
+    /// itself (linked into this project by <c>Humans.Analyzers.csproj</c>) so
+    /// a namespace move carries the constant with it. Never re-inline this as
+    /// a literal — see nobodies-collective/Humans#1057.
+    /// </summary>
+    public static readonly string AttributeFullName = typeof(GrandfatheredAttribute).FullName!;
 
     /// <summary>
     /// Resolves the <see cref="GrandfatheredAttribute"/> symbol from the
@@ -60,7 +67,7 @@ internal static class GrandfatheredCheck
 
             var ruleIdArg = attr.ConstructorArguments[0];
             if (ruleIdArg.Value is string s &&
-                string.Equals(s, ruleId, System.StringComparison.Ordinal))
+                string.Equals(s, ruleId, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -109,13 +116,13 @@ internal static class GrandfatheredCheck
                 continue;
 
             if (args[0].Value is not string ruleIdValue ||
-                !string.Equals(ruleIdValue, ruleId, System.StringComparison.Ordinal))
+                !string.Equals(ruleIdValue, ruleId, StringComparison.Ordinal))
             {
                 continue;
             }
 
             var scopeValue = args.Length >= 5 ? args[4].Value as string : null;
-            if (scopeValue is not null && string.Equals(scopeValue, scope, System.StringComparison.Ordinal))
+            if (scopeValue is not null && string.Equals(scopeValue, scope, StringComparison.Ordinal))
                 return true;
         }
 

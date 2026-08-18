@@ -6,13 +6,9 @@ namespace Humans.Finance.Contracts;
 /// debit = paid out. Sourced from the cached <c>holded_ledger_lines</c> rows, not from a live
 /// Holded call.</summary>
 /// <remarks>
-/// Finance's own boundary type, deliberately not the Holded connector's
-/// <c>HoldedLedgerLineDto</c>, which this shape otherwise mirrors. The connector is Base and
-/// stays there (nobodies-collective/Humans#866), this project may reference only the bottom of
-/// the graph, and re-exporting another component's DTO across a section boundary would make
-/// every consumer of a creditor statement a consumer of the Holded API's wire shape. The two
-/// types drifting apart is the point: a Holded API field that stops being a ledger-line field
-/// should not reach the statement page.
+/// Finance's own boundary type, deliberately not the Holded connector's <c>HoldedLedgerLineDto</c>,
+/// which it otherwise mirrors: re-exporting another section's wire shape would make every reader of a
+/// creditor statement a consumer of the Holded API. The two drifting apart is the point.
 /// </remarks>
 public sealed record CreditorLedgerLine
 {

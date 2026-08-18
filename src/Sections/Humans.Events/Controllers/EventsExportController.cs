@@ -1,8 +1,7 @@
 using Humans.Application.Csv;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Events.Filters;
@@ -12,6 +11,7 @@ using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using Humans.Events.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 

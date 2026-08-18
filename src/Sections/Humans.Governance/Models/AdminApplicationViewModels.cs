@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using Humans.UI.Models;
 

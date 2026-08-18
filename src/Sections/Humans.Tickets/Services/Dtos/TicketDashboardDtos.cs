@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
@@ -66,6 +66,7 @@ internal sealed class TicketSalesAggregates
 {
     public List<WeeklySalesAggregate> WeeklySales { get; init; } = [];
     public List<QuarterlySalesAggregate> QuarterlySales { get; init; } = [];
+    public List<TicketTypeSalesAggregate> ByTicketType { get; init; } = [];
 }
 
 internal sealed class WeeklySalesAggregate
@@ -90,6 +91,18 @@ internal sealed class QuarterlySalesAggregate
     public decimal Donations { get; init; }
     public decimal VatAmount { get; init; }
     public decimal VipDonations { get; init; }
+}
+
+internal sealed class TicketTypeSalesAggregate
+{
+    public string TicketTypeName { get; init; } = string.Empty;
+    public decimal Price { get; init; }
+    public int TicketsSold { get; init; }
+
+    /// <summary>Sum of listed ticket prices — not order revenue (order-level
+    /// discounts and donations are excluded), so it won't reconcile with
+    /// the weekly/quarterly GrossRevenue figures.</summary>
+    public decimal FaceValue { get; init; }
 }
 
 /// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>
@@ -267,6 +280,16 @@ internal sealed class PaidOrderSalesRow
     public decimal VatAmount { get; init; }
     public int AttendeeCount { get; init; }
     public decimal VipDonations { get; init; }
+}
+
+/// <summary>
+/// Narrow per-attendee projection used to aggregate sales by ticket type and
+/// price. One row per Valid/CheckedIn attendee on a paid order.
+/// </summary>
+internal sealed class PaidAttendeeTypePriceRow
+{
+    public string TicketTypeName { get; init; } = string.Empty;
+    public decimal Price { get; init; }
 }
 
 /// <summary>

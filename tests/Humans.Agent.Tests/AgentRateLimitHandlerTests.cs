@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Agent.Services.Stores;
 using Humans.Agent.Authorization;
 using Microsoft.AspNetCore.Authorization;

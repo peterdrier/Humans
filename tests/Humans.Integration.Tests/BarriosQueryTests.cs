@@ -1,9 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests;
 

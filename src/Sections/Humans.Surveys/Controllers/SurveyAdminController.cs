@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
@@ -13,6 +11,7 @@ using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Controllers;
 

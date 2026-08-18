@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models.Tables;
-using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 
@@ -17,7 +16,7 @@ public class TableColumnTests
         public string? Name { get; init; }
         public decimal Amount { get; init; }
         public Instant? When { get; init; }
-        public SignupStatus Status { get; init; }
+        public EmailOutboxStatus Status { get; init; }
         public bool Flag { get; init; }
     }
 
@@ -69,9 +68,11 @@ public class TableColumnTests
     {
         var col = Col(CellFormat.EnumBadge, r => r.Status);
         // A Base enum, not a section's: a moved section's badge rows are registered from
-        // its Section.Register and are absent in a unit test (see EnumBadgeMapTests).
-        Render(col.Cell(new Row { Status = SignupStatus.Confirmed }))
-            .Should().Be("""<span class="badge bg-success">Confirmed</span>""");
+        // its Section.Register and are absent in a unit test (see EnumBadgeMapTests). This
+        // was SignupStatus until G5 lane 4b-i (nobodies-collective/Humans#866) moved Shifts'
+        // rows out of Base's literal — the comment was already true, the enum was not.
+        Render(col.Cell(new Row { Status = EmailOutboxStatus.Sent }))
+            .Should().Be("""<span class="badge bg-success">Sent</span>""");
     }
 
     [HumansFact]

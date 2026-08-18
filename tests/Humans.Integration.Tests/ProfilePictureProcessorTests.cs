@@ -1,5 +1,5 @@
 using System.Reflection;
-using Humans.Web.Helpers;
+using Humans.Users.Helpers;
 using ImageMagick;
 using Xunit;
 

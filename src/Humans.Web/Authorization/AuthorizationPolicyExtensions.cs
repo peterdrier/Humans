@@ -1,4 +1,4 @@
-using Humans.Application.Authorization;
+using Humans.Auth.Contracts;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -18,14 +18,12 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Scoped: depend on scoped services.
-        services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
         // moved into the section at its G5 and is internal there, while the policies it backs
         // stay here (design §15 step 6's asymmetry).
 
-        services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
@@ -152,6 +150,17 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));
+
+            // Resource-based (the resource is the target role-name string). Naming the
+            // requirement type is policy-registration work and therefore Shell's — it lets
+            // Humans.Users reach the gate through the policy name alone, so Auth's Contracts
+            // leaf never has to carry an IAuthorizationRequirement. ("Framework-free leaf" was
+            // the old wording; G5 lane 3c measured it false — the leaf resolves
+            // Microsoft.AspNetCore.App transitively through Humans.Interfaces. Keeping the
+            // requirement out is a choice, enforced by
+            // AuthArchitectureTests.ContractsLeafNamesNoAspNetType.)
+            options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
+                policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));
         });
 
         return services;

@@ -24,12 +24,13 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- ConsentResource only: the statutes page renders one Consent key, whose set came
          home at Consent's G5. Acyclic — Humans.Consent references
          Humans.Governance.Contracts, never this project (design §15 step 3b). -->
@@ -45,10 +46,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Contracts/TermRenewalReminderJob.cs — [DisableConcurrentExecution] and IRecurringJob,
+         since G5 lane 5b-4. Package, not project, so no cycle is possible; it was already
+         arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <!--
+      Stateless drives Application's state machine (Domain/Application.cs). It used to arrive
+      transitively through Humans.Domain, which declared it; G5 lane 3b deleted that project,
+      so the dependency is now declared where it is actually used. Nothing else in the
+      solution names Stateless.
+    -->
+    <PackageReference Include="Stateless" />
   </ItemGroup>
 
   <ItemGroup>

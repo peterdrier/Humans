@@ -1,11 +1,10 @@
 using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Email.Services;
@@ -43,8 +42,9 @@ internal sealed class OutboxEmailService(
 
         var category = message.Category;
 
-        // null / System ⇒ always send: no opt-out suppression and no unsubscribe.
-        var optOutEligible = category is not null && category != MessageCategory.System;
+        // null / always-on (System, CampaignCodes) ⇒ always send: no opt-out
+        // suppression and no unsubscribe (there is nothing for it to do).
+        var optOutEligible = category is not null && !category.Value.IsAlwaysOn();
 
         if (optOutEligible && userId.HasValue
             && await commPrefService.IsOptedOutAsync(userId.Value, category!.Value, cancellationToken))

@@ -1,13 +1,12 @@
-using Humans.Auth.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Hosting;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications;
 

@@ -1,8 +1,6 @@
-using Humans.Domain.Entities;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,6 +11,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Tests;
 

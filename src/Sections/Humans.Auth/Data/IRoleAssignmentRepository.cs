@@ -1,9 +1,7 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Auth.Domain;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Auth.Data;
 
@@ -20,7 +18,6 @@ namespace Humans.Auth.Data;
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
 /// so each method owns its own <c>AuthDbContext</c> lifetime.
 /// </remarks>
-[Section("Auth")]
 internal interface IRoleAssignmentRepository : IRepository
 {
     // ==========================================================================

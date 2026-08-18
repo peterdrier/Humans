@@ -1,14 +1,10 @@
 using Humans.Application;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Notifications.Tests;
+using Humans.Users.Contracts;
 using static Humans.Notifications.Tests.NotificationTestFixtures;
-using Humans.Notifications.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

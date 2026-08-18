@@ -1,17 +1,15 @@
 using Humans.CityPlanning.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.CityPlanning.Domain;
-using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
 using System.Text.Json;
+using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Services;
 

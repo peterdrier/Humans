@@ -1,6 +1,6 @@
-using System;
 using System.Collections.Immutable;
 using Humans.Analyzers.Internal;
+using Humans.Application.Architecture;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -47,8 +47,15 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
 {
     public const string DiagnosticId = "HUM0033";
 
-    public const string ExternalWriteAttributeFullName =
-        "Humans.Application.Architecture.ExternalWriteAttribute";
+    /// <summary>
+    /// Derived from the attribute class (linked into this project by
+    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
+    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
+    /// nothing, so a stale literal would retire HUM0033 silently.
+    /// See nobodies-collective/Humans#1057.
+    /// </summary>
+    public static readonly string ExternalWriteAttributeFullName =
+        typeof(ExternalWriteAttribute).FullName!;
 
     private const string MvcNamespace = "Microsoft.AspNetCore.Mvc";
     private const string RequestAbortedPropertyName = "RequestAborted";
@@ -93,9 +100,6 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
     {
         // Request-scoped tokens exist wherever controller actions live: the Web
         // assembly and every section assembly (G5).
-        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
-            return;
-
         var externalWrite = context.Compilation.GetTypeByMetadataName(ExternalWriteAttributeFullName);
         if (externalWrite is null)
             return;

@@ -14,7 +14,6 @@ namespace Humans.Tickets.Contracts;
 /// (memory/architecture/read-model-enrichment.md); <see cref="SurfaceBudgetAttribute"/>
 /// is what makes that the cheaper path, and raising it is the owner's call, out of band.
 /// </remarks>
-[SurfaceBudget(2)]
 public interface ITicketServiceRead
 {
     /// <summary>

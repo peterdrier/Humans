@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps\Humans.Camps.csproj" />
+    <!--
+      Temporary, and the condition that removes it: this project's harness seeds Users rows
+      through an in-memory UsersDbContext, which moved into Humans.Users at G5 lane 2 PR B.
+      It drops out when the harness stops building the other section's context directly.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section's four controllers and its authorization handler are ASP.NET types, and a
+      plain Microsoft.NET.Sdk test project does not get the shared framework — a
+      PackageReference cannot supply it either (NU1010 under Central Package Management,
+      design §15 step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section's own layers; the move renamed all of them at once. -->
+    <Using Include="Humans.Application" />
+    <Using Include="Humans.Camps" />
+    <Using Include="Humans.Camps.Contracts" />
+    <Using Include="Humans.Camps.Controllers" />
+    <Using Include="Humans.Camps.Data" />
+    <Using Include="Humans.Camps.Domain" />
+    <Using Include="Humans.Camps.Models" />
+    <Using Include="Humans.Camps.Services" />
+    <Using Include="Humans.Camps.Authorization" />
+    <Using Include="Humans.Camps.Tests.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

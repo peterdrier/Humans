@@ -1,21 +1,14 @@
-using Humans.Application.Configuration;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Architecture;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Stripe.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 
@@ -23,6 +16,7 @@ namespace Humans.Tickets.Services;
 /// Tickets sync pipeline: upsert vendor orders/attendees, match users by email,
 /// compute VAT, enrich Stripe fees, reconcile event participation.
 /// </summary>
+[CrossSectionWrite("Ticket sync writes participation and redeems campaign grants.")]
 internal sealed class TicketSyncService(
     ITicketRepository ticketRepository,
     ITicketTransferRepository transferRepository,
@@ -35,7 +29,7 @@ internal sealed class TicketSyncService(
     IUserServiceRead userServiceRead,
     IUserService userService,
     ICampaignService campaignService,
-    IShiftManagementService shiftManagementService) : ITicketSyncService, IUserMerge
+    IBurnSettingsService burnSettings) : ITicketSyncService, IUserMerge
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
@@ -434,7 +428,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 

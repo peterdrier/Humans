@@ -1,8 +1,8 @@
+using Humans.Users.Contracts;
 using Humans.Application.Extensions;
 using Humans.Email.Contracts;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Services;
 

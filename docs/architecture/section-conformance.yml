@@ -1,0 +1,80 @@
+# Per-section conformance rules for /section-doctor's conformance thread.
+#
+# Scope: rules that apply to a section as a whole and that NOTHING ENFORCES YET.
+# A rule an analyzer already fails the build on does not belong here — the build is
+# the check. This file is the gap between the prose rules (peters-hard-rules.md,
+# design-rules.md, docs/sections/G5-SECTION-TEMPLATE.md, memory/) and what is
+# mechanically enforced.
+#
+# ENTRIES ARE ADDED ONLY AT PETER'S DIRECTION. A run that spots an unenforced
+# per-section rule proposes it in the run file's Needs-Peter block; it does not
+# add a row here. Same for removals.
+#
+# Every entry has two exits, and the list is meant to shrink:
+#   - it graduates to an analyzer (preferred for call-site rules,
+#     peters-hard-rules.md "Preferences"), and the row is deleted; or
+#   - it is retired as no longer wanted, and the row moves to `declined`.
+#
+# A hit is a finding, never an automatic fix. Anything touching schema, public
+# surface or privileges is queued for Peter per the skill's skip-and-queue classes.
+
+version: 1
+
+rules:
+  - id: section-file-layout
+    title: >-
+      A section project's files sit where the G5 layout says: layer folders only at the
+      top level, Docs/ present, migrations under Data/Migrations/, and the resource class
+      + its .resx at the project root.
+    home: docs/sections/G5-SECTION-TEMPLATE.md step 2
+    added: 2026-08-18 (Peter)
+    scope: all
+    detect:
+      # 1. No top-level entry outside the allowed set. "Ship only the folders the section
+      #    has" — this is a deny-list check, so a section legitimately without Views/ or
+      #    Data/ is not a hit.
+      - kind: shell
+        what: top-level entries outside the allowed set
+        run: |
+          ALLOWED='Contracts|Interfaces|Domain|Data|Services|Controllers|Models|Views|ViewComponents|Authorization|Filters|Jobs|Docs|Properties|wwwroot'
+          for d in src/Sections/Humans.*/; do
+            case "$d" in *.Contracts/) continue;; esac
+            git ls-files -- "$d" | sed "s|^$d||" \
+              | awk -F/ '{ if (NF>1) print $1"/"; else print $1 }' | sort -u \
+              | grep -vE "^($ALLOWED)/$" \
+              | grep -vE '^(Section\.cs|.*\.csproj|[A-Za-z]+Resource\.cs|[A-Za-z]+Resource(\.[a-z]{2})?\.resx)$' \
+              | sed "s|^|$d|"
+          done
+      # 2. Every section carries its invariant doc.
+      - kind: shell
+        what: sections with no Docs/<Section>.md
+        run: |
+          for d in src/Sections/Humans.*/; do
+            case "$d" in *.Contracts/) continue;; esac
+            n=$(basename "$d" | sed 's/^Humans\.//')
+            [ -f "$d/Docs/$n.md" ] || echo "$d missing Docs/$n.md"
+          done
+      # 3. Migrations live at Data/Migrations/, never elsewhere in the project.
+      - kind: shell
+        what: migration files outside Data/Migrations/
+        run: |
+          git ls-files 'src/Sections/Humans.*/**/*_*.cs' \
+            | grep -iE 'migration' | grep -v '/Data/Migrations/' || true
+    notes: >-
+      Known hits at seeding (2026-08-18), recorded so a run reports them as pre-existing
+      rather than new: Helpers/ in Events, Shifts and Users; Extensions/ in Users;
+      HoldedSectionOptions.cs loose at Humans.Holded's root; no Docs/ in SystemSettings or
+      TicketTailor. Jobs/ and ViewComponents/ are in the allowed set above but missing from
+      the template's own list — the template is the home of this rule and needs that fix.
+
+# Rules deliberately NOT tracked here, so runs stop re-proposing them.
+declined:
+  - id: section-table-prefix
+    title: A section's tables are prefixed with the section name (e.g. finance_*)
+    why: >-
+      Peter's call, 2026-08-18: not wanted now. The mismatch is real and known —
+      Finance owns holded_* tables and its own section doc says so — and it is
+      tracked wholesale as nobodies-collective/Humans#1012. Renaming tables is a
+      schema change with no functional gain, which is exactly the kind of churn a
+      doctor run must not generate. Do not add this rule, and do not re-raise the
+      individual instances as findings.

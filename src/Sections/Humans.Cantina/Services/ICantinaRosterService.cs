@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
 
@@ -7,7 +7,7 @@ namespace Humans.Cantina.Services;
 
 /// <summary>
 /// Cross-section read service that powers the Cantina Weekly Roster page
-/// (feature #36 — docs/features/cantina/daily-roster.md). The controller
+/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). The controller
 /// gets the entire page payload — headers, weekly aggregates, per-day
 /// mini-summary, per-human rows — in one call so the view stays free of
 /// further service look-ups.

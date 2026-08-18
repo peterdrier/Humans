@@ -1,25 +1,18 @@
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
-using Humans.AuditLog.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
-using Humans.Consent.Domain;
-using Humans.Consent.Data;
 using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Services;
 using Humans.Budget.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -60,8 +53,8 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         // Act: query the AuditLog read path for the TARGET — chain-follow
         // should union the source-tombstone id and surface source's row.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var auditService = assertScope.ServiceProvider.GetRequiredService<IAuditLogService>();
-        var entries = await auditService.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
+        var auditReader = assertScope.ServiceProvider.GetRequiredService<IAuditLogReader>();
+        var entries = await auditReader.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
 
         entries.Should().Contain(
             e => e.Description == description

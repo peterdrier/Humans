@@ -1,4 +1,3 @@
-using Humans.Events.Services;
 using NodaTime;
 using Humans.Events.Contracts;
 

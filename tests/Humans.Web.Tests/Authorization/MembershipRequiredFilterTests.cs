@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 

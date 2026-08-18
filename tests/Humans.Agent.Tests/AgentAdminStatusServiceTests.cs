@@ -1,10 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Agent.Services;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
 using Microsoft.EntityFrameworkCore;

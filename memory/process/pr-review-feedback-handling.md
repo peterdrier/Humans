@@ -40,8 +40,11 @@ The decision rule:
 
 | Reply | Action |
 |---|---|
+| "Fixed in `<sha>`" | Reply + **resolve thread** |
 | "Not changing — Peter authorized X" | Reply + **resolve thread** |
 | "Not changing — bot is technically wrong" | Reply, **leave open** (default `/pr-fix` behavior) |
+
+A thread stays open only while it still needs someone's attention. A fixed finding needs none — the reply names the commit, and leaving it open makes a worked PR look unworked. Resolve in the same step as the reply, never as a later cleanup pass.
 
 Discovered on PR #448 when the bot flagged the same authorized budget bump twice and Peter had to ask for the second thread to be manually resolved. The default leave-open rule exists so reviewers can push back when Claude judged the bot wrong — that purpose is moot once Peter has explicitly sanctioned the deviation.
 

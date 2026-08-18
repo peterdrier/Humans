@@ -1,18 +1,15 @@
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.TicketVendor;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Tickets.Domain;
-using Humans.Tickets.Services.Stores;
+using Humans.Stripe.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -60,7 +57,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             Substitute.For<IUserServiceRead>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<IShiftManagementService>());
+            Substitute.For<IBurnSettingsService>());
 
         await service.ReassignAsync(
             sourceUserId,

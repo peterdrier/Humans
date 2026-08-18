@@ -7,8 +7,34 @@
       mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests") — see Teams finding 36.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
+    <!--
+      TeamsTestHarness declares a lazy ShiftsDbContext pair and TeamServiceTests seeds
+      rotas/shifts/signups through it. Temporary, and the mirror of Humans.Shifts'
+      InternalsVisibleTo("Humans.Teams.Tests") — it goes when those fixtures stop
+      reaching into another section's tables.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!--
+      Temporary, and the condition that removes it: this project's harness seeds Users rows
+      through an in-memory UsersDbContext, which moved into Humans.Users at G5 lane 2 PR B.
+      It drops out when the harness stops building the other section's context directly.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>

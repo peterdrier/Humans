@@ -1,20 +1,17 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
 using Humans.Cantina.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests.Services;
 
 /// <summary>
 /// Unit tests for <see cref="CantinaRosterService"/>. The on-site cohort comes
-/// from <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>;
+/// from <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>;
 /// dietary data is read from <see cref="IUserServiceRead"/> (cached UserInfo —
 /// dietary lives on Profile). Tests exercise the "unique humans across the week"
 /// contract: a single human on-site multiple days contributes exactly once to
@@ -22,7 +19,7 @@ namespace Humans.Cantina.Tests.Services;
 /// </summary>
 public class CantinaRosterServiceTests
 {
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IBurnSettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
@@ -34,7 +31,7 @@ public class CantinaRosterServiceTests
 
     public CantinaRosterServiceTests()
     {
-        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
         _burnSettings = Substitute.For<IBurnSettingsService>();
         _userRead = Substitute.For<IUserServiceRead>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that

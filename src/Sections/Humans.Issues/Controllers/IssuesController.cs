@@ -2,8 +2,6 @@ using Humans.UI.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
@@ -12,6 +10,7 @@ using Humans.Issues.Models;
 using Humans.Issues.Services;
 using Humans.Issues.Services.Dtos;
 using Humans.UI.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Issues.Controllers;
 

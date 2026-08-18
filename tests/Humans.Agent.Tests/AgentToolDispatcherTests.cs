@@ -1,11 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.Constants;
-using Humans.Application.Models;
 using NSubstitute;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 
+using Humans.Shifts.Contracts;
+using Xunit;
 namespace Humans.Agent.Tests;
 
 public class AgentToolDispatcherTests
@@ -93,11 +93,11 @@ public class AgentToolDispatcherTests
         stub.LastLimit.Should().Be(1);
     }
 
-    private static Humans.Application.Services.AuditLog.AuditEvent BuildVoluntoldEvent(Guid actor, Guid subject) =>
+    private static Humans.AuditLog.Contracts.AuditEvent BuildVoluntoldEvent(Guid actor, Guid subject) =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: Humans.Domain.Enums.AuditAction.ShiftSignupVoluntold,
+            Action: AuditLog.Contracts.AuditAction.ShiftSignupVoluntold,
             ActorUserId: actor,
             ActorDisplayName: "Frank",
             EntityType: "ShiftSignup",
@@ -118,11 +118,11 @@ public class AgentToolDispatcherTests
             ResourceId: null,
             ResourceName: null);
 
-    private static Humans.Application.Services.AuditLog.AuditEvent BuildUnmappedEvent() =>
+    private static Humans.AuditLog.Contracts.AuditEvent BuildUnmappedEvent() =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: Humans.Domain.Enums.AuditAction.AnomalousPermissionDetected,
+            Action: AuditLog.Contracts.AuditAction.AnomalousPermissionDetected,
             ActorUserId: null,
             ActorDisplayName: null,
             EntityType: "GoogleResource",
@@ -149,20 +149,14 @@ public class AgentToolDispatcherTests
         var viewer = Guid.NewGuid();
         var blockId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Humans.Domain.Entities.Rota
-        {
-            Id = Guid.NewGuid(),
-            Name = "Cantina build",
-            PracticalInfo = "Meet at gate",
-            Description = "Daily setup support"
-        };
+        var rota = new RotaStub("Cantina build", "Meet at gate", "Daily setup support");
         var signups = Enumerable.Range(0, 7)
-            .Select(i => MakeSignup(viewer, blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
+            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), SignupStatus.Confirmed))
             .ToList();
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -186,14 +180,14 @@ public class AgentToolDispatcherTests
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Humans.Domain.Entities.Rota { Id = Guid.NewGuid(), Name = "Setup crew" };
-        var signup = MakeSignup(viewer, signupBlockId: null,
+        var rota = new RotaStub("Setup crew");
+        var signup = MakeSignup(signupBlockId: null,
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new NodaTime.LocalTime(9, 0), durationHours: 4),
-            Humans.Domain.Enums.SignupStatus.Pending);
+            SignupStatus.Pending);
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -218,7 +212,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -246,7 +240,7 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -273,7 +267,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static Humans.Application.Interfaces.Shifts.BurnSettingsInfo MakeEventSettings() => new(
+    private static BurnSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test",
         Year: 2026,
@@ -291,33 +285,41 @@ public class AgentToolDispatcherTests
         EarlyEntryClose: null,
         IsShiftBrowsingOpen: false);
 
-    private static Humans.Domain.Entities.Shift MakeShift(
-        Humans.Domain.Entities.Rota rota, int dayOffset, bool isAllDay,
-        NodaTime.LocalTime? startTime = null, double durationHours = 0) => new()
-        {
-            Id = Guid.NewGuid(),
-            RotaId = rota.Id,
-            Rota = rota,
-            DayOffset = dayOffset,
-            IsAllDay = isAllDay,
-            StartTime = startTime ?? new NodaTime.LocalTime(8, 0),
-            Duration = NodaTime.Duration.FromHours(durationHours),
-            MinVolunteers = 1,
-            MaxVolunteers = 5
-        };
+    /// <summary>The rota fields get_shift_details renders, without the entity.</summary>
+    private sealed record RotaStub(string Name, string? PracticalInfo = null, string? Description = null);
 
-    private static Humans.Domain.Entities.ShiftSignup MakeSignup(
-        Guid userId, Guid? signupBlockId,
-        Humans.Domain.Entities.Shift shift,
-        Humans.Domain.Enums.SignupStatus status) => new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = shift.Id,
-            Shift = shift,
-            SignupBlockId = signupBlockId,
-            Status = status
-        };
+    /// <summary>
+    /// One signup on the section's boundary shape, with the fields
+    /// <c>RenderShiftDetails</c> reads resolved against
+    /// <see cref="MakeEventSettings"/> exactly as the section's projection does.
+    /// </summary>
+    private static ShiftSignupSummary MakeShift(
+        RotaStub rota, int dayOffset, bool isAllDay,
+        NodaTime.LocalTime? startTime = null, double durationHours = 0)
+    {
+        var ev = MakeEventSettings();
+        var date = ev.GateOpeningDate.PlusDays(dayOffset);
+        var tz = NodaTime.DateTimeZoneProviders.Tzdb[ev.TimeZoneId];
+        var start = isAllDay ? new NodaTime.LocalTime(8, 0) : startTime ?? new NodaTime.LocalTime(8, 0);
+        var end = isAllDay ? new NodaTime.LocalTime(18, 0) : start.PlusHours((int)durationHours);
+        return ShiftFixtures.Signup(
+            rotaName: rota.Name,
+            rotaPracticalInfo: rota.PracticalInfo,
+            rotaDescription: rota.Description,
+            eventSettingsId: ev.Id,
+            date: date,
+            isAllDay: isAllDay,
+            windowStart: start,
+            durationHours: isAllDay ? 10 : durationHours,
+            absoluteStart: date.At(start).InZoneLeniently(tz).ToInstant(),
+            absoluteEnd: date.At(end).InZoneLeniently(tz).ToInstant());
+    }
+
+    private static ShiftSignupSummary MakeSignup(
+        Guid? signupBlockId,
+        ShiftSignupSummary shift,
+        SignupStatus status) =>
+        shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
     [HumansFact]
     public async Task RouteToIssue_returns_proposal_marker_without_creating_anything()
@@ -403,7 +405,7 @@ public class AgentToolDispatcherTests
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Unknown section: NotASection");
-        result.Content.Should().Contain("Shifts").And.Contain("Profiles").And.Contain("Retry with one of these");
+        result.Content.Should().Contain("Shifts").And.Contain("Users").And.Contain("Retry with one of these");
     }
 
     [HumansFact]
@@ -432,7 +434,31 @@ public class AgentToolDispatcherTests
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Feature spec not found: no-such-spec");
-        result.Content.Should().Contain("Valid keys are: 26-events, gate-admissions");
+        // The three specs in the stub tree, and only those: the invariants doc, the generated
+        // authorization.md and the dated design record share those folders and are not specs.
+        result.Content.Should().Contain("Valid keys are: Events-feature, gate-admissions, gdpr-export");
+    }
+
+    /// <summary>
+    /// Specs live in their own section's <c>Docs/</c> folder, so a stem resolves to whichever
+    /// folder holds it rather than to one fixed path. Both homes must serve.
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Events-feature")]
+    [InlineData("gate-admissions")]
+    [InlineData("gdpr-export")]
+    public async Task FetchFeatureSpec_resolves_a_stem_to_its_own_section_folder(string stem)
+    {
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchFeatureSpec,
+                $$"""{"name":"{{stem}}"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeFalse();
+        result.Content.Should().Contain($"# {stem}");
     }
 
     /// <summary>
@@ -453,8 +479,8 @@ public class AgentToolDispatcherTests
         result.Content.Should().Be("Feature spec not found: no-such-spec.");
     }
 
-    /// <summary>A source whose folder listing is broken (revoked token, GitHub outage).</summary>
-    private sealed class UnlistableGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    /// <summary>A source whose listing is broken (revoked token, GitHub outage).</summary>
+    private sealed class UnlistableGuideSource : Application.Interfaces.IGuideContentSource
     {
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
@@ -464,13 +490,16 @@ public class AgentToolDispatcherTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("github unreachable");
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("github unreachable");
     }
 
     private static AgentToolDispatcher MakeDispatcher(
-        Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
-        Humans.Application.Interfaces.Shifts.IShiftView? shiftView = null,
-        Humans.Application.Interfaces.Shifts.IBurnSettingsService? burnSettings = null,
-        Humans.Application.Interfaces.IGuideContentSource? source = null)
+        Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
+        IShiftView? shiftView = null,
+        IBurnSettingsService? burnSettings = null,
+        Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
@@ -493,23 +522,37 @@ public class AgentToolDispatcherTests
             features,
             community,
             auditViewer ?? new StubAuditViewer(),
-            shiftView ?? Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>(),
-            burnSettings ?? Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>(),
+            shiftView ?? Substitute.For<IShiftView>(),
+            burnSettings ?? Substitute.For<IBurnSettingsService>(),
             logger);
     }
 
-    private sealed class StubGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    private sealed class StubGuideSource : Application.Interfaces.IGuideContentSource
     {
-        /// <summary>The only feature specs this stub repo contains — anything else 404s like GitHub would.</summary>
-        internal static readonly string[] FeatureStems = ["26-events", "gate-admissions"];
+        /// <summary>
+        /// This stub repo's whole markdown tree. Specs sit in the Docs/features/ folder of two
+        /// different section projects and in docs/features/global, with the section-owned docs
+        /// one level up in Docs/ — so the folder boundary that decides what is a spec is
+        /// exercised, not just the happy path. Anything outside this list 404s like GitHub would.
+        /// </summary>
+        internal static readonly string[] MarkdownPaths =
+        [
+            "src/Sections/Humans.Events/Docs/features/Events-feature.md",
+            "src/Sections/Humans.Events/Docs/Events.md",                      // invariants doc
+            "src/Sections/Humans.Events/Docs/authorization.md",               // generated companion
+            "src/Sections/Humans.Events/Docs/2026-06-08-events-card-design.md", // dated record
+            "src/Sections/Humans.Gate/Docs/features/gate-admissions.md",
+            "docs/features/global/gdpr-export.md",
+            "docs/sections/_Index.md",                                        // outside both spec homes
+            "docs/community-kb/FAQ-general.md",                               // the community reader's corpus
+        ];
 
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}");
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
         {
-            if (string.Equals(folderPath, AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
-                && !FeatureStems.Contains(fileStem, StringComparer.Ordinal))
+            if (!MarkdownPaths.Contains($"{folderPath}/{fileStem}.md", StringComparer.Ordinal))
             {
                 throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
             }
@@ -520,46 +563,41 @@ public class AgentToolDispatcherTests
             Task.FromResult<IReadOnlyList<string>>(
                 string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
                     ? ["FAQ-general"]
-                    : string.Equals(folderPath, AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
-                        ? FeatureStems
-                        : []);
+                    : []);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>((MarkdownPaths, true));
     }
 
-    private static Humans.Application.Interfaces.Shifts.IShiftView MakeViewFor(
-        Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
+    private static IShiftView MakeViewFor(
+        Guid userId, IReadOnlyList<ShiftSignupSummary> signups)
     {
-        var view = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>();
-        var record = new Humans.Application.DTOs.Shifts.ShiftUserView(
-            UserId: userId,
-            Profile: null,
-            Availability: null,
-            BuildStatus: null,
-            TagPreferences: [],
-            Signups: signups);
+        var view = Substitute.For<IShiftView>();
+        var record = ShiftFixtures.UserSummary(userId, signups);
         view.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.DTOs.Shifts.ShiftUserView>(record));
+            .Returns(new ValueTask<ShiftUserSummary>(record));
         return view;
     }
 
-    private sealed class StubAuditViewer : Humans.Application.Interfaces.AuditLog.IAuditViewerService
+    private sealed class StubAuditViewer : Humans.AuditLog.Contracts.IAuditViewerService
     {
-        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; init; } =
+        public IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent> Events { get; init; } =
             [];
 
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>
         public int? LastLimit { get; private set; }
 
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
         {
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<Humans.Application.Interfaces.AuditLog.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-            Task.FromResult(new Humans.Application.Interfaces.AuditLog.AuditEventPage(Events, Events.Count, 0));
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<Humans.AuditLog.Contracts.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
+            Task.FromResult(new Humans.AuditLog.Contracts.AuditEventPage(Events, Events.Count, 0));
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
 }

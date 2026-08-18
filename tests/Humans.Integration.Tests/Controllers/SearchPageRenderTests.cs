@@ -22,10 +22,11 @@ namespace Humans.Integration.Tests.Controllers;
 /// </description></item>
 /// <item><description>
 /// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. The Humans
-/// bucket renders through <c>_HumanSearchResults</c>, which moved down to <c>Humans.UI</c> so
-/// that both Shell's four pages and this section's view can reach it; the partial resolves by
-/// *name* across application parts, and its <c>&lt;vc:human&gt;</c> binds against
-/// <c>Humans.UI</c>'s own <c>_ViewImports</c>, not this section's.
+/// bucket renders through <c>_HumanSearchResults</c>, which lives in <c>Humans.Users</c> since
+/// G5 lane 4b-i (nobodies-collective/Humans#866) — its model, <c>HumanSearchResultViewModel</c>,
+/// stayed in <c>Humans.UI</c> so this section can still name it. The partial resolves by *name*
+/// across application parts, and its <c>&lt;vc:human&gt;</c> binds against
+/// <c>Humans.Users</c>' own <c>Views/Shared/_ViewImports</c>, not this section's.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved 12 of the 17 <c>Search_*</c> keys into <c>SearchResource</c> and left
@@ -90,7 +91,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task A_matching_query_renders_the_chips_and_the_humans_bucket()
     {
-        // _HumanSearchResults moved to Humans.UI/Views/Shared. A partial the view engine cannot
+        // _HumanSearchResults lives in Humans.Users/Views/Shared. A partial the view engine cannot
         // find throws rather than degrading, so reaching a 200 with the persona's name on it is
         // what proves both the lookup and the <vc:human> inside it.
         var ct = Xunit.TestContext.Current.CancellationToken;

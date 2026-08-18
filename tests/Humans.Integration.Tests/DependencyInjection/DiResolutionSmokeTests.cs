@@ -1,6 +1,9 @@
 using System.Text;
+using Humans.Application.Configuration;
 using Humans.Email.Contracts;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Web.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -53,6 +56,54 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
         {
             var message = new StringBuilder()
                 .AppendLine("The following app registrations failed DI resolution:")
+                .AppendJoin(Environment.NewLine, failures)
+                .ToString();
+            Assert.Fail(message);
+        }
+    }
+
+    /// <summary>
+    /// The test above only proves that what we registered can be built. This one goes the other
+    /// way: it walks the recurring-job roll-call and checks each scheduled job can actually be
+    /// built when Hangfire asks for it. A job that is scheduled but never registered throws on
+    /// every tick and silently never runs — that has now shipped twice
+    /// (CleanupNotificationsJob, AgentConversationRetentionJob).
+    /// </summary>
+    [HumansFact(Timeout = 60000)]
+    public async Task Every_scheduled_recurring_job_resolves_from_a_real_app_scope()
+    {
+        var rollCall = RecurringJobExtensions.BuildRollCall(
+            Factory.Services.GetRequiredService<IConfiguration>(),
+            Factory.Services.GetRequiredService<ConfigurationRegistry>());
+
+        Assert.NotEmpty(rollCall);
+
+        // Two jobs sharing an id would mean one schedule quietly overwriting the other.
+        Assert.Empty(rollCall
+            .GroupBy(job => job.Id, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key));
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+
+        var failures = new List<string>();
+
+        foreach (var job in rollCall)
+        {
+            try
+            {
+                scope.ServiceProvider.GetRequiredService(job.JobType);
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{job.Id} ({job.JobType.FullName}): {ex.GetType().Name} - {ex.Message}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            var message = new StringBuilder()
+                .AppendLine("These recurring jobs are scheduled but cannot be built from the container:")
                 .AppendJoin(Environment.NewLine, failures)
                 .ToString();
             Assert.Fail(message);

@@ -1,0 +1,78 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Tickets/**
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Users.Contracts/EventParticipation.cs
+  src/Sections/Humans.Shifts/Domain/EventSettings.cs
+  src/Sections/Humans.Users/Data/Configurations/EventParticipationConfiguration.cs
+  src/Sections/Humans.Shifts/Data/Configurations/EventSettingsConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  EventParticipation entity, status lifecycle transitions, or "Who Hasn't Bought" exclusion rule may have shifted.
+-->
+
+# Event Participation Tracking
+
+## Business Context
+
+Track yearly event participation status for each human, enabling self-service opt-out for those not attending and providing admin visibility into participation breakdown.
+
+## User Stories
+
+### As a human, I want to declare I'm not attending this year
+- Dashboard ticket widget shows "Not attending this year" button when no ticket linked
+- Clicking sets participation status to NotAttending
+- Can undo the declaration to return to default state
+
+### As a ticket holder, my participation is auto-tracked
+- Ticket sync creates/updates participation records automatically
+- Valid ticket -> Ticketed status
+- Checked in -> Attended status (permanent, cannot revert); written by the ticket sync from per-ticket `CheckedInAt`, and directly by a Humans gate admit
+- Ticket purchase overrides a previous NotAttending declaration
+- Ticket void/transfer with no remaining tickets removes Ticketed record
+
+### As an admin, I can see participation breakdown
+- Donut chart on ticket dashboard: Has Ticket / No Ticket / Not Coming
+- "Who Hasn't Bought" excludes humans who declared not attending
+
+### As an admin, I can backfill historical data
+- CSV import of UserId,Status pairs for a given year
+- Available via Tickets > Backfill tab (admin only)
+
+## Data Model
+
+### EventParticipation
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | FK to User (Cascade) |
+| Year | int | Event year |
+| Status | ParticipationStatus | NotAttending, Ticketed, Attended, NoShow |
+| DeclaredAt | Instant? | When user self-declared NotAttending |
+| CheckedInAt | Instant? | Earliest gate check-in for the year; write-once (never overwritten once set) |
+| Source | ParticipationSource | UserDeclared, TicketSync, AdminBackfill |
+
+**Unique constraint:** (UserId, Year)
+
+### EventSettings.Year
+Added `Year` (int) to EventSettings so participation records can be linked to the correct event year.
+
+## Status Lifecycle
+
+| Transition | Trigger |
+|---|---|
+| (none) -> NotAttending | User clicks "Not attending this year" |
+| (none) -> Ticketed | Ticket sync matches valid ticket |
+| NotAttending -> Ticketed | Ticket purchase overrides |
+| Ticketed -> Attended | Ticket sync sees a gate scan (`TicketAttendee.CheckedInAt`, synced from the vendor's `/check_ins` — a scanned ticket's Status stays Valid) |
+| any (except Attended) -> Attended | Gate admit: `GateService` projects a recorded admit onto participation (CheckedInAt = admit instant), best-effort after the durable scan event — so consumed camp Early Entry can't be revoked |
+| Ticketed -> NoShow | Post-event derivation |
+| Ticketed -> (removed) | All valid tickets voided/transferred |
+
+Attended is permanent -- cannot be reverted by any mechanism.
+
+## Related Features
+
+- Ticket sync (TicketSyncService)
+- Dashboard ticket widget
+- Ticket admin dashboard
+- "Who Hasn't Bought" metrics

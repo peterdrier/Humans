@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 using Humans.Expenses.Contracts;
 using NodaTime;
 
@@ -15,6 +14,8 @@ internal sealed class ExpenseReport
     public string PayeeName { get; set; } = "";
     public string PayeeIban { get; set; } = "";
     public decimal Total { get; set; }
+    /// <summary>Cap the deciders authorized, or null for no cap. Payable is min(Total, MaxAmount).</summary>
+    public decimal? MaxAmount { get; set; }
     public Instant? SubmittedAt { get; set; }
     public Guid? CoordinatorEndorsedByUserId { get; set; }
     public Instant? CoordinatorEndorsedAt { get; set; }

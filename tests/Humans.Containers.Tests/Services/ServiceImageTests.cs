@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
@@ -10,10 +10,11 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
-namespace Humans.Containers.Tests;
+namespace Humans.Containers.Tests.Services;
 
-public sealed class ContainerImageServiceTests
+public sealed class ServiceImageTests
 {
     private readonly IFileStorage _fileStorage;
     private readonly Service _sut;
@@ -25,14 +26,14 @@ public sealed class ContainerImageServiceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-    public ContainerImageServiceTests()
+    public ServiceImageTests()
     {
         _fileStorage = Substitute.For<IFileStorage>();
         var repo = new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new Service(
             repo,
             _fileStorage,
-            Substitute.For<ICampService>(),
+            Substitute.For<ICampServiceRead>(),
             Substitute.For<IAuditLogService>(),
             new FakeClock(StartTime));
     }
@@ -55,7 +56,7 @@ public sealed class ContainerImageServiceTests
             UpdatedAt = StartTime,
         };
         ctx.Containers.Add(container);
-        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         return container;
     }
 
@@ -66,7 +67,7 @@ public sealed class ContainerImageServiceTests
             CampId: CampId,
             Name: "Test",
             Description: null,
-            MainImage: FakeImage()), ct: Xunit.TestContext.Current.CancellationToken);
+            MainImage: FakeImage()), ct: TestContext.Current.CancellationToken);
 
         result.CampId.Should().Be(CampId);
         result.ImageStoragePath.Should().StartWith($"/uploads/containers/{result.Id}/");
@@ -86,11 +87,11 @@ public sealed class ContainerImageServiceTests
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            RemoveMainImage: true), actorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+            RemoveMainImage: true), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-guid.jpg", Arg.Any<CancellationToken>());
 
-        var updated = await _sut.GetByIdAsync(container.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
         updated!.ImageStoragePath.Should().BeNull();
     }
 
@@ -103,11 +104,11 @@ public sealed class ContainerImageServiceTests
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            MainImage: FakeImage()), actorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+            MainImage: FakeImage()), actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-old.jpg", Arg.Any<CancellationToken>());
 
-        var updated = await _sut.GetByIdAsync(container.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
         updated!.ImageStoragePath.Should().StartWith($"/uploads/containers/{container.Id}/");
         updated.ImageStoragePath.Should().EndWith(".jpg");
     }
@@ -117,9 +118,24 @@ public sealed class ContainerImageServiceTests
     {
         var container = await SeedContainerAsync(imagePath: "uploads/containers/id/main.jpg");
 
-        await _sut.DeleteAsync(container.Id, actorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.DeleteAsync(container.Id, actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main.jpg", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("Dollar $ name")]
+    [InlineData("<script>")]
+    [InlineData("a > b")]
+    public async Task CreateAsync_RejectsNameWithTokenSignificantCharacters(string name)
+    {
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: name,
+            Description: null), ct: TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must not contain*");
     }
 
     [HumansFact]
@@ -129,7 +145,7 @@ public sealed class ContainerImageServiceTests
             CampId: CampId,
             Name: "Bad",
             Description: null,
-            MainImage: new(Stream.Null, "image/jpeg", "trojan.html", 1024)), ct: Xunit.TestContext.Current.CancellationToken);
+            MainImage: new(Stream.Null, "image/jpeg", "trojan.html", 1024)), ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*end in .jpg*");

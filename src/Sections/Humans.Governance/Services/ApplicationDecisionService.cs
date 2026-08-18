@@ -1,32 +1,29 @@
+using Humans.Application.Architecture;
 using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.DTOs;
 using Humans.Governance.Services.Dtos;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Services;
 
+[CrossSectionWrite("Approval sets the applicant membership tier.")]
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,

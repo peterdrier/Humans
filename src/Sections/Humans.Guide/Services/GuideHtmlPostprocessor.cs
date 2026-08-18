@@ -28,11 +28,10 @@ internal sealed class GuideHtmlPostprocessor
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
-    public string Rewrite(string html, GuideSettings settings, IReadOnlySet<string> knownFileStems)
+    public string Rewrite(string html, GuideSettings settings)
     {
         ArgumentNullException.ThrowIfNull(html);
         ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(knownFileStems);
 
         var githubRepoBlobBase =
             $"https://github.com/{settings.Owner}/{settings.Repository}/blob/{settings.Branch}/";
@@ -45,7 +44,7 @@ internal sealed class GuideHtmlPostprocessor
             var url = match.Groups["url"].Value;
             var after = match.Groups["rest"].Value;
 
-            var rewritten = RewriteHref(url, knownFileStems, githubRepoBlobBase, guideFolder);
+            var rewritten = RewriteHref(url, githubRepoBlobBase, guideFolder);
             if (rewritten.IsExternal && !after.Contains("target=", StringComparison.OrdinalIgnoreCase))
             {
                 after = $" target=\"_blank\" rel=\"noopener\"{after}";
@@ -75,7 +74,6 @@ internal sealed class GuideHtmlPostprocessor
 
     private static (string Href, bool IsExternal) RewriteHref(
         string url,
-        IReadOnlySet<string> knownStems,
         string githubRepoBlobBase,
         string guideFolder)
     {
@@ -106,8 +104,7 @@ internal sealed class GuideHtmlPostprocessor
         if (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
         {
             var stem = path[..^3];
-            var known = knownStems.FirstOrDefault(s => s.Equals(stem, StringComparison.OrdinalIgnoreCase));
-            if (known is not null)
+            if (GuideFiles.TryCanonical(stem, out var known))
             {
                 var href = fragment is null ? $"/Guide/{known}" : $"/Guide/{known}#{fragment}";
                 return (href, false);

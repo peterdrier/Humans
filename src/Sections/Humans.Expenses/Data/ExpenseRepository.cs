@@ -1,9 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.Expenses.Contracts;
-using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Expenses.Domain;
@@ -115,7 +110,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (report is null) return false;
         line.ExpenseReportId = reportId;
         line.SortOrder = await ctx.ExpenseLines.CountAsync(l => l.ExpenseReportId == reportId, ct);
-        report.Total += line.Amount;
+        // Proof rows back an invoice line for review only — they never count toward the total.
+        if (line.ParentLineId is null) report.Total += line.Amount;
         ctx.ExpenseLines.Add(line);
         await ctx.SaveChangesAsync(ct);
         return true;
@@ -130,14 +126,15 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == line.Id && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return false;
-        report.Total = report.Total - tracked.Amount + line.Amount;
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount + line.Amount;
         tracked.Description = line.Description;
         tracked.Amount = line.Amount;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
 
-    public async Task<bool> RemoveLineAsync(
+    public async Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -145,11 +142,30 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
-        if (report is null || tracked is null) return false;
+        if (report is null || tracked is null) return null;
+
+        // An invoice line takes its proof rows with it. Line rows, proof rows, and their attachment
+        // rows all go in the same SaveChanges (EF orders deletes dependents-first), so the removal
+        // is all-or-nothing at the database.
+        var proofs = await ctx.ExpenseLines
+            .Where(l => l.ParentLineId == lineId)
+            .ToListAsync(ct);
+        var attachmentIds = proofs.Append(tracked)
+            .Where(l => l.AttachmentId is not null)
+            .Select(l => l.AttachmentId!.Value)
+            .ToList();
+        var attachments = await ctx.ExpenseAttachments
+            .Where(a => attachmentIds.Contains(a.Id))
+            .ToListAsync(ct);
+
+        ctx.ExpenseLines.RemoveRange(proofs);
         ctx.ExpenseLines.Remove(tracked);
-        report.Total = report.Total - tracked.Amount;
+        ctx.ExpenseAttachments.RemoveRange(attachments);
+        // Proof rows never counted toward the total, so only the line itself adjusts it.
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return attachments;
     }
 
     public async Task<Guid> AddAttachmentAsync(
@@ -219,12 +235,15 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<bool> CoordinatorEndorseAsync(
-        Guid reportId, Guid actorUserId, Instant endorsedAt, CancellationToken ct = default)
+        Guid reportId, Guid actorUserId, decimal? maxAmount,
+        Instant endorsedAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
+        // Blank form field = null = no cap; the input is prefilled with the current cap.
+        r.MaxAmount = maxAmount;
         r.Status = ExpenseReportStatus.CoordinatorEndorsed;
         r.CoordinatorEndorsedByUserId = actorUserId;
         r.CoordinatorEndorsedAt = endorsedAt;
@@ -251,7 +270,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<bool> ApproveAsync(
-        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId, decimal? maxAmount,
         Instant approvedAt, Guid outboxEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -266,6 +285,9 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         r.ApprovedAt = approvedAt;
         r.UpdatedAt = approvedAt;
         if (overrideCategoryId is { } cat) r.BudgetCategoryId = cat;
+        // Blank form field = null = no cap; the input is prefilled with the current cap,
+        // so blanking it must clear a coordinator-set cap, not silently keep it.
+        r.MaxAmount = maxAmount;
 
         ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
         {
@@ -301,15 +323,83 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
-        int limit, CancellationToken ct = default)
+        Instant now, int limit, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            .Where(e => e.ProcessedAt == null && !e.FailedPermanently)
+            .Where(e => e.ProcessedAt == null
+                && !e.FailedPermanently
+                && (e.NextRetryAt == null || e.NextRetryAt <= now))
             // arch:db-sort-ok identity-ordered outbox drain — FIFO is the protocol requirement
             .OrderBy(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
+    }
+
+    public async Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
+        Guid reportId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            // The create is the push — "did this report reach Holded?". UpdateIncomingDocTag events
+            // are legacy no-ops that mark themselves processed, so including them would let one
+            // mask a failed create.
+            .Where(e => e.ExpenseReportId == reportId
+                && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc)
+            // arch:db-sort-ok latest-per-report selector (Take)
+            .OrderByDescending(e => e.OccurredAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<int> CountFailedOutboxAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Only what a finance admin can actually act on. A report withdrawn after approval leaves
+        // its queued event behind to be written off later; that report is absent from the review
+        // queue and RequeueHoldedPush refuses it, so counting it would leave a banner nobody can
+        // clear. Create events only, for the reason on GetLatestOutboxForReportAsync.
+        var actionable = ctx.ExpenseReports.AsNoTracking()
+            .Where(r => r.Status == ExpenseReportStatus.Approved)
+            .Select(r => r.Id);
+        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            .CountAsync(e => e.FailedPermanently
+                && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc
+                && actionable.Contains(e.ExpenseReportId), ct);
+    }
+
+    public async Task<bool> RequeueOutboxForReportAsync(
+        Guid reportId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Both stuck shapes: written off, and unprocessed-with-an-error (waiting out a backoff).
+        // A clean queued event has no error and needs no help.
+        var stuck = await ctx.HoldedExpenseOutboxEvents
+            .Where(e => e.ExpenseReportId == reportId
+                && (e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null)))
+            .ToListAsync(ct);
+        if (stuck.Count == 0) return false;
+
+        foreach (var e in stuck)
+        {
+            e.FailedPermanently = false;
+            e.ProcessedAt = null;
+            e.RetryCount = 0;
+            e.LastError = null;
+            e.NextRetryAt = null;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task MarkAttachmentPushedAsync(
+        Guid attachmentId, Instant pushedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var a = await ctx.ExpenseAttachments.FirstOrDefaultAsync(x => x.Id == attachmentId, ct);
+        if (a is null) return;
+        a.HoldedUploadedAt = pushedAt;
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task SetHoldedDocIdAsync(
@@ -338,7 +428,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task IncrementOutboxRetryAsync(
-        Guid outboxEventId, string error, CancellationToken ct = default)
+        Guid outboxEventId, string error, Instant nextRetryAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.HoldedExpenseOutboxEvents
@@ -346,6 +436,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (ev is null) return;
         ev.RetryCount += 1;
         ev.LastError = error;
+        ev.NextRetryAt = nextRetryAt;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -358,6 +449,10 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;
         ev.FailedPermanently = true;
+        // A write-off always follows an attempt that just failed, and that attempt is never counted
+        // by IncrementOutboxRetryAsync — the retry path is the branch we did not take. Without this
+        // the timeline reads "given up after 9 attempts" while the error says 10.
+        ev.RetryCount += 1;
         ev.LastError = error;
         ev.ProcessedAt = processedAt;
         await ctx.SaveChangesAsync(ct);

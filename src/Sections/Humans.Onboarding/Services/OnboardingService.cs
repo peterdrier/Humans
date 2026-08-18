@@ -1,22 +1,22 @@
-using Microsoft.Extensions.Logging;
-using Humans.Application.DTOs;
+using Humans.Application.Architecture;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Users.Contracts;
+
+using Humans.Teams.Contracts;
 
 namespace Humans.Onboarding.Services;
 
 // Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
 // Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
 // admin dashboard (IAdminDashboardService), account deletion (future IAccountDeletionService).
+[CrossSectionWrite("Onboarding applies the profile mutation that completes signup.")]
 internal sealed class OnboardingService(
     IUserService userService,
     IApplicationServiceRead applicationDecisionService,

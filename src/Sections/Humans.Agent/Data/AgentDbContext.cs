@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Agent.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Humans.Agent.Domain;

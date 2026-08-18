@@ -19,16 +19,14 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
-using Humans.Infrastructure.Services;
+using Humans.Web.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
-using Humans.UI.Hubs;
+using Humans.CityPlanning.Contracts;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
@@ -36,7 +34,10 @@ using Humans.Infrastructure.Logging;
 using Humans.UI.Extensions;
 using Serilog;
 using Serilog.Events;
-using Humans.Web.Infrastructure;
+using Humans.Web.Hosting;
+using Humans.Web.ModelBinders;
+using Humans.Web.Data;
+using Humans.Users.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -221,7 +222,7 @@ builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransfo
 // (e.g. HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor →
 // OutboxEmailService) throws InvalidOperationException, failing every integration
 // test. HumansWebApplicationFactory binds a substitute IBackgroundJobClient in
-// Testing — see docs/features/test-system-reliability.md (P0/#762).
+// Testing — see docs/testing/test-system-reliability.md (P0/#762).
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHangfire((sp, config) =>
@@ -710,7 +711,7 @@ app.Use(async (context, next) =>
 {
     if (context.User.Identity?.IsAuthenticated == true
         && context.User.HasClaim(
-            System.Security.Claims.ClaimTypes.NameIdentifier,
+            ClaimTypes.NameIdentifier,
             Humans.Domain.Constants.SystemUserIds.GateTerminal.ToString()))
     {
         var path = context.Request.Path;

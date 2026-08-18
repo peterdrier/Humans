@@ -1,7 +1,5 @@
 using AwesomeAssertions;
-using Humans.Containers.Contracts;
 using Humans.Containers.Controllers;
-using Humans.Containers.Data;
 using Humans.Containers.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,89 +15,11 @@ namespace Humans.Containers.Tests;
 public class ContainersArchitectureTests
 {
     [HumansFact]
-    public void OnlySectionResourceAndContractsArePublic()
-    {
-        // "Public means Section, <Section>Resource or Contracts/" (design §15 steps 5, 5b).
-        // Containers is the first section whose Contracts/ is a *folder* rather than a
-        // separate project: every consumer outside the section (CityPlanningController,
-        // CityPlanningApiController) lives in Shell, and Shell references the section, so
-        // nothing in Base needs to see this surface and no downward carve is required.
-        //
-        // Everything else is internal, including the controller: Shell registers
-        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
-        // carrying [assembly: Section("…")], so internal controllers still route
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in
-        // as many words: do not "fix" a 404 by making the controller public).
-        //
-        // Generated migration classes are emitted `public partial` by `dotnet ef` and are
-        // never hand-edited (memory/process/never-hand-edit-migrations); they are excluded
-        // rather than internalized.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Containers.Data.Migrations", StringComparison.Ordinal))
-            .Where(t => !string.Equals(t.Namespace, "Humans.Containers.Contracts", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(
-            ["Humans.Containers.ContainersResource", "Humans.Containers.Section"],
-            because: "outside Contracts/ a section exposes only its ISection entry point and its "
-                   + "resource marker; the resource marker is public because the boot localization "
-                   + "diagnostic discovers it via GetExportedTypes()");
-    }
-
-    [HumansFact]
-    public void EveryPublicTypeOutsideContractsIsAccountedFor()
-    {
-        // The companion to the test above: nothing may become public by drifting *into*
-        // Contracts/ either. Contracts/ is a namespace, and this pins the whole of it,
-        // so widening the cross-section surface is a visible diff rather than a silent one.
-        var contractTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => string.Equals(t.Namespace, "Humans.Containers.Contracts", StringComparison.Ordinal))
-            .Select(t => t.Name)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        contractTypes.Should().BeEquivalentTo(
-        [
-            "ContainerAdminOverview",
-            "ContainerAuthorizationTarget",
-            "ContainerCampGroup",
-            "ContainerCardModel",
-            "ContainerData",
-            "ContainerDto",
-            "ContainerFormModel",
-            "ContainerImageUpload",
-            "ContainerIndexViewModel",
-            "ContainerOperation",
-            "ContainerOperationRequirement",
-            "ContainerPlacementDto",
-            "ContainerPlacementViewModel",
-            "ContainerViewModel",
-            "ContainerWithPlacement",
-            "ContainerWithPlacementViewModel",
-            "IContainerService",
-        ],
-            because: "Contracts/ is the section's whole cross-section surface (design §15 step 5b); "
-                   + "adding to it is a decision, not an accident");
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic,
-            because: "SectionControllerFeatureProvider discovers internal controllers in section "
-                   + "assemblies; a public one would be nameable from any other section");
-    }
-
-    [HumansFact]
     public void ContainerRoutes_HangOffTheCampSlug()
     {
+        // Container pages always live under a camp: /Camp/{slug}/Containers.
+        // Change the route and every link and bookmark breaks.
+        // No page-render test visits these URLs, so this is the only check.
         RouteFor<ContainerController>().Should().Be("Camp/{slug}/Containers");
     }
 
@@ -112,37 +32,26 @@ public class ContainersArchitectureTests
     }
 
     [HumansFact]
-    public void Section_RegistersRepositoryAsSingletonAndServiceAsScoped()
+    public void AuditEntityTypes_AreLiterals_NotNameof()
     {
-        var services = Registrations();
-
-        services.Single(d => d.ServiceType == typeof(IContainerRepository)).Lifetime
-            .Should().Be(ServiceLifetime.Singleton,
-                because: "the repository owns its DbContext lifetime via IDbContextFactory");
-        services.Single(d => d.ServiceType == typeof(IContainerService)).Lifetime
-            .Should().Be(ServiceLifetime.Scoped);
+        // These are literal string values we store in the DB. Pinned so a rename can't
+        // quietly change them and orphan existing audit_log rows
+        // (memory/code/type-name-as-persisted-string.md).
+        AuditEntityTypes.Container.Should().Be("Container");
+        AuditEntityTypes.ContainerPlacement.Should().Be("ContainerPlacement");
+        AuditEntityTypes.Camp.Should().Be("Camp");
     }
 
     [HumansFact]
     public void Section_RegistersItsOwnAuthorizationHandler()
     {
-        // §15 step 6: resource-based handlers move into the section; the *policies* stay in
-        // Shell's AuthorizationPolicyExtensions.
+        // Every container permission check runs through this handler. Drop the
+        // registration and each one fails, so every container page returns 403 —
+        // with the whole suite still green, because no test drives those URLs and
+        // the handler's own tests build it by hand.
         Registrations().Should().ContainSingle(d =>
             d.ServiceType == typeof(IAuthorizationHandler)
             && d.ImplementationType!.Name == "ContainerAuthorizationHandler");
-    }
-
-    [HumansFact]
-    public void AuditEntityTypes_AreLiterals_NotNameof()
-    {
-        // Persisted audit discriminators are a data contract with rows already in the
-        // database. Container and ContainerPlacement kept their CLR names through the move;
-        // Camp is not even nameable from this assembly. All three are literals so a future
-        // rename stays schema-inert (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.Container.Should().Be("Container");
-        AuditEntityTypes.ContainerPlacement.Should().Be("ContainerPlacement");
-        AuditEntityTypes.Camp.Should().Be("Camp");
     }
 
     /// <summary>

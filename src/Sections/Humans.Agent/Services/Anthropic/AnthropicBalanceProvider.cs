@@ -1,6 +1,3 @@
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Microsoft.Extensions.Options;
 using Humans.Agent.Models;
 

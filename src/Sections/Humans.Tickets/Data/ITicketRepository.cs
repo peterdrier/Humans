@@ -1,13 +1,7 @@
-using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 
@@ -31,7 +25,6 @@ namespace Humans.Tickets.Data;
 /// method.
 /// </para>
 /// </remarks>
-[Section("Tickets")]
 internal interface ITicketRepository : IRepository
 {
     // ── TicketSyncState (singleton row, Id == 1) ─────────────────────────────
@@ -252,6 +245,8 @@ internal interface ITicketRepository : IRepository
     Task<IReadOnlyList<RecentOrder>> GetRecentOrdersAsync(int count, CancellationToken ct = default);
 
     Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<PaidAttendeeTypePriceRow>> GetPaidAttendeeTypePriceRowsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(CancellationToken ct = default);
 

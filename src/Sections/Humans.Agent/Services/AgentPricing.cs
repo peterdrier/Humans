@@ -1,4 +1,3 @@
-using Humans.Application.Models;
 using Humans.Agent.Models;
 
 namespace Humans.Agent.Services;

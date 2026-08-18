@@ -1,10 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Agent.Contracts;
-using Humans.Web.Models;
+using Humans.UI.Models;
 using Humans.Web.Services.Agent;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Web.Tests.Services;
 
@@ -129,6 +127,9 @@ public class AgentPreloadAugmentorTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
     [HumansFact]

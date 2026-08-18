@@ -1,16 +1,12 @@
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 

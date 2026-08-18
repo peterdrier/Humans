@@ -2,8 +2,8 @@ using NodaTime;
 using Humans.Domain.Attributes;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Domain;
 
 /// <summary>

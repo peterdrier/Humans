@@ -7,8 +7,8 @@ using Humans.Feedback.Services;
 using Humans.Feedback.Services.Dtos;
 using Humans.UI.Models;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Controllers;
 

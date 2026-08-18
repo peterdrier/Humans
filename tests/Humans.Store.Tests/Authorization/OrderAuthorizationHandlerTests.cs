@@ -1,12 +1,10 @@
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 using System.Security.Claims;
-using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Camps.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Store.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -30,17 +28,13 @@ public class OrderAuthorizationHandlerTests
 
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly OrderAuthorizationHandler _handler;
 
     public OrderAuthorizationHandlerTests()
     {
-        _shifts.GetActiveAsync().Returns(new EventSettings
-        {
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid"
-        });
+        _shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock);
     }
 

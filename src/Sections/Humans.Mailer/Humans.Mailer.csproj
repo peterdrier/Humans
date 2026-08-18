@@ -28,15 +28,14 @@
       Data-and-DbContext steps are skipped wholesale). MailerLiteClient came out of
       Humans.Infrastructure/Services and still needs nothing from it — IHttpClientFactory
       arrives through the ASP.NET Core shared framework, and its two helpers are
-      Humans.Application's (Extensions, Threading). Every Humans-side read and write routes
-      through another section's service interface, all of them Humans.Application types
-      registered by their owners.
+      Base's (the Humans.Application.Extensions / .Threading namespaces). Every Humans-side
+      read and write routes through another section's service interface, all of them
+      contracts-leaf types registered by their owners.
     -->
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
-    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
-    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
-    <ProjectReference Include="..\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +45,10 @@
       the MailerLite client need arrives through the framework reference Sdk.Razor already
       adds (design §15 step 1). No EF Core either — the section owns no tables.
     -->
+    <!-- Contracts/MailerAudienceSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob,
+         since G5 lane 5b-5. Package, not project, so no cycle is possible; it was already
+         arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

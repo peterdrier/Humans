@@ -13,7 +13,7 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// The app is reset alongside the database on purpose. The app's Singleton caches
 /// are a projection of the database, so resetting only the database would leave the
 /// app asserting rows that no longer exist — the failure mode that took the
-/// TRUNCATE approach down. See <c>docs/features/test-system-reliability.md</c>.
+/// TRUNCATE approach down. See <c>docs/testing/test-system-reliability.md</c>.
 /// </para>
 /// <para>
 /// A test therefore starts from the migrated schema and nothing else, and pays a

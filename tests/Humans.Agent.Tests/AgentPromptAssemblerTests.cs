@@ -1,11 +1,10 @@
 using Humans.Teams.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Models;
-using Humans.Domain.Enums;
 using Humans.Agent.Services;
 using NodaTime;
 using Humans.Agent.Models;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Agent.Tests;
 
 public class AgentPromptAssemblerTests

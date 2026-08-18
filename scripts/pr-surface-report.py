@@ -19,7 +19,7 @@ INTERFACE_SEARCH_ROOTS = ("src/Humans.Application/Interfaces", "src/Sections")
 SECTION_CONTRACTS_PROJECT_RE = re.compile(r"^src/Sections/[^/]+\.Contracts/")
 SECTION_CONTRACTS_FOLDER_RE = re.compile(r"^src/Sections/[^/]+/Contracts/")
 
-LEGACY_MIGRATIONS_PREFIX = "src/Humans.Infrastructure/Migrations/"
+HOST_MIGRATIONS_PREFIX = "src/Humans.Web/Migrations/"
 # Since the per-section DbContext split (nobodies-collective/Humans#858) and the
 # move to standalone section projects (nobodies-collective/Humans#866), migrations
 # also live under src/Sections/<Project>/Data/Migrations/.
@@ -43,7 +43,7 @@ def normalize(path: str) -> str:
 
 def is_migration_path(path: str) -> bool:
     path = normalize(path)
-    return path.startswith(LEGACY_MIGRATIONS_PREFIX) or bool(SECTION_MIGRATIONS_RE.match(path))
+    return path.startswith(HOST_MIGRATIONS_PREFIX) or bool(SECTION_MIGRATIONS_RE.match(path))
 
 
 def is_interface_path(path: str) -> bool:
@@ -91,10 +91,10 @@ def migration_context(path: str) -> str:
 def max_migrations_per_context(migration_files: list[str]) -> int:
     """Max real migrations ADDED in any one migration context.
 
-    Two layouts feed this: the legacy Humans.Infrastructure monolith, where
-    since the per-section DbContext split (nobodies-collective/Humans#858) each
-    context owns its own chain in its own directory (Migrations/<Section>/; the
-    root Migrations/ chain was deleted at #858 peel 15); and standalone section
+    Two layouts feed this: the host's own chain under src/Humans.Web/Migrations/
+    (Migrations/<Section>/ per context since nobodies-collective/Humans#858; the
+    root Migrations/ chain was deleted at #858 peel 15, and the folder followed
+    Humans.Infrastructure's deletion into Humans.Web at G5 lane 5b-6); and standalone section
     projects (nobodies-collective/Humans#866), where each section owns its
     migrations under its own project and the context is the section project
     name (the Humans.<Section> path segment under src/Sections/). The

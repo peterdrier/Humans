@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Shared test-support library: HumansFact/HumansTheory/BrokenFact/DebuggerOnlyFact,
+    ServiceLocatorBuilder, CapturingLogger, TestDbContextFactory and the Shifts DTO
+    fixtures. Referenced by every test project via tests/Directory.Build.props.
+    Not a test project itself, and never referenced from src/.
+  -->
+
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- BurnSettingsInfo / ShiftUserSummary / UrgentShiftInfo fixtures. -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="NSubstitute" />
+    <!-- FactAttribute/TheoryAttribute for the attribute subclasses, without the
+         self-executing test-host targets the full xunit.v3 package injects. -->
+    <PackageReference Include="xunit.v3.extensibility.core" />
+  </ItemGroup>
+
+</Project>

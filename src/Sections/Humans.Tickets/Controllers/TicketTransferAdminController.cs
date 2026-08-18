@@ -1,8 +1,4 @@
-using Humans.Application.DTOs;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Tickets.Models;
@@ -10,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 

@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

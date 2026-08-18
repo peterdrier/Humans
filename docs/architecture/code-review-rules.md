@@ -2,9 +2,12 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/Views/**
   src/Humans.Web/Authorization/**
-  src/Humans.Infrastructure/Repositories/**
-  src/Humans.Infrastructure/Migrations/**
-  src/Humans.Infrastructure/Data/**
+  src/Humans.Web/Hosting/**
+  src/Humans.Web/Services/**
+  src/Humans.Web/Data/**
+  src/Humans.Web/Repositories/**
+  src/Humans.Web/Migrations/**
+  src/Humans.Interfaces/**
   src/Sections/**
   tests/Humans.Testing/**
 -->
@@ -33,14 +36,14 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 - **Every controller action that modifies data must have `[Authorize]` with explicit roles.** Missing `[Authorize]` on a POST/PUT/DELETE action is a security hole. Don't rely on controller-level `[Authorize]` alone if individual actions need different role requirements.
 - **Every POST action must have `[ValidateAntiForgeryToken]`.** No exceptions.
 - **Admin actions must check admin roles, not just `[Authorize]`.** Bare `[Authorize]` only checks authentication, not authorization. Actions in Admin/TeamAdmin/ShiftAdmin/CampAdmin controllers need role-based authorization.
-- **Manual role checks in method bodies should be attributes.** Replace `if (!User.IsInRole("Admin"))` patterns with `[Authorize(Roles = "Admin")]` on the action.
+- **Manual role checks in method bodies should be attributes — policy attributes.** Replace `if (!User.IsInRole("Admin"))` with `[Authorize(Policy = PolicyNames.AdminOnly)]` on the action. **Never `[Authorize(Roles = "...")]`**: raw role strings are forbidden by `design-rules.md` §11 and there are zero of them in `src/` — flagging a reviewer toward one would reintroduce the pattern. For a check that depends on the *resource* (this team, this camp, this expense report), the attribute is not enough: use the section's resource-based handler via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`.
 
 ## Missing .Include() *(6+ historical fixes)*
 
 - **Every LINQ query that accesses a navigation property must `.Include()` it.** EF Core does not lazy-load. Accessing `entity.RelatedEntity.Property` without a prior `.Include(e => e.RelatedEntity)` returns null — no exception, just silent null data that causes downstream bugs.
 - **Check `.ThenInclude()` for nested navigation.** If you access `entity.Parent.Children`, you need `.Include(e => e.Parent).ThenInclude(p => p.Children)`.
 - **Projection (`Select`) does not need `.Include()`** — only materialize queries that access navigation properties on tracked entities.
-- **This rule covers *aggregate-local* navigations only.** Cross-section navigation properties and their FK constraints were all deleted (nobodies-collective/Humans#996, #992), each peeled section maps only its own tables in its own `<Section>DbContext`, and a peeled section physically cannot map another section's entity, so a cross-section navigation has nothing to bind to. So the correct fix for "this code needs data from another section" is never a `.Include()` — it is the in-memory join through the owning section's `I{Section}ServiceRead` (`design-rules.md` §6b). **`HUM0024` is retired** (nobodies-collective/Humans#1278), so the residual case — an EF configuration inside the still-unpeeled `Humans.Infrastructure` mapping another section's entity — is now caught in review, not by the build. Flag it when you see one.
+- **This rule covers *aggregate-local* navigations only.** Cross-section navigation properties and their FK constraints were all deleted (nobodies-collective/Humans#996, #992), each peeled section maps only its own tables in its own `<Section>DbContext`, and a peeled section physically cannot map another section's entity, so a cross-section navigation has nothing to bind to. So the correct fix for "this code needs data from another section" is never a `.Include()` — it is the in-memory join through the owning section's `I{Section}ServiceRead` (`design-rules.md` §6b). **`HUM0024` is retired** (nobodies-collective/Humans#1278), and `Humans.Infrastructure` — the last shared host, holding `SystemDbContext` — was deleted at G5 lane 5b-6, so the residual case it described (a shared-project EF configuration mapping another section's entity) has nowhere left to occur. The rule survives only for a *section* context mapping a foreign entity, which is caught in review, not by the build. Flag it when you see one.
 
 ## Silent Exception Swallowing *(5+ historical fixes)*
 

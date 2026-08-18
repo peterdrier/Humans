@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Services.Audiences;
 

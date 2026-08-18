@@ -19,9 +19,13 @@ rollout.
 - Consumer sections talk to the connector's interface; swap-ability is the design goal.
 - **At G5, a connector does not get absorbed into the domain section that uses it.** Finance's move
   (peterdrier/Humans#1239) left `IHoldedClient`, `HoldedClient`, `HoldedClientOptions` and the
-  `Interfaces/Holded/*` DTOs in Base rather than pulling them into `Humans.Finance`, so they can be
-  lifted into `Humans.Holded` later without unpicking anything. Store did the same with
-  `IStripeService`.
+  `Interfaces/Holded/*` DTOs in Base rather than pulling them into `Humans.Finance`. G5 lane 4b-2f
+  then lifted them into `Humans.Holded` exactly as planned, without unpicking anything — the
+  interface and DTOs public on `Humans.Holded.Contracts`, the client `internal` in the section.
+  Store did the same with `IStripeService`, which has since been lifted: **Stripe is
+  `src/Sections/Humans.Stripe`** (nobodies-collective/Humans#866, 2026-08-14) — `IStripeService`
+  under its `Contracts/` folder, the SDK and both hosted services `internal` behind it, consumed
+  by Store and Tickets through a direct project reference.
 - **Never re-export a vendor's wire DTO across a section boundary.** It makes every downstream
   consumer a consumer of the vendor's API shape, and it cycles the section's contracts leaf besides
   (see [`section-project-cycle-fix`](section-project-cycle-fix.md)). Own a boundary type and map at

@@ -1,7 +1,5 @@
 using Humans.Events.Services.Dtos;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Events.Domain;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Events.Contracts;

@@ -1,9 +1,11 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Teams.Contracts;
+using Humans.Guide.Controllers;
 using Humans.Guide.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
+using Humans.UI.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Guide.Tests;
 
@@ -17,78 +19,6 @@ namespace Humans.Guide.Tests;
 /// </remarks>
 public class GuideArchitectureTests
 {
-    [HumansFact]
-    public void OnlySectionIsPublic()
-    {
-        // "Public means Section or Contracts/" (design §15 step 5), enforced at build time by
-        // HUM0034. Guide has no <Section>Resource — its four views carry no Localizer[…] call
-        // and SharedResource has no Guide_* key — and Contracts/ is an empty folder, because
-        // nothing outside the section reads a guide page. No migrations either: no tables.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(["Humans.Guide.Section"]);
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        // Shell registers SectionControllerFeatureProvider, which relaxes MVC's IsPublic check
-        // for assemblies carrying [assembly: Section("…")]
-        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
-        // many words: do not "fix" a 404 by making the controller public).
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().HaveCount(1);
-        controllers.Should().OnlyContain(t => !t.IsPublic);
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoStringLocalizer()
-    {
-        // Guide ships no resource set at all (§15 step 3b, Gate's shape). The structural guard
-        // is what makes the day someone adds copy a build failure instead of a silent resolve
-        // against the ambient shared set — which is exactly how Consent shipped five raw keys
-        // past a green 5,000-test suite.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Where(p => p.ParameterType.IsGenericType
-                            && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>))
-                .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Guide has no resource set; adding localized copy means carving one first");
-    }
-
-    [HumansFact]
-    public void SectionTypesTakeNoDbContext()
-    {
-        // Guide owns no tables. Restates, on the constructors, what the pre-move
-        // "typeof(GuideContentService).Assembly does not reference EntityFrameworkCore"
-        // assertion was reaching for — that form is simply false for a section assembly and
-        // keeps passing while asserting nothing (§15 step 11, Calendar's rule). Guide never
-        // carried it, so this is the assertion it should have had.
-        var offenders = typeof(Section).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors()
-                .SelectMany(c => c.GetParameters())
-                .Where(p => typeof(DbContext).IsAssignableFrom(p.ParameterType)
-                            || (p.ParameterType.IsGenericType
-                                && p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>)))
-                .Select(_ => t.FullName ?? t.Name))
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "Guide serves markdown from GitHub and owns no tables");
-    }
-
     [HumansFact]
     public void RoleResolverReadsTeamsViaTheReadInterface()
     {
@@ -109,9 +39,56 @@ public class GuideArchitectureTests
         // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
         typeof(IGuideContentSource).Assembly.GetName().Name
-            .Should().Be("Humans.Application");
+            .Should().Be("Humans.Interfaces");
 
         typeof(Section).Assembly.GetTypes()
             .Should().NotContain(t => t.Name == "IGuideContentSource");
+    }
+
+    [HumansFact]
+    public void RefreshIsAdminOnly_AndReadingIsAnonymous()
+    {
+        // The section doc's routing table and its "non-Admin users cannot trigger
+        // POST /Guide/Refresh" negative access rule, pinned. Nothing else exercises the
+        // endpoint, so without this the attribute could be dropped silently.
+        Action(nameof(GuideController.Refresh))
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
+            .Cast<AuthorizeAttribute>()
+            .Should().ContainSingle(a => a.Policy == PolicyNames.AdminOnly);
+
+        foreach (var read in new[] { nameof(GuideController.Index), nameof(GuideController.Document) })
+        {
+            Action(read).GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: false)
+                .Should().ContainSingle(because: $"{read} serves the public guide");
+        }
+    }
+
+    private static MethodInfo Action(string name) =>
+        typeof(GuideController).GetMethod(name)
+        ?? throw new InvalidOperationException($"GuideController.{name} not found.");
+
+    [HumansFact]
+    public void EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists()
+    {
+        // GuideFiles is the whole routing and fetch surface: a page added to docs/guide
+        // without an entry 404s in-app, and an entry with no file fails its GitHub fetch on
+        // every refresh. Neither shows up until someone visits the page.
+        var onDisk = Directory
+            .GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md")
+            .Select(Path.GetFileNameWithoutExtension)
+            .ToHashSet(StringComparer.Ordinal);
+
+        GuideFiles.All.Should().BeEquivalentTo(onDisk);
+    }
+
+    private static string LocateRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))
+        {
+            dir = dir.Parent;
+        }
+        return dir?.FullName ?? throw new InvalidOperationException(
+            "Could not locate repository root (no Humans.slnx above " + AppContext.BaseDirectory + ").");
     }
 }

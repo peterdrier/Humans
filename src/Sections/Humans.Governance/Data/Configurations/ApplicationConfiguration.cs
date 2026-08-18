@@ -1,4 +1,3 @@
-using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MemberApplication = Humans.Governance.Domain.Application;

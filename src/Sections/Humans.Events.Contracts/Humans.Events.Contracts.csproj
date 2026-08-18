@@ -4,8 +4,20 @@
     Events' cross-section surface, carved into its own leaf project because one of
     its consumers is still in Base: SearchService lives in Humans.Application, so a
     Contracts/ *folder* inside Humans.Events would make Base reference a section and
-    cycle (memory/architecture/section-project-cycle-fix.md). References no Humans
-    project at all — the surface is IEventServiceRead plus two NodaTime-only DTOs.
+    cycle (memory/architecture/section-project-cycle-fix.md).
+
+    ZERO ProjectReference, AND THAT IS LOAD-BEARING — DO NOT ADD ONE. The surface is
+    IEventServiceRead plus two NodaTime-only DTOs, so nothing here needs a Humans project.
+    Humans.Email.Contracts references THIS project (EventStatus, a constructor parameter and
+    switch subject of EventLifecycleNotification), and that leaf-to-leaf edge is only safe
+    because the chain terminates here. Adding a ProjectReference — Humans.Interfaces for a
+    marker interface is the likely first attempt — extends the chain past its terminator and
+    puts the whole end-state graph's acyclicity at the mercy of what Base later references.
+    The build will not stop you: Humans.Interfaces has no project references of its own yet.
+    G5 lane 3b, nobodies-collective/Humans#866.
+
+    If a type here ever genuinely needs something from another project, move the type out
+    instead of adding the reference.
   -->
 
   <ItemGroup>

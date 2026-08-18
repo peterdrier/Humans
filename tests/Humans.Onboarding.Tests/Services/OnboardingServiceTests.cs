@@ -1,24 +1,19 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
+using Humans.Domain.Constants;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
+using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Onboarding.Tests.Services.Onboarding;
+namespace Humans.Onboarding.Tests.Services;
 
 public sealed class OnboardingServiceTests
 {

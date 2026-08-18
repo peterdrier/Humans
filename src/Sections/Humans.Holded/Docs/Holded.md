@@ -1,18 +1,15 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/**
   src/Sections/Humans.Holded.Contracts/**
-  src/Humans.Application/Interfaces/Holded/**
-  src/Humans.Infrastructure/Services/Holded/**
-  src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
-  src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
+  src/Sections/Humans.Expenses/Jobs/HoldedExpenseOutboxJob.cs
 -->
 
 # Holded (section) — Section Invariants
 
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,
 plus the sync that maintains it and the `/Holded` admin screen. Every cross-section ledger
-read is served from this cache — zero Holded calls per page view. The HTTP connector itself
-stays in Base ([`docs/sections/Holded.md`](../../../../docs/sections/Holded.md)).
+read is served from this cache — zero Holded calls per page view. The HTTP connector belongs
+to this section too and has its own doc ([`Holded-connector.md`](Holded-connector.md)).
 
 ## Concepts
 
@@ -77,12 +74,12 @@ mirror tables runs before this baseline recreates them.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly, Base): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
+- `HoldedSyncJob` (nightly, this section's `Jobs/`; scheduled from Shell's roll-call): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
 - `/Holded` buttons: `SyncNow` (incremental + reconcile), `FullSync`.
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (Base connector) only.
+- Outbound: `IHoldedClient` (this section's own connector) only.
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture

@@ -52,7 +52,7 @@
                     </div>
                     @if (Model.TicketOrders.Count > 0)
                     {
-                        Func<Humans.Web.Models.GuestTicketOrderSummary, IHtmlContent> amountCell =
+                        Func<GuestTicketOrderSummary, IHtmlContent> amountCell =
                             r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentCulture))} {Html.Encode(r.Currency)}");
                         var ticketsTable = TableModel.For(Model.TicketOrders)
                             .Column(Localizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDate())
