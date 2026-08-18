@@ -141,6 +141,46 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     }
 
     /// <summary>
+    /// The Profile sent-messages panel renders through <c>layout="table"</c>, in
+    /// <c>Humans.Users</c>' <c>Views/Profile</c> folder — a different
+    /// <c>_ViewImports.cshtml</c> from <c>Views/UsersAdmin</c>'s.
+    /// </summary>
+    /// <remarks>
+    /// The panel is coordinator-gated and never shows on one's own profile, so this signs in
+    /// twice: once as the volunteer whose profile is the subject, then as the admin who
+    /// satisfies <c>PolicyNames.PrivilegedSignupApprover</c>.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_profile_sent_messages_panel_renders_through_the_table_layout()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var volunteerId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var marker = $"sent-message-probe-{Guid.NewGuid():N}";
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                entityType: "User",
+                entityId: volunteerId,
+                description: marker,
+                actorUserId: adminId);
+        }
+
+        var url = $"/Profile/{volunteerId}";
+        var response = await Client.GetAsync(url, ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain(marker,
+            $"GET {url}: the seeded audit row must reach the panel — an unbound <vc:audit-log> renders nothing");
+        html.Should().NotContain("<vc:audit-log",
+            $"GET {url}: the widget must bind, not ship as literal markup");
+    }
+
+    /// <summary>
     /// Every <c>&lt;vc:audit-log&gt;</c> call site in the tree sits under a
     /// <c>_ViewImports.cshtml</c> chain that binds <c>Humans.AuditLog</c>'s tag helpers.
     /// </summary>

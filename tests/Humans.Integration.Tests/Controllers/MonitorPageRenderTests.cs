@@ -1,6 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Domain.Enums;
 using Humans.Integration.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -51,6 +54,50 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
         html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
         html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
+    }
+
+    /// <summary>
+    /// The sync rows reach the page, proved by seeded content rather than by absence of a
+    /// literal tag.
+    /// </summary>
+    /// <remarks>
+    /// Monitor stopped reading audit itself: the page emits
+    /// <c>&lt;vc:audit-log layout="sync"&gt;</c> and the AuditLog section owns the read.
+    /// Missing <c>@addTagHelper *, Humans.AuditLog</c> in Monitor's own
+    /// <c>_ViewImports.cshtml</c> is silent — the element ships as inert literal markup with
+    /// a green build — so asserting a seeded marker is the only probe that catches it.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task Google_sync_rows_reach_the_page_through_the_audit_view_component()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var marker = $"sync-layout-probe-{Guid.NewGuid():N}";
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogGoogleSyncAsync(
+                AuditAction.GoogleResourceAccessGranted,
+                resourceId: Guid.NewGuid(),
+                description: marker,
+                jobName: "ProbeJob",
+                userEmail: "dev-admin@localhost",
+                role: "reader",
+                source: GoogleSyncSource.ManualSync,
+                success: true,
+                relatedEntityId: adminId);
+        }
+
+        var url = $"/Monitor/Human/{adminId}";
+        var response = await Client.GetAsync(url, ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain(marker,
+            $"GET {url}: the seeded sync row must reach the page — an unbound <vc:audit-log> renders nothing");
+        html.Should().Contain("reader", $"GET {url} must render the sync layout's Role column");
+        html.Should().NotContain("<vc:audit-log", $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     [HumansFact(Timeout = 120000)]
