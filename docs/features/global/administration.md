@@ -411,7 +411,7 @@ _logger.LogInformation(
 
 ## Related Features
 
-- [Authentication](../../../src/Sections/Humans.Auth/Docs/authentication.md) - Admin role authorization
-- [Asociado Applications](../../../src/Sections/Humans.Governance/Docs/asociado-applications.md) - Voting member application review
-- [Teams](../../../src/Sections/Humans.Teams/Docs/Teams-feature.md) - Team management
+- [Authentication](../../../src/Sections/Humans.Auth/Docs/features/authentication.md) - Admin role authorization
+- [Asociado Applications](../../../src/Sections/Humans.Governance/Docs/features/asociado-applications.md) - Voting member application review
+- [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - Team management
 - [Background Jobs](../global/background-jobs.md) - Hangfire dashboard

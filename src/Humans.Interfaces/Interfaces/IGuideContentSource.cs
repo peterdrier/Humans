@@ -23,7 +23,7 @@ public interface IGuideContentSource
 
     /// <summary>
     /// Lists every markdown file in the configured repo/branch as a repo-root-relative path
-    /// (e.g. <c>src/Sections/Humans.Shifts/Docs/shift-management.md</c>), in one recursive tree
+    /// (e.g. <c>src/Sections/Humans.Shifts/Docs/features/shift-management.md</c>), in one recursive tree
     /// request. For a corpus scattered across many folders — feature specs now live in each
     /// section's own <c>Docs/</c> — this is what lets the caller derive its file set from the
     /// repository structure instead of paying a folder listing per section.

@@ -49,12 +49,16 @@ mechanical:
       # new or renamed section doc must mark it dirty. Adding Tour's row this
       # sweep required a manual nudge for exactly this reason.
       - "src/Sections/*/Docs/*.md"
+      # …and the section's feature specs, which sit one level deeper. The glob above
+      # does not descend, so without this a new spec never marks README dirty.
+      - "src/Sections/*/Docs/features/*.md"
     update: prompt
     prompt: |
       Walk docs/features/global/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
-      — a section keeps both its invariants doc and its feature specs in-project,
-      and README indexes those rows too, so a walk restricted to docs/ would drop
-      or omit exactly the in-project doc whose change fired this entry.
+      recursively — a section keeps its invariants doc directly in Docs/ and its feature
+      specs in Docs/features/, and README indexes both, so a walk restricted to docs/ or
+      one that does not descend into Docs/features/ would drop exactly the in-project doc
+      whose change fired this entry.
       docs/features/ now holds only global/, the cross-section specs.
       Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
       GettingStarted.md, Glossary.md, and the dated design records matching

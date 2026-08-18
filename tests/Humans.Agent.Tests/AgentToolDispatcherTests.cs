@@ -530,18 +530,18 @@ public class AgentToolDispatcherTests
     private sealed class StubGuideSource : Application.Interfaces.IGuideContentSource
     {
         /// <summary>
-        /// This stub repo's whole markdown tree. Specs sit in two different section projects
-        /// and in docs/features/global, alongside the section-owned docs that share those
-        /// folders — so the reader's exclusion rule is exercised, not just its happy path.
-        /// Anything outside this list 404s like GitHub would.
+        /// This stub repo's whole markdown tree. Specs sit in the Docs/features/ folder of two
+        /// different section projects and in docs/features/global, with the section-owned docs
+        /// one level up in Docs/ — so the folder boundary that decides what is a spec is
+        /// exercised, not just the happy path. Anything outside this list 404s like GitHub would.
         /// </summary>
         internal static readonly string[] MarkdownPaths =
         [
-            "src/Sections/Humans.Events/Docs/Events-feature.md",
+            "src/Sections/Humans.Events/Docs/features/Events-feature.md",
             "src/Sections/Humans.Events/Docs/Events.md",                      // invariants doc
             "src/Sections/Humans.Events/Docs/authorization.md",               // generated companion
             "src/Sections/Humans.Events/Docs/2026-06-08-events-card-design.md", // dated record
-            "src/Sections/Humans.Gate/Docs/gate-admissions.md",
+            "src/Sections/Humans.Gate/Docs/features/gate-admissions.md",
             "docs/features/global/gdpr-export.md",
             "docs/sections/_Index.md",                                        // outside both spec homes
             "docs/community-kb/FAQ-general.md",                               // the community reader's corpus

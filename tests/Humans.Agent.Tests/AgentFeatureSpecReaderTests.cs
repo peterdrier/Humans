@@ -37,8 +37,9 @@ public class AgentFeatureSpecReaderTests
     }
 
     /// <summary>
-    /// The section-owned docs share a folder with the specs, so an exclusion rule that drifts
-    /// would start serving invariants docs as feature specs.
+    /// Specs are exactly the contents of <c>Docs/features/</c>; the section-owned docs sit one
+    /// level up in <c>Docs/</c>. A rule that drifted back to matching all of <c>Docs/</c> would
+    /// start serving invariants docs as feature specs.
     /// </summary>
     [HumansFact]
     public async Task Section_owned_docs_are_not_served_as_feature_specs()
@@ -55,7 +56,10 @@ public class AgentFeatureSpecReaderTests
         stems.Should().NotContain("Shifts");
         stems.Should().NotContain(s => s.StartsWith("2026-", StringComparison.Ordinal),
             "dated design records are history, not specs of current behaviour");
-        // …while the specs beside them are served.
+        // A second invariants doc that happens not to be named for its section — the old rule
+        // served it by accident, the folder boundary does not.
+        stems.Should().NotContain("Holded-connector");
+        // …while the specs one folder down are served, from a section project and from global.
         stems.Should().Contain("shift-management");
         stems.Should().Contain("gdpr-export");
     }

@@ -956,7 +956,7 @@ Git Bash.)
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
      are not Guide's: the signatures name only `string`, and three of the four consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
-     `CommunityFaqReader` over `docs/sections`, the section `Docs/` spec corpus and `docs/community-kb`,
+     `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
      Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
@@ -1360,13 +1360,14 @@ Git Bash.)
      `AgentPageRenderTests` has one of each, and the pre/post HTML capture confirmed the only
      difference across every page in English and Spanish was the URL prefix — the `?v=` hashes
      were byte-identical before and after the move.
-7b. [ ] The section's **invariants doc, its feature specs and its own design specs all move into
-   `Docs/`.** `AgentFeatureSpecReader` derives the servable spec set from the repository
-   structure — every `src/Sections/*/Docs/*.md` that is not a section-owned doc (invariants,
-   `authorization.md`, `data-access.md`, `health.md`, dated `20*.md` records), plus
+7b. [ ] The section's **invariants doc and its own design specs move into `Docs/`; its feature
+   specs move into `Docs/features/`.** `AgentFeatureSpecReader` derives the servable spec set
+   from the repository structure — every `src/Sections/*/Docs/features/*.md`, plus
    `docs/features/global/` — so a spec is served from wherever its section keeps it, with
-   nothing to register per file. Only genuinely cross-section specs belong in
-   `docs/features/global/`.
+   nothing to register per file. The folder is the whole rule: the invariants doc, the generated
+   companions (`authorization.md`, `data-access.md`, `health.md`) and the dated `20*.md` records
+   stay directly in `Docs/` and are excluded by sitting outside `features/`. Only genuinely
+   cross-section specs belong in `docs/features/global/`.
    Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
    **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the

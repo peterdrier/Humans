@@ -8,10 +8,11 @@ namespace Humans.Agent.Services.Preload;
 /// <summary>
 /// Reads one feature spec from the Humans repo on GitHub at runtime via the shared
 /// <see cref="IGuideContentSource"/>. Specs live in the owning section's own
-/// <c>src/Sections/Humans.&lt;Section&gt;/Docs/</c> folder, plus <c>docs/features/global/</c>
-/// for the cross-section ones, so the stem the tool is given is resolved through an index
-/// derived from the repository tree rather than a fixed folder. Held in memory with no
-/// expiration (loaded once at startup or first call, refreshed only on restart).
+/// <c>src/Sections/Humans.&lt;Section&gt;/Docs/features/</c> folder, plus
+/// <c>docs/features/global/</c> for the cross-section ones, so the stem the tool is given is
+/// resolved through an index derived from the repository tree rather than a fixed folder.
+/// Held in memory with no expiration (loaded once at startup or first call, refreshed only
+/// on restart).
 /// Returns <c>null</c> on miss (unknown stem, GitHub 404, or transient failure).
 /// </summary>
 internal sealed partial class AgentFeatureSpecReader(
@@ -26,43 +27,25 @@ internal sealed partial class AgentFeatureSpecReader(
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
-    /// <summary>A section project's docs folder: <c>src/Sections/Humans.{Section}/Docs/{file}.md</c>.</summary>
-    [GeneratedRegex(@"^src/Sections/Humans\.(?<section>[^/]+)/Docs/(?<stem>[^/]+)\.md$",
+    /// <summary>A section project's spec folder: <c>src/Sections/Humans.{Section}/Docs/features/{file}.md</c>.</summary>
+    [GeneratedRegex(@"^src/Sections/Humans\.[^/]+/Docs/features/[^/]+\.md$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-    private static partial Regex SectionDocPath();
-
-    /// <summary>A dated design record — history by design, not a spec of current behaviour.</summary>
-    [GeneratedRegex(@"^20\d\d-\d\d-\d\d-", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-    private static partial Regex DatedRecord();
+    private static partial Regex SectionSpecPath();
 
     /// <summary>
-    /// The section-owned docs that share the folder with the specs. Excluded by rule rather
-    /// than the specs being listed by name, so a new spec is servable the moment it is
-    /// committed and nothing has to be registered for it.
-    /// </summary>
-    private static readonly HashSet<string> SectionOwnedStems =
-        new(StringComparer.OrdinalIgnoreCase) { "authorization", "data-access", "health" };
-
-    /// <summary>
-    /// True for a repo path that is a feature spec: anything under <c>docs/features/global/</c>,
-    /// or a file in a section's <c>Docs/</c> that is not the section's own invariants doc
-    /// (<c>&lt;Section&gt;.md</c>), one of its generated companions, or a dated design record.
+    /// True for a repo path that is a feature spec: a file in a section's <c>Docs/features/</c>,
+    /// or one directly under <c>docs/features/global/</c> for the cross-section specs. The
+    /// folder is the whole rule — a section's invariants doc, its generated companions
+    /// (<c>authorization.md</c>, <c>data-access.md</c>, <c>health.md</c>) and its dated design
+    /// records stay directly in <c>Docs/</c> and are excluded by living outside the folder,
+    /// with nothing to keep in sync as those file sets change.
     /// Internal so the stem-collision test can apply the real rule to the real tree; reading
     /// the built index back cannot detect a collision, having already dropped the loser.
     /// </summary>
-    internal static bool IsSpecPath(string path)
-    {
-        if (path.StartsWith(GlobalFolderPath + "/", StringComparison.OrdinalIgnoreCase))
-            return path.LastIndexOf('/') == GlobalFolderPath.Length;
-
-        var match = SectionDocPath().Match(path);
-        if (!match.Success) return false;
-
-        var stem = match.Groups["stem"].Value;
-        return !SectionOwnedStems.Contains(stem)
-               && !DatedRecord().IsMatch(stem)
-               && !string.Equals(stem, match.Groups["section"].Value, StringComparison.OrdinalIgnoreCase);
-    }
+    internal static bool IsSpecPath(string path) =>
+        SectionSpecPath().IsMatch(path)
+        || (path.StartsWith(GlobalFolderPath + "/", StringComparison.OrdinalIgnoreCase)
+            && path.LastIndexOf('/') == GlobalFolderPath.Length);
 
     /// <summary>
     /// Stem → containing folder for every spec in the repo, derived from one recursive tree
