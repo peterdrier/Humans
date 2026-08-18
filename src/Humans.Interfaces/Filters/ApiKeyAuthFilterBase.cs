@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace Humans.UI.Filters;
+namespace Humans.Base.Filters;
 
 /// <summary>
 /// Shared <c>X-Api-Key</c> header check for the key-authed read APIs (Feedback, Issues, Log,

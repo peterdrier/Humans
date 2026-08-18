@@ -1,4 +1,4 @@
-using Humans.UI.Filters;
+using Humans.Base.Filters;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Issues.Filters;
