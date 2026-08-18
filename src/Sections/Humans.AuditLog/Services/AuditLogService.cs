@@ -21,7 +21,7 @@ internal sealed class AuditLogService(
     IAuditLogRepository repo,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<AuditLogService> logger) : IAuditLogService, IUserDataContributor
+    ILogger<AuditLogService> logger) : IAuditLogService, IAuditLogReader, IUserDataContributor
 {
     // ─── Writes (append-only) ───
 

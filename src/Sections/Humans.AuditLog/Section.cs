@@ -40,6 +40,8 @@ public sealed class Section : ISection
         services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<AuditLogService>();
         services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
+        // Section-internal reads (AuditViewerService only) — off the cross-section contract.
+        services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
         // Audit rows carry an actor id → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
 

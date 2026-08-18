@@ -2844,7 +2844,7 @@ No `IMemoryCache`.
 
 ### AuditViewerService (Scoped) — `src/Sections/Humans.AuditLog/Services/`
 
-No repository. Read-only view assembler over `IAuditLogService`,
+No repository. Read-only view assembler over `IAuditLogReader`,
 `IUserServiceRead`, `ITeamServiceRead`, `ITeamResourceService`. No DB
 access, no cache. `internal sealed`; its interface, `AuditEvent` and
 `AuditEventPage` sit in the project's `Contracts/` folder.
