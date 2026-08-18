@@ -533,7 +533,7 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 
 ## 15. Section Caching Pattern — Canonical Cache-Collapse Architecture
 
-The `TrackedCache` decorator stack below is the target caching architecture for any section that warrants one. `CachingUserService` (`src/Sections/Humans.Users/Data/CachingUserService.cs`, owning the `UserInfo` read model) is the reference implementation; the pattern was first proven on the Profile migration (PR #235, 2026-04-20) and every G5 section that caches follows it.
+The `TrackedCache` decorator stack below is the target caching architecture for any section that warrants one. `CachingUserService` (`src/Sections/Humans.Users/Data/CachingUserService.cs`, owning the `UserInfo` read model) is the reference implementation; the pattern was first proven on the Profile migration (PR #235, 2026-04-20) and every G5 section that caches a canonical domain projection follows it. (Short-TTL request-acceleration caches — the `ApplicationServicesTakeNoMemoryCacheRule` allowlist — are a different, sanctioned shape; see §15i.)
 
 > Not every section needs §15 — reach for it only when traffic or bulk-read patterns justify an in-memory projection. **Governance** dropped its caching layer entirely (issue #533): the section is low-traffic enough that DB reads per request are fine, so `ApplicationDecisionService` talks directly to `IApplicationRepository` and invalidates cross-cutting caches (`INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`) inline after successful writes. (One short-TTL exception, added in #1010: the per-board-member unvoted-application count — read on every page load via the nav badge — is cached inline via `IMemoryCache` with a 2-min TTL, the same request-acceleration pattern as the other nav-badge counts; it is not a §15 projection.)
 
@@ -639,7 +639,7 @@ GoogleIntegration's cached projection, if it ever gains a decorator, is reconcil
 
 ### 15h. Adoption Rules
 
-1. **New sections must comply.** New features use the §15 pattern from day one — where a cache is warranted, create the repository and decorator the same day you create the service; where it isn't, Option A (no decorator) is the compliant shape.
+1. **New sections must comply.** New features use the §15 pattern from day one — where a cache is warranted, create the decorator (and, for a table-owning section, the repository) the same day you create the service; where it isn't, Option A (no decorator) is the compliant shape. A tableless section can still carry a decorator over a derived projection (`CachingEarlyEntryService`) — it never acquires a repository just to comply.
 2. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like.
 
 ### 15i. Current State (post-G5)
