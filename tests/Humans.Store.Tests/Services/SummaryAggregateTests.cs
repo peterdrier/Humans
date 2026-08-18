@@ -8,7 +8,7 @@ using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Stripe.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

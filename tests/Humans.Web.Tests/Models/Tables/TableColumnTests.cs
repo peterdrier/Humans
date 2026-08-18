@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models.Tables;
 using Microsoft.AspNetCore.Html;

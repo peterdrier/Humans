@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Surveys.Domain;
 using NodaTime;
 

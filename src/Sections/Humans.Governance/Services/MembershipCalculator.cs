@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

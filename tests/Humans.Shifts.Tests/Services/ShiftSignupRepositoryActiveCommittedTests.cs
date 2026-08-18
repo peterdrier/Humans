@@ -2,7 +2,7 @@ using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Tests.Infrastructure;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using NodaTime;
 

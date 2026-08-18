@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using Humans.Base.Caching;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Users.Contracts;

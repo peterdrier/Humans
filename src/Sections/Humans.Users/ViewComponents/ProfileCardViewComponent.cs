@@ -4,7 +4,7 @@ using Humans.UI.Helpers;
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.UI.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;

@@ -4,7 +4,7 @@ using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 using Humans.SystemSettings.Contracts;
 using Humans.Email.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Email.Services;

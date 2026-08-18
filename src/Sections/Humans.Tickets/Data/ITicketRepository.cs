@@ -173,7 +173,7 @@ internal interface ITicketRepository : IRepository
     /// <summary>
     /// Returns every <see cref="TicketAttendee"/> for the given vendor event
     /// that is currently unmatched (<c>MatchedUserId is null</c>) and whose
-    /// <see cref="Humans.Domain.Enums.TicketAttendeeStatus"/> is
+    /// <see cref="Humans.Base.Enums.TicketAttendeeStatus"/> is
     /// <c>Valid</c> or <c>CheckedIn</c>, AND whose
     /// <see cref="TicketAttendee.AttendeeEmail"/> is non-empty.
     ///

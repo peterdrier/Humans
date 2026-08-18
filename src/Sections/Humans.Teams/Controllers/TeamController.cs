@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Configuration;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Models;
 using NodaTime;

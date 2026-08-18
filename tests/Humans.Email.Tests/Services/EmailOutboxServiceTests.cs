@@ -5,7 +5,7 @@ using Humans.Email.Services;
 using Humans.Infrastructure.Configuration;
 using Humans.SystemSettings.Contracts;
 using Microsoft.Extensions.Options;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;

@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;

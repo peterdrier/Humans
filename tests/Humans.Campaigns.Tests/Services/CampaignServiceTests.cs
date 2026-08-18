@@ -6,7 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;

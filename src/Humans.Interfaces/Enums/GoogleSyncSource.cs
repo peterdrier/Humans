@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Base.Enums;
 
 /// <summary>
 /// What triggered a Google sync action.

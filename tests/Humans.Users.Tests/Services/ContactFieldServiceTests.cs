@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using ContactFieldService = Humans.Users.Services.ContactFieldService;
 using Humans.Teams.Contracts;
 using Humans.Users.Data.Repositories;

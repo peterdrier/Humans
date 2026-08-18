@@ -1,6 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Notifications.Services;
 using System.Security.Claims;
 using AwesomeAssertions;

@@ -3,7 +3,7 @@ using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;

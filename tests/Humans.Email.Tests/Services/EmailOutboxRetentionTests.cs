@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;

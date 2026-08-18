@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 namespace Humans.UI.Models.Tables;
 
@@ -12,7 +12,7 @@ namespace Humans.UI.Models.Tables;
 /// <remarks>
 /// The literal rows below are the sections that have not yet moved into their own projects
 /// (nobodies-collective/Humans#866, G5), whose enums all still sit in
-/// <c>Humans.Domain.Enums</c>. A section that has moved owns its rows and pushes them in from
+/// <c>Humans.Base.Enums</c>. A section that has moved owns its rows and pushes them in from
 /// <c>Section.Register</c> via <see cref="Register"/> — Base cannot name a moved section's enum,
 /// and referencing the section's contracts leaf to get it back would end with
 /// <c>Humans.UI</c> holding a reference to every section (Peter, 2026-08-09;

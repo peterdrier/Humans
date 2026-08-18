@@ -1,5 +1,5 @@
 using Humans.Consent.Data;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;

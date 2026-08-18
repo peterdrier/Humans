@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;

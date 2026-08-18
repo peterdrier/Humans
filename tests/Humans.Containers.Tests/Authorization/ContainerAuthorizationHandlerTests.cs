@@ -5,7 +5,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using NSubstitute;

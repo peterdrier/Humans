@@ -53,7 +53,7 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Base.csproj" />
     <!--
       Humans.Interfaces above now carries what the deleted Humans.Domain used to supply here:
-      RoleNames, the shared value objects, and the enums that keep the Humans.Domain.Enums
+      RoleNames, the shared value objects, and the enums that keep the Humans.Base.Enums
       namespace because more than one section names or persists them. G5 lane 3b finished the
       job — GoogleEmailStatus, MembershipTier and MessageCategory went to
       Humans.Users.Contracts (this section's own vocabulary, each named by a public leaf type),

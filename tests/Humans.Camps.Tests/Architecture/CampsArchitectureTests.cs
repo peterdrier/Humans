@@ -1,7 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Caching;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;

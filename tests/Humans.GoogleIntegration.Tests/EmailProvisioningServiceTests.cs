@@ -5,7 +5,7 @@ using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

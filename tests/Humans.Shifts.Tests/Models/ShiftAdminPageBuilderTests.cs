@@ -5,7 +5,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Shifts.Models;
 using NodaTime;
 using NSubstitute;

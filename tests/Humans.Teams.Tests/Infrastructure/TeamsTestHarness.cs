@@ -8,7 +8,7 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;

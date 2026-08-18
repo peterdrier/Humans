@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
 using Humans.AuditLog.Tests.Infrastructure;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;

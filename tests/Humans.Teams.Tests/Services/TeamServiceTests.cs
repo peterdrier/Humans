@@ -12,7 +12,7 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;

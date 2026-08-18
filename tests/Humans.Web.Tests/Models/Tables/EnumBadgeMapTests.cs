@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.UI.Models.Tables;
 using Humans.Users.Contracts;
 

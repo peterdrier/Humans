@@ -4,7 +4,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 

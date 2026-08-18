@@ -4,7 +4,7 @@ using Humans.Expenses.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Expenses.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;

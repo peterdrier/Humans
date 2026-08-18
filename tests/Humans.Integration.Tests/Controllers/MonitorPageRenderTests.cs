@@ -1,7 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 

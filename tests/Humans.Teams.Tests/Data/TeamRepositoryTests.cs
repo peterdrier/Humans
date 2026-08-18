@@ -2,7 +2,7 @@
 // it hands back to callers.
 
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;

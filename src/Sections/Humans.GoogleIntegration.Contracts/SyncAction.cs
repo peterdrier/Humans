@@ -6,7 +6,7 @@ namespace Humans.GoogleIntegration.Contracts;
 /// enforced by the gateway methods in GoogleWorkspaceSyncService.
 /// </summary>
 /// <remarks>
-/// Moved here from <c>Humans.Domain.Enums</c> by G5 lane 3b
+/// Moved here from <c>Humans.Base.Enums</c> by G5 lane 3b
 /// (nobodies-collective/Humans#866), alongside its siblings <c>GoogleResourceType</c> and
 /// <c>DrivePermissionLevel</c>, as part of emptying and deleting <c>Humans.Domain</c>.
 ///

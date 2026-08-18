@@ -7,7 +7,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Campaigns.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;

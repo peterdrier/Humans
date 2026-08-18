@@ -220,7 +220,7 @@ public class ServiceBoundaryArchitectureTests
         // Humans.Domain) so the sweep re-arms if anything lands back there before
         // phase 5a deletes the project. Coverage did not shrink — the three entities
         // are listed in LeafResidentEntities above.
-        var entityTypes = typeof(Domain.Enums.GoogleSyncSource).Assembly
+        var entityTypes = typeof(Base.Enums.GoogleSyncSource).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()

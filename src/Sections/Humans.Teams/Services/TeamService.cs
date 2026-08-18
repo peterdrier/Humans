@@ -15,7 +15,7 @@ using Humans.Teams.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;

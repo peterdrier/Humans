@@ -8,7 +8,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

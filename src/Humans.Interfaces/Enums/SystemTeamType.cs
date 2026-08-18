@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Base.Enums;
 
 /// <summary>
 /// Identifies system-managed teams with automatic membership sync.

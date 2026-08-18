@@ -4,7 +4,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Governance.Services;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

@@ -1,7 +1,7 @@
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

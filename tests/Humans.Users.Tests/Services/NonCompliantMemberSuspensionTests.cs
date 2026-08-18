@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;

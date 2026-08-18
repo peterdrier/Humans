@@ -13,7 +13,7 @@ using NSubstitute;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Governance.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;

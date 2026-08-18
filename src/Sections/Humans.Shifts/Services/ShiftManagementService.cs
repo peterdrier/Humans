@@ -8,7 +8,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Shifts.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

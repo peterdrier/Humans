@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.UI.Controllers;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;

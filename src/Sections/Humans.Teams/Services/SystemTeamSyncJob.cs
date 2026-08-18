@@ -12,7 +12,7 @@ using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Base.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;

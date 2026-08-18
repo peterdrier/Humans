@@ -1,7 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;

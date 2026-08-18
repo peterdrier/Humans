@@ -5,7 +5,7 @@ using Humans.Feedback.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Agent.Services;
 using NodaTime;
 using NodaTime.Testing;

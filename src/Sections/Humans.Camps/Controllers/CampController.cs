@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Base.Helpers;
 
 using Microsoft.EntityFrameworkCore;

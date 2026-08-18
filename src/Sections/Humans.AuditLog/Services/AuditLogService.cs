@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 

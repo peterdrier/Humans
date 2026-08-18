@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ModelBinding;

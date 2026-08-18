@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;

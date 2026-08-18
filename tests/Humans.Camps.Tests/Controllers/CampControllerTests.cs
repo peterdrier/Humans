@@ -2,7 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.UI;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

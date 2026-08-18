@@ -1,6 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 namespace Humans.AuditLog.Services;
 

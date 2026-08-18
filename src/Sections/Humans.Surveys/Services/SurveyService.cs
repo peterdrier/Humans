@@ -9,7 +9,7 @@ using Humans.Shifts.Contracts;
 using Humans.Surveys.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Surveys.Domain;
 using NodaTime;
 
