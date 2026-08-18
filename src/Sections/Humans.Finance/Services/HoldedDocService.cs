@@ -171,7 +171,7 @@ internal sealed class HoldedDocService(
             var map = await repo.GetCategoryMapAsync(ct);
             var entries = map
                 .Where(m => m.IsActive)
-                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.HoldedAccountNumber, m.Tag))
+                .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
                 .ToArray();
 
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);

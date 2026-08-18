@@ -44,18 +44,47 @@ a DI registration, which is Peter's call.
 - **Two InspectCode findings** (`b97f5dc9f`): an unreachable null test on the non-nullable
   `TagsJson`, and `b` bound twice in the `Creditors` projection.
 
-## Skipped and why
+## Then Peter answered, in the same session
 
-- **Splitting `Service`** along the doc-pipeline / creditor-bindings seam — the ideal-shape move,
-  and the cure for both reforge findings. Adds a type and a DI registration → Needs Peter.
-- **Narrowing `IHoldedFinanceService`** to the methods with external callers. The admin-only ones
-  want an internal interface → surface addition → Needs Peter.
-- **Dropping `RawPayload`**, a NOT NULL jsonb column that has only ever held `{}` → schema change.
-- **Trimming `Service.cs`'s rationale blocks.** Accurate but multi-paragraph comment essays,
-  mostly restating `Finance.md` invariants → Needs Peter.
-- **The unread contract properties** InspectCode flagged. Deliberately left: on a contract record
-  "no consumer reads it today" is weak evidence, and two of them are the natural key of their row.
-- **Stryker** — not run. The tests lane was not dispatched this run (see retro).
+All six queued items came back the same day, so the run kept going rather than deferring to a
+follow-up. Five of the six are applied in this PR:
+
+- **`Service` split in two.** `HoldedDocService` (repo, client, `IBudgetServiceRead`, clock,
+  logger) and `CreditorService` (repo, client, `IHoldedService`, clock, cache, logger). Every
+  method body moved verbatim; the tests split the same way.
+- **The public contract narrowed.** Each service is registered once and exposed twice — a
+  contracts-leaf interface carrying only what other sections call, and a wider internal one only
+  `FinanceController` resolves. Provisioning, the unmatched queue and bind/unbind stop crossing
+  the assembly boundary. `IHoldedFinanceService` is gone. Reforge 254 → 215.
+- **`RawPayload` dropped**, with the janitorial exception recorded in
+  `no-drops-until-prod-verified` and the destructive-ops baseline appended by hand (the seeder
+  overwrites other baselines' explanatory comments).
+- **The rationale blocks trimmed** to the constraint plus a pointer to the `Finance.md` invariant
+  that already carried the argument.
+- **The rubric question closed** — no change; the score picks a section and is not expected to
+  predict what will be wrong in it.
+
+The sixth, the unread contract properties, came back as "need more info". Only
+`HoldedMatchEntry.AccountNum` was unambiguous — internal, dead, deleted. The rest are per-property
+judgment and are laid out on the PR, along with the larger finding behind them: `HoldedPaymentInfo`
+is a *public* contracts type that never leaves `CreditorService`.
+
+## Codex review
+
+Two P2s, both real:
+
+- **The method totals were wrong** — and the rule says not to write them at all.
+  `no-derived-aggregates-in-docs` is a HARD RULE this run broke repeatedly: method totals, test
+  counts, route counts, a section rank. Removed rather than corrected, per Peter. Worth noting how
+  the error would have propagated: the queued narrowing was described as "down to nine methods"
+  when ten have external callers, so following the note as written would have dropped a live one.
+- **The cache test pinned the reuse but not the window.** Back-to-back calls pass against a cache
+  with no expiry at all. `MemoryCacheOptions.Clock` takes an `ISystemClock`, so the suite now
+  drives one by hand and asserts a second Holded call past the TTL — verified by removing the
+  expiry from the service and watching the new assertion fail.
+
+CI was also red on `dotnet format whitespace`, from the object initializer in the test helper this
+run added.
 
 ## Retro
 
@@ -77,3 +106,16 @@ run in a row where a grep-shaped conclusion about a view did not survive reading
 worth of criteria and none of them asks "is the rationale in the right place" — I only saw it
 from reading `Service.cs` end to end for the doc rewrite, and it is arguably the section's
 largest single deviation from a standing project rule.
+
+**Second-half retro.** The run broke a HARD RULE it had never read. `no-derived-aggregates-in-docs`
+is in `memory/INDEX.md`, and I wrote counts into five files without checking whether a rule covered
+them — the scorecard format itself invites it ("Tests | 57 in ..."), which is worth fixing in the
+skill rather than in me. And the count that mattered was also *wrong*, which is the rule's own
+argument: a hand-typed derived number drifts silently, and this one would have sent the queued
+refactor at a method that has an external caller.
+
+Two process notes. The destructive-ops baseline has a seeder, and running it clobbers unrelated
+baselines' hand-written explanatory comments and reorders their entries — append by hand instead.
+And `dotnet format whitespace` is a CI gate that a local `dotnet build` will not catch; it belongs
+in the per-commit loop, not just before the PR.
+

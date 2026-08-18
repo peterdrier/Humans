@@ -332,3 +332,20 @@ Present the open items inline, then apply each answer:
   `Finance.md`'s summary and its Architecture section disagreed about which controller serves
   `/Finance`; the detailed lower section was right and the summary a reader hits first was wrong.
   Read a section doc's end before trusting its beginning.
+- 2026-08-18: **run `dotnet format whitespace --verify-no-changes` before every commit, not just
+  before the PR.** It is a CI gate that a green `dotnet build` says nothing about; this run shipped
+  a red build over an object initializer in a test helper. Run the formatter rather than guessing
+  at its rule.
+- 2026-08-18: **no counts in the scorecard or the report.**
+  `memory/process/no-derived-aggregates-in-docs.md` is a HARD RULE and the scorecard format invites
+  breaking it ("Tests | 57 in ..."). Write the qualitative state — "every write path covered",
+  "over the largeClass threshold" — never a method total, test count, route count or section rank.
+  The one number that stays is the dated reforge score in the history table, which is a measurement
+  with a generator, not a hand-copied aggregate.
+- 2026-08-18: **never run the ratchet baseline seeder to add one entry.**
+  `HUMANS_SEED_RATCHET_BASELINES=1` rewrites *every* baseline, dropping other people's hand-written
+  explanatory comments and reordering unrelated entries. Append the single line by hand and keep
+  the file's existing newline style.
+- 2026-08-18: **when Peter answers the queue in-session, keep working — do not defer to a follow-up
+  run.** This run's Needs-Peter items came back the same day and all five approved items landed in
+  the same PR, which is what made the score move at all. The queue is a checkpoint, not an exit.

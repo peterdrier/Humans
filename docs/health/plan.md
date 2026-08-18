@@ -33,32 +33,23 @@ PR is still open.
 
 ### 2026-08-18 — Finance (peterdrier/Humans#1367)
 
-- [ ] **Split `Service` along the doc-pipeline / creditor-bindings seam?** They share
-      no state and no invariant — one is a nightly full-pull with attribution and an unmatched
-      queue, the other a member↔account link with a three-way concurrency story. The split retires
-      both of the section's reforge findings and is behaviour-preserving, but it adds a type and a
-      DI registration.
-- [ ] **Take the admin-only methods off the public `IHoldedFinanceService`?**
-      `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetUnmatchedAsync`, `SetCreditorContactAsync`
-      and `ClearCreditorContactAsync` have no caller outside this project — they cross an assembly
-      boundary for `FinanceController`'s benefit alone. Landing them on an internal interface is
-      surface *addition*.
-- [ ] **Drop `RawPayload`?** A NOT NULL jsonb column on `holded_expense_docs` that has only ever
-      held the literal `{}` — `MapDoc` never wrote a payload and nothing reads it. Schema change.
-- [ ] **Trim `Service.cs`'s rationale blocks to 1–3 lines?** Multi-paragraph comment blocks with
-      decision history and issue archaeology inline, against `comments-stay-short`. Every one is
-      accurate and most restate a `Finance.md` invariant; the judgment is whether the doc is
-      genuinely the right home for all of it.
-- [ ] **Contract properties InspectCode reports as never read** —
-      `HoldedCreditorStatus.SupplierAccountNum`, `HoldedPaymentInfo.DocumentType`,
-      `HoldedUnmatchedRow.HoldedDocId`, `CreditorContactBinding.HoldedContactId`,
-      `CreditorLedgerLine.AccountNum`, `HoldedMatchEntry.AccountNum`. Left alone: on a contract
-      record "nobody reads it today" is weak evidence, and two are the natural key of their row.
-      Delete, or is carrying them correct?
-- [ ] **Second data point on the rubric question already open from Guide.** Guide (score 8) was
-      failing open on access control; Finance (254) had a section doc two versions behind. Neither
-      is something score growth or staleness can see. The rubric picks *a* section fine and has
-      predicted nothing about *what* is wrong. Worth changing, or is picking a section all it is for?
+Peter answered all six on the PR. Five are applied; one stays open.
+
+- [x] **Split `Service` along the doc-pipeline / creditor-bindings seam.** Done —
+      `HoldedDocService` + `CreditorService`.
+- [x] **Take the admin-only methods off the public contract.** Done — each service is registered
+      once and exposed twice, a contracts-leaf interface for other sections and a wider internal
+      one only `FinanceController` resolves.
+- [x] **Drop `RawPayload`.** Done — `20260818100220_DropHoldedExpenseDocRawPayload`, recorded as a
+      janitorial exception in `no-drops-until-prod-verified`.
+- [x] **Trim `Service.cs`'s rationale blocks.** Done — each states the constraint and points at the
+      `Finance.md` invariant carrying the argument.
+- [ ] **Contract properties InspectCode reports as never read** — Peter asked for more information,
+      supplied on the PR. `HoldedMatchEntry.AccountNum` was internal and plainly dead, so it went
+      this run. The rest are a judgment per property, and there is a bigger one behind them:
+      `HoldedPaymentInfo` is a *public contracts type* that never crosses the boundary at all.
+- [x] **The rubric question.** Peter: "we update things when we can, it's not a perfect system."
+      No rubric change; the score picks a section and is not expected to predict the finding.
 
 ### 2026-08-17 — Guide (peterdrier/Humans#1354)
 
