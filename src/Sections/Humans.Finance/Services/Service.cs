@@ -56,7 +56,10 @@ internal sealed class Service(
             .ToHashSet();
 
         var rows = new List<HoldedProvisioningRow>();
-        var usedTags = new HashSet<string>(StringComparer.Ordinal);
+        // Seeded up front like usedNumbers, not as the walk encounters them: a ToAdd category
+        // sorting before a mapped one whose tag it collides with would otherwise be handed that
+        // tag verbatim, and two active rows sharing a tag make tag attribution arbitrary.
+        var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
         // Track the rolling "next free" number across ToAdd assignments.
@@ -77,7 +80,6 @@ internal sealed class Service(
                     ProposedAccountNum: null,
                     Tag: existing.Tag,
                     State: "Mapped"));
-                usedTags.Add(existing.Tag);
             }
             else
             {

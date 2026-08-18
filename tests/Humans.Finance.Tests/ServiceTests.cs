@@ -293,10 +293,14 @@ public class HoldedFinanceServiceTests
     public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
     {
         // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.
+        // Two lines a side, deliberately: with one each, a sum and a max are the same number.
+        // The last debit sits at 22:30Z, which is the next day in Madrid — the date the member sees.
         _holded.GetLedgerLinesAsync(40000001, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
-            Line(1, 0, 40000001, Instant.FromUtc(2026, 4, 1, 0, 0), credit: 12720m, type: "purchase"),
-            Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 20, 0, 0), debit: 9540m, type: "payment"),
+            Line(1, 0, 40000001, Instant.FromUtc(2026, 4, 1, 0, 0), credit: 12000m, type: "purchase"),
+            Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 5, 0, 0), credit: 720m, type: "purchase"),
+            Line(3, 0, 40000001, Instant.FromUtc(2026, 4, 10, 0, 0), debit: 9000m, type: "payment"),
+            Line(4, 0, 40000001, Instant.FromUtc(2026, 4, 20, 22, 30), debit: 540m, type: "payment"),
         });
 
         var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
@@ -304,8 +308,8 @@ public class HoldedFinanceServiceTests
         status.Should().NotBeNull();
         status!.Balance.Should().Be(-3180m);
         status.OwedToMember.Should().Be(3180m);
-        status.TotalPaid.Should().Be(9540m);                 // debit lines only
-        status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
+        status.TotalPaid.Should().Be(9540m);                 // debit lines only, summed
+        status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 21));
     }
 
     [HumansFact]
@@ -1300,5 +1304,92 @@ public class HoldedFinanceServiceTests
             userId, Xunit.TestContext.Current.CancellationToken);
 
         removed.Should().BeFalse();
+    }
+
+    // ─── Unmatched worklist ──────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetUnmatched_TellsTheTreasurerWhichHalfOfTheChainMissed()
+    {
+        // The reason text is the whole point of the worklist: it says where to go fix the mapping.
+        _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            UnmatchedDoc("neither", account: null, tagsJson: "[]"),
+            UnmatchedDoc("both", account: "acc-9", tagsJson: """["ops"]"""),
+            UnmatchedDoc("account-only", account: "acc-9", tagsJson: "[]"),
+            UnmatchedDoc("tags-only", account: null, tagsJson: """["ops"]"""),
+        ]);
+
+        var rows = await MakeService().GetUnmatchedAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Select(r => (r.DocNumber, r.Reason)).Should().Equal(
+            ("neither", "No account, no tag"),
+            ("both", "Account and tags not mapped"),
+            ("account-only", "Account not mapped"),
+            ("tags-only", "Tags not matched"));
+        rows[0].HoldedUrl.Should().Be("https://app.holded.com/purchases/doc-neither");
+    }
+
+    private static HoldedExpenseDoc UnmatchedDoc(string docNumber, string? account, string tagsJson) => new()
+    {
+        Id = Guid.NewGuid(),
+        HoldedDocId = $"doc-{docNumber}",
+        DocNumber = docNumber,
+        ContactName = "Vendor",
+        Date = new LocalDate(2026, 4, 1),
+        Total = 10m,
+        Currency = "eur",
+        TagsJson = tagsJson,
+        BookedAccountId = account,
+        MatchStatus = HoldedMatchStatus.Unmatched,
+        MatchSource = HoldedMatchSource.None,
+        CreatedAt = FixedNow,
+        UpdatedAt = FixedNow,
+    };
+
+    // ─── Provisioning: tag collisions ────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetProvisioningPlan_TagTakenByAMappedRowFurtherDownTheWalk_IsStillDisambiguated()
+    {
+        // "S-taff" normalizes to the same tag as "Staff" and sorts ahead of it, so a ToAdd row
+        // reaches the collision check before the mapped row that already owns the tag. Two active
+        // rows sharing a tag make tag attribution arbitrary, so the proposal must not reuse it.
+        var toAddCat = Guid.NewGuid();
+        var mappedCat = Guid.NewGuid();
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
+            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(), BudgetYearId: Guid.NewGuid(), Name: "Operations",
+                    SortOrder: 1, IsRestricted: false, IsDepartmentGroup: false,
+                    IsTicketingGroup: false, TicketingProjection: null,
+                    Categories:
+                    [
+                        new BudgetCategoryDetail(toAddCat, Guid.NewGuid(), "S-taff", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(mappedCat, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 1, []),
+                    ])
+            ]));
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            new List<HoldedCategoryMap>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(), BudgetCategoryId = mappedCat,
+                    HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
+                    Tag = "operationsstaff", IsActive = true,
+                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                }
+            });
+
+        var plan = await MakeService().GetProvisioningPlanAsync(
+            blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var proposed = plan.Rows.Single(r => r.BudgetCategoryId == toAddCat);
+        proposed.State.Should().Be("ToAdd");
+        proposed.Tag.Should().NotBe("operationsstaff");
+        proposed.Tag.Should().StartWith("operationsstaff");
     }
 }
