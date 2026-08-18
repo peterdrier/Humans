@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.UI.Controllers;
+namespace Humans.Base.Controllers;
 
 /// <summary>
 /// Base class for JSON API controllers. Inherit from this instead of

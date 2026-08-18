@@ -1,3 +1,4 @@
+using Humans.Base.Controllers;
 using Humans.Calendar.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
