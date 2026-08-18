@@ -86,8 +86,8 @@ mechanical:
       - "src/Humans.Web/Controllers/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
       # RoleChecks / ShiftRoleChecks / PolicyNames moved with the rest of Humans.UI
-      # into Humans.Interfaces at G5 lane 5d; the old glob matched nothing.
-      - "src/Humans.Interfaces/Authorization/**/*.cs"
+      # into Humans.Base at G5 lane 5d; the old glob matched nothing.
+      - "src/Humans.Base/Authorization/**/*.cs"
       # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
@@ -119,7 +119,7 @@ mechanical:
       map only, and a misfiled row leaves the owner permanently stale.
 
       Search src/Humans.Web/ (Controllers/, Authorization/),
-      src/Humans.Interfaces/Authorization/ (RoleChecks / ShiftRoleChecks /
+      src/Humans.Base/Authorization/ (RoleChecks / ShiftRoleChecks /
       PolicyNames), AND every src/Sections/*/ project (its Controllers/ and
       Authorization/ folders). Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
@@ -275,10 +275,10 @@ mechanical:
     target: docs/guid-reservations.md
     triggers:
       # SystemTeamIds / SystemUserIds followed the rest of Humans.Domain/Constants
-      # into Humans.Interfaces at G5 lane 3a-1. The old Humans.Domain and
+      # into Humans.Base at G5 lane 3a-1. The old Humans.Domain and
       # Humans.Infrastructure globs matched nothing once those projects were deleted;
       # no seed GUID lives outside this folder and the section Data/ tree below.
-      - "src/Humans.Interfaces/Constants/**/*.cs"
+      - "src/Humans.Base/Constants/**/*.cs"
       # Section-owned configurations carry their own HasData seed GUIDs. Whole
       # Data/ tree — some configurations sit directly under Data/ rather than
       # Data/Configurations/. Same false-clean as data-model-index above.
@@ -287,7 +287,7 @@ mechanical:
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
-      Walk src/Humans.Interfaces/Constants/ AND the whole src/Sections/*/Data/ tree —
+      Walk src/Humans.Base/Constants/ AND the whole src/Sections/*/Data/ tree —
       G5 sections carry their own EF configurations and therefore their own HasData
       seed GUIDs, so scanning only the Base constants folder can omit the very
       section-owned GUID that fired this entry (blocks 0001/Teams and 0026/Events

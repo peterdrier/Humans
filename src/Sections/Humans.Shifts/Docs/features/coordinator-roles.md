@@ -8,8 +8,8 @@
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Sections/Humans.Onboarding/Views/OnboardingReview/**
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   ConsentCoordinator/VolunteerCoordinator capabilities, OnboardingReview authorization, and role-management permissions — review when role names, OnboardingReviewController, or membership filter change.

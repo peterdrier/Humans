@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Interfaces/Interfaces/IUserActivityTracker.cs
+  src/Humans.Base/Interfaces/IUserActivityTracker.cs
   src/Humans.Web/Services/UserActivityTracker.cs
   src/Humans.Web/Services/HumansMetricsService.cs
   src/Humans.Web/Middleware/UserActivityTrackingMiddleware.cs

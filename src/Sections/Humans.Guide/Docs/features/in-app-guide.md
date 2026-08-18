@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Guide/**
-  src/Humans.Interfaces/Services/GitHubGuideContentSource.cs
-  src/Humans.Interfaces/Configuration/GuideSettings.cs
+  src/Humans.Base/Services/GitHubGuideContentSource.cs
+  src/Humans.Base/Configuration/GuideSettings.cs
 -->
 <!-- freshness:flag-on-change
   Guide rendering pipeline, role-filtering rules, refresh route, or anonymous-access policy may have shifted.

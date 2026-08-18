@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Agent/**
-  src/Humans.Interfaces/Services/GitHubCommunityKbContentSource.cs
-  src/Humans.Interfaces/Configuration/CommunityKbSettings.cs
+  src/Humans.Base/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Base/Configuration/CommunityKbSettings.cs
 -->
 <!-- freshness:flag-on-change
   Agent conversation/message/settings invariants, preload-corpus tiers + the tool surface (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue / get_audit_history), the community knowledge base (separate nobodies-collective/knowledge-base repo, cached in RAM, admin-reloadable), rate-limit/abuse gating, and the admin status/reload/prompt-preview surface — review when agent services, stores, the tool catalog, the preload/community-KB readers, or the agent controllers change.

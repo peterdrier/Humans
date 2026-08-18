@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Consent/**
   src/Sections/Humans.Consent.Contracts/**
-  src/Humans.Interfaces/Constants/SystemTeamIds.cs
+  src/Humans.Base/Constants/SystemTeamIds.cs
 -->
 <!-- freshness:flag-on-change
   Document/consent data model, sync flow, immutability triggers, and admin CRUD routes — review when Legal/Consent services, controllers, or entities change.

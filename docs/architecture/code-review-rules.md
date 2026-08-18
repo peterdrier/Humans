@@ -7,7 +7,7 @@
   src/Humans.Web/Data/**
   src/Humans.Web/Repositories/**
   src/Humans.Web/Migrations/**
-  src/Humans.Interfaces/**
+  src/Humans.Base/**
   src/Sections/**
   tests/Humans.Testing/**
 -->

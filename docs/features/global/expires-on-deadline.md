@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Interfaces/Architecture/ExpiresOnAttribute.cs
+  src/Humans.Base/Architecture/ExpiresOnAttribute.cs
   src/Humans.Analyzers/ExpiresOnAnalyzer.cs
   Directory.Build.props
 -->

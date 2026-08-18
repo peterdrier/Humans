@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/*/Data/**
-  src/Humans.Interfaces/Constants/**
+  src/Humans.Base/Constants/**
   src/Sections/Humans.Development/**
   src/Sections/*/Data/Migrations/**
   src/Sections/**/Data/**

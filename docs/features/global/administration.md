@@ -4,13 +4,13 @@
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
-  src/Humans.Interfaces/Authorization/PolicyNames.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
   src/Sections/Humans.Governance/Views/Governance/**
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   Admin/Profile/Google route tables, role catalog, dashboard metrics, and the Board-vs-Admin role split — review when admin-area controllers, role names, or authorization policies change.

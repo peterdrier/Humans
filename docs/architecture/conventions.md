@@ -2,8 +2,8 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/ViewComponents/**
   src/Humans.Web/Views/**
-  src/Humans.Interfaces/ViewComponents/**
-  src/Humans.Interfaces/Views/**
+  src/Humans.Base/ViewComponents/**
+  src/Humans.Base/Views/**
   src/Sections/**
   Directory.Build.props
 -->

@@ -56,7 +56,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > DbContext backs its tables; per-table `DbContext` notes appear only where
 > a section's tables span more than one context.
 >
-> The marker-only project `src/Humans.Interfaces/` holds the shared
+> The marker-only project `src/Humans.Base/` holds the shared
 > `IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, and
 > `IInvalidator` marker interfaces (no data-access behavior of its own), plus
 > the cache infrastructure: `CacheKeys.cs`, the invalidator extensions in
@@ -351,8 +351,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 ### All Cache Keys
 
-Sourced from `src/Humans.Interfaces/CacheKeys.cs` and
-`src/Humans.Interfaces/Extensions/MemoryCacheExtensions.cs`. TTL/type
+Sourced from `src/Humans.Base/CacheKeys.cs` and
+`src/Humans.Base/Extensions/MemoryCacheExtensions.cs`. TTL/type
 classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
 `/Debug/CacheStats` page). Note: most section projections are
 `TrackedCache` dictionaries (not `IMemoryCache` keys) and are listed
@@ -438,7 +438,7 @@ separately below the key table.
    `"ticket-query-inner"`, `"camp-inner"`, `"calendar-inner"`,
    `"event-inner"`, `"role-assignment-inner"`, `"legal-document-sync-inner"`,
    `"early-entry-inner"`, plus the Consent inner key) and inherit
-   `TrackedCache<TKey, TValue>` (`src/Humans.Interfaces/Interfaces/Caching/TrackedCache.cs`)
+   `TrackedCache<TKey, TValue>` (`src/Humans.Base/Interfaces/Caching/TrackedCache.cs`)
    rather than using `IMemoryCache` for their projection state.
 
 ---

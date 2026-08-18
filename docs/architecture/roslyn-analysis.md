@@ -226,7 +226,7 @@ assertion families that are plausible analyzer candidates:
   applications right now** — the attribute was lifted off every type for the
   remainder of the 866 migration while surfaces are in flight, so both diagnostics
   currently match nothing. `SurfaceBudgetAttribute` itself still ships from
-  `src/Humans.Interfaces/Architecture/`.
+  `src/Humans.Base/Architecture/`.
 - Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
   carrying the attribute, count public-instance `MethodKind == Ordinary`
   members directly on the symbol. Accessibility filter is a no-op on

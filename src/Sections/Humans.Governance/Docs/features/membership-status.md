@@ -2,7 +2,7 @@
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
-  src/Humans.Interfaces/Constants/SystemTeamIds.cs
+  src/Humans.Base/Constants/SystemTeamIds.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs
 -->

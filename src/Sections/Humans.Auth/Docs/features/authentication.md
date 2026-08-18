@@ -2,13 +2,13 @@
   src/Sections/Humans.Auth/**
   src/Sections/Humans.Users/Services/**
   src/Humans.Web/Authorization/**
-  src/Humans.Interfaces/Authorization/**
+  src/Humans.Base/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Development/Controllers/DevLoginController.cs
   src/Sections/Humans.Users.Contracts/User.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   Authentication flow, role-claims transformation, role catalog, MembershipRequiredFilter, and policy names — review when auth/identity surfaces change.

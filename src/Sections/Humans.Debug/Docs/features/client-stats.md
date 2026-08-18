@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Interfaces/Interfaces/IClientStatsTracker.cs
-  src/Humans.Interfaces/Interfaces/IHttpStatusTracker.cs
+  src/Humans.Base/Interfaces/IClientStatsTracker.cs
+  src/Humans.Base/Interfaces/IHttpStatusTracker.cs
   src/Humans.Web/Services/ClientStatsTracker.cs
   src/Humans.Web/Services/HttpStatusTracker.cs
   src/Humans.Web/Services/UserAgentClassifier.cs

@@ -3,7 +3,7 @@
   src/Sections/Humans.Users.Contracts/PersonSearchFields.cs
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Users/Data/CachingUserService.cs
-  src/Humans.Interfaces/Models/SearchResponseModels.cs
+  src/Humans.Base/Models/SearchResponseModels.cs
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
 -->
 <!-- freshness:flag-on-change

@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs
-  src/Humans.Interfaces/Models/SearchResponseModels.cs
-  src/Humans.Interfaces/Views/Shared/Components/HumanSearch/Default.cshtml
+  src/Humans.Base/Models/SearchResponseModels.cs
+  src/Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Users.Contracts/HumanSearchResult.cs
   src/Sections/Humans.Users/Services/ContactFieldService.cs

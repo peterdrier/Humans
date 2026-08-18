@@ -3,8 +3,8 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
-  src/Humans.Interfaces/Authorization/ShiftRoleChecks.cs
-  src/Humans.Interfaces/Authorization/PolicyNames.cs
+  src/Humans.Base/Authorization/ShiftRoleChecks.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Shifts/Domain/Rota.cs
   src/Sections/Humans.Shifts/Domain/Shift.cs
