@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Humans.Application.Threading;
+using Humans.Base.Threading;
 using Microsoft.Extensions.Hosting;
 
 namespace Humans.Application.Interfaces.Caching;

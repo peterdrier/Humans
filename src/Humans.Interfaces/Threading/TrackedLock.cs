@@ -1,4 +1,4 @@
-namespace Humans.Application.Threading;
+namespace Humans.Base.Threading;
 
 /// <summary>
 /// A named mutex wrapper around <see cref="SemaphoreSlim"/> that measures wait time,

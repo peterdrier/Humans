@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Threading;
+using Humans.Base.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

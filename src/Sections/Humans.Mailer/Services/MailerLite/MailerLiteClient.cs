@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Application.Extensions;
 using Humans.Mailer.Services.Dtos;
-using Humans.Application.Threading;
+using Humans.Base.Threading;
 using NodaTime;
 
 namespace Humans.Mailer.Services.MailerLite;

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Humans.Events.Services.Dtos;
 using Humans.Application.Interfaces.Caching;
 using Humans.Shifts.Contracts;
-using Humans.Application.Threading;
+using Humans.Base.Threading;
 using Humans.Events.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

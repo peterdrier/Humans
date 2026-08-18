@@ -6,7 +6,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Application.Threading;
+using Humans.Base.Threading;
 using Humans.Domain.Helpers;
 using NodaTime;
 
