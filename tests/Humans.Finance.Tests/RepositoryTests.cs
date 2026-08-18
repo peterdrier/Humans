@@ -188,9 +188,14 @@ public class RepositoryTests
         var (repo, _) = Make();
         await repo.AddCategoryMapAsync(new HoldedCategoryMap
         {
-            Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
-            HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1", Tag = "a",
-            IsActive = false, CreatedAt = Created, UpdatedAt = Created,
+            Id = Guid.NewGuid(),
+            BudgetCategoryId = Guid.NewGuid(),
+            HoldedAccountNumber = 6290001,
+            HoldedAccountId = "acc-1",
+            Tag = "a",
+            IsActive = false,
+            CreatedAt = Created,
+            UpdatedAt = Created,
         }, Ct);
 
         (await repo.GetCategoryMapAsync(Ct)).Should().ContainSingle();

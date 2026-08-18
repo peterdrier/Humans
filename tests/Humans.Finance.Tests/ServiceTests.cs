@@ -1496,7 +1496,10 @@ public class HoldedFinanceServiceTests
         _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal>
             {
-                [39999999] = -1m, [40000000] = -1m, [40000999] = -1m, [40001000] = -1m,
+                [39999999] = -1m,
+                [40000000] = -1m,
+                [40000999] = -1m,
+                [40001000] = -1m,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
