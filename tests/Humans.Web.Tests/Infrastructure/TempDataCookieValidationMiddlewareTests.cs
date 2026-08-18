@@ -366,4 +366,36 @@ public class TempDataCookieValidationMiddlewareTests
         logger.Entries.Should().ContainSingle()
             .Which.Exception.Should().BeNull();
     }
+    [HumansFact]
+    public async Task DifferentlyCasedCookie_IsDeletedUnderTheNameTheClientSent()
+    {
+        var context = new DefaultHttpContext();
+        // The request collection resolves cookie names case-insensitively, so the framework
+        // still finds — and still throws on — this one. A browser matches Set-Cookie
+        // case-sensitively though, so expiring the configured casing would leave the real
+        // cookie in place and re-log this warning on every subsequent request.
+        var sentName = CookieName.ToLowerInvariant();
+        context.Request.Headers.Cookie = $"{sentName}=garbage-not-base64!!!";
+
+        HttpContext? seenByNext = null;
+        var logger = new CapturingLogger<TempDataCookieValidationMiddleware>();
+        var middleware = new TempDataCookieValidationMiddleware(
+            ctx =>
+            {
+                seenByNext = ctx;
+                return Task.CompletedTask;
+            },
+            Options.Create(new CookieTempDataProviderOptions()),
+            logger);
+
+        await middleware.InvokeAsync(context);
+
+        seenByNext.Should().NotBeNull();
+        seenByNext!.Request.Cookies.ContainsKey(CookieName).Should()
+            .BeFalse("the framework looks the cookie up under the configured casing");
+
+        ParseSetCookies(context.Response).Select(c => c.Name.Value)
+            .Should().ContainSingle().Which.Should().Be(sentName,
+                "only the name the client sent can be expired by the browser");
+    }
 }

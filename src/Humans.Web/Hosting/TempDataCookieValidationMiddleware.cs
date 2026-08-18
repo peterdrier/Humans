@@ -49,7 +49,7 @@ public sealed class TempDataCookieValidationMiddleware(
             // it are weight it can never reassemble, re-sent on every request until they expire.
             // Swept without logging: with no main cookie there is no decode and so no #1038
             // FormatException, and this must not add noise to the stream that issue is read from.
-            var orphans = ChunkNames(CollectChunkSiblings(requestCookies, cookieName), cookieName);
+            var orphans = ChunkNames(CollectChunkSiblings(requestCookies, cookieName));
             if (orphans.Count > 0)
             {
                 RemoveFromRequestAndResponse(context, orphans);
@@ -104,19 +104,39 @@ public sealed class TempDataCookieValidationMiddleware(
         }
     }
 
-    private static string ChunkName(string cookieName, int index)
-        => cookieName + ChunkKeySuffix + index.ToString(CultureInfo.InvariantCulture);
-
-    private static HashSet<string> ChunkNames(Dictionary<int, string> siblings, string cookieName)
+    /// <summary>
+    /// The names to hide and expire, compared the way <see cref="IRequestCookieCollection"/>
+    /// compares them so a lookup under the configured casing still finds a hidden cookie the
+    /// client sent under another — while each stored name stays exactly as it arrived.
+    /// </summary>
+    private static HashSet<string> ChunkNames(Dictionary<int, (string Name, string Value)> siblings)
     {
-        // Cookie names are case-sensitive, so ordinal is the framework's own comparison.
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var index in siblings.Keys)
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var sibling in siblings.Values)
         {
-            names.Add(ChunkName(cookieName, index));
+            names.Add(sibling.Name);
         }
 
         return names;
+    }
+
+    /// <summary>
+    /// The main cookie's name as the client sent it. The request collection resolves names
+    /// case-insensitively, so a differently-cased cookie is found through the configured name
+    /// — but a browser matches a Set-Cookie delete case-sensitively, so expiring the configured
+    /// casing would leave the real cookie in place and re-log this warning on every request.
+    /// </summary>
+    private static string ResolveSentName(IRequestCookieCollection requestCookies, string cookieName)
+    {
+        foreach (var (name, _) in requestCookies)
+        {
+            if (string.Equals(name, cookieName, StringComparison.OrdinalIgnoreCase))
+            {
+                return name;
+            }
+        }
+
+        return cookieName;
     }
 
     /// <summary>
@@ -146,17 +166,20 @@ public sealed class TempDataCookieValidationMiddleware(
     /// the work by the number of cookies the client actually sent, and as a side benefit finds
     /// siblings even when the main value is corrupted past having a parseable marker at all.
     /// </remarks>
-    private static Dictionary<int, string> CollectChunkSiblings(
+    private static Dictionary<int, (string Name, string Value)> CollectChunkSiblings(
         IRequestCookieCollection requestCookies,
         string cookieName)
     {
         var prefix = cookieName + ChunkKeySuffix;
-        var siblings = new Dictionary<int, string>();
+        var siblings = new Dictionary<int, (string Name, string Value)>();
 
         foreach (var (name, value) in requestCookies)
         {
+            // Matched case-insensitively because that is how the request collection this
+            // mirrors resolves a name — but the name kept is the one the client actually
+            // sent, since that is the only one a Set-Cookie delete will match.
             if (name.Length <= prefix.Length
-                || !name.StartsWith(prefix, StringComparison.Ordinal)
+                || !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                 || string.IsNullOrEmpty(value))
             {
                 continue;
@@ -170,7 +193,7 @@ public sealed class TempDataCookieValidationMiddleware(
                 && index > 0
                 && suffix.SequenceEqual(index.ToString(CultureInfo.InvariantCulture)))
             {
-                siblings[index] = value;
+                siblings[index] = (name, value);
             }
         }
 
@@ -200,8 +223,8 @@ public sealed class TempDataCookieValidationMiddleware(
     {
         var siblings = CollectChunkSiblings(requestCookies, cookieName);
 
-        relatedNames = ChunkNames(siblings, cookieName);
-        relatedNames.Add(cookieName);
+        relatedNames = ChunkNames(siblings);
+        relatedNames.Add(ResolveSentName(requestCookies, cookieName));
 
         if (!TryParseChunkCount(rawValue, out var chunkCount))
         {
@@ -224,7 +247,7 @@ public sealed class TempDataCookieValidationMiddleware(
                 return null;
             }
 
-            builder.Append(chunk);
+            builder.Append(chunk.Value);
         }
 
         return builder.ToString();
