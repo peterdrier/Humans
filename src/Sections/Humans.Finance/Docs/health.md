@@ -63,4 +63,4 @@ ranked below.
 
 | Date | Reforge | Tests | Outcome | PR |
 |---|---|---|---|---|
-| 2026-08-18 | 254 | 57 | Section doc described the pre-G5 controller — 23 phantom routes, a removed Resync route, a phantom Tickets dependency, a shipped read-split still listed as future work, two wrong file paths, three stale class names; swept the same claims out of `FinanceController`, `Section.cs`, `IHoldedNightlySync` and `docs/sections/_Index.md`. Pinned the Madrid date conversion and the 2-minute contact cache, neither of which had a test. Two InspectCode findings | peterdrier/Humans#PENDING |
+| 2026-08-18 | 254 | 57 | Section doc described the pre-G5 controller — 23 phantom routes, a removed Resync route, a phantom Tickets dependency, a shipped read-split still listed as future work, two wrong file paths, three stale class names; swept the same claims out of `FinanceController`, `Section.cs`, `IHoldedNightlySync` and `docs/sections/_Index.md`. Pinned the Madrid date conversion and the 2-minute contact cache, neither of which had a test. Two InspectCode findings | peterdrier/Humans#1367 |

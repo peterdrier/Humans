@@ -31,7 +31,7 @@ Phase 5 Holded v2 invoicing, #158). Web/Interfaces/Analyzers/Development — not
 Unticked items are open. `resume` works this list for merged runs, and the PR body for runs whose
 PR is still open.
 
-### 2026-08-18 — Finance (peterdrier/Humans#PENDING)
+### 2026-08-18 — Finance (peterdrier/Humans#1367)
 
 - [ ] **Split `Service` (856 lines) along the doc-pipeline / creditor-bindings seam?** They share
       no state and no invariant — one is a nightly full-pull with attribution and an unmatched
