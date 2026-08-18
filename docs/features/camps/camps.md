@@ -423,7 +423,7 @@ Transitions:
 - Full → Active (CampAdmin reactivates)
 - Withdrawn → Pending (lead or CampAdmin rejoins; requires re-approval)
 
-Note: nothing in the app currently transitions a season *into* `Full` — `SetSeasonFullAsync` was dropped as a zero-caller dead method (commit b4710bf01, 2026-05-03). `Full` still exists as a readable/reactivatable status (for seasons that reached it before the method was removed, or set directly), but there is no in-app "mark full" action today. This is a **known gap, not an intended retirement** — a reachable `Full` is an intended requirement; see ISSUE_PLACEHOLDER.
+Note: nothing in the app currently transitions a season *into* `Full` — `SetSeasonFullAsync` was dropped as a zero-caller dead method (commit b4710bf01, 2026-05-03). `Full` still exists as a readable/reactivatable status (for seasons that reached it before the method was removed, or set directly), but there is no in-app "mark full" action today. This is a **known gap, not an intended retirement** — a reachable `Full` is an intended requirement; see nobodies-collective/Humans#1070.
 
 ## Authorization
 
