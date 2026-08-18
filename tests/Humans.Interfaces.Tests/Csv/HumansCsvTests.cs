@@ -1,7 +1,7 @@
 using System.Text;
 using AwesomeAssertions;
 using CsvHelper;
-using Humans.Application.Csv;
+using Humans.Base.Csv;
 using Xunit;
 
 namespace Humans.Interfaces.Tests.Csv;

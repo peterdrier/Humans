@@ -3,7 +3,7 @@ using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 
-namespace Humans.Application.Csv;
+namespace Humans.Base.Csv;
 
 /// <summary>
 /// The one place CSV conventions are defined. Every CSV read or write in the
