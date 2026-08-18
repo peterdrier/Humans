@@ -14,7 +14,7 @@ using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Infrastructure.Configuration;
 using Humans.Base.Interfaces;
-using Humans.Infrastructure.Services.Metering;
+using Humans.Base.Services.Metering;
 using Humans.SystemSettings.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 

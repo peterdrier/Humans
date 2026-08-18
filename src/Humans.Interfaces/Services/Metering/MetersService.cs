@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 using Humans.Base.Interfaces.Metering;
 using Humans.Base.Metering;
 
-namespace Humans.Infrastructure.Services.Metering;
+namespace Humans.Base.Services.Metering;
 
 /// <summary>
 /// Singleton <see cref="IMeters"/>. Leaf node in the DI graph — only dependency

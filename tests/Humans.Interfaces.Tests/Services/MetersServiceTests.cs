@@ -1,7 +1,7 @@
 using System.Diagnostics.Metrics;
 using AwesomeAssertions;
 using Humans.Base.Metering;
-using Humans.Infrastructure.Services.Metering;
+using Humans.Base.Services.Metering;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Interfaces.Tests.Services;
