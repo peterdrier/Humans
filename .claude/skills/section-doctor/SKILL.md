@@ -174,6 +174,13 @@ hole in the thread set, not a file to skip — widen a thread or add one, and sa
 file. The run file's `## File coverage` block records a disposition for every path: `reviewed`,
 `changed`, or `generated`.
 
+**`reviewed` means the file's names resolve, not that the file was opened.** For any file that
+names things — a doc, comment-bearing source, a csproj — record `reviewed` only after every code
+symbol, route and file path it names has been checked against the tree. This is mechanical: the
+2026-08-18 Finance benchmark marked files reviewed that still said a controller "stayed in
+Shell", carried an `IBudgetService` dependency the read-split had replaced, and pointed at a
+folder a job had moved out of — every miss was a name that no longer resolved.
+
 Why this is stage one: a finding-driven pass only finds what sits adjacent to what it already
 suspects. The 2026-08-18 Finance run skipped ~20 of 55 files and two instances of its own
 headline finding were sitting in two of them, reachable from no lane it ran.
@@ -257,7 +264,9 @@ Either symptom is a fail:
 
 On a fail, 3c was reverse-engineered from the defect list. Re-derive the target from 3b and
 re-rank — the scans are still good, the design isn't. Record the verdict in the run file either
-way.
+way, as a literal line — `Independence check: pass` or `Independence check: fail (re-derived)` —
+plus one sentence naming which items came from the target rather than a scan. The 2026-08-18
+Finance benchmark had the evidence in its run file and never wrote the verdict.
 
 ## Phase 4: Strike
 
@@ -283,8 +292,12 @@ executed after it. Budget checks are real
 4. Non-mechanical changes (deletions beyond plainly-dead code, structural moves) → second-opinion
    reviewer subagent, opus-tier, score-blind, default-reject: "name the concept that improved in
    one sentence." Reject → rework once; second reject → revert, record.
-5. **Doc fixes sweep the claim**: a wrong statement fixed in one doc must be grepped across
-   `docs/guide/`, other section docs, and the access matrix — it rarely lives in one file.
+5. **Doc fixes sweep the claim — by literal string, repo-wide**: when a strike removes or
+   renames a route, type, method or path, or fixes a claim naming one, grep the whole repo for
+   the exact string and fix or enumerate every hit in the run file. Sweeping only the docs you
+   remember is how `POST /Finance/Creditors/Resync` survived in `authorization-inventory.md`
+   and `controller-architecture-audit.md` after two 2026-08-18 runs each removed it from
+   `Finance.md`.
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
    (`dotnet run` + browser/test-site) before the PR — a green build does not prove a cshtml/JS
    change works.
@@ -319,6 +332,12 @@ surfaces mid-run → stop striking, ship the assessment-only PR, note it in the 
   - **`## Size`** — line count against the run's anchor for every section touched, and the net.
     Growth is reported with its reason, and consolidation that grows this section while shrinking
     another is stated as the trade it is.
+
+  `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
+  list the same file carries ("15 contract methods" above the table of them, "52 paths" above
+  the coverage list). Measurements with a generator — Stryker scores, `git diff` line counts,
+  reforge — stay; both 2026-08-18 Finance runs typed self-counts, and the one that was wrong
+  nearly sent a refactor at a method with a live external caller.
 
 The runs directory **is** the log and the newest file **is** the last report. There is no
 `log.md`, `last-report.md`, or generated index — never recreate them — and daily runs never
