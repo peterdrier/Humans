@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
+using Humans.Base.Caching;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

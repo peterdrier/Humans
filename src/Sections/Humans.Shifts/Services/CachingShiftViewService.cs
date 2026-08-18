@@ -1,4 +1,5 @@
 using Humans.Shifts.Services.Dtos;
+using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;

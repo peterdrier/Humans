@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Humans.Events.Services.Dtos;
+using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Shifts.Contracts;
 using Humans.Base.Threading;
