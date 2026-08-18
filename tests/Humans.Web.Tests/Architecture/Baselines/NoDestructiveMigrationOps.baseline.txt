@@ -14,3 +14,8 @@
 src/Sections/Humans.Finance/Data/Migrations/20260810195350_HoldedExpenseDocIsApproved.cs:DropColumn(name=ApprovedAt)#1
 src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_ledger_lines)#1
 src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_sync_states)#1
+
+# RawPayload: a NOT NULL jsonb column that only ever held the literal {}. MapDoc never wrote
+# a payload and nothing read it, so this is the rule's janitorial case, approved by Peter on
+# peterdrier/Humans#1367. Not a decoupling drop — there is no replacement to soak.
+src/Sections/Humans.Finance/Data/Migrations/20260818100220_DropHoldedExpenseDocRawPayload.cs:DropColumn(name=RawPayload)#1

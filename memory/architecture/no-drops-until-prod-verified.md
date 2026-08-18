@@ -41,4 +41,10 @@ If a plan or spec appears to violate this rule, **STOP and ask Peter.** Do not r
 - **Team role name index realign (2026-08-11)** — `DropIndex IX_team_role_definitions_team_name_unique` is authorized in the same migration (`20260811145603_RealignTeamRoleNameIndex`) that recreates it as the plain `(TeamId, Name)` unique index the model declares. Same index-swap shape as the event-favourites exception: same name, index-only, no data touched, rebuildable; the functional `lower(Name)` variant is strictly stronger so existing data cannot violate the replacement. Do not flag again.
 - **Holded ledger single-source (2026-06-15)** — `DropTable holded_creditor_balances`, `DropTable holded_payments`, and `DropColumn SepaSentAt`/`PaidAt` on `expense_reports` are authorized in the same migration (`20260615201620_HoldedLedgerSingleSource`) that introduces the replacement `holded_ledger_lines` cache. Peter's call: these creditor read-model tables aren't in real use yet, so dropping them with the replacement is relatively safe. Do not flag again.
 
+- **Finance `RawPayload` (2026-08-18)** — `DropColumn RawPayload` on `holded_expense_docs` is
+  authorized in `20260818100220_DropHoldedExpenseDocRawPayload`. This is the janitorial case,
+  not a decoupling: the column was NOT NULL and `Service.MapDoc` only ever wrote the literal
+  `{}` into it, so there is nothing to lose and no replacement to soak. Peter approved on
+  peterdrier/Humans#1367. Do not flag again.
+
 **Related:** [`no-column-drops-for-decoupling`](no-column-drops-for-decoupling.md) — DB-column-specific instance. The "hours of hand-restore from backup" this rule assumes is the procedure in [`docs/database-restore-runbook.md`](../../docs/database-restore-runbook.md) (measured, not theoretical); [`event-deploy-freeze`](../process/event-deploy-freeze.md) freezes schema-changing deploys during the event entirely.

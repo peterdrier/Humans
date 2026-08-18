@@ -55,7 +55,6 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | BudgetCategoryId | Guid? | Attributed category (null = unmatched) |
 | MatchStatus | HoldedMatchStatus | `Matched` or `Unmatched` |
 | MatchSource | HoldedMatchSource | `None`, `Account`, or `Tag` |
-| RawPayload | string (jsonb) | Always the literal `{}` — `Service.MapDoc` has never written a payload here, and nothing reads it. NOT NULL, so dropping it is a schema change (queued, not taken). |
 | LastSyncedAt | Instant | Updated every sync that touches this row |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
