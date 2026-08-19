@@ -16,9 +16,12 @@ closed, transcribed from the code rather than from memory.
 ## Concepts
 
 - **Gdpr** is the GDPR **Article 15** export orchestrator. It owns no database
-  tables, no repository and no controller. Its entire substance is a fan-out:
-  ask every section that holds personal data for its slice, merge the slices
-  into one document, hand it back.
+  tables and no repository. Its entire substance is a fan-out: ask every
+  section that holds personal data for its slice, merge the slices into one
+  document, hand it back. It gained one controller at
+  nobodies-collective/Humans#1091 (`GuestDataController`) purely to host the
+  `/Guest/DownloadData` route — the route's own byte-identical move, not a
+  change to what the section computes.
 - **`IUserDataContributor`** is the fan-out contract (an `IFanout`, per
   `memory/architecture/orchestrator-marker.md`). Every service that owns
   user-scoped tables implements it and returns the personal data it — and only
@@ -39,18 +42,18 @@ closed, transcribed from the code rather than from memory.
 
 ## Routing
 
-None. Gdpr has no controller and no views — which is why the project is plain
-`Microsoft.NET.Sdk` rather than `Microsoft.NET.Sdk.Razor`. The two download
-endpoints belong to the sections that own the pages they sit on:
+One controller, no views — the project is still plain `Microsoft.NET.Sdk`
+rather than `Microsoft.NET.Sdk.Razor` because `GuestDataController` only ever
+returns `File()` or a redirect.
 
 | Route | Controller action | Notes |
 |-------|------------------|-------|
-| `GET /Profile/Me/DownloadData` | `ProfileController` (Shell) | For a human who has completed onboarding |
-| `GET /Guest/DownloadData` | `GuestController` (Shell) | For an authenticated account with no profile yet |
+| `GET /Profile/Me/DownloadData` | `ProfileController` (Humans.Users) | For a human who has completed onboarding |
+| `GET /Guest/DownloadData` | `GuestDataController` (Humans.Gdpr) | For an authenticated account with no profile yet — moved here at nobodies-collective/Humans#1091, route unchanged |
 
 Both resolve `IGdprExportService` from the contracts leaf and serialize the
-result to a file download. Moving either action into this section would be a
-URL change, which is out of a G5 move's scope.
+result to a file download. `/Profile/Me/DownloadData` stays on Users — moving
+it would be a URL change, which is out of scope here too.
 
 ## Actors & Roles
 

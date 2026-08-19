@@ -1,4 +1,4 @@
-@model Humans.Web.Models.CommunicationPreferencesViewModel
+@model CommunicationPreferencesViewModel
 @{
     ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
 }
@@ -9,7 +9,7 @@
         {
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Dashboard_Title"]</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Guest" asp-action="Index">@Localizer["Dashboard_Title"]</a></li>
                     <li class="breadcrumb-item active" aria-current="page">@Localizer["CommPrefs_Title"]</li>
                 </ol>
             </nav>
@@ -110,7 +110,7 @@
 
         @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
-            <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToDashboard"]</a>
+            <a asp-controller="Guest" asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToDashboard"]</a>
         }
     </div>
 </div>

@@ -314,8 +314,8 @@ public class EndpointAuthorizationTests
     {
         var allowlist = new HashSet<string>(StringComparer.Ordinal)
         {
-            "GuestController.CommunicationPreferences",
-            "GuestController.UpdatePreference",
+            "GuestAccountController.CommunicationPreferences",
+            "GuestAccountController.UpdatePreference",
             "TeamController.Index",
             "TeamController.Details",
             "DebugController.DbVersion",

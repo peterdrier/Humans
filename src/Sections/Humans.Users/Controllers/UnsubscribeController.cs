@@ -20,9 +20,10 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
         if (!result.IsLegacy)
         {
             return RedirectToAction(
-                // GuestController is Shell; Humans.Users cannot reference Humans.Web, so the action and
-                // controller names are literals here (design §15, Users gotcha 7).
-                "CommunicationPreferences", "Guest",
+                // GuestAccountController is this project's own type, but the action lives on a
+                // sibling controller reached only by route-value name — same literal-string
+                // shape as a cross-project redirect (design §15, Users gotcha 7).
+                "CommunicationPreferences", "GuestAccount",
                 new { utoken = token });
         }
 
@@ -46,9 +47,10 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
         if (!result.IsLegacy)
         {
             return RedirectToAction(
-                // GuestController is Shell; Humans.Users cannot reference Humans.Web, so the action and
-                // controller names are literals here (design §15, Users gotcha 7).
-                "CommunicationPreferences", "Guest",
+                // GuestAccountController is this project's own type, but the action lives on a
+                // sibling controller reached only by route-value name — same literal-string
+                // shape as a cross-project redirect (design §15, Users gotcha 7).
+                "CommunicationPreferences", "GuestAccount",
                 new { utoken = token });
         }
 

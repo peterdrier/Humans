@@ -2,7 +2,7 @@ using Humans.Base.Extensions;
 
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
 internal sealed record GuestDeletionRequestFlash(bool Success, string Message)
 {

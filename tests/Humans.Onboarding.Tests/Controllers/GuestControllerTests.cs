@@ -1,10 +1,7 @@
 using System.Security.Claims;
-using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
+using Humans.Onboarding.Controllers;
 using Humans.Users.Contracts;
-using Humans.Tickets.Contracts;
-using Humans.Base.Constants;
-using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -12,26 +9,21 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
 /// Verifies that <see cref="GuestController.Index"/> defers to
 /// <see cref="IOnboardingWidgetState"/>: incomplete users are redirected into
 /// the onboarding widget, complete users fall through to the guest dashboard.
+/// Moved from Humans.Web.Tests with the controller (nobodies-collective/Humans#1091).
 /// </summary>
 public class GuestControllerTests
 {
-    private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
-    private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
-    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly IClock _clock = Substitute.For<IClock>();
 
     private GuestController BuildSut(User user)
     {
@@ -49,12 +41,7 @@ public class GuestControllerTests
 
         var ctrl = new GuestController(
             _userService,
-            _commPrefService,
-            _ticketQueryService,
-            _gdprExportService,
             _widgetState,
-            _accountDeletionService,
-            _clock,
             NullLogger<GuestController>.Instance);
 
         var http = new DefaultHttpContext
@@ -96,45 +83,10 @@ public class GuestControllerTests
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
         _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(OnboardingWidgetStep.Complete);
-        _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(0, []));
         var ctrl = BuildSut(user);
 
         var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         Assert.IsType<ViewResult>(result);
-    }
-
-    [HumansFact]
-    public async Task RequestDeletion_AlreadyPending_RedirectsWithSpecificError()
-    {
-        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _accountDeletionService.RequestDeletionAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new DeletionRequestResult(false, "AlreadyPending"));
-        var ctrl = BuildSut(user);
-
-        var result = await ctrl.RequestDeletion();
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Index", redirect.ActionName);
-        Assert.Equal("A deletion request is already pending.", ctrl.TempData[TempDataKeys.ErrorMessage]);
-    }
-
-    [HumansFact]
-    public async Task RequestDeletion_Success_RedirectsWithDeletionMessage()
-    {
-        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _accountDeletionService.RequestDeletionAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new DeletionRequestResult(
-                true,
-                EffectiveDeletionDate: Instant.FromUtc(2026, 6, 15, 0, 0)));
-        var ctrl = BuildSut(user);
-
-        var result = await ctrl.RequestDeletion();
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Index", redirect.ActionName);
-        var message = Assert.IsType<string>(ctrl.TempData[TempDataKeys.SuccessMessage]);
-        Assert.Contains("permanently deleted", message, StringComparison.Ordinal);
     }
 }

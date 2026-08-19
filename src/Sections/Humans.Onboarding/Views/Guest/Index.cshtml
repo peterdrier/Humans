@@ -1,6 +1,6 @@
-@model Humans.Web.Models.GuestDashboardViewModel
+@model GuestDashboardViewModel
 @{
-    ViewData["Title"] = Localizer["Dashboard_Title"].Value;
+    ViewData["Title"] = SharedLocalizer["Dashboard_Title"].Value;
 }
 
 <div class="row justify-content-center mb-4">
@@ -35,8 +35,10 @@
     </div>
 </div>
 
-@* Tickets contributes the order summary here; renders nothing without an order. *@
-<vc:chrome-slot name="guest-page" />
+@* Tickets contributes the order summary here; renders nothing without an order.
+   ChromeSlotViewComponent is Shell-resident (Humans.Web) — a section RCL cannot
+   @addTagHelper it, so invoke by name (design §15 step 6). *@
+@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })
 
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">
@@ -47,7 +49,7 @@
             {
                 Controller = "Camp",
                 Action = "Index",
-                Title = Localizer["Camp_Plural"].Value,
+                Title = SharedLocalizer["Camp_Plural"].Value,
                 Description = Localizer["Guest_BarriosDescription"].Value,
                 IconCssClass = "fa-solid fa-campground fa-lg",
                 ColumnClass = "col-sm-4"
@@ -56,7 +58,7 @@
             {
                 Controller = "Team",
                 Action = "Index",
-                Title = Localizer["Nav_Teams"].Value,
+                Title = SharedLocalizer["Nav_Teams"].Value,
                 Description = Localizer["Guest_TeamsDescription"].Value,
                 IconCssClass = "fa-solid fa-people-group fa-lg",
                 ColumnClass = "col-sm-4"
@@ -81,6 +83,7 @@
         <div class="row g-3">
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
+                Controller = "GuestAccount",
                 Action = "CommunicationPreferences",
                 Title = Localizer["Guest_CommsTitle"].Value,
                 Description = Localizer["Guest_CommsDescription"].Value,
@@ -90,6 +93,7 @@
             })
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
+                Controller = "GuestData",
                 Action = "DownloadData",
                 Title = Localizer["Guest_DataTitle"].Value,
                 Description = Localizer["Guest_DataDescription"].Value,
@@ -101,6 +105,7 @@
             {
                 @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
                 {
+                    Controller = "GuestAccount",
                     Action = "RequestDeletion",
                     Title = Localizer["Guest_DeleteTitle"].Value,
                     Description = Localizer["Guest_DeleteDescription"].Value,
@@ -141,7 +146,7 @@
                                 @Html.Raw(string.Format(Localizer["Guest_DeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDate()) + "</strong>"))
                             </p>
                         }
-                        <form asp-action="CancelDeletion" method="post" class="d-inline">
+                        <form asp-controller="GuestAccount" asp-action="CancelDeletion" method="post" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-success">
                                 <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Guest_DeletionCancelButton"]
                             </button>

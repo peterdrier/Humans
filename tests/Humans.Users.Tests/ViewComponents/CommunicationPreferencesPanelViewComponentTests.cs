@@ -1,8 +1,8 @@
 using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Web.Models;
-using Humans.Web.ViewComponents;
+using Humans.Users.Models;
+using Humans.Users.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -10,7 +10,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-namespace Humans.Web.Tests.ViewComponents;
+namespace Humans.Users.Tests.ViewComponents;
 
 public class CommunicationPreferencesPanelViewComponentTests
 {

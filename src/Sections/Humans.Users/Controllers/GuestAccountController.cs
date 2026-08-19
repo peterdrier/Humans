@@ -2,64 +2,30 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Extensions;
-using Humans.Gdpr.Contracts;
-using Humans.Onboarding.Contracts;
-using Humans.Web.Models;
-using NodaTime;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
+using Humans.Users.Models;
+using NodaTime;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 /// <summary>
-/// Dashboard for profileless accounts (authenticated users without a Profile).
-/// Provides comms preferences, GDPR tools, and the create-profile CTA. Ticket status is
-/// contributed by the Tickets section into the page's chrome slot.
+/// Self-service comms preferences and GDPR-erasure actions for profileless accounts
+/// (authenticated users without a Profile). Moved from Shell's GuestController
+/// (nobodies-collective/Humans#1091) — the dashboard frame itself lives in
+/// Humans.Onboarding, the data export lives in Humans.Gdpr; these actions stayed
+/// here because both call this section's own services (<see cref="ICommunicationPreferenceService"/>,
+/// <see cref="IAccountDeletionService"/>) directly.
 /// </summary>
 [Authorize]
-public class GuestController(
+internal sealed class GuestAccountController(
     IUserServiceRead userService,
     ICommunicationPreferenceService commPrefService,
     ITicketServiceRead ticketQueryService,
-    IGdprExportService gdprExportService,
-    IOnboardingWidgetState widgetState,
     IAccountDeletionService accountDeletionService,
     IClock clock,
-    ILogger<GuestController> logger) : HumansControllerBase(userService)
+    ILogger<GuestAccountController> logger) : HumansControllerBase(userService)
 {
-    private static readonly System.Text.Json.JsonSerializerOptions ExportJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-    };
-
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-        {
-            return Challenge();
-        }
-
-        var step = await widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
-        if (step != OnboardingWidgetStep.Complete)
-        {
-            return RedirectToAction("Index", "OnboardingWidget");
-        }
-
-        try
-        {
-            var viewModel = BuildDashboardViewModel(user);
-            return View(viewModel);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
-            return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
-        }
-    }
-
     // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
     // token (utoken). The token scopes access to THIS page only. Do not add links to other
     // authenticated pages from the token-mode view. See EndpointAuthorizationTests allowlist.
@@ -82,7 +48,7 @@ public class GuestController(
         {
             logger.LogError(ex, "Failed to load communication preferences");
             SetError("Failed to load communication preferences.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Guest");
         }
     }
 
@@ -118,46 +84,6 @@ public class GuestController(
 
     private static string GetPreferenceUpdateSource(bool fromToken) => fromToken ? "MagicLink" : "Guest";
 
-    [HttpGet("Guest/DownloadData")]
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public async Task<IActionResult> DownloadData(CancellationToken ct)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return Challenge();
-
-        try
-        {
-            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
-
-            var payload = BuildExportPayload(export);
-            var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
-
-            return File(bytes, "application/json", fileName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
-            SetError("Failed to export data. Please try again.");
-            return RedirectToAction(nameof(Index));
-        }
-    }
-
-    private static Dictionary<string, object?> BuildExportPayload(GdprExport export)
-    {
-        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["ExportedAt"] = export.ExportedAt
-        };
-        foreach (var (section, data) in export.Sections)
-        {
-            payload[section] = data;
-        }
-        return payload;
-    }
-
     [HttpPost("Guest/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
@@ -174,18 +100,18 @@ public class GuestController(
             if (!flash.Success)
             {
                 SetError(flash.Message);
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index", "Guest");
             }
 
             SetSuccess(flash.Message);
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Guest");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
             SetError("Failed to process deletion request. Please try again.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Guest");
         }
     }
 
@@ -203,26 +129,11 @@ public class GuestController(
             SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
                 ? "No deletion request is pending."
                 : "Failed to cancel deletion request. Please try again.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Guest");
         }
 
         SetSuccess("Deletion request cancelled.");
-        return RedirectToAction(nameof(Index));
-    }
-
-    private GuestDashboardViewModel BuildDashboardViewModel(UserInfo user)
-    {
-        var viewModel = new GuestDashboardViewModel
-        {
-            DisplayName = user.BurnerName,
-        };
-
-        viewModel.IsDeletionPending = user.IsDeletionPending;
-        viewModel.DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc();
-        viewModel.DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc();
-        viewModel.DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc();
-
-        return viewModel;
+        return RedirectToAction("Index", "Guest");
     }
 
     /// <summary>Resolves user from session, else unsubscribe token. FromToken=true → MagicLink source.</summary>

@@ -1,10 +1,10 @@
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Web.Models;
+using Humans.Users.Models;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Users.ViewComponents;
 
 /// <summary>
 /// Renders the communication-preferences matrix for a given user.
@@ -15,7 +15,7 @@ namespace Humans.Web.ViewComponents;
 ///     plus per-category <c>UpdateSource</c> and <c>UpdatedAt</c> for attribution.
 ///     No POST forms, no anti-forgery, no submit buttons.
 /// </summary>
-public sealed class CommunicationPreferencesPanelViewComponent(
+internal sealed class CommunicationPreferencesPanelViewComponent(
     ICommunicationPreferenceService commPrefService,
     ITicketServiceRead ticketQueryService,
     IClock clock) : ViewComponent

@@ -1,9 +1,9 @@
-namespace Humans.Web.Models;
+namespace Humans.Onboarding.Models;
 
 /// <summary>
 /// View model for the Guest dashboard (profileless accounts).
 /// </summary>
-public class GuestDashboardViewModel
+internal sealed class GuestDashboardViewModel
 {
     public string DisplayName { get; set; } = string.Empty;
 

@@ -1,11 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Microsoft.NET.Sdk, not Sdk.Razor: Gdpr has no controllers and no views. The export
-    download action lives on Shell's ProfileController and stays there — moving it would
-    be a URL change, which is out of a G5 move's scope (G5-SECTION-TEMPLATE.md step 1,
-    SystemSettings' shape).
+    Still Microsoft.NET.Sdk, not Sdk.Razor: Gdpr has no views, only a controller. The
+    /Profile/Me/DownloadData export action stays on Users' ProfileController — that one
+    would be a URL change, out of scope. /Guest/DownloadData moved here at
+    nobodies-collective/Humans#1091 instead: it calls this section's own
+    IGdprExportService directly and its route was already Guest-prefixed, so relocating
+    the controller (byte-identical route, via attribute routing) is not a URL change.
+    No Views/ tree follows because the action only ever returns File()/Redirect.
   -->
+
+  <ItemGroup>
+    <!-- GuestDataController: [Authorize], IActionResult, File()/RedirectToAction — the
+         framework reference is not transitive through the Humans.Base ProjectReference
+         below, so every controller-owning section declares its own (Auth's shape). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Gdpr.Tests" />

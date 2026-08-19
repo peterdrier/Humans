@@ -1,9 +1,9 @@
 using Humans.Users.Contracts;
 using NodaTime;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public class CommunicationPreferencesViewModel
+internal sealed class CommunicationPreferencesViewModel
 {
     public List<CategoryPreferenceItem> Categories { get; set; } = [];
 
@@ -27,7 +27,7 @@ public class CommunicationPreferencesViewModel
     public bool ReadOnly { get; set; }
 }
 
-public class CategoryPreferenceItem
+internal sealed class CategoryPreferenceItem
 {
     public MessageCategory Category { get; set; }
     public string DisplayName { get; set; } = string.Empty;

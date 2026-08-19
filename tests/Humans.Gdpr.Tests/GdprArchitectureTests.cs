@@ -16,8 +16,8 @@ public class GdprArchitectureTests
         // "Public means Section, <Section>Resource or Contracts/" (design §15 step 5),
         // enforced at build time by HUM0034. Gdpr's whole outward surface lives on the
         // separate Humans.Gdpr.Contracts leaf, it owns no tables so there are no
-        // migrations, and it ships no resource set — so Section is the only public type
-        // in the section assembly.
+        // migrations, it ships no resource set, and GuestDataController is internal
+        // (HUM0034) — so Section is the only public type in the section assembly.
         var publicTypes = typeof(Section).Assembly.GetExportedTypes()
             .Select(t => t.FullName)
             .Order(StringComparer.Ordinal)
@@ -27,15 +27,16 @@ public class GdprArchitectureTests
     }
 
     [HumansFact]
-    public void SectionHasNoControllers()
+    public void SectionHasExactlyOneController()
     {
-        // The two download actions stay on Shell's ProfileController and GuestController —
-        // moving either would be a URL change, out of a G5 move's scope. Stated as a test
-        // rather than left to read as an oversight: this is why the project is plain
-        // Microsoft.NET.Sdk, and adding a controller here means adding Sdk.Razor and a
-        // Views/ tree at the same time.
-        typeof(Section).Assembly.GetTypes()
+        // GuestDataController (added nobodies-collective/Humans#1091, moved from Shell's
+        // GuestController with its route unchanged) only ever returns File()/Redirect —
+        // no Views/ tree, no Sdk.Razor. /Profile/Me/DownloadData stays on Users'
+        // ProfileController; moving it would be a URL change, out of scope here.
+        var controllers = typeof(Section).Assembly.GetTypes()
             .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .Should().BeEmpty();
+            .ToList();
+
+        controllers.Should().ContainSingle(t => t.Name == "GuestDataController");
     }
 }

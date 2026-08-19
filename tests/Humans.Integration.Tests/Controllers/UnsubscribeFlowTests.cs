@@ -13,7 +13,7 @@ namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
 /// PR 5 of the email/OAuth decoupling sequence. Locks in the
-/// <c>UpdateSource</c> attribution split for <c>GuestController.UpdatePreference</c>:
+/// <c>UpdateSource</c> attribution split for <c>GuestAccountController.UpdatePreference</c>:
 /// anonymous token-driven POSTs must record <c>"MagicLink"</c>, while
 /// session-driven POSTs must record <c>"Guest"</c>. The previous in-flight
 /// version of these tests went green on a no-op flip — the seed row already
