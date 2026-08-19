@@ -10,7 +10,7 @@ namespace Humans.Feedback;
 /// The admin dashboard's open-feedback tile. AdminOnly (nobodies-collective/Humans#977) —
 /// other admin-shaped roles reach /Admin but must not see feedback counts.
 /// </summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [

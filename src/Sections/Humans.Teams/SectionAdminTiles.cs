@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Teams;
 
 /// <summary>The admin dashboard's team-count tile.</summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [

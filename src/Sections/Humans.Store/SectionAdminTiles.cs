@@ -11,7 +11,7 @@ namespace Humans.Store;
 /// The admin dashboard's store tile. Policy-gated below /Admin's AnyAdminRole, mirroring the
 /// store pages' own tighter policy; the summary is not read for roles that cannot see it.
 /// </summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [

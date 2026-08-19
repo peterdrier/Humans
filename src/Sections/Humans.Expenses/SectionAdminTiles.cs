@@ -10,7 +10,7 @@ namespace Humans.Expenses;
 /// The admin dashboard's expense-report tile. Policy-gated below /Admin's AnyAdminRole,
 /// mirroring the expense pages' own tighter policy.
 /// </summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [

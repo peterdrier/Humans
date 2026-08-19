@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Shifts;
 
 /// <summary>The admin dashboard's shift-coverage tile.</summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [

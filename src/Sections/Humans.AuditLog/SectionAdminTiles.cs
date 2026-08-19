@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.AuditLog;
 
 /// <summary>The admin dashboard's audit-event count.</summary>
-public sealed class AdminTiles : ISectionAdminTiles
+internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>
     [
