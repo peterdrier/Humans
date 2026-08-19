@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
@@ -50,6 +52,12 @@ public class AuthorizationPolicyTests : IDisposable
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);
+        // PolicyNames.ShiftDepartmentManager and PolicyNames.HumanAdminOnly are registered by
+        // Humans.Shifts' and Humans.Users' own Policies contribution (nobodies-collective/Humans#1076);
+        // their handlers are registered by those sections' Section.Register, not by
+        // AddHumansAuthorizationPolicies, so this graph registers them directly.
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
+        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();

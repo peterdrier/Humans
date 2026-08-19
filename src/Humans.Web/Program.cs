@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -613,6 +615,31 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     {
         Log.Information("Localization OK: {Expected} embedded in {Assembly}",
             expected, resourceType.Assembly.GetName().Name);
+    }
+}
+
+// Authorization-policy diagnostic check (nobodies-collective/Humans#1076): every
+// PolicyNames constant must resolve to a policy actually registered — by Shell or by a
+// section's ISectionPolicies. A section that stops registering its policy (e.g. turned
+// off) must fail loud here, not 403 mysteriously wherever the policy is used.
+{
+    using var scope = app.Services.CreateScope();
+    var policyProvider = scope.ServiceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
+    var policyNames = typeof(Humans.Base.Authorization.PolicyNames)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+        .Select(f => (Name: f.Name, Value: (string)f.GetRawConstantValue()!));
+
+    foreach (var (name, value) in policyNames)
+    {
+        var policy = await policyProvider.GetPolicyAsync(value);
+        if (policy is null)
+        {
+            Log.Error(
+                "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
+                "owning section may be missing, or its Policies contribution failed to register.",
+                name);
+        }
     }
 }
 

@@ -133,6 +133,9 @@ public sealed class Section : ISection
         // (design §15 step 6's asymmetry).
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
+        // Backs PolicyNames.HumanAdminOnly (registered in this section's Policies).
+        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
+
         // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());

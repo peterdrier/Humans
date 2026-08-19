@@ -1,12 +1,12 @@
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Users.Authorization;
 
 /// <summary>
 /// Succeeds when the user has HumanAdmin role but is NOT Admin or Board.
 /// </summary>
-public class HumanAdminOnlyHandler : AuthorizationHandler<HumanAdminOnlyRequirement>
+internal sealed class HumanAdminOnlyHandler : AuthorizationHandler<HumanAdminOnlyRequirement>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,

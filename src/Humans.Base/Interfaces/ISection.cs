@@ -18,7 +18,9 @@ public interface ISection
 {
     /// <summary>
     /// Registers the section's repositories, services, jobs, options and section-owned
-    /// authorization handlers. Authorization <em>policies</em> stay in Shell (design §8).
+    /// authorization handlers. Section-specific authorization <em>policies</em> are
+    /// registered separately via <see cref="ISectionPolicies"/> (nobodies-collective/Humans#1076);
+    /// only genuinely cross-section policies stay in Shell.
     /// </summary>
     void Register(IServiceCollection services, IConfiguration configuration);
 }

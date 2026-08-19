@@ -90,6 +90,7 @@ public class EventsArchitectureTests
             [
                 "Humans.Events.Contracts.FavouriteButtonModel",
                 "Humans.Events.EventsResource",
+                "Humans.Events.Policies",
                 "Humans.Events.Section",
                 "Humans.Events.ViewComponents.EventsCardViewComponent",
             ],

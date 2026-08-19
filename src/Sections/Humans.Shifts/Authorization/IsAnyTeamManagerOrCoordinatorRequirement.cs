@@ -1,7 +1,7 @@
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Shifts.Authorization;
 
 /// <summary>
 /// Succeeds when the user is a team coordinator OR holds a management role
@@ -11,4 +11,4 @@ namespace Humans.Web.Authorization.Requirements;
 /// granting them the privileged sub-panels that stay behind the role-based
 /// <see cref="PolicyNames.ShiftDashboardAccess"/>.
 /// </summary>
-public class IsAnyTeamManagerOrCoordinatorRequirement : IAuthorizationRequirement;
+internal sealed class IsAnyTeamManagerOrCoordinatorRequirement : IAuthorizationRequirement;

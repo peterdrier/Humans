@@ -14,6 +14,13 @@
       through its own copy of ServiceTestHarness (Teams finding 36's two-way pattern).
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <!--
+      AuthorizationPolicyTests builds its own ServiceCollection rather than the full
+      Section.Register graph, so it registers IsAnyTeamManagerOrCoordinatorHandler
+      directly (backs PolicyNames.ShiftDepartmentManager) — same shape as
+      Humans.Users.csproj's grant for HumanAdminOnlyHandler.
+    -->
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
   </ItemGroup>
 
   <ItemGroup>
