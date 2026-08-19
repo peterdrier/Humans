@@ -3,7 +3,7 @@
   src/Sections/Humans.CityPlanning.Contracts/**
   src/Sections/Humans.Containers/Controllers/ContainerController.cs
   src/Sections/Humans.Containers/Domain/Container.cs
-  src/Sections/Humans.CityPlanning/Contracts/CityPlanningHub.cs
+  src/Sections/Humans.CityPlanning/Services/CityPlanningHub.cs
   src/Humans.Base/Authorization/RoleChecks.cs
 -->
 <!-- freshness:flag-on-change
