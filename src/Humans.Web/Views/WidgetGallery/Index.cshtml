@@ -1169,25 +1169,25 @@
                     <div class="wg-card-note">
                         A named hole in the layout that sections fill. Renders whatever the active sections
                         contributed through <code>ISectionChrome</code> / <code>ISectionMemberDashboard</code>,
-                        ordered by weight — so a section that is switched off takes its chrome with it. A slot
-                        nothing has contributed to renders nothing at all, which is every slot until the section
-                        lanes land.
+                        ordered by weight — so a section that is switched off takes its chrome with it. The
+                        examples below render the live slots: whatever appears is a real section contribution,
+                        and a slot nothing has contributed to renders nothing at all.
                     </div>
                     @ParamsBlock(
                         ("name", "<code>string</code> — slot name from <code>ChromeSlots</code>: <code>header-right</code> · <code>above-content</code> · <code>member-dashboard</code> · <code>guest-page</code>")
                     )
                     <div class="wg-variants">
                         <div class="wg-variant-label">name="header-right"<span class="wg-variant-sub">member top nav, beside language + login</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="header-right" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="header-right" /></div>
 
                         <div class="wg-variant-label">name="above-content"<span class="wg-variant-sub">between header and page, member + admin layouts</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="above-content" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="above-content" /></div>
 
                         <div class="wg-variant-label">name="member-dashboard"<span class="wg-variant-sub">contributed area of the member dashboard</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="member-dashboard" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="member-dashboard" /></div>
 
                         <div class="wg-variant-label">name="guest-page"<span class="wg-variant-sub">contributed area of the profileless-account page</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="guest-page" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="guest-page" /></div>
                     </div>
                 </div>
 
