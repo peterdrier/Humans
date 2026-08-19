@@ -65,7 +65,8 @@
     </div>
 }
 
-@* Governance's term card and Tickets' ticket card, contributed into the slot. *@
+@* Contributed dashboard content. Each contributing section gates its own visibility
+   and brings its own row markup, so an empty slot leaves no empty row behind. *@
 <vc:chrome-slot name="member-dashboard" />
 
 @{
@@ -258,6 +259,3 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
     </div>
 </div>
 
-@* Contributed dashboard content. Each contributing section gates its own visibility and
-   brings its own row markup, so an empty slot leaves no empty row behind. *@
-<vc:chrome-slot name="member-dashboard" />
