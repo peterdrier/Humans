@@ -63,6 +63,10 @@ public sealed class MemberTicketStatusViewComponent(
             var activeEvent = await burnSettings.GetActiveAsync(ct);
             return activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : null;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // request aborted — let it abort, don't log as an error
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load active event for the dashboard ticket card");

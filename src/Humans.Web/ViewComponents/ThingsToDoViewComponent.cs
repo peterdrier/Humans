@@ -18,17 +18,16 @@ public class ThingsToDoViewComponent(
     {
         var entries = new List<ThingsToDoEntry>();
 
-        try
+        foreach (var contributor in contributors)
         {
-            foreach (var contributor in contributors)
+            try
             {
                 entries.AddRange(await contributor.EntriesAsync(services, UserClaimsPrincipal));
             }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load ThingsToDo entries");
-            return Content(string.Empty);
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to load ThingsToDo entries from {Contributor}", contributor.GetType().Name);
+            }
         }
 
         var model = new ThingsToDoViewModel
