@@ -65,5 +65,9 @@ public sealed class Section : ISection
         });
 
         services.AddScoped<TermRenewalReminderJob>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<GovernanceMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<GovernanceMetricsService>());
     }
 }

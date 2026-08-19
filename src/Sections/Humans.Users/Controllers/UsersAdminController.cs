@@ -36,7 +36,7 @@ internal sealed class UsersAdminController(
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IAuditLogService auditLogService,
-    IAdminDatabaseDiagnosticsService databaseDiagnostics,
+    IAdminDashboardService adminDashboardService,
     IAccountDeletionService accountDeletionService,
     IWebHostEnvironment environment,
     IClock clock,
@@ -368,7 +368,7 @@ internal sealed class UsersAdminController(
     {
         try
         {
-            var segmentation = await databaseDiagnostics.GetAudienceSegmentationAsync(year, ct);
+            var segmentation = await adminDashboardService.GetAudienceSegmentationAsync(year, ct);
 
             var model = new AudienceSegmentationViewModel
             {

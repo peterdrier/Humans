@@ -1,17 +1,20 @@
 using Humans.Base.Interfaces.Admin;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Users.Services;
 
-/// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
+/// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership, audience segmentation. Owns no tables.</summary>
 internal sealed class AdminDashboardService(
     IUserServiceRead userService,
     IMembershipCalculatorRead membershipCalculator,
     IApplicationServiceRead applicationDecisionService,
     IBurnSettingsService burnSettings,
-    IShiftView shiftView) : IAdminDashboardService
+    IShiftView shiftView,
+    ITicketServiceRead ticketQueryService) : IAdminDashboardService
 {
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
@@ -76,5 +79,56 @@ internal sealed class AdminDashboardService(
         }
 
         return new UserSetMembership(counts);
+    }
+
+    public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
+    {
+        var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
+        var start = year.HasValue ? Instant.FromUtc(year.Value, 1, 1, 0, 0) : default;
+        var end = year.HasValue ? Instant.FromUtc(year.Value + 1, 1, 1, 0, 0) : default;
+        IReadOnlySet<Guid> ticketUserIds = ticketOrders
+            .Where(o => !year.HasValue || (o.PurchasedAt >= start && o.PurchasedAt < end))
+            .SelectMany(o => o.MatchedUserId.HasValue
+                ? o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value)
+                    .Append(o.MatchedUserId.Value)
+                : o.Attendees
+                    .Where(a => a.MatchedUserId.HasValue)
+                    .Select(a => a.MatchedUserId!.Value))
+            .ToHashSet();
+
+        var withProfile = 0;
+        var withTicket = 0;
+        var withBoth = 0;
+        var withNeither = 0;
+
+        foreach (var user in allUsers)
+        {
+            var hasProfile = user.Profile is not null;
+            var hasTicket = ticketUserIds.Contains(user.Id);
+
+            if (hasProfile) withProfile++;
+            if (hasTicket) withTicket++;
+            if (hasProfile && hasTicket) withBoth++;
+            if (!hasProfile && !hasTicket) withNeither++;
+        }
+
+        var years = ticketOrders
+            .Where(o => o.MatchedUserId.HasValue)
+            .Select(o => o.PurchasedAt.InUtc().Year)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
+
+        return new AudienceSegmentation(
+            TotalAccounts: allUsers.Count,
+            WithTicket: withTicket,
+            WithProfile: withProfile,
+            WithBoth: withBoth,
+            WithNeither: withNeither,
+            AvailableYears: years,
+            SelectedYear: year);
     }
 }

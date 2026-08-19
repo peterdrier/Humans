@@ -89,5 +89,9 @@ public sealed class Section : ISection
 
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<ConsentMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<ConsentMetricsService>());
     }
 }

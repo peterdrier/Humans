@@ -7,8 +7,6 @@ public interface IAdminDatabaseDiagnosticsService : IApplicationService
     Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default);
 
     Task<int> ClearHangfireLocksAsync(CancellationToken ct = default);
-
-    Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default);
 }
 
 public sealed record DatabaseMigrationStatus(
@@ -27,12 +25,3 @@ public sealed record SectionMigrationStatus(
     string? LastApplied,
     int AppliedCount,
     int PendingCount);
-
-public sealed record AudienceSegmentation(
-    int TotalAccounts,
-    int WithTicket,
-    int WithProfile,
-    int WithBoth,
-    int WithNeither,
-    IReadOnlyList<int> AvailableYears,
-    int? SelectedYear);

@@ -65,5 +65,9 @@ public sealed class Section : ISection
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<TeamsMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
     }
 }

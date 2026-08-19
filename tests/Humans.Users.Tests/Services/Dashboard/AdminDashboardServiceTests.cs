@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Services;
 using NodaTime;
 using NSubstitute;
@@ -21,6 +22,7 @@ public class AdminDashboardServiceTests
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly IBurnSettingsService _shiftManagement = Substitute.For<IBurnSettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
 
     public AdminDashboardServiceTests()
     {
@@ -38,7 +40,7 @@ public class AdminDashboardServiceTests
 
     private AdminDashboardService BuildSut() =>
         new(_userService, _membershipCalculator, _applicationDecisionService,
-            _shiftManagement, _shiftView);
+            _shiftManagement, _shiftView, _ticketQueryService);
 
     [HumansFact]
     public async Task GetAdminDashboardAsync_AggregatesPartitionAppStatsAndLanguageDistribution()

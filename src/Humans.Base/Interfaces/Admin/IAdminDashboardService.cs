@@ -11,6 +11,12 @@ public interface IAdminDashboardService : IApplicationService
     /// stats, and language distribution into the admin dashboard snapshot.
     /// </summary>
     Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Aggregates account/profile/ticket coverage into the audience-segmentation
+    /// diagnostic, optionally scoped to a single ticket-purchase year.
+    /// </summary>
+    Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default);
 }
 
 public sealed record AdminDashboardData(
@@ -31,6 +37,15 @@ public sealed record AdminDashboardData(
     UserSetMembership SetMembership);
 
 public sealed record LanguageCount(string Language, int Count);
+
+public sealed record AudienceSegmentation(
+    int TotalAccounts,
+    int WithTicket,
+    int WithProfile,
+    int WithBoth,
+    int WithNeither,
+    IReadOnlyList<int> AvailableYears,
+    int? SelectedYear);
 
 /// <summary>
 /// 4-dimensional set partition of the UserInfo cache for the Admin dashboard
