@@ -1,17 +1,12 @@
-using Humans.Governance.Contracts;
 using System.Security.Claims;
 using Humans.Base.Configuration;
-using Humans.Shifts.Contracts;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
-
-using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Tests.Controllers;
 
@@ -20,12 +15,11 @@ namespace Humans.Web.Tests.Controllers;
 /// <see cref="Humans.Web.Authorization.MembershipRequiredFilter"/> now routes every non-Active user
 /// away before the action runs, so the controller no longer gates on onboarding completion: it
 /// renders the dashboard for any authenticated, resolvable user and the public landing view for
-/// anonymous visitors.
+/// anonymous visitors. The dashboard body itself is section-contributed chrome
+/// (nobodies-collective/Humans#1091) — this controller only resolves UserInfo facts.
 /// </summary>
 public class HomeControllerTests
 {
-    private readonly IDashboardService _dashboardService = Substitute.For<IDashboardService>();
-    private readonly IBurnSettingsService _shiftMgmt = Substitute.For<IBurnSettingsService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
@@ -34,11 +28,8 @@ public class HomeControllerTests
     {
         var ctrl = new HomeController(
             _userService,
-            _dashboardService,
-            _shiftMgmt,
             _configuration,
-            _configRegistry,
-            NullLogger<HomeController>.Instance);
+            _configRegistry);
 
         ctrl.ControllerContext = new ControllerContext
         {
@@ -63,10 +54,8 @@ public class HomeControllerTests
     {
         var userId = Guid.NewGuid();
         StubUserInfo(userId);
-        _dashboardService.GetMemberDashboardAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(BuildEmptyDashboard());
 
-        var result = await BuildSut(Authenticated(userId)).Index(TestContext.Current.CancellationToken);
+        var result = await BuildSut(Authenticated(userId)).Index();
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Dashboard", view.ViewName);
@@ -76,25 +65,9 @@ public class HomeControllerTests
     public async Task Index_RendersLandingView_ForAnonymousVisitor()
     {
         var result = await BuildSut(new ClaimsPrincipal(new ClaimsIdentity()))
-            .Index(TestContext.Current.CancellationToken);
+            .Index();
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Null(view.ViewName);
-    }
-
-    private static MemberDashboardData BuildEmptyDashboard()
-    {
-        return new MemberDashboardData(
-            Profile: null,
-            MembershipSnapshot: new MembershipSnapshot(
-                Status: MembershipStatus.Active,
-                IsVolunteerMember: true,
-                RequiredConsentCount: 0,
-                PendingConsentCount: 0,
-                MissingConsentVersionIds: []),
-            ActiveEvent: null,
-            UrgentShifts: [],
-            NextShifts: [],
-            PendingSignupCount: 0);
     }
 }

@@ -568,6 +568,83 @@ internal sealed class ProfileController(
         return (true, result.Value.Data, result.Value.ContentType);
     }
 
+    [HttpPost("Me/DeclareNotAttending")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeclareNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
+            {
+                return Redirect("/");
+            }
+
+            await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
+            SetSuccess("You've been marked as not attending this year.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return Redirect("/");
+    }
+
+    [HttpPost("Me/UndoNotAttending")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UndoNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
+            {
+                return Redirect("/");
+            }
+
+            var undone = await _userService.UndoNotAttendingAsync(user.Id, eventYear.Value);
+            SetUndoNotAttendingResult(undone);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return Redirect("/");
+    }
+
+    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        if (activeEvent is not null && activeEvent.Year > 0)
+        {
+            return activeEvent.Year;
+        }
+
+        SetError("No active event configured.");
+        return null;
+    }
+
+    private void SetUndoNotAttendingResult(bool undone)
+    {
+        if (undone)
+        {
+            SetSuccess("Your declaration has been removed.");
+            return;
+        }
+
+        SetError("Could not undo — your status may have been updated by ticket sync.");
+    }
+
     [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
     {

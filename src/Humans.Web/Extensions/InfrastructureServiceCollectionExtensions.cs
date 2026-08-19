@@ -89,11 +89,12 @@ public static class InfrastructureServiceCollectionExtensions
         // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
         // HumanLifecycleService.
 
-        // Dashboard's two aggregators. They were registered inside AddUsersSection and are
-        // not Users' — they read every section's services and own no table — so they moved
+        // The admin dashboard's aggregator. It was registered inside AddUsersSection and is
+        // not Users' — it reads every section's services and owns no table — so it moved
         // here with the rest of the cluster at G5 lane 5c (Governance's rule: the section
-        // that owns the file is not always the section that owns the line).
-        services.AddScoped<IDashboardService, DashboardService>();
+        // that owns the file is not always the section that owns the line). The member
+        // dashboard's IDashboardService is gone — its content is section-contributed chrome
+        // now (nobodies-collective/Humans#1091).
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)

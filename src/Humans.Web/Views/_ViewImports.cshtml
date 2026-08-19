@@ -9,7 +9,6 @@
 @using Humans.Base.ViewComponents
 @using Humans.Base.Enums
 @using Humans.AuditLog.Contracts
-@using Humans.Shifts.Contracts
 @using Humans.Tickets.Contracts
 @using Humans.Base
 @using Humans.Base.Models
@@ -24,12 +23,6 @@
    and without this line the element ships as inert literal markup (step 6). *@
 @addTagHelper *, Humans.Camps
 @addTagHelper *, Humans.Tickets
-@* <vc:shift-signups> is the Shifts section's own component, public under
-   Humans.Shifts/Contracts/ so MVC's default provider discovers it and the tag helper is
-   generated. Shell renders it from Home/Dashboard, Profile/Index, UsersAdmin/AdminDetail
-   and WidgetGallery; without this line the element ships as inert literal markup
-   (design §15 step 6). *@
-@addTagHelper *, Humans.Shifts
 @* <vc:user-calendar> is the Calendar section's own component, public under
    Humans.Calendar/Contracts/ so MVC's default provider discovers it and the tag helper is
    generated. Shell renders it from WidgetGallery; Users' UsersAdmin/AdminDetail invokes it

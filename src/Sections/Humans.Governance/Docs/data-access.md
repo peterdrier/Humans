@@ -10,7 +10,7 @@ repository under `Data/`. **DbContext:**
 
 `IApplicationDecisionService` extends `IApplicationServiceRead`; external
 readers (`GovernanceIndexService`, `OnboardingService`,
-`NotificationMeterProvider`, `DashboardService`, `AdminDashboardService`)
+`NotificationMeterProvider`, `AdminDashboardService`)
 inject the narrow `IApplicationServiceRead` rather than the full decision
 service. `IMembershipCalculator` extends `IMembershipCalculatorRead`.
 Cross-section reads inside the section go through the read surfaces

@@ -1,0 +1,15 @@
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="row g-3">
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "GovernanceApplications",
+                Action = "Index",
+                Title = SharedLocalizer["Nav_Governance"].Value,
+                Description = Localizer["Dashboard_GovernanceCardDescription"].Value,
+                IconCssClass = "fa-solid fa-landmark",
+                Compact = true
+            })
+        </div>
+    </div>
+</div>

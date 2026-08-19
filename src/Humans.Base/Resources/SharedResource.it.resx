@@ -378,33 +378,6 @@
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Ecco cosa succede.</value>
   </data>
-  <data name="Dashboard_AgreementSingular" xml:space="preserve">
-    <value>accordo da rivedere</value>
-  </data>
-  <data name="Dashboard_AgreementPlural" xml:space="preserve">
-    <value>accordi da rivedere</value>
-  </data>
-  <data name="Dashboard_SlotsSingular" xml:space="preserve">
-    <value>posto</value>
-  </data>
-  <data name="Dashboard_SlotsPlural" xml:space="preserve">
-    <value>posti</value>
-  </data>
-  <data name="Dashboard_GetInvolved" xml:space="preserve">
-    <value>Partecipa</value>
-  </data>
-  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
-    <value>Non si costruisce da solo.</value>
-  </data>
-  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
-    <value>Guarda cosa serve e iscriviti.</value>
-  </data>
-  <data name="Dashboard_TeamsDescription" xml:space="preserve">
-    <value>Trova la tua gente. O diventa la gente di qualcuno.</value>
-  </data>
-  <data name="Dashboard_CampsDescription" xml:space="preserve">
-    <value>I quartieri che fanno sentire Elsewhere come casa.</value>
-  </data>
   <data name="Dashboard_YourStuff" xml:space="preserve">
     <value>Le tue cose</value>
   </data>
@@ -422,9 +395,6 @@
   </data>
   <data name="Dashboard_PrivacyCardDescription" xml:space="preserve">
     <value>Controlla cosa possono vedere gli altri di te.</value>
-  </data>
-  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
-    <value>Assemblee, elezioni, e le cose serie.</value>
   </data>
   <data name="Dashboard_TicketNotConfigured" xml:space="preserve">
     <value>Le info sui biglietti non sono ancora disponibili. Pazienza.</value>
@@ -1688,39 +1658,6 @@
   </data>
   <data name="Todo_ShiftInfo_Action" xml:space="preserve">
     <value>Compila info turno</value>
-  </data>
-  <data name="GetInvolved_Title" xml:space="preserve">
-    <value>Partecipa</value>
-  </data>
-  <data name="GetInvolved_Intro" xml:space="preserve">
-    <value>L'evento funziona grazie agli humans. Scegli turni che si adattano ai tuoi orari — ogni ora conta.</value>
-  </data>
-  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
-    <value>Montaggio</value>
-  </data>
-  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
-    <value>Costruisci il sito prima dell'apertura. Lavoro fisico, orari flessibili, ideale per conoscere il team.</value>
-  </data>
-  <data name="GetInvolved_Phase_Event" xml:space="preserve">
-    <value>Evento</value>
-  </data>
-  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
-    <value>Fai funzionare tutto durante l'evento. Bar, ingressi, sicurezza, arte — ce n'è per tutti.</value>
-  </data>
-  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
-    <value>Smontaggio</value>
-  </data>
-  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
-    <value>Smonta tutto e non lasciare traccia. Lavoro soddisfacente, di solito impegno più breve.</value>
-  </data>
-  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
-    <value>Turni che hanno bisogno di humans adesso</value>
-  </data>
-  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
-    <value>Vedi tutti i turni</value>
-  </data>
-  <data name="GetInvolved_MyShifts" xml:space="preserve">
-    <value>I miei turni</value>
   </data>
   <data name="Unsub_Title" xml:space="preserve">
     <value>Annulla iscrizione e-mail</value>

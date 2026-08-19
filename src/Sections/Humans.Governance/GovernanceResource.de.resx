@@ -376,4 +376,13 @@
   <data name="BoardVoting_MeetingDateRequired" xml:space="preserve">
     <value>Kann nicht abgeschlossen werden: Ein Datum der Vorstandssitzung ist erforderlich.</value>
   </data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve">
+    <value>Vereinbarung zu prüfen</value>
+  </data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve">
+    <value>Vereinbarungen zu prüfen</value>
+  </data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
+    <value>Versammlungen, Wahlen, und das Ernste.</value>
+  </data>
 </root>

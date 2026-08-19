@@ -147,4 +147,7 @@
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
   <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
   <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
 </root>

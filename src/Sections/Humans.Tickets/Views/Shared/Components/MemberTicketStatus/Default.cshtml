@@ -49,7 +49,7 @@
                             <small class="text-muted">@SharedLocalizer["Dashboard_NotAttendingHint"]</small>
                         </div>
                     </div>
-                    <form asp-controller="Home" asp-action="UndoNotAttending" method="post">
+                    <form asp-controller="Profile" asp-action="UndoNotAttending" method="post">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-rotate-left me-1"></i> @SharedLocalizer["Dashboard_UndoNotAttending"]
@@ -76,7 +76,7 @@
                     @if (Model.EventYear.HasValue)
                     {
                         <hr />
-                        <form asp-controller="Home" asp-action="DeclareNotAttending" method="post">
+                        <form asp-controller="Profile" asp-action="DeclareNotAttending" method="post">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-outline-secondary btn-sm">
                                 <i class="fa-solid fa-xmark me-1"></i> @SharedLocalizer["Dashboard_DeclareNotAttending"]

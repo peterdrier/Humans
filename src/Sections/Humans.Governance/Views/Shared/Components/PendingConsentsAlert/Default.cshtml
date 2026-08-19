@@ -1,0 +1,14 @@
+@model int
+
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="alert alert-warning d-flex align-items-center mb-0" role="alert">
+            <i class="fa-solid fa-file-signature me-2"></i>
+            <div>
+                <a asp-controller="Consent" asp-action="Index" class="alert-link">
+                    @Model @(Model == 1 ? Localizer["Dashboard_AgreementSingular"].Value : Localizer["Dashboard_AgreementPlural"].Value)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
