@@ -7,7 +7,7 @@ Nothing outside the section reads a guide page. `GuideController` is the only co
 with them, so there is no cross-section surface left to publish. The one Base type that keeps
 the "Guide" name — `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` — is
 not the section's: it is a GitHub-markdown fetcher whose signatures name only `string`, with
-three consumers outside Guide (the Agent section's preload readers, Shell's
+consumers outside Guide (the Agent section's preload readers and its
 `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`), so it lives in
 `Humans.Interfaces` and the section consumes it inward like any other Base abstraction.
 
