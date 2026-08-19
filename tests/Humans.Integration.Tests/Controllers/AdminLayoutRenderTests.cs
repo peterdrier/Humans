@@ -179,9 +179,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// The dashboard's two <c>AdminOnly</c> panels render for a full Admin.
     /// </summary>
     /// <remarks>
-    /// The feedback tile and the recent-activity card carry
-    /// <c>authorize-policy="AdminOnly"</c> (nobodies-collective/Humans#977): every other
-    /// admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
+    /// The feedback tile (its contribution's <c>Policy</c>) and the recent-activity card
+    /// (<c>authorize-policy="AdminOnly"</c>) are AdminOnly (nobodies-collective/Humans#977):
+    /// every other admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
     /// assert them once #1332 took the admin one away, and a tile that silently stops
     /// rendering looks identical to one the viewer was never entitled to.
     /// Filed here because this is the suite's only <c>/Admin</c> render.
@@ -196,7 +196,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Open feedback", "_DashboardStats' AdminOnly tile must render for an Admin");
+        html.Should().Contain("Open feedback", "Feedback's AdminOnly contributed tile must render for an Admin");
         html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
 
         // The tag helper strips the attribute when it lets an element through; an element

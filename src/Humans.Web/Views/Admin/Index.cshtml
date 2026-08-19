@@ -7,16 +7,7 @@
         sm.CountsByMask.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value));
 }
 
-<div class="page-head">
-    <div>
-        <h1 class="title">Welcome back, @Model.GreetingFirstName.</h1>
-        <p class="sub">
-            @Model.TotalUsers users · @Model.ActiveProfileUsers with profile · @Model.TicketHolders with ticket · @Model.ShiftCoveragePercent% shift coverage<span authorize-policy="AdminOnly"> · @Model.OpenFeedback open feedback</span>
-        </p>
-    </div>
-</div>
-
-<partial name="_DashboardStats" model="Model" />
+<vc:admin-summary />
 
 @if (sm.TotalUsers > 0)
 {
@@ -62,7 +53,7 @@
     </div>
 }
 
-<partial name="_DashboardStaffing" model="Model" />
+<vc:staffing-by-department />
 
 <div class="row mb-4">
     @if (Model.AppStats.HasAny)
@@ -128,7 +119,7 @@
             <h3>Recent activity</h3>
             <small>last 24h</small>
         </div>
-        <partial name="_DashboardActivity" model="Model.RecentActivity" />
+        <vc:audit-log limit="8" layout="activity" show-card="false" empty-text="No recent activity." />
     </div>
 </div>
 

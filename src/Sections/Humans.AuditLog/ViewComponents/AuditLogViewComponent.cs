@@ -117,6 +117,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
     {
         "table" => "Table",
         "sync" => "Sync",
+        "activity" => "Activity",
         _ => "Default"
     };
 

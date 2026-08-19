@@ -1,12 +1,13 @@
-@model IReadOnlyList<Humans.Web.Models.DashboardActivityRow>
+@model Humans.AuditLog.ViewComponents.AuditLogComponentViewModel
 
-@if (Model.Count == 0)
+@* Dashboard feed: bubble, action, description, timestamp. Card chrome is the host page's. *@
+@if (Model.Events.Count == 0)
 {
-    <p class="text-muted px-3 py-3">No recent activity.</p>
+    <p class="text-muted px-3 py-3">@Model.EmptyText</p>
 }
 else
 {
-    foreach (var entry in Model)
+    foreach (var entry in Model.Events)
     {
         var bubble = entry.Action switch
         {

@@ -21,6 +21,7 @@ namespace Humans.Analyzers.Internal.Rules;
 internal static class PublicSurfaceRule
 {
     private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string ISectionContributionFullName = "Humans.Base.Interfaces.ISectionContribution";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
     private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string IRecurringJobFullName = "Humans.Base.Interfaces.IRecurringJob";
@@ -41,7 +42,8 @@ internal static class PublicSurfaceRule
         messageFormat:
             "'{0}' is public in section '{1}'. A section is internal by default: its public "
             + "surface is Contracts/, its Jobs/ (Hangfire jobs the Shell schedules by concrete "
-            + "type), its Section entry point, its <Section>Resource marker, EF migrations, and "
+            + "type), its Section entry point, its contribution seams, its <Section>Resource "
+            + "marker, EF migrations, and "
             + "types the framework needs public (view components, tag helpers). Make '{0}' "
             + "internal, or move it under Contracts/ if another section needs it.",
         category: AnalyzerCategories.Architecture,
@@ -54,6 +56,7 @@ internal static class PublicSurfaceRule
     /// <summary>The well-known types the check needs, resolved once per compilation.</summary>
     public sealed class Context(
         INamedTypeSymbol? sectionMarker,
+        INamedTypeSymbol? contributionMarker,
         INamedTypeSymbol? migrationBase,
         INamedTypeSymbol? repositoryMarker,
         INamedTypeSymbol? viewComponentAttr,
@@ -62,6 +65,7 @@ internal static class PublicSurfaceRule
         INamedTypeSymbol? recurringJobInterface)
     {
         public INamedTypeSymbol? SectionMarker { get; } = sectionMarker;
+        public INamedTypeSymbol? ContributionMarker { get; } = contributionMarker;
         public INamedTypeSymbol? MigrationBase { get; } = migrationBase;
         public INamedTypeSymbol? RepositoryMarker { get; } = repositoryMarker;
         public INamedTypeSymbol? ViewComponentAttr { get; } = viewComponentAttr;
@@ -72,6 +76,7 @@ internal static class PublicSurfaceRule
 
     public static Context Prepare(Compilation compilation) => new(
         compilation.GetTypeByMetadataName(ISectionFullName),
+        compilation.GetTypeByMetadataName(ISectionContributionFullName),
         compilation.GetTypeByMetadataName(EfMigrationFullName),
         compilation.GetTypeByMetadataName(IRepositoryFullName),
         compilation.GetTypeByMetadataName(ViewComponentAttributeFullName),
@@ -89,6 +94,7 @@ internal static class PublicSurfaceRule
             return;
 
         if (IsSectionEntryPoint(type, types.SectionMarker)
+            || IsSectionContribution(type, types.ContributionMarker)
             || IsResourceMarker(type)
             || IsEfMigration(type, types.MigrationBase)
             || IsViewComponent(type, types.ViewComponentAttr, types.NonViewComponentAttr)
@@ -113,6 +119,15 @@ internal static class PublicSurfaceRule
         sectionMarker is not null
         && type is { TypeKind: TypeKind.Class, IsAbstract: false }
         && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, sectionMarker));
+
+    /// <summary>
+    /// A contribution seam implementation (<c>AdminTiles : ISectionAdminTiles</c>). Shell
+    /// activates it by reflection over exported types, so internal renders nothing.
+    /// </summary>
+    private static bool IsSectionContribution(INamedTypeSymbol type, INamedTypeSymbol? contributionMarker) =>
+        contributionMarker is not null
+        && type is { TypeKind: TypeKind.Class, IsAbstract: false }
+        && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, contributionMarker));
 
     /// <summary>Matched the way <c>SectionResourceTypes()</c> matches it at runtime.</summary>
     private static bool IsResourceMarker(INamedTypeSymbol type) =>

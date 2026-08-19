@@ -1,0 +1,32 @@
+@using Humans.Base.Interfaces
+@model Humans.Web.ViewComponents.AdminSummaryViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="title">Welcome back, @Model.GreetingFirstName.</h1>
+        <p class="sub">@string.Join(" · ", Model.Strapline)</p>
+    </div>
+</div>
+
+<div class="stats">
+    @foreach (var tile in Model.Tiles)
+    {
+        <div class="stat">
+            <div class="label">@tile.Label</div>
+            <div class="value">
+                @if (!string.IsNullOrEmpty(tile.Value.Display))
+                {
+                    @tile.Value.Display
+                }
+                @if (tile.Value.Secondary is not null)
+                {
+                    <em>@tile.Value.Secondary</em>
+                }
+            </div>
+            @if (tile.Value.Detail is not null)
+            {
+                <div class="delta @(tile.Value.Severity == TileSeverity.Normal ? null : "bad")">@tile.Value.Detail</div>
+            }
+        </div>
+    }
+</div>
