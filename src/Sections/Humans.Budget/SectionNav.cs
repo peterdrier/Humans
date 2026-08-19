@@ -8,7 +8,7 @@ namespace Humans.Budget;
 /// "Budget" was a literal string, not a resource key, so it stays literal (a key with no entry
 /// renders as itself).
 /// </summary>
-public sealed class Nav : ISectionNav
+internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>
         [new("Budget", Controller: "Budget", Action: "Summary", Policy: PolicyNames.AppAccess, Weight: 70)];

@@ -7,7 +7,7 @@ namespace Humans.Calendar;
 /// was a literal string, not a resource key, so it stays literal (a key with no entry renders
 /// as itself).
 /// </summary>
-public sealed class Nav : ISectionNav
+internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>
         [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 30)];

@@ -79,8 +79,6 @@ public class EventsArchitectureTests
         // silently drops when internal. Controllers stay internal —
         // SectionControllerFeatureProvider routes them; do not "fix" a 404 by going public.
         // EventsCardViewComponent: Razor only builds <vc:events-card> from a public class.
-        // Nav: ISectionNav contributions are Activator.CreateInstance'd over GetExportedTypes(),
-        // the same reflection-needs-public reason Section is exempt.
         // Migrations are emitted public by dotnet ef, so they are excluded below.
         var publicTypes = typeof(Section).Assembly.GetExportedTypes()
             .Where(t => !string.Equals(t.Namespace, "Humans.Events.Data.Migrations", StringComparison.Ordinal))
@@ -92,7 +90,6 @@ public class EventsArchitectureTests
             [
                 "Humans.Events.Contracts.FavouriteButtonModel",
                 "Humans.Events.EventsResource",
-                "Humans.Events.Nav",
                 "Humans.Events.Section",
                 "Humans.Events.ViewComponents.EventsCardViewComponent",
             ],

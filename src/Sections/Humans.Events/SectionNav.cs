@@ -12,7 +12,7 @@ namespace Humans.Events;
 /// are further gated on <see cref="PolicyNames.EventsAdminOrAdmin"/>, each behind its own
 /// divider so the group appears only when its items do.
 /// </summary>
-public sealed class Nav : ISectionNav
+internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>
     [
