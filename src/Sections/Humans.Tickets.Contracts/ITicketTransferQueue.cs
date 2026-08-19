@@ -3,8 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Tickets.Contracts;
 
 /// <summary>
-/// The one thing outside the section that asks about ticket transfers: Shell's
-/// <c>AdminNavTree</c> badges the pending-review count. The wizard, the admin
+/// Asked about ticket transfers by the section's own admin nav contribution
+/// (<c>AdminNav</c>), which badges the pending-review count. The wizard, the admin
 /// decision surface and every transfer DTO are internal to Humans.Tickets.
 /// </summary>
 /// <remarks>

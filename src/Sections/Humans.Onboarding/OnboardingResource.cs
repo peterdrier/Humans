@@ -18,6 +18,6 @@ namespace Humans.Onboarding;
 /// which reuses four <c>OnboardingReview_*</c> labels for the applicant summary
 /// (design §15 step 3b, Budget's "the key goes home" direction).
 /// <c>Nav_OnboardingReview</c> stays in <c>SharedResource</c>: its renderer is
-/// <c>AdminNavTree</c>, which is Base chrome.
+/// Shell's <c>AdminSidebarViewComponent</c>, which is Base chrome.
 /// </remarks>
 public class OnboardingResource;

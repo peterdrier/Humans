@@ -1,12 +1,14 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
+using Humans.Base.Interfaces;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -14,6 +16,32 @@ namespace Humans.Web.Tests.ViewComponents;
 
 public class AdminSidebarViewComponentTests
 {
+    /// <summary>
+    /// A minimal stand-in for the real, section-contributed nav (nobodies-collective/Humans#1077):
+    /// just enough groups/items for this file's assertions — a non-System group with two items
+    /// (for active-item and empty-group filtering), a System group sharing one item's controller
+    /// with a different action (for the controller+action match regression), and a System, prod-gated
+    /// group (for the Dev-hides-in-production case).
+    /// </summary>
+    private sealed class FakeNav : ISectionAdminNav
+    {
+        public IEnumerable<AdminNavGroup> Groups() =>
+        [
+            new("Tickets", [
+                new("Tickets", "Ticket",   "Index", null, null, "icon", PolicyNames.TicketAdminBoardOrAdmin),
+                new("Scanner", "Scanner",  "Index", null, null, "icon", PolicyNames.ScannerAccess)
+            ]),
+            new("Diagnostics", System: true, Items: [
+                new("Logs",     "Debug", "Logs",    null, null, "icon", PolicyNames.AdminOnly),
+                new("DB stats", "Debug", "DbStats", null, null, "icon", PolicyNames.AdminOnly)
+            ]),
+            new("Dev", System: true, Items: [
+                new("Seed budget", "DevSeed", "SeedBudget", null, null, "icon", PolicyNames.AdminOnly,
+                     EnvironmentGate: env => !env.IsProduction())
+            ])
+        ];
+    }
+
     [HumansFact]
     public async Task Hides_Items_When_Authorization_Fails()
     {
@@ -109,7 +137,7 @@ public class AdminSidebarViewComponentTests
     {
         env ??= MakeDevEnv();
         var sp = new ServiceLocatorBuilder().Build();
-        var sut = new AdminSidebarViewComponent(auth, env, sp, [], NullLogger<AdminSidebarViewComponent>.Instance);
+        var sut = new AdminSidebarViewComponent(auth, env, sp, [new FakeNav()], NullLogger<AdminSidebarViewComponent>.Instance);
 
         var viewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
         {

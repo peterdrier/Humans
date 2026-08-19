@@ -28,22 +28,23 @@ public class SectionSeamTests
         new(label, "Some", "Action", null, null, "icon", null, Weight: weight);
 
     [HumansFact]
-    public void Contributing_Nothing_Leaves_The_Tree_Untouched()
+    public void Contributing_Nothing_Composes_Nothing()
     {
-        AdminNavComposition.Compose([]).Should().BeSameAs(AdminNavTree.Groups);
+        AdminNavComposition.Compose([]).Should().BeEmpty();
     }
 
     [HumansFact]
     public void Contribution_Merges_Into_An_Existing_Group_By_Key()
     {
-        var existing = AdminNavTree.Groups.First(g => string.Equals(g.GroupKey, "Tickets", StringComparison.Ordinal));
+        var composed = AdminNavComposition.Compose(
+        [
+            new Nav(new AdminNavGroup("Tickets", [Item("Existing")])),
+            new Nav(new AdminNavGroup("Tickets", [Item("Contributed")]))
+        ]);
 
-        var composed = AdminNavComposition.Compose([new Nav(new AdminNavGroup("Tickets", [Item("Contributed")]))]);
-
-        composed.Should().HaveCount(AdminNavTree.Groups.Count);
+        composed.Should().ContainSingle(g => string.Equals(g.GroupKey, "Tickets", StringComparison.Ordinal));
         var merged = composed.First(g => string.Equals(g.GroupKey, "Tickets", StringComparison.Ordinal));
-        merged.Items.Should().HaveCount(existing.Items.Count + 1);
-        merged.Items[^1].Label.Should().Be("Contributed");
+        merged.Items.Select(i => i.Label).Should().Equal("Existing", "Contributed");
     }
 
     /// <summary>
@@ -102,21 +103,20 @@ public class SectionSeamTests
     }
 
     /// <summary>
-    /// Tree items carry no weight, so a contribution lands after them unless it asks for a
-    /// negative weight. Equal weights keep declared order — the sort is stable, which is what
-    /// lets the tree's traffic-based order survive being merged into.
+    /// Equal weights keep declared order — the sort is stable, which is what lets a group's
+    /// traffic-based item order survive being merged into by another section's contribution.
     /// </summary>
     [HumansFact]
     public void Weight_Places_A_Contribution_Around_The_Existing_Items()
     {
-        var existing = AdminNavTree.Groups
-            .First(g => string.Equals(g.GroupKey, "Cantina", StringComparison.Ordinal)).Items[0].Label;
-
         var composed = AdminNavComposition.Compose(
-            [new Nav(new AdminNavGroup("Cantina", [Item("second"), Item("first", weight: -1)]))]);
+        [
+            new Nav(new AdminNavGroup("Cantina", [Item("existing")])),
+            new Nav(new AdminNavGroup("Cantina", [Item("second"), Item("first", weight: -1)]))
+        ]);
 
         composed.First(g => string.Equals(g.GroupKey, "Cantina", StringComparison.Ordinal))
-            .Items.Select(i => i.Label).Should().Equal("first", existing, "second");
+            .Items.Select(i => i.Label).Should().Equal("first", "existing", "second");
     }
 
     private interface IReportingJob

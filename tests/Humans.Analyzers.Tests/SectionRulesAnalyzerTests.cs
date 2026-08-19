@@ -26,6 +26,10 @@ public class SectionRulesAnalyzerTests
             {
                 System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default);
             }
+
+            public interface ISectionContribution { }
+
+            public interface ISectionTestSeam : ISectionContribution { }
         }
 
         namespace Microsoft.EntityFrameworkCore.Migrations
@@ -107,6 +111,29 @@ public class SectionRulesAnalyzerTests
     public async Task Does_not_fire_on_the_ISection_entry_point()
     {
         var source = SectionEntryPoint;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    // SectionDiscoveryExtensions.RegisterContributions finds seam implementors via
+    // GetExportedTypes(), same failure mode as an internal view component: an internal
+    // one contributes nothing, silently, with a green build.
+    [HumansFact]
+    public async Task Does_not_fire_on_a_section_contribution_seam_implementor()
+    {
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test
+            {
+                public sealed class TestSeam : Humans.Base.Interfaces.ISectionTestSeam { }
+            }
+            """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
             new SectionRulesAnalyzer(),

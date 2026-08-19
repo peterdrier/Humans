@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
@@ -137,11 +138,11 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// host — with no way to mint the session. The narrower roles keep their rows there;
     /// the widest one only exists here.
     /// <para>
-    /// Derived from <see cref="AdminNavTree.Groups"/> rather than a pinned list, so a group
-    /// or an <c>AdminOnly</c> item added later is covered without touching this file. Only
-    /// <c>AdminOnly</c> items are asserted individually: every other item carries a policy
-    /// whose satisfaction this test would have to re-derive, and re-deriving the view
-    /// component's own filter proves nothing.
+    /// Derived from the composed admin nav (<see cref="AdminNavComposition"/>) rather than a
+    /// pinned list, so a group or an <c>AdminOnly</c> item added later is covered without
+    /// touching this file. Only <c>AdminOnly</c> items are asserted individually: every other
+    /// item carries a policy whose satisfaction this test would have to re-derive, and
+    /// re-deriving the view component's own filter proves nothing.
     /// </para>
     /// </remarks>
     [HumansFact(Timeout = 180000)]
@@ -154,13 +155,16 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        foreach (var group in AdminNavTree.Groups)
+        var groups = AdminNavComposition.Compose(
+            Factory.Services.GetRequiredService<IEnumerable<ISectionAdminNav>>());
+
+        foreach (var group in groups)
         {
             html.Should().Contain($"data-group=\"{group.Label}\"",
                 $"an Admin must see the '{group.Label}' sidebar group");
         }
 
-        var adminOnlyItems = AdminNavTree.Groups
+        var adminOnlyItems = groups
             .SelectMany(g => g.Items)
             .Where(i => string.Equals(i.Policy, PolicyNames.AdminOnly, StringComparison.Ordinal))
             .ToList();

@@ -3,8 +3,9 @@ using Humans.Base.Interfaces;
 namespace Humans.Web.ViewComponents;
 
 /// <summary>
-/// The admin nav as rendered: <see cref="AdminNavTree"/>'s groups merged with what sections
-/// contributed through <see cref="ISectionAdminNav"/>.
+/// The admin nav as rendered: every section's <see cref="ISectionAdminNav"/> contribution,
+/// merged by group. No section link, policy gate or pill count is hard-coded in Shell
+/// (nobodies-collective/Humans#1077).
 /// </summary>
 /// <remarks>
 /// Contributions merge into an existing group by <see cref="AdminNavGroup.GroupKey"/> — several
@@ -22,10 +23,7 @@ public static class AdminNavComposition
             .OrderBy(g => g.Weight)
             .ToList();
 
-        if (contributed.Count == 0)
-            return AdminNavTree.Groups;
-
-        var merged = new List<AdminNavGroup>(AdminNavTree.Groups);
+        var merged = new List<AdminNavGroup>(contributed.Count);
 
         foreach (var group in contributed)
         {
