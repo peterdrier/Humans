@@ -97,22 +97,28 @@ public static class RecurringJobExtensions
 
     /// <summary>
     /// Turns a descriptor into the same <c>RecurringJob.AddOrUpdate&lt;TJob&gt;</c> call the
-    /// roll-call makes. The generic argument is the job type, which Shell only knows at
-    /// runtime — hence the one reflection hop onto <see cref="ScheduleTyped{TJob}"/>, whose
-    /// body is the ordinary compiled call.
+    /// roll-call makes. Resolving the job type is deferred into the schedule action so a
+    /// malformed descriptor fails inside the per-job try/catch rather than while the list is
+    /// being built, where it would stop the app booting.
     /// </summary>
-    private static ScheduledJob ToScheduledJob(RecurringJobDescriptor descriptor)
+    internal static ScheduledJob ToScheduledJob(RecurringJobDescriptor descriptor) =>
+        new(descriptor.Id, descriptor.JobType, descriptor.Cron, () => ScheduleContributed(descriptor));
+
+    /// <summary>
+    /// The generic argument is the job type, which Shell only knows at runtime — hence the one
+    /// reflection hop onto <see cref="ScheduleTyped{TJob}"/>, whose body is the ordinary
+    /// compiled call.
+    /// </summary>
+    private static void ScheduleContributed(RecurringJobDescriptor descriptor)
     {
         var execute = descriptor.JobType.GetMethod(nameof(IRecurringJob.ExecuteAsync), [typeof(CancellationToken)])
             ?? throw new InvalidOperationException(
                 $"Job '{descriptor.Id}' names {descriptor.JobType.FullName}, which has no ExecuteAsync(CancellationToken)");
 
-        var schedule = typeof(RecurringJobExtensions)
+        typeof(RecurringJobExtensions)
             .GetMethod(nameof(ScheduleTyped), BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(descriptor.JobType);
-
-        return new ScheduledJob(descriptor.Id, descriptor.JobType, descriptor.Cron,
-            () => schedule.Invoke(null, [descriptor.Id, execute, descriptor.Cron]));
+            .MakeGenericMethod(descriptor.JobType)
+            .Invoke(null, [descriptor.Id, execute, descriptor.Cron]);
     }
 
     /// <summary>
