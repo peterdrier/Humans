@@ -662,7 +662,7 @@
         "src/Humans.Base/Interfaces/IRecurringJob.cs",
         "src/Humans.Base/Interfaces/Repositories/IRepository.cs",
         "src/Humans.Analyzers/**",
-        "src/Humans.Base/Caching/**",
+        "src/Humans.Base/Interfaces/Caching/**",
         "src/Humans.Base/Data/**",
         "src/Humans.Base/Helpers/**",
         "src/Humans.Base/Hosting/**",
