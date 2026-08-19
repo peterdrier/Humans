@@ -57,6 +57,9 @@
             </div>
         </nav>
 
+        @* Sections contribute chrome here too; renders nothing while none do. *@
+        <vc:chrome-slot name="above-content" />
+
         <div class="app-shell">
             <aside class="sidebar">
                 @await Component.InvokeAsync("AdminSidebar")
