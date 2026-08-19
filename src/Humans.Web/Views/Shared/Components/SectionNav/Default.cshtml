@@ -11,16 +11,23 @@
             <ul class="dropdown-menu">
                 @foreach (var child in item.Children)
                 {
-                    <li>
-                        @if (child.RawHref is not null)
-                        {
-                            <a class="dropdown-item" href="@child.RawHref">@NavLocalizer[child.Label]</a>
-                        }
-                        else
-                        {
-                            <a class="dropdown-item" asp-area="" asp-controller="@child.Controller" asp-action="@child.Action">@NavLocalizer[child.Label]</a>
-                        }
-                    </li>
+                    @if (child.Divider)
+                    {
+                        <li><hr class="dropdown-divider" /></li>
+                    }
+                    else
+                    {
+                        <li>
+                            @if (child.RawHref is not null)
+                            {
+                                <a class="dropdown-item" href="@child.RawHref">@NavLocalizer[child.Label]</a>
+                            }
+                            else
+                            {
+                                <a class="dropdown-item" asp-area="" asp-controller="@child.Controller" asp-action="@child.Action">@NavLocalizer[child.Label]</a>
+                            }
+                        </li>
+                    }
                 }
             </ul>
         </li>

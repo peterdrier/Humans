@@ -21,6 +21,7 @@ namespace Humans.Analyzers.Internal.Rules;
 internal static class PublicSurfaceRule
 {
     private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string ISectionContributionFullName = "Humans.Base.Interfaces.ISectionContribution";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
     private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string IRecurringJobFullName = "Humans.Base.Interfaces.IRecurringJob";
@@ -54,6 +55,7 @@ internal static class PublicSurfaceRule
     /// <summary>The well-known types the check needs, resolved once per compilation.</summary>
     public sealed class Context(
         INamedTypeSymbol? sectionMarker,
+        INamedTypeSymbol? sectionContributionMarker,
         INamedTypeSymbol? migrationBase,
         INamedTypeSymbol? repositoryMarker,
         INamedTypeSymbol? viewComponentAttr,
@@ -62,6 +64,7 @@ internal static class PublicSurfaceRule
         INamedTypeSymbol? recurringJobInterface)
     {
         public INamedTypeSymbol? SectionMarker { get; } = sectionMarker;
+        public INamedTypeSymbol? SectionContributionMarker { get; } = sectionContributionMarker;
         public INamedTypeSymbol? MigrationBase { get; } = migrationBase;
         public INamedTypeSymbol? RepositoryMarker { get; } = repositoryMarker;
         public INamedTypeSymbol? ViewComponentAttr { get; } = viewComponentAttr;
@@ -72,6 +75,7 @@ internal static class PublicSurfaceRule
 
     public static Context Prepare(Compilation compilation) => new(
         compilation.GetTypeByMetadataName(ISectionFullName),
+        compilation.GetTypeByMetadataName(ISectionContributionFullName),
         compilation.GetTypeByMetadataName(EfMigrationFullName),
         compilation.GetTypeByMetadataName(IRepositoryFullName),
         compilation.GetTypeByMetadataName(ViewComponentAttributeFullName),
@@ -89,6 +93,7 @@ internal static class PublicSurfaceRule
             return;
 
         if (IsSectionEntryPoint(type, types.SectionMarker)
+            || IsSectionContribution(type, types.SectionContributionMarker)
             || IsResourceMarker(type)
             || IsEfMigration(type, types.MigrationBase)
             || IsViewComponent(type, types.ViewComponentAttr, types.NonViewComponentAttr)
@@ -113,6 +118,16 @@ internal static class PublicSurfaceRule
         sectionMarker is not null
         && type is { TypeKind: TypeKind.Class, IsAbstract: false }
         && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, sectionMarker));
+
+    /// <summary>
+    /// Matched by implementing an <c>ISectionContribution</c> seam (e.g. <c>ISectionNav</c>) —
+    /// discovered by <c>Activator.CreateInstance</c> over <c>GetExportedTypes()</c>, the same
+    /// reflection-needs-public reason <see cref="IsSectionEntryPoint"/> is exempt.
+    /// </summary>
+    private static bool IsSectionContribution(INamedTypeSymbol type, INamedTypeSymbol? contributionMarker) =>
+        contributionMarker is not null
+        && type is { TypeKind: TypeKind.Class, IsAbstract: false }
+        && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, contributionMarker));
 
     /// <summary>Matched the way <c>SectionResourceTypes()</c> matches it at runtime.</summary>
     private static bool IsResourceMarker(INamedTypeSymbol type) =>

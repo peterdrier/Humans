@@ -1,7 +1,6 @@
 @using Humans.Base.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
-@inject IConfiguration Configuration
 @inject IAuthorizationService AuthService
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
@@ -38,7 +37,6 @@
         <nav class="navbar navbar-expand-lg navbar-dark mb-3">
             <div class="container">
                 @{
-                    var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded;
                     var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
                     string? buildHashTooltip = null;
                     if (isFullAdmin)
@@ -89,43 +87,8 @@
                                 </a>
                             </li>
                         }
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Calendar" asp-action="Index">Calendar</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
-                        </li>
-                        @if (Configuration.GetValue<bool>("Features:Events"))
-                        {
-                            <li class="nav-item dropdown" authorize-policy="AppAccess">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="MySubmissions">My Submissions</a></li>
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Schedule">My Schedule</a></li>
-                                    @if (isEventsAdminOrAdmin)
-                                    {
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsDashboard" asp-action="Index">Guide Dashboard</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsExport" asp-action="Index">Export Guide</a></li>
-                                    }
-                                    @if (isEventsAdminOrAdmin)
-                                    {
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Settings">Guide Settings</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Categories">Guide Categories</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Venues">Guide Venues</a></li>
-                                    }
-                                </ul>
-                            </li>
-                        }
+                        @* Links sections contribute through ISectionNav; renders nothing while none do. *@
+                        <vc:section-nav />
                         @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">
@@ -140,17 +103,9 @@
                                 <a class="nav-link" asp-area="" asp-controller="Tour" asp-action="Index">Tour</a>
                             </li>
                         }
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
-                        </li>
                         <li class="nav-item" authorize-policy="AnyAdminRole">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
-                        @* Links sections contribute through ISectionNav; renders nothing while none do. *@
-                        <vc:section-nav />
                     </ul>
                     <div class="d-flex align-items-center gap-2 position-relative">
                         @if (User.Identity?.IsAuthenticated == true)
