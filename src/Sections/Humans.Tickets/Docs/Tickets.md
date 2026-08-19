@@ -196,10 +196,10 @@ nothing in `Humans.Tickets`, in Base or in any consumer changes.
 (`ISection.Register` has no `IHostEnvironment`) and fails closed: anything but an exactly-Production
 environment name gets the stub, so a developer holding a real `TICKET_VENDOR_API_KEY` still cannot
 write to a live ticketing account. The port's `IOptions<TicketVendorSettings>` binding stays in
-Shell — the settings belong to the port, which `TicketSyncService` and Shell's
+Shell — the settings belong to the port, which `TicketSyncService` and the section's own
 `TicketVendorHealthCheck` also read, and deleting the adapter must not take them with it.
 
-**Only two things may inject `ITicketVendorService`:** `Humans.Tickets` and Shell's
+**Only `Humans.Tickets` may inject `ITicketVendorService`:** the section's services and its own
 `TicketVendorHealthCheck` (which probes the connector deliberately). Everything else asks Tickets,
 through `Humans.Tickets.Contracts`. Pinned by
 `tests/Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests.cs`.

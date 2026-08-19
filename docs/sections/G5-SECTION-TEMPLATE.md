@@ -954,10 +954,10 @@ Git Bash.)
      **The same test can keep a connector in Base when the connector carries the section's own
      name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
-     are not Guide's: the signatures name only `string`, and three of the four consumers are
+     are not Guide's: the signatures name only `string`, and the consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
      `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
-     Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
      string fetch, and split `GuideSettings` from the type binding it. Left in
