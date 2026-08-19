@@ -13,7 +13,7 @@ namespace Humans.Shifts;
 /// Shifts' entry on the member dashboard's things-to-do list: the shift preferences a
 /// volunteer who already signed up still has to fill in. No signups, no entry.
 /// </summary>
-public sealed class ThingsToDo : ISectionThingsToDo
+internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user)
@@ -69,7 +69,7 @@ public sealed class ThingsToDo : ISectionThingsToDo
         }
         catch (Exception ex)
         {
-            services.GetRequiredService<ILogger<ThingsToDo>>()
+            services.GetRequiredService<ILogger<SectionThingsToDo>>()
                 .LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);
             return false;
         }

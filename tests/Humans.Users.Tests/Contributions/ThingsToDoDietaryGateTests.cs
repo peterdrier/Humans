@@ -14,7 +14,7 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Covers the dietary-medical nudge gate in Users' <see cref="ThingsToDo"/> contribution.
+/// Covers the dietary-medical nudge gate in Users' <see cref="SectionThingsToDo"/> contribution.
 /// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.5)
 /// </summary>
 public class ThingsToDoDietaryGateTests
@@ -25,7 +25,7 @@ public class ThingsToDoDietaryGateTests
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly IServiceProvider _services;
-    private readonly ThingsToDo _sut = new();
+    private readonly SectionThingsToDo _sut = new();
 
     public ThingsToDoDietaryGateTests()
     {
@@ -49,7 +49,7 @@ public class ThingsToDoDietaryGateTests
             .AddSingleton(_shiftView)
             .AddSingleton(_membershipCalculator)
             .AddSingleton(_localizer)
-            .AddSingleton<ILogger<ThingsToDo>>(NullLogger<ThingsToDo>.Instance)
+            .AddSingleton<ILogger<SectionThingsToDo>>(NullLogger<SectionThingsToDo>.Instance)
             .BuildServiceProvider();
     }
 

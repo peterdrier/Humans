@@ -22,8 +22,6 @@ public class SectionRulesAnalyzerTests
         {
             public interface ISection { }
 
-            public interface ISectionContribution { }
-
             public interface IRecurringJob
             {
                 System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default);
@@ -83,26 +81,6 @@ public class SectionRulesAnalyzerTests
             ReferencedStubs);
 
         diagnostics.Should().ContainSingle(d => IsHum0034(d));
-    }
-
-    [HumansFact]
-    public async Task Does_not_fire_on_a_section_contribution()
-    {
-        var source = SectionEntryPoint + """
-
-            namespace Humans.Test
-            {
-                public sealed class ThingsToDo : Humans.Base.Interfaces.ISectionContribution { }
-            }
-            """;
-
-        var diagnostics = await AnalyzerTestHarness.RunAsync(
-            new SectionRulesAnalyzer(),
-            "Humans.Test",
-            source,
-            ReferencedStubs);
-
-        diagnostics.Should().BeEmpty();
     }
 
     [HumansFact]

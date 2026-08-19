@@ -12,7 +12,7 @@ namespace Humans.Governance;
 /// Governance's entry on the member dashboard's things-to-do list: the required consents
 /// the membership snapshot says are still outstanding. No required documents, no entry.
 /// </summary>
-public sealed class ThingsToDo : ISectionThingsToDo
+internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user)

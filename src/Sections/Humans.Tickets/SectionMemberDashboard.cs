@@ -6,7 +6,7 @@ namespace Humans.Tickets;
 /// Tickets' dashboard content: the member ticket card, and the order summary on the
 /// profileless-account page.
 /// </summary>
-public sealed class MemberDashboard : ISectionMemberDashboard
+internal sealed class SectionMemberDashboard : ISectionMemberDashboard
 {
     public IEnumerable<ChromeComponent> Components() =>
     [

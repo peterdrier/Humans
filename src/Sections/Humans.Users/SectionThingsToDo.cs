@@ -16,7 +16,7 @@ namespace Humans.Users;
 /// consent-check clearance non-volunteers wait on, and the dietary/medical nudge.
 /// Spec for the last one: Docs/features/dietary-medical-nudge.md (US-35.5).
 /// </summary>
-public sealed class ThingsToDo : ISectionThingsToDo
+internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user)
@@ -27,7 +27,7 @@ public sealed class ThingsToDo : ISectionThingsToDo
         }
 
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
-        var logger = services.GetRequiredService<ILogger<ThingsToDo>>();
+        var logger = services.GetRequiredService<ILogger<SectionThingsToDo>>();
         var profile = (await services.GetRequiredService<IUserServiceRead>().GetUserInfoAsync(userId))?.Profile;
         var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculatorRead>()
             .GetMembershipSnapshotAsync(userId)).IsVolunteerMember;
