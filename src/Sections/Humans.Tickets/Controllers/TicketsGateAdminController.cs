@@ -1,11 +1,11 @@
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
-using Humans.Web.Hosting;
+using Humans.Tickets.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Tickets.Controllers;
 
 /// <summary>
 /// Gate-terminal credential management: ticket admins set/rotate the shared
@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
 [Route("Tickets/Admin/Gate")]
-public sealed class TicketsGateAdminController(
+internal sealed class TicketsGateAdminController(
     IUserServiceRead userService,
     GateTerminalAccountSeeder gateAccount) : HumansControllerBase(userService)
 {

@@ -37,6 +37,10 @@ public sealed class Section : ISection
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();
+
+        // Gate-terminal account management, provisioned from /Tickets/Admin/Gate — moved
+        // here with that controller (nobodies-collective/Humans#1091).
+        services.AddScoped<GateTerminalAccountSeeder>();
         services.AddScoped<TicketSyncService>();
         services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketSyncService>());
         services.AddScoped<ITicketSync>(sp => sp.GetRequiredService<TicketSyncService>());

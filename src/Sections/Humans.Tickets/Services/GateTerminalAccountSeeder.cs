@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -6,23 +7,24 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
-namespace Humans.Web.Hosting;
+namespace Humans.Tickets.Services;
 
 /// <summary>Admin-card status of the shared gate-terminal account.</summary>
-public record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
+internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
 
 /// <summary>
 /// Provisions and manages the shared gate-terminal account
 /// (<see cref="SystemUserIds.GateTerminal"/>): a real User row, not a person.
 /// Created lazily the first time a ticket admin sets its password from
-/// /Tickets/Admin/Gate. Mirrors <see cref="DevPersonaSeeder"/>: User via
+/// /Tickets/Admin/Gate. Mirrors Development's <c>DevPersonaSeeder</c>: User via
 /// <see cref="UserManager{TUser}"/>, Profile via the canonical
 /// <see cref="IProfileEditorService.SaveProfileAsync"/> path (so
 /// <c>UserStateClassifier</c> lifts the state to Active), consent check cleared
 /// so the account never sits in the Consent Coordinator review queue.
 /// The password lives on the Identity row itself — no extra credential storage.
 /// </summary>
-public sealed class GateTerminalAccountSeeder(
+[CrossSectionWrite("Provisions the shared gate-terminal account: creates the Identity user, saves its profile through Users' canonical path, and clears its consent check.")]
+internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IUserService userService,
@@ -48,7 +50,7 @@ public sealed class GateTerminalAccountSeeder(
     /// at the next security-stamp validation sweep. Identity lockout is disabled
     /// on the account: the username is public, so per-account lockout would let
     /// anyone deny the real terminal at gate. Sign-in failures are throttled per
-    /// source IP instead (<see cref="GateLoginThrottle"/>).
+    /// source IP instead (Shell's <c>GateLoginThrottle</c>).
     /// </summary>
     public async Task<IdentityResult> SetPasswordAsync(string password, Guid actorUserId)
     {

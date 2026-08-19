@@ -90,11 +90,9 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 // Their non-Production gate moved with them into that section's Section.Register, which reads
 // HostDefaults.EnvironmentKey off the configuration passed to it and fails closed.
 
-// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
-// + the per-source-IP sign-in failure throttle for /Account/GateLogin. Both are Shell's:
-// the terminal's Identity account and the /Account/GateLogin page belong to Auth, not to
-// the Gate section (whose own PIN throttle and mirror ledger moved with it at G5).
-builder.Services.AddScoped<GateTerminalAccountSeeder>();
+// All environments: the per-source-IP sign-in failure throttle for /Account/GateLogin.
+// Shell's: the /Account/GateLogin page belongs to Auth. The gate-terminal account seeder
+// moved to Humans.Tickets with /Tickets/Admin/Gate (nobodies-collective/Humans#1091).
 builder.Services.AddSingleton<GateLoginThrottle>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
