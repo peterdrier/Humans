@@ -14,7 +14,7 @@ namespace Humans.Tickets;
 /// gate-terminal system account (a Gate-domain identity), so they are composites spanning
 /// two sections.
 /// </remarks>
-public sealed class Policies : ISectionPolicies
+internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)
     {

@@ -9,7 +9,7 @@ namespace Humans.Cantina;
 /// Cantina's authorization policies, at the project root by convention. Discovered by Shell
 /// alongside <see cref="Section"/> — nothing names it.
 /// </summary>
-public sealed class Policies : ISectionPolicies
+internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)
     {
