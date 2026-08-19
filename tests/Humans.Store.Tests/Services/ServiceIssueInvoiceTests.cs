@@ -381,16 +381,16 @@ public class ServiceIssueInvoiceTests
     private static HoldedSalesDocumentDto SalesDoc(
         string docNumber = "2026-0003", bool? isDraft = null,
         decimal subtotal = 100m, decimal tax = 21m, decimal total = 121m) => new()
-    {
-        Id = "doc-earlier",
-        DocNumber = docNumber,
-        Subtotal = subtotal,
-        Tax = tax,
-        Total = total,
-        Status = "pending",
-        IsDraft = isDraft,
-        RawJson = """{"id":"doc-earlier"}""",
-    };
+        {
+            Id = "doc-earlier",
+            DocNumber = docNumber,
+            Subtotal = subtotal,
+            Tax = tax,
+            Total = total,
+            Status = "pending",
+            IsDraft = isDraft,
+            RawJson = """{"id":"doc-earlier"}""",
+        };
 
     /// <summary>Stubs a document already tagged with <paramref name="order"/>'s tag, of
     /// <paramref name="kind"/>, as a failed earlier attempt would have left behind. Extra
