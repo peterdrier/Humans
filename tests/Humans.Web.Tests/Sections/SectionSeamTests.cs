@@ -1,8 +1,14 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Web.ViewComponents;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
+using NSubstitute;
 
 namespace Humans.Web.Tests.Sections;
 
@@ -40,8 +46,12 @@ public class SectionSeamTests
         merged.Items[^1].Label.Should().Be("Contributed");
     }
 
+    /// <summary>
+    /// The sidebar renders System groups as collapsed plumbing at the bottom, so a
+    /// user-facing contribution has to land above them rather than below the divider.
+    /// </summary>
     [HumansFact]
-    public void Unknown_Group_Is_Appended_And_Groups_Order_By_Weight()
+    public void Unknown_Group_Lands_Above_The_System_Zone_Ordered_By_Weight()
     {
         var composed = AdminNavComposition.Compose(
         [
@@ -49,7 +59,17 @@ public class SectionSeamTests
             new Nav(new AdminNavGroup("Sooner", [Item("a")], Weight: 10))
         ]);
 
-        composed.Select(g => g.Label).TakeLast(2).Should().Equal("Sooner", "Later");
+        var firstSystem = composed.Select((g, i) => (g.System, i)).First(x => x.System).i;
+        composed.Take(firstSystem).Select(g => g.Label).TakeLast(2).Should().Equal("Sooner", "Later");
+    }
+
+    [HumansFact]
+    public void Contributed_System_Group_Appends_Below_The_System_Zone()
+    {
+        var composed = AdminNavComposition.Compose(
+            [new Nav(new AdminNavGroup("Plumbing", [Item("a")], System: true))]);
+
+        composed[^1].Label.Should().Be("Plumbing");
     }
 
     /// <summary>
@@ -103,5 +123,73 @@ public class SectionSeamTests
         Expression<Func<IReportingJob, Task>> call = RecurringJobExtensions.BuildCall<IReportingJob>(execute);
 
         call.ReturnType.Should().Be(typeof(Task));
+    }
+
+    private sealed class NotAJob;
+
+    /// <summary>
+    /// The roll-call is built before the per-job try/catch runs, so a section naming a type
+    /// with no ExecuteAsync must not throw while the list is assembled — that would stop the
+    /// app booting for every other job too.
+    /// </summary>
+    [HumansFact]
+    public void Malformed_Job_Descriptor_Fails_At_Schedule_Time_Not_While_Listing()
+    {
+        var listing = () => RecurringJobExtensions.ToScheduledJob(
+            new RecurringJobDescriptor("bad-job", typeof(NotAJob), "* * * * *"));
+
+        listing.Should().NotThrow();
+        listing().Schedule.Should().Throw<InvalidOperationException>();
+    }
+
+    private sealed class MemberNav(params MemberNavItem[] items) : ISectionNav
+    {
+        public IEnumerable<MemberNavItem> Items() => items;
+    }
+
+    [HumansFact]
+    public async Task Dropdown_Children_Are_Gated_Like_Top_Level_Items()
+    {
+        var model = await ComposeNavAsync(new MemberNavItem("Parent", Children:
+        [
+            new MemberNavItem("Shown", Policy: "allowed"),
+            new MemberNavItem("Denied", Policy: "denied"),
+            new MemberNavItem("Invisible", Visible: (_, _) => false)
+        ]));
+
+        model.Single().Children!.Select(c => c.Label).Should().Equal("Shown");
+    }
+
+    [HumansFact]
+    public async Task Dropdown_With_No_Visible_Children_Is_Dropped()
+    {
+        var model = await ComposeNavAsync(new MemberNavItem("Parent", Children:
+            [new MemberNavItem("Denied", Policy: "denied")]));
+
+        model.Should().BeEmpty();
+    }
+
+    private static async Task<IReadOnlyList<MemberNavItem>> ComposeNavAsync(params MemberNavItem[] items)
+    {
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(call => Task.FromResult(string.Equals((string)call[2], "allowed", StringComparison.Ordinal)
+                ? AuthorizationResult.Success()
+                : AuthorizationResult.Failed()));
+
+        var sut = new SectionNavViewComponent(
+            [new MemberNav(items)], authorization, Substitute.For<IServiceProvider>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+                }
+            }
+        };
+
+        var result = await sut.InvokeAsync() as ViewViewComponentResult;
+        return (IReadOnlyList<MemberNavItem>)result!.ViewData!.Model!;
     }
 }
