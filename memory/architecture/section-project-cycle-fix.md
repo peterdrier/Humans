@@ -18,7 +18,7 @@ B, and B already references A. Carve `Humans.B.Contracts`: a leaf project holdin
 
 **Wrong — promote the shared type into Base.** It makes the error go away in one commit and it is
 irreversible in practice: every promoted type is one more thing that "everyone can see", and within
-a handful of sections Base is the monolith with extra steps. `Humans.Interfaces` is primitives and
+a handful of sections Base is the monolith with extra steps. `Humans.Base` is primitives and
 marker interfaces only — **no DTOs, ever**, and it is human-gatekept for exactly this reason. A
 cycle is not a reason to put a DTO there.
 
@@ -32,7 +32,7 @@ knots; nothing else is split in advance.
   and split *that* one's contracts. Do not reverse the dependency to dodge the split.
 - The `.Contracts` project references Base only. If it needs another section, you have found a
   second cycle, not an exception.
-- Moving a type into `Humans.Interfaces`, `Humans.Domain` or `Humans.UI` to resolve a cycle needs
+- Moving a type into `Humans.Base` (or the pre-G5 `Humans.Domain` / `Humans.UI`, both long deleted) to resolve a cycle needs
   Peter's per-instance approval. "The build was red" is not the justification.
 - The standing shared-contract exceptions are `User`/`UserInfo`, Auth and Audit, decided in #866.
   Those are the whole list; a cycle does not add to it.

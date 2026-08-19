@@ -109,7 +109,7 @@ the fan-out is over its own interface.
 **Inbound:** the widest of any moved section, and all of it through the leaf.
 Every contributor implements `Humans.Gdpr.Contracts.IUserDataContributor`, so
 20 section projects reference `Humans.Gdpr.Contracts`, plus `Humans.Web` for
-the two download controllers. It references `Humans.Interfaces` alone, so
+the two download controllers. It references `Humans.Base` alone, so
 none of that cycles.
 
 ## Architecture

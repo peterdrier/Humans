@@ -215,7 +215,7 @@ assertion families that are plausible analyzer candidates:
 ### HUM0015 / HUM0016 — `[SurfaceBudget(N)]` analyzer (SHIPPED)
 
 - Rule: a type (interface, class, or struct) decorated with
-  `Humans.Application.Architecture.SurfaceBudgetAttribute(N)` must declare
+  `Humans.Base.Attributes.SurfaceBudgetAttribute(N)` must declare
   exactly `N` directly-declared **public-instance** ordinary methods.
   Over-budget fires HUM0015; under-budget (slack) fires HUM0016.
 - Source: replaces the retired `InterfaceMethodBudgetTests`

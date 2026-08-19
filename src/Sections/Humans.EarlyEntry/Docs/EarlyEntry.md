@@ -117,7 +117,7 @@ one-way staleness signal).
 ### For (A) Migrated sections
 
 - The section takes **no `Humans.Infrastructure` reference**: it owns no tables, has no `DbContext`
-  and no G4 gate. `TrackedCache` / `ICacheStats` come from `Humans.Application.Interfaces.Caching`.
+  and no G4 gate. `TrackedCache` comes from `Humans.Base.Caching`; `ICacheStats` from `Humans.Base.Interfaces.Caching`.
 - **No repository.** The hard rules' orchestrator clause applies: this service calls services,
   never repositories.
 - **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed, `warmOnStartup: false`.

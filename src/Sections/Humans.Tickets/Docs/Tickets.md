@@ -224,7 +224,7 @@ leaf carries what Base consumers need, the folder carries public surface that is
 (`TicketStubViewComponent`). The split is a judgement about what cross-section consumers should
 have to see, **not** a compiler constraint: G5 lane 3c measured (2026-08-15,
 `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`) that every
-leaf referencing `Humans.Interfaces` resolves `Microsoft.AspNetCore.App` transitively, so
+leaf referencing `Humans.Base` resolves `Microsoft.AspNetCore.App` transitively, so
 "the leaf stays framework-free" — this doc's earlier wording — is false and always was. All section services route every database
 read/write through `ITicketRepository`; neither `TicketQueryService.cs` nor `TicketSyncService.cs` imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`. Umbrella issue nobodies-collective/Humans#545 closed by sub-tasks #545a (TicketQueryService → Application), #545b (TicketingBudgetService → Application, originally with its own `ITicketingBudgetRepository` — removed in #815), #545c (TicketSyncService → Application + `IShiftManagementService` / `IUserService` routing). `ITicketVendorService` connector split landed in peterdrier/Humans PR #277. The bridge itself has since left this section: with Budget's G5 move, `TicketingBudgetService` became internal to `Humans.Budget.Services`, and its `ITicketingBudgetService` contract joined it there and went internal too (Peter's ruling 43), shrinking to `SyncActualsAsync` (projection refresh and parameter writes are Budget-admin-only, so they stayed off it).
 

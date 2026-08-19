@@ -80,7 +80,7 @@ signature is unchanged and the detach is a one-line local at the commit point.
 
 **Enforcement:** Mark Application-layer interface methods that reach an
 external mutating call with `[ExternalWrite]`
-(`Humans.Application.Architecture`). Analyzer **HUM0033** then errors when a
+(`Humans.Base.Attributes`). Analyzer **HUM0033** then errors when a
 state-changing controller action passes a request-scoped token to one of them.
 When you add a service method that reaches a new outbound write, mark it —
 the analyzer is only as complete as the markers.
