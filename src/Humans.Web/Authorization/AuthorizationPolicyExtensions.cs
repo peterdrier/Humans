@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
+using Humans.Shifts.Contracts;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
@@ -17,12 +18,12 @@ public static class AuthorizationPolicyExtensions
     {
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
-        // Scoped: depend on scoped services.
-        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
-        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
         // moved into the section at its G5 and is internal there, while the policies it backs
-        // stay here (design §15 step 6's asymmetry).
+        // stay here (design §15 step 6's asymmetry). CampComplianceAccessHandler and
+        // IsAnyTeamManagerOrCoordinatorHandler are registered the same way by Humans.Shifts'
+        // Section.Register; their Requirement types live under Shifts' Contracts/ (HUM0034)
+        // since this policy wiring constructs them directly.
 
 
         services.AddAuthorization(options =>

@@ -3,12 +3,14 @@ using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
+using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Base.Models.Tables;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;
@@ -90,6 +92,12 @@ public sealed class Section : ISection
 
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
+
+        // Policy-backing handlers; the policies themselves stay in Shell's
+        // AuthorizationPolicyExtensions, which constructs the (public) Requirement
+        // types directly to build the policy (design §15 step 6's asymmetry).
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
         // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's
         // contracts leaf — so the section pushes its own rows in

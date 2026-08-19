@@ -1,7 +1,7 @@
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Succeeds when the user is a CampAdmin or Admin, OR is a coordinator /
@@ -9,6 +9,8 @@ namespace Humans.Web.Authorization.Requirements;
 /// compliance matrix (<see cref="PolicyNames.CampComplianceAccess"/>) so camp
 /// admins and team coordinators can both see role staffing across barrios,
 /// without widening the CampAdmin-only management surface in
-/// <c>CampAdminController</c>.
+/// <c>CampAdminController</c>. Lives under Contracts/ (unlike the internal
+/// handler) because Shell's AuthorizationPolicyExtensions constructs it
+/// directly to back the policy.
 /// </summary>
 public class CampComplianceAccessRequirement : IAuthorizationRequirement;
