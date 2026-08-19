@@ -265,7 +265,78 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var result = await _service.GetSalesAggregatesAsync();
 
         result.ByTicketType.Should().BeEmpty();
+        result.ByDiscountCampaign.Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_ByDiscountCampaign_SplitsGrantedCodesFromVendorCodes()
+    {
+        var campaignId = Guid.NewGuid();
+        StubCodeTracking(
+            new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 3, Redeemed: 2),
+            [("VOL1", campaignId), ("VOL2", campaignId), ("VOL3", campaignId)]);
+
+        await TicketsDb.TicketOrders.AddRangeAsync(
+            MakeDiscountOrder("ord_vol1", TicketPaymentStatus.Paid, "VOL1", 50m),
+            MakeDiscountOrder("ord_vol2", TicketPaymentStatus.Paid, "VOL2", 30m),
+            MakeDiscountOrder("ord_promo", TicketPaymentStatus.Paid, "PROMO10", 10m),
+            MakeDiscountOrder("ord_refunded", TicketPaymentStatus.Refunded, "VOL3", 999m));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        result.ByDiscountCampaign.Should().HaveCount(2);
+
+        var campaign = result.ByDiscountCampaign[0];
+        campaign.CampaignTitle.Should().Be("Volunteer Comps");
+        campaign.CodesGranted.Should().Be(3);
+        campaign.CodesUsed.Should().Be(2);
+        campaign.AverageDiscount.Should().Be(40m);
+        campaign.TotalDiscount.Should().Be(80m);
+
+        // Vendor codes always sort last and have nothing granted.
+        var vendor = result.ByDiscountCampaign[1];
+        vendor.CampaignTitle.Should().Be("No campaign (vendor codes)");
+        vendor.CodesGranted.Should().BeNull();
+        vendor.CodesUsed.Should().Be(1);
+        vendor.AverageDiscount.Should().Be(10m);
+        vendor.TotalDiscount.Should().Be(10m);
+    }
+
+    private void StubCodeTracking(
+        CampaignCodeTrackingSummary summary,
+        IEnumerable<(string Code, Guid CampaignId)> grants)
+    {
+        var grantRows = grants
+            .Select(g => new CampaignCodeTrackingGrant(
+                Guid.NewGuid(), g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
+                "Recipient", g.Code, RedeemedAt: null, LatestEmailStatus: null))
+            .ToList();
+
+        _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampaignCodeTrackingData([summary], grantRows));
+    }
+
+    private static TicketOrder MakeDiscountOrder(
+        string vendorOrderId,
+        TicketPaymentStatus paymentStatus,
+        string discountCode,
+        decimal discountAmount) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            VendorOrderId = vendorOrderId,
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 100m,
+            Currency = "EUR",
+            PaymentStatus = paymentStatus,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 2, 10, 0),
+            DiscountCode = discountCode,
+            DiscountAmount = discountAmount,
+        };
 
     [HumansFact]
     public async Task GetAvailableTicketTypesAsync_ReturnsDistinctTypes()

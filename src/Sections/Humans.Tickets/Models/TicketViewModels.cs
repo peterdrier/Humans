@@ -172,7 +172,20 @@ internal sealed class TicketSalesAggregatesViewModel
     public List<WeeklySalesRow> WeeklySales { get; set; } = [];
     public List<QuarterlySalesRow> QuarterlySales { get; set; } = [];
     public List<TicketTypeSalesRow> ByTicketType { get; set; } = [];
+    public List<DiscountCampaignRow> ByDiscountCampaign { get; set; } = [];
     public string Currency { get; set; } = "EUR";
+}
+
+internal sealed class DiscountCampaignRow
+{
+    public string CampaignTitle { get; set; } = string.Empty;
+
+    /// <summary>Null for codes that match no grant — render blank.</summary>
+    public int? CodesGranted { get; set; }
+
+    public int CodesUsed { get; set; }
+    public decimal AverageDiscount { get; set; }
+    public decimal TotalDiscount { get; set; }
 }
 
 internal sealed class TicketTypeSalesRow

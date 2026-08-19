@@ -114,7 +114,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking |
 | `/Tickets/GateList` | GET | `TicketAdminBoardOrAdmin` | Placeholder page (gate lookup is handled via `/Scanner/Tickets`) |
 | `/Tickets/WhoHasntBought` | GET | `TicketAdminBoardOrAdmin` | Active Volunteers without a ticket |
-| `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + quarterly aggregate reports |
+| `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + quarterly aggregate reports, by ticket type, discount codes by campaign |
 | `/Tickets/Sync` | POST | `TicketAdminOrAdmin` | Trigger incremental sync |
 | `/Tickets/FullResync` | POST | `AdminOnly` | Trigger full re-sync |
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview attendee-contact-import plan |
