@@ -189,6 +189,25 @@ public class SectionSeamTests
         model.Single().Children!.Select(c => c.Label).Should().Equal("Shown");
     }
 
+    /// <summary>
+    /// Children carry the same Weight field as top-level items, so they order by it too. The
+    /// sort is stable, which is what lets equal weights keep declared order.
+    /// </summary>
+    [HumansFact]
+    public async Task Dropdown_Children_Order_By_Weight()
+    {
+        var model = await ComposeNavAsync(new MemberNavItem("Parent", Children:
+        [
+            new MemberNavItem("last", Weight: 10),
+            new MemberNavItem("first", Weight: -1),
+            new MemberNavItem("middle-a"),
+            new MemberNavItem("middle-b")
+        ]));
+
+        model.Single().Children!.Select(c => c.Label)
+            .Should().Equal("first", "middle-a", "middle-b", "last");
+    }
+
     [HumansFact]
     public async Task Dropdown_With_No_Visible_Children_Is_Dropped()
     {

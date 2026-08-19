@@ -34,10 +34,10 @@ public sealed class SectionNavViewComponent(
                 continue;
             }
 
-            // Children are gated the same way as their parent; a dropdown whose children are
-            // all hidden goes with them rather than rendering as an empty menu.
+            // Children are gated and weighted the same way as their parent; a dropdown whose
+            // children are all hidden goes with them rather than rendering as an empty menu.
             var children = new List<MemberNavItem>(item.Children.Count);
-            foreach (var child in item.Children)
+            foreach (var child in item.Children.OrderBy(c => c.Weight))
             {
                 if (await IsVisibleAsync(child))
                     children.Add(child);
