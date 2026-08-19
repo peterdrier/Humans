@@ -21,7 +21,7 @@ public sealed record AdminTile(
     string Key,
     string Label,
     string IconCssClass,
-    Func<IServiceProvider, ValueTask<AdminTileValue?>> Value,
+    Func<IServiceProvider, CancellationToken, ValueTask<AdminTileValue?>> Value,
     string? Controller = null,
     string? Action = null,
     string? RawHref = null,
@@ -29,7 +29,17 @@ public sealed record AdminTile(
     int Weight = 0);
 
 /// <summary>A tile's rendered value: the display text, an optional sub-line, and its severity.</summary>
-public sealed record AdminTileValue(string Display, string? Detail = null, TileSeverity Severity = TileSeverity.Normal);
+/// <remarks>
+/// <paramref name="Secondary"/> is the de-emphasised tail of the headline ("/ 240"), and
+/// <paramref name="Summary"/> the section's own phrasing of the same number for the one-line
+/// dashboard strapline ("240 with ticket"); a tile that says nothing there leaves it null.
+/// </remarks>
+public sealed record AdminTileValue(
+    string Display,
+    string? Detail = null,
+    TileSeverity Severity = TileSeverity.Normal,
+    string? Secondary = null,
+    string? Summary = null);
 
 /// <summary>The admin dashboard tiles a section contributes.</summary>
 public interface ISectionAdminTiles : ISectionContribution

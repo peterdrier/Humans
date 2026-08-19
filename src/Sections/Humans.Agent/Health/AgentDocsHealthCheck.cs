@@ -2,7 +2,7 @@ using Humans.Agent.Contracts;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace Humans.Web.Health;
+namespace Humans.Agent.Health;
 
 /// <summary>
 /// Verifies the agent's grounding docs are reachable on GitHub at runtime. The
@@ -21,7 +21,7 @@ namespace Humans.Web.Health;
 /// both canaries are Base docs (docs/sections/_Index.md, docs/features/global/gdpr-export.md),
 /// so this check depends on nothing Agent owns except whether the feature is on.
 /// </summary>
-public sealed class AgentDocsHealthCheck(
+internal sealed class AgentDocsHealthCheck(
     IAgentAvailability agent,
     IGuideContentSource source,
     ILogger<AgentDocsHealthCheck> logger) : IHealthCheck

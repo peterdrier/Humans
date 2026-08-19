@@ -93,7 +93,10 @@ public sealed class Section : ISection
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
 
-        // Backs PolicyNames.ShiftDepartmentManager (registered in this section's Policies).
+        // Policy-backing handlers. ShiftDepartmentManager's policy is this section's, in
+        // SectionPolicies; CampComplianceAccess's is still Shell's, which constructs that
+        // Requirement from Contracts/ to build the policy.
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
         // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's

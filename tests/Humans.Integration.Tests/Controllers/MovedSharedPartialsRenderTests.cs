@@ -1,7 +1,6 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
-using Humans.Shifts.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -78,8 +77,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
     public async Task The_widget_gallery_renders_four_of_them_against_real_data()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-        await SeedShiftProfileAsync(userId);
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var response = await Client.GetAsync("/WidgetGallery", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -87,8 +85,8 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
 
         // Content markers, not tag names: each string is produced only by the partial's own
         // markup against the gallery's sample data, so an empty-state page cannot pass.
-        html.Should().Contain("Fire Spinning",
-            because: "_VolunteerProfileBadges (Humans.Shifts) renders the seeded skill badge");
+        html.Should().Contain("Welding",
+            because: "_VolunteerProfileBadges (Humans.Shifts) renders WidgetGalleryController's hard-coded sample skill");
         html.Should().Contain("aria-valuenow=\"70\"",
             because: "_ShiftsSummaryCard (Humans.Teams) renders 17 of 24 slots as a progress bar");
         html.Should().Contain("<span class=\"badge bg-warning text-dark\">Coordinator</span>",
@@ -168,22 +166,5 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
             html.Should().NotContain(literal,
                 $"GET /WidgetGallery shipped {literal} as literal markup instead of binding it");
         }
-    }
-
-    /// <summary>
-    /// The gallery renders <c>_VolunteerProfileBadges</c> only when the signed-in human has a
-    /// volunteer event profile; without one the card falls back to a "no profile" sentence and
-    /// the assertion above would pass on markup the partial never produced. Seeded through the
-    /// section's own service rather than <c>ShiftsDbContext</c> for the reason
-    /// <c>ShiftsPageRenderTests</c> gives: the cached read path is warmed before the test body.
-    /// </summary>
-    private async Task SeedShiftProfileAsync(Guid userId)
-    {
-        using var scope = Factory.Services.CreateScope();
-        var shifts = scope.ServiceProvider.GetRequiredService<IShiftManagementService>();
-
-        var profile = await shifts.GetOrCreateShiftProfileAsync(userId);
-        profile.Skills = ["Fire Spinning"];
-        await shifts.UpdateShiftProfileAsync(profile);
     }
 }

@@ -2,7 +2,7 @@ using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-namespace Humans.Web.Health;
+namespace Humans.Tickets.Health;
 
 /// <summary>
 /// Health check that probes the ticket vendor connector (TicketTailor in Production).
@@ -13,7 +13,7 @@ namespace Humans.Web.Health;
 /// Returns <see cref="HealthCheckResult.Degraded"/> when unconfigured (missing API key or EventId)
 /// and <see cref="HealthCheckResult.Unhealthy"/> when the API call fails.
 /// </summary>
-public sealed class TicketVendorHealthCheck(
+internal sealed class TicketVendorHealthCheck(
     ITicketVendorService vendorService,
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketVendorHealthCheck> logger) : IHealthCheck

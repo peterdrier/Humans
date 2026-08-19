@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
-using Humans.Web.Authorization.Requirements;
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization;
@@ -18,10 +18,14 @@ public static class AuthorizationPolicyExtensions
 {
     public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
     {
-        // Scoped: depends on scoped IShiftManagementServiceRead. CampComplianceAccess also
-        // admits any team/sub-team coordinator (a Shifts-domain lookup), so it — and its
-        // handler — stay here as a composite spanning two sections' roles.
-        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
+        // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
+        // moved into the section at its G5 and is internal there, while the policies it backs
+        // stay here (design §15 step 6's asymmetry). CampComplianceAccessHandler and
+        // IsAnyTeamManagerOrCoordinatorHandler are registered the same way by Humans.Shifts'
+        // Section.Register, and HumanAdminOnlyHandler by Humans.Users'. CampComplianceAccessRequirement stays under Shifts' Contracts/
+        // (HUM0034) because the wiring below still constructs it; ShiftDepartmentManager moved
+        // to Shifts' own SectionPolicies, so its Requirement is internal to that section.
+
 
         services.AddAuthorization(options =>
         {

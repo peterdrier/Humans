@@ -4,13 +4,13 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Humans.Base.Configuration;
 
-namespace Humans.Web.Health;
+namespace Humans.Email.Health;
 
 /// <summary>
 /// Health check that validates SMTP connectivity and authentication.
 /// Connects and authenticates without sending any email.
 /// </summary>
-public class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<SmtpHealthCheck> logger) : IHealthCheck
+internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<SmtpHealthCheck> logger) : IHealthCheck
 {
     private readonly EmailSettings _settings = settings.Value;
 

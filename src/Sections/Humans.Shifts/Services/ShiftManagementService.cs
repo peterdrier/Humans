@@ -36,6 +36,7 @@ internal sealed class ShiftManagementService(
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
+    private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
     private static readonly Dictionary<ShiftPriority, double> PriorityWeights = new()
     {
@@ -1325,6 +1326,7 @@ internal sealed class ShiftManagementService(
             foreach (var window in Enum.GetValues<TrendWindow>())
                 cache.Remove(TrendsCacheKey(eventSettingsId, window, period));
         }
+        cache.Remove(OverallCoverageCacheKey);
     }
 
     public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
@@ -1924,7 +1926,20 @@ internal sealed class ShiftManagementService(
         return new CoverageHeatmap(days, rows);
     }
 
+    // Two admin-dashboard components (the shift-coverage tile and the staffing card) call this
+    // on every /Admin render — cached like the other dashboard reads above so one render costs
+    // one set of reads, not two.
     public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
+    {
+        var cached = await cache.GetOrCreateAsync(OverallCoverageCacheKey, async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await ComputeOverallCoverageAsync(ct);
+        });
+        return cached;
+    }
+
+    private async Task<(int Filled, int Total, double Ratio)> ComputeOverallCoverageAsync(CancellationToken ct)
     {
         var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return (0, 0, 0d);

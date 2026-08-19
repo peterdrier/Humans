@@ -40,8 +40,11 @@
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
       Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
       already adds. No EF Core either — the section owns no tables.
+      Octokit is here for GitHubHealthCheck (nobodies-collective/Humans#1075), which moved in
+      with the "github" monitoring key — the same client Base's GitHubGuideContentSource uses.
     -->
     <PackageReference Include="Markdig" />
+    <PackageReference Include="Octokit" />
   </ItemGroup>
 
   <ItemGroup>

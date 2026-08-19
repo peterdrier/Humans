@@ -21,9 +21,11 @@ namespace Humans.Web.Tests.Architecture;
 /// what stops the next section re-cutting that cow path.
 /// </para>
 /// <para>
-/// Shell's <c>TicketVendorHealthCheck</c> is the deliberate exception: a health check
-/// probes the connector on purpose, and it stays in Shell because <c>Program.cs</c> names
-/// each <c>IHealthCheck</c> by concrete type (design §15.6b).
+/// <c>TicketVendorHealthCheck</c> is the deliberate exception: a health check probes the
+/// connector on purpose. It moved from Shell into Tickets at
+/// nobodies-collective/Humans#1075 — the check registers itself through
+/// <c>SectionHealthChecks : ISectionHealthChecks</c>, so <c>Program.cs</c> no longer names
+/// it and the owning section holds its own probe.
 /// </para>
 /// </remarks>
 public class TicketVendorPortArchitectureTests
@@ -34,7 +36,7 @@ public class TicketVendorPortArchitectureTests
         "Humans.Tickets.Services.TicketSyncService",
         "Humans.Tickets.Services.TicketTransferService",
         "Humans.Tickets.Models.TicketDashboardPageBuilder",
-        "Humans.Web.Health.TicketVendorHealthCheck",
+        "Humans.Tickets.Health.TicketVendorHealthCheck",
     ];
 
     [HumansFact]

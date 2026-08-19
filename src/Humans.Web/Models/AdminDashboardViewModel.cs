@@ -1,42 +1,11 @@
-using NodaTime;
-using Humans.AuditLog.Contracts;
-
 using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Models;
 
 public sealed record AdminDashboardViewModel(
-    string GreetingFirstName,
-    int TotalUsers,
-    int ActiveProfileUsers,
-    int TicketHolders,
-    int ShiftCoveragePercent,
-    int? ShiftFilledOf,
-    int? ShiftTotalOf,
-    int OpenFeedback,
-    int OnlineNow,
-    int OnlineLastHour,
-    int OnlineLast24h,
-    IReadOnlyList<DepartmentCoverage> StaffingByDepartment,
-    IReadOnlyList<DashboardActivityRow> RecentActivity,
     DashboardApplicationStats AppStats,
     IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
-    UserSetMembership SetMembership,
-    int TotalTeams,
-    int TotalAuditEvents,
-    int TotalEmails,
-    int? StoreOrders,
-    decimal? StoreTotalEur,
-    int ExpenseReports,
-    decimal ExpenseTotalEur);
-
-public sealed record DepartmentCoverage(string Name, int Filled, int Total)
-{
-    public double Ratio => Total > 0 ? (double)Filled / Total : 0;
-    public string TrackClass => Ratio >= 0.7 ? "" : Ratio >= 0.5 ? "low" : "crit";
-}
-
-public sealed record DashboardActivityRow(AuditAction Action, string Description, Instant OccurredAt);
+    UserSetMembership SetMembership);
 
 public sealed record DashboardApplicationStats(
     int Total,

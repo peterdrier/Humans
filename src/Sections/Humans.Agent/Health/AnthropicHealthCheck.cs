@@ -1,13 +1,13 @@
 using Humans.Agent.Contracts;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace Humans.Web.Health;
+namespace Humans.Agent.Health;
 
 /// <summary>
 /// Health check that probes DNS reachability for the Anthropic API.
 /// Skipped (returns Healthy) when the agent feature is disabled.
 /// </summary>
-public sealed class AnthropicHealthCheck(IAgentAvailability agent) : IHealthCheck
+internal sealed class AnthropicHealthCheck(IAgentAvailability agent) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,

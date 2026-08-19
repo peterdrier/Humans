@@ -76,7 +76,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - **Teams**: `GuideRoleResolver` calls `ITeamServiceRead.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
-- **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and three of its four consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader`, Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
+- **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 

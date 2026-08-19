@@ -27,8 +27,8 @@ vocabulary — `TicketVendorGateway` in `Humans.Tickets` maps that to the
 port's `DiscountCodeSpec`/`DiscountType` at the edge), and
 `GateVendorCheckInJob` mirrors a gate admission through
 `ITicketVendorMirror` instead of the port. `TicketVendorPortArchitectureTests`
-pins that only `Humans.Tickets` and Shell's `TicketVendorHealthCheck` may
-inject `ITicketVendorService`. `TicketStubViewComponent` lives in the
+pins that only `Humans.Tickets` may inject `ITicketVendorService`,
+its own `TicketVendorHealthCheck` included. `TicketStubViewComponent` lives in the
 section's own `Contracts/` folder — its model names Tickets DTOs, so it
 can't live in `Humans.UI`.
 

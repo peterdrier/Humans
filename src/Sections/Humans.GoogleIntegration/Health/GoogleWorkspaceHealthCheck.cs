@@ -5,13 +5,13 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Humans.Base.Configuration;
 
-namespace Humans.Web.Health;
+namespace Humans.GoogleIntegration.Health;
 
 /// <summary>
 /// Health check that validates Google service account credentials and API access.
 /// Verifies the service account can authenticate and access the Cloud Identity Groups API.
 /// </summary>
-public class GoogleWorkspaceHealthCheck(
+internal sealed class GoogleWorkspaceHealthCheck(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleWorkspaceHealthCheck> logger) : IHealthCheck
 {

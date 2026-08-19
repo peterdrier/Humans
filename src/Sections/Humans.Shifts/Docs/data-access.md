@@ -44,6 +44,7 @@ Repository: `IShiftManagementRepository`.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `shift-auth:{userId}` | 60 sec | yes | yes | yes (also via `IShiftAuthorizationInvalidator`) |
+| `dashboard-overall-coverage` | 5 min | yes | no | yes (via `EvictDashboardCaches`, on EventSettings change) |
 
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking, which

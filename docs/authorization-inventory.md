@@ -291,6 +291,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 ## 5. Canonical Policy Name Table
 
+**Registration is moving out of Shell (nobodies-collective/Humans#1073, lane #1076).** Target state: each section contributes its own policies via an `internal sealed SectionPolicies : ISectionPolicies` class (never a method on `Section.cs`), discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` through `services.Configure<AuthorizationOptions>` (additive), so a single-section policy is no longer named there directly. Policy *names* stay shared vocabulary in `PolicyNames` — nav items and cross-section checks cite other sections' policies by name — only the registration call moves. Genuinely cross-section policies (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `AppAccess`, `RoleAssignmentManage`, and composites spanning several sections' roles) stay registered centrally in Shell. The table below reflects **today's** registration, still fully centralized in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` — it does not yet reflect the per-policy split; update it once lane #1076 lands.
+
 These are the named ASP.NET policies registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`. Each maps from the current authorization dialect(s) to a single canonical name. **Phase 1 complete:** every policy in this table is now registered.
 
 | Canonical Policy Name | Roles | Current Sources |

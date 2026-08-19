@@ -3,7 +3,7 @@ using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Shifts.Authorization;
 
 /// <summary>
 /// Handler for <see cref="CampComplianceAccessRequirement"/>. Short-circuits for
@@ -11,7 +11,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// cached <see cref="IShiftManagementService.GetCoordinatorTeamIdsAsync"/> lookup
 /// used by <see cref="IsAnyTeamManagerOrCoordinatorHandler"/>.
 /// </summary>
-public class CampComplianceAccessHandler(IShiftManagementServiceRead shiftManagement)
+internal sealed class CampComplianceAccessHandler(IShiftManagementServiceRead shiftManagement)
     : AuthorizationHandler<CampComplianceAccessRequirement>
 {
     protected override async Task HandleRequirementAsync(

@@ -555,8 +555,8 @@ Git Bash.)
    - **A configuration type named after the section can still be Base's, and
      `Section.Register` cannot see `IHostEnvironment`.** `EmailSettings` binds `Email:*`, lives
      in `Humans.Infrastructure/Configuration`, and is read by Auth's `MagicLinkUrlBuilder`,
-     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Shell's
-     `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
+     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's
+     own `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
      rule: the section that owns the file is not always the section that owns the line). The
      startup guard beside it — "Production must have SMTP configured" — stayed for a second
      reason: `ISection.Register(IServiceCollection, IConfiguration)` has no `IHostEnvironment`,
@@ -945,7 +945,7 @@ Git Bash.)
        adapter picks up the owner's transitive references, which for TicketTailor meant losing
        its "no `Humans.Infrastructure` reference" property. Nothing in it names them.
        **The load-bearing half is the invariant, not the folder:** an architecture test
-       asserts that only the owning section and Shell's health check inject the port, because
+       asserts that only the owning section injects the port, its own health check included, because
        what actually breaks a vendor swap is a second section reaching past the door
        (Campaigns was doing exactly that for discount codes, and this lane closed it). Where
        a consumer needs a port operation, the section publishes it on its own leaf in its own
@@ -954,10 +954,10 @@ Git Bash.)
      **The same test can keep a connector in Base when the connector carries the section's own
      name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
-     are not Guide's: the signatures name only `string`, and three of the four consumers are
+     are not Guide's: the signatures name only `string`, and the consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
      `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
-     Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
      string fetch, and split `GuideSettings` from the type binding it. Left in
@@ -1139,14 +1139,12 @@ Git Bash.)
      former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
      fetched — otherwise the component re-queries and the move quietly doubles a page's reads
      (proven: Onboarding).
-   - **A SignalR hub goes under the owning section's `Contracts/`.** `Program.cs`'s
-     `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so the hub must be `public`, and the
-     section's own `IHubContext<TheHub>` injection needs it visible too. HUM0034's `Contracts/`
-     carve-out is exactly that split — a deliberate surface Shell and the section both depend on —
-     so `CityPlanningHub` lives at `Humans.CityPlanning/Contracts/CityPlanningHub.cs` (G5 lane
-     4b-ii). It sat in `Humans.UI/Hubs` until then, on the reading that a section type could not be
-     public at all; that was wrong, and Shell is not an option in the other direction because the
-     section names the type and a section may not reference Shell (proven: CityPlanning).
+   - **A SignalR hub is `internal`, and the section maps it itself.** The section's
+     `SectionEndpoints : ISectionEndpoints` calls `endpoints.MapHub<TheHub>("/hubs/…")` from
+     inside its own assembly, so Shell never names the concrete type and the hub needs no public
+     surface — `CityPlanningHub` lives at `Humans.CityPlanning/Services/CityPlanningHub.cs`
+     (nobodies-collective/Humans#1075). The section's own `IHubContext<TheHub>` injection is
+     inside that assembly too, so it sees the internal type (proven: CityPlanning).
    - **The third case: the component belongs to the section, and moving it in needs a feature
      provider Shell did not have.** Gate's rule moves a section-neutral component *down* to
      `Humans.UI`; City Planning's leaves a registry-reading one in Shell and invokes it by
@@ -1287,12 +1285,11 @@ Git Bash.)
    whether the job is the *only* out-of-section consumer before you cite it: if it is, the
    section wants a `Contracts/` **folder**, not a leaf project.
 
-   **Health checks are the same shape and are unmeasured** — `Program.cs`'s `AddHealthChecks()`
-   chain names each `IHealthCheck` by concrete type, which is the same "Shell names it, so it is
-   Shell-facing surface" argument. Today they stay in Shell and consume the section through
-   `Contracts/` (Agent kept `AgentDocsHealthCheck` and `AnthropicHealthCheck` in Shell, which is
-   what put a one-property `IAgentAvailability` on its leaf). Re-measure before repeating that as
-   a constraint.
+   **Health checks moved the same way.** A section registers its own through
+   `SectionHealthChecks : ISectionHealthChecks`, so Shell names no `IHealthCheck` by concrete type
+   and a check stays `internal` to its section — `AgentDocsHealthCheck` and `AnthropicHealthCheck`
+   live in `Humans.Agent/Health/` (nobodies-collective/Humans#1075). The one-property
+   `IAgentAvailability` on Agent's leaf is what the previous Shell-owned arrangement cost.
    - **A job that orchestrates across the section's repository + service + store is a layer skip,
      and the move is when to fix it.** Carving `IAgentConversationRetention` — one method,
      returning the deleted count — moved the retention rule inside the section and took three
@@ -1386,7 +1383,7 @@ Git Bash.)
    **A docs path is an API until you have proved otherwise** (spec §7a).
    - **…and the probe you have to find is not always in `Humans.Agent`.** The
      invariants doc may move because `AgentSectionDocReader` falls back to
-     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Web/Health/AgentDocsHealthCheck`
+     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Agent/Health/AgentDocsHealthCheck`
      does not: it fetches `docs/sections/{ProbeSection}.md` through `IGuideContentSource`
      directly — deliberately, so a cached reader cannot keep reporting Healthy through an
      outage — with the section key as a literal, and the section it happened to name was
