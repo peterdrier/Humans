@@ -1168,4 +1168,7 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Els barris que fan que Elsewhere sembli casa.</value>
   </data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
 </root>

@@ -1,4 +1,3 @@
-using Humans.Agent.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
@@ -75,12 +74,6 @@ public static class InfrastructureServiceCollectionExtensions
         // GuideSettings it binds all stay in Base.
         services.Configure<GuideSettings>(configuration.GetSection(GuideSettings.SectionName));
         services.AddSingleton<IGuideContentSource, GitHubGuideContentSource>();
-
-        // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
-        // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload
-        // corpus from the shared help registries (Humans.UI's AccessMatrixDefinitions and
-        // SectionHelpContent); the section consumes it through the contracts leaf.
-        services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
         // AccountDeletionService, ExternalLoginService and UserParticipationBackfillService
         // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate

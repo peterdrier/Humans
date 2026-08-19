@@ -159,6 +159,6 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/client-metrics.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
-    @await Component.InvokeAsync("HelpWidget")
+    <vc:chrome-slot name="body-end" />
 </body>
 </html>

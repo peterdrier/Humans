@@ -17,6 +17,9 @@ public static class ChromeSlots
 
     /// <summary>Dropdown items in the signed-in user menu (_LoginPartial).</summary>
     public const string UserMenu = "user-menu";
+
+    /// <summary>Just before the closing <c>&lt;/body&gt;</c> tag, for floating page-chrome widgets.</summary>
+    public const string BodyEnd = "body-end";
 }
 
 /// <summary>

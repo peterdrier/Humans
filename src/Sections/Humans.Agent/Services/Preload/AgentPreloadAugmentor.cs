@@ -2,9 +2,9 @@ using System.Text;
 using Humans.Agent.Contracts;
 using Humans.Base.Models;
 
-namespace Humans.Web.Services.Agent;
+namespace Humans.Agent.Services.Preload;
 
-public sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
+internal sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
 {
     public string BuildAccessMatrixMarkdown()
     {

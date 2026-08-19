@@ -2,7 +2,7 @@ using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
 /// Renders a red banner on /Shifts and /Shifts/Mine when the user has a
@@ -10,7 +10,7 @@ namespace Humans.Web.ViewComponents;
 /// gate lives inside the component so callers can invoke it unconditionally.
 /// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6)
 /// </summary>
-public sealed class DietaryMissingBannerViewComponent : ViewComponent
+internal sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IUserServiceRead _userRead;

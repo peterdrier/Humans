@@ -1,13 +1,13 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
-using Humans.Web.ViewComponents;
+using Humans.Shifts.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.ViewComponents;
+namespace Humans.Shifts.Tests.ViewComponents;
 
 /// <summary>
 /// Covers the visibility gate inside <see cref="DietaryMissingBannerViewComponent"/>.

@@ -1484,35 +1484,8 @@
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
   </data>
-  <data name="Agent_InputPlaceholder" xml:space="preserve">
-    <value>Chiedi come funziona il sistema…</value>
-  </data>
-  <data name="Agent_PanelTitle" xml:space="preserve">
-    <value>Assistente</value>
-  </data>
-  <data name="Agent_TermsLink" xml:space="preserve">
-    <value>Condizioni IA</value>
-  </data>
-  <data name="Agent_Send" xml:space="preserve">
-    <value>Invia</value>
-  </data>
-  <data name="Agent_ViewHistory" xml:space="preserve">
-    <value>Cronologia</value>
-  </data>
   <data name="Agent_WidgetButton" xml:space="preserve">
     <value>Apri l'assistente</value>
-  </data>
-  <data name="Help_WidgetButton" xml:space="preserve">
-    <value>Aiuto</value>
-  </data>
-  <data name="Help_Menu_TalkWithAgent" xml:space="preserve">
-    <value>Parla con l'Assistente</value>
-  </data>
-  <data name="Help_Menu_CreateIssue" xml:space="preserve">
-    <value>Crea segnalazione</value>
-  </data>
-  <data name="Help_Agent_IssueProposed" xml:space="preserve">
-    <value>Non posso rispondere a questo da solo. Ho preparato una segnalazione per il team — controllala e inviala, per favore.</value>
   </data>
   <data name="Nav_Agent" xml:space="preserve">
     <value>Assistente</value>
@@ -2248,9 +2221,6 @@
   <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Thanks — we've got it</value></data>
   <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Fill out</value></data>
   <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Tell us about your food needs so we're ready when you sign up.</value></data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
-  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
   <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
   <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>

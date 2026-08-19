@@ -77,6 +77,7 @@ public sealed class Section : ISection
             sp.GetRequiredService<GitHubCommunityKbContentSource>(),
             sp.GetRequiredService<IMemoryCache>(),
             sp.GetRequiredService<ILogger<CommunityFaqReader>>()));
+        services.AddSingleton<IAgentPreloadAugmentor, AgentPreloadAugmentor>();
         services.AddSingleton<IAgentPreloadCorpusBuilder, AgentPreloadCorpusBuilder>();
         services.AddSingleton<IAgentPromptAssembler, AgentPromptAssembler>();
         services.AddSingleton<IAgentAbuseDetector, AgentAbuseDetector>();

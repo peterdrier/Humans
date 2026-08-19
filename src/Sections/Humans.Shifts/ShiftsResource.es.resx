@@ -1166,4 +1166,7 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
   </data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Necesitamos tus datos alimentarios</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás apuntada a un turno largo. La cantina no puede planificar tus comidas hasta que nos digas tus preferencias.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
 </root>

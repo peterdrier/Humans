@@ -2,9 +2,9 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Contracts;
 using Humans.Base.Models;
-using Humans.Web.Services.Agent;
+using Humans.Agent.Services.Preload;
 
-namespace Humans.Web.Tests.Services;
+namespace Humans.Agent.Tests;
 
 /// <summary>
 /// The FAQ block is preloaded every turn and exists specifically to fix the

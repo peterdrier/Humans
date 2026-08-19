@@ -2,8 +2,8 @@
   src/Sections/Humans.Agent/Services/AgentService.cs
   src/Sections/Humans.Agent/Services/AgentToolNames.cs
   src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs
-  src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs
-  src/Humans.Web/Views/Shared/Components/HelpWidget/Default.cshtml
+  src/Sections/Humans.Agent/ViewComponents/HelpWidgetViewComponent.cs
+  src/Sections/Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml
   src/Sections/Humans.Agent/Controllers/AgentController.cs
   src/Sections/Humans.Agent/Views/Agent/**
 -->

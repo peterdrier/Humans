@@ -1,7 +1,7 @@
 using Humans.Agent.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Agent.ViewComponents;
 
 /// <summary>
 /// Single floating "Help" widget that combines the previous
@@ -10,9 +10,11 @@ namespace Humans.Web.ViewComponents;
 /// (secondary). Authenticated users see the bubble; the agent option is
 /// shown whenever the agent feature is enabled. The Assistant panel
 /// links to the AI Terms (<c>/Legal/agent-chat</c>) below the composer
-/// instead of gating use behind explicit consent.
+/// instead of gating use behind explicit consent. Contributed into
+/// Shell's <c>body-end</c> chrome slot (nobodies-collective/Humans#1091) —
+/// the chrome slot invokes unconditionally, so the auth gate lives here.
 /// </summary>
-public class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
+internal sealed class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
 {
     public IViewComponentResult Invoke()
     {
@@ -26,4 +28,4 @@ public class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
     }
 }
 
-public sealed record HelpWidgetModel(string PagePath, bool AgentAvailable);
+internal sealed record HelpWidgetModel(string PagePath, bool AgentAvailable);

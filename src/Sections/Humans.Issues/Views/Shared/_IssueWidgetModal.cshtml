@@ -3,8 +3,8 @@
    than beside the widget in Shell: every string in it is an Issue_* key and the category
    select binds IssueCategory + IssuePresentation, so leaving it in Humans.Web would have
    split the Issue_* resource set across two sets and forced the presentation helper public
-   (design §15 step 3b). Shell's HelpWidget renders it by name across application parts;
-   the modal's JS stays with the widget because it addresses DOM ids, not Razor.
+   (design §15 step 3b). The Agent section's HelpWidget renders it by name across application
+   parts; the modal's JS stays with the widget because it addresses DOM ids, not Razor.
    Model is the page path pre-filled into the hidden PageUrl field. *@
 @{
     var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
