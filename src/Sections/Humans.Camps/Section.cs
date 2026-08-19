@@ -78,5 +78,9 @@ public sealed class Section : ISection
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+
+        // Backs CampComplianceAccess, registered by this section's SectionPolicies
+        // (nobodies-collective/Humans#1091).
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
     }
 }

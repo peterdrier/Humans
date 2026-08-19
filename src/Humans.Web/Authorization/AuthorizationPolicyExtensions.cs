@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
-using Humans.Shifts.Contracts;
 using Humans.Web.Hosting;
 using Microsoft.AspNetCore.Authorization;
 
@@ -25,10 +24,10 @@ public static class AuthorizationPolicyExtensions
         // moved into the section at its G5 and is internal there, while the policies it backs
         // stay here (design §15 step 6's asymmetry). CampComplianceAccessHandler and
         // IsAnyTeamManagerOrCoordinatorHandler are registered the same way by Humans.Shifts'
-        // Section.Register, and HumanAdminOnlyHandler by Humans.Users'. CampComplianceAccessRequirement stays under Shifts' Contracts/
-        // (HUM0034) because the wiring below still constructs it; ShiftDepartmentManager moved
-        // to Shifts' own SectionPolicies, so its Requirement is internal to that section.
-
+        // Section.Register, and HumanAdminOnlyHandler by Humans.Users'.
+        //
+        // CampComplianceAccess registers in Camps' SectionPolicies — the policy's consumer,
+        // not its handler's home (nobodies-collective/Humans#1091; see the rationale there).
 
         services.AddAuthorization(options =>
         {
@@ -58,13 +57,6 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.BoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.Board, RoleNames.Admin));
-
-            // CampAdmin/Admin OR any team coordinator — the OR (including the
-            // team-coordinator lookup) lives in CampComplianceAccessHandler so the
-            // policy is a single requirement (policy requirements AND together).
-            // Composite spanning Camps (CampAdmin) and Shifts (team coordinator) roles.
-            options.AddPolicy(PolicyNames.CampComplianceAccess, policy =>
-                policy.AddRequirements(new CampComplianceAccessRequirement()));
 
             // Ticket-admin roles OR the shared gate-terminal account (by well-known
             // id — it holds no roles). The OR lives in one assertion so the policy

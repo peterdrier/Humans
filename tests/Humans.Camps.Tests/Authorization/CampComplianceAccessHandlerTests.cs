@@ -1,20 +1,19 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Shifts.Authorization;
+using Humans.Camps.Authorization;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Shifts.Tests.Authorization;
+namespace Humans.Camps.Tests.Authorization;
 
 /// <summary>
-/// Unit tests for <see cref="CampComplianceAccessHandler"/> — moved into this section
-/// with the handler (design §15 step 6's asymmetry); the policy it backs
-/// (<c>PolicyNames.CampComplianceAccess</c>) is still registered by Shell's
-/// AuthorizationPolicyExtensions. Coverage previously lived in
-/// Humans.Web.Tests/Authorization/AuthorizationPolicyTests.cs.
+/// Unit tests for <see cref="CampComplianceAccessHandler"/> — moved here with the
+/// handler when policy, requirement and handler all landed in Camps, the policy's
+/// consumer (nobodies-collective/Humans#1091). Coverage previously lived in
+/// Humans.Web.Tests/Authorization/AuthorizationPolicyTests.cs, then Humans.Shifts.Tests.
 /// </summary>
 public sealed class CampComplianceAccessHandlerTests
 {

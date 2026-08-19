@@ -23,7 +23,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
         services.AddEmailInfrastructure(configuration, environment);
-        services.AddGoogleWorkspaceInfrastructure(configuration, environment);
+        services.AddGoogleWorkspaceInfrastructure(configuration);
         services.AddTicketVendorPort(configuration);
         // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
         // (nobodies-collective/Humans#866, G5 lane 4b-2a).

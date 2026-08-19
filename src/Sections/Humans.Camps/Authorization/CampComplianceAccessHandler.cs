@@ -1,15 +1,17 @@
 using System.Security.Claims;
-using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Shifts.Authorization;
+namespace Humans.Camps.Authorization;
 
 /// <summary>
 /// Handler for <see cref="CampComplianceAccessRequirement"/>. Short-circuits for
-/// CampAdmin/Admin, otherwise admits any team/sub-team coordinator via the same
-/// cached <see cref="IShiftManagementService.GetCoordinatorTeamIdsAsync"/> lookup
-/// used by <see cref="IsAnyTeamManagerOrCoordinatorHandler"/>.
+/// CampAdmin/Admin, otherwise admits any team/sub-team coordinator via the cached
+/// <see cref="IShiftManagementServiceRead.GetCoordinatorTeamIdsAsync"/> lookup.
+/// Moved from Humans.Shifts at nobodies-collective/Humans#1091: the policy, its
+/// consumers and its registration are all this section's; the coordinator lookup
+/// is a cross-section read through Shifts' contracts leaf.
 /// </summary>
 internal sealed class CampComplianceAccessHandler(IShiftManagementServiceRead shiftManagement)
     : AuthorizationHandler<CampComplianceAccessRequirement>
