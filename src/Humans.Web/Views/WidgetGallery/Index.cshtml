@@ -1086,6 +1086,61 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:chrome-slot&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ChromeSlotViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        A named hole in the layout that sections fill. Renders whatever the active sections
+                        contributed through <code>ISectionChrome</code> / <code>ISectionMemberDashboard</code>,
+                        ordered by weight — so a section that is switched off takes its chrome with it. A slot
+                        nothing has contributed to renders nothing at all, which is every slot until the section
+                        lanes land.
+                    </div>
+                    @ParamsBlock(
+                        ("name", "<code>string</code> — slot name from <code>ChromeSlots</code>: <code>header-right</code> · <code>above-content</code> · <code>member-dashboard</code> · <code>guest-page</code>")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">name="header-right"<span class="wg-variant-sub">member top nav, beside language + login</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="header-right" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+
+                        <div class="wg-variant-label">name="above-content"<span class="wg-variant-sub">between header and page, member + admin layouts</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="above-content" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+
+                        <div class="wg-variant-label">name="member-dashboard"<span class="wg-variant-sub">contributed area of the member dashboard</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="member-dashboard" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+
+                        <div class="wg-variant-label">name="guest-page"<span class="wg-variant-sub">contributed area of the profileless-account page</span></div>
+                        <div class="wg-variant-render"><vc:chrome-slot name="guest-page" /><span class="text-muted small">(empty — no section contributes here yet.)</span></div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:section-nav&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/SectionNavViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member top-nav links sections contributed through <code>ISectionNav</code>, ordered by
+                        weight, with an item carrying children rendering as a dropdown. Emits bare <code>&lt;li&gt;</code>
+                        elements for the layout's <code>&lt;ul class="navbar-nav"&gt;</code>, so the example below
+                        supplies its own list. Renders nothing while no section contributes.
+                    </div>
+                    @ParamsBlock()
+                    @AuthLine("Every item is filtered by its optional <code>Policy</code> and its <code>Visible</code> predicate. Dropdown children are gated the same way, and a dropdown left with no visible children is dropped rather than rendered empty.")
+                    <div class="wg-card-example">
+                        <ul class="nav"><vc:section-nav /></ul>
+                        <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
+                    </div>
+                </div>
             </section>
 
             @* ============== SKIPPED ============== *@

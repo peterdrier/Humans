@@ -189,6 +189,41 @@ public class SectionSeamTests
         model.Single().Children!.Select(c => c.Label).Should().Equal("Shown");
     }
 
+    /// <summary>
+    /// Top-level items sort by weight alone. Equal weights keep declared order rather than
+    /// alphabetizing on the label — the same stable-order contract as
+    /// <see cref="AdminNavComposition"/>, which is why neither carries a tie-break.
+    /// </summary>
+    [HumansFact]
+    public async Task Top_Level_Items_Order_By_Weight_And_Keep_Declared_Order()
+    {
+        var model = await ComposeNavAsync(
+            new MemberNavItem("zulu"),
+            new MemberNavItem("alpha"),
+            new MemberNavItem("first", Weight: -1));
+
+        model.Select(i => i.Label).Should().Equal("first", "zulu", "alpha");
+    }
+
+    /// <summary>
+    /// Children carry the same Weight field as top-level items, so they order by it too. The
+    /// sort is stable, which is what lets equal weights keep declared order.
+    /// </summary>
+    [HumansFact]
+    public async Task Dropdown_Children_Order_By_Weight()
+    {
+        var model = await ComposeNavAsync(new MemberNavItem("Parent", Children:
+        [
+            new MemberNavItem("last", Weight: 10),
+            new MemberNavItem("first", Weight: -1),
+            new MemberNavItem("middle-a"),
+            new MemberNavItem("middle-b")
+        ]));
+
+        model.Single().Children!.Select(c => c.Label)
+            .Should().Equal("first", "middle-a", "middle-b", "last");
+    }
+
     [HumansFact]
     public async Task Dropdown_With_No_Visible_Children_Is_Dropped()
     {

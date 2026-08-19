@@ -1,7 +1,7 @@
 using Humans.Users.Models;
 using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,30 +15,24 @@ namespace Humans.Web.Controllers;
 
 /// <summary>
 /// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
-/// shared partials — rendered against real data so designers and developers can see
-/// what exists, what it's called, and how it looks filled in. Companion to
+/// shared partials — rendered against hard-coded sample data so designers and developers
+/// can see what exists, what it's called, and how it looks filled in. Companion to
 /// <c>/ColorPalette</c>. Admin dev tool — linked from the admin sidebar "Design" group.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
-public sealed class WidgetGalleryController(
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
-    IShiftManagementServiceRead shiftMgmt,
-    IShiftVolunteerProfiles shiftProfiles,
-    IBurnSettingsService burnSettings,
-    ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)
+public sealed class WidgetGalleryController(IUserServiceRead userService) : HumansControllerBase(userService)
 {
+    private static readonly Guid SampleTeamId = Guid.NewGuid();
+    private const string SampleTeamSlug = "fire-conclave";
+    private const string SampleTeamName = "Fire Conclave";
+
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var (error, currentUser) = await RequireCurrentUserAsync();
         if (error is not null)
             return error;
-
-        var sampleTeam = await ResolveSampleTeamAsync();
-        var sampleVolunteerProfile = await TryGetVolunteerProfileAsync(currentUser.Id);
-        var shifts = await ResolveShiftsSamplesAsync();
 
         var displayName = string.IsNullOrEmpty(currentUser.BurnerName)
             ? "Current user"
@@ -48,13 +42,13 @@ public sealed class WidgetGalleryController(
         {
             CurrentUserId = currentUser.Id,
             CurrentUserDisplayName = displayName,
-            SampleTeamId = sampleTeam?.Id,
-            SampleTeamSlug = sampleTeam?.Slug,
-            SampleTeamName = sampleTeam?.Name,
-            SampleVolunteerProfile = sampleVolunteerProfile,
-            SampleEventSettings = shifts.EventSettings,
-            SampleStaffingData = shifts.StaffingData,
-            SampleStaffingHours = shifts.StaffingHours,
+            SampleTeamId = SampleTeamId,
+            SampleTeamSlug = SampleTeamSlug,
+            SampleTeamName = SampleTeamName,
+            SampleVolunteerProfile = BuildSampleVolunteerProfile(currentUser.Id),
+            SampleEventSettings = BuildSampleEventSettings(),
+            SampleStaffingData = BuildSampleStaffingData(),
+            SampleStaffingHours = BuildSampleStaffingHours(),
             SampleShiftsSummary = new ShiftsSummaryCardViewModel
             {
                 TotalSlots = 24,
@@ -75,7 +69,7 @@ public sealed class WidgetGalleryController(
                 MembershipTier = "Volunteer",
                 IsSuspended = false,
                 PreferredLanguage = currentUser.PreferredLanguage,
-                Teams = sampleTeam is null ? new() : new() { sampleTeam.Name },
+                Teams = new() { SampleTeamName },
             },
             SampleHumanSearchResults = new List<HumanSearchResultViewModel>
             {
@@ -118,28 +112,11 @@ public sealed class WidgetGalleryController(
         return View(model);
     }
 
-    private async Task<TeamInfo?> ResolveSampleTeamAsync()
-    {
-        var allTeams = (await teamService.GetTeamsAsync()).Values;
-        return allTeams
-            .Where(t => !t.IsSystemTeam && !t.IsHidden)
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
-            .FirstOrDefault()
-            ?? allTeams.FirstOrDefault();
-    }
-
-    private async Task<ShiftVolunteerProfileInfo?> TryGetVolunteerProfileAsync(Guid userId)
-    {
-        try
-        {
-            return await shiftProfiles.GetShiftProfileAsync(userId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Failed to fetch shift profile for user {UserId}: {Reason}", userId, ex.Message);
-            return null;
-        }
-    }
+    private static ShiftVolunteerProfileInfo BuildSampleVolunteerProfile(Guid userId) => new(
+        userId,
+        Skills: ["Welding", "First Aid"],
+        Quirks: ["Early riser", "Coffee snob"],
+        Languages: ["English", "Spanish"]);
 
     /// <summary>
     /// The staffing-chart samples and the active event's name. The rota-shaped samples
@@ -147,31 +124,37 @@ public sealed class WidgetGalleryController(
     /// (nobodies-collective/Humans#866); what is left binds only leaf records, which is
     /// why the two staffing partials stayed in Shell.
     /// </summary>
-    private async Task<ShiftsSamples> ResolveShiftsSamplesAsync()
-    {
-        try
-        {
-            var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
-            if (es is null)
-                return ShiftsSamples.Empty;
+    private static BurnSettingsInfo BuildSampleEventSettings() => new(
+        Id: Guid.NewGuid(),
+        EventName: "Nowhere 2026",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(2026, 7, 1),
+        BuildStartOffset: -7,
+        EventEndOffset: 5,
+        StrikeEndOffset: 8,
+        FirstCrewStartOffset: -10,
+        SetupWeekStartOffset: -7,
+        PreEventWeekStartOffset: -3,
+        FinishingWeekendStartOffset: 6,
+        EarlyEntryCapacity: new Dictionary<int, int> { [-10] = 20, [-7] = 50 },
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
-            var staffing = await shiftMgmt.GetStaffingSnapshotAsync(es.Id);
-            return new ShiftsSamples(es, staffing.StaffingData, staffing.StaffingHours);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
-            return ShiftsSamples.Empty;
-        }
-    }
+    private static List<DailyStaffingData> BuildSampleStaffingData() =>
+    [
+        new(-1, "Day -1", ConfirmedCount: 8, TotalSlots: 12, MinSlots: 6, Period: "Set-up"),
+        new(0, "Day 0", ConfirmedCount: 15, TotalSlots: 20, MinSlots: 10, Period: "Event"),
+        new(1, "Day 1", ConfirmedCount: 5, TotalSlots: 10, MinSlots: 4, Period: "Strike"),
+    ];
 
-    private sealed record ShiftsSamples(
-        BurnSettingsInfo? EventSettings,
-        IReadOnlyList<DailyStaffingData> StaffingData,
-        IReadOnlyList<DailyStaffingHours> StaffingHours)
-    {
-        public static readonly ShiftsSamples Empty = new(null, [], []);
-    }
+    private static List<DailyStaffingHours> BuildSampleStaffingHours() =>
+    [
+        new(-1, "Day -1", EssentialHours: 12.5, ImportantHours: 8.0, NormalHours: 4.0),
+        new(0, "Day 0", EssentialHours: 20.0, ImportantHours: 15.0, NormalHours: 10.0),
+        new(1, "Day 1", EssentialHours: 6.0, ImportantHours: 5.0, NormalHours: 2.0),
+    ];
 }
 
 internal sealed class WidgetGalleryViewModel
