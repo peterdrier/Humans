@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Models;
+using Humans.Finance.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,10 +22,11 @@ public class FinanceControllerTests
     private static readonly Guid Bo = Guid.NewGuid();
 
     private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
+    private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
 
     private FinanceController MakeController() =>
-        new(_users, _finance, NullLogger<FinanceController>.Instance);
+        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance);
 
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
         new(userId, $"contact-{userId:N}"[..12], num, CreditorContactSource.Auto);
@@ -199,6 +201,22 @@ public class FinanceControllerTests
         var lines = (IReadOnlyList<CreditorLedgerLine>)controller.ViewBag.Lines;
 
         lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((9, 1), (9, 2), (7, 1), (5, 1));
+    }
+
+    // ─── Connector index ─────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Holded_RendersTheConnectorOverviewUnchanged()
+    {
+        // The action is dispatch only — the read model is the service's, and the page has no
+        // controller-side assembly to get wrong (nobodies-collective/Humans#1000).
+        var vm = new HoldedConnectorVm(
+            new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], []);
+        _connector.GetConnectorOverviewAsync(Arg.Any<CancellationToken>()).Returns(vm);
+
+        var result = await MakeController().Holded(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
     }
 
     private static CreditorLedgerLine Ledger(int entry, int line, Instant date) => new()

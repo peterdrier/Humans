@@ -38,8 +38,21 @@ surface — `budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
-API calls). Implements `IHoldedFinanceService`, `IUserDataContributor`.
+API calls). Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
+and `IUserDataContributor`.
 No `IMemoryCache`.
+
+`IHoldedFinanceAdminService` (`Services/IHoldedFinanceAdminService.cs`) is
+**internal** — the `/Finance/Holded` connector index is this section's own
+screen, so its read model is not cross-section surface; the same shape as the
+Holded section's `IHoldedAdminService`. Its one method,
+`GetConnectorOverviewAsync`, reads `HoldedDocSyncStates`,
+`HoldedCategoryMap`, `HoldedExpenseDocs` (via `GetAllDocsAsync` — the
+unmatched and matched-for-year reads are each a filtered slice and neither
+composes into "all docs") and `HoldedCreditorContacts`, plus
+`IBudgetServiceRead` for category names. **No `IHoldedClient` call** — the
+index must not inherit the connector's 30 s timeout
+(nobodies-collective/Humans#976, #1000).
 
 ### HoldedMatcher
 

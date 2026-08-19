@@ -47,6 +47,12 @@ mirror tables runs before this baseline recreates them.
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
   creditors), native Holded sign, header + all cached journal lines.
 
+**Not this section:** `/Finance/Holded` is Finance's own connector index — its purchase-doc sync
+staleness, category map and pulled docs (nobodies-collective/Humans#1000). The split is the table
+ownership: this screen covers what `HoldedDbContext` owns, that one covers what `FinanceDbContext`
+does. The two link to each other rather than restating each other's figures; the doc-sync row shown
+in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInfoAsync`.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
