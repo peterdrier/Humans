@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,7 +75,16 @@ internal sealed class DatabaseMigrationHostedService(
         foreach (var context in sectionContexts)
         {
             var contextName = context.GetType().Name;
-            var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
+
+            // GetPendingMigrationsAsync issues a SELECT against the section's history table and
+            // logs it as an Error if that table doesn't exist yet - true on the first boot after
+            // a section is peeled, before SectionMigrationRunner has created it
+            // (nobodies-collective/Humans#1022). When it's absent, every migration the context
+            // knows about is pending by definition, so skip the failing read.
+            var historyTable = SectionMigrationsHistory.TableFor(context.GetType());
+            var pending = await SectionMigrationRunner.TableExistsAsync(context, historyTable, cancellationToken)
+                ? await context.Database.GetPendingMigrationsAsync(cancellationToken)
+                : context.Database.GetMigrations();
             frontier.AddRange(pending.Select(migration => $"{contextName}:{migration}"));
         }
 
