@@ -62,7 +62,10 @@
         }
         else
         {
-            <text>The last purchase-doc sync ended in an <strong>error</strong>.</text>
+            <text>
+                The last purchase-doc sync attempt ended in an <strong>error</strong>@(sync.StatusChangedAt is { } failedAt
+                    ? $" ({failedAt.ToDateTime()})" : "").
+            </text>
         }
         Budget actuals and the unmatched queue are both derived from this sync, so both are showing
         stale numbers until it runs cleanly.
@@ -82,7 +85,7 @@
                     }
                 </div>
                 <div class="text-muted small">
-                    @(sync.SinceLastSync is { } since ? Age(since) : "never run")
+                    @(sync.SinceLastSync is { } since ? $"succeeded {Age(since)}" : "never succeeded")
                 </div>
             </div>
         </div>
@@ -134,8 +137,8 @@
         <table class="table table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Status</th><th>Last run</th><th>Age</th>
-                    <th class="text-end">Docs last run</th><th>Last error</th>
+                    <th>Status</th><th>Status since</th><th>Last success</th><th>Age</th>
+                    <th class="text-end">Docs last success</th><th>Last error</th>
                 </tr>
             </thead>
             <tbody>
@@ -147,6 +150,7 @@
                             <span class="badge bg-warning text-dark">Stale</span>
                         }
                     </td>
+                    <td class="text-nowrap">@(sync.StatusChangedAt.ToDateTime() ?? "—")</td>
                     <td class="text-nowrap">@(sync.LastSyncAt.ToDateTime() ?? "never")</td>
                     <td class="text-nowrap">@(sync.SinceLastSync is { } age ? Age(age) : "—")</td>
                     <td class="text-end">@sync.LastSyncedDocCount</td>
@@ -156,8 +160,11 @@
         </table>
     </div>
     <div class="card-footer text-muted small">
-        The nightly job pulls every purchase doc and re-runs attribution over all of them, so a
-        mapping fixed in Holded takes effect on the next run. Anything older than
+        <strong>Last success</strong> is the last run that <em>completed</em> — a failed attempt
+        moves <strong>Status since</strong> and leaves the success time where it was, so an Error row
+        showing an old success means the job has been running and failing, not that it stopped being
+        scheduled. The nightly job pulls every purchase doc and re-runs attribution over all of them,
+        so a mapping fixed in Holded takes effect on the next run. Anything older than
         @((int)HoldedDocSyncVm.StaleAfter.TotalHours) h counts as stale. Trigger a run from
         <a asp-action="HoldedUnmatched">Unmatched docs</a>; the ledger mirror's own sweeps are
         separate and live on <a asp-controller="Holded" asp-action="Index">/Holded</a>.

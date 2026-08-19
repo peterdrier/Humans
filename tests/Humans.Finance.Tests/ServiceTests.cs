@@ -1801,6 +1801,33 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GetConnectorOverview_AFailedRun_KeepsTheSuccessTimeAndCarriesTheAttemptTime()
+    {
+        // SyncAsync stamps StatusChangedAt on failure and deliberately leaves LastSyncAt on the
+        // older success. Dropping StatusChangedAt made an Error row read as "nothing has run since
+        // the success" — the opposite of the truth, on the page that exists to say what is running.
+        var succeeded = FixedNow - Duration.FromHours(50);
+        var failed = FixedNow - Duration.FromHours(2);
+        ActiveYearWith();
+        SeedConnector(new HoldedDocSyncState
+        {
+            LastSyncAt = succeeded,
+            Status = "Error",
+            LastError = "holded said no",
+            StatusChangedAt = failed,
+            LastSyncedDocCount = 12,
+        });
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.DocSync.LastSyncAt.Should().Be(succeeded);
+        vm.DocSync.StatusChangedAt.Should().Be(failed);
+        // Staleness keys on the success, not the attempt: a run that failed refreshed nothing.
+        vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(50));
+        vm.DocSync.IsStale.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task GetConnectorOverview_ListsActiveAndArchivedMappings_WithCategoryNames()
     {
         var live = Guid.NewGuid();

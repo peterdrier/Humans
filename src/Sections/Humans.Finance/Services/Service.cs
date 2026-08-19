@@ -341,7 +341,10 @@ internal sealed class Service(
                 age,
                 // Never having run is stale too: the actuals and the unmatched queue are empty for
                 // the same reason a stalled sync leaves them wrong, and both need the same alarm.
-                IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter),
+                IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter,
+                // A failed run moves only this: SyncAsync leaves LastSyncAt on the older success.
+                // Dropping it left an Error row unable to say when the failure actually happened.
+                state.StatusChangedAt),
             bindings.Count,
             map.Select(m => new HoldedCategoryMapVm(
                 m.BudgetCategoryId,
