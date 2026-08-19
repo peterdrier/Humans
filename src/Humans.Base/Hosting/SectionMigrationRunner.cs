@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -55,9 +56,20 @@ internal static class SectionMigrationRunner
         var contextName = db.GetType().Name;
         try
         {
-            var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
+            var historyTable = SectionMigrationsHistory.TableFor(db.GetType());
+            var historyTableExists = await TableExistsAsync(db, historyTable, ct);
 
-            if (applied.Count == 0 && await SentinelTableExistsAsync(db, sentinelTable, ct))
+            // Reads through GetAppliedMigrationsAsync/GetPendingMigrationsAsync issue a SELECT
+            // against the history table and log it as an Error if the table doesn't exist yet
+            // (EF swallows the failure and reports "nothing applied", but the log noise reads
+            // like an outage on every first boot after a section is peeled - #1022). The
+            // information_schema probe above is the only way to ask "does it exist" without
+            // that failing SELECT, so skip the EF reads entirely when it says no.
+            var applied = historyTableExists
+                ? (await db.Database.GetAppliedMigrationsAsync(ct)).ToList()
+                : [];
+
+            if (applied.Count == 0 && await TableExistsAsync(db, sentinelTable, ct))
             {
                 var baselineId = db.Database.GetMigrations().First();
                 logger.LogWarning(
@@ -66,9 +78,12 @@ internal static class SectionMigrationRunner
                 await beforeSchemaChange(ct);
                 await RecordBaselineAsAppliedAsync(db, baselineId, ct);
                 applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
+                historyTableExists = true;
             }
 
-            var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
+            var pending = historyTableExists
+                ? (await db.Database.GetPendingMigrationsAsync(ct)).ToList()
+                : db.Database.GetMigrations().ToList();
 
             // Warning level so the per-boot migration breadcrumb survives production's
             // default log filtering (nobodies-collective/Humans#960).
@@ -101,7 +116,13 @@ internal static class SectionMigrationRunner
         }
     }
 
-    private static async Task<bool> SentinelTableExistsAsync(DbContext db, string sentinelTable, CancellationToken ct)
+    /// <summary>
+    /// Whether <paramref name="tableName"/> exists in the <c>public</c> schema. Used both for
+    /// the section's sentinel table (baseline-branch detection) and its own migrations-history
+    /// table (nobodies-collective/Humans#1022) - an information_schema probe, never the EF
+    /// history read itself, which logs an Error if the table is missing.
+    /// </summary>
+    internal static async Task<bool> TableExistsAsync(DbContext db, string tableName, CancellationToken ct)
     {
         await db.Database.OpenConnectionAsync(ct);
         try
@@ -112,13 +133,13 @@ internal static class SectionMigrationRunner
             {
                 // Plain string comparison, not to_regclass: to_regclass parses its
                 // argument as an identifier and lowercases unquoted names, so a
-                // mixed-case sentinel like DataProtectionKeys would never match.
+                // mixed-case table name like DataProtectionKeys would never match.
                 command.CommandText =
                     "SELECT EXISTS (SELECT 1 FROM information_schema.tables " +
                     "WHERE table_schema = 'public' AND table_name = @table)";
                 var parameter = command.CreateParameter();
                 parameter.ParameterName = "@table";
-                parameter.Value = sentinelTable;
+                parameter.Value = tableName;
                 command.Parameters.Add(parameter);
                 var result = await command.ExecuteScalarAsync(ct);
                 return result is true;

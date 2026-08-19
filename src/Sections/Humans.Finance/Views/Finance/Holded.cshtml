@@ -1,0 +1,318 @@
+@model HoldedConnectorVm
+@using Humans.Finance.Domain
+@using NodaTime
+@{
+    ViewData["Title"] = "Holded Connector";
+    var sync = Model.DocSync;
+
+    string Age(Duration d) => d.TotalDays >= 1
+        ? $"{(int)d.TotalDays}d {d.Hours}h ago"
+        : $"{(int)d.TotalHours}h {d.Minutes}m ago";
+
+    string StatusBadge(string status) => status switch
+    {
+        "Running" => "bg-info",
+        "Error" => "bg-danger",
+        _ => "bg-success"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Holded Connector</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="HoldedAccounts" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-list-ol me-1"></i>Account provisioning
+        </a>
+        <a asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-question me-1"></i>Unmatched docs
+        </a>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-users me-1"></i>Creditors
+        </a>
+        <a asp-controller="Holded" asp-action="Index" class="btn btn-outline-secondary"
+           title="The ledger mirror's own screen: API budget, ledger sweeps, chart of accounts.">
+            <i class="fa-solid fa-book me-1"></i>Ledger mirror
+        </a>
+    </div>
+</div>
+
+<p class="text-muted">
+    Finance's half of the Holded integration — the purchase-doc sync, what each budget category is
+    booked to, and every doc pulled so far. Every figure is read from the local cache; this page
+    makes no Holded API call, so it cannot stall on one. The mirror's own health (API budget, ledger
+    sweeps, chart of accounts) lives on <a asp-controller="Holded" asp-action="Index">the ledger
+    mirror screen</a>; the pages linked above own the working surfaces and are not restated here.
+</p>
+
+@if (sync.IsStale || string.Equals(sync.Status, "Error", StringComparison.Ordinal))
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        @if (sync.LastSyncAt is null)
+        {
+            <text>The purchase-doc sync has <strong>never completed</strong>.</text>
+        }
+        else if (sync.IsStale)
+        {
+            <text>
+                The purchase-doc sync last completed <strong>@Age(sync.SinceLastSync!.Value)</strong>
+                — longer than the @((int)HoldedDocSyncVm.StaleAfter.TotalHours) h it is expected to
+                go between nightly runs.
+            </text>
+        }
+        else
+        {
+            <text>
+                The last purchase-doc sync attempt ended in an <strong>error</strong>@(sync.StatusChangedAt is { } failedAt
+                    ? $" ({failedAt.ToDateTime()})" : "").
+            </text>
+        }
+        Budget actuals and the unmatched queue are both derived from this sync, so both are showing
+        stale numbers until it runs cleanly.
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Doc sync</div>
+                <div class="fs-4">
+                    <span class="badge @StatusBadge(sync.Status)">@sync.Status</span>
+                    @if (sync.IsStale)
+                    {
+                        <span class="badge bg-warning text-dark">Stale</span>
+                    }
+                </div>
+                <div class="text-muted small">
+                    @(sync.SinceLastSync is { } since ? $"succeeded {Age(since)}" : "never succeeded")
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Category mappings</div>
+                <div class="fs-4">@Model.ActiveMappings</div>
+                <div class="text-muted small">
+                    active@(Model.ArchivedMappings > 0 ? $", {Model.ArchivedMappings} archived" : "")
+                    — <a href="#category-map">see below</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Purchase docs</div>
+                <div class="fs-4">@Model.Docs.Count</div>
+                <div class="text-muted small">
+                    @Model.MatchedDocs matched,
+                    <a asp-action="HoldedUnmatched">@Model.UnmatchedDocs unmatched</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Creditor bindings</div>
+                <div class="fs-4">@Model.CreditorBindingCount</div>
+                <div class="text-muted small">
+                    members bound — <a asp-action="Creditors">Creditors</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    @* Read-only by design: the "Sync now" trigger stays on /Finance/HoldedUnmatched and /Holded,
+       where it already lives, rather than being duplicated onto an index. *@
+    <div class="card-header">
+        <i class="fa-solid fa-rotate me-1"></i>Purchase-doc sync
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Status</th><th>Status since</th><th>Last success</th><th>Age</th>
+                    <th class="text-end">Docs last success</th><th>Last error</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <span class="badge @StatusBadge(sync.Status)">@sync.Status</span>
+                        @if (sync.IsStale)
+                        {
+                            <span class="badge bg-warning text-dark">Stale</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">@(sync.StatusChangedAt.ToDateTime() ?? "—")</td>
+                    <td class="text-nowrap">@(sync.LastSyncAt.ToDateTime() ?? "never")</td>
+                    <td class="text-nowrap">@(sync.SinceLastSync is { } age ? Age(age) : "—")</td>
+                    <td class="text-end">@sync.LastSyncedDocCount</td>
+                    <td class="small text-muted">@sync.LastError</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer text-muted small">
+        <strong>Last success</strong> is the last run that <em>completed</em> — a failed attempt
+        moves <strong>Status since</strong> and leaves the success time where it was, so an Error row
+        showing an old success means the job has been running and failing, not that it stopped being
+        scheduled. The nightly job pulls every purchase doc and re-runs attribution over all of them,
+        so a mapping fixed in Holded takes effect on the next run. Anything older than
+        @((int)HoldedDocSyncVm.StaleAfter.TotalHours) h counts as stale. Trigger a run from
+        <a asp-action="HoldedUnmatched">Unmatched docs</a>; the ledger mirror's own sweeps are
+        separate and live on <a asp-controller="Holded" asp-action="Index">/Holded</a>.
+    </div>
+</div>
+
+<div class="card mb-4" id="category-map">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-diagram-project me-1"></i>Category map</span>
+        <span class="badge bg-secondary">@Model.CategoryMap.Count rows</span>
+    </div>
+    @if (Model.CategoryMap.Count == 0)
+    {
+        <div class="card-body">
+            <p class="mb-0 text-muted">
+                Nothing mapped yet — provision the account block on
+                <a asp-action="HoldedAccounts">Account provisioning</a>.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Account</th><th>Budget category</th><th>Group</th>
+                        <th>Tag</th><th>State</th><th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.CategoryMap.OrderBy(m => m.HoldedAccountNumber))
+                    {
+                        <tr>
+                            <td class="text-nowrap">
+                                <a asp-controller="Holded" asp-action="Account" asp-route-number="@m.HoldedAccountNumber"><code>@m.HoldedAccountNumber</code></a>
+                            </td>
+                            <td>
+                                @if (m.CategoryName is { } name)
+                                {
+                                    @name
+                                }
+                                else
+                                {
+                                    <span class="text-muted" title="@m.BudgetCategoryId">not in the active budget year</span>
+                                }
+                            </td>
+                            <td class="text-muted">@m.GroupName</td>
+                            <td><code>@m.Tag</code></td>
+                            <td>
+                                @if (m.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Archived</span>
+                                }
+                            </td>
+                            <td class="text-nowrap text-muted small">@m.UpdatedAt.ToDateTime()</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            What each budget category is booked to <em>today</em>. The plan — what provisioning would
+            add next — is on <a asp-action="HoldedAccounts">Account provisioning</a>. Nothing retires
+            a row today, so an Archived state should not appear; a category that disappeared from the
+            budget year keeps its active row and shows as an Orphan on the provisioning page instead.
+        </div>
+    }
+</div>
+
+<div class="card" id="docs">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-file-invoice me-1"></i>Purchase documents</span>
+        <span class="badge bg-secondary">@Model.Docs.Count docs</span>
+    </div>
+    @if (Model.Docs.Count == 0)
+    {
+        <div class="card-body"><p class="mb-0 text-muted">No docs pulled yet — run a sync.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>Doc #</th><th>Contact</th><th class="text-end">Total</th>
+                        <th>Approved</th><th>Match</th><th>Via</th><th>Category</th><th>Raw</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Docs
+                        .OrderByDescending(d => d.Date)
+                        .ThenBy(d => d.DocNumber, StringComparer.Ordinal))
+                    {
+                        <tr>
+                            <td class="text-nowrap">@d.Date.ToDate()</td>
+                            <td class="text-nowrap">@d.DocNumber</td>
+                            <td>@d.ContactName</td>
+                            <td class="text-end">@d.Total.ToEuro()</td>
+                            <td>
+                                @if (d.IsApproved == true)
+                                {
+                                    <i class="fa-solid fa-check text-success" title="Approved in Holded — counts toward actuals"></i>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" title="@(d.IsApproved is null ? "Pre-v2 row, not re-synced yet" : "Still a draft in Holded")">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (d.MatchStatus == HoldedMatchStatus.Matched)
+                                {
+                                    <span class="badge bg-success">Matched</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Unmatched</span>
+                                }
+                            </td>
+                            <td class="text-muted small">@d.MatchSource</td>
+                            <td>@d.CategoryName</td>
+                            <td>
+                                <details>
+                                    <summary class="small text-muted">show</summary>
+                                    <div class="small">
+                                        <div>Booked account id: <code>@(d.BookedAccountId ?? "—")</code></div>
+                                        <div>Tags: <code>@d.TagsJson</code></div>
+                                        <div>Holded doc id: <code>@d.HoldedDocId</code></div>
+                                        <div class="text-muted">Last synced @d.LastSyncedAt.ToDateTime()</div>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            <strong>Via</strong> is why the doc resolved: <code>Account</code> = its booked Holded
+            account matched a mapped category, <code>Tag</code> = a normalized tag did,
+            <code>None</code> = neither, which is what puts it in the
+            <a asp-action="HoldedUnmatched">unmatched queue</a>. Only approved docs count toward
+            budget actuals. Docs are read-only here — re-categorizing is done in Holded, and the next
+            sync picks the correction up.
+        </div>
+    }
+</div>

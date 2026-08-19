@@ -19,4 +19,10 @@ public static class CurrencyFormattingExtensions
     /// <summary>Euro amount for a nullable value; null renders as the empty string.</summary>
     public static string ToEuro(this decimal? value, int decimals = 2) =>
         value.HasValue ? value.Value.ToEuro(decimals) : string.Empty;
+
+    /// <summary>Euro amount with an explicit leading sign: "+1.234,56 €" / "−62.000,00 €". For
+    /// pages that read in a point-of-view convention (money in vs. money out) rather than
+    /// Holded's raw debit/credit sides.</summary>
+    public static string ToSignedEuro(this decimal value, int decimals = 2) =>
+        (value >= 0 ? "+" : "") + value.ToEuro(decimals);
 }

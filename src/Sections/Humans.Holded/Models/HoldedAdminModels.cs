@@ -46,10 +46,34 @@ internal sealed record HoldedAccountRow(
     bool HoldedHasPostings);
 
 /// <summary>
-/// One general-ledger account and every cached line on it, in Holded's own sign convention
-/// (debit and credit columns, balance = Σdebit − Σcredit) so the page reads the same as Holded's
-/// UI. Finance inverts for its creditor pages; this one never does.
+/// One general-ledger account and every cached line on it, in the association's own point of
+/// view: + means its money went up, − means it went down (see <see cref="HoldedStatementLine"/>).
+/// Finance inverts to the user's POV for its own pages; this one never does.
 /// </summary>
 /// <param name="Lines">Date first, then entry/line — the order the daybook was written in.</param>
 internal sealed record HoldedAccountStatement(
-    HoldedAccountRow Account, IReadOnlyList<HoldedLedgerLineInfo> Lines);
+    HoldedAccountRow Account, IReadOnlyList<HoldedStatementLine> Lines);
+
+/// <summary>The opposing leg(s) of a ledger entry, resolved for display next to a statement
+/// line. When more than one opposing account exists (a purchase invoice: expense + VAT +
+/// creditor), <see cref="AccountNum"/>/<see cref="AccountName"/> name the largest by absolute
+/// amount and <see cref="TotalOpposingLines"/> lets the view render "+N more" and link to the
+/// entry page instead of the single account page.</summary>
+internal sealed record HoldedCounterparty(int AccountNum, string? AccountName, int TotalOpposingLines);
+
+/// <summary>One line on an account statement: the cached line's date/type/description, the
+/// signed <see cref="Amount"/> in the association's own point of view (+ money in, − money
+/// out), and the resolved <see cref="Counterparty"/>. Internal — this is a presentation shape
+/// over <see cref="HoldedLedgerLineInfo"/>, never the cross-section contract itself.</summary>
+internal sealed record HoldedStatementLine(
+    int EntryNumber, int Line, Instant Date, string? Type, string? Description,
+    decimal Amount, HoldedCounterparty? Counterparty);
+
+/// <summary>One leg of a ledger entry on the /Holded/Entries/{number} page: account number/name,
+/// type, description, and the signed Amount in the association's point of view. No balancing
+/// total — see the route's doc comment.</summary>
+internal sealed record HoldedEntryLine(
+    int AccountNum, string? AccountName, string? Type, string? Description, decimal Amount);
+
+/// <summary>Every leg of one Holded journal entry — /Holded/Entries/{number}.</summary>
+internal sealed record HoldedEntry(int EntryNumber, IReadOnlyList<HoldedEntryLine> Lines);

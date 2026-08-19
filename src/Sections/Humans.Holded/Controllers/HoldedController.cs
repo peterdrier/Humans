@@ -43,6 +43,16 @@ internal sealed class HoldedController(
         return View(statement);
     }
 
+    /// <summary>Every leg of one journal entry — the "+N more" landing page from the account
+    /// statement's counterparty column, and the target of every Entry cell link.</summary>
+    [HttpGet("Entries/{number:int}")]
+    public async Task<IActionResult> Entry(int number, CancellationToken ct)
+    {
+        var entry = await admin.GetEntryAsync(number, ct);
+        if (entry is null) return NotFound();
+        return View(entry);
+    }
+
     [HttpPost("SyncNow")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncNow(CancellationToken ct)

@@ -67,6 +67,7 @@ internal sealed class TicketSalesAggregates
     public List<WeeklySalesAggregate> WeeklySales { get; init; } = [];
     public List<QuarterlySalesAggregate> QuarterlySales { get; init; } = [];
     public List<TicketTypeSalesAggregate> ByTicketType { get; init; } = [];
+    public List<DiscountCampaignAggregate> ByDiscountCampaign { get; init; } = [];
 }
 
 internal sealed class WeeklySalesAggregate
@@ -103,6 +104,27 @@ internal sealed class TicketTypeSalesAggregate
     /// discounts and donations are excluded), so it won't reconcile with
     /// the weekly/quarterly GrossRevenue figures.</summary>
     public decimal FaceValue { get; init; }
+}
+
+/// <summary>
+/// Discount-code usage and cost for one campaign. Grants come from the
+/// Campaigns section; the money comes from the paid orders whose
+/// <c>DiscountCode</c> matches a grant of that campaign. Codes redeemed on
+/// paid orders that match no grant land in a single unattributed row with
+/// <see cref="CodesGranted"/> null.
+/// </summary>
+internal sealed class DiscountCampaignAggregate
+{
+    public string CampaignTitle { get; init; } = string.Empty;
+
+    /// <summary>Null for the unattributed row — nothing granted those codes.</summary>
+    public int? CodesGranted { get; init; }
+
+    /// <summary>Paid orders that carried one of this campaign's codes.</summary>
+    public int CodesUsed { get; init; }
+
+    public decimal AverageDiscount { get; init; }
+    public decimal TotalDiscount { get; init; }
 }
 
 /// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>
@@ -303,6 +325,8 @@ internal sealed class DiscountCodeOrderRow
     public string BuyerName { get; init; } = string.Empty;
     public string BuyerEmail { get; init; } = string.Empty;
     public string VendorOrderId { get; init; } = string.Empty;
+    public decimal? DiscountAmount { get; init; }
+    public bool IsPaid { get; init; }
 }
 
 /// <summary>CSV export data for orders.</summary>

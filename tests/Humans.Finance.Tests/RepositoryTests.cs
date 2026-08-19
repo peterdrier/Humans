@@ -103,6 +103,27 @@ public class RepositoryTests
         rows.Select(d => d.HoldedDocId).Should().Equal("in");
     }
 
+    [HumansFact]
+    public async Task GetAllDocs_ReturnsBothSlices_WhichNeitherOtherReadCovers()
+    {
+        // /Finance/Holded browses every doc. The unmatched read filters to one status and the
+        // matched read to one year, so neither composes into this (nobodies-collective/Humans#1000).
+        var (repo, _) = Make();
+        await repo.UpsertDocsAsync(
+        [
+            Doc("matched-2026", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
+                date: new LocalDate(2026, 5, 1)),
+            Doc("matched-2027", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
+                date: new LocalDate(2027, 1, 1)),
+            Doc("unmatched", date: new LocalDate(2026, 6, 1)),
+        ], Now, Ct);
+
+        var rows = await repo.GetAllDocsAsync(Ct);
+
+        rows.Select(d => d.HoldedDocId).Should()
+            .BeEquivalentTo(["matched-2026", "matched-2027", "unmatched"]);
+    }
+
     // ─── Creditor bindings ───────────────────────────────────────────────────────
 
     [HumansFact]

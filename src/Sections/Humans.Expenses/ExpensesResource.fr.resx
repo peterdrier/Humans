@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nouvelle note</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Il n'y a aucune année budgétaire active pour le moment. Les notes de frais ne peuvent pas être déposées tant qu'une année budgétaire n'est pas activée.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Votre compte créditeur Holded ({0}) est lié, mais rien n'y a encore été enregistré. Votre relevé apparaîtra dès l'enregistrement de votre première note de frais.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Votre relevé de frais apparaîtra ici une fois votre premier rapport enregistré dans Holded.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Votre compte créditeur Holded n'est pas encore lié, votre relevé ne peut donc pas être affiché. Demandez à un administrateur Finances de le lier.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Vous n'avez pas encore renseigné votre IBAN de paiement. Vous serez invité à le faire au moment de soumettre une note.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Aucune note de frais pour le moment.</value></data>

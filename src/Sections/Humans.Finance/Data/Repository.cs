@@ -70,6 +70,12 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedExpenseDocs.AsNoTracking().ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

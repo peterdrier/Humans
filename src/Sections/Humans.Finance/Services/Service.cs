@@ -5,6 +5,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
@@ -24,7 +25,7 @@ internal sealed class Service(
     IHoldedService holded,
     IClock clock,
     IMemoryCache cache,
-    ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor
+    ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, IUserDataContributor
 {
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -305,6 +306,68 @@ internal sealed class Service(
     {
         var map = await repo.GetCategoryMapAsync(ct);
         return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
+    }
+
+    // ─── Connector overview (/Finance/Holded) ─────────────────────────────────────
+
+    public async Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default)
+    {
+        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var map = await repo.GetCategoryMapAsync(ct);
+        var docs = await repo.GetAllDocsAsync(ct);
+
+        // Category names come from the active budget year, the same source the provisioning plan
+        // uses. A map row or doc pointing outside it keeps a null name rather than a lookup per row.
+        var year = await budget.GetActiveYearAsync();
+        var categories = year is null
+            ? new Dictionary<Guid, (string Name, string Group)>()
+            : year.Groups
+                .SelectMany(g => g.Categories.Select(c => (c.Id, Name: c.Name, Group: g.Name)))
+                .ToDictionary(c => c.Id, c => (c.Name, c.Group));
+
+        string? NameOf(Guid? categoryId) =>
+            categoryId is { } id && categories.TryGetValue(id, out var c) ? c.Name : null;
+
+        var now = clock.GetCurrentInstant();
+        var age = state.LastSyncAt is { } last ? now - last : (Duration?)null;
+
+        return new HoldedConnectorVm(
+            new HoldedDocSyncVm(
+                state.LastSyncAt,
+                state.Status,
+                state.LastError,
+                state.LastSyncedDocCount,
+                age,
+                // Never having run is stale too: the actuals and the unmatched queue are empty for
+                // the same reason a stalled sync leaves them wrong, and both need the same alarm.
+                IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter,
+                // A failed run moves only this: SyncAsync leaves LastSyncAt on the older success.
+                // Dropping it left an Error row unable to say when the failure actually happened.
+                state.StatusChangedAt),
+            bindings.Count,
+            map.Select(m => new HoldedCategoryMapVm(
+                m.BudgetCategoryId,
+                NameOf(m.BudgetCategoryId),
+                categories.TryGetValue(m.BudgetCategoryId, out var g) ? g.Group : null,
+                m.HoldedAccountNumber,
+                m.HoldedAccountId,
+                m.Tag,
+                m.IsActive,
+                m.UpdatedAt)).ToList(),
+            docs.Select(d => new HoldedDocVm(
+                d.HoldedDocId,
+                d.DocNumber,
+                d.ContactName,
+                d.Date,
+                d.Total,
+                d.IsApproved,
+                d.MatchStatus,
+                d.MatchSource,
+                NameOf(d.BudgetCategoryId),
+                d.BookedAccountId,
+                d.TagsJson,
+                d.LastSyncedAt)).ToList());
     }
 
     private static string ReasonFor(HoldedExpenseDoc d)

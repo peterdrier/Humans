@@ -40,6 +40,7 @@ using Humans.Web.Hosting;
 using Humans.Web.ModelBinders;
 using Humans.Web.Data;
 using Humans.Users.Contracts;
+using Humans.Web.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -539,6 +540,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
         }
         return null;
     }));
+
+    // Wrap every provider (the preference-based one above, plus the default query
+    // string/cookie/Accept-Language providers) so the parsing culture is always "en"
+    // regardless of which one wins — see UiCultureOnlyRequestCultureProvider (#1067).
+    options.RequestCultureProviders = options.RequestCultureProviders
+        .Select(provider => (IRequestCultureProvider)new UiCultureOnlyRequestCultureProvider(provider))
+        .ToList();
 });
 
 var app = builder.Build();

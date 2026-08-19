@@ -1698,4 +1698,218 @@ public class HoldedFinanceServiceTests
         info.LastSyncedDocCount.Should().Be(0);
         info.CreditorBindingCount.Should().Be(0);
     }
+
+    // ─── GetConnectorOverview (/Finance/Holded) ───────────────────────────────────
+
+    /// <summary>Seeds the active year with one group holding the given categories.</summary>
+    private void ActiveYearWith(params (Guid Id, string Name)[] categories) =>
+        _budget.GetActiveYearAsync().Returns(new BudgetYearDetail(
+            Id: Guid.NewGuid(),
+            Year: "2026",
+            Name: "Camp 2026",
+            Status: BudgetYearStatus.Active,
+            IsDeleted: false,
+            Groups:
+            [
+                new BudgetGroupDetail(
+                    Id: Guid.NewGuid(),
+                    BudgetYearId: Guid.NewGuid(),
+                    Name: "Operations",
+                    SortOrder: 1,
+                    IsRestricted: false,
+                    IsDepartmentGroup: false,
+                    IsTicketingGroup: false,
+                    TicketingProjection: null,
+                    Categories: categories
+                        .Select((c, i) => new BudgetCategoryDetail(
+                            c.Id, Guid.NewGuid(), c.Name, 0, ExpenditureType.OpEx, null, i, []))
+                        .ToList())
+            ]));
+
+    private void SeedConnector(
+        HoldedDocSyncState? state = null,
+        IReadOnlyList<HoldedCategoryMap>? map = null,
+        IReadOnlyList<HoldedExpenseDoc>? docs = null,
+        IReadOnlyList<HoldedCreditorContact>? bindings = null)
+    {
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
+            .Returns(state ?? new HoldedDocSyncState());
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
+            .Returns(map ?? []);
+        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>())
+            .Returns(docs ?? []);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(bindings ?? []);
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_MakesNoHoldedApiCall()
+    {
+        // The whole point of the page (nobodies-collective/Humans#1000): /Finance/Creditors already
+        // pays a live ListContactsAsync on every load behind a 30 s timeout, and the index must not
+        // inherit that latency or that failure mode.
+        ActiveYearWith();
+        SeedConnector();
+
+        await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        Assert.Empty(_client.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_SyncWithinTheWindow_IsNotStale()
+    {
+        ActiveYearWith();
+        SeedConnector(new HoldedDocSyncState
+        {
+            LastSyncAt = FixedNow - Duration.FromHours(5),
+            Status = "Idle",
+            LastSyncedDocCount = 7,
+        });
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.DocSync.IsStale.Should().BeFalse();
+        vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(5));
+        vm.DocSync.LastSyncedDocCount.Should().Be(7);
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_SyncOlderThanTheWindow_IsStale()
+    {
+        ActiveYearWith();
+        SeedConnector(new HoldedDocSyncState { LastSyncAt = FixedNow - Duration.FromHours(40) });
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.DocSync.IsStale.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_NeverSynced_IsStaleWithNoAge()
+    {
+        // Never having run leaves the actuals and the unmatched queue as wrong as a stalled sync
+        // does, so it raises the same alarm rather than rendering a reassuring blank.
+        ActiveYearWith();
+        SeedConnector(new HoldedDocSyncState());
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.DocSync.IsStale.Should().BeTrue();
+        vm.DocSync.SinceLastSync.Should().BeNull();
+        vm.DocSync.LastSyncAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_AFailedRun_KeepsTheSuccessTimeAndCarriesTheAttemptTime()
+    {
+        // SyncAsync stamps StatusChangedAt on failure and deliberately leaves LastSyncAt on the
+        // older success. Dropping StatusChangedAt made an Error row read as "nothing has run since
+        // the success" — the opposite of the truth, on the page that exists to say what is running.
+        var succeeded = FixedNow - Duration.FromHours(50);
+        var failed = FixedNow - Duration.FromHours(2);
+        ActiveYearWith();
+        SeedConnector(new HoldedDocSyncState
+        {
+            LastSyncAt = succeeded,
+            Status = "Error",
+            LastError = "holded said no",
+            StatusChangedAt = failed,
+            LastSyncedDocCount = 12,
+        });
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.DocSync.LastSyncAt.Should().Be(succeeded);
+        vm.DocSync.StatusChangedAt.Should().Be(failed);
+        // Staleness keys on the success, not the attempt: a run that failed refreshed nothing.
+        vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(50));
+        vm.DocSync.IsStale.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_ListsActiveAndArchivedMappings_WithCategoryNames()
+    {
+        var live = Guid.NewGuid();
+        var gone = Guid.NewGuid();
+        ActiveYearWith((live, "Staff"));
+        SeedConnector(map:
+        [
+            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
+            new() { BudgetCategoryId = gone, HoldedAccountNumber = 62900102, Tag = "gone", IsActive = false },
+        ]);
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.CategoryMap.Should().HaveCount(2);
+        vm.ActiveMappings.Should().Be(1);
+        vm.ArchivedMappings.Should().Be(1);
+        vm.CategoryMap.Single(m => m.BudgetCategoryId == live).CategoryName.Should().Be("Staff");
+        vm.CategoryMap.Single(m => m.BudgetCategoryId == live).GroupName.Should().Be("Operations");
+        // A row whose category left the active year keeps its row and loses only its name.
+        vm.CategoryMap.Single(m => m.BudgetCategoryId == gone).CategoryName.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_ListsEveryDoc_MatchedAndUnmatched()
+    {
+        var cat = Guid.NewGuid();
+        ActiveYearWith((cat, "Staff"));
+        SeedConnector(docs:
+        [
+            new()
+            {
+                HoldedDocId = "d1", DocNumber = "F260001", BudgetCategoryId = cat, Total = 121m,
+                MatchStatus = HoldedMatchStatus.Matched, MatchSource = HoldedMatchSource.Account,
+                BookedAccountId = "acc-1", TagsJson = "[\"staff\"]", IsApproved = true,
+            },
+            new()
+            {
+                HoldedDocId = "d2", DocNumber = "F260002", Total = 50m,
+                MatchStatus = HoldedMatchStatus.Unmatched, MatchSource = HoldedMatchSource.None,
+                TagsJson = "[]",
+            },
+        ]);
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.Docs.Should().HaveCount(2);
+        vm.MatchedDocs.Should().Be(1);
+        vm.UnmatchedDocs.Should().Be(1);
+
+        var matched = vm.Docs.Single(d => string.Equals(d.HoldedDocId, "d1", StringComparison.Ordinal));
+        matched.CategoryName.Should().Be("Staff");
+        matched.MatchSource.Should().Be(HoldedMatchSource.Account);
+        matched.BookedAccountId.Should().Be("acc-1");
+        matched.TagsJson.Should().Be("[\"staff\"]");
+
+        vm.Docs.Single(d => string.Equals(d.HoldedDocId, "d2", StringComparison.Ordinal)).CategoryName.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_NoActiveBudgetYear_StillRenders()
+    {
+        // The page is the connector's health, not the budget's — it must not go blank between years.
+        _budget.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+        SeedConnector(map: [new() { BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900101, IsActive = true }]);
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.CategoryMap.Should().ContainSingle().Which.CategoryName.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetConnectorOverview_CountsCreditorBindings()
+    {
+        ActiveYearWith();
+        SeedConnector(bindings:
+        [
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1" },
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2" },
+        ]);
+
+        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+
+        vm.CreditorBindingCount.Should().Be(2);
+    }
 }

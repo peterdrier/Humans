@@ -304,6 +304,50 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     }
 
     [HumansFact]
+    public async Task CollectPendingFrontier_HistoryTableAbsent_ReturnsFullMigrationSet()
+    {
+        // Same fixture shape as ExistingDatabase_UsersBaselineMarkedApplied_WithoutExecuting:
+        // tables present, no history table. GetPendingMigrationsAsync would log an Error
+        // reading a history table that doesn't exist yet (nobodies-collective/Humans#1022);
+        // CollectPendingFrontierAsync must fall back to the full migration set instead.
+        var connectionString = await CreateDatabaseAsync("frontier_no_history");
+        await CreateUsersSchemaWithoutHistoryAsync(connectionString);
+
+        // EF.LogTo captures every command EF sends, including ones that fail — a regression
+        // back to calling GetPendingMigrationsAsync unconditionally would still send a SELECT
+        // against the (missing) history table and log it before the failure, so this catches
+        // the regression even though the returned set alone can't distinguish it.
+        var commandLog = new List<string>();
+        var historyTable = SectionMigrationsHistory.TableFor<UsersDbContext>();
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.UseNodaTime();
+                npgsql.MigrationsAssembly(typeof(UsersDbContext).Assembly.GetName().Name!);
+                npgsql.MigrationsHistoryTable(historyTable);
+            })
+            .LogTo(commandLog.Add, Microsoft.Extensions.Logging.LogLevel.Debug)
+            .Options;
+
+        await using var db = new UsersDbContext(options);
+        var expected = db.Database.GetMigrations()
+            .Select(migration => $"{nameof(UsersDbContext)}:{migration}")
+            .ToList();
+
+        var frontier = await DatabaseMigrationHostedService.CollectPendingFrontierAsync(
+            [db], TestContext.Current.CancellationToken);
+
+        frontier.Should().BeEquivalentTo(expected);
+
+        // The history table name only appears double-quoted when used as a SQL identifier
+        // (a FROM/JOIN target) - the legitimate information_schema probe passes it as a
+        // parameter value instead, which logs single-quoted.
+        commandLog.Should().NotContain(
+            entry => entry.Contains($"\"{historyTable}\"", StringComparison.Ordinal),
+            $"the fallback must never query {historyTable} directly - that's the #1022 regression");
+    }
+
+    [HumansFact]
     public async Task BothPaths_ProduceEquivalentUsersSchema()
     {
         // Model create-script path (the stand-in for a chain-built database — valid

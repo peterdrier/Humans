@@ -373,7 +373,72 @@ internal sealed class TicketQueryService(
             WeeklySales = weeklySales,
             QuarterlySales = quarterlySales,
             ByTicketType = byTicketType,
+            ByDiscountCampaign = await BuildDiscountCampaignAggregatesAsync(),
         };
+    }
+
+    /// <summary>
+    /// One row per campaign that granted codes, whether or not any were redeemed, so the
+    /// granted column totals org-wide rather than over the campaigns that happen to have
+    /// paid usage. Amounts come from the paid orders that carried each campaign's codes;
+    /// redeemed codes with no matching grant collapse into one unattributed row.
+    /// </summary>
+    private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync()
+    {
+        var campaignData = await campaignService.GetCodeTrackingAsync();
+        var campaignIds = campaignData.Campaigns.Select(c => c.CampaignId).ToHashSet();
+
+        var campaignByCode = campaignData.Grants
+            .Where(g => !string.IsNullOrWhiteSpace(g.Code) && campaignIds.Contains(g.CampaignId))
+            .GroupBy(g => g.Code!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().CampaignId, StringComparer.OrdinalIgnoreCase);
+
+        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync())
+            .Where(o => o.IsPaid)
+            .ToList();
+
+        var usageByCampaign = paidDiscountOrders
+            .Where(o => campaignByCode.ContainsKey(o.DiscountCode))
+            .GroupBy(o => campaignByCode[o.DiscountCode])
+            .ToDictionary(
+                g => g.Key,
+                g => (Used: g.Count(), Total: g.Sum(o => o.DiscountAmount ?? 0m)));
+
+        var rows = campaignData.Campaigns
+            .Where(c => c.TotalGrants > 0)
+            .Select(c =>
+            {
+                usageByCampaign.TryGetValue(c.CampaignId, out var usage);
+                return new DiscountCampaignAggregate
+                {
+                    CampaignTitle = c.CampaignTitle,
+                    CodesGranted = c.TotalGrants,
+                    CodesUsed = usage.Used,
+                    AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
+                    TotalDiscount = usage.Total,
+                };
+            })
+            .OrderByDescending(r => r.TotalDiscount)
+            .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var unattributed = paidDiscountOrders
+            .Where(o => !campaignByCode.ContainsKey(o.DiscountCode))
+            .ToList();
+        if (unattributed.Count > 0)
+        {
+            var total = unattributed.Sum(o => o.DiscountAmount ?? 0m);
+            rows.Add(new DiscountCampaignAggregate
+            {
+                CampaignTitle = "No campaign (vendor codes)",
+                CodesGranted = null,
+                CodesUsed = unattributed.Count,
+                AverageDiscount = Math.Round(total / unattributed.Count, 2),
+                TotalDiscount = total,
+            });
+        }
+
+        return rows;
     }
 
     public async Task<OrdersPageResult> GetOrdersPageAsync(

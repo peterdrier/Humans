@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuova nota</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Al momento non c'è alcun anno di budget attivo. Le note spese non possono essere presentate finché un anno di budget non viene attivato.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Il tuo conto creditore su Holded ({0}) è collegato, ma non vi è ancora stato registrato nulla. Il tuo estratto conto apparirà quando sarà registrata la tua prima nota spese.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Il tuo estratto conto spese apparirà qui quando il tuo primo rapporto sarà registrato in Holded.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Il tuo conto creditore su Holded non è ancora collegato, quindi non è possibile mostrare il tuo estratto conto. Chiedi a un amministratore Finanze di collegarlo.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Non hai ancora impostato il tuo IBAN per i pagamenti. Ti verrà chiesto di impostarlo quando presenti una nota.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Ancora nessuna nota spese.</value></data>

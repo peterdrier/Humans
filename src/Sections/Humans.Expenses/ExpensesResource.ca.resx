@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nou informe</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>De moment no hi ha cap any pressupostari actiu. No es poden presentar informes de despeses fins que no s'activi un any pressupostari.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>El teu compte de creditor a Holded ({0}) està vinculat, però encara no s'hi ha registrat res. El teu extracte apareixerà quan es registri el teu primer informe de despeses.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>El teu extracte de despeses apareixerà aquí quan el teu primer informe es registri a Holded.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>El teu compte de creditor a Holded encara no està vinculat, així que no es pot mostrar el teu extracte. Demana a un administrador de Finances que el vinculi.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Encara no has establert el teu IBAN de pagament. Se't demanarà que l'estableixis quan presentis un informe.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Encara no hi ha informes de despeses.</value></data>

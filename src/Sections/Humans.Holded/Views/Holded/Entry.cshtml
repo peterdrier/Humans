@@ -1,0 +1,45 @@
+@model HoldedEntry
+@{
+    ViewData["Title"] = $"Entry {Model.EntryNumber}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Entry <code>@Model.EntryNumber</code></h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Holded
+    </a>
+</div>
+
+<p class="text-muted">
+    Every leg of this entry, in the association's own point of view (+ money in, − money out).
+    No balancing total: a debit and a credit netting to zero is a bookkeeping artifact, not a
+    statement about which way the association's money moved.
+</p>
+
+<div class="card">
+    <div class="card-header"><i class="fa-solid fa-list me-1"></i>Legs</div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Account</th><th>Type</th><th>Description</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr>
+                    <td class="text-nowrap">
+                        <a asp-action="Account" asp-route-number="@l.AccountNum"><code>@l.AccountNum</code></a>
+                        @l.AccountName
+                    </td>
+                    <td class="text-muted small">@l.Type</td>
+                    <td>@l.Description</td>
+                    <td class="text-end">@l.Amount.ToSignedEuro()</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

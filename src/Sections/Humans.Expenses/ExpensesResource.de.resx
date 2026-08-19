@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>Neue Abrechnung</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Es gibt derzeit kein aktives Budgetjahr. Spesenabrechnungen können erst eingereicht werden, wenn ein Budgetjahr aktiviert ist.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Dein Holded-Kreditorenkonto ({0}) ist verknüpft, es wurde aber noch nichts darauf gebucht. Dein Kontoauszug erscheint, sobald deine erste Spesenabrechnung erfasst ist.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Deine Spesenübersicht erscheint hier, sobald dein erster Bericht in Holded erfasst ist.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Dein Holded-Kreditorenkonto ist noch nicht verknüpft, daher kann dein Kontoauszug nicht angezeigt werden. Bitte das Finanzteam, es zu verknüpfen.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Du hast deine Zahlungs-IBAN noch nicht hinterlegt. Du wirst beim Einreichen einer Abrechnung aufgefordert, sie anzugeben.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Noch keine Spesenabrechnungen.</value></data>

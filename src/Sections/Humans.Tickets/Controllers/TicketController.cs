@@ -253,6 +253,14 @@ internal sealed class TicketController(
                 TicketsSold = t.TicketsSold,
                 FaceValue = t.FaceValue,
             }).ToList(),
+            ByDiscountCampaign = aggregates.ByDiscountCampaign.Select(d => new DiscountCampaignRow
+            {
+                CampaignTitle = d.CampaignTitle,
+                CodesGranted = d.CodesGranted,
+                CodesUsed = d.CodesUsed,
+                AverageDiscount = d.AverageDiscount,
+                TotalDiscount = d.TotalDiscount,
+            }).ToList(),
         };
 
         return View(model);

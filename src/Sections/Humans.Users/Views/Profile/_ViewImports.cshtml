@@ -36,9 +36,13 @@
 @addTagHelper *, Humans.Camps
 @* <vc:audit-log> (Index's sent-messages panel) is the AuditLog section's own component. *@
 @addTagHelper *, Humans.AuditLog
-@* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. AccessMatrix
-   moved to Humans.UI (nobodies-collective/Humans#1056) and now binds as <vc:access-matrix>;
-   the still-Shell-owned components this page renders (EventsCard,
-   CommunicationPreferencesPanel) stay invoked by name until they move too. A <vc:> element
-   for an unimported assembly renders as inert markup with a green build and no runtime
-   error, so never add one without its @addTagHelper. *@
+@* <vc:events-card> is the Events section's own component (nobodies-collective/Humans#1090 —
+   was invoked by name, which produced no assembly reference for the section activation
+   dependency graph to see). *@
+@addTagHelper *, Humans.Events
+@* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell.
+   AccessMatrix moved to Humans.UI (nobodies-collective/Humans#1056) and now binds as
+   <vc:access-matrix>; the still-Shell-owned CommunicationPreferencesPanel stays invoked by
+   name until it moves too. A <vc:> element for an unimported assembly renders as inert
+   markup with a green build and no runtime error, so never add one without its
+   @addTagHelper. *@

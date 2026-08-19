@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuevo informe</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>No hay ningún año presupuestario activo en este momento. No se pueden presentar informes de gastos hasta que se active un año presupuestario.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Tu cuenta de acreedor en Holded ({0}) está vinculada, pero aún no se ha registrado nada en ella. Tu extracto aparecerá cuando se registre tu primer informe de gastos.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Tu extracto de gastos aparecerá aquí cuando tu primer informe se registre en Holded.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Tu cuenta de acreedor en Holded aún no está vinculada, así que no se puede mostrar tu extracto. Pide a un administrador de Finanzas que la vincule.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Aún no has establecido tu IBAN de pago. Se te pedirá que lo establezcas cuando envíes un informe.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Aún no hay informes de gastos.</value></data>

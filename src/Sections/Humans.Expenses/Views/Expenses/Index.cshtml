@@ -69,10 +69,18 @@ else if (Model.AwaitingFirstLedgerActivity)
         <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Expenses_CreditorAccountNoActivity", Model.BoundAccountNum!]
     </div>
 }
+else if (Model.CreditorBindingFailed)
+{
+    @* A report reached Holded but the account never resolved: genuinely stuck, Finance must bind it. *@
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>@Localizer["Expenses_NoCreditorAccount"]
+    </div>
+}
 else
 {
+    @* Unbound with nothing pushed yet — the normal pre-first-report state, not a problem to report. *@
     <div class="alert alert-secondary">
-        <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Expenses_NoCreditorAccount"]
+        <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Expenses_StatementPendingFirstReport"]
     </div>
 }
 

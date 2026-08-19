@@ -15,6 +15,11 @@ internal interface IHoldedRepository : IRepository
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
+    /// <summary>Every pulled doc, matched or not, for the <c>/Finance/Holded</c> browse panel. The
+    /// two reads above are each a filtered slice — unmatched-only, and matched-in-one-year — so
+    /// neither composes into "all docs". Unordered: the caller sorts for display.</summary>
+    Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default);
+
     // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);

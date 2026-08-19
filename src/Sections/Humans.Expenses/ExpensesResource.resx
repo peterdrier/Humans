@@ -82,6 +82,7 @@
   <data name="Expenses_NewReport" xml:space="preserve"><value>New Report</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>There is no active budget year at the moment. Expense reports cannot be filed until a budget year is activated.</value></data>
   <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Your Holded creditor account ({0}) is linked, but nothing has been booked to it yet. Your statement will appear once your first expense report is registered.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Your expense statement will appear here once your first report is registered in Holded.</value></data>
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Your Holded creditor account is not linked yet, so your statement cannot be shown. Ask a Finance admin to link it.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>You have not yet set your payment IBAN. You will be prompted to set it when you submit a report.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>No expense reports yet.</value></data>

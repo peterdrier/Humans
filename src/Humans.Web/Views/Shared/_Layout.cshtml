@@ -78,29 +78,15 @@
                         var hasProfile = RoleAssignmentClaimsTransformation.IsActive(User);
                     }
                     <ul class="navbar-nav flex-grow-1">
-                        @if (isAuthenticated)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Search" asp-action="Index"
-                                   aria-label="Search" title="Search">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                </a>
-                            </li>
-                        }
-                        @* Links sections contribute through ISectionNav; renders nothing while none do. *@
+                        @* Links sections contribute through ISectionNav; renders nothing while none do.
+                           Search and Tour are real sections (Humans.Search, Humans.Tour) and contribute
+                           their own nav links here rather than being named by this file — see
+                           nobodies-collective/Humans#1090. *@
                         <vc:section-nav />
                         @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
-                            </li>
-                        }
-                        @if (!isAuthenticated)
-                        {
-                            @* Anonymous-only: the signed-in top nav is too busy for a Tour slot —
-                               members get a dashboard tile instead (Home/Dashboard.cshtml). *@
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Tour" asp-action="Index">Tour</a>
                             </li>
                         }
                         <li class="nav-item" authorize-policy="AnyAdminRole">

@@ -613,6 +613,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 BuyerName = o.BuyerName,
                 BuyerEmail = o.BuyerEmail,
                 VendorOrderId = o.VendorOrderId,
+                DiscountAmount = o.DiscountAmount,
+                IsPaid = o.PaymentStatus == TicketPaymentStatus.Paid,
             })
             .ToListAsync(ct);
     }

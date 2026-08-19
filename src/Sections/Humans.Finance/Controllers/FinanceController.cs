@@ -1,5 +1,6 @@
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
+using Humans.Finance.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -25,8 +26,16 @@ namespace Humans.Finance.Controllers;
 internal sealed class FinanceController(
     IUserServiceRead userService,
     IHoldedFinanceService holdedFinance,
+    IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    /// <summary>The connector index: what Finance's half of the Holded integration is doing, and a
+    /// way into every screen that already covers a piece of it. Cache reads only — see
+    /// <see cref="IHoldedFinanceAdminService.GetConnectorOverviewAsync"/>.</summary>
+    [HttpGet("Holded")]
+    public async Task<IActionResult> Holded(CancellationToken ct)
+        => View(await holdedConnector.GetConnectorOverviewAsync(ct));
+
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {

@@ -25,6 +25,11 @@ internal sealed class ExpensesIndexViewModel
     /// before its first journal entry, and not the same thing as an unresolved binding.</summary>
     public bool AwaitingFirstLedgerActivity => BoundAccountNum is not null && AccountLedger is null;
 
+    /// <summary>Unbound although a report already reached Holded — auto-bind failed and only a manual
+    /// bind clears it (nobodies-collective/Humans#972). Unbound with no pushed report is just "not yet".</summary>
+    public bool CreditorBindingFailed =>
+        BoundAccountNum is null && Reports.Any(r => r.HoldedDocId is not null);
+
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }
 

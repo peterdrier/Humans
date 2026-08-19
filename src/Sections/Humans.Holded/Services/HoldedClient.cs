@@ -116,34 +116,54 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
-            ?? throw new HoldedTransientException("Holded returned empty body");
-
-        return new HoldedPurchaseDocumentDto
+        try
         {
-            Id = Prop(node, "id")?.GetValue<string>() ?? "",
-            DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
-            Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
-            Tax = ReadDecimalV2(Prop(node, "tax")),
-            Total = ReadDecimalV2(Prop(node, "total")),
-            PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
-            PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
-            ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
-            Tags = ReadTags(Prop(node, "tags")),
-        };
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+
+            return new HoldedPurchaseDocumentDto
+            {
+                Id = Prop(node, "id")?.GetValue<string>() ?? "",
+                DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
+                Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
+                Tax = ReadDecimalV2(Prop(node, "tax")),
+                Total = ReadDecimalV2(Prop(node, "total")),
+                PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
+                PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
+                ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
+                Tags = ReadTags(Prop(node, "tags")),
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException or UnparsableValueException)
+        {
+            // Same normalization as GetContactAsync: a value of an unexpected type belongs to the
+            // stored document, not to this request, so retrying cannot help. UnparsableValueException
+            // covers ParseApprovedAt's NodaTime .Value on a non-empty but malformed timestamp.
+            throw new HoldedPermanentException(
+                $"Holded purchase document {documentId} could not be read.", ex);
+        }
     }
 
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default)
     {
         const int pageSafetyCap = 5; // a handful of expense accounts today, unpaginated in practice
-        var items = await GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
-        return items.Select(n => new HoldedExpenseAccountDto
+        try
         {
-            Id = Prop(n, "id")?.GetValue<string>() ?? "",
-            AccountNum = ReadInt(Prop(n, "account_num")) ?? 0,
-            Name = Prop(n, "name")?.GetValue<string>() ?? "",
-        }).ToList();
+            var items = await GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
+            return items.Select(n => new HoldedExpenseAccountDto
+            {
+                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                AccountNum = ReadInt(Prop(n, "account_num")) ?? 0,
+                Name = Prop(n, "name")?.GetValue<string>() ?? "",
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException("Holded expense accounts could not be read.", ex);
+        }
     }
 
     public async Task<string> CreateExpenseAccountAsync(
@@ -154,10 +174,20 @@ internal sealed class HoldedClient : IHoldedClient
         { Content = JsonContent.Create(payload, options: OmitNulls) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
-        var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-            ?? throw new HoldedTransientException("Holded returned empty body");
-        return node["id"]?.GetValue<string>()
-            ?? throw new HoldedTransientException("Holded create-account response missing id");
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        try
+        {
+            var node = JsonNode.Parse(body)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return node["id"]?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded create-account response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException(
+                "Holded create-account response could not be read.", ex);
+        }
     }
 
     public async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
@@ -379,7 +409,19 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
         const int pageSafetyCap = 50; // 10 000+ contacts (limit=200/page) — far above a small nonprofit's vendor/member list
-        var items = await GetPagedAsync("/api/v2/contacts?limit=200", pageSafetyCap, ct);
+        List<JsonNode> items;
+        try
+        {
+            items = await GetPagedAsync("/api/v2/contacts?limit=200", pageSafetyCap, ct);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // The page envelope itself (not a per-contact value) was unreadable — that's not the
+            // per-contact skip-and-log below (#994), which only covers one bad item in an otherwise
+            // good page.
+            throw new HoldedPermanentException("Holded contacts could not be read.", ex);
+        }
 
         var contacts = new List<HoldedContactDto>();
         var skipped = 0;
