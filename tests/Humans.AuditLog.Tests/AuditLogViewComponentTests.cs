@@ -1,8 +1,12 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -22,8 +26,18 @@ public class AuditLogViewComponentTests
 
     private readonly IAuditViewerService _viewer = Substitute.For<IAuditViewerService>();
 
-    private AuditLogViewComponent BuildSut() =>
-        new(_viewer, NullLogger<AuditLogViewComponent>.Instance);
+    private AuditLogViewComponent BuildSut()
+    {
+        var component = new AuditLogViewComponent(_viewer, NullLogger<AuditLogViewComponent>.Instance);
+        // Minimal ViewComponentContext so HttpContext.RequestAborted resolves.
+        var viewContext = new ViewContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+        };
+        component.ViewComponentContext = new ViewComponentContext { ViewContext = viewContext };
+        return component;
+    }
 
     private static AuditEvent Event(Instant occurredAt, string description = "entry") => new(
         Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: AuditAction.StoreProductPriceChanged,

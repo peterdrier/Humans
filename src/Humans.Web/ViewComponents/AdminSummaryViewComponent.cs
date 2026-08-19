@@ -40,6 +40,11 @@ public sealed class AdminSummaryViewComponent(
             {
                 value = await tile.Value(serviceProvider, HttpContext.RequestAborted);
             }
+            catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                // The client is gone — stop computing tiles, don't log it as a section failure.
+                throw;
+            }
             catch (Exception ex)
             {
                 // One section's summary read must not take the whole dashboard down.
