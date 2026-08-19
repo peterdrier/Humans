@@ -67,7 +67,7 @@ builder.Host.UseSerilog();
 
 // Before anything composes from discovery: which sections this deployment runs, and a hard
 // stop if the allowlist deactivates one an active section consumes (#1081).
-SectionActivation.Configure(builder.Configuration);
+var activeSections = SectionActivation.Configure(builder.Configuration);
 
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
@@ -481,13 +481,18 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 
 // A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
 // default provider only discovers public ones, and says nothing when it doesn't.
+// One snapshot per host, not a static: several hosts share a process in the integration
+// suite, and a static set would freeze whichever composed first (#1081).
+var sectionAssemblies = new SectionAssemblySnapshot(
+    SectionDiscoveryExtensions.SectionAssemblies(), activeSections);
+
 mvcBuilder.ConfigureApplicationPartManager(apm =>
-    apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
+    apm.FeatureProviders.Add(new SectionControllerFeatureProvider(sectionAssemblies)));
 
 // …and the same for a section's view components, which MVC discovers through a separate,
 // equally public-only convention (Notifications' bell).
 mvcBuilder.ConfigureApplicationPartManager(apm =>
-    apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
+    apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider(sectionAssemblies)));
 
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so
 // ValidateOnBuild passes and /dev/login/* 404s cleanly. Must be added after

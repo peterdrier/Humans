@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Extensions/SectionActivation.cs
   src/Humans.Web/Extensions/SectionDiscoveryExtensions.cs
+  src/Humans.Web/Hosting/SectionAssemblySnapshot.cs
   src/Humans.Web/Hosting/SectionControllerFeatureProvider.cs
   src/Humans.Web/Hosting/SectionViewComponentFeatureProvider.cs
 -->
@@ -78,6 +79,14 @@ default feature providers walk every application part and would otherwise keep a
 deactivated section's *public* controllers routable and its *public* view components
 resolvable, failing at request time on services nobody registered.
 `SectionControllerFeatureProvider` and `SectionViewComponentFeatureProvider` drop them.
+
+Those two providers are the only place a section set is cached, because they see one type
+at a time and re-walking the dependency graph per type is too slow. The cache is a
+`SectionAssemblySnapshot` built **per host** and handed to them at construction — never a
+static. Several hosts share a process (every `WebApplicationFactory` in the integration
+suite builds one), and a process-wide cache would serve whichever host composed first to
+all of them, routing one host's controllers inside another. Everything else re-reads
+`ActiveSectionAssemblies()` per call and is unaffected.
 
 ## Diagnosing
 

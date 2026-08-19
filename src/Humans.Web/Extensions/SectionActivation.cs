@@ -26,8 +26,13 @@ public static class SectionActivation
     /// <summary>Null means every discovered section — the default.</summary>
     private static IReadOnlySet<string>? _active;
 
-    /// <summary>Reads the allowlist and fails startup if it breaks an active section's dependencies.</summary>
-    public static void Configure(IConfiguration configuration) =>
+    /// <summary>
+    /// Reads the allowlist and fails startup if it breaks an active section's dependencies.
+    /// Returns the resolved set — null for the default, every section — so the composing
+    /// host can hand it to the parts that need a snapshot of its own composition rather
+    /// than a process-wide read.
+    /// </summary>
+    public static IReadOnlySet<string>? Configure(IConfiguration configuration) =>
         _active = Resolve(
             SectionDiscoveryExtensions.SectionAssemblies(),
             typeof(SectionActivation).Assembly,
