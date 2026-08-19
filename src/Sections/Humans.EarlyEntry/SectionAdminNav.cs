@@ -4,7 +4,7 @@ using Humans.Base.Interfaces;
 namespace Humans.EarlyEntry;
 
 /// <summary>EarlyEntry's contribution to the shared "Tickets" admin group (nobodies-collective/Humans#1077).</summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Feedback;
 
 /// <summary>Feedback's contribution to the shared "Feedback" admin group (nobodies-collective/Humans#1077).</summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

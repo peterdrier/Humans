@@ -4,7 +4,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Expenses;
 
 /// <summary>Expenses' contribution to the shared "Money" admin group (nobodies-collective/Humans#1077).</summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

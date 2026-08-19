@@ -7,7 +7,7 @@ namespace Humans.Debug;
 /// Debug's admin sidebar contribution — the "Diagnostics" group (shared with Users) and the
 /// "Design" group (nobodies-collective/Humans#1077).
 /// </summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

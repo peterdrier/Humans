@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Onboarding;
 
 /// <summary>Onboarding's contribution to the shared "Members" admin group (nobodies-collective/Humans#1077).</summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

@@ -7,7 +7,7 @@ namespace Humans.Gate;
 /// Gate's contribution to the shared "Tickets" (gate ops) and "Temp" admin groups
 /// (nobodies-collective/Humans#1077).
 /// </summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

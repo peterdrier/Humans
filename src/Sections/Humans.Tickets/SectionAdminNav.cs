@@ -10,7 +10,7 @@ namespace Humans.Tickets;
 /// Gate and EarlyEntry (nobodies-collective/Humans#1077). Weights preserve the pre-move
 /// traffic-ordered tree exactly; do not re-sort.
 /// </summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

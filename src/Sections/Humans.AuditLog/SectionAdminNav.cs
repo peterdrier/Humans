@@ -8,7 +8,7 @@ namespace Humans.AuditLog;
 /// Audit is a Crosscut (memory/architecture/crosscut-purity.md), not Governance — Board usage
 /// is audience, never ownership (memory/architecture/governance-scope.md).
 /// </remarks>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

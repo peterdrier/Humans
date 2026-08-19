@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Development;
 
 /// <summary>Development's admin sidebar contribution — the "Dev" group (nobodies-collective/Humans#1077).</summary>
-public sealed class AdminNav : ISectionAdminNav
+internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [

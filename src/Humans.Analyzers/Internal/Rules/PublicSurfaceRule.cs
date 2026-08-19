@@ -8,9 +8,7 @@ namespace Humans.Analyzers.Internal.Rules;
 /// HUM0034 — outside <c>Contracts/</c> a section's types are internal. Two kinds of
 /// exception: a deliberate surface (<c>Contracts/</c>, <c>Jobs/</c>, the <c>ISection</c>
 /// entry point, the <c>&lt;Section&gt;Resource</c> marker) and types the framework
-/// silently drops when they are internal (view components, tag helpers, EF migrations,
-/// <c>ISectionContribution</c> implementors — <c>SectionDiscoveryExtensions</c> finds them
-/// via <c>GetExportedTypes()</c>, so an internal one contributes nothing with a green build).
+/// silently drops when they are internal (view components, tag helpers, EF migrations).
 /// </summary>
 /// <remarks>
 /// The membership test for the framework exception: does making the type internal fail
@@ -23,7 +21,6 @@ namespace Humans.Analyzers.Internal.Rules;
 internal static class PublicSurfaceRule
 {
     private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
-    private const string ISectionContributionFullName = "Humans.Base.Interfaces.ISectionContribution";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
     private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string IRecurringJobFullName = "Humans.Base.Interfaces.IRecurringJob";
@@ -62,8 +59,7 @@ internal static class PublicSurfaceRule
         INamedTypeSymbol? viewComponentAttr,
         INamedTypeSymbol? nonViewComponentAttr,
         INamedTypeSymbol? tagHelperInterface,
-        INamedTypeSymbol? recurringJobInterface,
-        INamedTypeSymbol? sectionContributionMarker)
+        INamedTypeSymbol? recurringJobInterface)
     {
         public INamedTypeSymbol? SectionMarker { get; } = sectionMarker;
         public INamedTypeSymbol? MigrationBase { get; } = migrationBase;
@@ -72,7 +68,6 @@ internal static class PublicSurfaceRule
         public INamedTypeSymbol? NonViewComponentAttr { get; } = nonViewComponentAttr;
         public INamedTypeSymbol? TagHelperInterface { get; } = tagHelperInterface;
         public INamedTypeSymbol? RecurringJobInterface { get; } = recurringJobInterface;
-        public INamedTypeSymbol? SectionContributionMarker { get; } = sectionContributionMarker;
     }
 
     public static Context Prepare(Compilation compilation) => new(
@@ -82,8 +77,7 @@ internal static class PublicSurfaceRule
         compilation.GetTypeByMetadataName(ViewComponentAttributeFullName),
         compilation.GetTypeByMetadataName(NonViewComponentAttributeFullName),
         compilation.GetTypeByMetadataName(TagHelperInterfaceFullName),
-        compilation.GetTypeByMetadataName(IRecurringJobFullName),
-        compilation.GetTypeByMetadataName(ISectionContributionFullName));
+        compilation.GetTypeByMetadataName(IRecurringJobFullName));
 
     public static void Analyze(
         SymbolAnalysisContext context,
@@ -100,8 +94,7 @@ internal static class PublicSurfaceRule
             || IsViewComponent(type, types.ViewComponentAttr, types.NonViewComponentAttr)
             || IsTagHelper(type, types.TagHelperInterface)
             || IsUnderContracts(type)
-            || IsAllowedJob(type, types.RecurringJobInterface)
-            || IsSectionContribution(type, types.SectionContributionMarker))
+            || IsAllowedJob(type, types.RecurringJobInterface))
         {
             return;
         }
@@ -120,18 +113,6 @@ internal static class PublicSurfaceRule
         sectionMarker is not null
         && type is { TypeKind: TypeKind.Class, IsAbstract: false }
         && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, sectionMarker));
-
-    /// <summary>
-    /// Matched by implementing any seam interface deriving from <c>ISectionContribution</c>
-    /// (<c>ISectionAdminNav</c>, <c>ISectionJobs</c>, …) — the same marker
-    /// <c>SectionDiscoveryExtensions.RegisterContributions</c> discovers by. Its
-    /// <c>GetExportedTypes()</c> call silently drops an internal one: no build error, no
-    /// runtime error, the seam just contributes nothing.
-    /// </summary>
-    private static bool IsSectionContribution(INamedTypeSymbol type, INamedTypeSymbol? sectionContributionMarker) =>
-        sectionContributionMarker is not null
-        && type is { TypeKind: TypeKind.Class, IsAbstract: false }
-        && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, sectionContributionMarker));
 
     /// <summary>Matched the way <c>SectionResourceTypes()</c> matches it at runtime.</summary>
     private static bool IsResourceMarker(INamedTypeSymbol type) =>

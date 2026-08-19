@@ -4,7 +4,7 @@ namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// Asked about ticket transfers by the section's own admin nav contribution
-/// (<c>AdminNav</c>), which badges the pending-review count. The wizard, the admin
+/// (<c>SectionAdminNav</c>), which badges the pending-review count. The wizard, the admin
 /// decision surface and every transfer DTO are internal to Humans.Tickets.
 /// </summary>
 /// <remarks>
