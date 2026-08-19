@@ -373,16 +373,16 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 |---|---|---|
 | `ISectionNav` | Member top-nav links | `SectionNavViewComponent` |
 | `ISectionAdminNav` | Admin sidebar groups/items | `AdminNavComposition.Compose` (merges into `AdminNavTree`'s groups by `AdminNavGroup.GroupKey`) |
-| `ISectionAdminTiles` | Admin dashboard summary tiles | admin dashboard (a `null` tile value renders nothing, not a zero) |
+| `ISectionAdminTiles` | Admin dashboard summary tiles | admin dashboard (a `null` tile value renders nothing, not a zero) — consumer ships with lane #1078, not yet wired |
 | `ISectionChrome` | Layout-embedded view components | `ChromeSlotViewComponent`, named slots (`ChromeSlots`) |
 | `ISectionMemberDashboard` | Member-dashboard view components | `ChromeSlotViewComponent`, same slots |
-| `ISectionThingsToDo` | Member things-to-do entries | things-to-do list (returning nothing is the normal case) |
+| `ISectionThingsToDo` | Member things-to-do entries | things-to-do list (returning nothing is the normal case) — consumer ships with lane #1078, not yet wired |
 | `ISectionJobs` | Hangfire recurring-job descriptors (id, type, cron) | `RecurringJobExtensions.UseHumansRecurringJobs` — merges into the roll-call, drives the stale-job sweep |
 | `ISectionHealthChecks` | Health checks | builder-time, against `IHealthChecksBuilder` |
 | `ISectionEndpoints` | Endpoint mapping (SignalR hubs, etc.) | endpoint-mapping time, against `IEndpointRouteBuilder` — necessarily later than `ISection.Register`, which has neither an `IHostEnvironment` nor a route builder to hand a section |
 | `ISectionPolicies` | Authorization policy registration | `Configure<AuthorizationOptions>` (additive — policy *names* stay shared vocabulary in `PolicyNames`; only registration moves) |
 
-Composition follows the same discipline as §8b's fanouts — iterate every contributor, merge, order by an explicit `Weight` — with one addition: several of today's orderings (member nav, admin sidebar) encode traffic-based editorial judgement accumulated over time, so composing them must reproduce the existing order exactly, never re-sort by the composer's own judgement.
+Composition follows the same discipline as §8b's fanouts — iterate every contributor, merge. The six descriptor seams (`ISectionNav`, `ISectionAdminNav`, `ISectionAdminTiles`, `ISectionChrome`, `ISectionMemberDashboard`, `ISectionThingsToDo`) each carry a `Weight` and order by it; `ISectionJobs`, `ISectionHealthChecks`, `ISectionEndpoints` and `ISectionPolicies` have no ordering concept — a job roll-call, a health-check registration, an endpoint map and a policy set are unordered sets, not lists. One addition for the ordered seams: several of today's orderings (member nav, admin sidebar) encode traffic-based editorial judgement accumulated over time, so composing them must reproduce the existing order exactly, never re-sort by the composer's own judgement.
 
 **Which instance a section forwards** to a contributor interface follows where that contributor's read is actually served from, not a fixed lifetime. Forward the caching decorator only when the fanout read comes off the section's cached projection — `Humans.Camps`' `Section.cs` registers `AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>())` because `CachingCampService.GetEarlyEntriesAsync` projects entirely from the cached `CampSettingsInfo` + `CampInfo` snapshot. Otherwise forward the inner scoped service: `Humans.Teams` and `Humans.Shifts` both register scoped providers, because `team_early_entry_grants` and the volunteer-tracking rows are read from the repository per call and are not in `TeamInfo`. The orchestrator is keyed-scoped so it resolves either lifetime; registering a decorator that does not itself serve the read buys no caching and only adds a hop.
 
