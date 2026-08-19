@@ -28,7 +28,7 @@ namespace Humans.Agent;
 /// <para>
 /// <c>AgentConversationRetentionJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
 /// (nobodies-collective/Humans#866) and drives <see cref="IAgentConversationRetention"/>; its
-/// registration and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
+/// registration and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
 /// </para>
 /// <para>
 /// The two warm-up hosted services <em>are</em> registered here. Nothing outside the section

@@ -24,7 +24,7 @@ namespace Humans.Mailer;
 /// <c>MailerLiteOptions</c> binds here rather than in Shell — unlike Email's settings, which
 /// four other sections read, <c>MailerLite:*</c> has exactly one consumer and it is the
 /// section's own client. The raw <c>MailerLite:AudienceSyncCron</c> read — the job schedule,
-/// not the client's configuration — moved into <c>Jobs.cs</c> at #1074's jobs seam.
+/// not the client's configuration — moved into <c>SectionJobs.cs</c> at #1074's jobs seam.
 /// </para>
 /// <para>
 /// No caching decorator: <c>MailerLiteClient</c> is a Singleton that holds its own

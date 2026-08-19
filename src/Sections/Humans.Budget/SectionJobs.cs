@@ -4,7 +4,7 @@ using Humans.Budget.Jobs;
 namespace Humans.Budget;
 
 /// <summary>Budget's recurring jobs. Discovered by Shell — nothing names it, so it needs no section prefix.</summary>
-public sealed class SectionJobs : ISectionJobs
+internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {

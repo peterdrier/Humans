@@ -8,7 +8,7 @@ namespace Humans.Gate;
 /// prefix. <c>GateVendorCheckInJob</c> is not here — it is enqueued fire-and-forget on admit
 /// (<see cref="Controllers.GateController"/>), not a recurring job.
 /// </summary>
-public sealed class SectionJobs : ISectionJobs
+internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {

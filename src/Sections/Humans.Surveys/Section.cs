@@ -20,7 +20,7 @@ namespace Humans.Surveys;
 /// <c>SendSurveyReminderJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
 /// (nobodies-collective/Humans#866) and then into <c>Jobs/</c> with the HUM0034 carve-out
 /// (nobodies-collective/Humans#1353), and drives <see cref="ISurveyReminderSender"/>. Its
-/// registration and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
+/// registration and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
 /// </remarks>
 public sealed class Section : ISection
 {

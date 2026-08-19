@@ -34,7 +34,7 @@ namespace Humans.GoogleIntegration;
 /// </para>
 /// <para>
 /// The two recurring jobs live in this project's <c>Contracts/</c> folder; their registration
-/// and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
+/// and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

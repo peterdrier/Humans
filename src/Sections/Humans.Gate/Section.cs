@@ -24,7 +24,7 @@ namespace Humans.Gate;
 /// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> live in this project's
 /// <c>Jobs/</c> folder (moved there from <c>Contracts/</c> by the HUM0034 carve-out,
 /// nobodies-collective/Humans#1353); their registration moved here at #1074's jobs seam.
-/// Only <c>GateRetentionJob</c> is a recurring job, contributed via <c>Jobs.cs</c>;
+/// Only <c>GateRetentionJob</c> is a recurring job, contributed via <c>SectionJobs.cs</c>;
 /// <c>GateVendorCheckInJob</c> is enqueued fire-and-forget on admit and needs only DI
 /// registration. The retention job reaches the section through
 /// <see cref="IGateScanRetention"/>; the vendor mirror job needs no Gate type at all, only

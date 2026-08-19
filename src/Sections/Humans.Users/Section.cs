@@ -45,7 +45,7 @@ namespace Humans.Users;
 /// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
 /// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866), and
 /// their registration followed from Shell's <c>AdminSectionExtensions</c> at #1074's jobs
-/// seam — their schedule is contributed via <c>Jobs.cs</c>.
+/// seam — their schedule is contributed via <c>SectionJobs.cs</c>.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

@@ -22,7 +22,7 @@ namespace Humans.Governance;
 /// <remarks>
 /// <c>TermRenewalReminderJob</c> moved into this project's <c>Contracts/</c> folder at G5
 /// lane 5b-4 (nobodies-collective/Humans#866); its registration followed at #1074's jobs
-/// seam, whose schedule is contributed via <c>Jobs.cs</c>.
+/// seam, whose schedule is contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

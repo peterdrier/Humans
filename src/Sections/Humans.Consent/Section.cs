@@ -19,7 +19,7 @@ namespace Humans.Consent;
 /// <c>SyncLegalDocumentsJob</c> and <c>SendReConsentReminderJob</c> moved into this project's
 /// <c>Contracts/</c> folder (nobodies-collective/Humans#866): the former at G5 lane 5b-4, the
 /// latter at lane 5b-5. Their registration followed at #1074's jobs seam, whose schedule is
-/// contributed via <c>Jobs.cs</c>.
+/// contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {

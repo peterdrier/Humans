@@ -4,7 +4,7 @@ using Humans.Notifications.Jobs;
 namespace Humans.Notifications;
 
 /// <summary>Notifications' recurring jobs. Discovered by Shell — nothing names it, so it needs no section prefix.</summary>
-public sealed class SectionJobs : ISectionJobs
+internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {

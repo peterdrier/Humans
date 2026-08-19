@@ -22,7 +22,7 @@ namespace Humans.Tickets;
 /// <remarks>
 /// <c>TicketSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5 lane 5b-3
 /// (nobodies-collective/Humans#866); its registration and schedule are contributed via
-/// <c>Jobs.cs</c> (#1074's jobs seam). The other two jobs the section used to be credited
+/// <c>SectionJobs.cs</c> (#1074's jobs seam). The other two jobs the section used to be credited
 /// with went to their real owners in the same
 /// move — <c>TicketingBudgetSyncJob</c> to <c>Humans.Budget</c> (both its collaborators are
 /// Budget's) and <c>GateVendorCheckInJob</c> to <c>Humans.Gate</c> (both its enqueue sites
