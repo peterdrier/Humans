@@ -26,7 +26,6 @@ using Humans.Base.Hosting;
 using Humans.Web.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
-using Humans.CityPlanning.Contracts;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
@@ -272,19 +271,12 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
-// "external" marks third-party reachability checks. They surface on /health for diagnostics
-// but are excluded from /health/ready — a vendor outage must never fail the readiness probe
-// and block or roll back a deploy.
-string[] external = ["external"];
+// "external" tags third-party reachability checks — sections apply it to their own checks
+// below. They surface on /health for diagnostics but are excluded from /health/ready — a
+// vendor outage must never fail the readiness probe and block or roll back a deploy.
 var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
-    .AddCheck<ConfigurationHealthCheck>("configuration")
-    .AddCheck<SmtpHealthCheck>("smtp", tags: external)
-    .AddCheck<GitHubHealthCheck>("github", tags: external)
-    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: external)
-    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: external)
-    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
-    .AddCheck<TicketVendorHealthCheck>("ticket-vendor", tags: external);
+    .AddCheck<ConfigurationHealthCheck>("configuration");
 
 // Sections add their own checks; the names are monitoring keys, so they stay with the owner.
 foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>())
@@ -797,7 +789,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
-app.MapHub<CityPlanningHub>("/hubs/city-planning");
 
 // Sections map what routing cannot discover on its own — hubs and the like.
 foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())

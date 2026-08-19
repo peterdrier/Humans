@@ -4,13 +4,13 @@ using Octokit;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 
-namespace Humans.Web.Health;
+namespace Humans.Guide.Health;
 
 /// <summary>
 /// Health check that validates GitHub API connectivity and repository access.
 /// Verifies authentication and that the configured repository is accessible.
 /// </summary>
-public class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
+internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
 {
     private readonly GitHubSettings _settings = settings.Value;
 
