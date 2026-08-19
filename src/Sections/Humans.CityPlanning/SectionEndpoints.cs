@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.CityPlanning.Contracts;
+using Humans.CityPlanning.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 

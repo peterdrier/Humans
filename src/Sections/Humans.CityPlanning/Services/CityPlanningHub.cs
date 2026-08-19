@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Humans.Users.Contracts;
 
-namespace Humans.CityPlanning.Contracts;
+namespace Humans.CityPlanning.Services;
 
 /// <summary>
 /// Live cursor presence for the barrio and container maps. Owned by the City Planning

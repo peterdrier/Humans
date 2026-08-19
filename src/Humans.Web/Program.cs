@@ -18,6 +18,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Base.Configuration;
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
@@ -271,9 +272,10 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
-// "external" tags third-party reachability checks — sections apply it to their own checks
-// below. They surface on /health for diagnostics but are excluded from /health/ready — a
-// vendor outage must never fail the readiness probe and block or roll back a deploy.
+// HealthCheckTags.External tags third-party reachability checks — sections apply it to their
+// own checks below. They surface on /health for diagnostics but are excluded from
+// /health/ready — a vendor outage must never fail the readiness probe and block or roll back
+// a deploy.
 var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
     .AddCheck<ConfigurationHealthCheck>("configuration");
@@ -742,8 +744,8 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     // Readiness check - confirms our own stack (DB, config, Hangfire) is available.
-    // Third-party reachability ("external") is diagnostic-only on /health.
-    Predicate = r => !r.Tags.Contains("external")
+    // Third-party reachability (HealthCheckTags.External) is diagnostic-only on /health.
+    Predicate = r => !r.Tags.Contains(HealthCheckTags.External)
 });
 
 app.MapPrometheusScrapingEndpoint("/metrics");

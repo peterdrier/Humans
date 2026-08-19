@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Health;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +16,6 @@ internal sealed class SectionHealthChecks : ISectionHealthChecks
 {
     public void AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {
-        builder.AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: ["external"]);
+        builder.AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: [HealthCheckTags.External]);
     }
 }

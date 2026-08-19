@@ -1,4 +1,5 @@
 using Humans.Agent.Health;
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ internal sealed class SectionHealthChecks : ISectionHealthChecks
 {
     public void AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {
-        builder.AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: ["external"]);
+        builder.AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: [HealthCheckTags.External]);
         builder.AddCheck<AgentDocsHealthCheck>("agent-grounding-docs");
     }
 }

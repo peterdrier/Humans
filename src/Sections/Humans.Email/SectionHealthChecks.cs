@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Email.Health;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +15,6 @@ internal sealed class SectionHealthChecks : ISectionHealthChecks
 {
     public void AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {
-        builder.AddCheck<SmtpHealthCheck>("smtp", tags: ["external"]);
+        builder.AddCheck<SmtpHealthCheck>("smtp", tags: [HealthCheckTags.External]);
     }
 }
