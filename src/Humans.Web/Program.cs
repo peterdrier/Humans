@@ -65,6 +65,10 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
+// Before anything composes from discovery: which sections this deployment runs, and a hard
+// stop if the allowlist deactivates one an active section consumes (#1081).
+SectionActivation.Configure(builder.Configuration);
+
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
 {

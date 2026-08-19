@@ -11,10 +11,10 @@ namespace Humans.Web.Extensions;
 /// section instead of growing one.
 /// </summary>
 /// <remarks>
-/// Sections are still <em>not</em> optional and their ProjectReferences stay hard-coded
-/// (design §12.2). This only removes the by-name call. Later optionality is a change of
-/// where the assembly list comes from — a config allowlist, or an AssemblyLoadContext
-/// over a plugin folder — with no section code touched.
+/// Which of the discovered sections a deployment actually runs is configuration —
+/// see <see cref="SectionActivation"/>. Everything below composes from
+/// <see cref="ActiveSectionAssemblies"/>, so a deactivated section contributes no
+/// registration, no controller, no job and no nav without any of them naming it.
 /// </remarks>
 public static class SectionDiscoveryExtensions
 {
@@ -29,13 +29,21 @@ public static class SectionDiscoveryExtensions
             section.Register(services, configuration);
         }
 
-        // A section that fails to load is now silently absent where the by-name call
-        // was a compile error, so the discovered set is logged: that is what you check
-        // when one of its pages 404s (design §6).
+        // A section is now silently absent when it fails to load or when config deactivates
+        // it, where the by-name call was a compile error — so both sets are logged: that is
+        // what you check when one of its pages 404s (design §6).
+        var inactive = SectionAssemblies()
+            .Select(SectionName)
+            .Except(sections.Select(s => s.Name), StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
         Serilog.Log.Information(
-            "Discovered {Count} section project(s): {Sections}",
+            "Sections: {ActiveCount} active of {DiscoveredCount} discovered. Active: {Active}. Inactive: {Inactive}",
             sections.Count,
-            string.Join(", ", sections.Select(s => s.Name)));
+            sections.Count + inactive.Count,
+            string.Join(", ", sections.Select(s => s.Name)),
+            inactive.Count == 0 ? "(none)" : string.Join(", ", inactive));
 
         RegisterContributions(services);
 
@@ -81,7 +89,7 @@ public static class SectionDiscoveryExtensions
     /// Ordered by section name then type name so composition order is stable.
     /// </remarks>
     public static IReadOnlyList<T> DiscoverImplementations<T>() where T : class =>
-        [.. SectionAssemblies()
+        [.. ActiveSectionAssemblies()
             .SelectMany(a => a.GetTypes()
                 .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(T).IsAssignableFrom(t))
                 .Select(t => (Section: SectionName(a), Type: t)))
@@ -100,7 +108,7 @@ public static class SectionDiscoveryExtensions
     /// localization diagnostic, which asserts each set actually resolves.
     /// </summary>
     public static IReadOnlyList<Type> SectionResourceTypes() =>
-        [.. SectionAssemblies()
+        [.. ActiveSectionAssemblies()
             .SelectMany(a => a.GetExportedTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false }
                         && t.Name.EndsWith("Resource", StringComparison.Ordinal))
@@ -114,7 +122,7 @@ public static class SectionDiscoveryExtensions
     /// analyzers without anything having to declare it twice.
     /// </remarks>
     private static IReadOnlyList<(string Name, ISection Section)> DiscoverSections() =>
-        [.. SectionAssemblies()
+        [.. ActiveSectionAssemblies()
             .SelectMany(a => SectionEntryPoints(a)
                 .Select(t => (
                     Name: SectionName(a),
@@ -124,7 +132,7 @@ public static class SectionDiscoveryExtensions
             // carries a cross-section FK, so the contexts migrate independently.
             .OrderBy(s => s.Name, StringComparer.Ordinal)];
 
-    private static readonly Lazy<HashSet<Assembly>> SectionAssemblySet = new(() => [.. SectionAssemblies()]);
+    private static readonly Lazy<HashSet<Assembly>> SectionAssemblySet = new(() => [.. ActiveSectionAssemblies()]);
 
     /// <summary>
     /// True for a section assembly. Used by the MVC feature providers, which see one
@@ -134,7 +142,7 @@ public static class SectionDiscoveryExtensions
 
     /// <summary>The section a <paramref name="assembly"/> is: its name without the
     /// <c>Humans.</c> prefix.</summary>
-    private static string SectionName(Assembly assembly) =>
+    internal static string SectionName(Assembly assembly) =>
         assembly.GetName().Name!["Humans.".Length..];
 
     /// <summary>The <c>Section : ISection</c> entry points an assembly declares.</summary>
@@ -165,6 +173,15 @@ public static class SectionDiscoveryExtensions
 
         return [.. candidates.Where(a => SectionEntryPoints(a).Any())];
     }
+
+    /// <summary>
+    /// The section assemblies this deployment runs: <see cref="SectionAssemblies"/> minus
+    /// whatever <see cref="SectionActivation"/> deactivated. Composition reads this;
+    /// <see cref="SectionAssemblies"/> stays the full shipped set, which is what the
+    /// architecture sweeps want.
+    /// </summary>
+    public static IReadOnlyList<Assembly> ActiveSectionAssemblies() =>
+        [.. SectionAssemblies().Where(a => SectionActivation.IsActive(SectionName(a)))];
 
     private static Assembly? TryLoad(string name)
     {
