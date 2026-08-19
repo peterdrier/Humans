@@ -119,6 +119,20 @@ public class SectionSeamTests
             .Items.Select(i => i.Label).Should().Equal("first", "existing", "second");
     }
 
+    /// <summary>
+    /// Discovery activates the real section contributions, which are <c>internal sealed</c>:
+    /// a class's compiler-generated default constructor is public even when the class is not,
+    /// so <c>Activator.CreateInstance(Type)</c> reaches them without non-public binding flags.
+    /// </summary>
+    [HumansFact]
+    public void Internal_Section_Contributions_Are_Reflection_Constructible()
+    {
+        var navs = SectionDiscoveryExtensions.DiscoverImplementations<ISectionAdminNav>();
+
+        navs.Should().NotBeEmpty();
+        navs.Should().OnlyContain(n => !n.GetType().IsPublic, "contributions stay off the section's public surface");
+    }
+
     private interface IReportingJob
     {
         Task<string> ExecuteAsync(CancellationToken cancellationToken);
