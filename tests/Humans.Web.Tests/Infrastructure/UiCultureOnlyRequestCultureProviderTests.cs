@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Web.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Primitives;
 using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
@@ -26,6 +27,25 @@ public class UiCultureOnlyRequestCultureProviderTests
         result.Should().NotBeNull();
         result!.Cultures[0].Value.Should().Be("en");
         result.UICultures[0].Value.Should().Be("es");
+    }
+
+    [HumansFact]
+    public async Task Preserves_full_ui_culture_fallback_chain()
+    {
+        // AcceptLanguageHeaderRequestCultureProvider can return several ordered candidates
+        // in one result (e.g. "pt-BR, es;q=0.9" with pt-BR unsupported); the middleware
+        // walks the whole list to find the first supported one. Collapsing to just the
+        // first candidate would silently drop "es" and fall back to the default culture.
+        var uiCultures = new List<StringSegment> { "pt-BR", "es" };
+        var inner = new FixedRequestCultureProvider(
+            new ProviderCultureResult(new List<StringSegment> { "en" }, uiCultures));
+        var provider = new UiCultureOnlyRequestCultureProvider(inner);
+
+        var result = await provider.DetermineProviderCultureResult(new DefaultHttpContext());
+
+        result.Should().NotBeNull();
+        result!.Cultures[0].Value.Should().Be("en");
+        result.UICultures.Select(c => c.Value).Should().Equal("pt-BR", "es");
     }
 
     [HumansFact]
