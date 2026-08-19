@@ -47,12 +47,8 @@ public class SectionSeamTests
         merged.Items.Select(i => i.Label).Should().Equal("Existing", "Contributed");
     }
 
-    /// <summary>
-    /// The sidebar renders System groups as collapsed plumbing at the bottom, so a
-    /// user-facing contribution has to land above them rather than below the divider.
-    /// </summary>
     [HumansFact]
-    public void Unknown_Group_Lands_Above_The_System_Zone_Ordered_By_Weight()
+    public void Unknown_Group_Is_Appended_And_Groups_Order_By_Weight()
     {
         var composed = AdminNavComposition.Compose(
         [
@@ -60,46 +56,23 @@ public class SectionSeamTests
             new Nav(new AdminNavGroup("Sooner", [Item("a")], Weight: 10))
         ]);
 
-        var firstSystem = composed.Select((g, i) => (g.System, i)).First(x => x.System).i;
-        composed.Take(firstSystem).Select(g => g.Label).TakeLast(2).Should().Equal("Sooner", "Later");
-    }
-
-    [HumansFact]
-    public void Negative_Weight_Lands_A_Group_Above_The_Tree()
-    {
-        var composed = AdminNavComposition.Compose(
-            [new Nav(new AdminNavGroup("Urgent", [Item("a")], Weight: -5))]);
-
-        composed[0].Label.Should().Be("Urgent");
+        composed.Select(g => g.Label).Should().Equal("Sooner", "Later");
     }
 
     /// <summary>
-    /// The tree's groups all carry weight 0, so both a positive weight and no weight at all
-    /// land last among the user-facing groups — the placement every lane relies on today.
+    /// The sidebar renders System groups as collapsed plumbing at the bottom, so a System
+    /// contribution lands below every user-facing group however heavy those are.
     /// </summary>
     [HumansFact]
-    public void Weight_At_Or_Above_Zero_Lands_A_Group_Last_Above_The_System_Zone()
-    {
-        var lastTreeGroup = AdminNavTree.Groups.Last(g => !g.System).Label;
-
-        foreach (var weight in (int[])[0, 5])
-        {
-            var composed = AdminNavComposition.Compose(
-                [new Nav(new AdminNavGroup("Late", [Item("a")], Weight: weight))]);
-
-            var firstSystem = composed.Select((g, i) => (g.System, i)).First(x => x.System).i;
-            composed[firstSystem - 1].Label.Should().Be("Late");
-            composed[firstSystem - 2].Label.Should().Be(lastTreeGroup);
-        }
-    }
-
-    [HumansFact]
-    public void Contributed_System_Group_Appends_Below_The_System_Zone()
+    public void Contributed_System_Group_Lands_Below_The_User_Facing_Groups()
     {
         var composed = AdminNavComposition.Compose(
-            [new Nav(new AdminNavGroup("Plumbing", [Item("a")], System: true))]);
+        [
+            new Nav(new AdminNavGroup("Plumbing", [Item("a")], System: true)),
+            new Nav(new AdminNavGroup("Heavy", [Item("b")], Weight: 99))
+        ]);
 
-        composed[^1].Label.Should().Be("Plumbing");
+        composed.Select(g => g.Label).Should().Equal("Heavy", "Plumbing");
     }
 
     /// <summary>
