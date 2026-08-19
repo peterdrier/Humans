@@ -10,8 +10,6 @@
         ? "never"
         : at.Value.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
 
-    string SignedEuro(decimal amount) => (amount >= 0 ? "+" : "") + amount.ToEuro();
-
     string StatusBadge(string status) => status switch
     {
         "Running" => "bg-info",
@@ -223,8 +221,8 @@
                                 data-holded-postings="@(a.HoldedHasPostings ? "1" : "0")">
                                 <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
                                 <td>@a.Name</td>
-                                <td class="text-end">@SignedEuro(a.HoldedBalance)</td>
-                                <td class="text-end">@(a.LocalBalance is null ? "—" : SignedEuro(a.LocalBalance.Value))</td>
+                                <td class="text-end">@a.HoldedBalance.ToSignedEuro()</td>
+                                <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</td>
                                 <td class="text-end">@a.LocalLineCount</td>
                                 <td class="text-center">
                                     @if (a.Reconciled)

@@ -329,10 +329,10 @@ public sealed class HoldedAdminOverviewTests
             // 57200001 (bank, group 5): raw sign carries straight through.
             Line(1, 57200001, debit: 50_000m, line: 1),   // money arrives
             Line(2, 57200001, credit: 62_000m, line: 1),  // paid to Red Cross
-            // 75900001 (bus sales, group 7): raw sign flips.
+                                                          // 75900001 (bus sales, group 7): raw sign flips.
             Line(3, 75900001, credit: 5m, line: 1),       // ticket sold
             Line(4, 75900001, debit: 5m, line: 1),        // ticket refunded
-            // 62900200 (629x rental, group 6): raw sign flips.
+                                                          // 62900200 (629x rental, group 6): raw sign flips.
             Line(5, 62900200, debit: 123m, line: 1),      // truck rented
             Line(6, 62900200, credit: 50m, line: 1));     // deposit returned
 

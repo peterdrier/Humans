@@ -1,8 +1,6 @@
 @model HoldedEntry
 @{
     ViewData["Title"] = $"Entry {Model.EntryNumber}";
-
-    string SignedEuro(decimal amount) => (amount >= 0 ? "+" : "") + amount.ToEuro();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -38,7 +36,7 @@
                     </td>
                     <td class="text-muted small">@l.Type</td>
                     <td>@l.Description</td>
-                    <td class="text-end">@SignedEuro(l.Amount)</td>
+                    <td class="text-end">@l.Amount.ToSignedEuro()</td>
                 </tr>
             }
             </tbody>

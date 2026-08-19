@@ -5,8 +5,6 @@
     var a = Model.Account;
     ViewData["Title"] = $"{a.Number}{(string.IsNullOrWhiteSpace(a.Name) ? "" : $" · {a.Name}")}";
     var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    string SignedEuro(decimal amount) => (amount >= 0 ? "+" : "") + amount.ToEuro();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -29,13 +27,13 @@
     <div class="col-md-3">
         <div class="card text-center h-100"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Holded balance</h6>
-            <span class="fs-4">@SignedEuro(a.HoldedBalance)</span>
+            <span class="fs-4">@a.HoldedBalance.ToSignedEuro()</span>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card text-center h-100"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Local balance</h6>
-            <span class="fs-4">@(a.LocalBalance is null ? "—" : SignedEuro(a.LocalBalance.Value))</span>
+            <span class="fs-4">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</span>
         </div></div>
     </div>
     <div class="col-md-3">
@@ -104,7 +102,7 @@
                         </td>
                         <td class="text-muted small">@l.Type</td>
                         <td>@l.Description</td>
-                        <td class="text-end">@SignedEuro(l.Amount)</td>
+                        <td class="text-end">@l.Amount.ToSignedEuro()</td>
                     </tr>
                 }
                 </tbody>
