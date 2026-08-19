@@ -64,6 +64,35 @@ public class SectionSeamTests
     }
 
     [HumansFact]
+    public void Negative_Weight_Lands_A_Group_Above_The_Tree()
+    {
+        var composed = AdminNavComposition.Compose(
+            [new Nav(new AdminNavGroup("Urgent", [Item("a")], Weight: -5))]);
+
+        composed[0].Label.Should().Be("Urgent");
+    }
+
+    /// <summary>
+    /// The tree's groups all carry weight 0, so both a positive weight and no weight at all
+    /// land last among the user-facing groups — the placement every lane relies on today.
+    /// </summary>
+    [HumansFact]
+    public void Weight_At_Or_Above_Zero_Lands_A_Group_Last_Above_The_System_Zone()
+    {
+        var lastTreeGroup = AdminNavTree.Groups.Last(g => !g.System).Label;
+
+        foreach (var weight in (int[])[0, 5])
+        {
+            var composed = AdminNavComposition.Compose(
+                [new Nav(new AdminNavGroup("Late", [Item("a")], Weight: weight))]);
+
+            var firstSystem = composed.Select((g, i) => (g.System, i)).First(x => x.System).i;
+            composed[firstSystem - 1].Label.Should().Be("Late");
+            composed[firstSystem - 2].Label.Should().Be(lastTreeGroup);
+        }
+    }
+
+    [HumansFact]
     public void Contributed_System_Group_Appends_Below_The_System_Zone()
     {
         var composed = AdminNavComposition.Compose(

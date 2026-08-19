@@ -32,13 +32,7 @@ public static class AdminNavComposition
             var index = merged.FindIndex(g => string.Equals(g.GroupKey, group.GroupKey, StringComparison.Ordinal));
             if (index < 0)
             {
-                // The sidebar renders System groups as collapsed plumbing at the bottom, so a
-                // user-facing group goes above that zone rather than below it.
-                var systemZone = group.System ? -1 : merged.FindIndex(g => g.System);
-                if (systemZone < 0)
-                    merged.Add(group);
-                else
-                    merged.Insert(systemZone, group);
+                merged.Insert(InsertIndex(merged, group), group);
                 continue;
             }
 
@@ -49,5 +43,24 @@ public static class AdminNavComposition
         }
 
         return merged;
+    }
+
+    /// <summary>
+    /// Where a new group lands: before the first group that outweighs it, and never below the
+    /// System zone the sidebar renders as collapsed plumbing — unless the group is itself
+    /// System, which appends. The tree's groups all carry weight 0, so a contribution that
+    /// asks for none still lands last above that zone, keeping today's order.
+    /// </summary>
+    private static int InsertIndex(List<AdminNavGroup> merged, AdminNavGroup group)
+    {
+        if (group.System)
+            return merged.Count;
+
+        var heavier = merged.FindIndex(g => !g.System && g.Weight > group.Weight);
+        if (heavier >= 0)
+            return heavier;
+
+        var systemZone = merged.FindIndex(g => g.System);
+        return systemZone < 0 ? merged.Count : systemZone;
     }
 }
