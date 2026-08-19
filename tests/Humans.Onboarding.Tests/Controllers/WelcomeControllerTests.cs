@@ -1,12 +1,12 @@
 using System.Security.Claims;
-using Humans.Web.Authorization;
-using Humans.Web.Controllers;
+using Humans.Base.Authorization;
+using Humans.Onboarding.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
 /// Verifies that <see cref="WelcomeController.Index"/> renders the explainer
@@ -41,7 +41,7 @@ public class WelcomeControllerTests
         {
             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
             new Claim(
-                RoleAssignmentClaimsTransformation.UserStateClaimType,
+                RoleChecks.UserStateClaimType,
                 UserState.Active.ToString()),
         };
         var ctrl = BuildSut(new ClaimsPrincipal(new ClaimsIdentity(claims, "test")));
@@ -60,7 +60,7 @@ public class WelcomeControllerTests
         {
             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
             new Claim(
-                RoleAssignmentClaimsTransformation.UserStateClaimType,
+                RoleChecks.UserStateClaimType,
                 UserState.Bare.ToString()),
         };
         var ctrl = BuildSut(new ClaimsPrincipal(new ClaimsIdentity(claims, "test")));
