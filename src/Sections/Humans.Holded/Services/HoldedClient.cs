@@ -126,10 +126,11 @@ internal sealed class HoldedClient : IHoldedClient
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
-            or FormatException or OverflowException)
+            or FormatException or OverflowException or UnparsableValueException)
         {
             // Same normalization as GetContactAsync: a value of an unexpected type belongs to the
-            // stored document, not to this request, so retrying cannot help.
+            // stored document, not to this request, so retrying cannot help. UnparsableValueException
+            // covers ParseApprovedAt's NodaTime .Value on a non-empty but malformed timestamp.
             throw new HoldedPermanentException(
                 $"Holded purchase document {documentId} could not be read.", ex);
         }
@@ -139,9 +140,9 @@ internal sealed class HoldedClient : IHoldedClient
         CancellationToken ct = default)
     {
         const int pageSafetyCap = 5; // a handful of expense accounts today, unpaginated in practice
-        var items = await GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
         try
         {
+            var items = await GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
             return items.Select(n => new HoldedExpenseAccountDto
             {
                 Id = Prop(n, "id")?.GetValue<string>() ?? "",
