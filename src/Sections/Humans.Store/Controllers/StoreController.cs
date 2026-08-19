@@ -80,10 +80,15 @@ internal sealed class StoreController(
         var canEdit = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.AddLine)).Succeeded;
         var canPay = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay)).Succeeded;
         var canDeleteAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete)).Succeeded;
+        var canIssueAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
         return View(OrderViewModel.FromPageData(
-            pageData, canDeleteAuth && order.BalanceEur == 0m, catalog, removableLineIds));
+            pageData,
+            canDeleteAuth && order.BalanceEur == 0m,
+            canIssueAuth && order.State == OrderState.Open && order.Lines.Count > 0,
+            catalog,
+            removableLineIds));
     }
 
     /// <summary>
@@ -164,6 +169,42 @@ internal sealed class StoreController(
             SetError("Could not start Stripe checkout. Please try again or contact an admin.");
             return RedirectToAction(nameof(Order), new { id });
         }
+    }
+
+    [HttpPost("Order/{id:guid}/IssueInvoice")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> IssueInvoice(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            // No request-scoped token anywhere on this path: issuance creates and approves a
+            // document in Holded, and a torn write leaves a doc we have no local record of
+            // (memory/architecture/cancellation-token-propagation.md).
+            await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
+            SetSuccess("Invoice issued in Holded. The order is now frozen.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Expected refusals (already invoiced, missing account, receipt over threshold) —
+            // the message is written for the admin, so surface it and log at warning.
+            logger.LogWarning("Invoice issuance rejected for order {OrderId}: {Reason}", id, ex.Message);
+            SetError(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Holded invoice issuance failed for order {OrderId}", id);
+            SetError("Could not issue the invoice in Holded. Check the logs and try again.");
+        }
+        return RedirectToAction(nameof(Order), new { id });
     }
 
     [HttpPost("Order/Create/{campSeasonId:guid}")]

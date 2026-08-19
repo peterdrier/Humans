@@ -43,15 +43,13 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         return await ctx.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Product>> GetProductsByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
     {
-        if (ids.Count == 0) return new Dictionary<Guid, string>();
+        if (ids.Count == 0) return [];
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Products.AsNoTracking()
+        return await ctx.Products.AsNoTracking()
             .Where(p => ids.Contains(p.Id))
-            .Select(p => new { p.Id, p.Name })
             .ToListAsync(ct);
-        return rows.ToDictionary(r => r.Id, r => r.Name);
     }
 
     public async Task AddProductAsync(Product product, CancellationToken ct = default)
@@ -261,10 +259,13 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
     // Invoices
     // ==========================================================================
 
-    public async Task AddInvoiceAsync(Invoice invoice, CancellationToken ct = default)
+    public async Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Invoices.Add(invoice);
+        // The order arrives detached (AsNoTracking + Includes), so Update attaches the whole
+        // aggregate — the repriced line snapshots ride along with the state flip.
+        ctx.Orders.Update(order);
         await ctx.SaveChangesAsync(ct);
     }
 

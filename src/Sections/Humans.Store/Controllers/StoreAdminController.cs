@@ -103,6 +103,7 @@ internal sealed class StoreAdminController(
             UnitPriceEur = p.UnitPriceEur,
             VatRatePercent = p.VatRatePercent,
             DepositAmountEur = p.DepositAmountEur,
+            HoldedRevenueAccountNum = p.HoldedRevenueAccountNum,
             OrderableUntil = LocalDatePattern.Iso.Format(p.OrderableUntil),
             IsActive = p.IsActive
         };
@@ -129,7 +130,8 @@ internal sealed class StoreAdminController(
                 input.VatRatePercent,
                 input.DepositAmountEur,
                 input.OrderableUntil,
-                input.IsActive),
+                input.IsActive,
+                input.HoldedRevenueAccountNum),
             user.Id,
             ct);
 

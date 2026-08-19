@@ -17,6 +17,12 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses
   creates one per approved expense report, **booked to its 629 expense account at creation**
   (`items[].account`); tags are never written (dead v1 workaround).
+- A **Sales Document** is the org's outgoing revenue record, in two kinds behind one
+  `HoldedSalesDocumentKind`: a full `invoice` (identified contact required) and a
+  `sales-receipt` (*factura simplificada*, no contact). They share one payload shape and one
+  pipeline — create → **approve** → read back — because a Holded draft books no revenue and
+  carries no document number. Store creates them per camp order, with `items[].account` per
+  line. `items[].account` is the chart account's **id**, not its 8-digit number.
 - The **API key** is bound from the `HOLDED_API_KEY_V2` env var only — never `appsettings.json`,
   never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
 - Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
@@ -39,13 +45,18 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - Currency is EUR-only. Multi-currency is out of scope.
+- Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
+  documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
+  7.5% is `s_iva_75`.
+- Post-issuance corrections are a *factura rectificativa* in Holded, never a mutation of the
+  issued document — the same reason there is no doc-update endpoint below.
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
 
 ## Cross-Section Dependencies
 
-Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync), Holded
-section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync), Store
+(sales-document issuance + chart read), Holded section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 

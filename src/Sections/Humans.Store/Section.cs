@@ -18,6 +18,10 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        // Acountax's two numbers — the fianzas liability account and the simplified-invoice
+        // threshold. Both change without a deploy, hence configuration.
+        services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));
+
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
         // §15b repository pattern: Repository uses IDbContextFactory<StoreDbContext>

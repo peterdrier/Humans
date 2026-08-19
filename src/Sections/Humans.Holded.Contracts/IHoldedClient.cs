@@ -45,6 +45,19 @@ public interface IHoldedClient
     /// <summary>Creates or updates a contact; returns the contact id.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
 
+    /// <summary>Creates a draft invoice or sales receipt; returns the new doc id. A draft books
+    /// nothing — follow with <see cref="ApproveSalesDocumentAsync"/>.</summary>
+    Task<string> CreateSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, HoldedSalesDocumentInput input, CancellationToken ct = default);
+
+    /// <summary>Approves a sales document. Only an approved doc books revenue and gets a number.</summary>
+    Task ApproveSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    /// <summary>Reads a sales document back — the post-approval document number and totals.</summary>
+    Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
     /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 

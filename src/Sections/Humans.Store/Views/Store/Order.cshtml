@@ -21,6 +21,16 @@
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
         <span class="badge bg-secondary fs-6">@order.State</span>
+        @if (Model.CanIssueInvoice)
+        {
+            <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-primary"
+                        data-confirm="Issue this order's factura in Holded? Prices freeze at today's catalog and the order can never be re-issued.">
+                    <i class="fa-solid fa-file-invoice me-1"></i> Issue invoice
+                </button>
+            </form>
+        }
         @if (Model.CanDelete)
         {
             <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">

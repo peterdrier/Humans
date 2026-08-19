@@ -30,6 +30,10 @@ internal sealed class OrderViewModel
     /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
+    /// <summary>True when the current user may issue this camp order's Holded factura — Store
+    /// admin, order still Open, at least one line. Surfaces the Issue invoice button.</summary>
+    public bool CanIssueInvoice { get; init; }
+
     /// <summary>
     /// Line ids whose Remove button renders, resolved per line against the order authorization
     /// handler in the controller: past the product's order deadline only Store admins qualify.
@@ -39,9 +43,11 @@ internal sealed class OrderViewModel
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
         bool canDelete,
+        bool canIssueInvoice,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
+            CanIssueInvoice = canIssueInvoice,
             Order = pageData.Order,
             Catalog = catalog,
             CounterpartyDisplayName = pageData.CounterpartyDisplayName,

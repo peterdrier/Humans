@@ -450,6 +450,7 @@ graph LR
     Store --> Camp
     Store --> Team
     Store --> ShiftMgmt
+    Store --> Holded
     Store --> Audit
 
     %% Surveys

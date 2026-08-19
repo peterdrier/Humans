@@ -24,4 +24,5 @@ internal static class AuditEntityTypes
     public const string Order = "StoreOrder";
     public const string OrderLine = "StoreOrderLine";
     public const string Payment = "StorePayment";
+    public const string Invoice = "StoreInvoice";
 }

@@ -20,6 +20,8 @@ namespace Humans.Store.Authorization;
 /// - TeamsAdmin: View any order (camp or team); manage (AddLine/RemoveLine/Delete)
 ///   team orders only. Camp orders are view-only. Additive — a TeamsAdmin who is also
 ///   a camp lead still gets camp-edit rights through the lead path below.
+/// - Delete and IssueInvoice are Store-admin-only on every order, and IssueInvoice is
+///   additionally denied on team orders even for admins (team orders are non-billable).
 /// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
 /// - Coordinator (department-level management role holder) of the resource's Team:
 ///   allow team orders for View/AddLine/RemoveLine; EditCounterparty and Pay are
@@ -125,8 +127,8 @@ internal sealed class OrderAuthorizationHandler(
             if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                 continue;
 
-            // Delete is admin-only; camp leads and team coordinators never delete their own orders.
-            if (req == OrderOperationRequirement.Delete) continue;
+            // Delete and IssueInvoice are admin-only; camp leads and team coordinators get neither.
+            if (IsStoreAdminOnly(req)) continue;
 
             if (IsMutating(req) && !IsOpenOrCreate(resource))
             {
@@ -182,7 +184,14 @@ internal sealed class OrderAuthorizationHandler(
 
     private static bool IsTeamBillingBlocked(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.EditCounterparty
-            || requirement == OrderOperationRequirement.Pay;
+            || requirement == OrderOperationRequirement.Pay
+            || requirement == OrderOperationRequirement.IssueInvoice;
+
+    /// <summary>Operations no camp lead, coordinator or TeamsAdmin ever gets — only the Store
+    /// admin block above succeeds them.</summary>
+    private static bool IsStoreAdminOnly(OrderOperationRequirement requirement)
+        => requirement == OrderOperationRequirement.Delete
+            || requirement == OrderOperationRequirement.IssueInvoice;
 
     private static bool IsLineEdit(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.AddLine

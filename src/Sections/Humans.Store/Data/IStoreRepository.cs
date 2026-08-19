@@ -30,12 +30,13 @@ internal interface IStoreRepository : IRepository
     Task<IReadOnlyList<Product>> GetAllProductsForYearAsync(int year, CancellationToken ct = default);
     Task<Product?> GetProductByIdAsync(Guid productId, CancellationToken ct = default);
     /// <summary>
-    /// Resolves product display names for the given ids regardless of whether
-    /// the product is currently active or belongs to the active year. Used by
-    /// order-mapping code so issued/historical lines render with their actual
-    /// product name even after the product has been deactivated.
+    /// Resolves products for the given ids regardless of whether the product is
+    /// currently active or belongs to the active year. Order-mapping code projects
+    /// the name from it, so issued/historical lines render with their actual product
+    /// name even after the product has been deactivated; issuance also reads each
+    /// line's <see cref="Product.HoldedRevenueAccountNum"/> from here.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> GetProductsByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
     Task AddProductAsync(Product product, CancellationToken ct = default);
     Task UpdateProductAsync(Product product, CancellationToken ct = default);
 
@@ -125,7 +126,15 @@ internal interface IStoreRepository : IRepository
     Task<IReadOnlyList<RecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default);
 
     // Invoices
-    Task AddInvoiceAsync(Invoice invoice, CancellationToken ct = default);
+
+    /// <summary>
+    /// Writes the issued <paramref name="invoice"/> and the now-frozen <paramref name="order"/>
+    /// (state, <c>IssuedInvoiceId</c>, and the line snapshots repriced at issue time) in one
+    /// <c>SaveChanges</c>. One method rather than two because the Store invariant is atomic-on-
+    /// success: an order must never be left <c>InvoiceIssued</c> without its invoice row, or
+    /// carry an invoice row while still <c>Open</c>.
+    /// </summary>
+    Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default);
 
     // Treasury sync state
     Task<TreasurySyncState> GetOrCreateTreasurySyncStateAsync(CancellationToken ct = default);

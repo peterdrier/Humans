@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Text.Json;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Attributes;
 using Humans.Camps.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -7,6 +11,7 @@ using Humans.Store.Domain;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
 
@@ -20,6 +25,8 @@ internal sealed class Service(
     IClock clock,
     IBurnSettingsService burnSettings,
     IStripeService stripeService,
+    IHoldedClient holdedClient,
+    IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IStoreServiceRead
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
@@ -97,7 +104,7 @@ internal sealed class Service(
             else
             {
                 var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
-                var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+                var productNames = await LoadProductNamesAsync(productIds, ct);
                 orders = [await MapOrderAsync(existing, productNames, teamOrderPrices, ct)];
             }
             counterparties.Add(new CounterpartyOrders(
@@ -181,6 +188,7 @@ internal sealed class Service(
             UnitPriceEur = draft.UnitPriceEur,
             VatRatePercent = draft.VatRatePercent,
             DepositAmountEur = draft.DepositAmountEur,
+            HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum,
             OrderableUntil = draft.OrderableUntil,
             IsActive = draft.IsActive,
             CreatedAt = now,
@@ -209,6 +217,7 @@ internal sealed class Service(
         product.UnitPriceEur = draft.UnitPriceEur;
         product.VatRatePercent = draft.VatRatePercent;
         product.DepositAmountEur = draft.DepositAmountEur;
+        product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
         product.OrderableUntil = draft.OrderableUntil;
         product.IsActive = draft.IsActive;
         product.UpdatedAt = clock.GetCurrentInstant();
@@ -245,7 +254,8 @@ internal sealed class Service(
             request.VatRatePercent,
             request.DepositAmountEur,
             parseResult.Value,
-            request.IsActive);
+            request.IsActive,
+            request.HoldedRevenueAccountNum);
 
         try
         {
@@ -295,13 +305,15 @@ internal sealed class Service(
             throw new ArgumentException("VAT rate cannot be negative", nameof(draft));
         if (draft.DepositAmountEur is < 0m)
             throw new ArgumentException("Deposit cannot be negative", nameof(draft));
+        if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
+            throw new ArgumentException("Holded revenue account must be an 8-digit chart number", nameof(draft));
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        var productNames = await LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var result = new List<OrderDto>(orders.Count);
         foreach (var o in orders)
@@ -314,7 +326,7 @@ internal sealed class Service(
         var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        var productNames = await LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
@@ -406,7 +418,7 @@ internal sealed class Service(
         var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        var productNames = await LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
         return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
@@ -944,15 +956,238 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Phase 5 — not yet implemented. <b>Freeze seam (#816):</b> before flipping
-    /// <see cref="Order.State"/> to <see cref="OrderState.InvoiceIssued"/>, the
-    /// implementation MUST re-write each line's <c>UnitPriceSnapshot</c>,
-    /// <c>VatRateSnapshot</c>, and <c>DepositAmountSnapshot</c> from the current catalog
-    /// price, so the issued invoice captures the exact prices shown at issue time. Until
-    /// then every order stays Open and reprices live, which is the desired in-season behavior.
+    /// Issues the camp order's consolidated Holded sales document and freezes the order.
+    ///
+    /// Pipeline: freeze the line snapshots at today's catalog price (#816) → resolve each
+    /// product's revenue account → build the lines (goods at the product's VAT rate, deposits
+    /// tax-0 to the fianzas liability account) → create the document and <b>approve</b> it (a
+    /// draft books nothing) → write <c>store_invoices</c> with both payloads and flip the order
+    /// to <see cref="OrderState.InvoiceIssued"/> in one save.
+    ///
+    /// Document kind: a full <i>factura</i> when counterparty details are on file, a
+    /// <i>factura simplificada</i> (sales receipt) otherwise. Above
+    /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
+    /// so a counterparty-less order that large is refused rather than downgraded.
+    ///
+    /// Idempotent: an order that already carries an <c>IssuedInvoiceId</c> throws without
+    /// calling Holded. Failure before the save leaves the order <c>Open</c> with no invoice row.
     /// </summary>
-    public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 5");
+    [ExternalWrite]
+    public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Order {orderId} not found");
+        EnsureBillable(order);
+
+        // Idempotency guard — deliberately before any Holded call, so a double-submit cannot
+        // create a second document.
+        if (order.IssuedInvoiceId is not null || order.State != OrderState.Open)
+            throw new InvalidOperationException("This order has already been invoiced.");
+
+        if (order.Lines.Count == 0)
+            throw new InvalidOperationException("Cannot invoice an order with no lines.");
+
+        if (!holdedClient.IsConfigured)
+            throw new InvalidOperationException(
+                "Holded is not configured in this environment, so no invoice can be issued.");
+
+        // Freeze seam (#816): rewrite each snapshot from the live catalog before issuing, so the
+        // document and the order agree forever after. BalanceCalculator already computed the
+        // effective prices for an Open order — reuse them rather than re-deriving.
+        var totals = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct));
+        var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
+        foreach (var line in order.Lines)
+        {
+            var t = totalsByLine[line.Id];
+            line.UnitPriceSnapshot = t.EffectiveUnitPrice;
+            line.VatRateSnapshot = t.EffectiveVatRate;
+            line.DepositAmountSnapshot = t.EffectiveDeposit;
+        }
+
+        var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
+        if (totalDue <= 0m)
+            throw new InvalidOperationException("Cannot invoice an order with a zero total.");
+
+        var products = (await repo.GetProductsByIdsAsync(
+                order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
+            .ToDictionary(p => p.Id);
+
+        var documentLines = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
+
+        // A receipt carries no counterparty, so it is only lawful below the simplified-invoice
+        // threshold. Above it the details are mandatory — refuse rather than silently issue the
+        // wrong document type.
+        var counterparty = ResolveInvoiceCounterparty(order);
+        var kind = counterparty is null
+            ? HoldedSalesDocumentKind.SalesReceipt
+            : HoldedSalesDocumentKind.Invoice;
+        if (counterparty is null && totalDue > options.Value.SimplifiedInvoiceThresholdEur)
+            throw new InvalidOperationException(
+                $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
+                + "name, address and tax id (or passport number) first.");
+
+        var displayName = await ResolveCounterpartyDisplayNameAsync(order, ct);
+        string? contactId = null;
+        if (counterparty is not null)
+        {
+            // Not the request token: everything from here on writes to Holded, and a half-created
+            // contact/document has no local compensation (memory/architecture/cancellation-token-propagation.md).
+            contactId = await holdedClient.UpsertContactAsync(
+                new HoldedContactInput
+                {
+                    Name = counterparty.Name,
+                    Type = "client",
+                    TaxCode = counterparty.TaxId,
+                    Address = counterparty.Address,
+                    CountryCode = counterparty.CountryCode,
+                    Email = counterparty.Email,
+                },
+                CancellationToken.None);
+        }
+
+        var input = new HoldedSalesDocumentInput
+        {
+            ContactId = contactId,
+            ContactName = counterparty?.Name ?? displayName,
+            Date = clock.GetCurrentInstant(),
+            Description = $"Nobodies Collective store — {displayName}",
+            Notes = $"Humans store order {order.Id}",
+            Lines = documentLines,
+        };
+
+        var docId = await holdedClient.CreateSalesDocumentAsync(kind, input, CancellationToken.None);
+        // A draft books no revenue, so approval is part of issuance, not a later step.
+        await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
+        var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
+
+        var invoice = new Invoice
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            HoldedDocId = document.Id,
+            HoldedDocNumber = document.DocNumber,
+            IssuedAt = clock.GetCurrentInstant(),
+            IssuedByUserId = actorUserId,
+            RequestPayload = JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
+            ResponsePayload = document.RawJson,
+        };
+
+        order.State = OrderState.InvoiceIssued;
+        order.IssuedInvoiceId = invoice.Id;
+        order.UpdatedAt = clock.GetCurrentInstant();
+        await repo.SaveIssuedInvoiceAsync(invoice, order, ct);
+
+        await audit.LogAsync(
+            AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
+            $"Issued Holded {(kind == HoldedSalesDocumentKind.Invoice ? "factura" : "factura simplificada")} "
+            + $"{document.DocNumber} for EUR {totalDue:0.00} on order {order.Id}",
+            actorUserId,
+            order.Id, AuditEntityTypes.Order);
+    }
+
+    /// <summary>
+    /// One document line per order line, plus a separate VAT-free line for each line that carries
+    /// a deposit. Refundable deposits are a liability, not income, so they post tax-0 to the
+    /// configured fianzas account instead of the item's revenue account.
+    /// </summary>
+    private async Task<IReadOnlyList<HoldedSalesDocumentLineInput>> BuildInvoiceLinesAsync(
+        Order order,
+        IReadOnlyDictionary<Guid, BalanceCalculator.LineTotals> totalsByLine,
+        IReadOnlyDictionary<Guid, Product> products,
+        CancellationToken ct)
+    {
+        var missingAccount = order.Lines
+            .Select(l => products.GetValueOrDefault(l.ProductId))
+            .Where(p => p?.HoldedRevenueAccountNum is null)
+            .Select(p => p?.Name ?? "(unknown product)")
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (missingAccount.Count > 0)
+            throw new InvalidOperationException(
+                "These catalog items have no Holded revenue account yet: "
+                + string.Join(", ", missingAccount)
+                + ". Set it on /Store/Admin/Catalog before issuing.");
+
+        var needsDepositAccount = order.Lines.Any(l => totalsByLine[l.Id].DepositEur > 0m);
+        var depositAccountNum = options.Value.DepositLiabilityAccountNum;
+        if (needsDepositAccount && depositAccountNum is null)
+            throw new InvalidOperationException(
+                "This order carries refundable deposits but no deposit liability account is "
+                + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
+                + "must not be booked to a revenue account.");
+
+        // Holded's items[].account is the chart account's *id*, not its 8-digit number, so the
+        // numbers StoreAdmin holds are resolved against the live chart on every issue — a fresh
+        // read also picks up an account Acountax created minutes ago.
+        var wanted = order.Lines
+            .Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value)
+            .Concat(needsDepositAccount ? [depositAccountNum!.Value] : Array.Empty<int>())
+            .ToHashSet();
+        var accountIdsByNum = (await holdedClient.ListAccountingAccountsAsync(ct))
+            .Where(a => wanted.Contains(a.Number))
+            .ToDictionary(a => a.Number, a => a.Id);
+
+        var unknown = wanted.Where(n => !accountIdsByNum.ContainsKey(n)).ToList();
+        if (unknown.Count > 0)
+            throw new InvalidOperationException(
+                "These accounts do not exist in Holded's chart of accounts: "
+                + string.Join(", ", unknown.OrderBy(n => n))
+                + ". Ask Acountax to create them, then re-issue.");
+
+        var lines = new List<HoldedSalesDocumentLineInput>();
+        foreach (var line in order.Lines)
+        {
+            var product = products[line.ProductId];
+            var t = totalsByLine[line.Id];
+            lines.Add(new HoldedSalesDocumentLineInput
+            {
+                Name = product.Name,
+                Units = line.Qty,
+                Price = t.EffectiveUnitPrice,
+                Taxes = [SalesTaxKey(t.EffectiveVatRate)],
+                AccountId = accountIdsByNum[product.HoldedRevenueAccountNum!.Value],
+            });
+
+            if (t.EffectiveDeposit is not { } depositPerUnit || depositPerUnit <= 0m) continue;
+            lines.Add(new HoldedSalesDocumentLineInput
+            {
+                Name = $"{product.Name} — refundable deposit",
+                Units = line.Qty,
+                Price = depositPerUnit,
+                Taxes = [SalesTaxKey(0m)],
+                AccountId = accountIdsByNum[depositAccountNum!.Value],
+            });
+        }
+        return lines;
+    }
+
+    /// <summary>
+    /// Holded's sales tax key for a VAT rate: 21 → <c>s_iva_21</c>, 7.5 → <c>s_iva_75</c>,
+    /// 0 → <c>s_iva_0</c> (the decimal separator is dropped, not rounded away).
+    /// </summary>
+    private static string SalesTaxKey(decimal vatRatePercent) =>
+        "s_iva_" + vatRatePercent.ToString("0.##", CultureInfo.InvariantCulture).Replace(".", "", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The identified counterparty a full factura needs, or null when the order does not carry
+    /// enough to identify one. Spanish law wants name + address + a tax id; a foreign camp's
+    /// home-country tax id or passport number stands in for a NIF, so the field is only ever
+    /// checked for presence.
+    /// </summary>
+    private static InvoiceCounterparty? ResolveInvoiceCounterparty(Order order) =>
+        string.IsNullOrWhiteSpace(order.CounterpartyName)
+        || string.IsNullOrWhiteSpace(order.CounterpartyAddress)
+        || string.IsNullOrWhiteSpace(order.CounterpartyVatId)
+            ? null
+            : new InvoiceCounterparty(
+                order.CounterpartyName.Trim(),
+                order.CounterpartyVatId.Trim(),
+                order.CounterpartyAddress.Trim(),
+                order.CounterpartyCountryCode?.Trim(),
+                order.CounterpartyEmail?.Trim());
+
+    private sealed record InvoiceCounterparty(
+        string Name, string TaxId, string Address, string? CountryCode, string? Email);
 
     public async Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
     {
@@ -1097,7 +1332,12 @@ internal sealed class Service(
 
     private static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
-            p.DepositAmountEur, p.OrderableUntil, p.IsActive);
+            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
+
+    /// <summary>Display names for the given product ids, live or deactivated, any year.</summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
+        IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
+        (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);
 
     /// <summary>
     /// Loads the current catalog price components (incl. deactivated products) for the active

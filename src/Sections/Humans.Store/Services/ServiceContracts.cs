@@ -17,7 +17,8 @@ internal sealed record ProductSaveRequest(
     decimal VatRatePercent,
     decimal? DepositAmountEur,
     string? OrderableUntil,
-    bool IsActive);
+    bool IsActive,
+    int? HoldedRevenueAccountNum);
 
 internal sealed record CatalogSaveResult(
     bool Succeeded,

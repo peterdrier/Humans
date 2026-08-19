@@ -36,6 +36,7 @@ Catalog item for a given event year.
 | UnitPriceEur | numeric(12,2) | |
 | VatRatePercent | numeric(5,2) | |
 | DepositAmountEur | numeric(12,2)? | Optional per-unit deposit |
+| HoldedRevenueAccountNum | int? | Holded chart number this item's external revenue books to (`75900001` Bus Tickets, `75900002` ice, …). Set by StoreAdmin from Acountax's numbering; null until issued. The internal-recharge twin (`75910002`) is **derived** (`ProductDto.InternalRechargeAccountNum` = number + 10 000), never stored. |
 | OrderableUntil | LocalDate | Add-line deadline |
 | IsActive | bool | Soft-deactivate |
 | CreatedAt | Instant | |
@@ -176,7 +177,8 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
-- `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
+- `/Store/Order/{id}/IssueInvoice` — POST: Store admin issues the order's Holded factura. The button lives on the order page, next to Delete, and renders only for an `Open` camp order with at least one line.
+- `/Store/Admin/Orders` — FinanceAdmin order ledger + manual payment entry. **Not yet implemented** (`RecordManualPaymentAsync` still throws `NotSupportedException("Phase 5")`).
 - `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. **Totals use effective pricing** — Open orders are repriced to the live catalog (matching the order-page behavior), InvoiceIssued orders use their frozen snapshots. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
@@ -190,7 +192,7 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 | Coordinator (department) | View / create the single team order for departments (top-level teams) they coordinate, scoped to the active event year. Add and remove lines while the product's `OrderableUntil` has not passed. No pay, no counterparty edit, no invoice — team orders are non-billable. |
 | StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, record manual payments, issue invoices, run treasury sync, reconcile Stripe payments (`/Store/Admin/Payments`). Equivalent to FinanceAdmin within the Store section. EditCounterparty/Pay remain denied on team orders even for admins. |
 | TeamsAdmin | **View any order** (camp or team) and **manage team orders only** (AddLine / RemoveLine while `Open`; Delete any state). Camp orders are view-only. Never Pay / EditCounterparty (team orders are non-billable). Additive — a TeamsAdmin who is also a camp lead keeps camp-edit rights through the lead path. |
-| FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Record manual payments (incl. refunds via negative amounts) regardless of order state. Issue invoice (single + Issue All). View `/Store/Admin/Summary` and `/Store/Admin/Payments`. Reconcile missing Stripe payments. Run treasury sync on demand. EditCounterparty/Pay remain denied on team orders. |
+| FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Record manual payments (incl. refunds via negative amounts) regardless of order state. Issue invoice from the order page. View `/Store/Admin/Summary` and `/Store/Admin/Payments`. Reconcile missing Stripe payments. Run treasury sync on demand. EditCounterparty/Pay remain denied on team orders. |
 
 ## Invariants
 
@@ -206,8 +208,14 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - Payments may be recorded regardless of order state — payments do not freeze on issuance.
 - **Spanish VAT applies to every order regardless of buyer country** — all goods are physically handed over on-site in Spain, so place of supply is Spain and there is no B2B reverse-charge path. VAT comes solely from the per-product `VatRatePercent` snapshot; `CounterpartyCountryCode` is stored for the factura but never consulted for tax.
 - **Deposits are VAT-free** (refundable security deposits / fianzas are not subject to VAT): `BalanceCalculator.Compute` adds deposit amounts without applying VAT, and the future Holded invoice renders each deposit as a separate `tax = 0` line.
-- Issuing an invoice is idempotent: re-issuing an order that already has `IssuedInvoiceId` set throws and does NOT call Holded.
-- Issue-invoice failure mid-flight leaves the order in `Open` state with no `Invoice` row (atomic on success only).
+- Issuing an invoice is idempotent: re-issuing an order that already has `IssuedInvoiceId` set (or already in `InvoiceIssued`) throws and does NOT call Holded.
+- Issue-invoice failure mid-flight leaves the order in `Open` state with no `Invoice` row (atomic on success only — `IStoreRepository.SaveIssuedInvoiceAsync` writes the invoice row and the frozen order in one `SaveChanges`).
+- **Issuance freezes the price (#816).** Before flipping to `InvoiceIssued`, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog, so the issued document and the order agree forever after.
+- **Every issued document is approved.** A Holded draft books no revenue, so `IssueInvoiceAsync` calls `POST /api/v2/{invoices|sales-receipts}/{id}/approve` before writing anything locally, then reads the doc back for its assigned `document_number`.
+- **Factura vs factura simplificada.** An order carrying name **and** address **and** tax id (NIF, a foreign tax id, or a passport number) issues a full `invoice` against an upserted Holded `client` contact. Anything less issues a `sales-receipt` with no contact — and only up to `Store:SimplifiedInvoiceThresholdEur` (default €400). Above it the counterparty details are mandatory and issuance is refused rather than downgraded.
+- **Revenue books per item.** Each line carries `items[].account` resolved from its product's `HoldedRevenueAccountNum` against the live chart (Holded's field takes the account *id*, not the number, so the chart is read at issue time). A product with no account number, or a number absent from Holded's chart, refuses issuance by name rather than booking to a catch-all.
+- **Deposits post tax-0 to the liability account.** Each deposit-bearing line adds a separate `s_iva_0` line booked to `Store:DepositLiabilityAccountNum` (fianzas). An order with deposits and no configured liability account refuses issuance — a refundable deposit is never booked as income.
+- Issuing is **Store-admin only** and never applies to a team order (see Negative Access Rules).
 - A Stripe `checkout.session.completed` event with a known `humans_store_order_id` inserts at most one `Payment` per `StripePaymentIntentId` (filtered unique index + service-level dedup check). The inserted row's `Status` is **`Paid`** when `session.payment_status == "paid"` (sync card/wallet) and **`Pending`** otherwise (`"unpaid"` — async mandate captured but not yet cleared, e.g. SEPA).
 - **Balance counts `Paid` only.** `BalanceCalculator.Compute` sums payments where `Status == Paid`; `Pending` and `Failed` rows are excluded, so a captured-but-uncleared mandate never makes an order look paid.
 - **Async-payment state machine** (`HandleStripeCheckoutWebhookEventAsync`, all idempotent):
@@ -225,6 +233,8 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth).
 - Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** issue an invoice or run the treasury sync job manually.
 - Re-issuing an already-issued order **cannot** succeed — the second call throws and does not contact Holded.
+- A camp lead, department coordinator or TeamsAdmin **cannot** issue an invoice — `IssueInvoice` is Store-admin only.
+- A team order **cannot** be invoiced, by anyone, including admins.
 
 ## Triggers
 
@@ -234,9 +244,9 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and dispatches to `Service.HandleStripeCheckoutWebhookEventAsync`, which handles all four `checkout.session.*` events (completed + the async-payment state machine above). Idempotent on `StripePaymentIntentId`.
 - `/Store/Admin/Payments/RecordMissing` reconciles Stripe → ledger on demand (admin-triggered), recording missing paid sessions via the same idempotent path and emitting one `StorePaymentsReconciled` summary audit entry (with the human actor) plus the per-payment `StorePaymentRecorded` entries. The webhook is therefore no longer the *sole* writer of Stripe payments — but it remains the only automatic one.
 
+- `IssueInvoiceAsync` (nobodies-collective/Humans#1029) — upserts the Holded `client` contact for an identified counterparty, creates the v2 sales document with per-line revenue accounts, approves it, reads it back, and writes `store_invoices` (both payloads) + the frozen order in one save. Emits `StoreInvoiceIssued` against `StoreInvoice`, cross-referenced to the order.
+
 **Not yet shipped (Phase 5+):**
-- `IssueInvoiceAsync` — will call `IHoldedClient.UpsertContactAsync` then `IHoldedClient.CreateInvoiceAsync`, write the `Invoice` row, flip `Order.State = InvoiceIssued`, and emit `StorePaymentRecorded` audit entry. Currently throws `NotSupportedException("Phase 5")`.
-  - Issuance rules carried from the design: the effective counterparty falls back to the camp name when `CounterpartyName` is blank; the Holded contact upsert matches by VAT-id when present, else name + country; each deposit-bearing line adds a separate VAT-free (`tax = 0`) invoice line. Gotcha: the outbound Holded `invoice` and contact payload shapes were **never verified against real data** (the 2026-04 probe saw only purchase docs) — dump a real invoice + contact via the API and lock the field mapping before implementing (`HoldedClient.UpsertContactAsync` still carries a `TODO(probe)`).
 - `RecordManualPaymentAsync` — manual payment entry by FinanceAdmin. Currently throws `NotSupportedException("Phase 5")`.
 - `StoreTreasurySyncJob` (Hangfire recurring) — polls `IHoldedClient.ListTreasuryEntriesAsync` from `TreasurySyncState.LastSyncAt`, inserts `Payment(Method=BankTransfer)` for unambiguous matches, advances cursor. Not yet implemented (the original Label matching key was removed in #816).
 
@@ -246,7 +256,7 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - **Teams:** `ITeamServiceRead` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only — no new surface added to its `[SurfaceBudget(4)]`.
 - **Shifts:** `IBurnSettingsService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
-- **Holded connector** (`Humans.Holded`): `IHoldedClient` extended with `UpsertContactAsync`, `CreateInvoiceAsync`, `ListTreasuryEntriesAsync` in Phase 4.
+- **Holded connector** (`Humans.Holded`, via `Humans.Holded.Contracts`): `IHoldedClient.UpsertContactAsync`, `CreateSalesDocumentAsync` / `ApproveSalesDocumentAsync` / `GetSalesDocumentAsync` (kind-parameterized over invoice vs sales receipt), and `ListAccountingAccountsAsync` for the account-number → account-id resolution. Never the connector's internals — the vendor stays swappable (`memory/architecture/vendor-connectors-own-sections.md`).
 - **Stripe** (`Humans.Stripe`): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for `checkout.session.completed` ingestion.
 - **Audit Log:** `IAuditLogService` for every mutation.
 
@@ -274,4 +284,14 @@ The Store section uses `IStripeService` (`Humans.Stripe.Contracts`; internal imp
 - **Cross-section calls** route through `ICampServiceRead` (camp / camp-season lookups), `IBurnSettingsService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 - **Architecture test:** none — `StoreArchitectureTests` was deleted at G5. Both its assertions became false or vacuous once the section became one assembly (the assembly now contains `StoreDbContext` by design, and interface-implementation is a tautology). What it encoded is policed by `ApplicationServiceDbContextInjectionAnalyzer` plus the assembly boundary itself. Store's unit tests live in `tests/Humans.Store.Tests`; its controller tests stay in `Humans.Integration.Tests`.
 
-Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See [`Store-feature.md`](features/Store-feature.md).
+### Configuration
+
+Bound from `Store:*` into `StoreSectionOptions` in `Section.Register`. Both values are
+Acountax's call and change without a deploy:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `Store:DepositLiabilityAccountNum` | unset | Holded chart number of the refundable-deposit (fianzas) liability account. Unset refuses issuance of any order carrying a deposit. |
+| `Store:SimplifiedInvoiceThresholdEur` | `400` | Order total at or below which a counterparty-less order may issue as a *factura simplificada*. Spanish law allows €400 generally / €3,000 for retail-type B2C; the conservative figure is the default until Acountax rules. |
+
+Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, and Holded invoice issuance are live. `RecordManualPaymentAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See [`Store-feature.md`](features/Store-feature.md).
