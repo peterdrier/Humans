@@ -192,4 +192,33 @@ public class SectionSeamTests
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         return (IReadOnlyList<MemberNavItem>)result!.ViewData!.Model!;
     }
+
+    /// <summary>
+    /// Contributions are <c>internal sealed</c> with no declared constructor, and
+    /// <see cref="SectionDiscoveryExtensions.DiscoverImplementations{T}"/> activates them with
+    /// the plain <c>Activator.CreateInstance(Type)</c> overload, which only finds public
+    /// constructors. That works because C# emits the implicit constructor as public regardless
+    /// of the class's accessibility — pinned here because declaring a non-public or
+    /// parameterised constructor instead would break section discovery at startup.
+    /// </summary>
+    [HumansFact]
+    public void Internal_Contribution_With_An_Implicit_Constructor_Activates()
+    {
+        typeof(InternalNavContribution).IsPublic.Should().BeFalse();
+        typeof(InternalNavContribution).GetConstructor(Type.EmptyTypes)!.IsPublic.Should().BeTrue();
+
+        var activated = (ISectionNav)Activator.CreateInstance(typeof(InternalNavContribution))!;
+
+        activated.Items().Should().ContainSingle();
+    }
+}
+
+/// <summary>
+/// The documented contribution shape, top-level so its accessibility is the real thing rather
+/// than a nested type's. Exists only for
+/// <see cref="SectionSeamTests.Internal_Contribution_With_An_Implicit_Constructor_Activates"/>.
+/// </summary>
+internal sealed class InternalNavContribution : ISectionNav
+{
+    public IEnumerable<MemberNavItem> Items() => [new MemberNavItem("Contributed")];
 }
