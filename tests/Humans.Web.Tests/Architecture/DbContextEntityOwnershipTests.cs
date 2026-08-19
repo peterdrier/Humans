@@ -2,6 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Hosting;
 using Humans.Web.Extensions;
+using Humans.Web.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -112,7 +113,9 @@ public class DbContextEntityOwnershipTests
     {
         var services = new ServiceCollection()
             .AddHumansPersistence()
-            .AddDiscoveredSections(new ConfigurationBuilder().Build());
+            .AddDiscoveredSections(
+                SectionAssemblySnapshot.For(new ConfigurationBuilder().Build()),
+                new ConfigurationBuilder().Build());
 
         return
         [

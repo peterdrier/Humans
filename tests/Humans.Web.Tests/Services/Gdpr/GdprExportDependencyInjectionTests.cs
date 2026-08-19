@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
+using Humans.Web.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -145,7 +146,8 @@ public class GdprExportDependencyInjectionTests
             .AddHumansInfrastructure(
                 services,
                 config,
-                new StubHostEnvironment());
+                new StubHostEnvironment(),
+                SectionAssemblySnapshot.For(config));
 
         var contributorDescriptors = services
             .Where(d => d.ServiceType == typeof(IUserDataContributor))
@@ -174,7 +176,8 @@ public class GdprExportDependencyInjectionTests
             .AddHumansInfrastructure(
                 services,
                 BuildMinimalConfiguration(),
-                new StubHostEnvironment());
+                new StubHostEnvironment(),
+                SectionAssemblySnapshot.For(BuildMinimalConfiguration()));
 
         services.Should().ContainSingle(d => d.ServiceType == typeof(IGdprExportService),
             "the GDPR export orchestrator must be registered exactly once");
@@ -197,7 +200,8 @@ public class GdprExportDependencyInjectionTests
             .AddHumansInfrastructure(
                 services,
                 config,
-                new StubHostEnvironment());
+                new StubHostEnvironment(),
+                SectionAssemblySnapshot.For(config));
 
         // Replace every contributor's concrete-type registration with a fake
         // instance of that same type. GetUninitializedObject skips the

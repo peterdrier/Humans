@@ -47,9 +47,10 @@ nothing is not a runnable configuration because Shell itself consumes sections.
 
 ## What startup validates
 
-`SectionActivation.Configure` runs once in `Program.cs`, before anything reads the active
-set. With the key absent it validates nothing and cannot fail. With an allowlist present it
-throws `InvalidOperationException` when:
+`SectionActivation.Resolve` runs once in `Program.cs`, producing that host's
+`SectionAssemblySnapshot` before anything composes from discovery. With the key absent it
+validates nothing and cannot fail. With an allowlist present it throws
+`InvalidOperationException` when:
 
 - **A name is not a section.** The message lists every discovered section, so a typo is one
   read away from its fix rather than a section that silently vanishes.
@@ -62,13 +63,23 @@ throws `InvalidOperationException` when:
 
 ### What the scan cannot see
 
-Only references the compiler emits. A section Shell names as a *string* — an
+Only references the compiler emits. A section named as a *string* — an
 `asp-controller="X"` link in a Razor view, `Component.InvokeAsync("Y")` — produces no
-assembly reference, so no reference-based scan can find it. `_Layout.cshtml` still links
-`Search` and `Tour` that way, and both are real sections, so an allowlist can deactivate
-them: validation passes, the provider removes the controller, the link 404s. Tracked as
-nobodies-collective/Humans#1090, which needs a decision rather than a patch — the epic
-treats those two as Shell chrome while activation treats them as sections.
+assembly reference, so no reference-based scan can find it. Two shapes exist:
+
+- **Shell to section.** `_Layout.cshtml` links `Search` and `Tour` that way, and both are
+  real sections, so an allowlist can deactivate them: validation passes, the provider
+  removes the controller, the link 404s.
+- **Section to section.** `Humans.Users/Views/Profile/Index.cshtml` and
+  `Humans.Camps/Views/Camp/Details.cshtml` both invoke Events' `EventsCard` by name, and
+  neither project references Events, so no graph edge records it. Deactivating Events with
+  either consumer active passes validation and throws on those pages at request time.
+
+Both are tracked as nobodies-collective/Humans#1090, which needs a decision rather than a
+patch: a string is invisible to any reference-based scan, and writing the names down is
+exactly what nobodies-collective/Humans#1073 exists to remove. The `<vc:chrome-slot>` and
+`ISectionContribution` seams the epic's lanes introduce are what turns these into real
+edges — a contributed component is discovered from the section's own assembly.
 
 Shell pins **26 of the 42 shipped sections** today. Any allowlist must therefore contain
 those 26 plus the transitive closure of what they consume, which leaves activation useful
@@ -79,10 +90,10 @@ and the pinned set shrinks with it.
 
 ## What a deactivated section contributes
 
-Nothing. Composition reads `ActiveSectionAssemblies()` throughout, so a deactivated section
-has no `Register` call, no DI registrations, no controllers, no view components, no
-recurring jobs, no authorization policies, no health checks, no endpoints, no nav or tile
-entries, and no resource types.
+Nothing. Composition reads the host's `SectionAssemblySnapshot` throughout, so a
+deactivated section has no `Register` call, no DI registrations, no controllers, no view
+components, no recurring jobs, no authorization policies, no health checks, no endpoints,
+no nav or tile entries, and no resource types.
 
 Controllers and view components need explicit removal rather than mere omission: MVC's
 default feature providers walk every application part and would otherwise keep a
@@ -90,13 +101,18 @@ deactivated section's *public* controllers routable and its *public* view compon
 resolvable, failing at request time on services nobody registered.
 `SectionControllerFeatureProvider` and `SectionViewComponentFeatureProvider` drop them.
 
-Those two providers are the only place a section set is cached, because they see one type
-at a time and re-walking the dependency graph per type is too slow. The cache is a
-`SectionAssemblySnapshot` built **per host** and handed to them at construction — never a
-static. Several hosts share a process (every `WebApplicationFactory` in the integration
-suite builds one), and a process-wide cache would serve whichever host composed first to
-all of them, routing one host's controllers inside another. Everything else re-reads
-`ActiveSectionAssemblies()` per call and is unaffected.
+### One snapshot per host
+
+The active/inactive split is a `SectionAssemblySnapshot` built **per host** in `Program.cs`
+and passed through composition — never process-wide state. Several hosts share a process
+(every `WebApplicationFactory` in the integration suite builds one), and a shared active set
+serves whichever host composed first to all of them, registering one host's sections inside
+another and routing its controllers there.
+
+The composition-time consumers take it as a parameter (`AddDiscoveredSections`,
+`AddHumansInfrastructure`, `AddHumansAuthorizationPolicies`, the health-check, resource and
+endpoint loops, and the two feature providers at construction). It is also registered as a
+singleton, so the post-build pass that schedules recurring jobs resolves that host's own.
 
 ## Diagnosing
 

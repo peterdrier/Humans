@@ -10,6 +10,8 @@ using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Humans.Web.Authorization;
+using Humans.Web.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -58,7 +60,8 @@ public class AuthorizationPolicyTests : IDisposable
         // AddHumansAuthorizationPolicies, so this graph registers them directly.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
-        services.AddHumansAuthorizationPolicies();
+        services.AddHumansAuthorizationPolicies(
+            SectionAssemblySnapshot.For(new ConfigurationBuilder().Build()));
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();
     }

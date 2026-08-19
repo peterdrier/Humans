@@ -3,6 +3,7 @@ using System.Reflection;
 using Hangfire;
 using Hangfire.Storage;
 using Humans.Base.Interfaces;
+using Humans.Web.Hosting;
 
 namespace Humans.Web.Extensions;
 
@@ -72,7 +73,8 @@ public static class RecurringJobExtensions
     /// <c>Humans.Integration.Tests</c> can walk the same set a real boot schedules.
     /// </summary>
     internal static IEnumerable<ScheduledJob> ContributedJobs(IServiceProvider services) =>
-        SectionDiscoveryExtensions.DiscoverImplementations<ISectionJobs>()
+        SectionDiscoveryExtensions.DiscoverImplementations<ISectionJobs>(
+                services.GetRequiredService<SectionAssemblySnapshot>())
             .SelectMany(contributor => contributor.Jobs(services))
             .Select(ToScheduledJob);
 

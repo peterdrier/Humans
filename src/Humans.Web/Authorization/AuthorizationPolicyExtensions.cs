@@ -4,6 +4,7 @@ using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Humans.Shifts.Contracts;
+using Humans.Web.Hosting;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization;
@@ -16,7 +17,9 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public static class AuthorizationPolicyExtensions
 {
-    public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
+    internal static IServiceCollection AddHumansAuthorizationPolicies(
+        this IServiceCollection services,
+        SectionAssemblySnapshot sections)
     {
         // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
         // moved into the section at its G5 and is internal there, while the policies it backs
@@ -112,7 +115,7 @@ public static class AuthorizationPolicyExtensions
 
         // Sections register their own policies. Configure<AuthorizationOptions> is additive,
         // so cross-section policies keep registering above.
-        var contributors = SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>();
+        var contributors = SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>(sections);
         if (contributors.Count > 0)
         {
             services.Configure<AuthorizationOptions>(options =>

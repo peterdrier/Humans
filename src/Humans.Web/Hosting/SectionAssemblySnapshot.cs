@@ -5,20 +5,21 @@ namespace Humans.Web.Hosting;
 
 /// <summary>
 /// One host's view of the shipped section assemblies, split by what that host's
-/// <c>Sections:Active</c> activated. Handed to the MVC feature providers, which see one
-/// type at a time and would otherwise re-walk the dependency graph per type.
+/// <c>Sections:Active</c> activated. Everything a host composes from discovery —
+/// registrations, contributions, policies, jobs, health checks, endpoints, resources and
+/// the two MVC feature providers — reads this, so a host composes only its own sections.
 /// </summary>
 /// <remarks>
-/// Per host, deliberately not a static cache. Several hosts share a process — every
-/// <c>WebApplicationFactory</c> in the integration suite builds one — and a static set
-/// freezes whichever host composed first, so a later host with a different allowlist would
-/// route the first host's controllers and resolve its view components. The rest of
-/// discovery re-reads <see cref="SectionDiscoveryExtensions.ActiveSectionAssemblies"/> per
-/// call and is unaffected; these two lookups are the only cached ones (#1081).
+/// Per host, deliberately not process state. Several hosts share a process — every
+/// <c>WebApplicationFactory</c> in the integration suite builds one — and a shared active
+/// set serves whichever host composed first to all of them, registering one host's sections
+/// inside another and routing its controllers there (#1081). Built once in <c>Program.cs</c>
+/// from that host's configuration, registered as a singleton so post-build composition
+/// (recurring jobs) resolves the same instance.
 /// </remarks>
 internal sealed class SectionAssemblySnapshot
 {
-    private readonly HashSet<Assembly> _active;
+    private readonly HashSet<Assembly> _activeLookup;
     private readonly HashSet<Assembly> _inactive;
 
     /// <param name="shipped">Every section assembly in the build.</param>
@@ -27,13 +28,21 @@ internal sealed class SectionAssemblySnapshot
     /// </param>
     internal SectionAssemblySnapshot(IReadOnlyList<Assembly> shipped, IReadOnlySet<string>? activeSections)
     {
-        _active = [.. shipped.Where(a => activeSections is null
-                                         || activeSections.Contains(SectionDiscoveryExtensions.SectionName(a)))];
-        _inactive = [.. shipped.Where(a => !_active.Contains(a))];
+        Active = [.. shipped.Where(a => activeSections is null
+                                        || activeSections.Contains(SectionDiscoveryExtensions.SectionName(a)))];
+        _activeLookup = [.. Active];
+        _inactive = [.. shipped.Where(a => !_activeLookup.Contains(a))];
     }
 
+    /// <summary>This host's split of <c>Sections:Active</c>, resolved and validated.</summary>
+    internal static SectionAssemblySnapshot For(IConfiguration configuration) =>
+        new(SectionDiscoveryExtensions.SectionAssemblies(), SectionActivation.Resolve(configuration));
+
+    /// <summary>The section assemblies this host runs. Composition reads this, never the shipped set.</summary>
+    internal IReadOnlyList<Assembly> Active { get; }
+
     /// <summary>True for a section assembly this host runs — the public check may be relaxed for it.</summary>
-    internal bool IsActiveSection(Assembly assembly) => _active.Contains(assembly);
+    internal bool IsActiveSection(Assembly assembly) => _activeLookup.Contains(assembly);
 
     /// <summary>
     /// True for a section assembly this host deactivated. MVC's default feature providers

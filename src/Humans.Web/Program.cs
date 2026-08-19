@@ -66,8 +66,11 @@ Log.Logger = logConfig.CreateLogger();
 builder.Host.UseSerilog();
 
 // Before anything composes from discovery: which sections this deployment runs, and a hard
-// stop if the allowlist deactivates one an active section consumes (#1081).
-var activeSections = SectionActivation.Configure(builder.Configuration);
+// stop if the allowlist deactivates one an active section consumes (#1081). One snapshot
+// per host, never a static — several hosts share a process in the integration suite, and a
+// shared active set composes one host's sections inside another.
+var sectionAssemblies = SectionAssemblySnapshot.For(builder.Configuration);
+builder.Services.AddSingleton(sectionAssemblies);
 
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
@@ -218,7 +221,7 @@ builder.Services.AddAuthentication()
     });
 
 // Canonical policies — see docs/authorization-inventory.md.
-builder.Services.AddHumansAuthorizationPolicies();
+builder.Services.AddHumansAuthorizationPolicies(sectionAssemblies);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
@@ -287,7 +290,7 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<ConfigurationHealthCheck>("configuration");
 
 // Sections add their own checks; the names are monitoring keys, so they stay with the owner.
-foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>())
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>(sectionAssemblies))
 {
     contributor.AddHealthChecks(healthChecks, builder.Configuration);
 }
@@ -299,7 +302,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
     healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire");
 }
 
-builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
+builder.Services.AddHumansInfrastructure(
+    builder.Configuration, builder.Environment, sectionAssemblies, configRegistry);
 
 builder.Services.AddResponseCompression(options =>
 {
@@ -480,12 +484,8 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     });
 
 // A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
-// default provider only discovers public ones, and says nothing when it doesn't.
-// One snapshot per host, not a static: several hosts share a process in the integration
-// suite, and a static set would freeze whichever composed first (#1081).
-var sectionAssemblies = new SectionAssemblySnapshot(
-    SectionDiscoveryExtensions.SectionAssemblies(), activeSections);
-
+// default provider only discovers public ones, and says nothing when it doesn't. Same
+// per-host snapshot the rest of composition read.
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionControllerFeatureProvider(sectionAssemblies)));
 
@@ -602,7 +602,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 // the set renders as its raw key. Checking that the manifest the localizer will look
 // for is actually embedded needs no key-name convention and no culture, so a new
 // section adds nothing here.
-foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
+foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes(sectionAssemblies))
 {
     var expected = resourceType.FullName + ".resources";
     var embedded = resourceType.Assembly.GetManifestResourceNames();
@@ -829,7 +829,7 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 // Sections map what routing cannot discover on its own — hubs and the like.
-foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>(sectionAssemblies))
 {
     contributor.MapEndpoints(app);
 }

@@ -1,6 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Web.Extensions;
+using Humans.Web.Hosting;
 using Microsoft.Extensions.Configuration;
 
 namespace Humans.Web.Tests.Infrastructure;
@@ -33,7 +34,8 @@ public sealed class SectionActivationTests
         SectionActivation.Resolve(Discovered, Shell, new ConfigurationBuilder().Build())
             .Should().BeNull(because: "the shipped default runs every section that ships");
 
-        Discovered.Should().OnlyContain(a => SectionActivation.IsActive(SectionName(a)));
+        new SectionAssemblySnapshot(Discovered, activeSections: null)
+            .Active.Should().BeEquivalentTo(Discovered);
     }
 
     [HumansFact]

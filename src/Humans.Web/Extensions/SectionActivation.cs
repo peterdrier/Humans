@@ -14,8 +14,10 @@ namespace Humans.Web.Extensions;
 /// validated against, and the dependency graph derived from, what discovery actually found.
 /// </para>
 /// <para>
-/// Set once at startup, before anything reads <see cref="SectionDiscoveryExtensions.ActiveSectionAssemblies"/>,
-/// because discovery runs during composition from several places that hold no configuration.
+/// Resolved once per host into a <see cref="Hosting.SectionAssemblySnapshot"/> the host
+/// then carries through its own composition. Deliberately no process-wide state: several
+/// hosts share a process — every <c>WebApplicationFactory</c> in the integration suite
+/// builds one — and a static allowlist would let a host compose against another's.
 /// </para>
 /// </remarks>
 public static class SectionActivation
@@ -23,24 +25,15 @@ public static class SectionActivation
     /// <summary>Configuration key holding the active-section allowlist.</summary>
     public const string ActiveKey = "Sections:Active";
 
-    /// <summary>Null means every discovered section — the default.</summary>
-    private static IReadOnlySet<string>? _active;
-
     /// <summary>
-    /// Reads the allowlist and fails startup if it breaks an active section's dependencies.
-    /// Returns the resolved set — null for the default, every section — so the composing
-    /// host can hand it to the parts that need a snapshot of its own composition rather
-    /// than a process-wide read.
+    /// The sections this host runs — null for the default, every section. Reads the
+    /// allowlist and fails startup if it breaks an active section's dependencies.
     /// </summary>
-    public static IReadOnlySet<string>? Configure(IConfiguration configuration) =>
-        _active = Resolve(
+    public static IReadOnlySet<string>? Resolve(IConfiguration configuration) =>
+        Resolve(
             SectionDiscoveryExtensions.SectionAssemblies(),
             typeof(SectionActivation).Assembly,
             configuration);
-
-    /// <summary>True when this deployment runs the named section.</summary>
-    public static bool IsActive(string sectionName) =>
-        _active is null || _active.Contains(sectionName);
 
     /// <summary>
     /// The active set for <paramref name="discovered"/> under <paramref name="configuration"/>,
