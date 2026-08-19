@@ -43,6 +43,10 @@ public sealed record HoldedSalesDocumentInput
     public string? Description { get; init; }
     /// <summary>Internal notes — visible to us, not printed on the document.</summary>
     public string? Notes { get; init; }
+    /// <summary>Internal labels. Not printed, and — unlike <see cref="Notes"/> — returned by the
+    /// list endpoints, so a tag is the only thing that makes a document findable by whatever
+    /// created it. See <see cref="IHoldedClient.FindSalesDocumentIdsByTagAsync"/>.</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
     public required IReadOnlyList<HoldedSalesDocumentLineInput> Lines { get; init; }
 }
 

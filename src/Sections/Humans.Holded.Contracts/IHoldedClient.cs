@@ -54,6 +54,13 @@ public interface IHoldedClient
     Task ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
+    /// <summary>Ids of the sales documents of <paramref name="kind"/> carrying <paramref name="tag"/>.
+    /// v2 has no server-side tag filter and its list responses omit <c>notes</c>, so the collection is
+    /// walked and matched on the tag client-side. Used to find a document a previous attempt already
+    /// issued before issuing a second one.</summary>
+    Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
+        HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default);
+
     /// <summary>Reads a sales document back — the post-approval document number and totals.</summary>
     Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);

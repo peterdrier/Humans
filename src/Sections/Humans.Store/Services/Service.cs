@@ -969,8 +969,11 @@ internal sealed class Service(
     /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
     /// so a counterparty-less order that large is refused rather than downgraded.
     ///
-    /// Idempotent: an order that already carries an <c>IssuedInvoiceId</c> throws without
-    /// calling Holded. Failure before the save leaves the order <c>Open</c> with no invoice row.
+    /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> throws
+    /// without calling Holded, and — because a document approved by an attempt that then failed
+    /// locally leaves no trace here — Holded is searched for a document already tagged with this
+    /// order before anything is created. A match is adopted, never re-issued: a second approved
+    /// factura is a real legal document, correctable only by a factura rectificativa.
     /// </summary>
     [ExternalWrite]
     public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
@@ -1002,6 +1005,25 @@ internal sealed class Service(
             line.UnitPriceSnapshot = t.EffectiveUnitPrice;
             line.VatRateSnapshot = t.EffectiveVatRate;
             line.DepositAmountSnapshot = t.EffectiveDeposit;
+        }
+
+        // The local guard above cannot see a document approved by an attempt that then failed
+        // before its save, so ask Holded before creating anything. Read-only, and it runs ahead of
+        // the line-account resolution so that a catalog edited in between cannot block the
+        // reconciliation of a document that already exists.
+        var tag = OrderDocumentTag(order.Id);
+        if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
+        {
+            var (adoptedKind, adoptedDoc) = alreadyIssued;
+            await CommitInvoiceAsync(
+                order, adoptedDoc,
+                JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
+                actorUserId,
+                $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
+                + $"(EUR {adoptedDoc.Total:0.00}), already issued for order {order.Id} by an earlier "
+                + "attempt that failed before saving — no second document was created",
+                ct);
+            return;
         }
 
         var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
@@ -1052,6 +1074,7 @@ internal sealed class Service(
             Date = clock.GetCurrentInstant(),
             Description = $"Nobodies Collective store — {displayName}",
             Notes = $"Humans store order {order.Id}",
+            Tags = [tag],
             Lines = documentLines,
         };
 
@@ -1060,6 +1083,58 @@ internal sealed class Service(
         await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
         var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
 
+        await CommitInvoiceAsync(
+            order, document,
+            JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
+            actorUserId,
+            $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
+            + $"for EUR {totalDue:0.00} on order {order.Id}",
+            ct);
+    }
+
+    /// <summary>The tag every store sales document carries. Holded's list endpoints return
+    /// <c>tags</c> but not <c>notes</c>, so this — not the human-readable note beside it — is what
+    /// makes a document findable by the order it was issued for.</summary>
+    private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
+
+    private static string DocumentKindName(HoldedSalesDocumentKind kind) =>
+        kind == HoldedSalesDocumentKind.Invoice ? "factura" : "factura simplificada";
+
+    /// <summary>
+    /// The sales document a previous attempt already created for this order, or null. Both kinds
+    /// are searched: the counterparty details decide the kind and can be filled in between two
+    /// attempts, so the earlier document may be of the other kind — and adopting it is still right,
+    /// because what must not happen is a second approved document.
+    /// </summary>
+    private async Task<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)?>
+        FindAlreadyIssuedDocumentAsync(string tag, CancellationToken ct)
+    {
+        foreach (var kind in new[] { HoldedSalesDocumentKind.Invoice, HoldedSalesDocumentKind.SalesReceipt })
+        {
+            var ids = await holdedClient.FindSalesDocumentIdsByTagAsync(kind, tag, ct);
+            if (ids.Count == 0) continue;
+            if (ids.Count > 1)
+                // The duplicate this guard exists to prevent has already happened — only a factura
+                // rectificativa clears it. Adopting the first still stops a third being issued.
+                logger.LogWarning(
+                    "Holded holds {Count} {Kind} documents tagged {Tag}: {Ids}. Adopting the first.",
+                    ids.Count, kind, tag, string.Join(", ", ids));
+            return (kind, await holdedClient.GetSalesDocumentAsync(kind, ids[0], ct));
+        }
+        return null;
+    }
+
+    /// <summary>Writes the <c>store_invoices</c> row and the frozen order in one save, then audits.
+    /// Shared by first issuance and by adoption of an already-issued document — the two differ only
+    /// in the request payload they can honestly record and in what the audit line says.</summary>
+    private async Task CommitInvoiceAsync(
+        Order order,
+        HoldedSalesDocumentDto document,
+        string requestPayload,
+        Guid actorUserId,
+        string auditDetail,
+        CancellationToken ct)
+    {
         var invoice = new Invoice
         {
             Id = Guid.NewGuid(),
@@ -1068,7 +1143,7 @@ internal sealed class Service(
             HoldedDocNumber = document.DocNumber,
             IssuedAt = clock.GetCurrentInstant(),
             IssuedByUserId = actorUserId,
-            RequestPayload = JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
+            RequestPayload = requestPayload,
             ResponsePayload = document.RawJson,
         };
 
@@ -1079,9 +1154,7 @@ internal sealed class Service(
 
         await audit.LogAsync(
             AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
-            $"Issued Holded {(kind == HoldedSalesDocumentKind.Invoice ? "factura" : "factura simplificada")} "
-            + $"{document.DocNumber} for EUR {totalDue:0.00} on order {order.Id}",
-            actorUserId,
+            auditDetail, actorUserId,
             order.Id, AuditEntityTypes.Order);
     }
 

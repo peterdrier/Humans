@@ -258,6 +258,33 @@ internal sealed class HoldedClient : IHoldedClient
         using var resp = await SendAsync(req, ct);
     }
 
+    public async Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
+        HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default)
+    {
+        const int pageSafetyCap = 200; // 40 000 documents — far above a small nonprofit's volume
+        var items = await GetPagedAsync($"/api/v2/{SalesSegment(kind)}?limit=200", pageSafetyCap, ct);
+        try
+        {
+            return items
+                .Where(n => ReadTags(Prop(n, "tags")).Contains(tag, StringComparer.Ordinal))
+                // A match without an id cannot be dropped: the caller reads an empty result as
+                // "nothing issued yet" and creates a second approved document.
+                .Select(n => Prop(n, "id")?.GetValue<string>() is { Length: > 0 } id
+                    ? id
+                    : throw new HoldedPermanentException(
+                        "Holded sales document is missing required field 'id' — refusing the page."))
+                .ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // Same normalization as ListPurchaseDocumentsAsync: the value that failed to parse
+            // belongs to the stored document, not to this request, so a retry cannot help.
+            throw new HoldedPermanentException(
+                $"Holded {SalesSegment(kind)} documents could not be searched.", ex);
+        }
+    }
+
     public async Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
     {
@@ -299,6 +326,7 @@ internal sealed class HoldedClient : IHoldedClient
         date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
         description = input.Description,
         notes = input.Notes,
+        tags = input.Tags,
         currency = "EUR",
         items = input.Lines.Select(l => new
         {
