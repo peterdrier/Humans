@@ -2,7 +2,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Tickets.ViewComponents;
 
 /// <summary>
 /// Renders the current holder's ticket stubs as a bare flex-wrap strip (no card

@@ -7,8 +7,9 @@ namespace Humans.Analyzers.Internal.Rules;
 /// <summary>
 /// HUM0034 — outside <c>Contracts/</c> a section's types are internal. Two kinds of
 /// exception: a deliberate surface (<c>Contracts/</c>, <c>Jobs/</c>, the <c>ISection</c>
-/// entry point, the <c>&lt;Section&gt;Resource</c> marker) and types the framework
-/// silently drops when they are internal (view components, tag helpers, EF migrations).
+/// entry point and its <c>ISectionContribution</c> seams, the <c>&lt;Section&gt;Resource</c>
+/// marker) and types the framework silently drops when they are internal (view components,
+/// tag helpers, EF migrations).
 /// </summary>
 /// <remarks>
 /// The membership test for the framework exception: does making the type internal fail
@@ -21,6 +22,7 @@ namespace Humans.Analyzers.Internal.Rules;
 internal static class PublicSurfaceRule
 {
     private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string ISectionContributionFullName = "Humans.Base.Interfaces.ISectionContribution";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
     private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string IRecurringJobFullName = "Humans.Base.Interfaces.IRecurringJob";
@@ -41,9 +43,10 @@ internal static class PublicSurfaceRule
         messageFormat:
             "'{0}' is public in section '{1}'. A section is internal by default: its public "
             + "surface is Contracts/, its Jobs/ (Hangfire jobs the Shell schedules by concrete "
-            + "type), its Section entry point, its <Section>Resource marker, EF migrations, and "
-            + "types the framework needs public (view components, tag helpers). Make '{0}' "
-            + "internal, or move it under Contracts/ if another section needs it.",
+            + "type), its Section entry point and contribution seams, its <Section>Resource "
+            + "marker, EF migrations, and types the framework needs public (view components, "
+            + "tag helpers). Make '{0}' internal, or move it under Contracts/ if another "
+            + "section needs it.",
         category: AnalyzerCategories.Architecture,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -54,6 +57,7 @@ internal static class PublicSurfaceRule
     /// <summary>The well-known types the check needs, resolved once per compilation.</summary>
     public sealed class Context(
         INamedTypeSymbol? sectionMarker,
+        INamedTypeSymbol? contributionMarker,
         INamedTypeSymbol? migrationBase,
         INamedTypeSymbol? repositoryMarker,
         INamedTypeSymbol? viewComponentAttr,
@@ -62,6 +66,7 @@ internal static class PublicSurfaceRule
         INamedTypeSymbol? recurringJobInterface)
     {
         public INamedTypeSymbol? SectionMarker { get; } = sectionMarker;
+        public INamedTypeSymbol? ContributionMarker { get; } = contributionMarker;
         public INamedTypeSymbol? MigrationBase { get; } = migrationBase;
         public INamedTypeSymbol? RepositoryMarker { get; } = repositoryMarker;
         public INamedTypeSymbol? ViewComponentAttr { get; } = viewComponentAttr;
@@ -72,6 +77,7 @@ internal static class PublicSurfaceRule
 
     public static Context Prepare(Compilation compilation) => new(
         compilation.GetTypeByMetadataName(ISectionFullName),
+        compilation.GetTypeByMetadataName(ISectionContributionFullName),
         compilation.GetTypeByMetadataName(EfMigrationFullName),
         compilation.GetTypeByMetadataName(IRepositoryFullName),
         compilation.GetTypeByMetadataName(ViewComponentAttributeFullName),
@@ -89,6 +95,7 @@ internal static class PublicSurfaceRule
             return;
 
         if (IsSectionEntryPoint(type, types.SectionMarker)
+            || IsSectionEntryPoint(type, types.ContributionMarker)
             || IsResourceMarker(type)
             || IsEfMigration(type, types.MigrationBase)
             || IsViewComponent(type, types.ViewComponentAttr, types.NonViewComponentAttr)
@@ -108,7 +115,11 @@ internal static class PublicSurfaceRule
             messageArgs: [type.Name, type.ContainingAssembly.Name]));
     }
 
-    /// <summary>Matched by implementing <c>ISection</c> — the test boot discovery uses.</summary>
+    /// <summary>
+    /// Matched by implementing the marker — the test boot discovery uses. Serves both
+    /// <c>ISection</c> and <c>ISectionContribution</c>: Shell walks each with
+    /// <c>GetExportedTypes()</c>, so an internal one is silently absent, not a build error.
+    /// </summary>
     private static bool IsSectionEntryPoint(INamedTypeSymbol type, INamedTypeSymbol? sectionMarker) =>
         sectionMarker is not null
         && type is { TypeKind: TypeKind.Class, IsAbstract: false }

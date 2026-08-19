@@ -601,19 +601,15 @@
                             <span class="wg-card-name">&lt;vc:things-to-do&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs + each section&#39;s ThingsToDo.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Onboarding checklist on the human dashboard. Auto-hides when all items are done — if you see
-                        nothing here, your account is fully onboarded.
+                        Onboarding checklist on the human dashboard, merged from every section's
+                        <code>ISectionThingsToDo</code> contribution for the signed-in member. Auto-hides when all
+                        items are done — if you see nothing here, your account is fully onboarded.
                     </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required"),
-                        ("isVolunteerMember", "<code>bool</code> — when true, hides the consent-check item"),
-                        ("hasShiftSignups", "<code>bool</code> — when true, includes the shift-info-completion item")
-                    )
                     <div class="wg-card-example">
-                        <vc:things-to-do user-id="@Model.CurrentUserId" is-volunteer-member="true" has-shift-signups="true" />
+                        <vc:things-to-do />
                     </div>
                 </div>
 

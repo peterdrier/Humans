@@ -13,7 +13,8 @@ namespace Humans.Web.Controllers;
 
 /// <summary>
 /// Dashboard for profileless accounts (authenticated users without a Profile).
-/// Provides comms preferences, GDPR tools, ticket status, and create-profile CTA.
+/// Provides comms preferences, GDPR tools, and the create-profile CTA. Ticket status is
+/// contributed by the Tickets section into the page's chrome slot.
 /// </summary>
 [Authorize]
 public class GuestController(
@@ -49,7 +50,7 @@ public class GuestController(
 
         try
         {
-            var viewModel = await BuildDashboardViewModelAsync(user);
+            var viewModel = BuildDashboardViewModel(user);
             return View(viewModel);
         }
         catch (Exception ex)
@@ -209,31 +210,12 @@ public class GuestController(
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(UserInfo user)
+    private GuestDashboardViewModel BuildDashboardViewModel(UserInfo user)
     {
         var viewModel = new GuestDashboardViewModel
         {
             DisplayName = user.BurnerName,
         };
-
-        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(user.Id);
-        var hasTickets = ticketHoldings.HasTicketAttendeeMatch;
-
-        if (hasTickets)
-        {
-            viewModel.HasTickets = true;
-
-            viewModel.TicketOrders = ticketHoldings.OrderSummaries
-                .Select(s => new GuestTicketOrderSummary
-                {
-                    BuyerName = s.BuyerName,
-                    PurchasedAt = s.PurchasedAt.ToDateTimeUtc(),
-                    AttendeeCount = s.AttendeeCount,
-                    TotalAmount = s.TotalAmount,
-                    Currency = s.Currency,
-                })
-                .ToList();
-        }
 
         viewModel.IsDeletionPending = user.IsDeletionPending;
         viewModel.DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc();

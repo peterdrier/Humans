@@ -18,11 +18,10 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Web
 @addTagHelper *, Humans.Base
-@* <vc:ticket-stub> is the Tickets section's own component, public under
-   Humans.Tickets/Contracts/ so MVC's default provider discovers it and the tag helper is
-   generated. Shell renders it from Shared/Components/MyTicketStubs, Shared/Components/
-   TicketHoldings and WidgetGallery; the @using above imports TicketStubInfo but NOT the tag
-   helper, and without this line the element ships as inert literal markup (step 6). *@
+@* <vc:ticket-stub> and <vc:my-ticket-stubs> are the Tickets section's own components, public
+   so MVC's default provider discovers them and the tag helpers are generated. Shell renders
+   them from WidgetGallery; the @using above imports TicketStubInfo but NOT the tag helper,
+   and without this line the element ships as inert literal markup (step 6). *@
 @addTagHelper *, Humans.Camps
 @addTagHelper *, Humans.Tickets
 @* <vc:shift-signups> is the Shifts section's own component, public under

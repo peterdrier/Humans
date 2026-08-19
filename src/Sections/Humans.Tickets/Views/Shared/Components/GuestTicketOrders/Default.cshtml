@@ -1,0 +1,36 @@
+@using System.Globalization
+@model IReadOnlyList<UserTicketOrderSummary>
+
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-1">
+                    <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-success me-3">
+                        <i class="fa-solid fa-ticket"></i>
+                    </div>
+                    <h5 class="mb-0">@SharedLocalizer["Guest_TicketsTitle"]</h5>
+                </div>
+                @if (Model.Count > 0)
+                {
+                    Func<UserTicketOrderSummary, IHtmlContent> amountCell =
+                        r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentCulture))} {Html.Encode(r.Currency)}");
+                    var ticketsTable = TableModel.For(Model)
+                        .Column(SharedLocalizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDateTimeUtc().ToDate())
+                        .Column(SharedLocalizer["Guest_TicketsHeader_Buyer"].Value, r => r.BuyerName)
+                        .Column(SharedLocalizer["Guest_TicketsHeader_Tickets"].Value, r => r.AttendeeCount, c => c.Number())
+                        .Template(SharedLocalizer["Guest_TicketsHeader_Amount"].Value, amountCell, c => c.End())
+                        .Build();
+                    <partial name="_Table" model="ticketsTable" />
+                }
+                else
+                {
+                    <p class="mb-0">
+                        <i class="fa-solid fa-circle-check text-success me-2"></i>
+                        @SharedLocalizer["Guest_TicketsConfirmed"]
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

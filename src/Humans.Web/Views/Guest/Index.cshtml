@@ -1,6 +1,3 @@
-@using Microsoft.AspNetCore.Html
-@using System.Globalization
-@using Humans.Base.Models.Tables
 @model Humans.Web.Models.GuestDashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
@@ -38,42 +35,8 @@
     </div>
 </div>
 
-@if (Model.HasTickets)
-{
-    <div class="row justify-content-center mb-5">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-1">
-                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-success me-3">
-                            <i class="fa-solid fa-ticket"></i>
-                        </div>
-                        <h5 class="mb-0">@Localizer["Guest_TicketsTitle"]</h5>
-                    </div>
-                    @if (Model.TicketOrders.Count > 0)
-                    {
-                        Func<GuestTicketOrderSummary, IHtmlContent> amountCell =
-                            r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentCulture))} {Html.Encode(r.Currency)}");
-                        var ticketsTable = TableModel.For(Model.TicketOrders)
-                            .Column(Localizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDate())
-                            .Column(Localizer["Guest_TicketsHeader_Buyer"].Value, r => r.BuyerName)
-                            .Column(Localizer["Guest_TicketsHeader_Tickets"].Value, r => r.AttendeeCount, c => c.Number())
-                            .Template(Localizer["Guest_TicketsHeader_Amount"].Value, amountCell, c => c.End())
-                            .Build();
-                        <partial name="_Table" model="ticketsTable" />
-                    }
-                    else
-                    {
-                        <p class="mb-0">
-                            <i class="fa-solid fa-circle-check text-success me-2"></i>
-                            @Localizer["Guest_TicketsConfirmed"]
-                        </p>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-}
+@* Tickets contributes the order summary here; renders nothing without an order. *@
+<vc:chrome-slot name="guest-page" />
 
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">

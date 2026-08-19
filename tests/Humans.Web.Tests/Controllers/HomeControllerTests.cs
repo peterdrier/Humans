@@ -92,20 +92,9 @@ public class HomeControllerTests
                 RequiredConsentCount: 0,
                 PendingConsentCount: 0,
                 MissingConsentVersionIds: []),
-            LatestApplication: null,
-            HasPendingApplication: false,
-            CurrentTier: MembershipTier.Volunteer,
-            TermExpiresAt: null,
-            TermExpiresSoon: false,
-            TermExpired: false,
             ActiveEvent: null,
             UrgentShifts: [],
             NextShifts: [],
-            PendingSignupCount: 0,
-            HasShiftSignups: false,
-            TicketsConfigured: false,
-            HasTicket: false,
-            UserTicketCount: 0,
-            ParticipationStatus: null);
+            PendingSignupCount: 0);
     }
 }

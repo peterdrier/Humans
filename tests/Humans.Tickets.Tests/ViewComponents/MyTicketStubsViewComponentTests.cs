@@ -1,14 +1,14 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Web.ViewComponents;
+using Humans.Tickets.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Web.Tests.ViewComponents;
+namespace Humans.Tickets.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="MyTicketStubsViewComponent"/>: it renders the holder's owned

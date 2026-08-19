@@ -2,7 +2,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Tickets.ViewComponents;
 
 public sealed class TicketHoldingsViewComponent(
     ITicketServiceRead queryService,
@@ -25,4 +25,4 @@ public sealed class TicketHoldingsViewComponent(
     }
 }
 
-public sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);
+internal sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);

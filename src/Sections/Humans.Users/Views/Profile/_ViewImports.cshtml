@@ -38,7 +38,7 @@
 @addTagHelper *, Humans.AuditLog
 @* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. AccessMatrix
    moved to Humans.UI (nobodies-collective/Humans#1056) and now binds as <vc:access-matrix>;
-   the three still-Shell-owned components this page renders (EventsCard, TicketHoldings,
+   the still-Shell-owned components this page renders (EventsCard,
    CommunicationPreferencesPanel) stay invoked by name until they move too. A <vc:> element
    for an unimported assembly renders as inert markup with a green build and no runtime
    error, so never add one without its @addTagHelper. *@

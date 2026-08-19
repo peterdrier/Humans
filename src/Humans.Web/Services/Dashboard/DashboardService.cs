@@ -1,29 +1,22 @@
-using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Governance.Contracts;
 
 namespace Humans.Web.Services.Dashboard;
 
-/// <summary>Orchestrates the member dashboard snapshot across profile/membership/applications/shifts/tickets/participation.</summary>
+/// <summary>Orchestrates the member dashboard snapshot across profile/membership/shifts.</summary>
 public class DashboardService(
     IMembershipCalculatorRead membershipCalculator,
-    IApplicationServiceRead applicationDecisionService,
     IShiftManagementServiceRead shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftView shiftView,
-    ITicketServiceRead ticketQueryService,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    IOptions<TicketVendorSettings> ticketSettings,
     IClock clock,
     ILogger<DashboardService> logger) : IDashboardService
 {
-    private readonly TicketVendorSettings _ticketSettings = ticketSettings.Value;
-
     public async Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -31,32 +24,13 @@ public class DashboardService(
         var userInfo = await userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
         var userView = await shiftView.GetUserAsync(userId, cancellationToken);
-        var hasShiftTagPreferences = userView.TagPreferences.Count > 0;
         var dashboardProfile = profile is null
             ? null
             : new DashboardProfile(
                 ProfileComplete: !string.IsNullOrEmpty(profile.FirstName),
-                CompletionPercent: ProfileCompletion.ComputePercent(profile, hasShiftTagPreferences),
-                ConsentCheckStatus: profile.ConsentCheckStatus,
                 IsRejected: profile.RejectedAt is not null,
                 RejectionReason: profile.RejectionReason);
         var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
-
-        // Applications + term expiry state
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
-        var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-        var latestApplicationSnapshot = latestApplication is null
-            ? null
-            : new DashboardApplication(
-                latestApplication.Status,
-                latestApplication.SubmittedAt,
-                latestApplication.MembershipTier);
-        var hasPendingApp = latestApplication is not null &&
-            latestApplication.Status == ApplicationStatus.Submitted;
-
-        var currentTier = profile?.MembershipTier ?? MembershipTier.Volunteer;
-        var (termExpiresAt, termExpiresSoon, termExpired) =
-            ComputeTermState(applications, currentTier);
 
         // Shift cards (urgent shifts + confirmed signups) — guarded, failures never crash the dashboard.
         BurnSettingsInfo? activeEvent = null;
@@ -72,7 +46,6 @@ public class DashboardService(
         var urgentItems = new List<DashboardUrgentShift>();
         var nextShifts = new List<DashboardSignup>();
         var pendingCount = 0;
-        var hasShiftSignups = false;
 
         if (activeEvent is not null && activeEvent.IsShiftBrowsingOpen)
         {
@@ -143,7 +116,6 @@ public class DashboardService(
                 }
 
                 nextShifts = nextShifts.OrderBy(i => i.AbsoluteStart).Take(3).ToList();
-                hasShiftSignups = nextShifts.Count > 0 || pendingCount > 0;
             }
             catch (Exception ex)
             {
@@ -151,100 +123,14 @@ public class DashboardService(
             }
         }
 
-        // Ticket state
-        var ticketsConfigured = _ticketSettings.IsConfigured;
-        var hasTicket = false;
-        var userTicketCount = 0;
-        try
-        {
-            if (ticketsConfigured)
-            {
-                var holdings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, cancellationToken);
-                userTicketCount = holdings.TicketCount;
-                hasTicket = userTicketCount > 0;
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw; // request aborted — let it abort, don't log as an error
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
-        }
-
-        // Event participation
-        ParticipationStatus? participationStatus = null;
-        try
-        {
-            if (activeEvent is not null && activeEvent.Year > 0)
-            {
-                var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-                participationStatus = info?.EventParticipations
-                    .FirstOrDefault(p => p.Year == activeEvent.Year)?.Status;
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw; // request aborted — let it abort, don't log as an error
-        }
-        catch (OperationCanceledException ex)
-        {
-            logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
-        }
-
         return new MemberDashboardData(
             Profile: dashboardProfile,
             MembershipSnapshot: membershipSnapshot,
-            LatestApplication: latestApplicationSnapshot,
-            HasPendingApplication: hasPendingApp,
-            CurrentTier: currentTier,
-            TermExpiresAt: termExpiresAt,
-            TermExpiresSoon: termExpiresSoon,
-            TermExpired: termExpired,
             ActiveEvent: activeEvent is null
                 ? null
                 : new DashboardEvent(activeEvent.EventName, activeEvent.IsShiftBrowsingOpen, activeEvent.Year),
             UrgentShifts: urgentItems,
             NextShifts: nextShifts,
-            PendingSignupCount: pendingCount,
-            HasShiftSignups: hasShiftSignups,
-            TicketsConfigured: ticketsConfigured,
-            HasTicket: hasTicket,
-            UserTicketCount: userTicketCount,
-            ParticipationStatus: participationStatus);
-    }
-
-    private (LocalDate? ExpiresAt, bool ExpiresSoon, bool Expired) ComputeTermState(
-        IReadOnlyList<UserApplicationSnapshot> applications,
-        MembershipTier currentTier)
-    {
-        if (currentTier == MembershipTier.Volunteer)
-        {
-            return (null, false, false);
-        }
-
-        var latestApprovedApp = applications
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier == currentTier
-                && a.TermExpiresAt is not null)
-            .OrderByDescending(a => a.TermExpiresAt)
-            .FirstOrDefault();
-
-        if (latestApprovedApp?.TermExpiresAt is null)
-        {
-            return (null, false, false);
-        }
-
-        var today = clock.GetCurrentInstant().InUtc().Date;
-        var expiryDate = latestApprovedApp.TermExpiresAt.Value;
-        var expired = expiryDate < today;
-        var expiresSoon = !expired && expiryDate <= today.PlusDays(90);
-
-        return (expiryDate, expiresSoon, expired);
+            PendingSignupCount: pendingCount);
     }
 }

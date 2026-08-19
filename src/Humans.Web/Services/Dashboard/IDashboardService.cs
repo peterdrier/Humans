@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using NodaTime;
-using Humans.Users.Contracts;
 
 using Humans.Base.Interfaces;
 
@@ -8,9 +7,10 @@ namespace Humans.Web.Services.Dashboard;
 
 /// <summary>
 /// Orchestrates the member dashboard view: applies business rules to combine
-/// membership, application term state, shift discovery, tickets, and participation
-/// into a single pre-computed snapshot the web controller can map directly to a
-/// view model. Authorization-free; callers are responsible for gating access.
+/// membership, profile state and shift discovery into a single pre-computed
+/// snapshot the web controller can map directly to a view model. Term, ticket and
+/// participation state left with the sections that contribute those cards.
+/// Authorization-free; callers are responsible for gating access.
 /// </summary>
 public interface IDashboardService : IApplicationService
 {
@@ -21,39 +21,21 @@ public interface IDashboardService : IApplicationService
 
 /// <summary>
 /// Pre-computed dashboard data for a signed-in member.
-/// All business rules (term expiry, urgent shift aggregation, signup filtering)
-/// are applied by the service; the controller maps this 1:1 onto its view model.
+/// All business rules (urgent shift aggregation, signup filtering) are applied by
+/// the service; the controller maps this 1:1 onto its view model.
 /// </summary>
 public record MemberDashboardData(
     DashboardProfile? Profile,
     MembershipSnapshot MembershipSnapshot,
-    DashboardApplication? LatestApplication,
-    bool HasPendingApplication,
-    MembershipTier CurrentTier,
-    LocalDate? TermExpiresAt,
-    bool TermExpiresSoon,
-    bool TermExpired,
     DashboardEvent? ActiveEvent,
     IReadOnlyList<DashboardUrgentShift> UrgentShifts,
     IReadOnlyList<DashboardSignup> NextShifts,
-    int PendingSignupCount,
-    bool HasShiftSignups,
-    bool TicketsConfigured,
-    bool HasTicket,
-    int UserTicketCount,
-    ParticipationStatus? ParticipationStatus);
+    int PendingSignupCount);
 
 public record DashboardProfile(
     bool ProfileComplete,
-    int CompletionPercent,
-    ConsentCheckStatus? ConsentCheckStatus,
     bool IsRejected,
     string? RejectionReason);
-
-public record DashboardApplication(
-    ApplicationStatus Status,
-    Instant SubmittedAt,
-    MembershipTier MembershipTier);
 
 public record DashboardEvent(
     string EventName,

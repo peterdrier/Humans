@@ -1,162 +1,43 @@
-using System.Globalization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
+using Humans.Base.Interfaces;
 using Humans.Web.Models;
-using Humans.Shifts.Contracts;
-using Humans.Governance.Contracts;
-using Humans.Base;
-using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
+/// <summary>
+/// Renders the merged things-to-do list for the signed-in member. Every entry comes from a
+/// section contribution, so Shell holds no per-section state — only the ordering, the URL
+/// resolution and the hide-when-all-done rule.
+/// </summary>
 public class ThingsToDoViewComponent(
-    IUserServiceRead userService,
-    IShiftManagementServiceRead shiftMgmt,
-    IShiftVolunteerProfiles shiftProfiles,
-    IMembershipCalculatorRead membershipCalculator,
-    IStringLocalizer<SharedResource> localizer,
+    IEnumerable<ISectionThingsToDo> contributors,
+    IServiceProvider services,
     ILogger<ThingsToDoViewComponent> logger) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(
-        Guid userId,
-        bool isVolunteerMember,
-        bool hasShiftSignups,
-        int profileCompletionPercent)
+    public async Task<IViewComponentResult> InvokeAsync()
     {
-        var model = new ThingsToDoViewModel();
+        var entries = new List<ThingsToDoEntry>();
 
         try
         {
-            var profile = (await userService.GetUserInfoAsync(userId))?.Profile;
-            var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
-
-            // Hidden/derived required fields can cap real-user completion in the
-            // 90–95% range. Treat 80% as "complete enough" so the nudge stops
-            // shouting at people who can't push it higher.
-            var profileComplete = profileCompletionPercent >= 80;
-            var consentsComplete = membershipSnapshot.PendingConsentCount == 0
-                                   && membershipSnapshot.RequiredConsentCount > 0;
-
-            // 1. Complete your profile
-            model.Items.Add(new TodoItem
+            foreach (var contributor in contributors)
             {
-                Key = "profile",
-                Title = localizer["Todo_Profile_Title"].Value,
-                Description = profileComplete
-                    ? localizer["Todo_Profile_Done"].Value
-                    : string.Format(CultureInfo.CurrentCulture,
-                        localizer["Dashboard_ProfileCompletionPercent"].Value,
-                        profileCompletionPercent),
-                IsDone = profileComplete,
-                ActionUrl = profileComplete ? null : Url.Action("Edit", "Profile"),
-                ActionText = profileComplete ? null : localizer["Todo_Profile_Action"].Value,
-                IconClass = "fa-solid fa-user",
-                PercentComplete = profileComplete ? null : profileCompletionPercent,
-            });
-
-            // 2. Accept agreements
-            if (membershipSnapshot.RequiredConsentCount > 0)
-            {
-                model.Items.Add(new TodoItem
-                {
-                    Key = "consents",
-                    Title = localizer["Todo_Consents_Title"].Value,
-                    Description = consentsComplete
-                        ? localizer["Todo_Consents_Done"].Value
-                        : string.Format(CultureInfo.CurrentCulture, localizer["Todo_Consents_Pending"].Value,
-                            membershipSnapshot.PendingConsentCount, membershipSnapshot.RequiredConsentCount),
-                    IsDone = consentsComplete,
-                    ActionUrl = consentsComplete ? null : Url.Action("Index", "Consent"),
-                    ActionText = consentsComplete ? null : localizer["Todo_Consents_Action"].Value,
-                    IconClass = "fa-solid fa-file-signature"
-                });
-            }
-
-            // 3. Consent check clearance (non-volunteers only)
-            if (!isVolunteerMember)
-            {
-                var consentCheckStatus = profile?.ConsentCheckStatus;
-                var consentCheckCleared = consentCheckStatus == ConsentCheckStatus.Cleared;
-
-                model.Items.Add(new TodoItem
-                {
-                    Key = "consent-check",
-                    Title = localizer["Todo_ConsentCheck_Title"].Value,
-                    Description = consentCheckCleared
-                        ? localizer["Todo_ConsentCheck_Done"].Value
-                        : localizer["Todo_ConsentCheck_Pending"].Value,
-                    IsDone = consentCheckCleared,
-                    ActionUrl = null,
-                    ActionText = null,
-                    IconClass = "fa-solid fa-clipboard-check"
-                });
-            }
-
-            // 4. Set shift preferences (only when user has shift signups)
-            if (hasShiftSignups)
-            {
-                var needsShiftInfo = false;
-                try
-                {
-                    var shiftProfile = await shiftProfiles.GetShiftProfileAsync(userId);
-                    needsShiftInfo = shiftProfile is null || shiftProfile.IsEmpty;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);
-                }
-
-                model.Items.Add(new TodoItem
-                {
-                    Key = "shift-info",
-                    Title = localizer["Todo_ShiftInfo_Title"].Value,
-                    Description = needsShiftInfo
-                        ? localizer["Todo_ShiftInfo_Pending"].Value
-                        : localizer["Todo_ShiftInfo_Done"].Value,
-                    IsDone = !needsShiftInfo,
-                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "ShiftProfile") : null,
-                    ActionText = needsShiftInfo ? localizer["Todo_ShiftInfo_Action"].Value : null,
-                    IconClass = "fa-solid fa-calendar-check"
-                });
-            }
-
-            // 5. Dietary & medical nudge — fires whenever DietaryPreference is empty.
-            // Copy varies by whether the user has an active qualifying signup; the
-            // item is the same Key either way so it disappears with the rest of the
-            // card when DietaryPreference becomes non-empty.
-            // See src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.5)
-            try
-            {
-                // Dietary now lives on Profile (already loaded as `profile` above).
-                var dietaryEmpty = string.IsNullOrEmpty(profile?.DietaryPreference);
-                if (dietaryEmpty)
-                {
-                    var hasQualifyingSignup = await shiftMgmt.HasQualifyingCantinaSignupAsync(userId);
-                    var descriptionKey = hasQualifyingSignup
-                        ? "Todo_DietaryMedical_Pending"
-                        : "Todo_DietaryMedical_NoShift_Pending";
-                    model.Items.Add(new TodoItem
-                    {
-                        Key = "dietary-medical",
-                        Title = localizer["Todo_DietaryMedical_Title"].Value,
-                        Description = localizer[descriptionKey].Value,
-                        IsDone = false,
-                        ActionUrl = Url.Action("DietaryMedical", "Profile"),
-                        ActionText = localizer["Todo_DietaryMedical_Action"].Value,
-                        IconClass = "fa-solid fa-utensils",
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to check dietary/medical nudge for user {UserId}", userId);
+                entries.AddRange(await contributor.EntriesAsync(services, UserClaimsPrincipal));
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to load ThingsToDo data for user {UserId}", userId);
+            logger.LogError(ex, "Failed to load ThingsToDo entries");
             return Content(string.Empty);
         }
+
+        var model = new ThingsToDoViewModel
+        {
+            Items = [.. entries
+                .OrderBy(e => e.Weight)
+                .ThenBy(e => e.Key, StringComparer.Ordinal)
+                .Select(ToItem)],
+        };
 
         // Hide entirely when all items are done
         if (!model.HasAnyItems || model.AllDone)
@@ -167,4 +48,18 @@ public class ThingsToDoViewComponent(
         return View(model);
     }
 
+    private TodoItem ToItem(ThingsToDoEntry entry) => new()
+    {
+        Key = entry.Key,
+        Title = entry.Text,
+        Description = entry.Description ?? string.Empty,
+        IsDone = entry.IsDone,
+        ActionUrl = entry.IsDone ? null : ResolveUrl(entry),
+        ActionText = entry.IsDone ? null : entry.ActionText,
+        IconClass = entry.IconCssClass,
+        PercentComplete = entry.PercentComplete,
+    };
+
+    private string? ResolveUrl(ThingsToDoEntry entry) =>
+        entry.RawHref ?? (entry.Action is null ? null : Url.Action(entry.Action, entry.Controller));
 }
