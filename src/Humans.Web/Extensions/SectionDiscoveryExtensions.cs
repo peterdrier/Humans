@@ -73,12 +73,16 @@ public static class SectionDiscoveryExtensions
     /// Every implementation of <typeparamref name="T"/> a section assembly declares, activated.
     /// </summary>
     /// <remarks>
-    /// Same rules as <see cref="ISection"/>: public, concrete, parameterless constructor,
-    /// stateless. Ordered by section name then type name so composition order is stable.
+    /// Concrete, parameterless constructor, stateless — but <em>internal</em>, unlike
+    /// <see cref="ISection"/>. Walks <c>GetTypes()</c> rather than <c>GetExportedTypes()</c>
+    /// precisely so a contribution need not be public: Shell reaches it by reflection, no
+    /// other section ever names it, and a section's public surface stays what
+    /// <c>Contracts/</c> exposes (design: minimal public surface, HUM0034).
+    /// Ordered by section name then type name so composition order is stable.
     /// </remarks>
     public static IReadOnlyList<T> DiscoverImplementations<T>() where T : class =>
         [.. SectionAssemblies()
-            .SelectMany(a => a.GetExportedTypes()
+            .SelectMany(a => a.GetTypes()
                 .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(T).IsAssignableFrom(t))
                 .Select(t => (Section: SectionName(a), Type: t)))
             .OrderBy(x => x.Section, StringComparer.Ordinal)
