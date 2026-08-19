@@ -36,6 +36,17 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListExpenseAccounts_surfaces_an_unreadable_account_as_permanent_not_a_raw_parse_throw()
+    {
+        var json = """{"items":[{"id":42,"name":"Otros servicios","account_num":62900000}],"cursor":null,"has_more":false}""";
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task ListPurchaseDocuments_parses_lines_account_and_tags()
     {
         var json = """
@@ -302,6 +313,17 @@ public class HoldedClientReadTests
 
         capturedMethod.Should().Be("POST");
         id.Should().Be("new1");
+    }
+
+    [HumansFact]
+    public async Task CreateExpenseAccount_surfaces_an_unreadable_response_as_permanent_not_a_raw_parse_throw()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, "not json")));
+
+        var act = async () => await client.CreateExpenseAccountAsync(
+            62900000, "Otros servicios", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>

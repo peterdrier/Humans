@@ -118,6 +118,19 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
+    public async Task ListContacts_surfaces_an_unreadable_page_envelope_as_permanent_not_a_raw_parse_throw()
+    {
+        // A page-level parse failure (the envelope, not one contact's value) is distinct from the
+        // per-contact skip-and-log below (#994): the whole page is unreadable, so there is nothing
+        // to skip-and-continue.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, "not json")));
+
+        var act = async () => await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task ListContacts_skips_an_unreadable_contact_and_keeps_the_rest()
     {
         // A value of the wrong type anywhere in the projection used to take down the whole page.
