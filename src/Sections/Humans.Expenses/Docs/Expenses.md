@@ -13,7 +13,8 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 ## Concepts
 
 - An **ExpenseReport** is the top-level reimbursement request. It moves through a state machine (see Invariants) and is owned by the submitter until submitted.
-- An **ExpenseLine** is one line item within a report — a description, amount, and optional attachment. Each line has a `LineType` (Receipt / Mileage / PerDiem). **Receipt** lines require an attachment at submit time. **Mileage** lines are computed server-side as km × the configured per-km rate (€0.26/km, 2026 Spanish IRPF tax-exempt rate); **PerDiem** lines are computed as days × the Spanish day-trip (€26.67) or overnight (€53.34) rate. Both travel types have their amount and rate written into the description at creation time and never require an attachment. Rates live in `TravelReimbursementConfig` (bound from `appsettings.json` `TravelReimbursement` section; defaults are the 2026 values).
+- An **ExpenseLine** is one line item within a report — a description, amount, and optional attachment. Each line has a `LineType` (Receipt / Mileage / PerDiem / Invoice). **Receipt** lines require an attachment at submit time. **Mileage** lines are computed server-side as km × the configured per-km rate (€0.26/km, 2026 Spanish IRPF tax-exempt rate); **PerDiem** lines are computed as days × the Spanish day-trip (€26.67) or overnight (€53.34) rate. Both travel types have their amount and rate written into the description at creation time and never require an attachment. Rates live in `TravelReimbursementConfig` (bound from `appsettings.json` `TravelReimbursement` section; defaults are the 2026 values).
+- An **Invoice** line is a supplier invoice from a payee who invoices the org (ZZP / autónomo contractor). It requires the invoice file attached at submit time and is what gets booked into Holded. Because these are reimbursements (not just payments), an invoice line can carry **proof rows**: Receipt lines with `ParentLineId` pointing at the invoice line, each with its own attachment, showing the underlying expenses behind the invoiced amount. Proof rows are reviewed with the report but are **excluded from `Total`** and **never pushed to Holded** (neither as document lines nor as attachments). The detail view shows the proof sum vs the invoice amount to the approvers — display-only, never enforced (VAT and fees mean the two need not match).
 - **Travel lines can no longer be created.** The Add mileage / Add per diem forms and the `Lines/AddMileage` + `Lines/AddPerDiem` endpoints have been removed, so no new Mileage or PerDiem line can enter the system. The service-layer plumbing (`AddMileageLineWithResultAsync`, `AddPerDiemLineWithResultAsync`, `ExpenseLineType.Mileage`/`PerDiem`, `PerDiemKind`, `TravelReimbursementConfig`) is retained: pre-existing travel lines still render, submit, and total correctly, and the feature is re-enabled by restoring the two controller actions and the two `Edit.cshtml` forms.
 - An **ExpenseAttachment** is a receipt or supporting document uploaded to a line item. Files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/expense-attachments/{attachmentId}{.ext}`); the download route at `/Expenses/Attachment/{id}` re-authorizes the caller and streams bytes with the original filename via `Content-Disposition`. Metadata only in the DB.
 - A **HoldedExpenseOutboxEvent** is an async task queued when a report is approved or its category tag changes — drained by `HoldedExpenseOutboxJob` to create/update Holded purchase documents.
@@ -62,8 +63,9 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | ExpenseReportId | Guid | FK → expense_reports |
 | Description | string | |
 | Amount | decimal | |
-| LineType | ExpenseLineType | Receipt \| Mileage \| PerDiem; default Receipt |
+| LineType | ExpenseLineType | Receipt \| Mileage \| PerDiem \| Invoice; default Receipt |
 | AttachmentId | Guid? | FK → expense_attachments |
+| ParentLineId | Guid? | self-FK → expense_lines; non-null marks a proof row backing that Invoice line |
 | SortOrder | int | |
 
 ### ExpenseAttachment
@@ -96,11 +98,15 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
+| `/Expenses/{id}/Lines/New` | GET | Authenticated (owner, Draft only) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
+| `/Expenses/{id}/Lines/{lineId}` | GET | Authenticated (owner) | Focused line page — edit description/amount, view/replace/remove the file, remove the line |
+| `/Expenses/{id}/Lines/{lineId}/Proofs` | GET | Authenticated (owner) | Invoice line's proofs page — coverage vs invoice amount, list, add/remove proof rows |
 | `/Expenses/{id}/Lines/*` | POST | Authenticated (owner) | Line mutations |
 | `/Expenses/{id}/Submit` | POST | Authenticated (owner) | Submit |
 | `/Expenses/{id}/Withdraw` | POST | Authenticated (owner, submitted states) | Withdraw |
 | `/Expenses/{id}/Iban` | GET/POST | Authenticated (resource-based: self, FinanceAdmin with report context) | View/set IBAN |
 | `/Expenses/Attachment/{id}` | GET | Authenticated (resource-based) | Download attachment |
+| `/Expenses/Attachment/{id}/View` | GET | Authenticated (resource-based) | Same file inline (images + PDFs render in the tab; other types fall back to download) |
 | `/Expenses/Coordinator` | GET | Authenticated (coordinator) | Coordinator queue |
 | `/Expenses/{id}/Endorse` | POST | Authenticated (coordinator, resource-based) | Endorse |
 | `/Expenses/{id}/CoordinatorReject` | POST | Authenticated (coordinator, resource-based) | Coordinator reject |
@@ -122,7 +128,8 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Invariants
 
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved. `Approved` is terminal for the report — paid/unpaid is read from the member's Holded creditor ledger, never stamped on the report. Terminal alternate: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.
-- A report cannot be submitted without at least one line. Every **Receipt** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
+- A report cannot be submitted without at least one line. Every **Receipt** line (proof rows included) and every **Invoice** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
+- A proof row must reference an Invoice line on the same report, must itself be a Receipt line, and nests one level only (enforced at add time). Removing an invoice line removes its proof rows and their attachments. Proof rows never contribute to `Total`, never appear as Holded document lines, and their files are never uploaded to the Holded doc. Proof coverage vs the invoice amount is displayed to reviewers but never enforced.
 - Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
 - Only the deciders set `MaxAmount` — the coordinator on Endorse, a finance admin on Approve. Each decision form is prefilled with the current cap and its submitted value replaces it outright: blank clears the cap (the approve form's "Leave blank for no cap" is literal). The submitter can never set or see a cap input, and neither decider path may lower it below 0.01 or above 1,000,000. A cap is recorded in the decision's own `ExpenseEndorse` / `ExpenseApprove` audit entry, not a separate action.
 - Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review and coordinator queues, and the detail view all read the payable; `Total` renders only as the receipts total.

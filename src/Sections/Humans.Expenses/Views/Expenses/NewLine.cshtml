@@ -1,0 +1,72 @@
+@model Humans.Expenses.Models.ExpenseLineNewViewModel
+@{
+    ViewData["Title"] = Model.IsInvoice ? "Add Invoice" : "Add Receipt";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@Model.ReportId">Edit Report</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@(Model.IsInvoice ? "Add invoice" : "Add receipt")</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <strong>@(Model.IsInvoice ? "Add an invoice" : "Add a receipt")</strong>
+            </div>
+            <div class="card-body">
+                @if (Model.IsInvoice)
+                {
+                    <p class="text-muted">
+                        The company's invoice, made out to the NCA. After saving you'll add the
+                        receipts behind it, so the approver can see what the invoiced amount covers.
+                    </p>
+                }
+                else
+                {
+                    <p class="text-muted">
+                        Something you paid for yourself and want reimbursed. Describe it, enter the
+                        amount, and attach a photo or PDF of the receipt.
+                    </p>
+                }
+
+                <form asp-action="AddLine" asp-route-id="@Model.ReportId" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="LineType" value="@(Model.IsInvoice ? ExpenseLineType.Invoice : ExpenseLineType.Receipt)" />
+
+                    <div class="mb-3">
+                        <label class="form-label">@(Model.IsInvoice ? "What is the invoice for?" : "What did you buy?") <span class="text-danger">*</span></label>
+                        <input type="text" name="Description" class="form-control" maxlength="500" required
+                               placeholder="@(Model.IsInvoice ? "e.g. Build crew labour, invoice 2026-042" : "e.g. Timber for the shade structure")" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Amount (EUR) <span class="text-danger">*</span></label>
+                        <input type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">@(Model.IsInvoice ? "The invoice (PDF or photo)" : "The receipt (photo or PDF)") <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            @(Model.IsInvoice ? "Save & add receipts" : "Save receipt")
+                        </button>
+                        <a asp-action="Edit" asp-route-id="@Model.ReportId" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <p class="mt-3 text-center">
+            <a asp-action="NewLine" asp-route-id="@Model.ReportId" class="text-decoration-none">
+                &larr; @(Model.IsInvoice ? "Not an invoice?" : "Not a receipt?") Change type
+            </a>
+        </p>
+    </div>
+</div>

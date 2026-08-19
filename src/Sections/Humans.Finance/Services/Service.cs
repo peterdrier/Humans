@@ -262,7 +262,6 @@ internal sealed class Service(
                 ? HoldedMatchStatus.Unmatched
                 : HoldedMatchStatus.Matched,
             MatchSource = matchResult.Source,
-            RawPayload = "{}",
             CreatedAt = now,
             UpdatedAt = now,
         };

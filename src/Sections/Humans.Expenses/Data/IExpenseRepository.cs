@@ -36,7 +36,13 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, ExpenseLine line, CancellationToken ct = default);
     Task<bool> UpdateLineAsync(
         Guid reportId, ExpenseLine line, CancellationToken ct = default);
-    Task<bool> RemoveLineAsync(
+    /// <summary>
+    /// Removes the line, any proof rows under it, and every attachment row they reference, in one
+    /// atomic save — a proof added concurrently makes the whole removal fail rather than leaving
+    /// half the rows gone. Returns the removed attachments so the caller can delete their files
+    /// (after the commit), or null when the report or line does not exist.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default);
     Task<Guid> AddAttachmentAsync(
         ExpenseAttachment attachment, CancellationToken ct = default);

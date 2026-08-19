@@ -15,9 +15,19 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default);
 
-    Task<ExpenseMutationResult> AddLineWithResultAsync(
+    /// <summary>
+    /// Adds a Receipt or Invoice line, attaching <paramref name="file"/> in the same operation when
+    /// one is supplied (validated before the line is created, so a bad upload leaves nothing
+    /// half-made). A non-null <paramref name="parentLineId"/> adds a proof row backing that Invoice
+    /// line — reviewed with the report but excluded from the total and never pushed to Holded.
+    /// Travel line types are rejected (their creation paths were removed).
+    /// </summary>
+    Task<ExpenseAddLineResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
+        ExpenseFileUpload? file = null,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateLineWithResultAsync(
@@ -98,6 +108,13 @@ internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessag
 
     public static ExpenseMutationResult Failure(string message) => new(false, message);
 }
+
+/// <summary>Line-add outcome; <see cref="LineId"/> is set on success so the caller can redirect
+/// into the new line's flow (an invoice line continues to its proofs page).</summary>
+internal sealed record ExpenseAddLineResult(bool Succeeded, string? ErrorMessage, Guid? LineId);
+
+/// <summary>An uploaded file passed through to the service untouched.</summary>
+internal sealed record ExpenseFileUpload(string FileName, string ContentType, Stream Content);
 
 internal sealed record ExpenseIbanSaveResult(
     bool Succeeded,

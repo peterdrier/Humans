@@ -1,0 +1,134 @@
+@model Humans.Expenses.Models.ExpenseLineProofsViewModel
+@{
+    ViewData["Title"] = "Receipts Behind the Invoice";
+    var r = Model.Report;
+    var invoice = Model.InvoiceLine;
+    var covered = Model.ProofTotal >= invoice.Amount;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@r.Id">Edit Report</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Receipts behind the invoice</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header"><strong>Invoice</strong></div>
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    @invoice.Description
+                    @if (invoice.Attachment is not null)
+                    {
+                        <a href="@Url.Action(invoice.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = invoice.Attachment.Id })"
+                           class="text-decoration-none small ms-2" target="_blank">
+                            <i class="fa-solid fa-paperclip me-1"></i>@invoice.Attachment.OriginalFileName
+                        </a>
+                    }
+                </div>
+                <strong>@invoice.Amount.ToEuro()</strong>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Receipts behind it</strong>
+                <span class="badge @(covered ? "bg-success" : "bg-secondary")">@Model.ProofTotal.ToEuro() of @invoice.Amount.ToEuro()</span>
+            </div>
+            @if (Model.Proofs.Count == 0)
+            {
+                <div class="card-body text-muted">
+                    None yet. Add the receipts that show what the invoiced amount covers —
+                    they're checked with the report but not sent to the accountant's system.
+                </div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var proof in Model.Proofs)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                @proof.Description
+                                @if (proof.Attachment is not null)
+                                {
+                                    <a href="@Url.Action(proof.Attachment.IsInlineViewable ? "AttachmentView" : "Attachment", new { attachmentId = proof.Attachment.Id })"
+                                       class="text-decoration-none small ms-2" target="_blank">
+                                        <i class="fa-solid fa-paperclip me-1"></i>@proof.Attachment.OriginalFileName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-action="LineEdit" asp-route-id="@r.Id" asp-route-lineId="@proof.Id" class="small ms-2">
+                                        add the receipt file
+                                    </a>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <span>@proof.Amount.ToEuro()</span>
+                                @if (Model.CanEditLines)
+                                {
+                                    <a asp-action="LineEdit" asp-route-id="@r.Id" asp-route-lineId="@proof.Id"
+                                       class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@proof.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Remove this receipt?">Remove</button>
+                                    </form>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        @if (Model.CanEditLines)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong>Add a receipt</strong></div>
+                <div class="card-body">
+                    <form asp-action="AddLine" asp-route-id="@r.Id" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ParentLineId" value="@invoice.Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label">What was it? <span class="text-danger">*</span></label>
+                            <input type="text" name="Description" class="form-control" maxlength="500" required
+                                   placeholder="e.g. Materials from the hardware store" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amount (EUR) <span class="text-danger">*</span></label>
+                            <input type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">The receipt (photo or PDF) <span class="text-danger">*</span></label>
+                            <input type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fa-solid fa-plus me-1"></i>Add receipt
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-primary">Done</a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>

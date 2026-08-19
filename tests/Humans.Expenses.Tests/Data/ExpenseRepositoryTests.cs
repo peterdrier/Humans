@@ -90,12 +90,105 @@ public class ExpenseRepositoryTests
         await _sut.AddLineAsync(report.Id,
             new ExpenseLine { Id = Guid.NewGuid(), Description = "b", Amount = 20m }, Xunit.TestContext.Current.CancellationToken);
 
-        var ok = await _sut.RemoveLineAsync(report.Id, lineId, Xunit.TestContext.Current.CancellationToken);
-        ok.Should().BeTrue();
+        var removed = await _sut.RemoveLineAsync(report.Id, lineId, Xunit.TestContext.Current.CancellationToken);
+        removed.Should().NotBeNull();
 
         var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().HaveCount(1);
         loaded.Total.Should().Be(20m);
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = Guid.NewGuid(), Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task UpdateLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        var proofId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof edited", Amount = 999m }, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Single(l => l.Id == proofId).Amount.Should().Be(999m);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_ProofRow_DoesNotChangeTotal()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        var proofId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        var removed = await _sut.RemoveLineAsync(report.Id, proofId, Xunit.TestContext.Current.CancellationToken);
+        removed.Should().NotBeNull();
+
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_InvoiceLine_RemovesProofsAndAttachmentRows_InOneSave()
+    {
+        var report = MakeReport();
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = Guid.NewGuid();
+        var proofId = Guid.NewGuid();
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = invoiceId, Description = "invoice", Amount = 1000m, LineType = ExpenseLineType.Invoice }, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(report.Id,
+            new ExpenseLine { Id = proofId, Description = "proof", Amount = 400m, ParentLineId = invoiceId }, Xunit.TestContext.Current.CancellationToken);
+
+        var proofAttachment = new ExpenseAttachment
+        {
+            Id = Guid.NewGuid(),
+            OriginalFileName = "proof.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 100,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
+        };
+        await _sut.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
+        await _sut.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var removed = await _sut.RemoveLineAsync(report.Id, invoiceId, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().NotBeNull();
+        removed.Should().ContainSingle(a => a.Id == proofAttachment.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+        loaded.Total.Should().Be(0m);
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        (await ctx.ExpenseAttachments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]

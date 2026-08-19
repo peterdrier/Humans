@@ -244,7 +244,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.AddLineWithResultAsync(id, submitter, "Supplies", 25.50m, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.AddLineWithResultAsync(id, submitter, "Supplies", 25.50m, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.ErrorMessage.Should().BeNull();
@@ -260,7 +260,7 @@ public sealed class ExpenseReportServiceTests
         var other = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.AddLineWithResultAsync(id, other, "x", 10m, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.AddLineWithResultAsync(id, other, "x", 10m, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Only the submitter");
@@ -501,7 +501,7 @@ public sealed class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
 
         var result = await sut.AddLineWithResultAsync(
-            id, submitter, "Supplies", 25m, Xunit.TestContext.Current.CancellationToken);
+            id, submitter, "Supplies", 25m, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error);
@@ -607,6 +607,178 @@ public sealed class ExpenseReportServiceTests
         var act = async () => await _sut.RemoveAttachmentFromLineAsync(id, submitter, lineId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
         await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(null!, Arg.Any<CancellationToken>());
+    }
+
+    // ───────────────── Invoice lines + proof rows ────────────────────────────
+
+    [HumansFact]
+    public async Task AddLineAsync_ProofRow_UnderInvoiceLine_ExcludedFromTotal()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = await _sut.AddLineAsync(id, submitter, "Invoice 2026-042", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.AddLineAsync(id, submitter, "Timber", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(1000m);
+        loaded.Lines.Should().HaveCount(2);
+        loaded.Lines.Single(l => l.ParentLineId is not null).ParentLineId.Should().Be(invoiceId);
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_ProofRow_Throws_WhenParentIsNotInvoice()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var receiptId = await _sut.AddLineAsync(id, submitter, "Plain receipt", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var act = async () => await _sut.AddLineAsync(id, submitter, "Proof", 10m, parentLineId: receiptId, ct: Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*invoice line*");
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_ProofRow_Throws_WhenParentMissing()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var act = async () => await _sut.AddLineAsync(id, submitter, "Proof", 10m, parentLineId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Parent line not found*");
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_WithFile_CreatesLineAndAttachment_InOneCall()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.LineId.Should().NotBeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Single().AttachmentId.Should().NotBeNull();
+        loaded.Lines.Single().Attachment!.OriginalFileName.Should().Be("receipt.pdf");
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_RollsBackLine_WhenUploadFailsAfterCreation()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("disk full"));
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        // The form retries the whole add — a leftover line would duplicate on retry.
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+        loaded.Total.Should().Be(0m);
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_WithBadFile_CreatesNothing()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        using var content = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AddLineWithResultAsync(
+            id, submitter, "Timber", 40m,
+            file: new ExpenseFileUpload("virus.exe", "application/octet-stream", content),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_RejectsTravelTypes()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.AddLineWithResultAsync(id, submitter, "Trip", 26m, ExpenseLineType.Mileage, ct: Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("receipt and invoice");
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = await _sut.AddLineAsync(id, submitter, "Invoice", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+        var proofId = await _sut.AddLineAsync(id, submitter, "Timber", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var proofAttachment = MakeAttachment(submitter);
+        await _expenseRepo.AddAttachmentAsync(proofAttachment, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(proofId, proofAttachment.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.RemoveLineAsync(id, submitter, invoiceId, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines.Should().BeEmpty();
+        loaded.Total.Should().Be(0m);
+        await _fileStorage.Received(1).DeleteAsync(
+            $"uploads/expense-attachments/{proofAttachment.Id}{proofAttachment.Extension}",
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_Throws_WhenInvoiceLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "Invoice, no file", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*attachment*");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_Throws_WhenProofRowHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var invoiceId = await _sut.AddLineAsync(id, submitter, "Invoice", 1000m, ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken);
+        var invoiceFile = MakeAttachment(submitter);
+        await _expenseRepo.AddAttachmentAsync(invoiceFile, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(invoiceId, invoiceFile.Id, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "Proof, no file", 400m, parentLineId: invoiceId, ct: Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*attachment*");
     }
 
     // ─────────────────────────────── 4.4 ─────────────────────────────────────
@@ -755,7 +927,7 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
-        await _sut.AddLineWithResultAsync(id, submitter, "Tent", 50m, Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
+        await _sut.AddLineWithResultAsync(id, submitter, "Tent", 50m, ct: Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);

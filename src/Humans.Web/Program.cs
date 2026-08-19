@@ -696,6 +696,11 @@ app.UseMiddleware<ClientStatsMiddleware>();
 
 app.UseAuthorization();
 
+// Before MVC runs: a malformed TempData cookie throws an unloggable-context
+// FormatException deep in CookieTempDataProvider — see #1038. Catch it here where
+// Path/UserAgent are still available, and strip the cookie so MVC never sees it.
+app.UseMiddleware<TempDataCookieValidationMiddleware>();
+
 app.UseSession();
 
 // Hard route restriction for the shared gate-terminal kiosk account: it may only reach

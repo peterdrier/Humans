@@ -110,7 +110,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (report is null) return false;
         line.ExpenseReportId = reportId;
         line.SortOrder = await ctx.ExpenseLines.CountAsync(l => l.ExpenseReportId == reportId, ct);
-        report.Total += line.Amount;
+        // Proof rows back an invoice line for review only — they never count toward the total.
+        if (line.ParentLineId is null) report.Total += line.Amount;
         ctx.ExpenseLines.Add(line);
         await ctx.SaveChangesAsync(ct);
         return true;
@@ -125,14 +126,15 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == line.Id && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return false;
-        report.Total = report.Total - tracked.Amount + line.Amount;
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount + line.Amount;
         tracked.Description = line.Description;
         tracked.Amount = line.Amount;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
 
-    public async Task<bool> RemoveLineAsync(
+    public async Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -140,11 +142,30 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(r => r.Id == reportId, ct);
         var tracked = await ctx.ExpenseLines
             .FirstOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
-        if (report is null || tracked is null) return false;
+        if (report is null || tracked is null) return null;
+
+        // An invoice line takes its proof rows with it. Line rows, proof rows, and their attachment
+        // rows all go in the same SaveChanges (EF orders deletes dependents-first), so the removal
+        // is all-or-nothing at the database.
+        var proofs = await ctx.ExpenseLines
+            .Where(l => l.ParentLineId == lineId)
+            .ToListAsync(ct);
+        var attachmentIds = proofs.Append(tracked)
+            .Where(l => l.AttachmentId is not null)
+            .Select(l => l.AttachmentId!.Value)
+            .ToList();
+        var attachments = await ctx.ExpenseAttachments
+            .Where(a => attachmentIds.Contains(a.Id))
+            .ToListAsync(ct);
+
+        ctx.ExpenseLines.RemoveRange(proofs);
         ctx.ExpenseLines.Remove(tracked);
-        report.Total = report.Total - tracked.Amount;
+        ctx.ExpenseAttachments.RemoveRange(attachments);
+        // Proof rows never counted toward the total, so only the line itself adjusts it.
+        if (tracked.ParentLineId is null)
+            report.Total = report.Total - tracked.Amount;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return attachments;
     }
 
     public async Task<Guid> AddAttachmentAsync(

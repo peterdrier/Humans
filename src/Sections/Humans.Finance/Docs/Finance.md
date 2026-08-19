@@ -29,7 +29,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
   1. **Account (A):** the line's booked Holded `account` id is looked up in `HoldedCategoryMap.HoldedAccountId`. Match → `MatchSource = Account`.
   2. **Tag (B):** each raw tag is normalized (lowercase, non-alphanumeric stripped — Holded strips separators like dashes) and compared against `HoldedCategoryMap.Tag`. First hit → `MatchSource = Tag`.
   3. **None:** doc lands in the **unmatched bucket** (`MatchStatus = Unmatched`, `MatchSource = None`).
-- A **Holded Category Map** row joins a `BudgetCategory` to its dedicated Holded account number/id and its dash-free fallback tag. `IsActive`/`ArchivedAt` are the retirement columns, but **nothing retires a row today** — a category deleted in Budget shows as an `Orphan` on the provisioning page and its map row stays active. Holded accounts are never deleted.
+- A **Holded Category Map** row joins a `BudgetCategory` to its dedicated Holded account number/id and its dash-free fallback tag. `IsActive` is the retirement flag, but **nothing retires a row today** — a category deleted in Budget shows as an `Orphan` on the provisioning page and its map row stays active, so `IsActive` is always `true`. Holded accounts are never deleted.
 - The **Provisioning page** (`/Finance/HoldedAccounts`) reconciles the live Holded chart-of-accounts against the local `HoldedCategoryMap`: diffs into Mapped / ToAdd / Orphan. "Add one (test)" / "Add all" create accounts in Holded + map rows locally. Additive only.
 - The **Holded Sync State** is a singleton row tracking the operational state of the recurring sync job (`Idle / Running / Error`).
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync.
@@ -57,7 +57,6 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | BudgetCategoryId | Guid? | Attributed category (null = unmatched) |
 | MatchStatus | HoldedMatchStatus | `Matched` or `Unmatched` |
 | MatchSource | HoldedMatchSource | `None`, `Account`, or `Tag` |
-| RawPayload | string (jsonb) | Intended for the full Holded JSON; the sync writes `{}` and nothing reads it |
 | LastSyncedAt | Instant | Updated every sync that touches this row |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
@@ -76,7 +75,6 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | HoldedAccountId | string | Holded's internal account id |
 | Tag | string | Dash-free normalized fallback tag (Holded strips separators) |
 | IsActive | bool | Always `true` today — nothing flips it; see Concepts |
-| ArchivedAt | Instant? | Never written today; see Concepts |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -165,7 +163,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - Attribution runs every sync. Fixing an account mapping or tag in Holded takes effect on next sync or via the manual "Sync Now" button.
 - Attribution order: **Account** (booked line account id) → **Tag** (normalized, dash-free) → **Unmatched**. First match wins.
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).
-- Provisioning is additive only. Retiring a map entry sets `IsActive = false`; it does not delete the Holded account.
+- Provisioning is additive only, and nothing retires a map entry today: `IsActive` is set `true` on insert and never flipped, so an orphaned row stays active. Holded accounts are never deleted.
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `IsApproved = true` — set on sync as "not in Holded's draft list" (`Service.MapDoc`). Actuals are doc-derived rather than ledger-derived because the budget pages are gross/IVA-inclusive while a 629 balance is net, and ledger lines exist for drafts Holded has not approved.
 - Holded API key read from env var `HOLDED_API_KEY_V2` only — never `appsettings.json`.
 - The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`, or a later report from the same member resolves it and backfills the member-level binding (nobodies-collective/Humans#972). `ListCreditorAccountsAsync` returns exactly these unresolved bindings as the `Unresolved` half of its result — they have no account row to sit on, so the account list alone cannot show them — and they render in their own card on `/Finance/Creditors`, making the manual step discoverable rather than silent.
