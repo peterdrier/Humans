@@ -973,7 +973,9 @@ internal sealed class Service(
     /// without calling Holded, and — because a document approved by an attempt that then failed
     /// locally leaves no trace here — Holded is searched for a document already tagged with this
     /// order before anything is created. A match is adopted, never re-issued: a second approved
-    /// factura is a real legal document, correctable only by a factura rectificativa.
+    /// factura is a real legal document, correctable only by a factura rectificativa. A recovered
+    /// document is checked against the order's current totals first (divergence refuses loudly)
+    /// and approved if the earlier attempt died between create and approve.
     /// </summary>
     [ExternalWrite]
     public async Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
@@ -1015,6 +1017,19 @@ internal sealed class Service(
         if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
         {
             var (adoptedKind, adoptedDoc) = alreadyIssued;
+            // Before anything is written, and before the order is frozen against it: the order
+            // stayed Open, so it could have been edited or repriced since that document was
+            // created. Divergence is a human's problem, not something to reconcile silently.
+            EnsureRecoveredDocumentMatches(order, adoptedDoc, totals);
+            if (adoptedDoc.IsDraft == true)
+            {
+                // Creation succeeded and approval did not. A draft books no revenue and carries no
+                // sequential number, so freezing the order against it would leave the order
+                // invoiced with no legal invoice behind it — finish the issuance instead.
+                await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
+                adoptedDoc = await holdedClient.GetSalesDocumentAsync(
+                    adoptedKind, adoptedDoc.Id, CancellationToken.None);
+            }
             await CommitInvoiceAsync(
                 order, adoptedDoc,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
@@ -1090,6 +1105,35 @@ internal sealed class Service(
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
             + $"for EUR {totalDue:0.00} on order {order.Id}",
             ct);
+    }
+
+    /// <summary>
+    /// Refuses adoption when the recovered document no longer describes this order. The order stays
+    /// <c>Open</c> after a failed attempt, so its lines can be edited and its catalog prices can
+    /// move before the retry — adopting on the tag alone would freeze the order against a document
+    /// that says something else, permanently. Correcting an issued document is a factura
+    /// rectificativa, which is a human decision, so this fails loudly rather than choosing a side.
+    /// </summary>
+    private static void EnsureRecoveredDocumentMatches(
+        Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
+    {
+        // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
+        var expectedSubtotal = decimal.Round(totals.LinesSubtotalEur + totals.DepositTotalEur, 2);
+        var expectedTax = decimal.Round(totals.VatTotalEur, 2);
+        var expectedTotal = decimal.Round(expectedSubtotal + expectedTax, 2);
+        if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
+            && decimal.Round(document.Tax, 2) == expectedTax
+            && decimal.Round(document.Total, 2) == expectedTotal)
+            return;
+
+        var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
+        throw new InvalidOperationException(
+            $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
+            + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
+            + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
+            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. The order was changed after that "
+            + "document was created. Resolve it by hand — correcting an issued document is a factura "
+            + "rectificativa, and no second document will be issued in the meantime.");
     }
 
     /// <summary>The tag every store sales document carries. Holded's list endpoints return

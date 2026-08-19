@@ -263,9 +263,26 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Invoices.Add(invoice);
-        // The order arrives detached (AsNoTracking + Includes), so Update attaches the whole
-        // aggregate — the repriced line snapshots ride along with the state flip.
-        ctx.Orders.Update(order);
+
+        // The order arrives detached (AsNoTracking + Includes) from a read taken before several
+        // Holded round-trips, so its Payments are stale — a Stripe webhook may have settled one in
+        // the meantime. Update(order) would mark that whole graph modified and write the stale
+        // payment rows back, and there is no concurrency token to catch it
+        // (memory/architecture/no-concurrency-tokens.md). So attach the aggregate and mark only the
+        // columns issuance owns: the state flip, and the repriced line snapshots.
+        ctx.Orders.Attach(order);
+        var orderEntry = ctx.Entry(order);
+        orderEntry.Property(o => o.State).IsModified = true;
+        orderEntry.Property(o => o.IssuedInvoiceId).IsModified = true;
+        orderEntry.Property(o => o.UpdatedAt).IsModified = true;
+        foreach (var line in order.Lines)
+        {
+            var lineEntry = ctx.Entry(line);
+            lineEntry.Property(l => l.UnitPriceSnapshot).IsModified = true;
+            lineEntry.Property(l => l.VatRateSnapshot).IsModified = true;
+            lineEntry.Property(l => l.DepositAmountSnapshot).IsModified = true;
+        }
+
         await ctx.SaveChangesAsync(ct);
     }
 

@@ -376,23 +376,33 @@ public class ServiceIssueInvoiceTests
     // Duplicate-issuance guard: search Holded before creating anything
     // ==========================================================================
 
+    /// <summary>A document as Holded reads it back. The defaults match <see cref="CampOrder"/> at
+    /// <see cref="IceProduct"/>'s price: 20 x EUR 5 = 100, +21% VAT = 121.</summary>
+    private static HoldedSalesDocumentDto SalesDoc(
+        string docNumber = "2026-0003", bool? isDraft = null,
+        decimal subtotal = 100m, decimal tax = 21m, decimal total = 121m) => new()
+    {
+        Id = "doc-earlier",
+        DocNumber = docNumber,
+        Subtotal = subtotal,
+        Tax = tax,
+        Total = total,
+        Status = "pending",
+        IsDraft = isDraft,
+        RawJson = """{"id":"doc-earlier"}""",
+    };
+
     /// <summary>Stubs a document already tagged with <paramref name="order"/>'s tag, of
-    /// <paramref name="kind"/>, as a failed earlier attempt would have left behind.</summary>
-    private void ArrangeAlreadyIssued(Order order, HoldedSalesDocumentKind kind, string docId = "doc-earlier")
+    /// <paramref name="kind"/>, as a failed earlier attempt would have left behind. Extra
+    /// <paramref name="thenReads"/> are what successive read-backs return.</summary>
+    private void ArrangeAlreadyIssued(
+        Order order, HoldedSalesDocumentKind kind,
+        HoldedSalesDocumentDto? document = null, params HoldedSalesDocumentDto[] thenReads)
     {
         _holded.FindSalesDocumentIdsByTagAsync(kind, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
-            .Returns(new List<string> { docId });
-        _holded.GetSalesDocumentAsync(kind, docId, Arg.Any<CancellationToken>())
-            .Returns(new HoldedSalesDocumentDto
-            {
-                Id = docId,
-                DocNumber = "2026-0003",
-                Subtotal = 100m,
-                Tax = 21m,
-                Total = 121m,
-                Status = "pending",
-                RawJson = """{"id":"doc-earlier"}""",
-            });
+            .Returns(new List<string> { "doc-earlier" });
+        _holded.GetSalesDocumentAsync(kind, "doc-earlier", Arg.Any<CancellationToken>())
+            .Returns(document ?? SalesDoc(), thenReads);
     }
 
     [HumansFact]
@@ -478,5 +488,68 @@ public class ServiceIssueInvoiceTests
 
         await _repo.Received(1).SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task A_recovered_draft_is_approved_before_it_is_adopted()
+    {
+        // Creation succeeded, approval did not. A draft books no revenue and carries no sequential
+        // number, so adopting it as-is would freeze the order with no legal invoice behind it.
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(
+            order, HoldedSalesDocumentKind.Invoice,
+            SalesDoc(docNumber: "", isDraft: true),
+            SalesDoc(docNumber: "2026-0003", isDraft: false));
+        Invoice? saved = null;
+        await _repo.SaveIssuedInvoiceAsync(
+            Arg.Do<Invoice>(i => saved = i), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await _holded.Received(1).ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-earlier", Arg.Any<CancellationToken>());
+        // Still no second document.
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        // And the number Holded assigns at approval is the one that gets stored.
+        saved.Should().NotBeNull();
+        saved!.HoldedDocNumber.Should().Be("2026-0003");
+    }
+
+    [HumansFact]
+    public async Task An_already_approved_recovered_document_is_not_approved_again()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: false));
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await _holded.DidNotReceive().ApproveSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task A_recovered_document_that_no_longer_matches_the_order_refuses_loudly()
+    {
+        // The order stayed Open after the failed attempt, so the catalog moved under it. Freezing
+        // it against a document that says something else is permanent; a rectificativa is a human
+        // decision.
+        var order = CampOrder();
+        Arrange(order, IceProduct(unitPrice: 9m));
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice);
+
+        var act = () => _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*no longer matches*");
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        // A divergent draft is not approved either — that would make the mismatch legal.
+        await _holded.DidNotReceive().ApproveSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

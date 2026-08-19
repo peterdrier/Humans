@@ -60,6 +60,10 @@ public sealed record HoldedSalesDocumentDto
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
     public string? Status { get; init; }
+    /// <summary>True while the document is still a draft: it books no revenue and carries no
+    /// sequential number until <see cref="IHoldedClient.ApproveSalesDocumentAsync"/> runs. Null
+    /// when Holded does not report the field.</summary>
+    public bool? IsDraft { get; init; }
     /// <summary>The verbatim response body, kept for the audited payload on <c>store_invoices</c>.</summary>
     public required string RawJson { get; init; }
 }

@@ -305,6 +305,7 @@ internal sealed class HoldedClient : IHoldedClient
                 Tax = ReadDecimalV2(Prop(node, "tax")),
                 Total = ReadDecimalV2(Prop(node, "total")),
                 Status = Prop(node, "status")?.GetValue<string>(),
+                IsDraft = Prop(node, "draft")?.GetValue<bool>(),
                 RawJson = body,
             };
         }
