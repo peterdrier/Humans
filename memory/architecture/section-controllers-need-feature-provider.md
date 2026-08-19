@@ -21,6 +21,9 @@ peterdrier/Humans#1223).
 **How to apply:** `Section.cs : ISection` is what turns discovery on — it serves the analyzers, DI
 discovery *and* controller discovery, so there is nothing per-section to register. If a section route
 404s while the controller is clearly present, check that the section is in Shell's discovered list,
+then that `Sections:Active` has not deactivated it (the provider drops a deactivated section's
+controllers, public ones included — see
+[`docs/features/global/section-activation.md`](../../docs/features/global/section-activation.md)),
 then that Shell still adds the feature provider to `AddControllersWithViews`. Do not "fix" it by
 making the controller `public` — a public constructor cannot take an internal service (CS0051), so
 that fix cascades until the section's whole service layer is public.
