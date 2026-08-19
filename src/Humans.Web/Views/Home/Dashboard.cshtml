@@ -428,3 +428,6 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
         </div>
     </div>
 }
+
+@* Sections contribute their own dashboard components; renders nothing while none do. *@
+<vc:chrome-slot name="member-dashboard" />

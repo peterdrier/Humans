@@ -1,4 +1,6 @@
 using Humans.Auth.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -162,6 +164,20 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
                 policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));
         });
+
+        // Sections register their own policies. Configure<AuthorizationOptions> is additive,
+        // so cross-section policies keep registering above.
+        var contributors = SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>();
+        if (contributors.Count > 0)
+        {
+            services.Configure<AuthorizationOptions>(options =>
+            {
+                foreach (var contributor in contributors)
+                {
+                    contributor.AddPolicies(options);
+                }
+            });
+        }
 
         return services;
     }

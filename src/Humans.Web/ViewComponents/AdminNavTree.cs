@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Base.Authorization;
 
 namespace Humans.Web.ViewComponents;

@@ -286,6 +286,12 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
     .AddCheck<TicketVendorHealthCheck>("ticket-vendor", tags: external);
 
+// Sections add their own checks; the names are monitoring keys, so they stay with the owner.
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>())
+{
+    contributor.AddHealthChecks(healthChecks, builder.Configuration);
+}
+
 // Hangfire health check reads JobStorage.Current; only register it when
 // the rest of the Hangfire stack is wired (i.e. outside Testing).
 if (!builder.Environment.IsEnvironment("Testing"))
@@ -792,6 +798,12 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 app.MapHub<CityPlanningHub>("/hubs/city-planning");
+
+// Sections map what routing cannot discover on its own — hubs and the like.
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
+{
+    contributor.MapEndpoints(app);
+}
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 

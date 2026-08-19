@@ -37,8 +37,58 @@ public static class SectionDiscoveryExtensions
             sections.Count,
             string.Join(", ", sections.Select(s => s.Name)));
 
+        RegisterContributions(services);
+
         return services;
     }
+
+    /// <summary>
+    /// Registers every discovered <see cref="ISectionContribution"/> as a singleton against
+    /// each seam interface it implements, so Shell injects <c>IEnumerable&lt;ISectionNav&gt;</c>
+    /// and friends without naming a section.
+    /// </summary>
+    /// <remarks>
+    /// Derived from the marker, never a list of seams: a new seam interface deriving from
+    /// <see cref="ISectionContribution"/> is discovered with no edit here.
+    /// </remarks>
+    private static void RegisterContributions(IServiceCollection services)
+    {
+        var contributions = DiscoverImplementations<ISectionContribution>();
+
+        foreach (var contribution in contributions)
+        {
+            foreach (var seam in SeamInterfaces(contribution.GetType()))
+            {
+                services.AddSingleton(seam, contribution);
+            }
+        }
+
+        Serilog.Log.Information(
+            "Discovered {Count} section contribution(s): {Contributions}",
+            contributions.Count,
+            string.Join(", ", contributions.Select(c => c.GetType().FullName)));
+    }
+
+    /// <summary>
+    /// Every implementation of <typeparamref name="T"/> a section assembly declares, activated.
+    /// </summary>
+    /// <remarks>
+    /// Same rules as <see cref="ISection"/>: public, concrete, parameterless constructor,
+    /// stateless. Ordered by section name then type name so composition order is stable.
+    /// </remarks>
+    public static IReadOnlyList<T> DiscoverImplementations<T>() where T : class =>
+        [.. SectionAssemblies()
+            .SelectMany(a => a.GetExportedTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(T).IsAssignableFrom(t))
+                .Select(t => (Section: SectionName(a), Type: t)))
+            .OrderBy(x => x.Section, StringComparer.Ordinal)
+            .ThenBy(x => x.Type.FullName, StringComparer.Ordinal)
+            .Select(x => (T)Activator.CreateInstance(x.Type)!)];
+
+    /// <summary>The seam interfaces a contribution type implements — the marker itself is not one.</summary>
+    private static IEnumerable<Type> SeamInterfaces(Type contributionType) =>
+        contributionType.GetInterfaces()
+            .Where(i => i != typeof(ISectionContribution) && typeof(ISectionContribution).IsAssignableFrom(i));
 
     /// <summary>
     /// The resource marker type of every section that carries its own <c>.resx</c> set —

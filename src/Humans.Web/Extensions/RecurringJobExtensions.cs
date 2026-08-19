@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using Hangfire;
 using Hangfire.Storage;
 using Humans.Base.Configuration;
@@ -37,7 +39,8 @@ public static class RecurringJobExtensions
             .CreateLogger(typeof(RecurringJobExtensions));
 
         var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
-        var jobs = BuildRollCall(app.Configuration, registry);
+        var jobs = new List<ScheduledJob>(BuildRollCall(app.Configuration, registry));
+        jobs.AddRange(ContributedJobs(app.Services));
 
         var allScheduled = true;
 
@@ -81,6 +84,57 @@ public static class RecurringJobExtensions
             logger.LogWarning(
                 "Skipped sweeping unknown recurring jobs because at least one schedule failed to register");
         }
+    }
+
+    /// <summary>
+    /// The jobs sections contribute through <see cref="ISectionJobs"/>, in the same shape as
+    /// the roll-call so scheduling and sweeping see one merged set.
+    /// </summary>
+    private static IEnumerable<ScheduledJob> ContributedJobs(IServiceProvider services) =>
+        SectionDiscoveryExtensions.DiscoverImplementations<ISectionJobs>()
+            .SelectMany(contributor => contributor.Jobs(services))
+            .Select(ToScheduledJob);
+
+    /// <summary>
+    /// Turns a descriptor into the same <c>RecurringJob.AddOrUpdate&lt;TJob&gt;</c> call the
+    /// roll-call makes. The generic argument is the job type, which Shell only knows at
+    /// runtime — hence the one reflection hop onto <see cref="ScheduleTyped{TJob}"/>, whose
+    /// body is the ordinary compiled call.
+    /// </summary>
+    private static ScheduledJob ToScheduledJob(RecurringJobDescriptor descriptor)
+    {
+        var execute = descriptor.JobType.GetMethod(nameof(IRecurringJob.ExecuteAsync), [typeof(CancellationToken)])
+            ?? throw new InvalidOperationException(
+                $"Job '{descriptor.Id}' names {descriptor.JobType.FullName}, which has no ExecuteAsync(CancellationToken)");
+
+        var schedule = typeof(RecurringJobExtensions)
+            .GetMethod(nameof(ScheduleTyped), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(descriptor.JobType);
+
+        return new ScheduledJob(descriptor.Id, descriptor.JobType, descriptor.Cron,
+            () => schedule.Invoke(null, [descriptor.Id, execute, descriptor.Cron]));
+    }
+
+    /// <summary>
+    /// The roll-call's own scheduling call, reached generically. <typeparamref name="TJob"/>
+    /// may be an interface — Teams schedules against <c>ISystemTeamSync</c> — so the entry
+    /// point is found by signature rather than through <see cref="IRecurringJob"/>.
+    /// </summary>
+    private static void ScheduleTyped<TJob>(string id, MethodInfo execute, string cron) where TJob : class =>
+        RecurringJob.AddOrUpdate(id, BuildCall<TJob>(execute), cron);
+
+    /// <summary>
+    /// <c>job =&gt; job.ExecuteAsync(CancellationToken.None)</c>, built rather than written.
+    /// A job whose <c>ExecuteAsync</c> returns <c>Task&lt;T&gt;</c> — Teams' sync returns a
+    /// report — still types as <c>Func&lt;TJob, Task&gt;</c>, exactly as the roll-call's
+    /// hand-written lambda did.
+    /// </summary>
+    internal static Expression<Func<TJob, Task>> BuildCall<TJob>(MethodInfo execute) where TJob : class
+    {
+        var job = Expression.Parameter(typeof(TJob), "job");
+        return Expression.Lambda<Func<TJob, Task>>(
+            Expression.Call(job, execute, Expression.Constant(CancellationToken.None)),
+            job);
     }
 
     /// <summary>

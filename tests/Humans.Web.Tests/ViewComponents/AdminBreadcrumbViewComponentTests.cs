@@ -12,7 +12,7 @@ public class AdminBreadcrumbViewComponentTests
     [HumansFact]
     public void Resolves_Group_And_Item_For_Known_Controller()
     {
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
@@ -33,7 +33,7 @@ public class AdminBreadcrumbViewComponentTests
         // Regression: DebugController has multiple sidebar items (Logs, DbStats,
         // CacheStats, Configuration, ClientStats). Matching by controller alone returned
         // the first one regardless of action. The breadcrumb must disambiguate by action.
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
@@ -51,7 +51,7 @@ public class AdminBreadcrumbViewComponentTests
     [HumansFact]
     public void Falls_Back_To_PageTitle_For_Unknown_Controller()
     {
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext

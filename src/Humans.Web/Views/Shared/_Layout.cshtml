@@ -149,12 +149,15 @@
                         <li class="nav-item" authorize-policy="AnyAdminRole">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
+                        @* Links sections contribute through ISectionNav; renders nothing while none do. *@
+                        <vc:section-nav />
                     </ul>
                     <div class="d-flex align-items-center gap-2 position-relative">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             @await Component.InvokeAsync("NotificationBell")
                         }
+                        <vc:chrome-slot name="header-right" />
                         <partial name="_LanguageChooser" />
                         <partial name="_LoginPartial" />
                     </div>
@@ -162,6 +165,7 @@
             </div>
         </nav>
         @await Component.InvokeAsync("OnboardingProgressBanner")
+        <vc:chrome-slot name="above-content" />
     </header>
     <environment exclude="Production">
         <div class="env-banner">
