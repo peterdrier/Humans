@@ -18,9 +18,9 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
             Policy: PolicyNames.AdminOnly, Weight: 50)
     ];
 
-    private static async ValueTask<AdminTileValue?> OpenAsync(IServiceProvider sp)
+    private static async ValueTask<AdminTileValue?> OpenAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = await sp.GetRequiredService<IFeedbackServiceRead>().GetActionableCountAsync();
+        var count = await sp.GetRequiredService<IFeedbackServiceRead>().GetActionableCountAsync(ct);
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} open feedback");
     }
 }

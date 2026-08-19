@@ -21,7 +21,7 @@ public sealed record AdminTile(
     string Key,
     string Label,
     string IconCssClass,
-    Func<IServiceProvider, ValueTask<AdminTileValue?>> Value,
+    Func<IServiceProvider, CancellationToken, ValueTask<AdminTileValue?>> Value,
     string? Controller = null,
     string? Action = null,
     string? RawHref = null,

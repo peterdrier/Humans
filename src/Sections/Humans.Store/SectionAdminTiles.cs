@@ -19,13 +19,13 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
             Policy: PolicyNames.StoreCatalogAdmin, Weight: 120)
     ];
 
-    private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp)
+    private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<IBurnSettingsService>().GetActiveAsync();
+        var activeEvent = await sp.GetRequiredService<IBurnSettingsService>().GetActiveAsync(ct);
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 
-        var summary = await sp.GetRequiredService<IStoreServiceRead>().GetStoreSummaryAsync(activeEvent.Year);
+        var summary = await sp.GetRequiredService<IStoreServiceRead>().GetStoreSummaryAsync(activeEvent.Year, ct);
         var orders = summary.ByCounterparty.Count;
         var totalEur = summary.ByCounterparty.Sum(o => o.TotalDueEur);
         return new AdminTileValue(orders.ToString("N0", CultureInfo.CurrentCulture), Detail: $"€{totalEur:N0} total, active year");

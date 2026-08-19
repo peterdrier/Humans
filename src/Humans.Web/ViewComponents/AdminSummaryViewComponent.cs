@@ -38,7 +38,7 @@ public sealed class AdminSummaryViewComponent(
             AdminTileValue? value;
             try
             {
-                value = await tile.Value(serviceProvider);
+                value = await tile.Value(serviceProvider, HttpContext.RequestAborted);
             }
             catch (Exception ex)
             {
@@ -64,7 +64,7 @@ public sealed class AdminSummaryViewComponent(
     }
 
     private AdminTile Presence(string key, string label, Duration window, string? detail, int weight) =>
-        new(key, label, "fa-solid fa-signal", _ =>
+        new(key, label, "fa-solid fa-signal", (_, _) =>
             ValueTask.FromResult<AdminTileValue?>(
                 new AdminTileValue(activityTracker.CountActiveWithin(window).ToString(CultureInfo.CurrentCulture), Detail: detail)),
             Weight: weight);

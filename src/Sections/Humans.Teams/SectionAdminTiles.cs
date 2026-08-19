@@ -13,9 +13,9 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
         new AdminTile("teams.total", "Teams", "fa-solid fa-people-group", TotalAsync, Weight: 90)
     ];
 
-    private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp)
+    private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = (await sp.GetRequiredService<ITeamServiceRead>().GetTeamsAsync()).Count;
+        var count = (await sp.GetRequiredService<ITeamServiceRead>().GetTeamsAsync(ct)).Count;
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture));
     }
 }

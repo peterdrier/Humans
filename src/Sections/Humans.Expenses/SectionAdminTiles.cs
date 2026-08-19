@@ -18,9 +18,9 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
             Policy: PolicyNames.FinanceAdminOrAdmin, Weight: 130)
     ];
 
-    private static async ValueTask<AdminTileValue?> ReportsAsync(IServiceProvider sp)
+    private static async ValueTask<AdminTileValue?> ReportsAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var reports = await sp.GetRequiredService<IExpenseReportServiceRead>().GetAllAsync();
+        var reports = await sp.GetRequiredService<IExpenseReportServiceRead>().GetAllAsync(ct);
         return new AdminTileValue(
             reports.Count.ToString("N0", CultureInfo.CurrentCulture),
             Detail: $"€{reports.Sum(r => r.Total):N0} total, all statuses");

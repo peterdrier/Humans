@@ -13,9 +13,9 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
         new AdminTile("shifts.coverage", "Shifts staffed", "fa-solid fa-calendar-check", CoverageAsync, Weight: 40)
     ];
 
-    private static async ValueTask<AdminTileValue?> CoverageAsync(IServiceProvider sp)
+    private static async ValueTask<AdminTileValue?> CoverageAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var (filled, total, ratio) = await sp.GetRequiredService<IShiftManagementServiceRead>().GetOverallCoverageAsync();
+        var (filled, total, ratio) = await sp.GetRequiredService<IShiftManagementServiceRead>().GetOverallCoverageAsync(ct);
         var percent = total > 0 ? (int)Math.Round(ratio * 100) : 0;
         return total > 0
             ? new AdminTileValue(

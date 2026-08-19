@@ -16,7 +16,7 @@ public sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRea
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var (filled, total, _) = await shifts.GetOverallCoverageAsync();
+        var (filled, total, _) = await shifts.GetOverallCoverageAsync(HttpContext.RequestAborted);
         return View(new StaffingByDepartmentViewModel(
             Filled: total > 0 ? filled : null,
             Total: total > 0 ? total : null,
