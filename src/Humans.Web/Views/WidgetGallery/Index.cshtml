@@ -439,6 +439,27 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
+                        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
+                        account holds a tier.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:membership-tier-badge user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -630,6 +651,60 @@
                     )
                     <div class="wg-card-example">
                         <vc:dietary-missing-banner user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:member-ticket-status&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/MemberTicketStatusViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member dashboard's ticket card for the signed-in viewer: confirmed, not attending, or
+                        missing, plus the buy/declare actions that go with each. Shows a "not configured" note
+                        instead of hiding when no ticket vendor is set up.
+                    </div>
+                    <div class="wg-card-example">
+                        <vc:member-ticket-status />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:guest-ticket-orders&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/GuestTicketOrdersViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The profileless-account page's ticket card: the orders the signed-in viewer bought.
+                        Renders nothing for an account with no ticket and no order — so it's empty here unless
+                        your account has one.
+                    </div>
+                    <div class="wg-card-example">
+                        <vc:guest-ticket-orders />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:member-term-status&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Governance/ViewComponents/MemberTermStatusViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member dashboard's term card for a Colaborador/Asociado: expired, expiring within 90
+                        days, renewal pending, or active. Renders nothing for a plain Volunteer, which is nearly
+                        everyone — so it's empty here unless your account holds a tracked term.
+                    </div>
+                    <div class="wg-card-example">
+                        <vc:member-term-status />
                     </div>
                 </div>
             </section>
