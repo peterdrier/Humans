@@ -22,7 +22,8 @@ namespace Humans.Store.Tests.Services;
 /// <summary>
 /// Phase 5 issuance (nobodies-collective/Humans#1029): the v2 create+approve pipeline, per-line
 /// revenue accounts, tax-0 deposit lines to the fianzas account, the receipt/factura branch, and
-/// the idempotent re-issue guard.
+/// both idempotency guards — the local one, and the pre-issue search that adopts a document an
+/// earlier attempt approved before failing to save.
 /// </summary>
 public class ServiceIssueInvoiceTests
 {
@@ -77,6 +78,9 @@ public class ServiceIssueInvoiceTests
             });
         _holded.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
+        _holded.FindSalesDocumentIdsByTagAsync(
+                Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<string>());
 
         _service = new Service(
             _repo, _audit, _camps, _teams, _clock, _shifts, _stripe, _holded,
@@ -366,5 +370,113 @@ public class ServiceIssueInvoiceTests
         var input = await CapturedInputAsync(order);
 
         input.Lines[0].Taxes.Should().Equal(expectedKey);
+    }
+
+    // ==========================================================================
+    // Duplicate-issuance guard: search Holded before creating anything
+    // ==========================================================================
+
+    /// <summary>Stubs a document already tagged with <paramref name="order"/>'s tag, of
+    /// <paramref name="kind"/>, as a failed earlier attempt would have left behind.</summary>
+    private void ArrangeAlreadyIssued(Order order, HoldedSalesDocumentKind kind, string docId = "doc-earlier")
+    {
+        _holded.FindSalesDocumentIdsByTagAsync(kind, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(new List<string> { docId });
+        _holded.GetSalesDocumentAsync(kind, docId, Arg.Any<CancellationToken>())
+            .Returns(new HoldedSalesDocumentDto
+            {
+                Id = docId,
+                DocNumber = "2026-0003",
+                Subtotal = 100m,
+                Tax = 21m,
+                Total = 121m,
+                Status = "pending",
+                RawJson = """{"id":"doc-earlier"}""",
+            });
+    }
+
+    [HumansFact]
+    public async Task First_issuance_searches_holded_before_creating_and_tags_the_document()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+
+        var input = await CapturedInputAsync(order);
+
+        // Both kinds are searched: the counterparty details decide the kind and can change
+        // between two attempts, so an earlier document may be of the other kind.
+        await _holded.Received(1).FindSalesDocumentIdsByTagAsync(
+            HoldedSalesDocumentKind.Invoice, $"humans-order-{order.Id}", Arg.Any<CancellationToken>());
+        await _holded.Received(1).FindSalesDocumentIdsByTagAsync(
+            HoldedSalesDocumentKind.SalesReceipt, $"humans-order-{order.Id}", Arg.Any<CancellationToken>());
+        input.Tags.Should().Equal($"humans-order-{order.Id}");
+        await _holded.Received(1).CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task A_document_an_earlier_attempt_already_approved_is_adopted_not_reissued()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice);
+        Invoice? saved = null;
+        Order? savedOrder = null;
+        await _repo.SaveIssuedInvoiceAsync(
+            Arg.Do<Invoice>(i => saved = i), Arg.Do<Order>(o => savedOrder = o), Arg.Any<CancellationToken>());
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        // A second approved factura is a real legal document, correctable only by a rectificativa.
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _holded.DidNotReceive().ApproveSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Nor is a contact upserted — nothing at all is written to Holded on this path.
+        await _holded.DidNotReceive().UpsertContactAsync(
+            Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+
+        // The local record is reconciled from the document that exists, which is the whole point.
+        saved.Should().NotBeNull();
+        saved!.HoldedDocId.Should().Be("doc-earlier");
+        saved.HoldedDocNumber.Should().Be("2026-0003");
+        saved.ResponsePayload.Should().Be("""{"id":"doc-earlier"}""");
+        saved.RequestPayload.Should().Contain("adopted");
+        savedOrder.Should().NotBeNull();
+        savedOrder!.State.Should().Be(OrderState.InvoiceIssued);
+        savedOrder.IssuedInvoiceId.Should().Be(saved.Id);
+    }
+
+    [HumansFact]
+    public async Task An_earlier_document_of_the_other_kind_is_adopted_too()
+    {
+        // The earlier attempt ran before the counterparty details were filled in, so it issued a
+        // receipt; this attempt would issue a factura. Adopting is still right — what must not
+        // happen is a second approved document.
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.SalesReceipt);
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Adoption_does_not_need_a_resolvable_revenue_account()
+    {
+        // A catalog edited between the two attempts must not block reconciliation of a document
+        // that already exists — the search runs ahead of the line-account resolution.
+        var order = CampOrder();
+        Arrange(order, IceProduct(account: null));
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice);
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 }

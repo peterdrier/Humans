@@ -33,6 +33,7 @@ public class HoldedClientSalesDocumentTests
         ContactName = "Camp Frio SL",
         Date = Instant.FromUtc(2026, 9, 1, 0, 0),
         Description = "Store order",
+        Tags = ["humans-order-1"],
         Lines =
         [
             new() { Name = "Ice", Units = 20m, Price = 5m, Taxes = ["s_iva_21"], AccountId = "acct-ice" },
@@ -67,6 +68,52 @@ public class HoldedClientSalesDocumentTests
         body.Should().Contain("\"account\":\"acct-dep\"");
         body.Should().Contain("\"taxes\":[\"s_iva_21\"]");
         body.Should().Contain("\"taxes\":[\"s_iva_0\"]");
+        // The tag is what makes this document findable again: v2's list endpoints return `tags`
+        // but not `notes`, so it — not the note beside it — carries the originating order.
+        body.Should().Contain("\"tags\":[\"humans-order-1\"]");
+    }
+
+    [HumansTheory]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "/api/v2/invoices?limit=200")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "/api/v2/sales-receipts?limit=200")]
+    public async Task FindSalesDocumentIdsByTagAsync_ReturnsOnlyTheTaggedDocuments(
+        HoldedSalesDocumentKind kind, string expectedPath)
+    {
+        // v2 has no server-side tag filter, so the whole collection is walked and matched here.
+        const string json = """
+        {"items":[
+          {"id":"doc-1","tags":["humans-order-1"]},
+          {"id":"doc-2","tags":["humans-order-2"]},
+          {"id":"doc-3","tags":[]},
+          {"id":"doc-4","tags":["other","humans-order-2"]}
+        ],"has_more":false}
+        """;
+        var handler = new StubHandler(req =>
+        {
+            req.Method.Method.Should().Be("GET");
+            req.RequestUri!.PathAndQuery.Should().Be(expectedPath);
+            return Respond(HttpStatusCode.OK, json);
+        });
+
+        var ids = await Make(handler).FindSalesDocumentIdsByTagAsync(
+            kind, "humans-order-2", Xunit.TestContext.Current.CancellationToken);
+
+        ids.Should().Equal("doc-2", "doc-4");
+    }
+
+    [HumansFact]
+    public async Task FindSalesDocumentIdsByTagAsync_RefusesAMatchWithNoId()
+    {
+        // An empty result reads as "nothing issued yet" and lets a second document be created,
+        // so a match that cannot be identified must fail the search rather than be dropped.
+        var handler = new StubHandler(_ => Respond(
+            HttpStatusCode.OK,
+            """{"items":[{"tags":["humans-order-1"]}],"has_more":false}"""));
+
+        var act = async () => await Make(handler).FindSalesDocumentIdsByTagAsync(
+            HoldedSalesDocumentKind.Invoice, "humans-order-1", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansTheory]
