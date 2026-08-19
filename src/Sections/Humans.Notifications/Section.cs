@@ -3,6 +3,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Data;
+using Humans.Notifications.Jobs;
 using Humans.Notifications.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,5 +46,7 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<NotificationInboxService>());
 
         services.AddScoped<NotificationMeterProvider>();
+
+        services.AddScoped<CleanupNotificationsJob>();
     }
 }

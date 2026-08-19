@@ -1,5 +1,4 @@
 using Humans.Base.Hosting;
-using Humans.Users.Jobs;
 using Humans.Web.Filters;
 
 namespace Humans.Web.Extensions.Sections;
@@ -8,8 +7,6 @@ internal static class AdminSectionExtensions
 {
     internal static IServiceCollection AddAdminSection(this IServiceCollection services)
     {
-        services.AddScoped<ProcessAccountDeletionsJob>();
-        services.AddScoped<SuspendNonCompliantMembersJob>();
         services.AddAdminDatabaseDiagnostics();
 
         // Log API key (separate credential from feedback)

@@ -4,6 +4,7 @@ using Humans.Base.Hosting;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Filters;
+using Humans.Surveys.Jobs;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,12 +17,10 @@ namespace Humans.Surveys;
 /// pattern) — no caching decorator, per the section design spec §12.
 /// </summary>
 /// <remarks>
-/// <c>SendSurveyReminderJob</c> is <em>not</em> registered here: recurring jobs are named by
-/// concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no discovery
-/// seam for them yet, so the registration stays in Shell (design §15.6b). The job itself is
-/// this section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
+/// <c>SendSurveyReminderJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
 /// (nobodies-collective/Humans#866) and then into <c>Jobs/</c> with the HUM0034 carve-out
-/// (nobodies-collective/Humans#1353), and drives <see cref="ISurveyReminderSender"/>.
+/// (nobodies-collective/Humans#1353), and drives <see cref="ISurveyReminderSender"/>. Its
+/// registration and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -44,5 +43,7 @@ public sealed class Section : ISection
             opts.ApiKey = Environment.GetEnvironmentVariable("SURVEY_API_KEY") ?? string.Empty;
         });
         services.AddScoped<SurveyApiKeyAuthFilter>();
+
+        services.AddScoped<SendSurveyReminderJob>();
     }
 }

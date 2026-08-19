@@ -2,33 +2,15 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Hangfire;
 using Hangfire.Storage;
-using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
-using Humans.Agent.Jobs;
-using Humans.Budget.Jobs;
-using Humans.Consent.Jobs;
-using Humans.Email.Jobs;
-using Humans.Expenses.Jobs;
-using Humans.Gate.Jobs;
-using Humans.GoogleIntegration.Jobs;
-using Humans.Governance.Jobs;
-using Humans.Holded.Jobs;
-using Humans.Issues.Jobs;
-using Humans.Mailer.Jobs;
-using Humans.Monitor.Jobs;
-using Humans.Notifications.Jobs;
-using Humans.Surveys.Jobs;
-using Humans.Teams.Contracts;
-using Humans.Tickets.Jobs;
-using Humans.Users.Jobs;
 
 namespace Humans.Web.Extensions;
 
 public static class RecurringJobExtensions
 {
     /// <summary>
-    /// One entry in the roll-call: the Hangfire job id, the type Hangfire resolves from DI
-    /// when the job fires, the cron it runs on (empty means "configured off"), and the call
+    /// One entry in the contributed set: the Hangfire job id, the type Hangfire resolves from
+    /// DI when the job fires, the cron it runs on (empty means "configured off"), and the call
     /// that writes the schedule.
     /// </summary>
     internal sealed record ScheduledJob(string Id, Type JobType, string Cron, Action Schedule);
@@ -38,9 +20,7 @@ public static class RecurringJobExtensions
         var logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(RecurringJobExtensions));
 
-        var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
-        var jobs = new List<ScheduledJob>(BuildRollCall(app.Configuration, registry));
-        jobs.AddRange(ContributedJobs(app.Services));
+        var jobs = ContributedJobs(app.Services).ToList();
 
         var allScheduled = true;
 
@@ -77,7 +57,7 @@ public static class RecurringJobExtensions
         // boot, which is harmless.
         if (allScheduled)
         {
-            RemoveJobsMissingFromRollCall(jobs, logger);
+            RemoveJobsMissingFromContributedSet(jobs, logger);
         }
         else
         {
@@ -87,10 +67,11 @@ public static class RecurringJobExtensions
     }
 
     /// <summary>
-    /// The jobs sections contribute through <see cref="ISectionJobs"/>, in the same shape as
-    /// the roll-call so scheduling and sweeping see one merged set.
+    /// The jobs sections contribute through <see cref="ISectionJobs"/> — the single source of
+    /// truth for scheduling and the stale-job sweep alike. Internal rather than private so
+    /// <c>Humans.Integration.Tests</c> can walk the same set a real boot schedules.
     /// </summary>
-    private static IEnumerable<ScheduledJob> ContributedJobs(IServiceProvider services) =>
+    internal static IEnumerable<ScheduledJob> ContributedJobs(IServiceProvider services) =>
         SectionDiscoveryExtensions.DiscoverImplementations<ISectionJobs>()
             .SelectMany(contributor => contributor.Jobs(services))
             .Select(ToScheduledJob);
@@ -122,9 +103,9 @@ public static class RecurringJobExtensions
     }
 
     /// <summary>
-    /// The roll-call's own scheduling call, reached generically. <typeparamref name="TJob"/>
-    /// may be an interface — Teams schedules against <c>ISystemTeamSync</c> — so the entry
-    /// point is found by signature rather than through <see cref="IRecurringJob"/>.
+    /// The scheduling call, reached generically. <typeparamref name="TJob"/> may be an
+    /// interface — Teams schedules against <c>ISystemTeamSync</c> — so the entry point is
+    /// found by signature rather than through <see cref="IRecurringJob"/>.
     /// </summary>
     private static void ScheduleTyped<TJob>(string id, MethodInfo execute, string cron) where TJob : class =>
         RecurringJob.AddOrUpdate(id, BuildCall<TJob>(execute), cron);
@@ -132,8 +113,8 @@ public static class RecurringJobExtensions
     /// <summary>
     /// <c>job =&gt; job.ExecuteAsync(CancellationToken.None)</c>, built rather than written.
     /// A job whose <c>ExecuteAsync</c> returns <c>Task&lt;T&gt;</c> — Teams' sync returns a
-    /// report — still types as <c>Func&lt;TJob, Task&gt;</c>, exactly as the roll-call's
-    /// hand-written lambda did.
+    /// report — still types as <c>Func&lt;TJob, Task&gt;</c>, exactly as a hand-written lambda
+    /// would.
     /// </summary>
     internal static Expression<Func<TJob, Task>> BuildCall<TJob>(MethodInfo execute) where TJob : class
     {
@@ -144,110 +125,17 @@ public static class RecurringJobExtensions
     }
 
     /// <summary>
-    /// Every recurring job the app knows how to run. Ids are section-first so the owner is
-    /// obvious from the id alone. This list is the only source of truth — the startup path
-    /// schedules from it and anything Hangfire has stored that is not in it gets removed.
-    /// </summary>
-    internal static IReadOnlyList<ScheduledJob> BuildRollCall(
-        IConfiguration configuration,
-        ConfigurationRegistry registry)
-    {
-        var ticketSyncInterval = configuration.GetSettingValue(
-            registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
-        // MailerLite:AudienceSyncCron is opt-in. When empty/unset the job keeps its place in
-        // the roll-call but is not scheduled — admins still trigger syncs on demand via the
-        // /Mailer/Admin "Push Now" button. Set to e.g. "0 6 * * *" to enable.
-        var mailerAudienceCron = configuration.GetValue<string>("MailerLite:AudienceSyncCron")
-            ?? string.Empty;
-
-        var jobs = new List<ScheduledJob>();
-
-        // Every job's Hangfire entry point is IRecurringJob.ExecuteAsync, so the id, the type
-        // and the schedule are all the roll-call has to state.
-        void Add<TJob>(string id, string cron) where TJob : IRecurringJob =>
-            jobs.Add(new ScheduledJob(id, typeof(TJob), cron,
-                () => RecurringJob.AddOrUpdate<TJob>(id, job => job.ExecuteAsync(CancellationToken.None), cron)));
-
-        // Teams' system-team sweep is the one job scheduled against an interface rather than a
-        // concrete type — ISystemTeamSync returns a report, so it can't implement IRecurringJob.
-        // Hangfire resolves the implementation (Humans.Teams' SystemTeamSyncJob) from DI, and
-        // the interface itself moved to Humans.Teams.Contracts at G5 lane 5c.
-        void AddSystemTeamSync(string id, string cron) =>
-            jobs.Add(new ScheduledJob(id, typeof(ISystemTeamSync), cron,
-                () => RecurringJob.AddOrUpdate<ISystemTeamSync>(id, job => job.ExecuteAsync(CancellationToken.None), cron)));
-
-        // Google sync jobs — controlled by SyncServiceSettings (Admin/SyncSettings).
-        // Set service mode to "None" to disable without redeploying.
-        AddSystemTeamSync("teams-system-sync", Cron.Hourly());
-
-        Add<GoogleResourceReconciliationJob>("google-resource-reconciliation", "0 3 * * *");
-
-        Add<ProcessAccountDeletionsJob>("users-account-deletions", Cron.Daily());
-
-        Add<SyncLegalDocumentsJob>("consent-legal-document-sync", "0 4 * * *");
-
-        Add<SuspendNonCompliantMembersJob>("users-suspend-non-compliant", "30 4 * * *");
-
-        // Send re-consent reminders before the suspension job runs.
-        // Runs daily at 04:00, 30 minutes before SuspendNonCompliantMembersJob.
-        Add<SendReConsentReminderJob>("consent-reconsent-reminders", "0 4 * * *");
-
-        Add<ProcessGoogleSyncOutboxJob>("google-sync-outbox-process", "*/10 * * * *");
-
-        Add<DriveActivityMonitorJob>("monitor-drive-activity", Cron.Hourly());
-
-        // Send term renewal reminders to Colaboradors/Asociados whose terms expire within 90 days.
-        Add<TermRenewalReminderJob>("governance-term-renewal-reminder", "0 5 * * 1");
-
-        Add<ProcessEmailOutboxJob>("email-outbox-process", "*/1 * * * *");
-
-        Add<CleanupEmailOutboxJob>("email-outbox-cleanup", "0 3 * * 0");
-
-        // Clean up resolved notifications older than 7 days — daily at 04:30 UTC.
-        Add<CleanupNotificationsJob>("notifications-cleanup", "30 4 * * *");
-
-        // Clean up issues 6 months after they entered a terminal state — daily at 05:00 UTC.
-        Add<CleanupIssuesJob>("issues-cleanup", "0 5 * * *");
-
-        // Sync ticket data from vendor at configured interval (default 15 min).
-        Add<TicketSyncJob>("tickets-vendor-sync", $"*/{ticketSyncInterval} * * * *");
-
-        // Materialize ticket sales actuals into budget line items daily at 04:30.
-        Add<TicketingBudgetSyncJob>("budget-ticketing-sync", "30 4 * * *");
-
-        // Push approved expense reports to Holded as purchase documents — every minute.
-        Add<HoldedExpenseOutboxJob>("expenses-holded-outbox", "*/1 * * * *");
-
-        // Nightly pull of Holded purchase docs → budget-category actuals + creditor daybook — daily at 03:00 UTC.
-        Add<HoldedSyncJob>("holded-sync", "0 3 * * *");
-
-        // Purge old agent conversations — daily at 03:15 UTC.
-        Add<AgentConversationRetentionJob>("agent-conversation-retention", "15 3 * * *");
-
-        // Send the one-time 7-day survey reminder to invitees who haven't completed — daily at 09:00 UTC.
-        Add<SendSurveyReminderJob>("surveys-reminder", "0 9 * * *");
-
-        // Purge gate scan events past the retention window (Gate:RetentionDays) — daily at 03:45 UTC.
-        Add<GateRetentionJob>("gate-retention", "45 3 * * *");
-
-        // Opt-in — see mailerAudienceCron above.
-        Add<MailerAudienceSyncJob>("mailer-audience-sync", mailerAudienceCron);
-
-        return jobs;
-    }
-
-    /// <summary>
     /// Deletes stored schedules for jobs the app no longer has. A job that was deleted or
     /// renamed leaves its old Hangfire row behind, and that row names a type that no longer
     /// exists — so it throws on every tick until someone notices. Best-effort: a failure
     /// here must not stop the app from starting.
     /// </summary>
-    private static void RemoveJobsMissingFromRollCall(IReadOnlyList<ScheduledJob> jobs, ILogger logger)
+    private static void RemoveJobsMissingFromContributedSet(IReadOnlyList<ScheduledJob> jobs, ILogger logger)
     {
         try
         {
-            // Opt-in jobs stay in the roll-call even when their schedule is switched off, so
-            // turning one off never gets it swept away here.
+            // Opt-in jobs stay in the contributed set even when their schedule is switched
+            // off, so turning one off never gets it swept away here.
             var known = jobs.Select(job => job.Id).ToHashSet(StringComparer.Ordinal);
 
             using var connection = JobStorage.Current.GetConnection();

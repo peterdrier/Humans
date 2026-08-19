@@ -8,6 +8,7 @@ using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Jobs;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -42,9 +43,9 @@ namespace Humans.Users;
 /// </para>
 /// <para>
 /// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
-/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866) but are
-/// still <em>registered</em> from Shell's <c>AdminSectionExtensions</c>: there is no
-/// <c>ISection</c>-style discovery seam for jobs (design §15 step 6b).
+/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866), and
+/// their registration followed from Shell's <c>AdminSectionExtensions</c> at #1074's jobs
+/// seam — their schedule is contributed via <c>Jobs.cs</c>.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -153,5 +154,8 @@ public sealed class Section : ISection
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
+
+        services.AddScoped<ProcessAccountDeletionsJob>();
+        services.AddScoped<SuspendNonCompliantMembersJob>();
     }
 }

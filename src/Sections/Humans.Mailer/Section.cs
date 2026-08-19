@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using Humans.Base.Interfaces;
 using Humans.Mailer.Contracts;
+using Humans.Mailer.Jobs;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Audiences;
 using Humans.Mailer.Services.MailerLite;
@@ -22,8 +23,8 @@ namespace Humans.Mailer;
 /// <para>
 /// <c>MailerLiteOptions</c> binds here rather than in Shell — unlike Email's settings, which
 /// four other sections read, <c>MailerLite:*</c> has exactly one consumer and it is the
-/// section's own client. Shell keeps only the raw <c>MailerLite:AudienceSyncCron</c> read in
-/// <c>RecurringJobExtensions</c>, which is the job schedule, not the client's configuration.
+/// section's own client. The raw <c>MailerLite:AudienceSyncCron</c> read — the job schedule,
+/// not the client's configuration — moved into <c>Jobs.cs</c> at #1074's jobs seam.
 /// </para>
 /// <para>
 /// No caching decorator: <c>MailerLiteClient</c> is a Singleton that holds its own
@@ -81,5 +82,7 @@ public sealed class Section : ISection
         services.AddScoped<IMailerAudience, HasTicketAudience>();
         services.AddScoped<IMailerAudience, MarketingAudience>();
         services.AddScoped<IMailerAudience, MarketingNoTicketAudience>();
+
+        services.AddTransient<MailerAudienceSyncJob>();
     }
 }

@@ -1,7 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Jobs;
 using Humans.Base.Configuration;
-using Humans.Monitor.Jobs;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -21,11 +19,10 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// section reads the same two configuration keys to decide which of its own connector sets to
 /// bind.
 /// <para>
-/// The three recurring jobs now live in their owning sections' <c>Jobs/</c> folders —
-/// two in <c>Humans.GoogleIntegration</c>, and <c>DriveActivityMonitorJob</c> in
-/// <c>Humans.Monitor</c>, whose service it is the only caller of. The registrations stay here
-/// because <c>UseHumansRecurringJobs</c> and this method both name them by concrete type,
-/// which is also why they are public rather than internal (HUM0034).
+/// The three recurring jobs live in their owning sections' <c>Jobs/</c> folders — two in
+/// <c>Humans.GoogleIntegration</c>, and <c>DriveActivityMonitorJob</c> in
+/// <c>Humans.Monitor</c>, whose service it is the only caller of — and their registrations
+/// moved with them into each section's own <c>Section.Register</c> (#1074's jobs seam).
 /// </para>
 /// </remarks>
 internal static class GoogleWorkspaceInfrastructureExtensions
@@ -48,10 +45,6 @@ internal static class GoogleWorkspaceInfrastructureExtensions
                 "Google Workspace credentials are required in production. " +
                 "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
         }
-
-        services.AddScoped<GoogleResourceReconciliationJob>();
-        services.AddScoped<DriveActivityMonitorJob>();
-        services.AddScoped<ProcessGoogleSyncOutboxJob>();
 
         return services;
     }

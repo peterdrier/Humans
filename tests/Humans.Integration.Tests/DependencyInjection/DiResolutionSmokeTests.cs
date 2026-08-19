@@ -1,9 +1,7 @@
 using System.Text;
-using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Web.Extensions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -64,22 +62,21 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
 
     /// <summary>
     /// The test above only proves that what we registered can be built. This one goes the other
-    /// way: it walks the recurring-job roll-call and checks each scheduled job can actually be
-    /// built when Hangfire asks for it. A job that is scheduled but never registered throws on
-    /// every tick and silently never runs — that has now shipped twice
-    /// (CleanupNotificationsJob, AgentConversationRetentionJob).
+    /// way: it walks the set of recurring jobs sections contribute through
+    /// <c>ISectionJobs</c> and checks each scheduled job can actually be built when Hangfire
+    /// asks for it. A job that is scheduled but never registered throws on every tick and
+    /// silently never runs — that has now shipped twice (CleanupNotificationsJob,
+    /// AgentConversationRetentionJob).
     /// </summary>
     [HumansFact(Timeout = 60000)]
     public async Task Every_scheduled_recurring_job_resolves_from_a_real_app_scope()
     {
-        var rollCall = RecurringJobExtensions.BuildRollCall(
-            Factory.Services.GetRequiredService<IConfiguration>(),
-            Factory.Services.GetRequiredService<ConfigurationRegistry>());
+        var contributedJobs = RecurringJobExtensions.ContributedJobs(Factory.Services).ToList();
 
-        Assert.NotEmpty(rollCall);
+        Assert.NotEmpty(contributedJobs);
 
         // Two jobs sharing an id would mean one schedule quietly overwriting the other.
-        Assert.Empty(rollCall
+        Assert.Empty(contributedJobs
             .GroupBy(job => job.Id, StringComparer.Ordinal)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key));
@@ -88,7 +85,7 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
 
         var failures = new List<string>();
 
-        foreach (var job in rollCall)
+        foreach (var job in contributedJobs)
         {
             try
             {

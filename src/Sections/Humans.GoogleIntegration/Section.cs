@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Jobs;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.Base.Hosting;
@@ -32,9 +33,8 @@ namespace Humans.GoogleIntegration;
 /// configuration keys the guard does (Email's split, G5-SECTION-TEMPLATE.md step 4).
 /// </para>
 /// <para>
-/// The recurring jobs live in this project's <c>Contracts/</c> folder but are registered from
-/// Shell with the rest of the roll-call: <c>UseHumansRecurringJobs</c> names them by concrete
-/// type and there is no <c>ISection</c>-style discovery seam for jobs yet (step 6b).
+/// The two recurring jobs live in this project's <c>Contracts/</c> folder; their registration
+/// and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -107,5 +107,8 @@ public sealed class Section : ISection
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
         services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
+
+        services.AddScoped<GoogleResourceReconciliationJob>();
+        services.AddScoped<ProcessGoogleSyncOutboxJob>();
     }
 }

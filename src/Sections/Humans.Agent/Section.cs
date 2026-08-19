@@ -2,6 +2,7 @@ using Humans.Agent.Authorization;
 using Humans.Agent.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Filters;
+using Humans.Agent.Jobs;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
@@ -25,11 +26,9 @@ namespace Humans.Agent;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>AgentConversationRetentionJob</c> is <em>not</em> registered here: recurring jobs are
-/// named by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no
-/// discovery seam for them yet, so the registration stays in Shell (design §15.6b). The job
-/// itself is this section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866) and drives <see cref="IAgentConversationRetention"/>.
+/// <c>AgentConversationRetentionJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and drives <see cref="IAgentConversationRetention"/>; its
+/// registration and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
 /// </para>
 /// <para>
 /// The two warm-up hosted services <em>are</em> registered here. Nothing outside the section
@@ -104,5 +103,7 @@ public sealed class Section : ISection
             opts.ApiKey = Environment.GetEnvironmentVariable("AGENT_API_KEY") ?? string.Empty;
         });
         services.AddScoped<AgentApiKeyAuthFilter>();
+
+        services.AddScoped<AgentConversationRetentionJob>();
     }
 }

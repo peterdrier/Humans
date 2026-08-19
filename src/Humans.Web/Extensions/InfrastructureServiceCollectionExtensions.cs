@@ -1,21 +1,10 @@
 using Humans.Agent.Contracts;
-using Humans.Agent.Jobs;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
-using Humans.Consent.Jobs;
-using Humans.Expenses.Jobs;
-using Humans.Gate.Jobs;
-using Humans.Governance.Jobs;
-using Humans.Holded.Jobs;
-using Humans.Mailer.Jobs;
-using Humans.Surveys.Jobs;
-using Humans.Tickets.Jobs;
 using Humans.Base.Caching;
 using Humans.Base.Services;
 using Humans.Web.Services;
-using Humans.Issues.Jobs;
-using Humans.Notifications.Jobs;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Web.Services.Dashboard;
@@ -51,42 +40,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
         // (nobodies-collective/Humans#866).
         services.AddAdminSection();
-
-        // Recurring jobs for sections that have already moved out. The *registration* stays
-        // here because UseHumansRecurringJobs names each job by concrete type and there is no
-        // ISection-style discovery seam for jobs yet (design §15.6b) — but that never pinned
-        // the job *type* to Humans.Infrastructure, and G5 lane 5b-1 re-measured the "Hangfire
-        // serializes the declaring assembly" claim and found it false: AddOrUpdate<T>(id, …)
-        // rewrites the stored type string at every startup, so the job id is the stable key.
-        // Every job named below now lives in its own section's Jobs/ folder — G5 lane
-        // 5b-5 emptied src/Humans.Infrastructure/Jobs/ (nobodies-collective/Humans#866).
-        services.AddScoped<SendSurveyReminderJob>();
-        services.AddScoped<GateRetentionJob>();
-        services.AddScoped<GateVendorCheckInJob>();
-        services.AddScoped<TicketSyncJob>();
-        // TicketingBudgetSyncJob is registered by Humans.Budget's own Section.Register instead
-        // (Peter's ruling 43 made ITicketingBudgetService internal, so only that assembly can
-        // build the job's now-internal constructor).
-        services.AddScoped<CleanupIssuesJob>();
-        // Added at G5 lane 5b-1: "notifications-cleanup" is in UseHumansRecurringJobs' roll-call
-        // but CleanupNotificationsJob had no DI registration anywhere, so Hangfire's
-        // AspNetCoreJobActivator (GetRequiredService by concrete type) threw on every daily tick.
-        services.AddScoped<CleanupNotificationsJob>();
-        services.AddScoped<TermRenewalReminderJob>();
-        services.AddScoped<SyncLegalDocumentsJob>();
-        services.AddScoped<SendReConsentReminderJob>();
-        services.AddTransient<MailerAudienceSyncJob>();
-        // The two Holded-facing jobs are owned by different sections: HoldedSyncJob is Holded's
-        // shim over IHoldedNightlySync, the expense-outbox drain is Expenses'. The connector
-        // itself (client, options, call log) is registered by Humans.Holded's Section.cs since
-        // G5 lane 4b-2f.
-        services.AddScoped<HoldedSyncJob>();
-        services.AddScoped<HoldedExpenseOutboxJob>();
-        // Same miss as CleanupNotificationsJob above: the job was in the roll-call from the day
-        // it shipped but was never registered, so the nightly purge threw instead of running and
-        // no agent conversation has ever been deleted. A test now fails if a roll-call job has
-        // no registration (Humans.Integration.Tests DiResolutionSmokeTests).
-        services.AddScoped<AgentConversationRetentionJob>();
 
         // ActiveTeamsCacheInvalidator used to be registered here as a Base collaborator Teams'
         // section file registered on the way past. G5 lane 3a-1 re-measured that: its six
@@ -142,8 +95,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
-        // register themselves via ISection and are discovered, not named. The roll-call
-        // above loses a line per section as the migration proceeds.
+        // register themselves via ISection and are discovered, not named.
         services.AddDiscoveredSections(configuration);
 
         return services;

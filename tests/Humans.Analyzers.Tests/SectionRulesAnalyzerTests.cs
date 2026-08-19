@@ -22,6 +22,10 @@ public class SectionRulesAnalyzerTests
         {
             public interface ISection { }
 
+            public interface ISectionContribution { }
+
+            public interface ISectionJobs : ISectionContribution { }
+
             public interface IRecurringJob
             {
                 System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default);
@@ -107,6 +111,26 @@ public class SectionRulesAnalyzerTests
     public async Task Does_not_fire_on_the_ISection_entry_point()
     {
         var source = SectionEntryPoint;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_a_section_contribution()
+    {
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test
+            {
+                public sealed class Jobs : Humans.Base.Interfaces.ISectionJobs { }
+            }
+            """;
 
         var diagnostics = await AnalyzerTestHarness.RunAsync(
             new SectionRulesAnalyzer(),

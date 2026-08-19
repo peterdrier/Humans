@@ -1,6 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
+using Humans.Email.Jobs;
 using Humans.Email.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -53,5 +54,8 @@ public sealed class Section : ISection
         services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
 
         services.AddScoped<IEmailOutboxProcessor, EmailOutboxProcessor>();
+
+        services.AddScoped<ProcessEmailOutboxJob>();
+        services.AddScoped<CleanupEmailOutboxJob>();
     }
 }

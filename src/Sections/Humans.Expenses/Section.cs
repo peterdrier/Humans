@@ -1,6 +1,7 @@
 using Humans.Gdpr.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
+using Humans.Expenses.Jobs;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Hosting;
@@ -21,10 +22,9 @@ namespace Humans.Expenses;
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
 /// Holded section, which registers it; Expenses consumes it through
 /// <c>Humans.Holded.Contracts</c> (memory/architecture/vendor-connectors-own-sections.md).
-/// Nor is <c>HoldedExpenseOutboxJob</c>: recurring jobs are named by concrete type in Shell's
-/// roll-call, so the registration stays there (design §15.6b). The job itself is this
-/// section's — it moved into <c>Contracts/</c> at G5 lane 5b-5
-/// (nobodies-collective/Humans#866) and drives <c>IExpenseReportBackgroundProcessor</c>.
+/// <c>HoldedExpenseOutboxJob</c> moved into <c>Contracts/</c> at G5 lane 5b-5
+/// (nobodies-collective/Humans#866) and drives <c>IExpenseReportBackgroundProcessor</c>; its
+/// registration and schedule are contributed via <c>Jobs.cs</c> (#1074's jobs seam).
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -60,5 +60,7 @@ public sealed class Section : ISection
             [ExpenseReportStatus.Approved] = "bg-success",
             [ExpenseReportStatus.Withdrawn] = "bg-secondary",
         });
+
+        services.AddScoped<HoldedExpenseOutboxJob>();
     }
 }

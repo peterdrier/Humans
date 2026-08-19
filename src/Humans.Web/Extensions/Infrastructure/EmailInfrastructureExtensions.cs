@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.Email.Jobs;
 using Humans.Base.Configuration;
 
 namespace Humans.Web.Extensions.Infrastructure;
@@ -9,16 +8,8 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// binding — read by Auth's magic-link URL builder, Profiles' unsubscribe token provider,
 /// <c>SendReConsentReminderJob</c> and <c>SmtpHealthCheck</c>, so it is Base configuration
 /// the section is merely named after — plus the startup guard that Production must have
-/// SMTP configured. Everything else moved into <c>Humans.Email</c>'s
-/// <c>Section.Register</c>.
-///
-/// <para>
-/// The three Hangfire registrations below still live here, but the <em>types</em> they name
-/// moved into <c>Humans.Email/Jobs/</c> at G5 lane 5b-1
-/// (nobodies-collective/Humans#866). Only the registration stayed: Shell references every
-/// section, so naming a section's concrete type here is free, and a section has no
-/// <c>ISection</c> discovery seam for recurring jobs yet.
-/// </para>
+/// SMTP configured. Everything else, including the two Hangfire job registrations that used
+/// to live here, moved into <c>Humans.Email</c>'s <c>Section.Register</c> (#1074's jobs seam).
 /// </summary>
 internal static class EmailInfrastructureExtensions
 {
@@ -57,9 +48,6 @@ internal static class EmailInfrastructureExtensions
         // IEmailService taking this as a constructor dependency, so ValidateOnBuild fails at
         // startup without it.
         services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
-
-        services.AddScoped<ProcessEmailOutboxJob>();
-        services.AddScoped<CleanupEmailOutboxJob>();
 
         return services;
     }
