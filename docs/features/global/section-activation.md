@@ -60,6 +60,16 @@ throws `InvalidOperationException` when:
   names `IUserService` — so its own references are validated as if it were an active
   section. It appears in error messages under its assembly name, `Web`.
 
+### What the scan cannot see
+
+Only references the compiler emits. A section Shell names as a *string* — an
+`asp-controller="X"` link in a Razor view, `Component.InvokeAsync("Y")` — produces no
+assembly reference, so no reference-based scan can find it. `_Layout.cshtml` still links
+`Search` and `Tour` that way, and both are real sections, so an allowlist can deactivate
+them: validation passes, the provider removes the controller, the link 404s. Tracked as
+nobodies-collective/Humans#1090, which needs a decision rather than a patch — the epic
+treats those two as Shell chrome while activation treats them as sections.
+
 Shell pins **26 of the 42 shipped sections** today. Any allowlist must therefore contain
 those 26 plus the transitive closure of what they consume, which leaves activation useful
 mainly for the sections Shell does not name. That number is the epic's debt measure, not a
