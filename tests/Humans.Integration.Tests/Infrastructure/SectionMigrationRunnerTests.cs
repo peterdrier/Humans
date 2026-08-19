@@ -313,7 +313,23 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
         var connectionString = await CreateDatabaseAsync("frontier_no_history");
         await CreateUsersSchemaWithoutHistoryAsync(connectionString);
 
-        await using var db = CreateSectionContext<UsersDbContext>(connectionString);
+        // EF.LogTo captures every command EF sends, including ones that fail — a regression
+        // back to calling GetPendingMigrationsAsync unconditionally would still send a SELECT
+        // against the (missing) history table and log it before the failure, so this catches
+        // the regression even though the returned set alone can't distinguish it.
+        var commandLog = new List<string>();
+        var historyTable = SectionMigrationsHistory.TableFor<UsersDbContext>();
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.UseNodaTime();
+                npgsql.MigrationsAssembly(typeof(UsersDbContext).Assembly.GetName().Name!);
+                npgsql.MigrationsHistoryTable(historyTable);
+            })
+            .LogTo(commandLog.Add, Microsoft.Extensions.Logging.LogLevel.Debug)
+            .Options;
+
+        await using var db = new UsersDbContext(options);
         var expected = db.Database.GetMigrations()
             .Select(migration => $"{nameof(UsersDbContext)}:{migration}")
             .ToList();
@@ -322,6 +338,13 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             [db], TestContext.Current.CancellationToken);
 
         frontier.Should().BeEquivalentTo(expected);
+
+        // The history table name only appears double-quoted when used as a SQL identifier
+        // (a FROM/JOIN target) - the legitimate information_schema probe passes it as a
+        // parameter value instead, which logs single-quoted.
+        commandLog.Should().NotContain(
+            entry => entry.Contains($"\"{historyTable}\"", StringComparison.Ordinal),
+            $"the fallback must never query {historyTable} directly - that's the #1022 regression");
     }
 
     [HumansFact]
