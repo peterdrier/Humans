@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.Governance.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,6 +7,7 @@ namespace Humans.GoogleIntegration.ViewComponents;
 
 public sealed class MyGoogleResourcesViewComponent(
     ITeamResourceService teamResourceService,
+    IMembershipCalculatorRead membershipCalculatorRead,
     ILogger<MyGoogleResourcesViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
@@ -13,6 +15,12 @@ public sealed class MyGoogleResourcesViewComponent(
         try
         {
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Content(string.Empty);
+
+            // Volunteer-only, and the section owns the gate: the member-dashboard slot is
+            // shared, so Shell must not decide this on GoogleIntegration's behalf.
+            var snapshot = await membershipCalculatorRead.GetMembershipSnapshotAsync(userId);
+            if (!snapshot.IsVolunteerMember)
                 return Content(string.Empty);
 
             var resources = await teamResourceService.GetUserTeamResourcesAsync(userId);
