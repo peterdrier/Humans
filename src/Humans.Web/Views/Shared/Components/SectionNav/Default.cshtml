@@ -35,7 +35,18 @@
     else
     {
         <li class="nav-item">
-            @if (item.RawHref is not null)
+            @if (item.IconCssClass is not null)
+            {
+                @if (item.RawHref is not null)
+                {
+                    <a class="nav-link @item.CssClass" href="@item.RawHref" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                }
+                else
+                {
+                    <a class="nav-link @item.CssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                }
+            }
+            else if (item.RawHref is not null)
             {
                 <a class="nav-link @item.CssClass" href="@item.RawHref">@NavLocalizer[item.Label]</a>
             }

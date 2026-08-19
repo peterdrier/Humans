@@ -78,7 +78,7 @@
         }
 
         @* Approved personal (non-camp) events this human submitted this edition (auto-hidden when empty); camp events show on the camp's page *@
-        @await Component.InvokeAsync("EventsCard", new { userId = Model.UserId })
+        <vc:events-card user-id="@Model.UserId" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {

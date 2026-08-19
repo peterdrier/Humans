@@ -65,21 +65,25 @@ validates nothing and cannot fail. With an allowlist present it throws
 
 Only references the compiler emits. A section named as a *string* — an
 `asp-controller="X"` link in a Razor view, `Component.InvokeAsync("Y")` — produces no
-assembly reference, so no reference-based scan can find it. Two shapes exist:
+assembly reference, so no reference-based scan can find it.
 
-- **Shell to section.** `_Layout.cshtml` links `Search` and `Tour` that way, and both are
-  real sections, so an allowlist can deactivate them: validation passes, the provider
-  removes the controller, the link 404s.
+nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
+
+- **Shell to section.** `_Layout.cshtml` used to link `Search` and `Tour` that way. Both
+  are now `ISectionNav` contributions (`Humans.Search/SectionNav.cs`,
+  `Humans.Tour/SectionNav.cs`) — Shell no longer names either, so deactivating them is
+  invisible to Shell and safe.
 - **Section to section.** `Humans.Users/Views/Profile/Index.cshtml` and
-  `Humans.Camps/Views/Camp/Details.cshtml` both invoke Events' `EventsCard` by name, and
-  neither project references Events, so no graph edge records it. Deactivating Events with
-  either consumer active passes validation and throws on those pages at request time.
-
-Both are tracked as nobodies-collective/Humans#1090, which needs a decision rather than a
-patch: a string is invisible to any reference-based scan, and writing the names down is
-exactly what nobodies-collective/Humans#1073 exists to remove. The `<vc:chrome-slot>` and
-`ISectionContribution` seams the epic's lanes introduce are what turns these into real
-edges — a contributed component is discovered from the section's own assembly.
+  `Humans.Camps/Views/Camp/Details.cshtml` both invoke Events' `EventsCard` by name.
+  `Humans.Users` now references `Humans.Events` and renders it as `<vc:events-card>`, a
+  real, discovery-checked graph edge. `Humans.Camps` could not follow: `Humans.Events`
+  already references `Humans.Camps` (`EventsController` derives from
+  `HumansCampControllerBase`), so a `Camps → Events` reference would cycle. That call site
+  is still invoke-by-name and still invisible to the scan — deactivating Events while
+  Camps is active passes validation and throws on `Camp/Details` at request time. Fixing it
+  needs either breaking the existing `Events → Camps` reference (relocating
+  `HumansCampControllerBase`) or a generic runtime-availability mechanism; both are
+  design decisions, tracked in #1090.
 
 Shell pins **26 of the 42 shipped sections** today. Any allowlist must therefore contain
 those 26 plus the transitive closure of what they consume, which leaves activation useful

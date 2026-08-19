@@ -13,6 +13,10 @@ namespace Humans.Base.Interfaces;
 /// children are gated by their own <paramref name="Policy"/>/<paramref name="Visible"/> the
 /// same way top-level items are. A child with <paramref name="Divider"/> set renders a
 /// dropdown-menu divider instead of a link, gated the same way as the group it introduces.
+/// <paramref name="IconCssClass"/>, when set, renders that icon instead of the localized
+/// label text on a top-level item — <paramref name="Label"/> still supplies the accessible
+/// name (<c>aria-label</c>/<c>title</c>), which is how the Search magnifying glass link
+/// stays icon-only.
 /// </remarks>
 public sealed record MemberNavItem(
     string Label,
@@ -24,7 +28,8 @@ public sealed record MemberNavItem(
     string? CssClass = null,
     Func<IServiceProvider, ClaimsPrincipal, bool>? Visible = null,
     IReadOnlyList<MemberNavItem>? Children = null,
-    bool Divider = false);
+    bool Divider = false,
+    string? IconCssClass = null);
 
 /// <summary>The member top-nav links a section contributes.</summary>
 public interface ISectionNav : ISectionContribution

@@ -91,6 +91,16 @@
       nothing in Humans.Users.
     -->
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
+    <!--
+      Views/Profile/Index.cshtml renders <vc:events-card />, whose EventsCardViewComponent is
+      public in Humans.Events/ViewComponents/ but whose tag helper Razor only generates from
+      the declaring assembly — @addTagHelper needs the assembly, not its Contracts leaf. Same
+      shape as the Humans.Camps reference above (nobodies-collective/Humans#1090 — the
+      invoke-by-name call this replaces produced no assembly reference, so the section
+      activation dependency graph could not see it). Acyclic — Humans.Events references
+      Humans.Users.Contracts, never this project.
+    -->
+    <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- ProfileController injects IAuditViewerService and AdminDetail.cshtml renders
          <vc:audit-log>; both moved out of Humans.Application / Humans.UI into the AuditLog
