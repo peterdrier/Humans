@@ -9,7 +9,7 @@ namespace Humans.Debug;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <see cref="Register"/> is empty on purpose (Scanner's shape, step 4): every dependency the
+/// <see cref="Register"/> carries only the /api/logs credential wiring: every dependency the
 /// diagnostics pages read is a Base singleton registered by its owner —
 /// <c>IClientStatsTracker</c>, <c>IHttpStatusTracker</c>, <c>ConfigurationRegistry</c>,
 /// <c>QueryStatistics</c>, <c>ICacheStatsProvider</c>, the <c>ICacheStats</c> decorator fan-in
@@ -23,6 +23,12 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Nothing to register — see the remarks above.
+        // /api/logs key (separate credential from feedback) — the section owns its
+        // own API surface's auth filter (nobodies-collective/Humans#1091).
+        services.Configure<LogApiSettings>(opts =>
+        {
+            opts.ApiKey = Environment.GetEnvironmentVariable("LOG_API_KEY") ?? string.Empty;
+        });
+        services.AddScoped<LogApiKeyAuthFilter>();
     }
 }

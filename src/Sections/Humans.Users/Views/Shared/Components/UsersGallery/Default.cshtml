@@ -1,0 +1,62 @@
+@using Microsoft.AspNetCore.Html
+@model Humans.Users.Models.ProfileSummaryViewModel
+
+@* The widget-gallery cards whose sample model (ProfileSummaryViewModel) is internal to
+   this section — rendered here so Shell/Debug never has to name it (ShiftsGallery's
+   shape; nobodies-collective/Humans#1091). The wg-* CSS classes are the gallery page's;
+   this renders inside it. *@
+
+@functions {
+    private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        foreach (var (name, desc) in entries)
+        {
+            html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+        }
+        html.Append("</dl>");
+        return new HtmlString(html.ToString());
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_ProfileCard.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_ProfileCard.cshtml</span>
+    </div>
+    <div class="wg-card-note">
+        Compact profile summary line — avatar + name + email + status badges. Used in admin tables.
+    </div>
+    @ParamsBlock(
+        ("@@model", "<code>ProfileSummaryViewModel</code> — UserId, DisplayName, Email, MembershipTier, MembershipStatus, IsSuspended, …")
+    )
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_ProfileCard", Model)
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_HumanPopover.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanPopover.cshtml</span>
+    </div>
+    <div class="wg-card-note">
+        Hover popover content rendered by JS when a <code>&lt;vc:human&gt;</code> element with
+        <code>popover=true</code> and a link mode is hovered. Shown here directly for layout reference — in production
+        it's served by <code>/api/profiles/{id}/popover</code>.
+    </div>
+    @ParamsBlock(
+        ("@@model", "<code>ProfileSummaryViewModel</code> — same shape as <code>_ProfileCard</code>")
+    )
+    <div class="wg-auth-line">Preferred-language flag is gated on <code>HumanAdminBoardOrAdmin</code> via <code>IAuthorizationService</code> evaluated in the partial.</div>
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_HumanPopover", Model)
+    </div>
+</div>

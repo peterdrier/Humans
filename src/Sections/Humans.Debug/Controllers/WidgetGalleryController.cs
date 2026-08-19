@@ -1,4 +1,3 @@
-using Humans.Users.Models;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -11,7 +10,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Debug.Controllers;
 
 /// <summary>
 /// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
@@ -21,7 +20,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
-public sealed class WidgetGalleryController(IUserServiceRead userService) : HumansControllerBase(userService)
+internal sealed class WidgetGalleryController(IUserServiceRead userService) : HumansControllerBase(userService)
 {
     private static readonly Guid SampleTeamId = Guid.NewGuid();
     private const string SampleTeamSlug = "fire-conclave";
@@ -49,6 +48,9 @@ public sealed class WidgetGalleryController(IUserServiceRead userService) : Huma
             SampleEventSettings = BuildSampleEventSettings(),
             SampleStaffingData = BuildSampleStaffingData(),
             SampleStaffingHours = BuildSampleStaffingHours(),
+            // ProfileSummaryViewModel samples (_ProfileCard / _HumanPopover) are internal to
+            // Humans.Users, so the Users section renders those cards itself via its
+            // UsersGallery view component (nobodies-collective/Humans#1091).
             SampleShiftsSummary = new ShiftsSummaryCardViewModel
             {
                 TotalSlots = 24,
@@ -60,17 +62,6 @@ public sealed class WidgetGalleryController(IUserServiceRead userService) : Huma
                 IncludesSubTeamCount = 2,
             },
             SamplePager = new PagerViewModel(totalPages: 8, currentPage: 3, action: "Index"),
-            SampleProfileSummary = new ProfileSummaryViewModel
-            {
-                UserId = currentUser.Id,
-                DisplayName = displayName,
-                Email = currentUser.Email,
-                MembershipStatus = "Active",
-                MembershipTier = "Volunteer",
-                IsSuspended = false,
-                PreferredLanguage = currentUser.PreferredLanguage,
-                Teams = new() { SampleTeamName },
-            },
             SampleHumanSearchResults = new List<HumanSearchResultViewModel>
             {
                 new()
@@ -170,12 +161,11 @@ internal sealed class WidgetGalleryViewModel
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
     public required PagerViewModel SamplePager { get; init; }
-    public required ProfileSummaryViewModel SampleProfileSummary { get; init; }
     public required IReadOnlyList<HumanSearchResultViewModel> SampleHumanSearchResults { get; init; }
     public List<TableDemoRow> SampleTableRows { get; set; } = [];
 }
 
-public sealed class TableDemoRow
+internal sealed class TableDemoRow
 {
     public string Name { get; set; } = string.Empty;
     public decimal Amount { get; set; }

@@ -1,12 +1,12 @@
 using Humans.Base.Filters;
 using Microsoft.Extensions.Options;
 
-namespace Humans.Web.Filters;
+namespace Humans.Debug;
 
-public class LogApiSettings
+internal sealed class LogApiSettings
 {
     public string ApiKey { get; set; } = string.Empty;
 }
 
-public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
+internal sealed class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);

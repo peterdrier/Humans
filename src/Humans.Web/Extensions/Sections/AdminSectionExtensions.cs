@@ -1,5 +1,4 @@
 using Humans.Base.Hosting;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -8,13 +7,6 @@ internal static class AdminSectionExtensions
     internal static IServiceCollection AddAdminSection(this IServiceCollection services)
     {
         services.AddAdminDatabaseDiagnostics();
-
-        // Log API key (separate credential from feedback)
-        services.Configure<LogApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("LOG_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<LogApiKeyAuthFilter>();
 
         return services;
     }

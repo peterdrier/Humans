@@ -1,11 +1,16 @@
 @using Humans.Teams.Contracts
-@model Humans.Web.Controllers.WidgetGalleryViewModel
+@model Humans.Debug.Controllers.WidgetGalleryViewModel
 @using Humans.Base.Authorization
 @using Humans.Base.Models.Tables
-@* VolunteerBadgesViewModel and ShiftsSummaryCardViewModel moved to their owning sections'
-   Contracts/ at G5 lane 4b-i (nobodies-collective/Humans#866); Humans.Shifts.Contracts and
-   Humans.Teams.Contracts are already imported above. *@
+@using Humans.Shifts.Contracts
+@using Humans.Tickets.Contracts
+@using Humans.Base.Enums
 @using Microsoft.AspNetCore.Html
+@* This page's whole job is a fan-in catalog of every section's public widgets, so it is
+   the one Debug view that names other sections' contracts (nobodies-collective/Humans#1091).
+   The section tag-helper assemblies it renders are opened in Views/_ViewImports.cshtml.
+   Shell-resident components (NavBadges, ChromeSlot, SectionNav, …) are invoked by name —
+   Debug cannot addTagHelper against Humans.Web. *@
 @{
     ViewData["Title"] = "Widget Gallery";
     Layout = "_Layout";
@@ -313,24 +318,10 @@
                     </div>
                 </div>
 
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_ProfileCard.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_ProfileCard.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Compact profile summary line — avatar + name + email + status badges. Used in admin tables.
-                    </div>
-                    @ParamsBlock(
-                        ("@@model", "<code>ProfileSummaryViewModel</code> — UserId, DisplayName, Email, MembershipTier, MembershipStatus, IsSuspended, …")
-                    )
-                    <div class="wg-card-example">
-                        @await Html.PartialAsync("_ProfileCard", Model.SampleProfileSummary)
-                    </div>
-                </div>
+                @* _ProfileCard + _HumanPopover cards: their ProfileSummaryViewModel sample is
+                   internal to Humans.Users, so the Users section renders both cards itself
+                   (ShiftsGallery's shape; nobodies-collective/Humans#1091). *@
+                @await Component.InvokeAsync("UsersGallery", new { currentUserId = Model.CurrentUserId, displayName = Model.CurrentUserDisplayName })
 
                 <div class="wg-card">
                     <div class="wg-card-header">
@@ -350,35 +341,13 @@
                     <div class="wg-variants">
                         <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
                         <div class="wg-variant-render" style="display:block;">
-                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
+                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId })
                         </div>
 
                         <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
                         <div class="wg-variant-render" style="display:block;">
-                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
+                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId, readOnly = true })
                         </div>
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">_HumanPopover.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
-                        </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanPopover.cshtml</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Hover popover content rendered by JS when a <code>&lt;vc:human&gt;</code> element with
-                        <code>popover=true</code> and a link mode is hovered. Shown here directly for layout reference — in production
-                        it's served by <code>/api/profiles/{id}/popover</code>.
-                    </div>
-                    @ParamsBlock(
-                        ("@@model", "<code>ProfileSummaryViewModel</code> — same shape as <code>_ProfileCard</code>")
-                    )
-                    @AuthLine("Preferred-language flag is gated on <code>HumanAdminBoardOrAdmin</code> via <code>IAuthorizationService</code> evaluated in the partial.")
-                    <div class="wg-card-example">
-                        @await Html.PartialAsync("_HumanPopover", Model.SampleProfileSummary)
                     </div>
                 </div>
 
@@ -423,16 +392,16 @@
                     )
                     <div class="wg-variants">
                         <div class="wg-variant-label">mode="badge"<span class="wg-variant-sub">icon badge for cards</span></div>
-                        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="badge" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "badge" })</div>
 
                         <div class="wg-variant-label">mode="status"<span class="wg-variant-sub">warning when not primary</span></div>
-                        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="status" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "status" })</div>
 
                         <div class="wg-variant-label">mode="email"<span class="wg-variant-sub">show address</span></div>
-                        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="email" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "email" })</div>
 
                         <div class="wg-variant-label">mode="detail"<span class="wg-variant-sub">address + linked badge</span></div>
-                        <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="detail" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "detail" })</div>
                     </div>
                 </div>
 
@@ -453,7 +422,7 @@
                         ("userId", "<code>Guid</code> — required")
                     )
                     <div class="wg-card-example">
-                        <vc:membership-tier-badge user-id="@Model.CurrentUserId" />
+                        @await Component.InvokeAsync("MembershipTierBadge", new { userId = Model.CurrentUserId })
                     </div>
                 </div>
 
@@ -630,7 +599,7 @@
                         items are done — if you see nothing here, your account is fully onboarded.
                     </div>
                     <div class="wg-card-example">
-                        <vc:things-to-do />
+                        @await Component.InvokeAsync("ThingsToDo")
                     </div>
                 </div>
 
@@ -650,7 +619,7 @@
                         ("userId", "<code>Guid</code> — required")
                     )
                     <div class="wg-card-example">
-                        <vc:dietary-missing-banner user-id="@Model.CurrentUserId" />
+                        @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.CurrentUserId })
                     </div>
                 </div>
 
@@ -704,7 +673,7 @@
                         everyone — so it's empty here unless your account holds a tracked term.
                     </div>
                     <div class="wg-card-example">
-                        <vc:member-term-status />
+                        @await Component.InvokeAsync("MemberTermStatus")
                     </div>
                 </div>
             </section>
@@ -876,13 +845,13 @@
                     @AuthLine("Voting and issues queues filter by current viewer's roles; review is a global count (admins always see it).")
                     <div class="wg-variants">
                         <div class="wg-variant-label">queue="review"<span class="wg-variant-sub">pending applicant review</span></div>
-                        <div class="wg-variant-render"><vc:nav-badges queue="review" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "review" })</div>
 
                         <div class="wg-variant-label">queue="voting"<span class="wg-variant-sub">unvoted applications for current human</span></div>
-                        <div class="wg-variant-render"><vc:nav-badges queue="voting" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "voting" })</div>
 
                         <div class="wg-variant-label">queue="issues"<span class="wg-variant-sub">actionable issues for current human</span></div>
-                        <div class="wg-variant-render"><vc:nav-badges queue="issues" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "issues" })</div>
                     </div>
                 </div>
 
@@ -897,7 +866,7 @@
                     <div class="wg-card-note">Auto-resolves the admin breadcrumb from <code>AdminNavTree</code> based on the current route. Falls back to the page title when no nav match.</div>
                     @ParamsBlock()
                     <div class="wg-card-example">
-                        <vc:admin-breadcrumb />
+                        @await Component.InvokeAsync("AdminBreadcrumb")
                         <div class="text-muted small">↑ resolves to whatever AdminNavTree entry matches this route, or the page title.</div>
                     </div>
                 </div>
@@ -1178,16 +1147,16 @@
                     )
                     <div class="wg-variants">
                         <div class="wg-variant-label">name="header-right"<span class="wg-variant-sub">member top nav, beside language + login</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="header-right" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "header-right" })</div>
 
                         <div class="wg-variant-label">name="above-content"<span class="wg-variant-sub">between header and page, member + admin layouts</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="above-content" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "above-content" })</div>
 
                         <div class="wg-variant-label">name="member-dashboard"<span class="wg-variant-sub">contributed area of the member dashboard</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="member-dashboard" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "member-dashboard" })</div>
 
                         <div class="wg-variant-label">name="guest-page"<span class="wg-variant-sub">contributed area of the profileless-account page</span></div>
-                        <div class="wg-variant-render"><vc:chrome-slot name="guest-page" /></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })</div>
                     </div>
                 </div>
 
@@ -1208,7 +1177,7 @@
                     @ParamsBlock()
                     @AuthLine("Every item is filtered by its optional <code>Policy</code> and its <code>Visible</code> predicate. Dropdown children are gated the same way, and a dropdown left with no visible children is dropped rather than rendered empty.")
                     <div class="wg-card-example">
-                        <ul class="nav"><vc:section-nav /></ul>
+                        <ul class="nav">@await Component.InvokeAsync("SectionNav")</ul>
                         <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
                     </div>
                 </div>

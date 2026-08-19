@@ -1,14 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Logging;
-using Humans.Web.Filters;
 using Serilog.Events;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Debug.Controllers;
 
 [ApiController]
 [Route("api/logs")]
 [ServiceFilter(typeof(LogApiKeyAuthFilter))]
-public class LogApiController : ControllerBase
+internal sealed class LogApiController : ControllerBase
 {
     [HttpGet]
     public IActionResult Get(

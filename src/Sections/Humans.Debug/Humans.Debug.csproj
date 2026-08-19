@@ -36,6 +36,25 @@
 
   <ItemGroup>
     <!--
+      Widget-gallery fan-in (nobodies-collective/Humans#1091): /WidgetGallery is the
+      catalog of every section's public widgets, so this diagnostics section names the
+      contracts leaves whose sample DTOs it constructs and the section assemblies whose
+      public view components it renders as <vc:> tag helpers. Only Contracts-folder
+      public surface is reachable through these references (HUM0034).
+    -->
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
+    <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
       the build with NU1010 under Central Package Management. Everything the controller needs
       arrives through the framework reference Sdk.Razor already adds (step 1).

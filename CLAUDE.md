@@ -51,7 +51,7 @@ Each major section of the app has a terse invariant doc defining: concepts, data
 
 A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries that doc inside the project — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). Everything not yet moved is still in [`docs/sections/`](docs/sections/), and [`docs/sections/_Index.md`](docs/sections/_Index.md) is the map to both.
 
-`/Admin/*` is a nav holder, not a section — its services belong to the sections they act on.
+`/` (Home) and `/Admin/*` are Shell frames, not sections — decided in nobodies-collective/Humans#1091: they stay in `Humans.Web`, thin toward pure composition (their page bodies are section-contributed), and their services belong to the sections they act on.
 
 ## Scale and Deployment
 
