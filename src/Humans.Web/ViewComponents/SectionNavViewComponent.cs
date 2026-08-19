@@ -9,6 +9,10 @@ namespace Humans.Web.ViewComponents;
 /// Renders the member top-nav links sections contributed through <see cref="ISectionNav"/>,
 /// gated per item and per dropdown child, ordered by weight.
 /// </summary>
+/// <remarks>
+/// Items and children sort by weight alone and the sort is stable, so equal weights keep
+/// discovery order — no tie-break, matching <see cref="AdminNavComposition"/>.
+/// </remarks>
 public sealed class SectionNavViewComponent(
     IEnumerable<ISectionNav> contributors,
     IAuthorizationService authorization,
@@ -19,7 +23,6 @@ public sealed class SectionNavViewComponent(
         var items = contributors
             .SelectMany(c => c.Items())
             .OrderBy(i => i.Weight)
-            .ThenBy(i => i.Label, StringComparer.Ordinal)
             .ToList();
 
         var visible = new List<MemberNavItem>(items.Count);

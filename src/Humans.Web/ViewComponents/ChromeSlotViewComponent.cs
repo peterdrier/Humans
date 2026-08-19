@@ -10,6 +10,8 @@ namespace Humans.Web.ViewComponents;
 /// <remarks>
 /// Both <see cref="ISectionChrome"/> (layout chrome) and <see cref="ISectionMemberDashboard"/>
 /// (dashboard content) feed the same slots. An empty slot renders nothing at all.
+/// Ordering is by weight and stable, so equal weights keep discovery order — no tie-break,
+/// matching <see cref="AdminNavComposition"/> and <see cref="SectionNavViewComponent"/>.
 /// </remarks>
 public sealed class ChromeSlotViewComponent(
     IEnumerable<ISectionChrome> chrome,
@@ -20,6 +22,5 @@ public sealed class ChromeSlotViewComponent(
             .Concat(dashboard.SelectMany(c => c.Components()))
             .Where(c => string.Equals(c.Slot, name, StringComparison.Ordinal))
             .OrderBy(c => c.Weight)
-            .ThenBy(c => c.ComponentName, StringComparer.Ordinal)
             .ToList());
 }
