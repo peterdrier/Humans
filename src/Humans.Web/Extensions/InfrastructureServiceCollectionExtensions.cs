@@ -8,7 +8,6 @@ using Humans.Web.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Web.Hosting;
-using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Extensions;
 
@@ -89,13 +88,10 @@ public static class InfrastructureServiceCollectionExtensions
         // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
         // HumanLifecycleService.
 
-        // The admin dashboard's aggregator. It was registered inside AddUsersSection and is
-        // not Users' — it reads every section's services and owns no table — so it moved
-        // here with the rest of the cluster at G5 lane 5c (Governance's rule: the section
-        // that owns the file is not always the section that owns the line). The member
-        // dashboard's IDashboardService is gone — its content is section-contributed chrome
-        // now (nobodies-collective/Humans#1091).
-        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        // The admin dashboard's aggregator moved back to Users' own Section.Register at
+        // nobodies-collective/Humans#1091 — Shell only hosts /Admin/*'s page bodies now, not
+        // the services behind them. The member dashboard's IDashboardService is gone
+        // entirely — its content is section-contributed chrome (also #1091).
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named.

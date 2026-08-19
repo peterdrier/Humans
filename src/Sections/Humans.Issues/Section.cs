@@ -32,7 +32,6 @@ public sealed class Section : ISection
         services.AddSingleton<IIssuesRepository, IssuesRepository>();
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
-        services.AddScoped<IIssuesServiceRead>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
         // Owns the user-scoped issues / issue_comments tables → GDPR export contributor
         // (design-rules §8a).

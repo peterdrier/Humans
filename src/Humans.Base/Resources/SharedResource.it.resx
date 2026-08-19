@@ -124,9 +124,6 @@
   <data name="Nav_OnboardingReview" xml:space="preserve">
     <value>Coda di revisione</value>
   </data>
-  <data name="Nav_Issues" xml:space="preserve">
-    <value>Segnalazioni</value>
-  </data>
   <data name="CookieBanner_Title" xml:space="preserve">
     <value>Informativa sui Cookie</value>
   </data>

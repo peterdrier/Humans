@@ -46,6 +46,9 @@
   <data name="Issue_PageTitle" xml:space="preserve">
     <value>Tickets</value>
   </data>
+  <data name="Issue_NavLabel" xml:space="preserve">
+    <value>Vorgänge</value>
+  </data>
   <data name="Issue_New" xml:space="preserve">
     <value>Neues Ticket</value>
   </data>

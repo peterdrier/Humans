@@ -1,0 +1,10 @@
+@model int
+<li>
+    <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Issues" asp-action="Index">
+        <i class="fa-solid fa-circle-exclamation fa-fw"></i> @Localizer["Issue_NavLabel"]
+        @if (Model > 0)
+        {
+            <span class="badge rounded-pill nav-badge">@Model</span>
+        }
+    </a>
+</li>

@@ -1,4 +1,36 @@
-namespace Humans.Web.Services.Dashboard;
+namespace Humans.Base.Interfaces.Admin;
+
+/// <summary>
+/// Aggregation surface for the Board / Admin dashboard. Reads every section's own
+/// services and owns no table of its own.
+/// </summary>
+public interface IAdminDashboardService : IApplicationService
+{
+    /// <summary>
+    /// Aggregates member counts (by membership partition), tier-application
+    /// stats, and language distribution into the admin dashboard snapshot.
+    /// </summary>
+    Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default);
+}
+
+public sealed record AdminDashboardData(
+    int TotalMembers,
+    int IncompleteSignup,
+    int PendingApproval,
+    int ActiveMembers,
+    int MissingConsents,
+    int Suspended,
+    int PendingDeletion,
+    int PendingApplications,
+    int TotalApplications,
+    int ApprovedApplications,
+    int RejectedApplications,
+    int ColaboradorApplied,
+    int AsociadoApplied,
+    IReadOnlyList<LanguageCount> LanguageDistribution,
+    UserSetMembership SetMembership);
+
+public sealed record LanguageCount(string Language, int Count);
 
 /// <summary>
 /// 4-dimensional set partition of the UserInfo cache for the Admin dashboard

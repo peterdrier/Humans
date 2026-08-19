@@ -1,4 +1,4 @@
-using Humans.Web.Services.Dashboard;
+using Humans.Base.Interfaces.Admin;
 
 namespace Humans.Web.Models;
 

@@ -14,6 +14,9 @@ public static class ChromeSlots
 
     /// <summary>The profileless-account (guest) page's contributed section area.</summary>
     public const string GuestPage = "guest-page";
+
+    /// <summary>Dropdown items in the signed-in user menu (_LoginPartial).</summary>
+    public const string UserMenu = "user-menu";
 }
 
 /// <summary>

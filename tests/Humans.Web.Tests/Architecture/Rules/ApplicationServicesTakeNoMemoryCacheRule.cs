@@ -60,9 +60,9 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // owning services (memory/code/viewcomponent-no-cache.md) — same inline
         // badge-count caching IssuesService/NotificationMeterProvider already do.
         // Each wraps a real repo/DB query and is evicted via the existing
-        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (The review
-        // count is NOT here — its read is already cache-served by CachingUserService,
-        // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
+        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (AdminDashboardService
+        // is NOT here — its reads are already cache-served by CachingUserService, so it
+        // stays cache-free; double-caching it would be §4b.)
         SectionType("Humans.Feedback.Services.FeedbackService"),  // CacheKeys.FeedbackBadgeCount
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't

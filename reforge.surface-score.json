@@ -698,7 +698,6 @@
         "src/Humans.Web/Services/*.cs",
         "src/Humans.Web/Middleware/**",
         "src/Humans.Base/Models/AccessMatrixDefinitions.cs",
-        "src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs",
         "src/Humans.Base/Models/PagedListViewModel.cs",
         "src/Humans.Base/Models/PagerViewModel.cs",
         "src/Humans.Base/Models/SectionHelpViewModel.cs",

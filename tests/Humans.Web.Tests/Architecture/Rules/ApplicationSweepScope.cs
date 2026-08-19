@@ -16,10 +16,10 @@ namespace Humans.Web.Tests.Architecture.Rules;
 /// </para>
 /// <para>
 /// COVERAGE REDUCED (G5 lane 5c): the Humans.Application half of this set is gone, because the
-/// assembly holds no types. Two services left the sweep with it — <c>DashboardService</c> and
-/// <c>AdminDashboardService</c>, now <c>Humans.Web.Services.Dashboard</c>, which is neither a
-/// section assembly nor a <c>*.Services</c> namespace the rules' filter matches. Restoring them
-/// means widening the filter, which the batch's ruling 1 defers to a post-migration pass.
+/// assembly holds no types. Two services left the sweep with it — <c>DashboardService</c>, now
+/// gone entirely (its content is section-contributed chrome, nobodies-collective/Humans#1091),
+/// and <c>AdminDashboardService</c>, which re-entered the sweep at #1091 when it moved to
+/// <c>Humans.Users.Services</c> — a section assembly's <c>*.Services</c> namespace.
 /// </para>
 /// </remarks>
 internal static class ApplicationSweepScope

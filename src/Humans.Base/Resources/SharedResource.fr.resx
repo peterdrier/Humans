@@ -124,9 +124,6 @@
   <data name="Nav_OnboardingReview" xml:space="preserve">
     <value>File d'attente</value>
   </data>
-  <data name="Nav_Issues" xml:space="preserve">
-    <value>Tickets</value>
-  </data>
   <data name="CookieBanner_Title" xml:space="preserve">
     <value>Avis relatif aux cookies</value>
   </data>

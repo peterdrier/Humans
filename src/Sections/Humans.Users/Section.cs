@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Admin;
 using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
@@ -29,11 +30,12 @@ namespace Humans.Users;
 /// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
 /// </para>
 /// <para>
-/// Two registrations did <b>not</b> come across. <c>IDashboardService</c> and
-/// <c>IAdminDashboardService</c> sat inside <c>AddUsersSection</c> but belong to Dashboard,
-/// a Base orchestrator pair that aggregates from every section's services; they moved to
-/// Shell's <c>ServiceCollectionExtensions</c> (Governance's rule — the section that owns the
-/// file is not always the section that owns the line).
+/// <c>IDashboardService</c> is gone entirely — the member dashboard's content is
+/// section-contributed chrome now (nobodies-collective/Humans#1091). <c>IAdminDashboardService</c>
+/// sat in Shell's <c>InfrastructureServiceCollectionExtensions</c> for the same "aggregates every
+/// section, owns no table" reason <c>IDashboardService</c> did, but #1091's Shell-thinning pass
+/// moved its implementation back here — the interface itself sits on
+/// <c>Humans.Base.Interfaces.Admin</c>, following <c>IAdminDatabaseDiagnosticsService</c>'s shape.
 /// </para>
 /// <para>
 /// The <c>CachingUserService</c> block is copied as-is and is deliberately not tidied: one
@@ -160,5 +162,10 @@ public sealed class Section : ISection
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
+
+        // Admin dashboard aggregator — reads every section's own services and owns no
+        // table, but the interface (Humans.Base.Interfaces.Admin) needed a concrete home;
+        // it landed here rather than staying in Shell (nobodies-collective/Humans#1091).
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
     }
 }

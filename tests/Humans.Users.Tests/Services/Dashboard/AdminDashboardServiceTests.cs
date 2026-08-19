@@ -1,12 +1,12 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Web.Services.Dashboard;
+using Humans.Users.Services;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.Services.Dashboard;
+namespace Humans.Users.Tests.Services.Dashboard;
 
 /// <summary>
 /// Unit tests for the admin-dashboard aggregator extracted from
@@ -115,57 +115,4 @@ public class AdminDashboardServiceTests
         profileLanguages: [],
         volunteerHistory: [],
         communicationPreferences: []);
-
-    [HumansFact]
-    public async Task GetPendingReviewCountAsync_CountsUnapprovedNonRejectedProfilesFromSnapshot()
-    {
-        var pending1 = MakeUserInfoWithProfile(approved: false, rejected: false);
-        var pending2 = MakeUserInfoWithProfile(approved: false, rejected: false);
-        var rejected = MakeUserInfoWithProfile(approved: false, rejected: true);
-        var approved = MakeUserInfoWithProfile(approved: true, rejected: false);
-        var profileless = MakeUserInfo(Guid.NewGuid(), "en");
-
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([pending1, pending2, rejected, approved, profileless]));
-
-        var sut = BuildSut();
-
-        var result = await sut.GetPendingReviewCountAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().Be(2);
-    }
-
-    private static UserInfo MakeUserInfoWithProfile(bool approved, bool rejected)
-    {
-        var userId = Guid.NewGuid();
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            FirstName = "F",
-            LastName = "L",
-            BurnerName = "B",
-            IsApproved = approved,
-            RejectedAt = rejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = ProfileState.Active,
-        };
-        return UserInfo.Create(
-            user: new User
-            {
-                Id = userId,
-                DisplayName = "U",
-                PreferredLanguage = "en",
-                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            },
-            userEmails: [],
-            eventParticipations: [],
-            externalLogins: [],
-            profile: profile,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
-    }
 }

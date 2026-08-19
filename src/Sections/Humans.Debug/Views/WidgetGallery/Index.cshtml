@@ -9,7 +9,7 @@
 @* This page's whole job is a fan-in catalog of every section's public widgets, so it is
    the one Debug view that names other sections' contracts (nobodies-collective/Humans#1091).
    The section tag-helper assemblies it renders are opened in Views/_ViewImports.cshtml.
-   Shell-resident components (NavBadges, ChromeSlot, SectionNav, …) are invoked by name —
+   Shell-resident components (AdminBreadcrumb, ChromeSlot, SectionNav, …) are invoked by name —
    Debug cannot addTagHelper against Humans.Web. *@
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -829,31 +829,6 @@
             @* ============== ADMIN CHROME ============== *@
             <section id="admin" class="wg-section">
                 <h2>Admin Chrome</h2>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:nav-badges&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">Numeric badges on admin nav items. Counts cached for 2 minutes (per-human for voting/issues, global for review).</div>
-                    @ParamsBlock(
-                        ("queue", "<code>string</code> — review · voting · issues")
-                    )
-                    @AuthLine("Voting and issues queues filter by current viewer's roles; review is a global count (admins always see it).")
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">queue="review"<span class="wg-variant-sub">pending applicant review</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "review" })</div>
-
-                        <div class="wg-variant-label">queue="voting"<span class="wg-variant-sub">unvoted applications for current human</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "voting" })</div>
-
-                        <div class="wg-variant-label">queue="issues"<span class="wg-variant-sub">actionable issues for current human</span></div>
-                        <div class="wg-variant-render">@await Component.InvokeAsync("NavBadges", new { queue = "issues" })</div>
-                    </div>
-                </div>
 
                 <div class="wg-card">
                     <div class="wg-card-header">

@@ -67,7 +67,6 @@
   <data name="Nav_About" xml:space="preserve"><value>About</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Review Queue</value></data>
-  <data name="Nav_Issues" xml:space="preserve"><value>Issues</value></data>
 
 
   <!-- ======================== -->

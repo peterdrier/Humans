@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Base.Interfaces;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using Humans.Issues.Services.Dtos;
@@ -6,14 +7,25 @@ using Humans.Issues.Services.Dtos;
 namespace Humans.Issues.Services;
 
 /// <summary>
-/// The section's own service surface. Internal, not on the contracts leaf: the only
-/// members anything outside Issues calls are the two on <see cref="IIssuesServiceRead"/>
-/// and <see cref="IIssuesRetention"/>. It survives internalisation at all because
+/// The section's own service surface. Internal, not on the contracts leaf: the only member
+/// anything outside Issues calls is <see cref="IIssuesRetention"/>. <c>GetActionableCountForViewerAsync</c>
+/// moved off <c>IIssuesServiceRead</c> when its sole external caller, Shell's NavBadgesViewComponent,
+/// dissolved into this section's own user-menu chrome contribution (nobodies-collective/Humans#1091) —
+/// per memory/architecture/section-read-write-split.md, an in-section-only read stays off the leaf.
+/// It survives internalisation at all because
 /// <c>IssuesApiControllerTests</c> substitutes it and MA0053 seals the concrete class
 /// (design §15 step 5).
 /// </summary>
-internal interface IIssuesService : IIssuesServiceRead, IIssuesRetention
+internal interface IIssuesService : IApplicationService, IIssuesRetention
 {
+    /// <summary>
+    /// Count of Open + Triage issues whose section maps to a role the viewer holds, plus
+    /// their own non-terminal issues. Admins get the global non-terminal count.
+    /// </summary>
+    Task<int> GetActionableCountForViewerAsync(
+        Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
+        CancellationToken ct = default);
+
     Task<Issue> SubmitIssueAsync(
         Guid reporterUserId,
         IssueCategory category,

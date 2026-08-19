@@ -1,11 +1,12 @@
+using Humans.Base.Interfaces.Admin;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Services.Dashboard;
+namespace Humans.Users.Services;
 
 /// <summary>Admin dashboard aggregator: membership partition, tier-application stats, language distribution, 4-set Venn/UpSet membership. Owns no tables.</summary>
-public sealed class AdminDashboardService(
+internal sealed class AdminDashboardService(
     IUserServiceRead userService,
     IMembershipCalculatorRead membershipCalculator,
     IApplicationServiceRead applicationDecisionService,
@@ -23,7 +24,7 @@ public sealed class AdminDashboardService(
             await applicationDecisionService.GetPendingApplicationCountAsync(ct);
         var appStats = await applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution chart: Active âˆª MissingConsents (pending-deletion split off earlier).
+        // Language distribution chart: Active ∪ MissingConsents (pending-deletion split off earlier).
         var approvedNotSuspended = new HashSet<Guid>(
             partition.Active.Concat(partition.MissingConsents));
         var languageDistribution = snapshot
@@ -51,14 +52,6 @@ public sealed class AdminDashboardService(
             appStats.AsociadoApplied,
             languageDistribution,
             setMembership);
-    }
-
-    // No local cache: GetAllUserInfosAsync is already cache-served (CachingUserService,
-    // write-through), so this count stays fresh-on-write. See viewcomponent-no-cache.md.
-    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
-    {
-        var count = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);
-        return count;
     }
 
     private async Task<UserSetMembership> BuildSetMembershipAsync(
