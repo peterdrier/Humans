@@ -3,6 +3,8 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
+using Humans.Web.Hosting;
+using Microsoft.Extensions.Configuration;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -100,7 +102,8 @@ public class SectionSeamTests
     [HumansFact]
     public void Internal_Section_Contributions_Are_Reflection_Constructible()
     {
-        var navs = SectionDiscoveryExtensions.DiscoverImplementations<ISectionAdminNav>();
+        var navs = SectionDiscoveryExtensions.DiscoverImplementations<ISectionAdminNav>(
+            SectionAssemblySnapshot.For(new ConfigurationBuilder().Build()));
 
         navs.Should().NotBeEmpty();
         navs.Should().OnlyContain(n => !n.GetType().IsPublic, "contributions stay off the section's public surface");
