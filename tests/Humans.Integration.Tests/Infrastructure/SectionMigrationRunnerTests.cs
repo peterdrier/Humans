@@ -304,6 +304,27 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     }
 
     [HumansFact]
+    public async Task CollectPendingFrontier_HistoryTableAbsent_ReturnsFullMigrationSet()
+    {
+        // Same fixture shape as ExistingDatabase_UsersBaselineMarkedApplied_WithoutExecuting:
+        // tables present, no history table. GetPendingMigrationsAsync would log an Error
+        // reading a history table that doesn't exist yet (nobodies-collective/Humans#1022);
+        // CollectPendingFrontierAsync must fall back to the full migration set instead.
+        var connectionString = await CreateDatabaseAsync("frontier_no_history");
+        await CreateUsersSchemaWithoutHistoryAsync(connectionString);
+
+        await using var db = CreateSectionContext<UsersDbContext>(connectionString);
+        var expected = db.Database.GetMigrations()
+            .Select(migration => $"{nameof(UsersDbContext)}:{migration}")
+            .ToList();
+
+        var frontier = await DatabaseMigrationHostedService.CollectPendingFrontierAsync(
+            [db], TestContext.Current.CancellationToken);
+
+        frontier.Should().BeEquivalentTo(expected);
+    }
+
+    [HumansFact]
     public async Task BothPaths_ProduceEquivalentUsersSchema()
     {
         // Model create-script path (the stand-in for a chain-built database — valid

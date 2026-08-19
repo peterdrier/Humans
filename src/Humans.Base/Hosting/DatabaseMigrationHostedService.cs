@@ -68,7 +68,7 @@ internal sealed class DatabaseMigrationHostedService(
     /// <c>GetPendingMigrationsAsync</c> per context - nothing here applies anything
     /// (nobodies-collective/Humans#989).
     /// </summary>
-    private static async Task<List<string>> CollectPendingFrontierAsync(
+    internal static async Task<List<string>> CollectPendingFrontierAsync(
         IEnumerable<DbContext> sectionContexts, CancellationToken cancellationToken)
     {
         var frontier = new List<string>();
