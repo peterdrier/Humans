@@ -53,7 +53,7 @@
     </div>
 }
 
-<vc:staffing-by-department />
+<vc:chrome-slot name="admin-dashboard" />
 
 <div class="row mb-4">
     @if (Model.AppStats.HasAny)
@@ -111,16 +111,6 @@
             </div>
         </div>
     }
-</div>
-
-<div class="split-panels" authorize-policy="AdminOnly">
-    <div class="card">
-        <div class="card-head">
-            <h3>Recent activity</h3>
-            <small>last 24h</small>
-        </div>
-        <vc:audit-log limit="8" layout="activity" show-card="false" empty-text="No recent activity." />
-    </div>
 </div>
 
 @if (sm.TotalUsers > 0)

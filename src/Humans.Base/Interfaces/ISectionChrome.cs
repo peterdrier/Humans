@@ -12,6 +12,9 @@ public static class ChromeSlots
     /// <summary>The member dashboard's contributed section area.</summary>
     public const string MemberDashboard = "member-dashboard";
 
+    /// <summary>The /Admin dashboard body's contributed section area.</summary>
+    public const string AdminDashboard = "admin-dashboard";
+
     /// <summary>The profileless-account (guest) page's contributed section area.</summary>
     public const string GuestPage = "guest-page";
 

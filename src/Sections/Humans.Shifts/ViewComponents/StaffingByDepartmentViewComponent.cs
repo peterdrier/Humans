@@ -1,18 +1,20 @@
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
 /// The "Staffing by department" card — event-wide coverage plus the per-department
-/// breakdown. Rendered as <c>&lt;vc:staffing-by-department&gt;</c> from Shell's admin
-/// dashboard.
+/// breakdown. Contributed into the admin dashboard's <c>admin-dashboard</c> chrome slot
+/// (<see cref="Humans.Shifts.SectionChrome"/>) since nobodies-collective/Humans#1091.
 /// </summary>
 /// <remarks>
-/// Public, under <c>Contracts/</c>, like <see cref="ShiftSignupsViewComponent"/> — MVC's
-/// default provider discovers it and the tag helper is generated at compile time.
-/// The department breakdown has no source yet; the card says so and points at Shifts.
+/// Internal — invoked by name through <c>ChromeSlotViewComponent</c>'s
+/// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper, so it does not need to
+/// be public under <c>Contracts/</c>. The department breakdown has no source yet; the card
+/// says so and points at Shifts.
 /// </remarks>
-public sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRead shifts) : ViewComponent
+internal sealed class StaffingByDepartmentViewComponent(IShiftManagementServiceRead shifts) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
