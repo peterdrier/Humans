@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
@@ -26,7 +25,6 @@ public class AuthorizationPolicyTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly IAuthorizationService _authorizationService;
-    private readonly IShiftManagementServiceRead _shiftManagement;
 
     public AuthorizationPolicyTests()
     {
@@ -44,11 +42,10 @@ public class AuthorizationPolicyTests : IDisposable
         // registered by Humans.Expenses' Section.Register, not by
         // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators
         // (design §15 step 6). Their coverage lives in Humans.Expenses.Tests.
-        // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
-        // (cached path); register a single shared substitute so per-test setups stick.
-        _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
-        services.AddSingleton(_shiftManagement);
+        // CampComplianceAccessHandler and IsAnyTeamManagerOrCoordinatorHandler moved into
+        // Humans.Shifts with the section and are registered by its Section.Register, not by
+        // AddHumansAuthorizationPolicies — so this graph no longer needs IShiftManagementServiceRead.
+        // Their coverage lives in Humans.Shifts.Tests.
         services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
@@ -113,14 +110,6 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.CampAdminOrAdmin, RoleNames.Board, false },
         { PolicyNames.CampAdminOrAdmin, RoleNames.TeamsAdmin, false },
 
-        // Role short-circuits only; the team-coordinator path (no coordinated teams in
-        // this fixture) is covered by the dedicated facts below.
-        { PolicyNames.CampComplianceAccess, RoleNames.CampAdmin, true },
-        { PolicyNames.CampComplianceAccess, RoleNames.Admin, true },
-        { PolicyNames.CampComplianceAccess, RoleNames.Board, false },
-        { PolicyNames.CampComplianceAccess, RoleNames.TeamsAdmin, false },
-        { PolicyNames.CampComplianceAccess, RoleNames.VolunteerCoordinator, false },
-
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.TicketAdmin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Admin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Board, true },
@@ -169,12 +158,6 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.ShiftDashboardAccess, RoleNames.VolunteerCoordinator, true },
         { PolicyNames.ShiftDashboardAccess, RoleNames.Board, false },
         { PolicyNames.ShiftDashboardAccess, RoleNames.TeamsAdmin, false },
-
-        { PolicyNames.ShiftDepartmentManager, RoleNames.Admin, true },
-        { PolicyNames.ShiftDepartmentManager, RoleNames.NoInfoAdmin, true },
-        { PolicyNames.ShiftDepartmentManager, RoleNames.VolunteerCoordinator, true },
-        { PolicyNames.ShiftDepartmentManager, RoleNames.Board, false },
-        { PolicyNames.ShiftDepartmentManager, RoleNames.TeamsAdmin, false },
 
         { PolicyNames.PrivilegedSignupApprover, RoleNames.Admin, true },
         { PolicyNames.PrivilegedSignupApprover, RoleNames.NoInfoAdmin, true },
@@ -547,92 +530,6 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var result = await AuthorizeAsync(PolicyNames.ShiftDashboardAccess, role);
         result.Succeeded.Should().Be(expected);
-    }
-
-    // --- ShiftDepartmentManager ---
-
-    [HumansTheory]
-    [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.NoInfoAdmin, true)]
-    [InlineData(RoleNames.VolunteerCoordinator, true)]
-    [InlineData(RoleNames.Board, false)]
-    [InlineData(RoleNames.TeamsAdmin, false)]
-    public async Task ShiftDepartmentManager_ChecksCorrectRoles(string role, bool expected)
-    {
-        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, role);
-        result.Succeeded.Should().Be(expected);
-    }
-
-    [HumansFact]
-    public async Task ShiftDepartmentManager_AllowsUserWithCoordinatedTeams()
-    {
-        var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
-
-        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
-
-        result.Succeeded.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task ShiftDepartmentManager_DeniesUserWithNoRoleAndNoCoordinatedTeams()
-    {
-        var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
-
-        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
-
-        result.Succeeded.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task ShiftDepartmentManager_PrivilegedRole_ShortCircuitsWithoutCallingShiftService()
-    {
-        _shiftManagement.ClearReceivedCalls();
-
-        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, RoleNames.Admin);
-
-        result.Succeeded.Should().BeTrue();
-        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
-    }
-
-    // --- CampComplianceAccess ---
-
-    [HumansFact]
-    public async Task CampComplianceAccess_AllowsUserWithCoordinatedTeams()
-    {
-        var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
-
-        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
-
-        result.Succeeded.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CampComplianceAccess_DeniesUserWithNoRoleAndNoCoordinatedTeams()
-    {
-        var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
-
-        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
-
-        result.Succeeded.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task CampComplianceAccess_CampAdmin_ShortCircuitsWithoutCallingShiftService()
-    {
-        _shiftManagement.ClearReceivedCalls();
-
-        var result = await AuthorizeAsync(PolicyNames.CampComplianceAccess, RoleNames.CampAdmin);
-
-        result.Succeeded.Should().BeTrue();
-        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
     }
 
     [HumansFact]

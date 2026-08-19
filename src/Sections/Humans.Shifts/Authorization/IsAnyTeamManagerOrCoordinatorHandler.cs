@@ -4,7 +4,7 @@ using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Shifts.Authorization;
 
 /// <summary>
 /// Succeeds when the user EITHER holds one of the privileged dashboard roles
@@ -16,7 +16,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// so it picks up the existing 60-second per-user cache (CacheKeys.ShiftAuthorization)
 /// rather than hitting the DB on every request.
 /// </summary>
-public class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementServiceRead shiftManagement)
+internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementServiceRead shiftManagement)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
     protected override async Task HandleRequirementAsync(
