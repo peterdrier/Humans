@@ -378,46 +378,48 @@ internal sealed class TicketQueryService(
     }
 
     /// <summary>
-    /// Joins campaign grants (which know how many codes went out) to paid orders
-    /// (which know what the codes cost) on the code itself. Redeemed codes with no
-    /// matching grant collapse into one unattributed row.
+    /// One row per campaign that granted codes, whether or not any were redeemed, so the
+    /// granted column totals org-wide rather than over the campaigns that happen to have
+    /// paid usage. Amounts come from the paid orders that carried each campaign's codes;
+    /// redeemed codes with no matching grant collapse into one unattributed row.
     /// </summary>
     private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync()
     {
-        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync())
-            .Where(o => o.IsPaid)
-            .ToList();
-        if (paidDiscountOrders.Count == 0)
-            return [];
-
         var campaignData = await campaignService.GetCodeTrackingAsync();
+        var campaignIds = campaignData.Campaigns.Select(c => c.CampaignId).ToHashSet();
 
         var campaignByCode = campaignData.Grants
-            .Where(g => !string.IsNullOrWhiteSpace(g.Code))
+            .Where(g => !string.IsNullOrWhiteSpace(g.Code) && campaignIds.Contains(g.CampaignId))
             .GroupBy(g => g.Code!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().CampaignId, StringComparer.OrdinalIgnoreCase);
 
-        var grantsByCampaign = campaignData.Campaigns
-            .ToDictionary(c => c.CampaignId, c => c);
+        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync())
+            .Where(o => o.IsPaid)
+            .ToList();
 
-        var rows = paidDiscountOrders
-            .GroupBy(o => campaignByCode.TryGetValue(o.DiscountCode, out var id) ? id : (Guid?)null)
-            .Where(g => g.Key is not null)
-            .Select(g =>
+        var usageByCampaign = paidDiscountOrders
+            .Where(o => campaignByCode.ContainsKey(o.DiscountCode))
+            .GroupBy(o => campaignByCode[o.DiscountCode])
+            .ToDictionary(
+                g => g.Key,
+                g => (Used: g.Count(), Total: g.Sum(o => o.DiscountAmount ?? 0m)));
+
+        var rows = campaignData.Campaigns
+            .Where(c => c.TotalGrants > 0)
+            .Select(c =>
             {
-                var used = g.Count();
-                var total = g.Sum(o => o.DiscountAmount ?? 0m);
-                grantsByCampaign.TryGetValue(g.Key!.Value, out var campaign);
+                usageByCampaign.TryGetValue(c.CampaignId, out var usage);
                 return new DiscountCampaignAggregate
                 {
-                    CampaignTitle = campaign?.CampaignTitle ?? "Unknown campaign",
-                    CodesGranted = campaign?.TotalGrants,
-                    CodesUsed = used,
-                    AverageDiscount = used > 0 ? Math.Round(total / used, 2) : 0m,
-                    TotalDiscount = total,
+                    CampaignTitle = c.CampaignTitle,
+                    CodesGranted = c.TotalGrants,
+                    CodesUsed = usage.Used,
+                    AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
+                    TotalDiscount = usage.Total,
                 };
             })
             .OrderByDescending(r => r.TotalDiscount)
+            .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unattributed = paidDiscountOrders

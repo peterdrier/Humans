@@ -65,6 +65,9 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+
+        _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampaignCodeTrackingData([], []));
     }
 
     [HumansFact]
@@ -301,6 +304,28 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         vendor.CodesUsed.Should().Be(1);
         vendor.AverageDiscount.Should().Be(10m);
         vendor.TotalDiscount.Should().Be(10m);
+    }
+
+    [HumansFact]
+    public async Task GetSalesAggregatesAsync_ByDiscountCampaign_KeepsCampaignsWithNoPaidRedemptions()
+    {
+        var campaignId = Guid.NewGuid();
+        StubCodeTracking(
+            new CampaignCodeTrackingSummary(campaignId, "Unused Comps", TotalGrants: 4, Redeemed: 0),
+            [("UNUSED1", campaignId), ("UNUSED2", campaignId)]);
+
+        await TicketsDb.TicketOrders.AddAsync(
+            MakeDiscountOrder("ord_unpaid", TicketPaymentStatus.Refunded, "UNUSED1", 25m));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.GetSalesAggregatesAsync();
+
+        var row = result.ByDiscountCampaign.Should().ContainSingle().Subject;
+        row.CampaignTitle.Should().Be("Unused Comps");
+        row.CodesGranted.Should().Be(4);
+        row.CodesUsed.Should().Be(0);
+        row.AverageDiscount.Should().Be(0m);
+        row.TotalDiscount.Should().Be(0m);
     }
 
     private void StubCodeTracking(
