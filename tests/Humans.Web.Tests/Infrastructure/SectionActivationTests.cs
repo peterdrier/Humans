@@ -18,6 +18,9 @@ public sealed class SectionActivationTests
 {
     private static IReadOnlyList<Assembly> Discovered => SectionDiscoveryExtensions.SectionAssemblies();
 
+    /// <summary>The Shell assembly, which always runs and consumes sections of its own.</summary>
+    private static Assembly Shell => typeof(SectionActivation).Assembly;
+
     private static IConfiguration Allowlist(params string[] sections) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(sections
@@ -27,7 +30,7 @@ public sealed class SectionActivationTests
     [HumansFact]
     public void NoAllowlistActivatesEverySection()
     {
-        SectionActivation.Resolve(Discovered, new ConfigurationBuilder().Build())
+        SectionActivation.Resolve(Discovered, Shell, new ConfigurationBuilder().Build())
             .Should().BeNull(because: "the shipped default runs every section that ships");
 
         Discovered.Should().OnlyContain(a => SectionActivation.IsActive(SectionName(a)));
@@ -38,30 +41,59 @@ public sealed class SectionActivationTests
     {
         var all = Discovered.Select(SectionName).ToList();
 
-        SectionActivation.Resolve(Discovered, Allowlist([.. all]))
+        SectionActivation.Resolve(Discovered, Shell, Allowlist([.. all]))
             .Should().BeEquivalentTo(all);
     }
 
     [HumansFact]
     public void AllowlistIsMatchedCaseInsensitivelyAndCanonicalised()
     {
-        // A section that consumes nothing, so the allowlist can hold it alone.
-        var leaves = SectionActivation.DependencyGraph(Discovered)
-            .Where(e => e.Value.Count == 0)
-            .Select(e => e.Key)
-            .Order(StringComparer.Ordinal)
-            .ToList();
+        var all = Discovered.Select(SectionName).ToList();
 
-        leaves.Should().NotBeEmpty(because: "some section sits at the bottom of the graph");
+        SectionActivation.Resolve(Discovered, Shell, Allowlist([.. all.Select(n => n.ToUpperInvariant())]))
+            .Should().BeEquivalentTo(all,
+                because: "names match case-insensitively and come back spelled as discovery found them");
+    }
 
-        SectionActivation.Resolve(Discovered, Allowlist(leaves[0].ToUpperInvariant()))
-            .Should().Contain(leaves[0]);
+    [HumansFact]
+    public void ExplicitlyEmptyAllowlistIsZeroSectionsNotEverySection()
+    {
+        // How `"Sections:Active": []` binds: the key is present with an empty value, which
+        // is what separates it from the key being absent.
+        var empty = new ConfigurationBuilder()
+            .AddInMemoryCollection([new KeyValuePair<string, string?>(SectionActivation.ActiveKey, "")])
+            .Build();
+
+        var act = () => SectionActivation.Resolve(Discovered, Shell, empty);
+
+        act.Should().Throw<InvalidOperationException>(
+            because: "activating nothing leaves Shell running with none of the sections it consumes, "
+                     + "where the absent key means every section and resolves to null");
+    }
+
+    [HumansFact]
+    public void DeactivatingASectionShellItselfConsumesFails()
+    {
+        var shellDependencies = SectionActivation.ShellDependencies(Discovered, Shell);
+        shellDependencies.Should().NotBeEmpty(
+            because: "Shell's own controllers name section Contracts types");
+
+        var dropped = shellDependencies[0];
+        var allowed = Discovered.Select(SectionName)
+            .Where(name => !name.Equals(dropped, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist(allowed));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{dropped}*{SectionName(Shell)}*",
+                because: "Shell always runs, so no allowlist may deactivate what Shell consumes");
     }
 
     [HumansFact]
     public void AllowlistNamingSomethingThatIsNotASectionFails()
     {
-        var act = () => SectionActivation.Resolve(Discovered, Allowlist("NotASection"));
+        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist("NotASection"));
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*NotASection*", because: "a typo must not silently drop a section");
@@ -72,7 +104,7 @@ public sealed class SectionActivationTests
     {
         var (dependent, dependency) = FirstEdge();
 
-        var act = () => SectionActivation.Resolve(Discovered, Allowlist(dependent));
+        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist(dependent));
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage($"*{dependency}*{dependent}*",

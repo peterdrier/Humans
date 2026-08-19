@@ -45,6 +45,14 @@ internal sealed class SectionViewComponentFeatureProvider
                     feature.ViewComponents.Add(type);
             }
         }
+
+        // The default provider already took every public one, including from sections this
+        // deployment deactivated; drop those, or they resolve services nobody registered (#1081).
+        for (var i = feature.ViewComponents.Count - 1; i >= 0; i--)
+        {
+            if (SectionDiscoveryExtensions.IsInactiveSectionAssembly(feature.ViewComponents[i].Assembly))
+                feature.ViewComponents.RemoveAt(i);
+        }
     }
 
     private static bool IsSectionViewComponent(TypeInfo typeInfo)

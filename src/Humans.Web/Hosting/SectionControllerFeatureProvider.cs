@@ -27,6 +27,11 @@ internal sealed class SectionControllerFeatureProvider : ControllerFeatureProvid
 
     protected override bool IsController(TypeInfo typeInfo)
     {
+        // A deactivated section routes nothing, public or not — the base provider would
+        // otherwise still take its public controllers (#1081).
+        if (SectionDiscoveryExtensions.IsInactiveSectionAssembly(typeInfo.Assembly))
+            return false;
+
         if (base.IsController(typeInfo))
             return true;
 

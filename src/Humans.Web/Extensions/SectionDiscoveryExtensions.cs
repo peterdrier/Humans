@@ -140,6 +140,18 @@ public static class SectionDiscoveryExtensions
     /// </summary>
     internal static bool IsSectionAssembly(Assembly assembly) => SectionAssemblySet.Value.Contains(assembly);
 
+    private static readonly Lazy<HashSet<Assembly>> InactiveSectionAssemblySet =
+        new(() => [.. SectionAssemblies().Except(ActiveSectionAssemblies())]);
+
+    /// <summary>
+    /// True for a section assembly this deployment deactivated. MVC's default feature
+    /// providers walk every application part, so a deactivated section's <em>public</em>
+    /// controllers and view components stay routable unless something takes them back out —
+    /// and they then resolve services no <c>Register</c> call ever added (#1081).
+    /// </summary>
+    internal static bool IsInactiveSectionAssembly(Assembly assembly) =>
+        InactiveSectionAssemblySet.Value.Contains(assembly);
+
     /// <summary>The section a <paramref name="assembly"/> is: its name without the
     /// <c>Humans.</c> prefix.</summary>
     internal static string SectionName(Assembly assembly) =>
