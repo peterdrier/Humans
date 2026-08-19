@@ -44,8 +44,35 @@ mirror tables runs before this baseline recreates them.
   Finance's doc-sync row, Sync now / Full sync buttons, and the chart of accounts with
   reconciliation flags — split by PGC group (named in English from the account number's leading
   digit, not Holded's Spanish `group` string), accounts with no cached lines hidden by default.
+  Account balances read in the association's POV (below).
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
-  creditors), native Holded sign, header + all cached journal lines.
+  creditors): header balances, and every cached line with its counterparty and signed Amount,
+  both in the association's POV. The Entry cell links to the entry page below.
+- `/Holded/Entries/{number}` — every leg of one journal entry (account + name, type,
+  description, signed Amount), no balancing total row. 404 when no cached line carries the
+  entry number.
+
+### Association-POV sign convention
+
+No page under `/Holded` shows a Debit or Credit column — every ledger row and every account
+balance (`HoldedBalance`, `LocalBalance` on `/Holded` and `/Holded/Accounts/{number}`) is a
+single signed `Amount`: **+ means the association's money went up, − means it went down.**
+Because assets and income carry opposite bookkeeping signs, "money up" maps to the account
+group (the number's leading digit): groups 1–5 (equity, assets, banks, debtors, creditors) show
+`Debit − Credit`; groups 6–9 (expenses, income, and their equity-charged counterparts) show
+`Credit − Debit`. The flip is **display-only** — reconciliation (below) always compares the raw
+`Debit − Credit` convention, before it is applied. `/Expenses` is a different page in a
+different section and stays in the *user's* POV (+ means the user is owed money); it is
+untouched by this convention.
+
+### Counterparty
+
+Each ledger row's counterparty is resolved from the entry's *other* legs posted to the opposite
+raw side (a debit line's counterparties are the entry's credit lines) — Holded's API does not
+return a contra account, so this is derived by grouping the mirror's lines on `EntryNumber`.
+Exactly one opposing line shows that account, linked; more than one (e.g. a purchase invoice:
+expense + VAT + creditor) shows the largest by absolute amount plus "+N more", linked to the
+entry page instead.
 
 ## Actors & Roles
 
