@@ -186,9 +186,43 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansFact]
-    public async Task UpsertContactAsync_OmitsBillAddressWhenNoAddressIsHeld()
+    public async Task UpsertContactAsync_OmitsEveryFieldItHoldsNoValueFor()
     {
-        // Sending an object of nulls would blank an address already on the contact.
+        // Holded applies every key a PUT carries, so a null blanks the stored value. Finance's
+        // creditor update supplies only name/trade name/type/iban — the tax code, email and billing
+        // address maintained in Holded for that contact must survive it untouched.
+        string? body = null;
+        var handler = new StubHandler(req =>
+        {
+            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.OK, """{"id":"contact-1"}""");
+        });
+
+        await Make(handler).UpsertContactAsync(
+            new HoldedContactInput
+            {
+                Name = "Supplier",
+                Type = "creditor",
+                Iban = "ES9121000418450200051332",
+                ExistingContactId = "contact-1",
+            },
+            Xunit.TestContext.Current.CancellationToken);
+
+        body.Should().NotContain("code");
+        body.Should().NotContain("email");
+        body.Should().NotContain("bill_address");
+        body.Should().NotContain("trade_name");
+        body.Should().NotContain("null");
+        // What it does mean to send still goes.
+        body.Should().Contain("\"name\":\"Supplier\"");
+        body.Should().Contain("\"type\":\"creditor\"");
+        body.Should().Contain("\"iban\":\"ES9121000418450200051332\"");
+    }
+
+    [HumansFact]
+    public async Task UpsertContactAsync_StillSendsTheFieldsItDoesHold()
+    {
+        // Omission must not swallow a value a caller deliberately supplied.
         string? body = null;
         var handler = new StubHandler(req =>
         {
@@ -196,11 +230,42 @@ public class HoldedClientSalesDocumentTests
             return Respond(HttpStatusCode.Created, """{"id":"contact-1"}""");
         });
 
-        await Make(handler).UpsertContactAsync(
-            new HoldedContactInput { Name = "Supplier", Type = "creditor" },
+        await Make(handler).UpsertContactAsync(new HoldedContactInput
+        {
+            Name = "Camp Frio SL",
+            TradeName = "Camp Frio",
+            Type = "client",
+            TaxCode = "B12345678",
+            Email = "lead@campfrio.example",
+            Address = "Calle Falsa 1",
+            CountryCode = "ES",
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        body.Should().Contain("\"trade_name\":\"Camp Frio\"");
+        body.Should().Contain("\"code\":\"B12345678\"");
+        body.Should().Contain("\"email\":\"lead@campfrio.example\"");
+        body.Should().Contain("\"address\":\"Calle Falsa 1\"");
+        body.Should().Contain("\"country_code\":\"ES\"");
+    }
+
+    [HumansFact]
+    public async Task CreateSalesDocumentAsync_OmitsTheContactOnAReceipt()
+    {
+        // A sales receipt carries no counterparty; `"contact_id":null` is not the same as absent.
+        string? body = null;
+        var handler = new StubHandler(req =>
+        {
+            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.Created, """{"id":"doc-9"}""");
+        });
+
+        await Make(handler).CreateSalesDocumentAsync(
+            HoldedSalesDocumentKind.SalesReceipt,
+            Input() with { ContactId = null },
             Xunit.TestContext.Current.CancellationToken);
 
-        body.Should().Contain("\"bill_address\":null");
+        body.Should().NotContain("contact_id");
+        body.Should().Contain("\"contact_name\":\"Camp Frio SL\"");
     }
 
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
