@@ -135,7 +135,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - The system team sync job runs hourly, reconciling system team membership.
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
-- On every applied Drive/Group permission grant or revocation — success or failure — `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`.
+- On every applied Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`. Group mutations record failures too (`success: false` + the API error); the Drive paths currently record successes only — see nobodies-collective/Humans#1099.
 
 ## Cross-Section Dependencies
 
