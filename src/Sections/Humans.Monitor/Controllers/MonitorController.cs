@@ -23,7 +23,7 @@ namespace Humans.Monitor.Controllers;
 /// render the same <c>SyncAudit</c> view.
 ///
 /// The rows themselves are no longer read here: the page emits
-/// <c>&lt;vc:audit-log layout="sync"&gt;</c> and the AuditLog section owns the read and the
+/// <c>&lt;vc:google-sync-log&gt;</c> and the GoogleIntegration section owns the read and the
 /// render.
 ///
 /// What stayed in AuditLog is the general audit browser (<c>/AuditLog</c>), which reaches no

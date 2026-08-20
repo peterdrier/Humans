@@ -26,14 +26,13 @@ No `IMemoryCache`.
 
 ### AuditViewerService (Scoped) — `src/Sections/Humans.AuditLog/Services/`
 
-No repository. Read-only view assembler over `IAuditLogService`,
-`IUserServiceRead`, `ITeamServiceRead`, `ITeamResourceService`. No DB
-access, no cache. `internal sealed`; its interface, `AuditEvent` and
-`AuditEventPage` sit in the project's `Contracts/` folder. The section
-takes `Humans.Teams.Contracts`, `Humans.GoogleIntegration.Contracts` and
-`Humans.Users.Contracts`. Team names are stitched by filtering the cached
-`ITeamServiceRead.GetTeamsAsync()` `TeamInfo` dictionary client-side (only
-`Name`/`Slug` are consumed; parent data is not used).
+No repository. Read-only view assembler over the section-internal
+`IAuditLogReader` plus `IEnumerable<IEntityNameContributor>` (`Humans.Base`).
+No DB access, no cache. `internal sealed`; its interface, `AuditEvent` and
+`AuditEventPage` sit in the project's `Contracts/` folder. It names no other
+section: actor, subject and target-team display names come back from the
+contributor fan-out (nobodies-collective/Humans#1059), so the section no
+longer takes `Humans.Teams.Contracts` or `Humans.GoogleIntegration.Contracts`.
 
 `AuditEvent` and `AuditEventTextualizer` are value types / pure
 formatters with no DI dependencies.

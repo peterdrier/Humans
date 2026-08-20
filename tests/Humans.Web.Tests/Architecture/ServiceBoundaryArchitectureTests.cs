@@ -61,6 +61,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Gate.Data.IGateRepository")] = "Gate",
             [SectionRepository("Humans.GoogleIntegration.Data.IGoogleResourceRepository")] = "GoogleIntegration",
             [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncOutboxRepository")] = "GoogleIntegration",
+            [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncLogRepository")] = "GoogleIntegration",
             [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
             [SectionRepository("Humans.Holded.Data.IHoldedMirrorRepository")] = "Holded",
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",

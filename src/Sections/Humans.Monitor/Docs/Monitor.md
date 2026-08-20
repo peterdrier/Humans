@@ -39,16 +39,16 @@ horizontal.** It is a leaf consumer: it sits above both and nothing sits above i
 - **Time-window dedup** — each scan processes only events since the last successful run,
   persisted through `ISystemSettingsService` under the `DriveActivityMonitorJob` key. First run,
   or a missing marker, falls back to 24 hours.
-- **Google sync audit trail** — the audit entries carrying `ResourceId` / `SyncSource` /
-  `Success`, shown for one resource or one human. Monitor does not read them: `SyncAudit.cshtml`
-  emits `<vc:audit-log layout="sync">` with the predicate and the AuditLog section owns the read
-  and the render.
+- **Google sync log** — GoogleIntegration's `google_sync_log` rows, shown for one resource or one
+  human. Monitor does not read them: `SyncAudit.cshtml` emits `<vc:google-sync-log>` with the
+  predicate and the GoogleIntegration section owns the read and the render
+  (nobodies-collective/Humans#1083).
 
 ## Data Model
 
 **Monitor owns no tables.** No `DbContext`, no repository, no migrations, no G4 gate. It reads
 Google through GoogleIntegration's connector abstraction, writes audit through
-`IAuditLogService`, renders audit through `<vc:audit-log>`, and stores its one piece of state
+`IAuditLogService`, renders the sync log through `<vc:google-sync-log>`, and stores its one piece of state
 (the last-run timestamp) in SystemSettings. `MonitorArchitectureTests.SectionOwnsNoDbContext` pins this.
 
 ## Actors / Roles
@@ -101,8 +101,8 @@ registration moves into the section, policy registration does not).
 
 | Direction | Section | Through |
 |---|---|---|
-| out | GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService` |
-| out | AuditLog | `IAuditLogService` (write), `<vc:audit-log layout="sync">` (render) |
+| out | GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService`, `<vc:google-sync-log>` (render) |
+| out | AuditLog | `IAuditLogService` (write) |
 | out | SystemSettings | `ISystemSettingsService` (last-run marker) |
 | out | Users | `IUserServiceRead` (resolve Google actors to humans) |
 | in | — | none; Shell names `DriveActivityMonitorJob`, which is in this project |

@@ -297,7 +297,7 @@ The 28 table-owning sections are listed below. The other 14 section projects own
 | **Scanner** | none (G5 project `Humans.Scanner`; no business logic and no `Services/` folder — its controller reads via `ITicketServiceRead`) | none |
 | **Gate** | `GateService` (G5 project `Humans.Gate`) | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleWorkspaceSyncService` (the production `IGoogleSyncService`; `StubGoogleSyncService` stands in when no credentials are configured), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `TeamResourceService` (the Teams↔Drive linking surface — lives in `Humans.GoogleIntegration.Services`, not Teams) — G5 project `Humans.GoogleIntegration`, published via `Humans.GoogleIntegration.Contracts` | `sync_service_settings`, `google_sync_outbox`, `google_resources` |
+| **Google Integration** | `GoogleWorkspaceSyncService` (the production `IGoogleSyncService`; `StubGoogleSyncService` stands in when no credentials are configured), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleSyncLogService`, `TeamResourceService` (the Teams↔Drive linking surface — lives in `Humans.GoogleIntegration.Services`, not Teams) — G5 project `Humans.GoogleIntegration`, published via `Humans.GoogleIntegration.Contracts` | `sync_service_settings`, `google_sync_outbox`, `google_sync_log`, `google_resources` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService` (the `IEmailService` implementation, published via `Humans.Email.Contracts`) | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
 | **System Settings** | `ISystemSettingsService` (G5 project `Humans.SystemSettings`; implemented by the section-internal `Service`) | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
 | **MailerLite** | `MailerLiteImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |
@@ -351,13 +351,16 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 §8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. **The original reason for iterating sequentially is obsolete** — it was "the contributors share the scoped `HumansDbContext`, which is not thread-safe", but since the per-section split (nobodies-collective/Humans#858) contributors such as `ExpenseReportService`, `SurveyService`, `AgentService`, `EventService` and Finance's `Service` read through their own `IDbContextFactory<TContext>` against separate contexts, and independent factory-created contexts are safe to use concurrently (EF's restriction is on concurrent operations against the *same* instance). Sequential iteration is now a consistency and simplicity choice, not a correctness requirement.
 
-Three fanouts exist today:
+Four fanouts exist today:
 
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
 | `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
 | `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
+| any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
+
+`IEntityNameContributor` is the one that lives in Base rather than in a consumer's contracts leaf, because it has more than one consumer and they must not reference each other (nobodies-collective/Humans#1059). It inverts the arrow that used to make AuditLog reference Teams and GoogleIntegration just to print names: sections point at the Base contract, and the consumer names no section. Wide-fan-in sections that must not gain outbound links — Audit, Auth, Search — are exactly its intended callers.
 
 Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
 
@@ -457,7 +460,7 @@ Some services are used across all sections. They own their own tables but are in
 | Service | Purpose | Owned Tables |
 |---------|---------|--------------|
 | `RoleAssignmentService` | Temporal role memberships (Auth section) — the gateway for all role queries | `role_assignments` |
-| `AuditLogService` | Append-only audit trail for user actions and sync operations | `audit_log` |
+| `AuditLogService` | Append-only audit trail for user actions | `audit_log` |
 | `EmailOutboxService` | Queue and track transactional emails | `email_outbox_messages` |
 | `NotificationService` | In-app notifications (G5 project `Humans.Notifications`) | `notifications`, `notification_recipients` |
 

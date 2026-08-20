@@ -8,7 +8,7 @@
   src/Sections/Humans.AuditLog/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  AuditLogEntry schema, AuditAction/GoogleSyncSource enum values, immutability triggers, and audit-log views/routes — review when AuditAction enum, AuditLogService, or audit-log UI change.
+  AuditLogEntry schema, AuditAction enum values, immutability triggers, and audit-log views/routes — review when AuditAction enum, AuditLogService, or audit-log UI change.
 -->
 
 # F-12: Audit Log
@@ -32,24 +32,10 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | ActorUserId | Guid? | Human actor (null for jobs) |
 | RelatedEntityId | Guid? | Secondary entity |
 | RelatedEntityType | string? | "User", "Team", etc. |
-| ResourceId | Guid? | Guid reference to GoogleResource, no DB-level FK constraint (Google sync only) |
-| Success | bool? | Whether Google API call succeeded (Google sync only) |
-| ErrorMessage | string? | Error details if call failed (Google sync only) |
-| Role | string? | Role granted/revoked, e.g. "writer", "MEMBER" (Google sync only) |
-| SyncSource | GoogleSyncSource? (string) | What triggered the sync action (Google sync only) |
-| UserEmail | string? | Email at time of action, denormalized (Google sync only) |
 
 Table: `audit_log`
 
-### GoogleSyncSource Enum
-
-Stored as string in the database. Values:
-- `TeamMemberJoined` — User joined a team, triggering resource access
-- `TeamMemberLeft` — User left a team, triggering revocation
-- `ManualSync` — Admin clicked "Sync Now"
-- `ScheduledSync` — Automated periodic sync
-- `Suspension` — Member suspension triggered revocation
-- `SystemTeamSync` — System team sync job
+The columns `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083; nothing reads or writes them any more and the entity keeps them only so the historical rows stay readable until the data move retires them. The column drop is its own PR under `no-drops-until-prod-verified`.
 
 ### Immutability
 
@@ -70,7 +56,7 @@ The section splits into a write side and a read+render side:
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
 
-Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails. `LogGoogleSyncAsync` is the third overload for permission-change events with the Google-specific nullable fields.
+Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails.
 
 **`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section (no per-call-site dance with `GetUserDisplayNamesAsync` / `GetTeamNamesAsync`). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
 
@@ -126,11 +112,9 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 |--------|-------------|-------|
 | Anomalous permission change detected | AnomalousPermissionDetected | DriveActivityMonitorJob |
 
-### Google Sync Audit (LogGoogleSyncAsync)
+### Google Sync Audit — moved out
 
-For permission-change actions, `LogGoogleSyncAsync` populates the Google-specific nullable fields alongside the standard fields. This provides structured detail for per-resource and per-user audit views without requiring a separate table.
-
-The service method sets `EntityType = "GoogleResource"` and `EntityId = resourceId` for these entries.
+Permission-change detail (user email, role, sync source, success flag, error message) is no longer audit's business. GoogleIntegration owns `google_sync_log` and renders it through `<vc:google-sync-log>` (nobodies-collective/Humans#1083). See [GoogleIntegration.md](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md).
 
 ## User Interface
 
@@ -146,13 +130,9 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 
 POST action on `MonitorController` (moved from `AuditLogController` at nobodies-collective/Humans#866 — see [`AuditLog.md`](../AuditLog.md#routing)). Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
-### Per-Resource Google Sync Audit (`/Monitor/Resource/{id}`)
+### Google sync pages (`/Monitor/Resource/{id}`, `/Monitor/Human/{id}`)
 
-Displays all audit entries for a specific Google resource, queried by `ResourceId`. Shows structured Google sync details: user email, role, sync source, success/failure status, and error messages. Accessible to Board and Admin. Accessed via "Audit" button on each row of the Google Sync page.
-
-### Per-User Google Sync Audit (`/Monitor/Human/{id}`)
-
-Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name, resolved via `ITeamResourceService.GetResourceNamesByIdsAsync` (no navigation property — cross-section read-interface call). Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
+Not audit pages any more — they render `<vc:google-sync-log>` over GoogleIntegration's `google_sync_log`. Documented in [Monitor.md](../../../Humans.Monitor/Docs/Monitor.md).
 
 ### Per-User Audit View (MemberDetail page)
 

@@ -6,10 +6,11 @@ Folder: `src/Sections/Humans.GoogleIntegration/Services/` — repository
 under `Data/`; the Directory / Drive / Groups / Translation API clients
 live under `Services/Workspace/`. **DbContext:**
 `GoogleIntegrationDbContext`. `GoogleResourceRepository`,
-`GoogleSyncOutboxRepository`, and `SyncSettingsRepository` all inject
+`GoogleSyncOutboxRepository`, `GoogleSyncLogRepository` and
+`SyncSettingsRepository` all inject
 `IDbContextFactory<GoogleIntegrationDbContext>` directly. Owns
-`SyncServiceSettings`, `GoogleSyncOutboxEvents`, and `GoogleResources`
-(the latter via `TeamResourceService`). The per-address
+`SyncServiceSettings`, `GoogleSyncOutboxEvents`, `GoogleSyncLog`, and
+`GoogleResources` (the last via `TeamResourceService`). The per-address
 `UserEmails.GoogleEmailStatus` write goes through `IUserService`
 (`TrySetGoogleEmailStatusFromSyncAsync`, targeting the canonical Google row)
 per §15.
@@ -91,6 +92,21 @@ events through a service interface rather than reaching into the repository.
 `TeamService` calls `IGoogleSyncOutboxService.AddAsync` /
 `AddRangeAsync` inside a `TransactionScope` to keep each team mutation
 atomic with its outbox event. No cross-section calls, no cache.
+
+### GoogleSyncLogService (Scoped)
+
+Repository: `IGoogleSyncLogRepository`.
+
+| Table | R/W |
+|-------|-----|
+| GoogleSyncLog | R/W |
+
+Implements the internal write side (`IGoogleSyncLogService`) and the public
+read side (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`. Writes are
+best-effort — a repository failure is logged at Error and swallowed so a sync
+never fails on its own bookkeeping. Cross-section calls: `ITeamResourceService`
+(resource display names) and `IUserServiceRead.GetMergedSourceIdsAsync`
+(chain-follow merge tombstones on per-user reads). No cache.
 
 ### TeamResourceService (Scoped)
 

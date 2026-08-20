@@ -33,6 +33,14 @@ Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-se
 
 Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two event types defined in `GoogleSyncOutboxEventTypes`: `AddUserToTeamResources` and `RemoveUserFromTeamResources`.
 
+### GoogleSyncLogEntry
+
+**Table:** `google_sync_log`
+
+One row per permission grant or revocation the sync path applies: `Action` (`AccessGranted` / `AccessRevoked`), `ResourceId`, optional `UserId`, `UserEmail` at the time of the call, `Role`, `Source` (`GoogleSyncSource`), `Success`, `ErrorMessage`, `Description`, `JobName`, `OccurredAt`. All Guids are bare columns — no navs, no FKs. Enums persist as strings; indexes on `ResourceId`, `UserId` and `OccurredAt`.
+
+This wing lived in `audit_log` until nobodies-collective/Humans#1083. It was never audit's concern — the columns were nullable on every non-Google row and the render path forced AuditLog to reach into Teams and GoogleIntegration for names. The section that produces the rows now owns them.
+
 ### Google resource entities
 
 `GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.
@@ -125,6 +133,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - The system team sync job runs hourly, reconciling system team membership.
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
+- On every applied Drive/Group permission grant or revocation — success or failure — `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`.
 
 ## Cross-Section Dependencies
 
@@ -144,7 +153,7 @@ Both previously-flagged cross-domain gaps are resolved:
 ## Architecture
 
 **Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
-**Owned tables:** `sync_service_settings`, `google_sync_outbox`
+**Owned tables:** `sync_service_settings`, `google_sync_outbox`, `google_sync_log`
 **Status:** (A) Fully migrated. The two consumer-side cross-domain gaps once tracked on other sections (Teams, Users/Profiles) are resolved — see [Pending consumer-side `/section-align` targets](#pending-consumer-side-section-align-targets) above. The AuditLog gap (`AuditLogEntry.Resource` nav + `.Include`) was resolved in nobodies-collective/Humans#1188: the nav was dropped, `AuditLogRepository` no longer `.Include`s it, and resource-name resolution goes through `ITeamResourceService.GetResourceNamesByIdsAsync`. All Google Integration business services live in `Humans.GoogleIntegration.Services` since the section's G5 move (nobodies-collective/Humans#866). Migration completed under umbrella issue nobodies-collective/Humans#554 across multiple parts: `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` in peterdrier/Humans PR #267 (issue nobodies-collective/Humans#289); `IGoogleSyncOutboxRepository` extracted in Part 1 (2026-04-23); SDK bridge interfaces (`IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`) extracted in Part 2a (issue nobodies-collective/Humans#574, PR #302); `GoogleWorkspaceSyncService` moved to Application in Part 2b (issue nobodies-collective/Humans#575, 2026-04-23); and the last direct-DbContext consumers (`ProcessGoogleSyncOutboxJob`, `GoogleController.SyncOutbox`) flipped onto the repository surface in Part 2c (issue nobodies-collective/Humans#576, 2026-04-23). The section now has zero non-repository direct `DbSet<GoogleSyncOutboxEvent>` / `DbSet<GoogleResource>` / `DbSet<SyncServiceSettings>` reads or writes across Application + Web layers. Surface alignment completed in PR #500 (2026-05-12): DI registrations consolidated into `GoogleIntegrationSectionExtensions`; `GoogleSyncAuditView` / `BuildGoogleSyncAuditViewModel` helpers moved from `HumansControllerBase` into `GoogleController`; Google-owned ViewModels regrouped under `Models/Google/`; service and repository tests relocated to `tests/Humans.GoogleIntegration.Tests/`.
 
 - Service(s) live in `src/Sections/Humans.GoogleIntegration/Services/` (namespace `Humans.GoogleIntegration.Services`) and never import `Microsoft.EntityFrameworkCore`.
@@ -154,10 +163,17 @@ Both previously-flagged cross-domain gaps are resolved:
 - **Cross-section calls** — `ITeamService`, `ITeamResourceService`, `IUserService`, `IUserEmailService`, `IEmailService`, `ISystemSettingsService` (Drive monitor `DriveActivityMonitor:LastRunAt` marker in `system_settings`), `IAuditLogService` (write path — `GoogleController` logs requeue/link/remediate actions; `IAuditLogRepository` itself is `internal` to the AuditLog section and not reachable cross-section). `IProfileService` no longer exists — its surface was folded into `IUserService`.
 - **Architecture tests** — `tests/Humans.GoogleIntegration.Tests/Architecture/GoogleIntegrationArchitectureTests.cs` (pins `EmailProvisioningService` + `GoogleWorkspaceSyncService`: namespace, no-DbContext, no-Google.Apis, sealed); `GoogleAdminArchitectureTests.cs` (pins `GoogleAdminService`); `GoogleWorkspaceUserArchitectureTests.cs` (pins `GoogleWorkspaceUserService` + `IWorkspaceUserDirectoryClient` shape-neutrality + `Humans.Application` assembly-level no-Google.Apis assertion); `GoogleWorkspaceSyncBridgeArchitectureTests.cs` (pins all four Part 2a bridge interfaces for namespace, shape-neutrality, and no-Google.Apis at the assembly level).
 
+### `<vc:google-sync-log>` — the sync-log render path
+
+A section that wants to *show* sync history emits `<vc:google-sync-log>` with `resource-id` or `user-id`; it never reads the log itself. The component owns the read (`IGoogleSyncLogViewer`) and the render, and it takes `title` / `empty-text` from the host page because this section ships no resource set for it. Monitor is the only consumer today (`/Monitor/Resource/{id}`, `/Monitor/Human/{id}`) and needs both a `ProjectReference` and `@addTagHelper *, Humans.GoogleIntegration` in its `_ViewImports.cshtml`; a missing directive is silent — the element ships as inert literal markup with a green build. `MonitorPageRenderTests` seeds a row and asserts it reaches the page.
+
+The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLogView` DTO are public only because a cross-assembly ViewComponent's constructor parameters must be. The write side, `IGoogleSyncLogService`, stays `internal` — nothing outside this section appends to the log.
+
 ### Repository surface
 
 - **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:34`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
 - **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox` (table name in EF config: `google_sync_outbox`; `design-rules.md §8` lists this as `google_sync_outbox_events` — that name is stale, the table is `google_sync_outbox`). Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and, since #992, no FK constraint either — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
+- **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + two top-N reads (by resource, by user ids), capped at 200 rows each. Its only caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`.
 - **`IGoogleResourceRepository`** — narrow writes to the sibling-owned `google_resources` table (Teams section §8 owner). Used by `GoogleWorkspaceSyncService` for reconciliation-loop atomic writes. All broader reads/writes route through `ITeamResourceService`.
 
 > `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISystemSettingsService`. See [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md).
