@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
@@ -11,7 +10,6 @@ namespace Humans.Search.Services;
 
 /// <summary>
 /// Per-entity-field search orchestrator (no cross-modal traversal): each section matches and scores its own hits, this returns five buckets of keys (unsorted).
-/// Events is the one bucket still scored here — it publishes no scored search hit (nobodies-collective/Humans#1062).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
 internal sealed class SearchService(
@@ -116,26 +114,13 @@ internal sealed class SearchService(
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchEventsAsync(
         string query, int limit, CancellationToken ct)
     {
-        // Reuse the public Browse query — Approved-only, filtered server-side by title/description.
-        // Scoring stays here, unlike the other three buckets: Events publishes no scored search hit
-        // to move it onto (nobodies-collective/Humans#1062). Rows that only matched via Description
-        // score 0 on Title and fall through to the contains tier so they still appear.
-        var hits = await eventService.GetApprovedEventsAsync(
-            campId: null, venueId: null, categoryId: null,
-            q: query, excludedSlugs: Array.Empty<string>(), ct);
-
+        var hits = await eventService.SearchAsync(query, limit, ct);
         return hits
-            .Select(e =>
-            {
-                var titleScore = e.Title.NameMatchScore(query);
-                return new GlobalSearchResult(
-                    Type: SearchResultType.Event,
-                    Key: e.Id,
-                    SortKey: e.Title,
-                    Score: titleScore > 0 ? titleScore : StringSearchExtensions.ContainsNameScore);
-            })
-            .OrderByDescending(r => r.Score) // arch:db-sort-ok top-N relevance selector
-            .Take(limit)
+            .Select(e => new GlobalSearchResult(
+                Type: SearchResultType.Event,
+                Key: e.EventId,
+                SortKey: e.Title,
+                Score: e.Score))
             .ToList();
     }
 }

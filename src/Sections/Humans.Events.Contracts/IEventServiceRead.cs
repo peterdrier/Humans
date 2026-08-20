@@ -32,4 +32,14 @@ public interface IEventServiceRead
 
     /// <summary>The event ids the given user has favourited.</summary>
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Approved events whose Title or Description contains <paramref name="query"/>
+    /// (case-insensitive), each scored by this section — see <see cref="EventSearchHit"/>
+    /// for the tiering. Capped at <paramref name="max"/>; returned in unspecified order —
+    /// the global search orchestrator ranks. Served from the approved-only cache. Used by
+    /// the global /Search page (<c>SearchService</c>); nobodies-collective/Humans#1062.
+    /// </summary>
+    Task<IReadOnlyList<EventSearchHit>> SearchAsync(
+        string query, int max, CancellationToken ct = default);
 }

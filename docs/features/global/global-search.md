@@ -79,7 +79,7 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
 - Teams, Camps, Shifts, and Humans additionally match by pasting the entity's own id (a `Guid.TryParse` fast-path scored as an exact match). For humans the pasted UserId resolves against the cached snapshot (`CachingUserService`) and is reported as a `User ID` match; rejected profiles are excluded, and `ExactName` queries skip id resolution so a GUID-shaped burner name matches by name, never by id collision.
-- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to matching on the name/title field alone: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description in memory over the approved-event cache, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
+- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only, via `IEventServiceRead.SearchAsync` — event copy is short and free-form so description text is often the load-bearing name signal users remember. A Title match scores via the standard exact/prefix/contains rubric; a Description-only match uses the same three tiers halved (50/40/30) so it's still surfaced but always ranks below every Title match, and orders sensibly against other description-only hits instead of tying (nobodies-collective/Humans#1062).
 - Humans, Teams, Camps **and Events** match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService` / `CachingEventService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these four buckets. **Shifts is the only DB-backed bucket**, running case-insensitive Postgres `EF.Functions.ILike` per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: A text query surfaces the public-visibility set, never more
@@ -133,15 +133,15 @@ SearchController
          ├── ITeamServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<TeamSearchHit>
          ├── ICampServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<CampSearchHit>
          ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
-         └── IEventServiceRead.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
+         └── IEventServiceRead.SearchAsync(query, max)  (skipped when Features:Events is off)  → IReadOnlyList<EventSearchHit>
 ```
 
-Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. **Events is cache-backed too:** `IEventServiceRead` is registered as the `CachingEventService` singleton (`Section.cs:55`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / `EventService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventServiceRead` is registered as the `CachingEventService` singleton (`Section.cs:55`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
 Every hit arrives pre-scored by the section that produced it, against one shared rubric —
 `StringSearchExtensions.NameMatchScore` in `Humans.Base` (humans use `PersonSearchMatcher`, which
-adds tiers for token-prefix and non-name-field matches). Events is the exception: it publishes no
-scored search-hit type, so the orchestrator still scores that one bucket off `Title`
+adds tiers for token-prefix and non-name-field matches; Events halves the rubric's three tiers for
+a Description-only match, per US-GS.3). No bucket scores in the orchestrator any more
 (nobodies-collective/Humans#1062).
 
 | Match shape     | Score |
@@ -162,6 +162,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | `TeamSearchHit (TeamId, Name, Score)` | `ITeamServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `CampSearchHit (CampId, Name, Score)` | `ICampServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `EventSearchHit (EventId, Title, Score)` | `IEventServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
 
