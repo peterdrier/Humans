@@ -38,7 +38,7 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 | RelatedEntityId | Guid? | Id of a secondary related entity (e.g. UserId when EntityType=Team) |
 | RelatedEntityType | string? (100) | Type of the secondary related entity |
 
-**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. The column drop is its own PR under `no-drops-until-prod-verified`.
+**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. `ILegacyGoogleSyncAuditReader` (contracts leaf, implemented by `AuditLogService`) is the one read left over them — it feeds GoogleIntegration's `/Google/Admin/SyncHistoryMigration` screen, which copies the history into `google_sync_log` and changes nothing here. The column drop, and this reader, are their own PR under `no-drops-until-prod-verified`.
 
 **Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`.
 

@@ -28,3 +28,4 @@
 | `GoogleController.RerunGoogleSync` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.CheckEmailRenames` / `EmailRenames` / `EmailFlagViolations` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.Index` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `GoogleSyncHistoryMigrationAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |

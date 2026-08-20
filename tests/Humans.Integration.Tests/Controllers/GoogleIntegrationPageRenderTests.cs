@@ -43,6 +43,9 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         "/Google/Accounts",
         "/Google/SyncOutbox",
         "/Google/EmailFlagViolations",
+        // One-time history move (nobodies-collective/Humans#1083). A bare GET is the dry run,
+        // so this renders — and writes nothing — against an empty audit_log.
+        "/Google/Admin/SyncHistoryMigration",
     ];
 
     /// <summary>
