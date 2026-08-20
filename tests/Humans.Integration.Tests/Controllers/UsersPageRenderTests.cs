@@ -58,10 +58,20 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     /// misses, or a call site left on the wrong localizer, renders the raw key — in
     /// every language, with no error and no failing build.
     /// </summary>
+    /// <remarks>
+    /// Every prefix in <c>UsersResource</c> after the carve, plus the shared ones these
+    /// pages still read. <c>Admin_</c> is deliberately absent: <c>Admin_SortBy</c>
+    /// (<c>Views/UsersAdmin/AdminList.cshtml:78</c>) exists in no resource file and has
+    /// been rendering raw since before the carve — adding the prefix here would fail on
+    /// that pre-existing bug rather than on a regression.
+    /// </remarks>
     private static readonly string[] ProfilePrefixes =
     [
-        "Profile_", "ProfileEdit_", "ProfilePrivacy_", "CommPrefs_", "Emails_",
-        "EmailGrid_", "Outbox_", "LinkedAccounts_", "VerifyEmail_", "SendMessage_",
+        "Profile_", "ProfileEdit_", "ProfilePrivacy_", "ProfileCard_", "CommPrefs_",
+        "Emails_", "EmailGrid_", "Outbox_", "LinkedAccounts_", "VerifyEmail_",
+        "SendMessage_", "Unsub_", "AccountStatus_", "AccountDeletion_",
+        "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
+        "AdminAddRole_", "AdminRoles_", "Enum_",
         "Dashboard_", "Common_", "Nav_",
     ];
 
@@ -188,6 +198,71 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.Found);
         response.Headers.Location?.AbsolutePath.Should().Be("/Account/AccessDenied",
             because: "another human's admin email page must be denied, not sent to sign in");
+    }
+
+    /// <summary>
+    /// The carve's real risk: <c>UsersResource.es</c> and friends must ship as satellite
+    /// assemblies of <c>Humans.Users</c> and be found from there. A resx that builds but
+    /// whose manifest name does not match the marker type's namespace falls back to
+    /// English silently — same 200, same layout, no error anywhere
+    /// (nobodies-collective/Humans#1050).
+    /// </summary>
+    [HumansFact(Timeout = 180000)]
+    public async Task Users_pages_render_in_spanish_from_the_sections_satellite_assemblies()
+    {
+        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so every
+        // assertion below is on an ASCII-only run of the Spanish copy.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+
+        // Accept-Language never reaches a signed-in page — Program.cs's first culture
+        // provider returns the user's PreferredLanguage and short-circuits the chain.
+        // Switch the way the UI does.
+        var switcherPage = await (await Client.GetAsync("/Profile/Me", ct)).Content.ReadAsStringAsync(ct);
+        var token = ExtractAntiForgeryToken(switcherPage);
+        token.Should().NotBeNullOrEmpty();
+        await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("culture", "es"),
+            ]), ct);
+
+        var profile = await Client.GetAsync("/Profile/Me", ct);
+        profile.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profileHtml = await profile.Content.ReadAsStringAsync(ct);
+
+        profileHtml.Should().Contain("Mi perfil");                  // Profile_Title
+        profileHtml.Should().NotContain("Profile Information",      // Profile_Information
+            because: "an English string here means the .es satellite was not found");
+        AssertRenderedCleanly(profileHtml, "GET /Profile/Me (es)");
+
+        // One page per carved prefix family that has its own title key, so a satellite
+        // that resolves for Profile_ but not for its neighbours still fails.
+        foreach (var (url, copy) in new[]
+                 {
+                     ("/Profile/Me/Edit", "Editar perfil"),          // ProfileEdit_Title
+                     ("/Profile/Me/Emails", "Direcciones de correo"),// Emails_Title
+                     ("/Profile/Me/Privacy", "Mis datos"),           // ProfilePrivacy_Title
+                 })
+        {
+            var response = await Client.GetAsync(url, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+            var html = await response.Content.ReadAsStringAsync(ct);
+            html.Should().Contain(copy, $"GET {url} must render its Spanish copy");
+            AssertRenderedCleanly(html, $"GET {url} (es)");
+        }
+    }
+
+    private static string? ExtractAntiForgeryToken(string html)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            html,
+            "name=\"__RequestVerificationToken\"[^>]{0,200}value=\"(?<token>[^\"]+)\"",
+            System.Text.RegularExpressions.RegexOptions.None,
+            TimeSpan.FromSeconds(5));
+
+        return match.Success ? match.Groups["token"].Value : null;
     }
 
     /// <summary>

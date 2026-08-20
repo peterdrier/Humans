@@ -114,10 +114,15 @@
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!--
-      Views/Profile/Edit.cshtml injects IStringLocalizer<ShiftsResource> for the two
-      shift-preference strings on the profile edit page; ShiftsResource lives in
-      Humans.Shifts, not its Contracts leaf. Acyclic — Humans.Shifts names nothing in
-      Humans.Users. Drops out when the Users resx carve gives these keys a Users home.
+      The section project, not its Contracts leaf, because Views/Profile/Index.cshtml and
+      Views/UsersAdmin/AdminDetail.cshtml render <vc:shift-signups>: the tag helper binds at
+      Razor compile time off @addTagHelper *, Humans.Shifts, and ShiftSignupsViewComponent +
+      ShiftSignupsViewMode live in the section's Contracts/ *folder*, not in
+      Humans.Shifts.Contracts. Views/Profile/Edit.cshtml's IStringLocalizer<ShiftsResource> for
+      the two shift-preference strings rides along on the same reference — the Users resx carve
+      (nobodies-collective/Humans#1050) left them in Shifts rather than duplicate the copy.
+      Acyclic — Humans.Shifts names nothing in Humans.Users. Drops out only when the view
+      component moves to the leaf.
     -->
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />

@@ -65,7 +65,10 @@ internal sealed class ProfileController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
-    IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<UsersResource> localizer,
+    // The tier-application copy and the generic Common_/Validation_ strings this controller
+    // formats stayed in SharedResource at the Users carve — Governance renders the same form.
+    IStringLocalizer<SharedResource> sharedLocalizer,
     ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
     ICampaignServiceRead campaignService,
@@ -278,7 +281,7 @@ internal sealed class ProfileController(
         // above (Profile now owns dietary). Intolerances + medical are untouched —
         // they're owned by the DietaryMedical page.
 
-        SetSuccess(localizer["Profile_Updated"].Value);
+        SetSuccess(sharedLocalizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
     }
 
@@ -295,14 +298,14 @@ internal sealed class ProfileController(
             if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
             {
                 ModelState.AddModelError($"EditableContactFields[{i}].Value",
-                    localizer["Validation_PhoneE164", localizer["Profile_" + cf.FieldType].Value].Value);
+                    sharedLocalizer["Validation_PhoneE164", localizer["Profile_" + cf.FieldType].Value].Value);
             }
         }
 
         if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
-                localizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
+                sharedLocalizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
         }
 
         // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
@@ -358,18 +361,18 @@ internal sealed class ProfileController(
         {
             case "MotivationRequired":
                 ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    localizer["Profile_MotivationRequired"].Value);
+                    sharedLocalizer["Profile_MotivationRequired"].Value);
                 break;
             case "SignificantContributionRequired":
                 ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                    localizer["Application_SignificantContributionRequired"].Value);
+                    sharedLocalizer["Application_SignificantContributionRequired"].Value);
                 break;
             case "RoleUnderstandingRequired":
                 ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                    localizer["Application_RoleUnderstandingRequired"].Value);
+                    sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
                 break;
             default:
-                ModelState.AddModelError(string.Empty, localizer["Application_InvalidTier"].Value);
+                ModelState.AddModelError(string.Empty, sharedLocalizer["Application_InvalidTier"].Value);
                 break;
         }
 
@@ -2123,7 +2126,7 @@ internal sealed class ProfileController(
         var request = FacilitatedMessageRequestBuilder.TryBuild(sender, targetUser, model);
         if (request is null)
         {
-            ModelState.AddModelError(string.Empty, localizer["Common_Error"].Value);
+            ModelState.AddModelError(string.Empty, sharedLocalizer["Common_Error"].Value);
             return View(model);
         }
 

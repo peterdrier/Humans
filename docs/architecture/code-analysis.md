@@ -130,8 +130,10 @@ analyzer to their own compilation — they instantiate analyzers directly via
 | "in this folder, no calls of shape X" / "section ownership comes from directory layout" | **Filesystem-aware ratchet test** | Analyzers see compilations, not folders. |
 | EF migration-file checks (no `Drop*` in `Up()`) | **Ratchet test** | Migration files are EF-generated; an analyzer would fire on legitimate ops. |
 
-The ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
-and the boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall into
+The ratchet rules under `tests/Humans.Web.Tests/Architecture/Rules/` (they moved
+there when `Humans.Application.Tests` was dissolved into per-section test projects
+at G5, nobodies-collective/Humans#866) and the boundary scans in
+`ServiceBoundaryArchitectureTests.cs` all fall into
 "ratchet" / "marker" / "filesystem-aware" buckets — they stay as tests.
 
 ### Writing a new analyzer

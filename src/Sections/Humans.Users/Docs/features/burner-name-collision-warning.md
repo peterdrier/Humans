@@ -95,7 +95,7 @@ selects the singular/plural template by count, substitutes `{0}` (count) and
 responses superseded by a later keystroke.
 
 Localization keys `ProfileEdit_BurnerNameCollisionOne` /
-`ProfileEdit_BurnerNameCollisionMany` are defined in `SharedResource.resx` and the
+`ProfileEdit_BurnerNameCollisionMany` are defined in `UsersResource.resx` and the
 five locale siblings (es/ca/fr/de/it).
 
 ## Related

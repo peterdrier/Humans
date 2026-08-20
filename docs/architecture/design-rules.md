@@ -129,7 +129,7 @@ Every cached domain has a **store** — a dedicated class that owns an in-memory
 2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Application>`). Secondary indexes are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
 3. **Single writer.** Only the owning service writes to the store, and only as part of a successful DB write. The store interface exposes `Upsert(entity)` and `Remove(id)`; the owning service calls these immediately after its repository write returns successfully.
 4. **Startup warmup.** Each store loads its full domain on startup via `GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
-5. **Stores are Infrastructure.** The interface lives in `Humans.Application/Interfaces/Stores/`, the implementation lives in `Humans.Infrastructure/Stores/`.
+5. **Stores were Infrastructure.** The interface lived in `Humans.Application/Interfaces/Stores/` and the implementation in `Humans.Infrastructure/Stores/` — both projects were deleted at G5 (nobodies-collective/Humans#866). Under §15 a section's cache lives in its own `Data/`.
 
 ### 4b. Why a Store, Not Inline `IMemoryCache.GetOrCreateAsync`
 

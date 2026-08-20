@@ -6,7 +6,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@SharedLocalizer["Nav_Admin"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="UsersAdmin" asp-action="AdminList">@Localizer["AdminHumans_Title"]</a></li>
         <li class="breadcrumb-item">
             <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId">
@@ -33,7 +33,7 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
                     <div class="mb-3">
-                        <label asp-for="RoleName" class="form-label">@Localizer["MyTeams_Role"]</label>
+                        <label asp-for="RoleName" class="form-label">@SharedLocalizer["MyTeams_Role"]</label>
                         <select asp-for="RoleName" class="form-select">
                             <option value="">@Localizer["AdminAddRole_SelectRole"]</option>
                             @foreach (var role in Model.AvailableRoles)
@@ -61,7 +61,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">@Localizer["AdminHuman_AddRole"]</button>
-                        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                     </div>
                 </form>
             </div>

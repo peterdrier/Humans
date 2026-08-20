@@ -68,9 +68,14 @@ public class ProfileControllerDietaryMedicalReplayTests
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
 
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+
+        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        sharedLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var configuration = Substitute.For<IConfiguration>();
@@ -103,6 +108,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
+            sharedLocalizer,
             Substitute.For<ITicketServiceRead>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),

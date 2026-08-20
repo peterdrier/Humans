@@ -16,5 +16,5 @@
 <form method="post">
     @Html.AntiForgeryToken()
     <button type="submit" class="btn btn-danger">@Localizer["Unsub_ConfirmButton"]</button>
-    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">@Localizer["Common_Cancel"]</a>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">@SharedLocalizer["Common_Cancel"]</a>
 </form>
