@@ -20,6 +20,9 @@
 #      entries dirty (docs aren't src/, so no triggers should fire).
 #   7. Every freshness:triggers glob in every editorial doc resolves to at
 #      least one real file.
+#   8. trigger_is_dead (the function test 7 relies on) is proven in BOTH
+#      directions with synthetic input, not just whatever today's real docs
+#      happen to contain (nobodies-collective/Humans#1021).
 #
 # Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
 # *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
@@ -35,6 +38,7 @@
 set -euo pipefail
 
 CATALOG="docs/architecture/freshness-catalog.yml"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PASS=0
 FAIL=0
 
@@ -43,56 +47,13 @@ if [ ! -f "$CATALOG" ]; then
   exit 1
 fi
 
-# Every editorial doc the sweep is responsible for, derived FROM the catalog's
-# editorial_trees rather than hardcoded here. Entries are either a directory to
-# walk (docs/sections/, src/Sections/, …) or a single file listed on its own
-# (docs/architecture/design-rules.md, docs/seed-data.md, …).
-#
-# Read the list from the catalog so this check cannot drift away from it. An
-# earlier hardcoded version walked only the four directories and silently skipped
-# all six individually-listed files — so a dead glob in design-rules.md or
-# seed-data.md still produced a green "all trigger globs resolve", which is the
-# exact failure test 7 exists to catch.
-editorial_docs() {
-  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
-    | grep -E '^[[:space:]]+- ' \
-    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
-    | while IFS= read -r entry; do
-        [ -z "$entry" ] && continue
-        if [ -f "$entry" ]; then
-          echo "$entry"
-        elif [ -d "${entry%/}" ]; then
-          find "${entry%/}" -name '*.md' \
-               -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
-               -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
-               -not -path '*/obj/*' -not -path '*/bin/*' \
-               -not -path '*/Docs/20*.md' \
-               -not -name 'health.md' 2>/dev/null
-        else
-          # Unresolved entry: emit nothing here — test 3 reports it via
-          # editorial_entries_unresolved. The explicit `:` matters: without an
-          # else branch the `if` returns the failed `[ -d ]` status, which under
-          # `set -e` aborts the whole script mid-run instead of failing a test.
-          :
-        fi
-      done
-}
-
-# Catalog editorial_trees entries that resolve to nothing. A warning here is not
-# enough: if an individually listed file such as docs/seed-data.md is renamed,
-# editorial_docs simply omits it, the remaining ~140 docs still clear test 3's
-# thresholds, and tests 4 and 7 never inspect the missing file — so the script
-# exits green while the catalog points at nothing. Test 3 fails on any output.
-editorial_entries_unresolved() {
-  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
-    | grep -E '^[[:space:]]+- ' \
-    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
-    | while IFS= read -r entry; do
-        if [ -n "$entry" ] && [ ! -f "$entry" ] && [ ! -d "${entry%/}" ]; then
-          echo "$entry"
-        fi
-      done
-}
+# editorial_docs, editorial_entries_unresolved, doc_trigger_lines and
+# trigger_is_dead live in lib-editorial-docs.sh, shared with
+# verify-triggers.sh (nobodies-collective/Humans#1021) so this script's
+# definition of "the editorial doc set" and "a dead trigger" cannot drift
+# from the one the sweep itself uses to repair them.
+# shellcheck source=./lib-editorial-docs.sh
+source "$SCRIPT_DIR/lib-editorial-docs.sh"
 
 # ─── Test 1: Catalog parses (structural smoke) ────────────────────────
 N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || echo 0)
@@ -124,8 +85,11 @@ while IFS= read -r line; do
   if $in_triggers && [[ "$line" =~ ^[[:space:]]+-[[:space:]]+\"(.+)\"[[:space:]]*$ ]]; then
     glob="${BASH_REMATCH[1]}"
     total=$((total+1))
-    matches=( $glob )
-    if [ ${#matches[@]} -eq 0 ]; then
+    # trigger_is_dead (lib-editorial-docs.sh) branches on wildcard vs literal —
+    # mechanical entries mix both (e.g. "Directory.Packages.props" alongside
+    # "**/*.csproj"), and a plain `matches=( $glob )` word-splits a literal to
+    # itself regardless of whether the file exists, same blind spot test 7 had.
+    if trigger_is_dead "$glob"; then
       echo "  [test 2]: ZERO MATCH glob: $glob"
       bad=$((bad+1))
     fi
@@ -268,18 +232,17 @@ else
 fi
 
 # ─── Test 7: Every editorial trigger glob resolves to a real file ─────
-# The one check that can see a dead trigger. See the header note.
+# The one check that can see a dead trigger. See the header note. Uses the
+# shared doc_trigger_lines/trigger_is_dead from lib-editorial-docs.sh — the
+# same functions verify-triggers.sh uses to repair these, so a fix to the
+# detection logic can't land in one script and not the other.
 dead_globs=0
 dead_docs=0
 checked_docs=0
 for f in $(editorial_docs); do
-  # `|| true` is load-bearing: under `set -o pipefail` the grep returns 1 for a
-  # doc with no trigger marker, which aborted the whole script at the first such
-  # file and left every doc after it unchecked while test 7 printed nothing at
-  # all. Silence from a test is not a pass.
-  triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null \
-             | { grep -vE '^\s*<!--|^-->' || true; } \
-             | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  # `doc_trigger_lines` already `|| true`-guards the no-marker case — see its
+  # definition for why that matters under `set -o pipefail`.
+  triggers=$(doc_trigger_lines "$f")
   if [ -z "$triggers" ]; then continue; fi
   checked_docs=$((checked_docs+1))
   doc_dead=0
@@ -287,28 +250,11 @@ for f in $(editorial_docs); do
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
     doc_total=$((doc_total+1))
-    # A trigger is either a wildcard pattern or a literal path, and they need
-    # different checks. `matches=( $glob )` only detects a dead *pattern* (via
-    # nullglob); a literal path with no wildcard word-splits to itself, so the
-    # array always has one element and the check passes whether or not the file
-    # exists. That is how 307 dead literal triggers across 65 docs survived
-    # every sweep while test 7 reported green — the same class of bug as a dead
-    # glob, one layer down. Branch on the wildcard.
     # Both branches must END on a successful command. Under `set -euo pipefail`
     # a trailing `cond && assign` returns non-zero whenever cond is false, which
     # aborts the whole script mid-test — the same way a bare trailing `if` once
     # killed everything after test 2. Use explicit if/else, never `&&`.
-    trigger_dead=0
-    case "$glob" in
-      *'*'*)
-        matches=( $glob )
-        if [ ${#matches[@]} -eq 0 ]; then trigger_dead=1; else trigger_dead=0; fi
-        ;;
-      *)
-        if [ -e "$glob" ]; then trigger_dead=0; else trigger_dead=1; fi
-        ;;
-    esac
-    if [ "$trigger_dead" -eq 1 ]; then
+    if trigger_is_dead "$glob"; then
       echo "  [test 7]: DEAD trigger in $f -> $glob"
       dead_globs=$((dead_globs+1))
       doc_dead=$((doc_dead+1))
@@ -327,6 +273,36 @@ if [ "$dead_globs" -eq 0 ]; then
   PASS=$((PASS+1))
 else
   echo "FAIL [test 7]: $dead_globs dead triggers across $dead_docs of $checked_docs docs"
+  FAIL=$((FAIL+1))
+fi
+
+# ─── Test 8: Synthetic proof — trigger_is_dead sees BOTH directions ───────
+# Test 7 only ever exercises trigger_is_dead against docs' CURRENT triggers —
+# whatever happens to be alive or dead in the repo today. That proves nothing
+# about the function itself: every dead trigger test 7 finds gets repaired
+# and stops proving the "reports a real failure" direction tomorrow, and if
+# every trigger in the repo happened to be alive, test 7 would never have
+# exercised the dead-detection branch at all (nobodies-collective/Humans#1021
+# — "a test that only ever sees passing input proves nothing"). This test is
+# independent of doc content: it feeds trigger_is_dead synthetic real and
+# fake paths directly, one pair per branch (wildcard, literal), and asserts
+# each direction explicitly.
+real_glob="docs/architecture/**"          # real dir — must NOT be reported dead
+dead_glob="src/Humans.NoSuchSection.DoesNotExist/**"   # never existed — must be reported dead
+real_literal="$CATALOG"                   # real file — must NOT be reported dead
+dead_literal="docs/architecture/this-file-does-not-exist-1021.md"  # must be reported dead
+
+t8_fail=""
+if trigger_is_dead "$real_glob"; then t8_fail="$t8_fail glob-real-passed-as-dead"; fi
+if ! trigger_is_dead "$dead_glob"; then t8_fail="$t8_fail glob-dead-passed-as-real"; fi
+if trigger_is_dead "$real_literal"; then t8_fail="$t8_fail literal-real-passed-as-dead"; fi
+if ! trigger_is_dead "$dead_literal"; then t8_fail="$t8_fail literal-dead-passed-as-real"; fi
+
+if [ -z "$t8_fail" ]; then
+  echo "PASS [test 8]: trigger_is_dead proves both directions (glob + literal, real + dead)"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 8]: trigger_is_dead direction check(s) broken:$t8_fail"
   FAIL=$((FAIL+1))
 fi
 

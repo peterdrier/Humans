@@ -14,9 +14,9 @@ namespace Humans.Teams;
 /// stay in <c>SharedResource</c> because something outside the section renders them too. Two
 /// of those renderers were <c>Humans.UI</c> partials until G5 lane 4b-i
 /// (nobodies-collective/Humans#866): <c>_RoleBadge</c> is now this section's own file but
-/// Users' ProfileCard and Shell's gallery still render it, and <c>_HumanSearchResults</c> is
-/// <c>Humans.Users</c>'. Neither can see this set, so the keys stay shared:
-/// <c>Teams_Member</c> (<c>_RoleBadge</c>), <c>MyTeams_View</c> (<c>_HumanSearchResults</c>),
+/// Users' ProfileCard and Shell's gallery still render it, and <c>MyTeams_View</c> is now read
+/// by <c>Humans.Users</c>' <c>UsersAdmin/AdminList</c>. Neither can see this set, so the keys
+/// stay shared: <c>Teams_Member</c> (<c>_RoleBadge</c>), <c>MyTeams_View</c>,
 /// <c>Teams_Title</c> (four Shell pages), <c>MyTeams_Role</c> (<c>_RolesListContent</c>,
 /// <c>UsersAdmin/AddRole</c>) and <c>TeamDetail_Actions</c> (<c>UsersAdmin/AdminDetail</c>).
 /// Those call sites bind <c>SharedLocalizer</c>, as do the section's <c>Enum_SlotPriority_*</c>

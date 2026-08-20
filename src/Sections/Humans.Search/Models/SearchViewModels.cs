@@ -1,6 +1,6 @@
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
-using Humans.Base.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Models;
 
@@ -20,10 +20,12 @@ internal sealed class GlobalSearchViewModel
     public SearchResultType? Filter { get; init; }
 
     /// <summary>
-    /// Human hits already projected for the canonical
-    /// <c>_HumanSearchResults</c> partial.
+    /// Human hits in display order, unprojected. The view passes each row's id
+    /// and match context to Users' own <c>&lt;vc:user-search-result&gt;</c>; this
+    /// section builds no Users display model
+    /// (nobodies-collective/Humans#1062).
     /// </summary>
-    public IReadOnlyList<HumanSearchResultViewModel> HumanResults { get; init; } =
+    public IReadOnlyList<HumanSearchResult> HumanResults { get; init; } =
         [];
 
     public IReadOnlyList<GlobalSearchResult> TeamResults { get; init; } =

@@ -1,0 +1,19 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by MailerLitePageRenderTests (step 12). *@
+@using Humans.Base.Extensions
+@using Humans.MailerLite
+@using Humans.MailerLite.Services
+@using Humans.MailerLite.Services.Dtos
+@using Humans.Base
+@using Humans.Base.Models.Tables
+@* MailerLite carries no resource set of its own: the two admin pages are English operator
+   copy and there is not one Localizer[…] call in them (step 3b's "does the section have
+   any keys" opens with no). MailerLiteArchitectureTests.SectionTypesTakeNoStringLocalizer is
+   what makes adding copy fail the build instead of silently resolving against the ambient
+   SharedResource the host used to supply through this file. *@
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* A section can only addTagHelper against Humans.UI — a Shell-resident component renders
+   as inert literal markup (step 6). <vc:human>, the one the debug and import pages use, is
+   in Humans.UI already. *@
+@addTagHelper *, Humans.Base

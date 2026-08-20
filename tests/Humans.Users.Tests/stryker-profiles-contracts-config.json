@@ -1,0 +1,22 @@
+{
+  "stryker-config": {
+    "project": "Humans.Users.Contracts.csproj",
+    "test-runner": "mtp",
+    "coverage-analysis": "off",
+    "mutation-level": "Standard",
+    "mutate": [
+      "**/ProfileCompletion.cs"
+    ],
+    "concurrency": 16,
+    "reporters": [
+      "ClearText",
+      "Json",
+      "Html"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    }
+  }
+}

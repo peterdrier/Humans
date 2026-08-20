@@ -2,8 +2,8 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Tickets/Controllers/TicketsOnsiteAdminController.cs
   src/Humans.Web/Views/Account/GateLogin.cshtml
-  src/Humans.Web/Views/Tickets/Admin/Gate.cshtml
-  src/Humans.Web/Hosting/GateTerminalAccountSeeder.cs
+  src/Sections/Humans.Tickets/Views/Tickets/Admin/Gate.cshtml
+  src/Sections/Humans.Tickets/Services/GateTerminalAccountSeeder.cs
   src/Humans.Web/Services/GateLoginThrottle.cs
   src/Humans.Base/Constants/SystemUserIds.cs
   src/Humans.Base/Authorization/PolicyNames.cs

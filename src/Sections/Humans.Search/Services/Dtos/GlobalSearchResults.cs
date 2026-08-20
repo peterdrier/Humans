@@ -18,8 +18,10 @@ internal enum SearchResultType
 
 /// <summary>
 /// One non-human row in a global search result group (Team, Camp, Shift,
-/// or Event). Humans use <see cref="HumanSearchResult"/> directly so the
-/// canonical <c>_HumanSearchResults</c> partial can render them.
+/// or Event). Humans use <see cref="HumanSearchResult"/> directly — the view
+/// passes each hit's id to Users' own <c>&lt;vc:user-search-result&gt;</c>.
+/// The four types here are still projected by this section
+/// (nobodies-collective/Humans#1062 leaves them for their owners to publish).
 /// </summary>
 /// <param name="Type">Whether this is a Team, Camp, Shift, or Event hit.</param>
 /// <param name="Title">Primary display label (team name, camp season name,
@@ -43,10 +45,10 @@ internal sealed record GlobalSearchResult(
 /// </summary>
 /// <param name="Query">Echo of the trimmed input.</param>
 /// <param name="Humans">Human hits in the order returned by the
-/// profile-search matcher. The view projects these to
-/// <c>HumanSearchResultViewModel</c> for the canonical
-/// <c>_HumanSearchResults</c> partial; the controller sorts by
-/// <c>BurnerName</c> asc before rendering.</param>
+/// profile-search matcher. The controller sorts them by relevance and the view
+/// passes each row's id and match context to Users'
+/// <c>&lt;vc:user-search-result&gt;</c> — this section builds no display
+/// model.</param>
 /// <param name="Teams">Team hits, scored but in unspecified order — the
 /// controller sorts by score desc then title asc before rendering.</param>
 /// <param name="Camps">Camp hits, scored but in unspecified order — the

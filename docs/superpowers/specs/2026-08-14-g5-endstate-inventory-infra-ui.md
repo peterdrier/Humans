@@ -29,7 +29,7 @@ types) vs which Application namespaces / section `.Contracts` it touches.
 | `Jobs/GateRetentionJob.cs`, `Jobs/GateVendorCheckInJob.cs` | Recurring jobs | Web roll-call | `Humans.Gate.Contracts` (+ `Tickets.Contracts` for vendor mirroring in the latter) | Gate |
 | `Jobs/GoogleResourceProvisionJob.cs`, `GoogleResourceReconciliationJob.cs`, `ProcessGoogleSyncOutboxJob.cs` | Recurring jobs | Web roll-call | `Humans.GoogleIntegration.Contracts` | GoogleIntegration |
 | `Configuration/GoogleWorkspaceSettings.cs` | Options POCO | GoogleIntegration section (Section.cs + 8 Workspace/*Client.cs), Web (extensions, health check) | none | GoogleIntegration |
-| `Jobs/MailerAudienceSyncJob.cs` | Recurring job | Web roll-call | `Humans.Mailer.Contracts` | Mailer |
+| `Jobs/MailerLiteAudienceSyncJob.cs` | Recurring job | Web roll-call | `Humans.MailerLite.Contracts` | MailerLite |
 | `Jobs/ProcessAccountDeletionsJob.cs` | Recurring job | Web roll-call | `AuditLog.Contracts`, `Email.Contracts`, `Application.Interfaces.Users`, `Domain.Entities/Enums` | Users (borderline — a job, not a "repository/service", so kept in this inventory rather than lane 2's exclude list; flag for Peter) |
 | `Jobs/SendReConsentReminderJob.cs`, `Jobs/SyncLegalDocumentsJob.cs` | Recurring jobs | Web roll-call | `Consent.Contracts` (+ `Governance.Contracts`, `Email.Contracts`) | Consent |
 | `Jobs/SendSurveyReminderJob.cs` | Recurring job | Web roll-call | `Surveys.Contracts` | Surveys |

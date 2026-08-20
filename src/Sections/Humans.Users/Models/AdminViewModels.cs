@@ -8,13 +8,12 @@ namespace Humans.Users.Models;
 internal sealed class AdminHumanListViewModel : PagedListViewModel
 {
     /// <summary>
-    /// Page of admin humans to render via the canonical
-    /// <c>_HumanSearchResults</c> partial. Admin-specific fields
-    /// (<c>AdminEmail</c>, <c>MembershipStatus</c>, <c>CreatedAt</c>,
-    /// <c>LastLoginAt</c>, <c>AdminDetailUrl</c>) are pre-populated by the
-    /// controller so the partial can render them inline.
+    /// Page of admin humans, unprojected. <c>AdminList</c> renders its own rows:
+    /// the notification-target email, status, joined/last-login and detail link
+    /// are an admin directory's columns, not a search result's
+    /// (nobodies-collective/Humans#1062).
     /// </summary>
-    public List<HumanSearchResultViewModel> Humans { get; set; } = [];
+    public List<AdminHumanRow> Humans { get; set; } = [];
     public string? SearchTerm { get; set; }
     public string? StatusFilter { get; set; }
     public string SortBy { get; set; } = "name";

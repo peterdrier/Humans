@@ -89,8 +89,7 @@ internal sealed class UsersAdminController(
             filter,
             sort,
             dir,
-            page,
-            id => Url.Action(nameof(AdminDetail), "UsersAdmin", new { id }));
+            page);
 
         return View(viewModel);
     }

@@ -930,17 +930,24 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">_HumanSearchResults.cshtml</span>
-                            <span class="wg-card-kind kind-pa">Partial</span>
+                            <span class="wg-card-name">UserSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/UserSearchResultViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Users/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
+                    <div class="wg-card-note">One person-search result row (<code>&lt;vc:user-search-result&gt;</code>), keyed by user id. Rendered by <code>/Search</code> and <code>/Profile/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Users owns how a human renders, so no caller builds a display model.</div>
                     @ParamsBlock(
-                        ("@@model", "<code>IReadOnlyList&lt;HumanSearchResultViewModel&gt;</code> — projected match rows; admin metadata fields are nullable and self-gate")
+                        ("user-id", "<code>Guid</code> — the matched human"),
+                        ("match-field", "<code>string?</code> — which bucket matched (\"Name\", \"Bio\", …); the badge is omitted when null"),
+                        ("match-snippet", "<code>string?</code> — highlighted long-form excerpt, when there is one"),
+                        ("matched-email", "<code>string?</code> — the address that matched, on admin-bit searches only")
                     )
                     <div class="wg-card-example">
-                        @await Html.PartialAsync("_HumanSearchResults", Model.SampleHumanSearchResults)
+                        <div class="list-group">
+                            <vc:user-search-result user-id="@Model.CurrentUserId"
+                                                   match-field="Bio"
+                                                   match-snippet="...love fire dancing and welding..." />
+                        </div>
                     </div>
                 </div>
 

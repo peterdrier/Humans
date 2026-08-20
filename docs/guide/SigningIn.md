@@ -2,7 +2,7 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
   src/Sections/Humans.Auth/Services/MagicLinkService.cs
-  src/Humans.Web/Controllers/GuestController.cs
+  src/Sections/Humans.Onboarding/Controllers/GuestController.cs
 -->
 <!-- freshness:flag-on-change
   Login options, magic-link expiry/single-use/confirm-button mechanics, and the enumeration-safe "check your email" message. Review when AccountController, Account views, or MagicLinkService change.

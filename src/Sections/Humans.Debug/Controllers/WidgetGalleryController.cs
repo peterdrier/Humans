@@ -62,35 +62,9 @@ internal sealed class WidgetGalleryController(IUserServiceRead userService) : Hu
                 IncludesSubTeamCount = 2,
             },
             SamplePager = new PagerViewModel(totalPages: 8, currentPage: 3, action: "Index"),
-            SampleHumanSearchResults = new List<HumanSearchResultViewModel>
-            {
-                new()
-                {
-                    UserId = currentUser.Id,
-                    BurnerName = displayName,
-                    ProfilePictureUrl = currentUser.ProfilePictureUrl,
-                    MatchField = "Name",
-                },
-                new()
-                {
-                    UserId = Guid.NewGuid(),
-                    BurnerName = "Sparkle",
-                    MatchField = "Bio",
-                    MatchSnippet = "...love fire dancing and welding...",
-                },
-                new()
-                {
-                    UserId = Guid.NewGuid(),
-                    BurnerName = "Embers",
-                    MatchField = "Email",
-                    MatchedEmail = "embers@example.org",
-                    AdminEmail = "embers@example.org",
-                    MembershipStatus = "Active",
-                    CreatedAt = DateTime.UtcNow.AddMonths(-8),
-                    LastLoginAt = DateTime.UtcNow.AddDays(-2),
-                    AdminDetailUrl = "#",
-                },
-            },
+            // <vc:user-search-result> is keyed by user id and Users resolves the human itself
+            // (nobodies-collective/Humans#1062), so the gallery has no sample rows to fabricate —
+            // the card renders the signed-in admin with a made-up match snippet.
             SampleTableRows =
             [
                 new() { Name = "Sparkle", Amount = 120.50m, JoinedAt = SystemClock.Instance.GetCurrentInstant().Minus(Duration.FromDays(400)), Status = TicketAttendeeStatus.Valid, IsVip = true },
@@ -161,7 +135,6 @@ internal sealed class WidgetGalleryViewModel
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
     public required PagerViewModel SamplePager { get; init; }
-    public required IReadOnlyList<HumanSearchResultViewModel> SampleHumanSearchResults { get; init; }
     public List<TableDemoRow> SampleTableRows { get; set; } = [];
 }
 

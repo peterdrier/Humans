@@ -1,6 +1,5 @@
 using System.Reflection;
 using Humans.Base.Interfaces;
-using Humans.Web.Hosting;
 using Microsoft.Extensions.DependencyModel;
 
 namespace Humans.Web.Extensions;
@@ -12,31 +11,30 @@ namespace Humans.Web.Extensions;
 /// section instead of growing one.
 /// </summary>
 /// <remarks>
-/// Which of the discovered sections a deployment actually runs is configuration —
-/// see <see cref="SectionActivation"/>. Everything below composes from the host's own
-/// <see cref="SectionAssemblySnapshot"/>, so a deactivated section contributes no
-/// registration, no controller, no job and no nav without any of them naming it, and one
-/// host in a shared process never composes another's sections.
+/// Every section assembly ships; whether this deployment runs one is
+/// <see cref="ISection.IsActive"/>, which defaults to true
+/// (nobodies-collective/Humans#1081). Everything below composes from the active set, so a
+/// deactivated section contributes no registration, no controller, no job and no nav
+/// without any of them naming it.
 /// </remarks>
 public static class SectionDiscoveryExtensions
 {
-    internal static IServiceCollection AddDiscoveredSections(
+    public static IServiceCollection AddDiscoveredSections(
         this IServiceCollection services,
-        SectionAssemblySnapshot snapshot,
         IConfiguration configuration)
     {
-        var sections = DiscoverSections(snapshot);
+        var sections = ActiveSections.Value;
 
-        foreach (var (_, section) in sections)
+        foreach (var (_, _, section) in sections)
         {
             section.Register(services, configuration);
         }
 
-        // A section is now silently absent when it fails to load or when config deactivates
-        // it, where the by-name call was a compile error — so both sets are logged: that is
-        // what you check when one of its pages 404s (design §6).
-        var inactive = SectionAssemblies()
-            .Select(SectionName)
+        // A section is now silently absent when it fails to load or when it deactivates
+        // itself, where the by-name call was a compile error — so both sets are logged: that
+        // is what you check when one of its pages 404s (design §6).
+        var inactive = AllSections.Value
+            .Select(s => s.Name)
             .Except(sections.Select(s => s.Name), StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -44,11 +42,11 @@ public static class SectionDiscoveryExtensions
         Serilog.Log.Information(
             "Sections: {ActiveCount} active of {DiscoveredCount} discovered. Active: {Active}. Inactive: {Inactive}",
             sections.Count,
-            sections.Count + inactive.Count,
+            AllSections.Value.Count,
             string.Join(", ", sections.Select(s => s.Name)),
             inactive.Count == 0 ? "(none)" : string.Join(", ", inactive));
 
-        RegisterContributions(services, snapshot);
+        RegisterContributions(services);
 
         return services;
     }
@@ -62,9 +60,9 @@ public static class SectionDiscoveryExtensions
     /// Derived from the marker, never a list of seams: a new seam interface deriving from
     /// <see cref="ISectionContribution"/> is discovered with no edit here.
     /// </remarks>
-    private static void RegisterContributions(IServiceCollection services, SectionAssemblySnapshot snapshot)
+    private static void RegisterContributions(IServiceCollection services)
     {
-        var contributions = DiscoverImplementations<ISectionContribution>(snapshot);
+        var contributions = DiscoverImplementations<ISectionContribution>();
 
         foreach (var contribution in contributions)
         {
@@ -81,7 +79,7 @@ public static class SectionDiscoveryExtensions
     }
 
     /// <summary>
-    /// Every implementation of <typeparamref name="T"/> a section assembly declares, activated.
+    /// Every implementation of <typeparamref name="T"/> an active section declares, activated.
     /// </summary>
     /// <remarks>
     /// Concrete, parameterless constructor, stateless — but <em>internal</em>, unlike
@@ -91,8 +89,8 @@ public static class SectionDiscoveryExtensions
     /// <c>Contracts/</c> exposes (design: minimal public surface, HUM0034).
     /// Ordered by section name then type name so composition order is stable.
     /// </remarks>
-    internal static IReadOnlyList<T> DiscoverImplementations<T>(SectionAssemblySnapshot snapshot) where T : class =>
-        [.. snapshot.Active
+    public static IReadOnlyList<T> DiscoverImplementations<T>() where T : class =>
+        [.. ActiveSectionAssemblies()
             .SelectMany(a => a.GetTypes()
                 .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(T).IsAssignableFrom(t))
                 .Select(t => (Section: SectionName(a), Type: t)))
@@ -106,34 +104,83 @@ public static class SectionDiscoveryExtensions
             .Where(i => i != typeof(ISectionContribution) && typeof(ISectionContribution).IsAssignableFrom(i));
 
     /// <summary>
-    /// The resource marker type of every section that carries its own <c>.resx</c> set —
-    /// the public <c>&lt;Section&gt;Resource</c> class beside it. Consumed by the boot
+    /// The resource marker type of every active section that carries its own <c>.resx</c>
+    /// set — the public <c>&lt;Section&gt;Resource</c> class beside it. Consumed by the boot
     /// localization diagnostic, which asserts each set actually resolves.
     /// </summary>
-    internal static IReadOnlyList<Type> SectionResourceTypes(SectionAssemblySnapshot snapshot) =>
-        [.. snapshot.Active
+    public static IReadOnlyList<Type> SectionResourceTypes() =>
+        [.. ActiveSectionAssemblies()
             .SelectMany(a => a.GetExportedTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false }
                         && t.Name.EndsWith("Resource", StringComparison.Ordinal))
             .OrderBy(t => t.Name, StringComparer.Ordinal)];
 
-    /// <summary>Every section's entry point, paired with its section name.</summary>
+    /// <summary>Every shipped section's entry point, paired with its section name and assembly.</summary>
     /// <remarks>
     /// Named by the assembly rather than by the type. The types are distinct —
     /// <c>Humans.Store.Section</c>, <c>Humans.Agent.Section</c> — but <c>Humans.Store</c>
     /// <em>is</em> section Store, so one identity serves discovery, logging and the
     /// analyzers without anything having to declare it twice.
     /// </remarks>
-    private static IReadOnlyList<(string Name, ISection Section)> DiscoverSections(SectionAssemblySnapshot snapshot) =>
-        [.. snapshot.Active
-            .SelectMany(a => SectionEntryPoints(a)
-                .Select(t => (
-                    Name: SectionName(a),
-                    Section: (ISection)Activator.CreateInstance(t)!)))
-            // Assembly-enumeration order is not stable; sort so registration order is.
-            // Nothing depends on it today — #858 §6 establishes that no section baseline
-            // carries a cross-section FK, so the contexts migrate independently.
-            .OrderBy(s => s.Name, StringComparer.Ordinal)];
+    private static readonly Lazy<IReadOnlyList<(string Name, Assembly Assembly, ISection Section)>> AllSections =
+        new(() =>
+            [.. SectionAssemblies()
+                .SelectMany(a => SectionEntryPoints(a)
+                    .Select(t => (
+                        Name: SectionName(a),
+                        Assembly: a,
+                        Section: (ISection)Activator.CreateInstance(t)!)))
+                // Assembly-enumeration order is not stable; sort so registration order is.
+                // Nothing depends on it today — #858 §6 establishes that no section baseline
+                // carries a cross-section FK, so the contexts migrate independently.
+                .OrderBy(s => s.Name, StringComparer.Ordinal)]);
+
+    /// <summary>
+    /// The sections this deployment runs, with the dependency guard already applied.
+    /// </summary>
+    /// <remarks>
+    /// A process-wide cache is right here where a config allowlist would have made it wrong:
+    /// <see cref="ISection.IsActive"/> is a property of the shipped code, so every host in a
+    /// process resolves the same set.
+    /// </remarks>
+    private static readonly Lazy<IReadOnlyList<(string Name, Assembly Assembly, ISection Section)>> ActiveSections =
+        new(() =>
+        {
+            var active = AllSections.Value.Where(s => s.Section.IsActive).ToList();
+
+            SectionActivation.ThrowOnUnmetDependencies(
+                [.. AllSections.Value.Select(s => s.Assembly)],
+                typeof(SectionDiscoveryExtensions).Assembly,
+                active.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+            return active;
+        });
+
+    private static readonly Lazy<IReadOnlyList<Assembly>> ActiveAssemblies =
+        new(() => [.. ActiveSections.Value.Select(s => s.Assembly)]);
+
+    private static readonly Lazy<HashSet<Assembly>> ActiveAssemblySet = new(() => [.. ActiveAssemblies.Value]);
+
+    private static readonly Lazy<HashSet<Assembly>> InactiveAssemblySet =
+        new(() => [.. AllSections.Value.Select(s => s.Assembly).Except(ActiveAssemblies.Value)]);
+
+    /// <summary>The section assemblies this deployment runs. Composition reads this, never the shipped set.</summary>
+    internal static IReadOnlyList<Assembly> ActiveSectionAssemblies() => ActiveAssemblies.Value;
+
+    /// <summary>
+    /// True for a section assembly this deployment runs — the public check may be relaxed
+    /// for it. Used by the MVC feature providers, which see one type at a time and would
+    /// otherwise re-walk the dependency graph per type.
+    /// </summary>
+    internal static bool IsActiveSection(Assembly assembly) => ActiveAssemblySet.Value.Contains(assembly);
+
+    /// <summary>
+    /// True for a section assembly this deployment deactivated. MVC's default feature
+    /// providers walk every application part, so a deactivated section's <em>public</em>
+    /// controllers and view components stay routable unless something takes them back out —
+    /// and they then resolve services no <c>Register</c> call ever added.
+    /// </summary>
+    internal static bool IsInactiveSection(Assembly assembly) => InactiveAssemblySet.Value.Contains(assembly);
 
     /// <summary>The section a <paramref name="assembly"/> is: its name without the
     /// <c>Humans.</c> prefix.</summary>

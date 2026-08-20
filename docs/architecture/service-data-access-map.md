@@ -282,7 +282,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     aggregates per-user grants over `IEnumerable<IEarlyEntryProvider>`
     implementations (currently Camps, Shifts, and Teams).
     `IUserMerge`,
-    `IUserDataContributor`, and `IMailerAudience` use the same
+    `IUserDataContributor`, and `IMailerLiteAudience` use the same
     enumerable-injection pattern. This keeps the orchestrator
     section-agnostic; new contributors register a single service
     interface in their section's DI extension.

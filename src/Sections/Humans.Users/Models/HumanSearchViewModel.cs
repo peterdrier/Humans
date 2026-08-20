@@ -1,18 +1,18 @@
-using Humans.Base.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;
 
 /// <summary>
-/// Model for Shell's <c>/Profile/Search</c> page. It sat in <c>TeamViewModels.cs</c> until
+/// Model for the <c>/Profile/Search</c> page. It sat in <c>TeamViewModels.cs</c> until
 /// Teams' G5 and is bound only by <c>ProfileController</c>, so it stayed behind.
 /// </summary>
 /// <remarks>
-/// <c>HumanSearchResultViewModel</c> is in <c>Humans.UI/Models</c>: the Search section's
-/// <c>/Search</c> page binds it too and a section cannot name a <c>Humans.Web</c> type
-/// (G5-SECTION-TEMPLATE.md step 6).
+/// Hits are carried unprojected: the view renders one
+/// <c>&lt;vc:user-search-result&gt;</c> per row, so nothing here has to know what a
+/// human looks like (nobodies-collective/Humans#1062).
 /// </remarks>
 internal sealed class HumanSearchViewModel
 {
     public string? Query { get; set; }
-    public List<HumanSearchResultViewModel> Results { get; set; } = [];
+    public List<HumanSearchResult> Results { get; set; } = [];
 }

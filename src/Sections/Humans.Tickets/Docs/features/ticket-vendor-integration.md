@@ -2,8 +2,8 @@
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.TicketTailor/**
-  src/Humans.Web/Controllers/WelcomeController.cs
-  src/Humans.Web/Views/Welcome/**
+  src/Sections/Humans.Onboarding/Controllers/WelcomeController.cs
+  src/Sections/Humans.Onboarding/Views/Welcome/**
   src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs
   src/Sections/Humans.Tickets.Contracts/TicketConstants.cs
   src/Sections/Humans.Stripe/**

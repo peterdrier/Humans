@@ -44,7 +44,7 @@ binding is `SharedResource` *by design*, the first to send a Shell helper furthe
 `tests/Directory.Build.props` exclusion), and Development (the first whose `Section.Register`
 had to gate on the **host environment**, the first whose move took a block of markup out of a
 Shell view to keep a *type* internal rather than a resource key, and the first named by
-`typeof` from Shell's own production code), and Mailer (the first whose *whole* outward
+`typeof` from Shell's own production code), and MailerLite (the first whose *whole* outward
 surface is one `int`, the first whose vendor connector left `Humans.Infrastructure` without
 needing a reference back to it, and the first whose controller names its views by absolute
 path), and Gdpr (the first whose leaf exists because Base *implements* its contract at
@@ -284,10 +284,10 @@ Git Bash.)
    that pair is the whole accessibility convention, and HUM0034 enforces it. Ship only the
    folders the section has.
    **A controller that names its views by absolute path pins the folder layout** — an RCL's
-   compiled view paths are project-relative, so `View("~/Views/Mailer/Admin/Index.cshtml")`
-   keeps resolving only if `Views/Mailer/Admin/` moves verbatim rather than being tidied into
+   compiled view paths are project-relative, so `View("~/Views/MailerLite/Admin/Index.cshtml")`
+   keeps resolving only if `Views/MailerLite/Admin/` moves verbatim rather than being tidied into
    the `Views/<Controller>/` shape. Renaming it compiles, then 500s on every page and reads as
-   a routing bug (proven: Mailer). Migrations
+   a routing bug (proven: MailerLite). Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
    sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
@@ -923,9 +923,9 @@ Git Bash.)
        reference `Humans.Infrastructure`, because that is where the file was.
        `MailerLiteClient` is a `Humans.Infrastructure/Services` file whose every dependency is
        either the ASP.NET shared framework (`IHttpClientFactory`) or `Humans.Application`
-       (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
+       (`Extensions`, `Threading`), so `Humans.MailerLite` took **no `Humans.Infrastructure`
        reference at all** — Scanner's table-less shape, reached by a section that had code in
-       Base's service folder on the way in (proven: Mailer).
+       Base's service folder on the way in (proven: MailerLite).
      - **…and a third disposition, when the connector is *replaceable*: give it its own
        section, and give the port to the section that owns the concern.** Agent's rule takes
        the connector into the section; Guide's leaves it in Base. Neither fits a vendor that is
@@ -1518,10 +1518,10 @@ Git Bash.)
    - **…and the opt-out is per *helper*, not per item group.** `CapturingLogger` was
      `Compile`-included in the same `ItemGroup` as `TestDbContextFactory`, inside the condition
      that excludes the table-less test projects — so a section with no EF on its compile path
-     that still wants an in-memory `ILogger` (Mailer's client asserts on its own 429 warning)
+     that still wants an in-memory `ILogger` (MailerLite's client asserts on its own 429 warning)
      could have neither, or take the EF package to get one. Split the group: `CapturingLogger`
      is unconditional, `TestDbContextFactory` keeps the exclusion list. Governance's "split the
-     helper before deciding", applied to an MSBuild item (proven: Mailer).
+     helper before deciding", applied to an MSBuild item (proven: MailerLite).
    - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
      package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
      `TestDbContextFactory` (and `CapturingLogger`) into every test project but
@@ -1880,7 +1880,7 @@ Git Bash.)
       first `await foreach` NREs, so the stub is hand-written), and the page whose action calls
       the vendor *outside* a `try` is a 500 rather than the error banner its sibling degrades
       to — so "the pages handle a dead vendor" is not a substitute for the stub (proven:
-      Mailer).
+      MailerLite).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

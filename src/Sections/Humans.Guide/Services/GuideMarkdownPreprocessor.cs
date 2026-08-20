@@ -10,7 +10,9 @@ namespace Humans.Guide.Services;
 /// </summary>
 internal sealed class GuideMarkdownPreprocessor
 {
-    private static readonly Regex RoleHeading = new(
+    // Internal so the guard test can hold guide content to the exact heading grammar the
+    // renderer uses, rather than a second copy that can drift from it.
+    internal static readonly Regex RoleHeading = new(
         @"^##\s+As\s+an?\s+(?:\[)?(?<head>Volunteer|Coordinator|Board)[^\n]*?(?:\((?<paren>[^)]+)\))?\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(250));

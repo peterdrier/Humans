@@ -168,9 +168,7 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
     {
         var services = new ServiceCollection()
             .AddHumansPersistence()
-            .AddDiscoveredSections(
-                SectionAssemblySnapshot.For(new ConfigurationBuilder().Build()),
-                new ConfigurationBuilder().Build());
+            .AddDiscoveredSections(new ConfigurationBuilder().Build());
 
         return
         [

@@ -78,7 +78,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Google", "Humans.GoogleIntegration — Views/Google/_ViewStart"),
         ("/Governance/BoardVoting", "Humans.Governance — Views/Governance/BoardVoting/_ViewStart"),
         ("/Governance/Applications/Admin", "Humans.Governance — inline override in Applications/Admin.cshtml"),
-        ("/Mailer/Admin", "Humans.Mailer — Views/Mailer/Admin/_ViewStart"),
+        ("/MailerLite/Admin", "Humans.MailerLite — Views/MailerLite/Admin/_ViewStart"),
         ("/OnboardingReview", "Humans.Onboarding — Views/OnboardingReview/_ViewStart"),
         ("/Scanner", "Humans.Scanner — Views/Scanner/_ViewStart"),
         ("/Shifts/Dashboard", "Humans.Shifts — Views/ShiftDashboard/_ViewStart"),

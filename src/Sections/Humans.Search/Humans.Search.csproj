@@ -28,7 +28,7 @@
       Data-and-DbContext steps are skipped wholesale). The orchestrator fans out over
       IUserServiceRead / ITeamServiceRead / ICampServiceRead / IShiftManagementService, all
       on their owners' contracts leaves, plus IEventServiceRead off the Events leaf.
-      Scanner's, Cantina's, Mailer's and Onboarding's shape.
+      Scanner's, Cantina's, MailerLite's and Onboarding's shape.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->
@@ -37,6 +37,15 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!--
+      The Humans bucket renders Users' own <vc:user-search-result>
+      (nobodies-collective/Humans#1062), and @addTagHelper only binds against an assembly the
+      section references. An orchestrator referencing what it orchestrates is expected; only
+      cycles are forbidden. Only Contracts-folder public surface and the view components the
+      framework needs public are reachable through it (HUM0034) — Debug's widget-gallery
+      fan-in has the same shape.
+    -->
+    <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -21,7 +21,12 @@
   renderer and optionally stripped at request time by `GuideFilter`.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
-  role sees that block.
+  role sees that block. Every parenthetical must be a key in
+  `GuideRolePrivilegeMap` — an unmapped one resolves to no privilege and the
+  block silently reaches nobody it was written for.
+- `Camp Lead` is the one parenthetical that names a **per-camp** role rather
+  than a system role. It maps to the `CampLead` privilege token, which
+  `GuideRoleResolver` sets from `ICampLeadDirectory.IsLeadAnywhereAsync`.
 
 ## Data Model
 
@@ -44,6 +49,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 | Anonymous | View Volunteer-scoped blocks only |
 | Any authenticated human | All Anonymous capabilities |
 | Team coordinator (`TeamMember.Role == Coordinator`) | Additionally view Coordinator-scoped blocks |
+| Camp lead (`ICampLeadDirectory.IsLeadAnywhereAsync`) | Additionally view Coordinator-scoped blocks whose parenthetical names `Camp Lead` |
 | Domain admin (system role named in a block's parenthetical) | Additionally view blocks whose parenthetical names their role |
 | Board, Admin | View all blocks on all pages (including all Coordinator blocks via within-file superset rule) |
 | Admin | All Board capabilities. Additionally trigger `POST /Guide/Refresh` |
@@ -63,6 +69,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Non-Admin users **cannot** trigger `POST /Guide/Refresh`.
 - Anonymous users **cannot** see Coordinator-scoped or Board/Admin-scoped blocks.
 - A domain admin **cannot** see blocks for parentheticals that do not name their role.
+- A camp lead **cannot** see Coordinator blocks that do not name `Camp Lead` — leading a camp is not a general coordinator grant.
 - No user **can** author or edit guide content in-app; GitHub PR is the only authoring path.
 
 ## Triggers
@@ -75,6 +82,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 ## Cross-Section Dependencies
 
 - **Teams**: `GuideRoleResolver` calls `ITeamServiceRead.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
+- **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampServiceRead.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 

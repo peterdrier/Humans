@@ -172,12 +172,12 @@ The project grew quickly from the initial member portal into a broader operation
 | **May 9** | Email-identity decoupling completed — grid, link surface, admin parity; global person search consolidated |
 | **May 10** | Ticket transfer wizard between humans; global search across humans, teams, camps, and shifts; unified `<vc:human>` view component |
 | **May 11** | Expenses and Holded sections launched (budget actuals, category spend, SEPA batches); Roslyn analyzers replace IL-scan architecture tests |
-| **May 12** | Mailer section — MailerLite import, outbound sends, audience framework |
+| **May 12** | MailerLite section — import, outbound sends, audience framework |
 | **May 13** | UserInfo cached read-model spanning User and Profile; Google Group membership sync orchestrator |
 | **May 15** | Event Guide — submission, moderation, browse, schedule, and admin; City Planning container placement map |
 | **May 16-17** | Cache migration sprint — every major section served from in-memory decorated caches; linked OAuth accounts dashboard; shift workload aggregations |
 | **May 18** | On-site ticket check-in view; Agent admin status page (usage, spend, refusals) |
-| **May 19** | CampLead folded into role assignments; Marketing/HasShift/HasTicket mailer audiences |
+| **May 19** | CampLead folded into role assignments; Marketing/HasShift/HasTicket MailerLite audiences |
 | **May 22-23** | Cross-section read boundaries (`I<Section>ServiceRead`) introduced; burner + legal name model replaces DisplayName; shift availability calendar |
 | **May 25** | Architecture ratchet baselines converted to compile-time Roslyn analyzers; dietary and medical data moved to Profile |
 | **May 26** | Holded expense actuals matching and creditor balances; Early Entry cross-source roster with ticket stub self-view |

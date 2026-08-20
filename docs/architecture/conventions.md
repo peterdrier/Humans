@@ -95,7 +95,7 @@ These are heuristics, not laws — a clearer name that violates one of them beat
 
 ## Integration
 
-External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, Mailer and Email.
+External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, MailerLite and Email.
 
 Do not leak raw provider concerns through multiple layers.
 
@@ -196,7 +196,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | File | Purpose | Exception type |
 |------|---------|----------------|
 | `Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
-| `Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
+| `Sections/Humans.Users/Views/Shared/Components/UserSearchResult/Default.cshtml` (`<vc:user-search-result>`) | Person search result row (page-style card) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
 | `Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `Humans.Teams/Views/TeamAdmin/Roles.cshtml` | Role-grid save without reload | Progressive enhancement |

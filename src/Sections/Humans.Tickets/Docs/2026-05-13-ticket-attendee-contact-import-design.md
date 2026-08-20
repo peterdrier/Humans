@@ -7,7 +7,7 @@
 
 ## Goal
 
-When a person buys a ticket whose attendee email doesn't match an existing Humans user, **create a no-profile Humans user** for them (mirroring how the Mailer import provisions users from MailerLite subscribers). This unlocks two downstream wins:
+When a person buys a ticket whose attendee email doesn't match an existing Humans user, **create a no-profile Humans user** for them (mirroring how the MailerLite import provisions users from MailerLite subscribers). This unlocks two downstream wins:
 
 1. Every paying attendee becomes addressable in Humans — they show up under matched-user reports, the dashboard's "Volunteer Ticket Coverage" denominator stays honest, and the existing `EventParticipation(Status = Ticketed | Attended, Source = TicketSync)` derivation automatically marks them as having a valid ticket for the active year.
 2. We can later export MailerLite segments like *"People with tickets, but no shifts"* — currently impossible because unmatched attendees have no `UserId` to feed into segment queries.
@@ -51,7 +51,7 @@ For each unmatched attendee (defined as: `MatchedUserId is null`, `Status in (Va
 
 The `DeleteUnverifiedThenCreate` decision is the load-bearing protection against email squatting. Without it, a hostile actor could create an account, add `victim@example.com` as an **unverified** `UserEmail` row, wait for the real victim to buy a ticket, and inherit their ticket match. By deleting the unverified row first and provisioning a fresh user, the new account ends up with a **verified** `UserEmail` (`AddProvisionedEmailAsync` sets `IsVerified = true`) owned by the ticket purchaser.
 
-Side effect: if the squatter's only `UserEmail` was the deleted unverified row, the squatter user ends up with zero `UserEmail` rows. `DeleteEmailAsync` only protects against deleting the last *verified* row. This is the existing Mailer import behavior; accepted as-is.
+Side effect: if the squatter's only `UserEmail` was the deleted unverified row, the squatter user ends up with zero `UserEmail` rows. `DeleteEmailAsync` only protects against deleting the last *verified* row. This is the existing MailerLite import behavior; accepted as-is.
 
 ## Display Name
 
@@ -143,11 +143,11 @@ No `DbContext`, no `IMemoryCache` — invalidation after the bulk upsert is hand
        - Returns an unverified row → `DeleteUnverifiedThenCreate` (record `UserId` and `EmailId`).
        - Returns null → `CreateNewUser`.
 
-**Tombstone follow** for `AttachVerified`: copy `MailerImportService.ResolveTombstoneAsync` — walk `User.MergedToUserId` to the live target. If a cycle is detected (defensive — shouldn't happen), stop at the current node.
+**Tombstone follow** for `AttachVerified`: copy `MailerLiteImportService.ResolveTombstoneAsync` — walk `User.MergedToUserId` to the live target. If a cycle is detected (defensive — shouldn't happen), stop at the current node.
 
 ### `ApplyAsync` algorithm
 
-Mirrors `MailerImportService.ApplyAsync` shape (stateless: re-query unmatched attendees at apply time so plan/apply are independent):
+Mirrors `MailerLiteImportService.ApplyAsync` shape (stateless: re-query unmatched attendees at apply time so plan/apply are independent):
 
 ```
 start = clock.Now
@@ -240,7 +240,7 @@ await audit.LogAsync(AuditAction.TicketContactsImported,
     jobName: nameof(AttendeeContactImportService));
 ```
 
-**New `AuditAction.TicketContactsImported`** value added to the existing `AuditAction` enum. Description follows Mailer's terse format: `"created=X, attached=Y, unverified-replaced=Z, ambiguous=A, no-email=B, errors=E, elapsed=Tms"`.
+**New `AuditAction.TicketContactsImported`** value added to the existing `AuditAction` enum. Description follows MailerLite's terse format: `"created=X, attached=Y, unverified-replaced=Z, ambiguous=A, no-email=B, errors=E, elapsed=Tms"`.
 
 ### Why `Ticketed`, not `Attended`
 
@@ -258,7 +258,7 @@ This avoids duplicating the sync's "any `CheckedIn` → `Attended`, else any `Va
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview page — renders plan + per-row checkbox table |
 | `/Tickets/Admin/Contacts` | POST | `TicketAdminOrAdmin` | Apply with selected attendee ids |
 
-(Mailer uses `/Mailer/Admin`. Tickets already namespaces admin actions under `/Tickets/Admin/Transfers`, so `/Tickets/Admin/Contacts` fits.)
+(MailerLite uses `/MailerLite/Admin`. Tickets already namespaces admin actions under `/Tickets/Admin/Transfers`, so `/Tickets/Admin/Contacts` fits.)
 
 `TicketAdminOrAdmin` policy already exists. Same role gating as ticket sync.
 
@@ -283,7 +283,7 @@ GET `/Tickets/Admin/Contacts` renders:
 
 Sorting: rows ordered by decision (Ambiguous first so they're impossible to miss, then DeleteUnverifiedThenCreate, then CreateNewUser, then AttachVerified, then Skips). Within each group, alphabetic by email.
 
-Paging: same pattern as Mailer's preview (server-side paged at 100/page). Selections must survive paging — store as hidden inputs in the form across pages, or use a sticky session-scoped selection. **Implementation decision deferred to writing-plans:** Mailer's existing approach is the reference; copy whatever it does.
+Paging: same pattern as MailerLite's preview (server-side paged at 100/page). Selections must survive paging — store as hidden inputs in the form across pages, or use a sticky session-scoped selection. **Implementation decision deferred to writing-plans:** MailerLite's existing approach is the reference; copy whatever it does.
 
 Workflow for "test with one first":
 
@@ -368,9 +368,9 @@ Update freshness triggers at the top of `tickets.md` to include `src/Humans.Appl
 
 ## Audit + Logging
 
-- `AuditAction.TicketContactsImported` — single summary row at end of apply, mirroring Mailer's `MailerLiteReconciliationCompleted`.
+- `AuditAction.TicketContactsImported` — single summary row at end of apply, mirroring MailerLite's `MailerLiteReconciliationCompleted`.
 - Per-attendee `_logger.LogError` on failures (no per-attendee audit rows — would flood the audit log).
-- `_logger.LogInformation` with summary at end of apply (parity with Mailer).
+- `_logger.LogInformation` with summary at end of apply (parity with MailerLite).
 
 No per-user `ContactCreated` audit rows in this service — `AccountProvisioningService.FindOrCreateUserByEmailAsync` already writes one per user it creates. No need to duplicate.
 
@@ -379,8 +379,8 @@ No per-user `ContactCreated` audit rows in this service — `AccountProvisioning
 | Question | Resolution |
 |---|---|
 | Display name for new users? | Pass attendee full name (`LegalName` → `FirstName + LastName` → null fallback). |
-| Preview screen? | Yes — required. Mirror Mailer's plan/apply split. |
-| Match against unverified UserEmails like Mailer does naively? | **No.** Match Mailer's full pattern: verified attaches, unverified deletes-then-creates (squatter protection). |
+| Preview screen? | Yes — required. Mirror MailerLite's plan/apply split. |
+| Match against unverified UserEmails like MailerLite does naively? | **No.** Match MailerLite's full pattern: verified attaches, unverified deletes-then-creates (squatter protection). |
 | New narrow repo method for setting `MatchedUserId`? | **No.** Reuse existing `UpsertAttendeesAsync` — same primitive the sync uses. |
 | Buyer email creates a user too? | **No.** Attendees only. Buyer-only matches don't grant ticket coverage per section invariant. |
 | Plan/apply preview shows row detail or just counts? | Full row table — needed to catch unintended attach targets. |

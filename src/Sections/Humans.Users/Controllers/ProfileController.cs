@@ -2173,7 +2173,6 @@ internal sealed class ProfileController(
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
             .OrderByRelevance()
-            .Select(r => r.ToHumanSearchViewModel())
             .ToList();
 
         return View(viewModel);

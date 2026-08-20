@@ -233,23 +233,23 @@
       "paths": [
         "src/Sections/Humans.Email/**",
         "src/Sections/Humans.Email.Contracts/**",
-        "src/Sections/Humans.Mailer/**",
-        "src/Sections/Humans.Mailer.Contracts/**",
+        "src/Sections/Humans.MailerLite/**",
+        "src/Sections/Humans.MailerLite.Contracts/**",
         "src/Humans.Web/Health/SmtpHealthCheck.cs"
       ],
       "symbols": [
         "Email*",
-        "Mailer*",
+        "MailerLite*",
         "IEmail*",
-        "IMailer*"
+        "IMailerLite*"
       ],
       "repositoryInterfaces": [
         "IEmailOutboxRepository"
       ],
       "serviceInterfaces": [
         "IEmailService",
-        "IMailerAudienceSyncService",
-        "IMailerImportService",
+        "IMailerLiteAudienceSyncService",
+        "IMailerLiteImportService",
         "IMailerLiteService"
       ]
     },

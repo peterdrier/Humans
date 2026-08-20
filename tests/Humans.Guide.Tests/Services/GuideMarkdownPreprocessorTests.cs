@@ -187,9 +187,10 @@ public class GuideMarkdownPreprocessorTests
     {
         // Regression: the heading has a markdown link whose URL is parenthesised,
         // and a trailing role parenthetical. The preprocessor must not mangle
-        // either — the link's URL must survive so Markdig can render it.
+        // either — the link's URL must survive so Markdig can render it, and the
+        // captured parenthetical must be the trailing role, never the link target.
         const string input = """
-            ## As a [Coordinator](Glossary.md#coordinator) (Camp Coordinator)
+            ## As a [Coordinator](Glossary.md#coordinator) (Camp Lead)
 
             Content.
             """;
@@ -197,7 +198,22 @@ public class GuideMarkdownPreprocessorTests
         var result = Preprocessor.Wrap(input);
 
         result.Should().Contain("[Coordinator](Glossary.md#coordinator)");
-        result.Should().Contain("(Camp Coordinator)");
+        result.Should().Contain("(Camp Lead)");
+        result.Should().Contain($"data-guide-roles=\"{GuideRolePrivilegeMap.CampLead}\"");
+    }
+
+    [HumansFact]
+    public void Wrap_ShippedCampsLeadHeading_CarriesTheCampLeadToken()
+    {
+        // End-to-end on the real file: nobodies-collective/Humans#1035 was invisible
+        // precisely because this heading rendered data-guide-roles="".
+        var markdown = File.ReadAllText(
+            Path.Combine(LocateRepoRoot(), "docs", "guide", "Camps.md"));
+
+        var result = Preprocessor.Wrap(markdown);
+
+        result.Should().Contain(
+            $"<div data-guide-role=\"coordinator\" data-guide-roles=\"{GuideRolePrivilegeMap.CampLead}\">");
     }
 
     [HumansFact]

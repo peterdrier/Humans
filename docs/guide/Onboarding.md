@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Account/**
-  src/Humans.Web/Views/Guest/**
+  src/Sections/Humans.Onboarding/Views/Guest/**
   src/Humans.Web/Views/Home/**
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
   src/Sections/Humans.Shifts/Views/ShiftProfile/ShiftInfo.cshtml
@@ -8,7 +8,7 @@
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Index.cshtml
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Detail.cshtml
   src/Humans.Web/Controllers/AccountController.cs
-  src/Humans.Web/Controllers/GuestController.cs
+  src/Sections/Humans.Onboarding/Controllers/GuestController.cs
   src/Humans.Web/Controllers/HomeController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
   src/Sections/Humans.Onboarding/Services/**

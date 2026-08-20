@@ -5,10 +5,17 @@ namespace Humans.Guide.Services;
 
 /// <summary>
 /// Maps display names that appear in guide-heading parentheticals (e.g. "Camp Admin",
-/// "Consent Coordinator") to the system role constants defined in <see cref="RoleNames"/>.
+/// "Consent Coordinator") to the privilege token the filter matches — a system role
+/// constant from <see cref="RoleNames"/> for every entry but <see cref="CampLead"/>.
 /// </summary>
 internal static class GuideRolePrivilegeMap
 {
+    /// <summary>
+    /// Privilege token for the per-camp lead relationship — a role on a camp season, never a
+    /// claim. <c>GuideRoleResolver</c> sets it from <c>ICampLeadDirectory</c>.
+    /// </summary>
+    public const string CampLead = "CampLead";
+
     private static readonly IReadOnlyDictionary<string, string> DisplayToRole =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -25,16 +32,20 @@ internal static class GuideRolePrivilegeMap
             ["Events Admin"] = RoleNames.EventsAdmin,
             ["Store Admin"] = RoleNames.StoreAdmin,
             ["Consent Coordinator"] = RoleNames.ConsentCoordinator,
-            ["Volunteer Coordinator"] = RoleNames.VolunteerCoordinator
+            ["Volunteer Coordinator"] = RoleNames.VolunteerCoordinator,
+            ["Camp Lead"] = CampLead
         };
 
     /// <summary>
     /// Every system role a parenthetical can name. <see cref="GuideRoleResolver"/> probes
     /// exactly these against the user's claims; deriving the set here is what keeps the two
-    /// from drifting apart.
+    /// from drifting apart. <see cref="CampLead"/> is excluded — no claim carries it.
     /// </summary>
     public static readonly IReadOnlyList<string> MappedRoles =
-        DisplayToRole.Values.Distinct(StringComparer.Ordinal).ToList();
+        DisplayToRole.Values
+            .Where(v => !string.Equals(v, CampLead, StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
     public static bool TryResolve(string displayName, [NotNullWhen(true)] out string? systemRole)
     {
@@ -49,7 +60,7 @@ internal static class GuideRolePrivilegeMap
 
     /// <summary>
     /// Parses a guide-heading parenthetical like "Camp Admin, Finance Admin" into the
-    /// matching system-role constants. Unknown tokens are skipped (not thrown).
+    /// matching privilege tokens. Unknown tokens are skipped (not thrown).
     /// </summary>
     public static IReadOnlyList<string> ParseParenthetical(string? paren)
     {

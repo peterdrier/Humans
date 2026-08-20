@@ -1,5 +1,5 @@
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Integration.Tests.Infrastructure;
@@ -13,7 +13,7 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// <remarks>
 /// Defaults model the smallest account the section's pages need to be worth rendering: the
 /// <c>Website</c> group the import reads (resolved by name, and
-/// <c>MailerImportService.BuildPlanAsync</c> throws if it is absent) plus whatever
+/// <c>MailerLiteImportService.BuildPlanAsync</c> throws if it is absent) plus whatever
 /// subscribers a test adds. The four writes record their calls and mutate nothing.
 /// </remarks>
 internal sealed class StubMailerLiteService : IMailerLiteService

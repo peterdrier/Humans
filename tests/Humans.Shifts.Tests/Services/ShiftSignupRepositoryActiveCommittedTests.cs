@@ -10,7 +10,7 @@ using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>
-/// Covers the narrow read used by Mailer audience computations:
+/// Covers the narrow read used by MailerLite audience computations:
 /// "users with at least one Pending or Confirmed signup for the given event".
 /// </summary>
 public sealed class ShiftRepositoryActiveCommittedTests : ShiftsTestHarness

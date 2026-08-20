@@ -22,8 +22,8 @@
    SharedResource — something outside the section renders each of them. Two of those
    renderers used to be Humans.UI partials; since G5 lane 4b-i (#866) _RoleBadge and
    _ShiftsSummaryCard are this section's own files, but Users' ProfileCard, Shell's widget
-   gallery and Search's /Search page still render them, and _HumanSearchResults (MyTeams_View)
-   is now Humans.Users'. The keys stay shared and every call site in this section's Shared/
+   gallery and Search's /Search page still render them, and MyTeams_View is read by
+   Humans.Users' UsersAdmin/AdminList. The keys stay shared and every call site in this section's Shared/
    partials binds SharedLocalizer explicitly. So do the Enum_SlotPriority_* /
    Enum_RolePeriod_* keys, whose enums are Base's (§15.3b). *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
