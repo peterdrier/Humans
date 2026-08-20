@@ -19,6 +19,17 @@ internal sealed class SurveyQuestionConfiguration : IEntityTypeConfiguration<Sur
         SurveyJson.LocalizedText(b, q => q.RatingMaxLabel);
 
         b.Property(q => q.Type).HasConversion<string>().HasMaxLength(20);
+        b.Property(q => q.GridSelectionMode).HasConversion<string>().HasMaxLength(20);
+
+        b.Property(q => q.GridRows)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => SurveyJson.SerializeGridRows(v),
+                v => SurveyJson.DeserializeGridRows(v),
+                new ValueComparer<List<SurveyGridRow>?>(
+                    (a, c) => SurveyJson.SerializeGridRows(a) == SurveyJson.SerializeGridRows(c),
+                    v => v == null ? 0 : string.GetHashCode(SurveyJson.SerializeGridRows(v)!, StringComparison.Ordinal),
+                    v => SurveyJson.DeserializeGridRows(SurveyJson.SerializeGridRows(v))));
 
         b.Property(q => q.ShowIf)
             .HasColumnType("jsonb")

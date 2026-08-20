@@ -18,6 +18,13 @@ public sealed class SurveyCsvExportBuilderTests
     private static SurveyExportQuestion Text(Guid id, string prompt) =>
         new(id, prompt, SurveyQuestionType.ShortText, []);
 
+    private static SurveyExportQuestion Grid(Guid id, string prompt) =>
+        new(
+            id, prompt, SurveyQuestionType.Grid,
+            [new SurveyExportOption("morning", "Morning"), new SurveyExportOption("afternoon", "Afternoon")],
+            GridSelectionMode.Multiple,
+            [new SurveyExportGridRow("monday", "Monday")]);
+
     private static IReadOnlyList<string> Lines(byte[] bytes) =>
         Encoding.UTF8.GetString(bytes)
             .TrimStart('﻿') // exports carry a UTF-8 BOM so Excel detects the encoding
@@ -62,6 +69,39 @@ public sealed class SurveyCsvExportBuilderTests
         // Last column on the single data row is the choice cell — stable values joined by '|', not labels.
         lines[1].Should().EndWith("a|b");
         lines[1].Should().NotContain("Apple");
+    }
+
+    [HumansFact]
+    public void Serializes_grid_selections_as_stable_row_to_column_json()
+    {
+        var gridId = Guid.NewGuid();
+        var export = new SurveyResponseExport(
+            Guid.NewGuid(), "T", "en",
+            [Grid(gridId, "Availability")],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(), ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en", Submitted, null, null,
+                    [
+                        new SurveyExportAnswer(
+                            gridId, [], [], null, null,
+                            new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                            {
+                                ["monday"] = ["morning", "afternoon"],
+                            },
+                            [
+                                new ResolvedGridSelection(
+                                    "monday", "Monday",
+                                    ["morning", "afternoon"],
+                                    ["Morning", "Afternoon"]),
+                            ]),
+                    ]),
+            ]);
+
+        var csv = Encoding.UTF8.GetString(SurveyCsvExportBuilder.Build(export));
+
+        csv.Should().Contain(@"{""""monday"""":[""""morning"""",""""afternoon""""]}");
+        csv.Should().NotContain("Monday");
+        csv.Should().NotContain("Morning");
     }
 
     [HumansFact]

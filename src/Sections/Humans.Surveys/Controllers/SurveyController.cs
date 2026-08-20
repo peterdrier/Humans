@@ -60,6 +60,10 @@ internal sealed class SurveyController(
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
                 {
                     SelectedOptionValues = a.SelectedOptionValues.ToList(),
+                    GridSelections = a.GridSelections?.ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToList(),
+                        StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
                     TextValue = a.TextValue,
                     RatingValue = a.RatingValue,
                 };
@@ -332,7 +336,19 @@ internal sealed class SurveyController(
     {
         var posted = (model.Answers ?? [])
             .Select(a => new SurveyAnswerInput(
-                a.QuestionId, a.SelectedOptionValues ?? [], a.TextValue, a.RatingValue))
+                a.QuestionId,
+                a.SelectedOptionValues ?? [],
+                a.TextValue,
+                a.RatingValue,
+                (a.GridRows ?? [])
+                    .Where(row => !string.IsNullOrWhiteSpace(row.RowValue))
+                    .GroupBy(row => row.RowValue, StringComparer.Ordinal)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (IReadOnlyList<string>)group
+                            .SelectMany(row => row.SelectedColumnValues ?? [])
+                            .ToList(),
+                        StringComparer.Ordinal)))
             .ToList();
 
         var result = await surveyService.AdvanceWizardAsync(state, model.Page, model.Back, posted, ct);
@@ -455,7 +471,18 @@ internal sealed class SurveyController(
             Options = q.Options
                 .Select(o => new SurveyPageOption(o.Value, o.Label.Resolve(state.Culture, editable.DefaultCulture)))
                 .ToList(),
+            GridSelectionMode = q.GridSelectionMode,
+            GridRows = (q.GridRows ?? [])
+                .Select(row => new SurveyPageGridRow(
+                    row.Value,
+                    row.Label.Resolve(state.Culture, editable.DefaultCulture)))
+                .ToList(),
             SelectedOptionValues = prior?.SelectedOptionValues ?? [],
+            GridSelections = prior?.GridSelections.ToDictionary(
+                kv => kv.Key,
+                kv => (IReadOnlyList<string>)kv.Value,
+                StringComparer.Ordinal)
+                ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
             TextValue = prior?.TextValue,
             RatingValue = prior?.RatingValue,
         };

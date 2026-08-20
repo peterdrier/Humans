@@ -123,6 +123,45 @@
                     }
                     break;
 
+                case SurveyQuestionType.Grid:
+                    @if (q.Grid is null || q.Grid.Rows.Count == 0 || q.Grid.Columns.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No Grid rows or columns.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Row</th>
+                                        @foreach (var column in q.Grid.Columns)
+                                        {
+                                            <th scope="col" class="text-center">@column.Label</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in q.Grid.Rows)
+                                    {
+                                        <tr>
+                                            <th scope="row">@row.Label</th>
+                                            @foreach (var cell in row.Cells)
+                                            {
+                                                var pct = (int)Math.Round(cell.Percent);
+                                                <td class="text-center">
+                                                    <strong>@cell.Count</strong>
+                                                    <span class="text-muted small">(@pct%)</span>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    break;
+
                 default:
                     @if (q.FreeTextAnswers.Count == 0)
                     {
@@ -169,7 +208,16 @@ else
                             {
                                 <dt class="col-sm-4">@a.Prompt</dt>
                                 <dd class="col-sm-8">
-                                    @if (a.SelectedLabels.Count > 0)
+                                    @if (a.GridSelections?.Count > 0)
+                                    {
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach (var selection in a.GridSelections)
+                                            {
+                                                <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
+                                            }
+                                        </ul>
+                                    }
+                                    else if (a.SelectedLabels.Count > 0)
                                     {
                                         @string.Join(", ", a.SelectedLabels)
                                     }

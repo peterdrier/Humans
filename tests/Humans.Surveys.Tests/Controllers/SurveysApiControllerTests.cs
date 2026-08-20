@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using System.Text.Json;
 
 namespace Humans.Surveys.Tests.Controllers;
 
@@ -76,6 +77,33 @@ public class SurveysApiControllerTests
         questions.Should().HaveCount(1);
         questions[0].GetType().GetProperty("type")!.GetValue(questions[0]).Should().Be("SingleChoice");
         questions[0].GetType().GetProperty("prompt")!.GetValue(questions[0]).Should().Be("Pick one");
+    }
+
+    [HumansFact]
+    public async Task Definition_includes_grid_mode_rows_and_columns()
+    {
+        var id = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var editable = new SurveyEditInput(
+            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty, "en", false, null, null, null, null, null, null,
+            [
+                new QuestionInput(
+                    questionId, 1, 0, SurveyQuestionType.Grid, Text("Availability"), LocalizedText.Empty,
+                    true, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
+                    [new OptionInput(Guid.NewGuid(), 0, "morning", Text("Morning"))],
+                    GridSelectionMode.Single,
+                    [new GridRowInput("monday", Text("Monday"))]),
+            ]);
+        _surveys.GetForEditAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(id, SurveyStatus.Open, editable));
+
+        var result = await _sut.Definition(id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""type"":""Grid""");
+        json.Should().Contain(@"""gridSelectionMode"":""Single""");
+        json.Should().Contain(@"""value"":""monday""");
+        json.Should().Contain(@"""label"":""Morning""");
     }
 
     // ── Responses ───────────────────────────────────────────────────────────
@@ -182,6 +210,44 @@ public class SurveysApiControllerTests
         content.ContentType.Should().StartWith("text/markdown");
         content.Content.Should().Contain("| Pick |");
         content.Content.Should().Contain("a\\|b");   // pipe escaped for the MD table
+    }
+
+    [HumansFact]
+    public async Task Responses_projects_resolved_grid_selections()
+    {
+        var id = Guid.NewGuid();
+        var questionId = Guid.NewGuid();
+        var export = new SurveyResponseExport(
+            id, "T", "en",
+            [
+                new SurveyExportQuestion(
+                    questionId, "Availability", SurveyQuestionType.Grid,
+                    [new SurveyExportOption("morning", "Morning")],
+                    GridSelectionMode.Single,
+                    [new SurveyExportGridRow("monday", "Monday")]),
+            ],
+            [
+                Row(
+                    ResponseAnonymity.Anonymous, Submitted, null, null,
+                    new SurveyExportAnswer(
+                        questionId, [], [], null, null,
+                        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                        {
+                            ["monday"] = ["morning"],
+                        },
+                        [new ResolvedGridSelection("monday", "Monday", ["morning"], ["Morning"])])),
+            ]);
+        _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(export);
+
+        var result = await _sut.Responses(
+            id, null, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""gridSelections"":{""monday"":[""morning""]}");
+        json.Should().Contain(@"""rowValue"":""monday""");
+        json.Should().Contain(@"""rowLabel"":""Monday""");
+        json.Should().Contain(@"""columnValues"":[""morning""]");
+        json.Should().Contain(@"""columnLabels"":[""Morning""]");
     }
 
     // ── Aggregates ──────────────────────────────────────────────────────────

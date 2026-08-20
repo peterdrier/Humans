@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Surveys.Data;
+using Humans.Surveys.Domain;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,74 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             new LocalDateTime(2026, 7, 14, 10, 30).InZoneLeniently(Madrid).ToInstant());
         survey.ClosesAt.Should().Be(
             new LocalDateTime(2026, 8, 1, 18, 45, 30).InZoneLeniently(Madrid).ToInstant());
+    }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task Save_binds_and_persists_grid_rows_columns_and_selection_mode()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var createResp = await Client.GetAsync("/Survey/Admin/Create", ct);
+        var token = ExtractAntiForgeryToken(await createResp.Content.ReadAsStringAsync(ct));
+        var questionId = Guid.NewGuid();
+
+        var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", token!),
+            ("Title[en]", $"Grid integration survey {Guid.NewGuid():N}"),
+            ("Questions.Index", "grid"),
+            ("Questions[grid].Id", questionId.ToString()),
+            ("Questions[grid].PageNumber", "1"),
+            ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].Prompt[en]", "When can you attend?"),
+            ("Questions[grid].IsRequired", "true"),
+            ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Multiple)),
+            ("Questions[grid].Options.Index", "morning"),
+            ("Questions[grid].Options[morning].Value", "morning"),
+            ("Questions[grid].Options[morning].Label[en]", "Morning"),
+            ("Questions[grid].Options.Index", "afternoon"),
+            ("Questions[grid].Options[afternoon].Value", "afternoon"),
+            ("Questions[grid].Options[afternoon].Label[en]", "Afternoon"),
+            ("Questions[grid].GridRows.Index", "monday"),
+            ("Questions[grid].GridRows[monday].Value", "monday"),
+            ("Questions[grid].GridRows[monday].Label[en]", "Monday"),
+            ("Questions[grid].GridRows.Index", "tuesday"),
+            ("Questions[grid].GridRows[tuesday].Value", "tuesday"),
+            ("Questions[grid].GridRows[tuesday].Label[en]", "Tuesday")), ct);
+
+        var saveHtml = await saveResp.Content.ReadAsStringAsync(ct);
+        var validationMessages = Regex.Matches(
+                saveHtml,
+                "<li>(?<message>.*?)</li>",
+                RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture,
+                TimeSpan.FromSeconds(2))
+            .Select(match => match.Groups["message"].Value)
+            .ToList();
+        ((int)saveResp.StatusCode).Should().BeOneOf(
+            [(int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect],
+            $"a valid Grid post should redirect; validation messages were: {string.Join(" | ", validationMessages)}");
+        var idMatch = Regex.Match(
+            saveResp.Headers.Location!.ToString(),
+            "/Survey/Admin/Edit/(?<id>[0-9a-fA-F-]{36})",
+            RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2));
+        idMatch.Success.Should().BeTrue();
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
+        var surveyId = Guid.Parse(idMatch.Groups["id"].Value);
+        var question = (await db.Surveys.AsNoTracking()
+                .Include(survey => survey.Questions)
+                .ThenInclude(q => q.Options)
+                .SingleAsync(survey => survey.Id == surveyId, ct))
+            .Questions.Should().ContainSingle().Subject;
+
+        question.Id.Should().Be(questionId);
+        question.Type.Should().Be(SurveyQuestionType.Grid);
+        question.IsRequired.Should().BeTrue();
+        question.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
+        question.GridRows!.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
+        question.Options.OrderBy(option => option.Order).Select(option => option.Value)
+            .Should().ContainInOrder("morning", "afternoon");
     }
 
     private static string? ExtractAntiForgeryToken(string html)

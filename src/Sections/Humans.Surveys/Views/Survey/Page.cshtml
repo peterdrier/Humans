@@ -122,6 +122,49 @@
                                     </div>
                                     break;
                                 }
+
+                                case SurveyQuestionType.Grid:
+                                {
+                                    var single = q.GridSelectionMode == GridSelectionMode.Single;
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle survey-grid mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col"><span class="visually-hidden">@q.Prompt</span></th>
+                                                    @foreach (var column in q.Options)
+                                                    {
+                                                        <th scope="col" class="text-center">@column.Label</th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (var rowIndex = 0; rowIndex < q.GridRows.Count; rowIndex++)
+                                                {
+                                                    var row = q.GridRows[rowIndex];
+                                                    q.GridSelections.TryGetValue(row.Value, out var selectedColumns);
+                                                    <tr>
+                                                        <th scope="row">
+                                                            @row.Label
+                                                            <input type="hidden" name="Answers[@i].GridRows[@rowIndex].RowValue" value="@row.Value" />
+                                                        </th>
+                                                        @foreach (var column in q.Options)
+                                                        {
+                                                            var selected = selectedColumns?.Contains(column.Value, StringComparer.Ordinal) == true;
+                                                            <td class="text-center">
+                                                                <input class="form-check-input" type="@(single ? "radio" : "checkbox")"
+                                                                       name="Answers[@i].GridRows[@rowIndex].SelectedColumnValues"
+                                                                       value="@column.Value"
+                                                                       aria-label="@($"{row.Label}: {column.Label}")"
+                                                                       @if (selected) { <text>checked</text> } />
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    break;
+                                }
                             }
 
                             @if (hasError)

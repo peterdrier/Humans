@@ -96,6 +96,9 @@ internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilder
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
 
+/// <summary>One Grid row in the builder. Keys are non-sequential indexers.</summary>
+internal sealed record SurveyGridRowModel(string QuestionKey, string RowKey, SurveyGridRowBuilderViewModel Row);
+
 /// <summary>One show-if clause row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__CKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
 
@@ -208,9 +211,11 @@ internal sealed class SurveyQuestionBuilderViewModel
     public int? RatingMax { get; set; }
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
+    public GridSelectionMode GridSelectionMode { get; set; } = GridSelectionMode.Single;
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
+    public List<SurveyGridRowBuilderViewModel> GridRows { get; set; } = [];
 
     public QuestionInput ToInput(int order) => new(
         Id,
@@ -225,7 +230,9 @@ internal sealed class SurveyQuestionBuilderViewModel
         new LocalizedText(RatingMinLabel),
         new LocalizedText(RatingMaxLabel),
         ToShowIf(),
-        Options.Select((o, i) => o.ToInput(i)).ToList());
+        Options.Select((o, i) => o.ToInput(i)).ToList(),
+        Type == SurveyQuestionType.Grid ? GridSelectionMode : null,
+        Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
     {
@@ -242,6 +249,8 @@ internal sealed class SurveyQuestionBuilderViewModel
         ShowIfCombine = q.ShowIf?.Combine ?? BranchCombine.All,
         ShowIfClauses = q.ShowIf?.Clauses.Select(SurveyBranchClauseBuilderViewModel.FromClause).ToList() ?? [],
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
+        GridSelectionMode = q.GridSelectionMode ?? GridSelectionMode.Single,
+        GridRows = q.GridRows?.Select(SurveyGridRowBuilderViewModel.FromInput).ToList() ?? [],
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>
@@ -290,5 +299,19 @@ internal sealed class SurveyOptionBuilderViewModel
         Id = o.Id,
         Value = o.Value,
         Label = SurveyBuilderViewModel.ToDict(o.Label),
+    };
+}
+
+internal sealed class SurveyGridRowBuilderViewModel
+{
+    public string Value { get; set; } = string.Empty;
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
+
+    public GridRowInput ToInput() => new(Value, new LocalizedText(Label));
+
+    public static SurveyGridRowBuilderViewModel FromInput(GridRowInput row) => new()
+    {
+        Value = row.Value,
+        Label = SurveyBuilderViewModel.ToDict(row.Label),
     };
 }

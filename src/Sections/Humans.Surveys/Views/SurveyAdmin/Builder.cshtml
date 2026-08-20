@@ -229,9 +229,19 @@
                 const type = card.querySelector('.question-type')?.value;
                 const ratings = card.querySelector('.rating-section');
                 const options = card.querySelector('.options-section');
+                const grid = card.querySelector('.grid-section');
                 const isChoice = type === 'SingleChoice' || type === 'MultiChoice';
-                if (options) options.style.display = isChoice ? '' : 'none';
+                const isGrid = type === 'Grid';
+                if (options) {
+                    options.style.display = isChoice || isGrid ? '' : 'none';
+                    const label = options.querySelector('.options-label');
+                    if (label) label.textContent = isGrid ? 'Columns' : 'Options';
+                    const help = options.querySelector('.grid-column-help');
+                    if (help) help.style.display = isGrid ? '' : 'none';
+                }
+                if (grid) grid.style.display = isGrid ? '' : 'none';
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
+                updateGridColumnLimit(card);
             }
 
             function ensureQuestionId(card) {
@@ -242,9 +252,28 @@
             function addOption(card) {
                 const tpl = card.querySelector('.option-template');
                 if (!tpl) return;
+                if (card.querySelector('.question-type')?.value === 'Grid'
+                    && card.querySelectorAll('.options-container .option-row').length >= 5) return;
                 const html = tpl.innerHTML.replaceAll('__OKEY__', freshKey('o'));
                 card.querySelector('.options-container').insertAdjacentHTML('beforeend', html);
                 applyCulture(card.querySelector('.options-container').lastElementChild);
+                updateGridColumnLimit(card);
+            }
+
+            function updateGridColumnLimit(card) {
+                const button = card.querySelector('.add-option');
+                if (!button) return;
+                const isGrid = card.querySelector('.question-type')?.value === 'Grid';
+                const count = card.querySelectorAll('.options-container .option-row').length;
+                button.disabled = isGrid && count >= 5;
+            }
+
+            function addGridRow(card) {
+                const tpl = card.querySelector('.grid-row-template');
+                if (!tpl) return;
+                const html = tpl.innerHTML.replaceAll('__RKEY__', freshKey('r'));
+                card.querySelector('.grid-rows-container').insertAdjacentHTML('beforeend', html);
+                applyCulture(card.querySelector('.grid-rows-container').lastElementChild);
             }
 
             // ── show-if clause editor ────────────────────────────────────────
@@ -264,6 +293,7 @@
                 select.add(new Option('— choose a question —', ''));
                 questionCards().forEach((card, i) => {
                     if (card === ownCard) return;
+                    if (card.querySelector('.question-type')?.value === 'Grid') return;
                     const id = card.querySelector('.question-id')?.value;
                     if (id) select.add(new Option(questionLabel(card, i), id));
                 });
@@ -346,7 +376,13 @@
                 } else if (e.target.classList.contains('add-option')) {
                     addOption(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-option')) {
+                    const card = e.target.closest('.question-card');
                     e.target.closest('.option-row').remove();
+                    updateGridColumnLimit(card);
+                } else if (e.target.classList.contains('add-grid-row')) {
+                    addGridRow(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('remove-grid-row')) {
+                    e.target.closest('.grid-row').remove();
                 } else if (e.target.classList.contains('add-clause')) {
                     addClause(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-clause')) {

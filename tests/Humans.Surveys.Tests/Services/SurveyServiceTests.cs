@@ -46,6 +46,20 @@ public class SurveyServiceTests
     private static QuestionInput Q(string prompt, SurveyQuestionType type, int page, int order, params OptionInput[] opts) =>
         new(null, page, order, type, L(prompt), LocalizedText.Empty, false, null, null, LocalizedText.Empty, LocalizedText.Empty, null, opts.ToList());
 
+    private static QuestionInput GridInput(
+        Guid? id = null,
+        int page = 1,
+        int order = 1,
+        GridSelectionMode? mode = GridSelectionMode.Single,
+        IReadOnlyList<OptionInput>? columns = null,
+        IReadOnlyList<GridRowInput>? rows = null) =>
+        new(
+            id, page, order, SurveyQuestionType.Grid, L("Availability"), LocalizedText.Empty,
+            false, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
+            columns ?? [Opt("morning", "Morning", 1), Opt("afternoon", "Afternoon", 2)],
+            mode,
+            rows ?? [new GridRowInput("monday", L("Monday")), new GridRowInput("tuesday", L("Tuesday"))]);
+
     private static SurveyEditInput Input(params QuestionInput[] qs) =>
         new(L("Title"), L("Intro"), L("Thanks"), "en", false, null, null, null, null, null, null, qs.ToList());
 
@@ -75,6 +89,144 @@ public class SurveyServiceTests
         q1.Options.Should().OnlyContain(o => o.QuestionId == q1.Id);
 
         await _audit.Received(1).LogAsync(AuditAction.SurveyCreated, "Survey", id, Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_persists_grid_configuration()
+    {
+        Survey? captured = null;
+        _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<Survey>());
+
+        await CreateService().CreateAsync(
+            Input(GridInput(mode: GridSelectionMode.Multiple)),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        var grid = captured!.Questions.Should().ContainSingle().Subject;
+        grid.Type.Should().Be(SurveyQuestionType.Grid);
+        grid.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
+        grid.GridRows!.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
+        grid.Options.Select(column => column.Value).Should().ContainInOrder("morning", "afternoon");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_with_more_than_five_columns()
+    {
+        var columns = Enumerable.Range(1, 6)
+            .Select(index => Opt($"c{index}", $"Column {index}", index))
+            .ToList();
+
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(columns: columns)),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*between one and five columns*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_without_rows()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(rows: [])),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*at least one row*");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_without_a_selection_mode()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(mode: null)),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must choose a selection mode*");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_with_a_blank_row_value()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(rows: [new GridRowInput(" ", L("Blank"))])),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*row values must not be blank*");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_with_duplicate_row_values()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(rows:
+            [
+                new GridRowInput("monday", L("Monday")),
+                new GridRowInput("monday", L("Monday again")),
+            ])),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*row values must be unique*");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_with_duplicate_column_values()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(columns:
+            [
+                Opt("morning", "Morning", 1),
+                Opt("morning", "Morning again", 2),
+            ])),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*column values must be unique*");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_using_a_grid_as_a_branching_source()
+    {
+        var gridId = Guid.NewGuid();
+        var dependentId = Guid.NewGuid();
+        var grid = GridInput(gridId);
+        var dependent = new QuestionInput(
+            dependentId, 2, 1, SurveyQuestionType.ShortText,
+            L("Why?"), LocalizedText.Empty, false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty,
+            new BranchCondition
+            {
+                Clauses =
+                {
+                    new BranchClause
+                    {
+                        QuestionId = gridId,
+                        Operator = BranchOperator.Is,
+                        OptionValues = { "morning" },
+                    },
+                },
+            },
+            []);
+
+        var act = async () => await CreateService().CreateAsync(
+            Input(grid, dependent),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*cannot be branching sources*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
     private static SurveyEditInput InputWithSlug(string? slug) =>
@@ -208,6 +360,49 @@ public class SurveyServiceTests
         q.Options.Single().Label.Values["es"].Should().Be("es:Good");
         // Empty source fields (intro, thank-you, help, rating labels) are not sent for translation.
         captured.Intro.Values.Should().NotContainKey("de");
+    }
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_includes_grid_row_labels()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        var questionId = Guid.NewGuid();
+        survey.Questions =
+        [
+            new SurveyQuestion
+            {
+                Id = questionId,
+                SurveyId = survey.Id,
+                PageNumber = 1,
+                Order = 1,
+                Type = SurveyQuestionType.Grid,
+                Prompt = L("Availability"),
+                GridSelectionMode = GridSelectionMode.Single,
+                GridRows = [new SurveyGridRow("monday", L("Monday"))],
+                Options =
+                [
+                    new SurveyQuestionOption
+                    {
+                        Id = Guid.NewGuid(),
+                        QuestionId = questionId,
+                        Order = 1,
+                        Value = "morning",
+                        Label = L("Morning"),
+                    },
+                ],
+            },
+        ];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        Survey? captured = null;
+        _repo.When(r => r.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+            .Do(ci => captured = ci.Arg<Survey>());
+        StubTranslationAsMarker();
+
+        var filled = await CreateService().PreFillTranslationsAsync(
+            survey.Id, ["en", "es"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        filled.Should().Be(4); // survey title + question prompt + column label + row label
+        captured!.Questions.Single().GridRows!.Single().Label.Values["es"].Should().Be("es:Monday");
     }
 
     [HumansFact]
@@ -922,6 +1117,28 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SubmitResponseAsync_stores_null_for_an_unanswered_optional_grid()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var grid = GridQuestion(Guid.NewGuid(), survey.Id);
+        survey.Questions = [grid];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+            .Do(ci => captured = ci.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [new SurveyAnswerInput(
+                grid.Id, [], null, null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))]);
+
+        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        captured!.Answers.Should().ContainSingle().Which.GridSelections.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SubmitResponseAsync_drops_answers_to_questions_hidden_by_branching()
     {
         var gate = Guid.NewGuid();
@@ -1176,6 +1393,62 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task AdvanceWizardAsync_normalizes_grid_rows_columns_and_single_selection()
+    {
+        var gridId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.Questions =
+        [
+            new SurveyQuestion
+            {
+                Id = gridId,
+                SurveyId = survey.Id,
+                PageNumber = 1,
+                Order = 1,
+                Type = SurveyQuestionType.Grid,
+                Prompt = L("Availability"),
+                GridSelectionMode = GridSelectionMode.Single,
+                GridRows =
+                [
+                    new SurveyGridRow("monday", L("Monday")),
+                    new SurveyGridRow("tuesday", L("Tuesday")),
+                ],
+                Options =
+                [
+                    new SurveyQuestionOption
+                    {
+                        Id = Guid.NewGuid(), QuestionId = gridId, Order = 1,
+                        Value = "morning", Label = L("Morning"),
+                    },
+                    new SurveyQuestionOption
+                    {
+                        Id = Guid.NewGuid(), QuestionId = gridId, Order = 2,
+                        Value = "afternoon", Label = L("Afternoon"),
+                    },
+                ],
+            },
+        ];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var state = WizardState(survey.Id);
+        var posted = new SurveyAnswerInput(
+            gridId, [], null, null,
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                ["monday"] = ["morning", "afternoon", "morning"],
+                ["tuesday"] = ["invalid", "afternoon"],
+                ["unknown-row"] = ["morning"],
+            });
+
+        await CreateService().AdvanceWizardAsync(
+            state, 1, back: true, [posted], ct: TestContext.Current.CancellationToken);
+
+        var captured = state.Answers[gridId.ToString()].GridSelections;
+        captured.Keys.Should().BeEquivalentTo("monday", "tuesday");
+        captured["monday"].Should().ContainSingle().Which.Should().Be("morning");
+        captured["tuesday"].Should().ContainSingle().Which.Should().Be("afternoon");
+    }
+
     // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
 
     private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
@@ -1233,6 +1506,48 @@ public class SurveyServiceTests
 
     private static SurveyAnswer TextAnswer(Guid questionId, string? text) =>
         new() { Id = Guid.NewGuid(), QuestionId = questionId, TextValue = text };
+
+    private static SurveyQuestion GridQuestion(Guid id, Guid surveyId, GridSelectionMode mode = GridSelectionMode.Multiple) => new()
+    {
+        Id = id,
+        SurveyId = surveyId,
+        PageNumber = 1,
+        Order = 1,
+        Type = SurveyQuestionType.Grid,
+        Prompt = L("Availability"),
+        GridSelectionMode = mode,
+        GridRows =
+        [
+            new SurveyGridRow("monday", L("Monday")),
+            new SurveyGridRow("tuesday", L("Tuesday")),
+        ],
+        Options =
+        [
+            new SurveyQuestionOption
+            {
+                Id = Guid.NewGuid(), QuestionId = id, Order = 1,
+                Value = "morning", Label = L("Morning"),
+            },
+            new SurveyQuestionOption
+            {
+                Id = Guid.NewGuid(), QuestionId = id, Order = 2,
+                Value = "afternoon", Label = L("Afternoon"),
+            },
+        ],
+    };
+
+    private static SurveyAnswer GridAnswer(
+        Guid questionId,
+        params (string Row, string[] Columns)[] selections) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            QuestionId = questionId,
+            GridSelections = selections.ToDictionary(
+                selection => selection.Row,
+                selection => selection.Columns.ToList(),
+                StringComparer.Ordinal),
+        };
 
     [HumansFact]
     public async Task GetResultsAsync_returns_null_when_survey_missing()
@@ -1309,6 +1624,43 @@ public class SurveyServiceTests
 
         var text = result.Questions.Single(q => q.QuestionId == textId);
         text.FreeTextAnswers.Should().BeEquivalentTo(new[] { "great", "ok" });
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_aggregates_grid_cells_per_row()
+    {
+        var surveyId = Guid.NewGuid();
+        var gridId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = [GridQuestion(gridId, surveyId)];
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        var now = _clock.GetCurrentInstant();
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                    GridAnswer(gridId, ("monday", ["morning", "afternoon"]), ("tuesday", ["afternoon"]))),
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                    GridAnswer(gridId, ("monday", ["morning"]))),
+            ]);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
+
+        var grid = result!.Questions.Should().ContainSingle().Subject.Grid!;
+        grid.Mode.Should().Be(GridSelectionMode.Multiple);
+        var monday = grid.Rows.Single(row => string.Equals(row.Value, "monday", StringComparison.Ordinal));
+        monday.Cells.Single(cell => string.Equals(cell.ColumnValue, "morning", StringComparison.Ordinal)).Count.Should().Be(2);
+        monday.Cells.Single(cell => string.Equals(cell.ColumnValue, "morning", StringComparison.Ordinal)).Percent.Should().Be(100);
+        monday.Cells.Single(cell => string.Equals(cell.ColumnValue, "afternoon", StringComparison.Ordinal)).Percent.Should().Be(50);
+        var tuesday = grid.Rows.Single(row => string.Equals(row.Value, "tuesday", StringComparison.Ordinal));
+        tuesday.Cells.Single(cell => string.Equals(cell.ColumnValue, "afternoon", StringComparison.Ordinal)).Percent.Should().Be(100);
     }
 
     [HumansFact]
@@ -1559,6 +1911,69 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task GetResponseExportAsync_includes_grid_schema_and_resolved_selections()
+    {
+        var surveyId = Guid.NewGuid();
+        var gridId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = [GridQuestion(gridId, surveyId)];
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug,
+                    _clock.GetCurrentInstant(), null,
+                    GridAnswer(gridId, ("monday", ["morning", "afternoon"]))),
+            ]);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+
+        var schema = export!.Questions.Should().ContainSingle().Subject;
+        schema.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
+        schema.GridRows!.Select(row => row.Label).Should().ContainInOrder("Monday", "Tuesday");
+        var answer = export.Rows.Single().Answers.Single();
+        answer.GridSelections!["monday"].Should().ContainInOrder("morning", "afternoon");
+        var selection = answer.GridSelectionLabels.Should().ContainSingle().Subject;
+        selection.RowValue.Should().Be("monday");
+        selection.RowLabel.Should().Be("Monday");
+        selection.ColumnValues.Should().ContainInOrder("morning", "afternoon");
+        selection.ColumnLabels.Should().ContainInOrder("Morning", "Afternoon");
+    }
+
+    [HumansFact]
+    public async Task GetResponseExportAsync_preserves_raw_grid_keys_removed_from_the_current_definition()
+    {
+        var surveyId = Guid.NewGuid();
+        var gridId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = [GridQuestion(gridId, surveyId)];
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug,
+                    _clock.GetCurrentInstant(), null,
+                    GridAnswer(gridId, ("removed-row", ["removed-column"]))),
+            ]);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId, TestContext.Current.CancellationToken);
+
+        var answer = export!.Rows.Single().Answers.Single();
+        answer.GridSelections!["removed-row"].Should().ContainSingle().Which.Should().Be("removed-column");
+        var labels = answer.GridSelectionLabels.Should().ContainSingle().Subject;
+        labels.RowLabel.Should().Be("removed-row");
+        labels.ColumnLabels.Should().ContainSingle().Which.Should().Be("removed-column");
+    }
+
+    [HumansFact]
     public async Task GetResponseExportAsync_orders_rows_by_submitted_at()
     {
         var surveyId = Guid.NewGuid();
@@ -1591,6 +2006,7 @@ public class SurveyServiceTests
         var choiceId = Guid.NewGuid();
         var textId = Guid.NewGuid();
         var ratingId = Guid.NewGuid();
+        var gridId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
         typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
         survey.Title = L("Summer Feedback");
@@ -1599,12 +2015,14 @@ public class SurveyServiceTests
             ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2)),
             RatingQuestion(ratingId, surveyId, 2, 1, 5),
             TextQuestion(textId, surveyId, 3),
+            GridQuestion(gridId, surveyId),
         };
         _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
 
         var response = SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
             _clock.GetCurrentInstant(), userId,
-            ChoiceAnswer(choiceId, "yes"), RatingAnswer(ratingId, 4), TextAnswer(textId, "loved it"));
+            ChoiceAnswer(choiceId, "yes"), RatingAnswer(ratingId, 4), TextAnswer(textId, "loved it"),
+            GridAnswer(gridId, ("removed-row", ["removed-column"])));
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { response });
 
@@ -1620,6 +2038,8 @@ public class SurveyServiceTests
         json.Should().Contain("Yes");        // resolved choice label
         json.Should().Contain("loved it");   // free-text value
         json.Should().Contain("4");          // rating value
+        json.Should().Contain("removed-row");
+        json.Should().Contain("removed-column");
     }
 
     [HumansFact]
