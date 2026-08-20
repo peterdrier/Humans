@@ -106,7 +106,7 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
     }
 
     private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

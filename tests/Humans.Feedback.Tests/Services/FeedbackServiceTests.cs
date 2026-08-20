@@ -385,9 +385,6 @@ public sealed class FeedbackServiceTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
         _people[id] = info;
         return info;

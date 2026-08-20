@@ -1,13 +1,15 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>
 /// A request to merge two user accounts.
 /// Created when a user verifies an email that belongs to another account.
 /// The source account's data is migrated to the target account on acceptance.
 /// </summary>
-public class AccountMergeRequest
+internal sealed class AccountMergeRequest
 {
     /// <summary>
     /// Unique identifier for this merge request.

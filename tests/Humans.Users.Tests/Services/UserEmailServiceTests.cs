@@ -358,7 +358,7 @@ public class UserEmailServiceTests
     }
 
     private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<UserEmail> emails) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

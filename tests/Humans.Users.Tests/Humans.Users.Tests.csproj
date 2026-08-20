@@ -35,4 +35,13 @@
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      The six Profile-side entities are internal to Humans.Users
+      (nobodies-collective/Humans#1051); this project holds InternalsVisibleTo and
+      names them in a dozen files. Global, as in the section's own csproj.
+    -->
+    <Using Include="Humans.Users.Domain" />
+  </ItemGroup>
+
 </Project>

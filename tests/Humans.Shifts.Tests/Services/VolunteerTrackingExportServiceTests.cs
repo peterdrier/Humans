@@ -7,6 +7,7 @@ using Humans.Shifts.Contracts;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -72,7 +73,7 @@ public sealed class VolunteerTrackingExportServiceTests
     }
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

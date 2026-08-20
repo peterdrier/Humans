@@ -241,7 +241,7 @@ public class SurveyServiceTests
     private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState? state = null) =>
         UserInfo.Create(
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
-            [], [], [], null, [], [], [], []);
+            [], [], [], null, []);
 
     private static TeamInfo TeamWith(Guid teamId, params Guid[] memberUserIds) => new(
         teamId, "Team", null, "team",

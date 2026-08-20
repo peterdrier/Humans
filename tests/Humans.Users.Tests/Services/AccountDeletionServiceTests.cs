@@ -1,4 +1,5 @@
 using Humans.Auth.Contracts;
+using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -437,7 +438,7 @@ public class AccountDeletionServiceTests
             user.DeletionRequestedAt = now;
             user.DeletionScheduledFor = now.Plus(Duration.FromDays(30));
         }
-        return UserInfo.Create(user, [], [], [], null, [], [], [], []);
+        return UserInfoFactory.Create(user, [], [], [], null, [], [], [], []);
     }
 
 }

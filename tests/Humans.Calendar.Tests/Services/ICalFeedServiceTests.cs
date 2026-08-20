@@ -43,9 +43,6 @@ public class ICalFeedServiceTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));

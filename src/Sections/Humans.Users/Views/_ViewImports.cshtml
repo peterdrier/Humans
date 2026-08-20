@@ -1,18 +1,16 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Folder-level rather than one Views/_ViewImports.cshtml because Humans.Users still grants
-   InternalsVisibleTo to Humans.Web: a root _ViewImports in both assemblies generates the
-   same internal Views__ViewImports type and Shell fails with CS0436. Collapse these four
-   into one root file in the commit that moves ProfileController and drops the grant. *@
+   Guarded by UsersPageRenderTests. *@
 @using Humans.Base.Extensions
 @using Humans.Base.Enums
+@using Humans.Shifts
+@using Humans.Shifts.Contracts
 @using Humans.Users
 @using Humans.Users.Contracts
 @using Humans.Users.Controllers
-@using Humans.Users.Models
 @using Humans.Users.Extensions
+@using Humans.Users.Models
 @using Humans.Users.Services
-@using Humans.Shifts.Contracts
 @using Humans.Base
 @using Humans.Base.Authorization
 @using Humans.Base.Helpers
@@ -24,15 +22,20 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @* Users' ~250 keys are still in Humans.UI's SharedResource — the resx carve into
-   UsersResource has not happened yet, so this binds to the shared set exactly as the
-   Shell _ViewImports these views came from did. Rebind when UsersResource lands. *@
+   UsersResource has not happened yet. Rebind when UsersResource lands. *@
 @inject IStringLocalizer<SharedResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* <vc:human> and the other shared components are Humans.UI's. *@
+@* <vc:human> and the other shared components are Base's. *@
 @addTagHelper *, Humans.Base
 @addTagHelper *, Humans.Users
-@* <vc:shift-signups> is Humans.Shifts' own component; AdminDetail renders it. *@
+@* <vc:shift-signups> (AdminDetail) is Humans.Shifts'. *@
 @addTagHelper *, Humans.Shifts
-@* <vc:audit-log> (AdminDetail) is the AuditLog section's own component since G5 lane 4b-2h
-   (nobodies-collective/Humans#866); it used to be Humans.UI's. *@
+@* <vc:my-camps> (Profile/Index) is Humans.Camps'. *@
+@addTagHelper *, Humans.Camps
+@* <vc:audit-log> (Profile/Index sent messages, AdminDetail) is Humans.AuditLog's. *@
 @addTagHelper *, Humans.AuditLog
+@* <vc:events-card> (Profile/Index) is Humans.Events' (nobodies-collective/Humans#1090). *@
+@addTagHelper *, Humans.Events
+@* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. A <vc:>
+   element for an unimported assembly renders as inert markup with a green build and no
+   runtime error, so never add one without its @addTagHelper. *@

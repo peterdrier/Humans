@@ -52,7 +52,8 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
-                new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
+                UserFixtures.Profile(
+                    state: null, burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
         _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
 
@@ -60,7 +61,8 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_senderId, "Bob"),
-                new Profile { BurnerName = "Bob", FirstName = "Bob", LastName = "Jones" }));
+                UserFixtures.Profile(
+                    state: null, burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         _userEmailService.GetPrimaryEmailAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns("bob@example.com");
 
@@ -660,15 +662,12 @@ public sealed class TicketTransferServiceTests
         NormalizedUserName = $"{displayName.ToLowerInvariant().Replace(" ", "")}@EXAMPLE.COM",
     };
 
-    private static UserInfo WrapInUserInfo(User user, Profile? profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(User user, ProfileInfo? profile) => UserInfo.Create(
         user: user,
         userEmails: [],
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     private static TicketAttendee MakeAttendee(

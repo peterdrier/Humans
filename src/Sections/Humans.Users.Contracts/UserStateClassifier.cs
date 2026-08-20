@@ -37,23 +37,4 @@ public static class UserStateClassifier
         if (!hasRequiredNameFields) return UserState.Bare;
         return UserState.Active;
     }
-
-    /// <summary>Classify from entities, used by transition write-sites after they mutate fields.</summary>
-    public static UserState Classify(User user, Profile? profile)
-    {
-        var hasName = profile is not null
-            && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            && !string.IsNullOrWhiteSpace(profile.FirstName)
-            && !string.IsNullOrWhiteSpace(profile.LastName);
-        var isGdprDeleted = string.Equals(
-            user.DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal);
-        return Classify(
-            hasRequiredNameFields: hasName,
-            isSuspended: profile?.State == ProfileState.Suspended,
-            isAdminSuspended: profile?.State == ProfileState.AdminSuspended,
-            isRejected: profile?.RejectedAt is not null,
-            isDeletionPending: user.DeletionRequestedAt.HasValue,
-            isMerged: user.MergedAt is not null && !isGdprDeleted,
-            isGdprDeleted: isGdprDeleted);
-    }
 }

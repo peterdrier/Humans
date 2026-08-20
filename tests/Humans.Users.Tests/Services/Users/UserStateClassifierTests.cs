@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using NodaTime;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
 
 namespace Humans.Users.Tests.Services.Users;
 
@@ -51,7 +52,7 @@ public class UserStateClassifierTests
         var user = NewUser(displayName: "Real Name");
         var profile = NewNamedProfile(user.Id);
 
-        UserStateClassifier.Classify(user, profile).Should().Be(UserState.Active);
+        UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -61,7 +62,7 @@ public class UserStateClassifierTests
         var profile = NewNamedProfile(user.Id);
         profile.LastName = "";
 
-        UserStateClassifier.Classify(user, profile).Should().Be(UserState.Bare);
+        UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Bare);
     }
 
     [HumansTheory]
@@ -73,7 +74,7 @@ public class UserStateClassifierTests
         var profile = NewNamedProfile(user.Id);
         profile.State = profileState;
 
-        UserStateClassifier.Classify(user, profile).Should().Be(expected);
+        UserStateEvaluator.Classify(user, profile).Should().Be(expected);
     }
 
     [HumansFact]
@@ -84,13 +85,13 @@ public class UserStateClassifierTests
         // Merge tombstone: MergedAt set, real DisplayName → Merged.
         var merged = NewUser(displayName: "Real Name");
         merged.MergedAt = instant;
-        UserStateClassifier.Classify(merged, profile: null).Should().Be(UserState.Merged);
+        UserStateEvaluator.Classify(merged, profile: null).Should().Be(UserState.Merged);
 
         // GDPR deletion reuses the merge tombstone columns, so MergedAt is also set — but the
         // "Deleted User" DisplayName sentinel must win and classify it as Deleted.
         var gdprDeleted = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
         gdprDeleted.MergedAt = instant;
-        UserStateClassifier.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
+        UserStateEvaluator.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
     }
 
     private static User NewUser(string displayName) => new()

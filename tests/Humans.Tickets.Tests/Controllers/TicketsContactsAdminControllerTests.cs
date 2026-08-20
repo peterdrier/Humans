@@ -29,9 +29,6 @@ public class TicketsContactsAdminControllerTests
                 [],
                 [],
                 profile: null,
-                [],
-                [],
-                [],
                 [])));
 
         var ctrl = new TicketsContactsAdminController(import, users);

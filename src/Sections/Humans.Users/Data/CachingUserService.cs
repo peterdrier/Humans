@@ -247,9 +247,6 @@ internal sealed class CachingUserService(
             user.EventParticipations.ToList(),
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []));
     }
 
@@ -582,7 +579,7 @@ internal sealed class CachingUserService(
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
-        IReadOnlyList<ProfileLanguage> languages,
+        IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>

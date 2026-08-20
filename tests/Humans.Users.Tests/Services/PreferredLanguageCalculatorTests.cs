@@ -65,7 +65,7 @@ public class PreferredLanguageCalculatorTests
         result.Select(l => l.Language).Should().Equal("en", "es");
     }
 
-    private static UserInfo MakeUserInfo(Guid id, string preferredLanguage) => UserInfo.Create(
+    private static UserInfo MakeUserInfo(Guid id, string preferredLanguage) => UserInfoFactory.Create(
         user: new User
         {
             Id = id,

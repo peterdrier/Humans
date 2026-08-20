@@ -4,9 +4,11 @@ using Humans.Base.Interfaces;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Service for managing account merge requests.
+/// Service for managing account merge requests. Internal to the section — the only caller is
+/// <c>UserEmailService</c>, and <c>CreateAsync</c> takes the now-internal
+/// <c>AccountMergeRequest</c> (nobodies-collective/Humans#1051).
 /// </summary>
-public interface IAccountMergeService : IApplicationService
+internal interface IAccountMergeService : IApplicationService
 {
     /// <summary>
     /// Gets all pending merge requests for admin review.

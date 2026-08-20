@@ -294,9 +294,6 @@ public class MailerAudienceDebugSnapshotBuilderTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
     }
 }

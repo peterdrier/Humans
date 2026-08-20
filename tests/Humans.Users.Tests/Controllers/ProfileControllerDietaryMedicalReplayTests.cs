@@ -1,4 +1,5 @@
 using Humans.Users.Controllers;
+using Humans.Users.Services;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -149,7 +150,7 @@ public class ProfileControllerDietaryMedicalReplayTests
         _controller.Url = Substitute.For<IUrlHelper>();
 
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(
+            .Returns(UserInfoFactory.Create(
                 user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
                 userEmails: [],
                 eventParticipations: [],

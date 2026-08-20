@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Services;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +41,7 @@ public class UsersAdminDebugControllerTests
             }
             : null;
 
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: new User
             {
                 Id = id,

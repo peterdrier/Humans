@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
@@ -27,7 +29,7 @@ public class DietaryMissingBannerViewComponentTests
             NullLogger<DietaryMissingBannerViewComponent>.Instance);
     }
 
-    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfo.Create(
+    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
         eventParticipations: [],

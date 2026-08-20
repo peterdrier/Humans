@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Services;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -44,7 +45,7 @@ public class UserInfoTests
             },
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             user: MinimalUser(userId),
             userEmails: [],
             eventParticipations: [],
@@ -83,7 +84,7 @@ public class UserInfoTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(userId), [providerRow], [], [], profile: null, [], [], [], []);
 
         info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Rejected);
@@ -121,7 +122,7 @@ public class UserInfoTests
             UpdatedAt = now,
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(userId), [isGoogleRow, providerFallback], [], [], profile: null, [], [], [], []);
 
         info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
@@ -130,7 +131,7 @@ public class UserInfoTests
     [HumansFact]
     public void MarketingOptedOut_is_null_when_no_marketing_pref()
     {
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(),
             [],
             [],
@@ -162,7 +163,7 @@ public class UserInfoTests
             },
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(userId),
             [],
             [],
@@ -191,7 +192,7 @@ public class UserInfoTests
             }
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(),
             [],
             participations,
@@ -220,7 +221,7 @@ public class UserInfoTests
             }
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(),
             [],
             participations,
@@ -252,7 +253,7 @@ public class UserInfoTests
             }
         };
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             MinimalUser(),
             [],
             participations,

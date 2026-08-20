@@ -265,11 +265,11 @@ internal sealed class ClassifierHarness
                 if (MergedToTargets.TryGetValue(userId, out var targetId))
                     return new ValueTask<UserInfo?>(UserInfo.Create(
                         new User { Id = userId, MergedToUserId = targetId },
-                        [], [], [], null, [], [], [], []));
+                        [], [], [], null, []));
                 // Live user — no tombstone.
                 return new ValueTask<UserInfo?>(UserInfo.Create(
                     new User { Id = userId, MergedToUserId = null },
-                    [], [], [], null, [], [], [], []));
+                    [], [], [], null, []));
             });
 
         // Default: no pref row for any user. SetMarketingPref overrides per-user.

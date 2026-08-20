@@ -225,22 +225,12 @@ public class NotificationMeterProviderTests : IDisposable
                 userEmails: [],
                 eventParticipations: [],
                 externalLogins: [],
-                profile: new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    BurnerName = "B",
-                    FirstName = "F",
-                    LastName = "L",
-                    State = ProfileState.Active,
-                    IsApproved = false,
-                    RejectedAt = null,
-                    CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                    UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                },
-                contactFields: [],
-                profileLanguages: [],
-                volunteerHistory: [],
+                profile: UserFixtures.Profile(
+                    burnerName: "B",
+                    firstName: "F",
+                    lastName: "L",
+                    state: ProfileState.Active,
+                    isApproved: false),
                 communicationPreferences: []);
         }).ToList();
 

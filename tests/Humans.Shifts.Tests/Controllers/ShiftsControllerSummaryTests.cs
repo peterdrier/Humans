@@ -18,6 +18,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -162,7 +164,7 @@ public class ShiftsControllerSummaryTests
     }
 
     private static UserInfo MakeUserInfo(Guid userId) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

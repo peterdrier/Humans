@@ -150,7 +150,7 @@ internal sealed class DevPersonaSeeder(
         {
             await auditLogService.LogAsync(
                 AuditAction.ConsentCheckCleared,
-                nameof(Profile),
+                AuditEntityTypes.Profile,
                 id,
                 "Consent check cleared",
                 id);

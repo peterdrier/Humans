@@ -61,9 +61,6 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
 
     [HumansTheory]

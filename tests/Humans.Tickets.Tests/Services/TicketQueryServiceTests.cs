@@ -801,12 +801,9 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
-                allUsers.Select(u => u.ToUserInfo(profile: new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = u.Id,
-                    MembershipTier = MembershipTier.Volunteer,
-                })).ToList()));
+                allUsers.Select(u => u.ToUserInfo(
+                    profile: UserFixtures.Profile(
+                        state: null, membershipTier: MembershipTier.Volunteer))).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));
