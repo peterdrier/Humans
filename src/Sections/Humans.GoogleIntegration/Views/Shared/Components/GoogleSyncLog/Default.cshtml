@@ -1,0 +1,63 @@
+@using Microsoft.AspNetCore.Html
+@model Humans.GoogleIntegration.ViewComponents.GoogleSyncLogComponentViewModel
+
+@{
+    ITableModel? table = null;
+    if (Model.Entries.Count > 0)
+    {
+        Func<GoogleSyncLogView, IHtmlContent> actionCell =
+            @<text><span class="badge bg-secondary">@item.Action</span></text>;
+        Func<GoogleSyncLogView, IHtmlContent> descriptionCell = @<text>
+            @item.Description
+            @if (item.ResourceName != null)
+            {
+                <br />
+                <small class="text-muted">Resource: @item.ResourceName</small>
+            }
+        </text>;
+        Func<GoogleSyncLogView, IHtmlContent> resultCell = @<text>
+            @if (item.Success)
+            {
+                <span class="badge bg-success">OK</span>
+            }
+            else
+            {
+                <span class="badge bg-danger" title="@item.ErrorMessage">Failed</span>
+                @if (!string.IsNullOrEmpty(item.ErrorMessage))
+                {
+                    <br />
+                    <small class="text-danger">@item.ErrorMessage</small>
+                }
+            }
+        </text>;
+        Func<GoogleSyncLogView, IHtmlContent> actorCell =
+            @<text><span class="badge bg-info">System</span></text>;
+        Func<GoogleSyncLogView, IHtmlContent> whenCell =
+            @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+        table = TableModel.For(Model.Entries)
+            .Template("Action", actionCell, c => c.NoSort())
+            .Template("Description", descriptionCell)
+            .Column("User", e => e.UserEmail)
+            .Column("Role", e => e.Role)
+            .Column("Source", e => e.Source.ToString())
+            .Template("Result", resultCell, c => c.NoSort())
+            .Template("Actor", actorCell, c => c.NoSort())
+            .Template("When", whenCell)
+            .RowCss(e => e.Success ? null : "table-danger")
+            .Build();
+    }
+}
+
+<div class="card mb-4">
+    <div class="card-header">@Model.Title</div>
+    @if (table is not null)
+    {
+        <partial name="_Table" model="table" />
+    }
+    else
+    {
+        <div class="card-body text-muted">
+            @Model.EmptyText
+        </div>
+    }
+</div>

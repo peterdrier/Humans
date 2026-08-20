@@ -27,6 +27,7 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
     private readonly RecordingGoogleGroupSyncScheduler _syncScheduler = new();
     private readonly RecordingLogger<GoogleGroupSyncService> _logger = new();
@@ -610,7 +611,7 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
-    public async Task ReconcileOneAsync_RemoveFailure_AuditsRevokedFailure()
+    public async Task ReconcileOneAsync_RemoveFailure_RecordsRevokedFailureInTheSyncLog()
     {
         var service = CreateService(new StaticSource("team@nobodies.team"));
         StageResource("team@nobodies.team");
@@ -623,8 +624,8 @@ public sealed class GoogleGroupSyncServiceTests
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("backend error");
-        await _auditLogService.Received(1).LogGoogleSyncAsync(
-            AuditAction.GoogleResourceAccessRevoked,
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
             Arg.Any<Guid>(),
             Arg.Any<string>(),
             nameof(GoogleGroupSyncService),
@@ -633,8 +634,8 @@ public sealed class GoogleGroupSyncServiceTests
             GoogleSyncSource.ScheduledSync,
             success: false,
             errorMessage: Arg.Is<string>(s => s.Contains("backend error")),
-            relatedEntityId: null,
-            relatedEntityType: null);
+            userId: null,
+            ct: Arg.Any<CancellationToken>());
     }
 
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
@@ -648,6 +649,7 @@ public sealed class GoogleGroupSyncServiceTests
         _userEmailService,
         _syncSettingsService,
         _auditLogService,
+        _googleSyncLog,
         _removalNotifications,
         _syncScheduler,
         Options.Create(new GoogleWorkspaceOptions()),

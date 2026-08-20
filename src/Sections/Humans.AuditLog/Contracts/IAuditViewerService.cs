@@ -21,10 +21,9 @@ namespace Humans.AuditLog.Contracts;
 /// <b>Placement (nobodies-collective/Humans#866, G5 lane 4b-2h).</b> This lives in
 /// <c>Humans.AuditLog</c>, not in the <c>Humans.AuditLog.Contracts</c> leaf and no longer in
 /// <c>Humans.Application</c>. Peter's 2026-08-14 Base-floor decision: a former Base resident
-/// that names another section's read interface moves to its own section, and Base gets no
-/// <c>Humans.Teams.Contracts</c> reference to keep it. Resolution injects
-/// <c>IUserServiceRead</c>, <c>ITeamServiceRead</c> and <c>ITeamResourceService</c>, so
-/// <c>Humans.AuditLog</c> takes those three contracts leaves — legal and normal at end state.
+/// that names another section's read interface moves to its own section. Since
+/// nobodies-collective/Humans#1059 it names none: display names arrive through Base's
+/// <c>IEntityNameContributor</c> fan-out.
 /// </para>
 /// <para>
 /// This section project's <c>Contracts/</c> folder, not the <c>Humans.AuditLog.Contracts</c>
@@ -48,19 +47,6 @@ public interface IAuditViewerService : IApplicationService
     /// <c>IAuditLogReader.GetByUserAsync</c>.
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
-
-    /// <summary>
-    /// Audit events for a specific Google resource — e.g. the per-resource
-    /// sync audit page in the Google integration UI.
-    /// </summary>
-    Task<IReadOnlyList<AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Google-sync audit events for a user (chain-followed across merge
-    /// tombstones). Scoped to entries written via
-    /// <see cref="IAuditLogService.LogGoogleSyncAsync"/>.
-    /// </summary>
-    Task<IReadOnlyList<AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a paged slice of audit events plus aggregate counts (total,

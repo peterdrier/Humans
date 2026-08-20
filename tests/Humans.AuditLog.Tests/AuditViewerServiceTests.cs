@@ -1,13 +1,10 @@
 using Humans.AuditLog.Services;
-using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Teams.Contracts;
 using Humans.AuditLog.Tests.Infrastructure;
-using Humans.Base.Enums;
+using Humans.Base.Interfaces;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Tests;
 
@@ -33,19 +30,8 @@ public class AuditViewerServiceTests
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var userService = StubUserService(
-            (actor, "Frank"),
-            (viewer, "Peter"));
-
-        var teamService = Substitute.For<ITeamServiceRead>();
-        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
-
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
-
-        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
+        var service = new AuditViewerService(
+            auditLog, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
 
         var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
@@ -63,16 +49,14 @@ public class AuditViewerServiceTests
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var userService = Substitute.For<IUserService>();
-        var teamService = Substitute.For<ITeamServiceRead>();
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
+        var contributor = Substitute.For<IEntityNameContributor>();
+        var service = new AuditViewerService(auditLog, [contributor]);
 
         var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().BeEmpty();
         // No name lookups should fire on empty input — short-circuit guard.
-        await userService.DidNotReceive().GetUserInfosAsync(
+        await contributor.DidNotReceive().ResolveNamesAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
@@ -90,8 +74,12 @@ public class AuditViewerServiceTests
             relatedEntityType: "User",
             description: "shift 'Cantina dinner'");
 
-        var (auditLog, userService, teamService, teamResourceService) = MakeServices(entry, actor, viewer, "Frank", "Peter");
-        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
+        var auditLog = Substitute.For<IAuditLogReader>();
+        auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([entry]);
+
+        var service = new AuditViewerService(
+            auditLog, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
 
         var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
         var line = events[0].RenderPlainText(viewerUserId: viewer);
@@ -102,44 +90,36 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetForResourceAsync_PassesThroughGoogleSyncFields()
+    public async Task GetForUserAsync_ResolvesTeamNameAndSlugFromTheTeamContributor()
     {
-        var resourceId = Guid.NewGuid();
+        var viewer = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
         var entry = MakeEntry(
-            action: AuditAction.GoogleResourceAccessGranted,
-            actorId: null,
-            entityType: "GoogleResource",
-            entityId: resourceId,
-            description: "Granted reader",
-            role: "reader",
-            userEmail: "p@x",
-            success: true,
-            syncSource: GoogleSyncSource.ManualSync,
-            resourceId: resourceId);
+            action: AuditAction.RoleAssigned,
+            actorId: viewer,
+            entityType: "Team",
+            entityId: teamId,
+            description: "Assigned");
 
         var auditLog = Substitute.For<IAuditLogReader>();
-        auditLog.GetByResourceAsync(resourceId).Returns([entry]);
+        auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
+            .Returns([entry]);
 
-        var userService = StubUserService();
+        var teams = Substitute.For<IEntityNameContributor>();
+        teams.ResolveNamesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, EntityName>
+            {
+                [teamId] = new("Team", "Cantina", "cantina")
+            });
 
-        var teamService = Substitute.For<ITeamServiceRead>();
-        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+        var service = new AuditViewerService(
+            auditLog, [StubContributor("User", (viewer, "Peter")), teams]);
 
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+        var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
-        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
-
-        var events = await service.GetForResourceAsync(resourceId, Xunit.TestContext.Current.CancellationToken);
-
-        events.Should().HaveCount(1);
-        var ev = events[0];
-        ev.Role.Should().Be("reader");
-        ev.UserEmail.Should().Be("p@x");
-        ev.SyncSource.Should().Be(GoogleSyncSource.ManualSync);
-        ev.Success.Should().BeTrue();
+        events[0].TargetTeamId.Should().Be(teamId);
+        events[0].TargetTeamName.Should().Be("Cantina");
+        events[0].TargetTeamSlug.Should().Be("cantina");
     }
 
     [HumansFact]
@@ -157,17 +137,7 @@ public class AuditViewerServiceTests
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
             .Returns(([entry], 1, 0));
 
-        var userService = StubUserService((actor, "Frank"));
-
-        var teamService = Substitute.For<ITeamServiceRead>();
-        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
-
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
-
-        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
+        var service = new AuditViewerService(auditLog, [StubContributor("User", (actor, "Frank"))]);
 
         var result = await service.GetPageAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
 
@@ -176,39 +146,14 @@ public class AuditViewerServiceTests
         result.Items[0].ActorDisplayName.Should().Be("Frank");
     }
 
-    private static (IAuditLogReader, IUserService, ITeamServiceRead, ITeamResourceService) MakeServices(
-        AuditLogEntrySnapshot entry, Guid actor, Guid viewer, string actorName, string viewerName)
+    private static IEntityNameContributor StubContributor(
+        string entityType, params (Guid Id, string Name)[] entries)
     {
-        var auditLog = Substitute.For<IAuditLogReader>();
-        auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([entry]);
-
-        var userService = StubUserService(
-            (actor, actorName),
-            (viewer, viewerName));
-
-        var teamService = Substitute.For<ITeamServiceRead>();
-        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
-
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
-
-        return (auditLog, userService, teamService, teamResourceService);
-    }
-
-    private static IUserService StubUserService(params (Guid Id, string BurnerName)[] users)
-    {
-        var userService = Substitute.For<IUserService>();
-        var dict = users.ToDictionary(
-            u => u.Id,
-            u => UserInfoStubHelpers.MakeUserInfo(
-                u.Id,
-                profile: UserFixtures.Profile(burnerName: u.BurnerName, state: null)));
-        userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
-        return userService;
+        var contributor = Substitute.For<IEntityNameContributor>();
+        var dict = entries.ToDictionary(e => e.Id, e => new EntityName(entityType, e.Name));
+        contributor.ResolveNamesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, EntityName>)dict);
+        return contributor;
     }
 
     private static AuditLogEntrySnapshot MakeEntry(
@@ -218,14 +163,8 @@ public class AuditViewerServiceTests
         Guid entityId,
         Guid? relatedEntityId = null,
         string? relatedEntityType = null,
-        string description = "",
-        string? role = null,
-        string? userEmail = null,
-        bool? success = null,
-        GoogleSyncSource? syncSource = null,
-        Guid? resourceId = null)
-    {
-        return new AuditLogEntrySnapshot(
+        string description = "") =>
+        new(
             Guid.NewGuid(),
             action,
             entityType,
@@ -234,13 +173,5 @@ public class AuditViewerServiceTests
             FixedAt,
             actorId,
             relatedEntityId,
-            relatedEntityType,
-            resourceId,
-            success,
-            ErrorMessage: null,
-            role,
-            syncSource,
-            userEmail);
-    }
-
+            relatedEntityType);
 }

@@ -39,28 +39,6 @@ internal interface IAuditLogRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Returns audit entries for a specific Google resource, ordered newest
-    /// first, capped at 200.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns Google sync audit entries where the user is the related
-    /// entity, newest first, capped at 200.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Multi-id overload of <see cref="GetGoogleSyncByUserAsync"/> used by the
-    /// service-layer chain-follow read path so a target's history transparently
-    /// includes rows that stayed attributed to merged-source tombstones.
-    /// Returns rows where <c>RelatedEntityId</c> is in
-    /// <paramref name="userIds"/>, newest first, capped at 200.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the most recent audit entries, ordered newest first.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default);

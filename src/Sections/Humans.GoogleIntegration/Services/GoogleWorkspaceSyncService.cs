@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Domain;
 using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
@@ -30,6 +31,7 @@ internal sealed class GoogleWorkspaceSyncService(
     IUserEmailService userEmailService,
     IGoogleGroupSync googleGroupSync,
     IAuditLogService auditLogService,
+    IGoogleSyncLogService googleSyncLog,
     ISyncSettingsService syncSettingsService,
     IGoogleRemovalNotificationService removalNotifications,
     IOptions<GoogleWorkspaceOptions> options,
@@ -70,11 +72,12 @@ internal sealed class GoogleWorkspaceSyncService(
         switch (result.Outcome)
         {
             case DrivePermissionCreateOutcome.Created:
-                await auditLogService.LogGoogleSyncAsync(
-                    AuditAction.GoogleResourceAccessGranted, resource.Id,
+                await googleSyncLog.LogAsync(
+                    GoogleSyncLogAction.AccessGranted, resource.Id,
                     $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
-                    userEmail, apiRole, GoogleSyncSource.ManualSync, success: true);
+                    userEmail, apiRole, GoogleSyncSource.ManualSync, success: true,
+                    ct: cancellationToken);
                 break;
 
             case DrivePermissionCreateOutcome.AlreadyExists:
@@ -190,11 +193,12 @@ internal sealed class GoogleWorkspaceSyncService(
                 return;
         }
 
-        await auditLogService.LogGoogleSyncAsync(
-            AuditAction.GoogleResourceAccessRevoked, resource.Id,
+        await googleSyncLog.LogAsync(
+            GoogleSyncLogAction.AccessRevoked, resource.Id,
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
-            userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true);
+            userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true,
+            ct: cancellationToken);
 
         // Issue peterdrier/Humans#639 — notify only on confirmed delete.
         try

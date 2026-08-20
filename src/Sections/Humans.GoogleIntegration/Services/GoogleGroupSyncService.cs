@@ -7,6 +7,7 @@ using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.GoogleIntegration.Domain;
 using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
@@ -23,6 +24,7 @@ internal sealed class GoogleGroupSyncService(
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IAuditLogService auditLogService,
+    IGoogleSyncLogService googleSyncLog,
     IGoogleRemovalNotificationService removalNotifications,
     IGoogleGroupSyncScheduler syncScheduler,
     IOptions<GoogleWorkspaceOptions> options,
@@ -400,7 +402,7 @@ internal sealed class GoogleGroupSyncService(
                     resource,
                     member.Email,
                     await HandleGroupAddFailureAsync(resource, claim.GroupKey, member.Email, add.Error, ct),
-                    AuditAction.GoogleResourceAccessGranted,
+                    GoogleSyncLogAction.AccessGranted,
                     members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
@@ -409,15 +411,16 @@ internal sealed class GoogleGroupSyncService(
 
             if (resource is not null && add.Outcome == GroupMembershipMutationOutcome.Added)
             {
-                await auditLogService.LogGoogleSyncAsync(
-                    AuditAction.GoogleResourceAccessGranted,
+                await googleSyncLog.LogAsync(
+                    GoogleSyncLogAction.AccessGranted,
                     resource.Id,
                     $"Granted Google Group access to {member.Email} ({resource.Name})",
                     nameof(GoogleGroupSyncService),
                     member.Email,
                     "MEMBER",
                     GoogleSyncSource.ScheduledSync,
-                    success: true);
+                    success: true,
+                    ct: ct);
             }
         }
 
@@ -445,7 +448,7 @@ internal sealed class GoogleGroupSyncService(
                     resource,
                     member.Email,
                     FormatGoogleError($"Google group remove failed for {member.Email}", deleteError),
-                    AuditAction.GoogleResourceAccessRevoked,
+                    GoogleSyncLogAction.AccessRevoked,
                     plan.Members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
@@ -454,15 +457,16 @@ internal sealed class GoogleGroupSyncService(
 
             if (resource is not null)
             {
-                await auditLogService.LogGoogleSyncAsync(
-                    AuditAction.GoogleResourceAccessRevoked,
+                await googleSyncLog.LogAsync(
+                    GoogleSyncLogAction.AccessRevoked,
                     resource.Id,
                     $"Removed {member.Email} from Google Group ({resource.Name})",
                     nameof(GoogleGroupSyncService),
                     member.Email,
                     "MEMBER",
                     GoogleSyncSource.ScheduledSync,
-                    success: true);
+                    success: true,
+                    ct: ct);
             }
 
             await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, ct);
@@ -476,7 +480,7 @@ internal sealed class GoogleGroupSyncService(
         GoogleResourceSnapshot? resource,
         string email,
         string error,
-        AuditAction auditAction,
+        GoogleSyncLogAction syncAction,
         List<MemberSyncStatus> members,
         bool scheduleRetryOnFailure,
         int nextRetryAttempt,
@@ -490,8 +494,8 @@ internal sealed class GoogleGroupSyncService(
         if (resource is not null)
         {
             await teamResourceService.RecordResourceErrorAsync(resource.Id, error, ct);
-            await auditLogService.LogGoogleSyncAsync(
-                auditAction,
+            await googleSyncLog.LogAsync(
+                syncAction,
                 resource.Id,
                 error,
                 nameof(GoogleGroupSyncService),
@@ -499,7 +503,8 @@ internal sealed class GoogleGroupSyncService(
                 "MEMBER",
                 GoogleSyncSource.ScheduledSync,
                 success: false,
-                errorMessage: error);
+                errorMessage: error,
+                ct: ct);
         }
 
         if (scheduleRetryOnFailure)

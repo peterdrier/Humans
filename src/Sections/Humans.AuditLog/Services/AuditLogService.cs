@@ -73,39 +73,6 @@ internal sealed class AuditLogService(
             action, entityType, entityId, actorUserId, description);
     }
 
-    /// <inheritdoc />
-    public async Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
-        string description, string jobName,
-        string userEmail, string role, GoogleSyncSource source, bool success,
-        string? errorMessage = null,
-        Guid? relatedEntityId = null, string? relatedEntityType = null)
-    {
-        var entry = new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            Action = action,
-            EntityType = "GoogleResource",
-            EntityId = resourceId,
-            Description = $"{jobName}: {description}",
-            OccurredAt = clock.GetCurrentInstant(),
-            ActorUserId = null,
-            RelatedEntityId = relatedEntityId,
-            RelatedEntityType = relatedEntityType,
-            ResourceId = resourceId,
-            Success = success,
-            ErrorMessage = errorMessage,
-            Role = role,
-            SyncSource = source,
-            UserEmail = userEmail
-        };
-
-        await PersistAsync(entry);
-
-        logger.LogInformation(
-            "Audit: {Action} {Role} for {Email} on resource {ResourceId} ({Source}, Success={Success})",
-            action, role, userEmail, resourceId, source, success);
-    }
-
     private async Task PersistAsync(AuditLogEntry entry)
     {
         try
@@ -124,31 +91,6 @@ internal sealed class AuditLogService(
     // ─── Reads ───
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId)
-    {
-        var entries = await repo.GetByResourceAsync(resourceId);
-        return entries.Select(ToSnapshot).ToList();
-    }
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId)
-    {
-        // Chain-follow merge tombstones for source-id-attributed rows.
-        var sourceIds = await userService.GetMergedSourceIdsAsync(userId);
-        if (sourceIds.Count == 0)
-        {
-            var entries = await repo.GetGoogleSyncByUserAsync(userId);
-            return entries.Select(ToSnapshot).ToList();
-        }
-
-        var allIds = new List<Guid>(sourceIds.Count + 1);
-        allIds.AddRange(sourceIds);
-        allIds.Add(userId);
-        var mergedEntries = await repo.GetGoogleSyncByUserIdsAsync(allIds);
-        return mergedEntries.Select(ToSnapshot).ToList();
-    }
-
-    /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default)
     {
         var entries = await repo.GetRecentAsync(count, ct);
@@ -165,13 +107,7 @@ internal sealed class AuditLogService(
             entry.OccurredAt,
             entry.ActorUserId,
             entry.RelatedEntityId,
-            entry.RelatedEntityType,
-            entry.ResourceId,
-            entry.Success,
-            entry.ErrorMessage,
-            entry.Role,
-            entry.SyncSource,
-            entry.UserEmail);
+            entry.RelatedEntityType);
 
     /// <inheritdoc />
     public async Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(

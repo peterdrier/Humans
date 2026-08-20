@@ -44,6 +44,8 @@ public sealed class Section : ISection
         services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<ITeamSeeding>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
+        // Guid → display-name fan-out (nobodies-collective/Humans#1059).
+        services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 

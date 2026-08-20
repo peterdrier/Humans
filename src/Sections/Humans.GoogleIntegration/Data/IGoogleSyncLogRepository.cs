@@ -1,0 +1,20 @@
+using Humans.Base.Interfaces.Repositories;
+using Humans.GoogleIntegration.Domain;
+
+namespace Humans.GoogleIntegration.Data;
+
+/// <summary>
+/// Repository for the section's <c>google_sync_log</c> table. Append-only —
+/// no update or delete path is exposed.
+/// </summary>
+internal interface IGoogleSyncLogRepository : IRepository
+{
+    Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default);
+
+    /// <summary>Most recent entries for one Google resource.</summary>
+    Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default);
+
+    /// <summary>Most recent entries attributed to any of <paramref name="userIds"/>.</summary>
+    Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+}

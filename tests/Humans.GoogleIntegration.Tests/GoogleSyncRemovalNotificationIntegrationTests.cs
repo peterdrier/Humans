@@ -74,6 +74,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _userEmailService,
             _syncSettingsService,
             _auditLogService,
+            Substitute.For<IGoogleSyncLogService>(),
             notifications,
             _syncScheduler,
             Options.Create(new GoogleWorkspaceOptions()),

@@ -110,6 +110,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             _userEmailService,
             Substitute.For<IGoogleGroupSync>(),
             AuditLog,
+            Substitute.For<IGoogleSyncLogService>(),
             _syncSettingsService,
             _removalNotifications,
             options,

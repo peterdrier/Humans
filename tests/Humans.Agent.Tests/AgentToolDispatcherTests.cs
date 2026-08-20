@@ -109,14 +109,7 @@ public class AgentToolDispatcherTests
             TargetTeamSlug: null,
             RelatedEntityId: subject,
             RelatedEntityType: "User",
-            Description: "shift 'Cantina'",
-            Role: null,
-            UserEmail: null,
-            Success: null,
-            ErrorMessage: null,
-            SyncSource: null,
-            ResourceId: null,
-            ResourceName: null);
+            Description: "shift 'Cantina'");
 
     private static Humans.AuditLog.Contracts.AuditEvent BuildUnmappedEvent() =>
         new(
@@ -134,14 +127,7 @@ public class AgentToolDispatcherTests
             TargetTeamSlug: null,
             RelatedEntityId: null,
             RelatedEntityType: null,
-            Description: "anomaly",
-            Role: null,
-            UserEmail: null,
-            Success: null,
-            ErrorMessage: null,
-            SyncSource: null,
-            ResourceId: null,
-            ResourceName: null);
+            Description: "anomaly");
 
     [HumansFact]
     public async Task GetShiftDetails_with_block_id_returns_rota_name_dates_and_day_count()
@@ -593,8 +579,6 @@ public class AgentToolDispatcherTests
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Events);
         public Task<Humans.AuditLog.Contracts.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
             Task.FromResult(new Humans.AuditLog.Contracts.AuditEventPage(Events, Events.Count, 0));
         public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);

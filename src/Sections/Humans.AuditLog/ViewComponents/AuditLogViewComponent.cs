@@ -26,8 +26,6 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         Guid? entityId = null,
         IReadOnlyList<Guid>? entityIds = null,
         Guid? userId = null,
-        Guid? resourceId = null,
-        bool googleSyncOnly = false,
         string? actions = null,
         Instant? since = null,
         int limit = 20,
@@ -61,7 +59,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         try
         {
             var events = await ResolveAsync(
-                entityType, entityId, entityIds, userId, resourceId, googleSyncOnly, actionList, limit,
+                entityType, entityId, entityIds, userId, actionList, limit,
                 HttpContext.RequestAborted);
 
             model.Events = since.HasValue
@@ -82,20 +80,10 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         Guid? entityId,
         IReadOnlyList<Guid>? entityIds,
         Guid? userId,
-        Guid? resourceId,
-        bool googleSyncOnly,
         IReadOnlyList<AuditAction>? actionList,
         int limit,
         CancellationToken ct)
     {
-        // The two scoped predicates are inherently bounded and take no limit; leaving them
-        // untruncated keeps the Google-sync pages showing their whole trail.
-        if (resourceId.HasValue)
-            return await auditViewer.GetForResourceAsync(resourceId.Value, ct);
-
-        if (googleSyncOnly && userId.HasValue)
-            return await auditViewer.GetGoogleSyncForUserAsync(userId.Value, ct);
-
         // Non-null but empty means "no matches", never "drop the id filter": a zero-line Store
         // order would otherwise render every product's price changes.
         if (entityIds is not null)
@@ -118,7 +106,6 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
     private static string ViewNameFor(string layout) => layout switch
     {
         "table" => "Table",
-        "sync" => "Sync",
         "activity" => "Activity",
         _ => "Default"
     };

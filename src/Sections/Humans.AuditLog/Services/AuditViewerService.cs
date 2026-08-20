@@ -1,16 +1,16 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
+using Humans.Base.Interfaces;
 
 namespace Humans.AuditLog.Services;
 
 /// <summary>Read-side wrapper over <see cref="IAuditLogReader"/> that resolves actor/subject/team names. No DB or caching.</summary>
+/// <remarks>
+/// Names come from the <see cref="IEntityNameContributor"/> fan-out, so this section reaches
+/// into none of the sections that own the ids it renders (nobodies-collective/Humans#1059).
+/// </remarks>
 internal sealed class AuditViewerService(
     IAuditLogReader auditLog,
-    IUserServiceRead userService,
-    ITeamServiceRead teamService,
-    ITeamResourceService teamResourceService) : IAuditViewerService
+    IEnumerable<IEntityNameContributor> nameContributors) : IAuditViewerService
 {
     public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
     {
@@ -21,18 +21,6 @@ internal sealed class AuditViewerService(
     public async Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
         var entries = await auditLog.GetByUserAsync(userId, count, ct);
-        return await ResolveAsync(entries, ct);
-    }
-
-    public async Task<IReadOnlyList<AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default)
-    {
-        var entries = await auditLog.GetByResourceAsync(resourceId);
-        return await ResolveAsync(entries, ct);
-    }
-
-    public async Task<IReadOnlyList<AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        var entries = await auditLog.GetGoogleSyncByUserAsync(userId);
         return await ResolveAsync(entries, ct);
     }
 
@@ -63,111 +51,80 @@ internal sealed class AuditViewerService(
         if (entries.Count == 0)
             return [];
 
-        var (userIds, teamIds, resourceIds) = CollectIds(entries);
-        var users = userIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await GetUserDisplayNamesAsync(userIds, ct);
-        var teams = teamIds.Count == 0
-            ? new Dictionary<Guid, (string Name, string Slug)>()
-            : await GetTeamNamesAsync(teamIds, ct);
-        var resources = resourceIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
+        var names = await ResolveNamesAsync(CollectIds(entries), ct);
 
         var result = new List<AuditEvent>(entries.Count);
         foreach (var entry in entries)
-            result.Add(Resolve(entry, users, teams, resources));
+            result.Add(Resolve(entry, names));
         return result;
+    }
+
+    /// <summary>
+    /// One pass over every registered contributor. Each answers for the ids it owns and
+    /// ignores the rest; first answer for an id wins.
+    /// </summary>
+    private async Task<Dictionary<Guid, EntityName>> ResolveNamesAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    {
+        var resolved = new Dictionary<Guid, EntityName>();
+        if (ids.Count == 0)
+            return resolved;
+
+        foreach (var contributor in nameContributors)
+        {
+            foreach (var (id, name) in await contributor.ResolveNamesAsync(ids, ct))
+                resolved.TryAdd(id, name);
+        }
+        return resolved;
     }
 
     private static AuditEvent Resolve(
         AuditLogEntrySnapshot entry,
-        IReadOnlyDictionary<Guid, string> users,
-        IReadOnlyDictionary<Guid, (string Name, string Slug)> teams,
-        IReadOnlyDictionary<Guid, string> resources)
+        IReadOnlyDictionary<Guid, EntityName> names)
     {
         var subjectId = ResolveSubjectId(entry);
         var targetTeamId = ResolveTargetTeamId(entry);
-
-        string? actorName = entry.ActorUserId.HasValue && users.TryGetValue(entry.ActorUserId.Value, out var an) ? an : null;
-        string? subjectName = subjectId.HasValue && users.TryGetValue(subjectId.Value, out var sn) ? sn : null;
-        string? teamName = null;
-        string? teamSlug = null;
-        if (targetTeamId.HasValue && teams.TryGetValue(targetTeamId.Value, out var team))
-        {
-            teamName = team.Name;
-            teamSlug = team.Slug;
-        }
-        string? resourceName = entry.ResourceId.HasValue && resources.TryGetValue(entry.ResourceId.Value, out var rn) ? rn : null;
 
         return new AuditEvent(
             Id: entry.Id,
             OccurredAt: entry.OccurredAt,
             Action: entry.Action,
             ActorUserId: entry.ActorUserId,
-            ActorDisplayName: actorName,
+            ActorDisplayName: NameOf(entry.ActorUserId, names),
             EntityType: entry.EntityType,
             EntityId: entry.EntityId,
             SubjectUserId: subjectId,
-            SubjectDisplayName: subjectName,
+            SubjectDisplayName: NameOf(subjectId, names),
             TargetTeamId: targetTeamId,
-            TargetTeamName: teamName,
-            TargetTeamSlug: teamSlug,
+            TargetTeamName: NameOf(targetTeamId, names),
+            TargetTeamSlug: targetTeamId.HasValue && names.TryGetValue(targetTeamId.Value, out var team)
+                ? team.Slug
+                : null,
             RelatedEntityId: entry.RelatedEntityId,
             RelatedEntityType: entry.RelatedEntityType,
-            Description: entry.Description,
-            Role: entry.Role,
-            UserEmail: entry.UserEmail,
-            Success: entry.Success,
-            ErrorMessage: entry.ErrorMessage,
-            SyncSource: entry.SyncSource,
-            ResourceId: entry.ResourceId,
-            ResourceName: resourceName);
+            Description: entry.Description);
     }
 
-    private async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct)
-    {
-        // BurnerName is the display name (memory/architecture/burnername-is-the-display-name.md). Users without one are absent.
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        return users
-            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.Profile?.BurnerName))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Profile!.BurnerName);
-    }
+    private static string? NameOf(Guid? id, IReadOnlyDictionary<Guid, EntityName> names) =>
+        id.HasValue && names.TryGetValue(id.Value, out var entry) ? entry.DisplayName : null;
 
-    private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
-        IReadOnlyList<Guid> teamIds, CancellationToken ct)
+    private static IReadOnlyCollection<Guid> CollectIds(IReadOnlyList<AuditLogEntrySnapshot> entries)
     {
-        // Teams section serves its full (cached) team list; filter to the requested ids here
-        // rather than adding a by-ids method to ITeamServiceRead.
-        var allTeams = await teamService.GetTeamsAsync(ct);
-        return teamIds
-            .Where(allTeams.ContainsKey)
-            .ToDictionary(id => id, id => (allTeams[id].Name, allTeams[id].Slug));
-    }
-
-    private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntrySnapshot> entries)
-    {
-        var users = new HashSet<Guid>();
-        var teams = new HashSet<Guid>();
-        var resources = new HashSet<Guid>();
+        var ids = new HashSet<Guid>();
         foreach (var e in entries)
         {
             if (e.ActorUserId.HasValue)
-                users.Add(e.ActorUserId.Value);
+                ids.Add(e.ActorUserId.Value);
 
             var subjectId = ResolveSubjectId(e);
             if (subjectId.HasValue)
-                users.Add(subjectId.Value);
+                ids.Add(subjectId.Value);
 
             var teamId = ResolveTargetTeamId(e);
             if (teamId.HasValue)
-                teams.Add(teamId.Value);
-
-            if (e.ResourceId.HasValue)
-                resources.Add(e.ResourceId.Value);
+                ids.Add(teamId.Value);
         }
-        return (users.ToList(), teams.ToList(), resources.ToList());
+        return ids;
     }
 
     private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)

@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Base.Caching;
+using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -23,7 +24,7 @@ namespace Humans.Teams.Services;
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
-    ITeamManagementService, ITeamSeeding, IUserMerge
+    ITeamManagementService, ITeamSeeding, IUserMerge, IEntityNameContributor
 {
     public const string InnerServiceKey = "team-inner";
 
@@ -133,6 +134,26 @@ internal sealed class CachingTeamService(
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(
         CancellationToken cancellationToken = default) =>
         await GetTeamsByIdAsync(cancellationToken);
+
+    /// <summary>
+    /// <see cref="IEntityNameContributor"/>: the team ids in a caller's Guid set,
+    /// named from the warmed cache. Ids Teams does not own are simply absent.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<Guid, EntityName>> ResolveNamesAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0)
+            return new Dictionary<Guid, EntityName>();
+
+        var teams = await GetTeamsByIdAsync(ct);
+        var result = new Dictionary<Guid, EntityName>();
+        foreach (var id in ids)
+        {
+            if (teams.TryGetValue(id, out var team))
+                result[id] = new EntityName("Team", team.Name, team.Slug);
+        }
+        return result;
+    }
 
     public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetAllTeamsAsync(cancellationToken));

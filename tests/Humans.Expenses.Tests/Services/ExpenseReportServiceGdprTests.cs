@@ -179,13 +179,7 @@ public class ExpenseReportServiceGdprTests
             FakeNow,
             ActorUserId: null,
             RelatedEntityId: null,
-            RelatedEntityType: null,
-            ResourceId: null,
-            Success: null,
-            ErrorMessage: null,
-            Role: null,
-            SyncSource: null,
-            UserEmail: null);
+            RelatedEntityType: null);
 
         _auditLogService.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string>(),

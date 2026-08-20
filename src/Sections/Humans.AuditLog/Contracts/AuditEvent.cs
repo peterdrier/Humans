@@ -2,7 +2,6 @@ using System.Text;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Domain;
 using Humans.AuditLog.Services;
-using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.AuditLog.Contracts;
@@ -26,14 +25,7 @@ public sealed record AuditEvent(
     string? TargetTeamSlug,
     Guid? RelatedEntityId,
     string? RelatedEntityType,
-    string Description,
-    string? Role,
-    string? UserEmail,
-    bool? Success,
-    string? ErrorMessage,
-    GoogleSyncSource? SyncSource,
-    Guid? ResourceId,
-    string? ResourceName)
+    string Description)
 {
     /// <summary>
     /// Renders this event as a single-line sentence for the agent's tool output. Never emits raw GUIDs.
@@ -42,10 +34,6 @@ public sealed record AuditEvent(
     /// </summary>
     public string? RenderPlainText(Guid? viewerUserId = null)
     {
-        // Google sync entries use a separate structured schema.
-        if (SyncSource.HasValue)
-            return RenderGoogleSync(viewerUserId);
-
         var verb = AuditEventTextualizer.GetActionVerb(Action);
         if (verb is null)
             return null;
@@ -118,49 +106,6 @@ public sealed record AuditEvent(
             SelfVerb: selfVerb,
             ShouldRenderDescriptionTail: renderTail,
             TrimmedVerb: verb is null ? null : AuditEventTextualizer.TrimDanglingPreposition(verb));
-    }
-
-    private string RenderGoogleSync(Guid? viewerUserId)
-    {
-        // Form: "<date> — <action> <role> for <email|You> on <resource> (<source>)". No GUIDs.
-        var sb = new StringBuilder();
-        sb.Append(FormatDate(OccurredAt));
-        sb.Append(" — ");
-        sb.Append(Action);
-
-        if (!string.IsNullOrWhiteSpace(Role))
-        {
-            sb.Append(' ');
-            sb.Append(Role);
-        }
-
-        if (!string.IsNullOrWhiteSpace(UserEmail))
-        {
-            sb.Append(" for ");
-            var subjectIsViewer = viewerUserId.HasValue && SubjectUserId == viewerUserId.Value;
-            sb.Append(subjectIsViewer ? "You" : UserEmail);
-        }
-
-        if (!string.IsNullOrWhiteSpace(ResourceName))
-        {
-            sb.Append(" on ");
-            sb.Append(ResourceName);
-        }
-
-        if (SyncSource.HasValue)
-        {
-            sb.Append(" (");
-            sb.Append(SyncSource.Value);
-            sb.Append(')');
-        }
-
-        if (Success is false && !string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            sb.Append(" — failed: ");
-            sb.Append(ErrorMessage.Trim());
-        }
-
-        return sb.ToString();
     }
 
     private static string FormatDate(Instant occurredAt) =>

@@ -1,7 +1,8 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
+using Humans.GoogleIntegration.Contracts;
+using Humans.GoogleIntegration.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -61,24 +62,24 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
     /// literal tag.
     /// </summary>
     /// <remarks>
-    /// Monitor stopped reading audit itself: the page emits
-    /// <c>&lt;vc:audit-log layout="sync"&gt;</c> and the AuditLog section owns the read.
-    /// Missing <c>@addTagHelper *, Humans.AuditLog</c> in Monitor's own
+    /// Monitor reads neither log itself: the page emits <c>&lt;vc:google-sync-log&gt;</c> and
+    /// the GoogleIntegration section owns the read. Missing
+    /// <c>@addTagHelper *, Humans.GoogleIntegration</c> in Monitor's own
     /// <c>_ViewImports.cshtml</c> is silent — the element ships as inert literal markup with
     /// a green build — so asserting a seeded marker is the only probe that catches it.
     /// </remarks>
     [HumansFact(Timeout = 120000)]
-    public async Task Google_sync_rows_reach_the_page_through_the_audit_view_component()
+    public async Task Google_sync_rows_reach_the_page_through_the_sync_log_view_component()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var marker = $"sync-layout-probe-{Guid.NewGuid():N}";
+        var marker = $"sync-log-probe-{Guid.NewGuid():N}";
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
-            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
-            await auditLog.LogGoogleSyncAsync(
-                AuditAction.GoogleResourceAccessGranted,
+            var syncLog = scope.ServiceProvider.GetRequiredService<IGoogleSyncLogService>();
+            await syncLog.LogAsync(
+                GoogleSyncLogAction.AccessGranted,
                 resourceId: Guid.NewGuid(),
                 description: marker,
                 jobName: "ProbeJob",
@@ -86,7 +87,8 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
                 role: "reader",
                 source: GoogleSyncSource.ManualSync,
                 success: true,
-                relatedEntityId: adminId);
+                userId: adminId,
+                ct: ct);
         }
 
         var url = $"/Monitor/Human/{adminId}";
@@ -95,9 +97,9 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain(marker,
-            $"GET {url}: the seeded sync row must reach the page — an unbound <vc:audit-log> renders nothing");
-        html.Should().Contain("reader", $"GET {url} must render the sync layout's Role column");
-        html.Should().NotContain("<vc:audit-log", $"GET {url}: the widget must bind, not ship as literal markup");
+            $"GET {url}: the seeded sync row must reach the page — an unbound <vc:google-sync-log> renders nothing");
+        html.Should().Contain("reader", $"GET {url} must render the sync log's Role column");
+        html.Should().NotContain("<vc:google-sync-log", $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     [HumansFact(Timeout = 120000)]

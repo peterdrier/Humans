@@ -33,47 +33,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
     // Reads
     // ==========================================================================
 
-    public async Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e => e.ResourceId == resourceId)
-            .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
-            .Take(200)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e => e.ResourceId != null && e.RelatedEntityId == userId)
-            // arch:db-sort-ok top-N audit selector
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(200)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return [];
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e => e.ResourceId != null
-                && e.RelatedEntityId.HasValue
-                && userIds.Contains(e.RelatedEntityId.Value))
-            // arch:db-sort-ok top-N audit selector
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(200)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

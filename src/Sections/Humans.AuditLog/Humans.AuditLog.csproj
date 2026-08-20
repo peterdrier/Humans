@@ -27,18 +27,13 @@
     <!--
       Gdpr: AuditLogService is an Article 15 contributor because audit rows carry an actor id.
 
-      Teams / GoogleIntegration / Users contracts leaves: AuditViewerService — the section's
-      read+render owner — resolves actor, subject, team and Google-resource display names
-      through ITeamServiceRead, ITeamResourceService and IUserServiceRead. It moved here from
-      Humans.Application in G5 lane 4b-2h under Peter's 2026-08-14 Base-floor decision: a
-      former Base resident that names another section's read interface moves to its own
-      section, and Base gets no Teams.Contracts reference to keep it. These are leaf
-      references only; none of Teams, GoogleIntegration or Users is reached, so the graph
-      stays acyclic even though all three reference Humans.AuditLog for <vc:audit-log>.
+      Users contracts leaf: AuditLogService resolves merged-account source ids through
+      IUserServiceRead so queries follow merged identities — the [DontFix] on that class.
+      Display-name resolution no longer needs a section leaf: it goes through the
+      IEntityNameContributor fan-out in Base (nobodies-collective/Humans#1059), and the
+      Google-sync wing that pulled in Teams and GoogleIntegration left with #1083.
     -->
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
