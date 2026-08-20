@@ -2,17 +2,20 @@
 
 ## MailerLite
 
-Folder: `src/Sections/Humans.MailerLite/Services/`. No owned DB tables —
-MailerLite is the external system; classifier writes through other
-sections' services.
+Folder: `src/Sections/Humans.MailerLite/Services/`. One owned table,
+`mailerlite_sync_states` (`MailerLiteDbContext`, `Data/Repository.cs`
+behind `IMailerLiteRepository`) — everything else about a subscriber
+lives in MailerLite, and classifier writes go through other sections'
+services.
 
 ### MailerLiteImportService (Scoped)
 
-No repository. Cross-section calls via `IMailerLiteService` (external),
-`IUserEmailService`, `IUserServiceRead`, `IAccountProvisioningService`,
-`ICommunicationPreferenceService`, `IAuditLogService`. Inbound import
-slice — reads MailerLite subscribers and provisions matching accounts.
-No DB access, no cache.
+`IMailerLiteRepository` for the `import-reconciliation` sync-state row
+(upsert after apply, read for the dashboard). Cross-section calls via
+`IMailerLiteService` (external), `IUserEmailService`, `IUserServiceRead`,
+`IAccountProvisioningService`, `ICommunicationPreferenceService`,
+`IAuditLogService`. Inbound import slice — reads MailerLite subscribers
+and provisions matching accounts. No cache.
 
 ### MailerLiteService (Scoped)
 
@@ -26,11 +29,11 @@ writes the audience sync drives (`AssignSubscriberToGroupAsync`,
 
 ### MailerLiteAudienceSyncService (Scoped)
 
-No repository. Cross-section calls via `IMailerLiteService`,
-`IUserEmailService`, `IAuditLogService`, plus
-`IEnumerable<IMailerLiteAudience>` (audience definitions). Outbound slice —
-pushes computed audiences back to MailerLite groups. No DB access, no
-cache.
+`IMailerLiteRepository` for the per-audience sync-state rows (upsert after
+each push, one read for the dashboard's last-sync column). Cross-section
+calls via `IMailerLiteService`, `IUserEmailService`, `IAuditLogService`,
+plus `IEnumerable<IMailerLiteAudience>` (audience definitions). Outbound
+slice — pushes computed audiences back to MailerLite groups. No cache.
 
 ### Audience definitions (`IMailerLiteAudience`)
 

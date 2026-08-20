@@ -8,7 +8,7 @@ using Npgsql;
 namespace Humans.Base.Hosting;
 
 /// <summary>
-/// The per-section DbContext registration seam. Lives in Base (this assembly) because all 28
+/// The per-section DbContext registration seam. Lives in Base (this assembly) because all 29
 /// table-owning sections call <see cref="AddSectionDbContext{TContext}"/> from their own
 /// <c>Section.cs</c>, and a section may not reference <c>Humans.Infrastructure</c>
 /// (nobodies-collective/Humans#866, G5 lane 3a-2).
@@ -19,7 +19,7 @@ namespace Humans.Base.Hosting;
 /// <c>typeof(InfrastructureServiceCollectionExtensions).Assembly</c> to mean "the
 /// Humans.Infrastructure assembly", and moving the type would have retargeted both onto Base,
 /// where they would pass vacuously. The namespace is shared with that class rather than renamed,
-/// so extension-method lookup at all 28 call sites resolves exactly as before with no
+/// so extension-method lookup at all 29 call sites resolves exactly as before with no
 /// <c>using</c> edit anywhere.
 /// </remarks>
 public static class SectionDbContextServiceCollectionExtensions
