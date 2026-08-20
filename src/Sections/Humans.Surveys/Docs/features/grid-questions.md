@@ -43,6 +43,9 @@ When the question is required, every visible row must contain exactly one
 selection in one-choice mode or at least one selection in multiple-choice mode.
 Optional Grids may be partially answered. Server-side capture discards unknown
 rows/columns, de-duplicates selections, and limits one-choice rows to one value.
+If an author changes a Grid while a respondent has a wizard session open, the
+stored answer is normalized against the current rows/columns and all visible
+required questions are revalidated immediately before final submission.
 
 Identified draft autosave/resume and all anonymity tiers preserve the same
 structured Grid answer.
