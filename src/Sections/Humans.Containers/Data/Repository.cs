@@ -88,7 +88,6 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
         return await ctx.ContainerImages
             .AsNoTracking()
             .Where(i => containerIds.Contains(i.ContainerId))
-            .OrderBy(i => i.SortOrder)
             .ToListAsync(ct);
     }
 
