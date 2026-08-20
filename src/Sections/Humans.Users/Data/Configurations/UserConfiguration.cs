@@ -67,11 +67,14 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasFilter("\"MergedToUserId\" IS NOT NULL");
 
         // Lifecycle/access state — required; enum persisted as string. The physical default is
-        // declared here so model and database agree (memory/architecture/required-columns-need-approval).
+        // declared here so model and database agree (memory/architecture/required-columns-need-approval);
+        // without it EF scaffolds a '' default, which is not a parseable UserState.
+        // Out-of-range sentinel so an explicit `Bare` is never mistaken for "unset" (Bare == 0).
         builder.Property(u => u.State)
             .HasConversion<string>()
             .HasMaxLength(50)
             .HasDefaultValue(UserState.Bare)
+            .HasSentinel((UserState)(-1))
             .IsRequired();
     }
 }

@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Users.Data.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20260820181807_UserStateRequired")]
+    [Migration("20260820185449_UserStateRequired")]
     partial class UserStateRequired
     {
         /// <inheritdoc />

@@ -22,17 +22,19 @@ public static class UserFixtures
     public static readonly Instant DefaultInstant = Instant.FromUtc(2026, 1, 1, 0, 0);
 
     /// <summary>
-    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Bare until the
-    /// required name fields are filled. Nothing derives state on read any more, so a test that
-    /// builds a <c>UserInfo</c> by hand must stamp it.
+    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Rejected once
+    /// rejected, otherwise Bare until the required name fields are filled. Nothing derives state on
+    /// read any more, so a test that builds a <c>UserInfo</c> by hand must stamp it.
     /// </summary>
     public static UserState StateFor(ProfileInfo? profile) =>
-        profile is not null
-        && !string.IsNullOrWhiteSpace(profile.BurnerName)
-        && !string.IsNullOrWhiteSpace(profile.FirstName)
-        && !string.IsNullOrWhiteSpace(profile.LastName)
-            ? UserState.Active
-            : UserState.Bare;
+        profile switch
+        {
+            { RejectedAt: not null } => UserState.Rejected,
+            not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
+            _ => UserState.Bare,
+        };
 
     public static ProfileInfo Profile(
         Guid? id = null,

@@ -52,13 +52,10 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasDefaultValue(MembershipTier.Volunteer)
             .HasConversion<string>();
 
-        // Profile.State is [Obsolete] (#844) — superseded by User.State. The column stays
-        // mapped so no migration is needed; suppress CS0618 here, there must be no other reader.
-#pragma warning disable HUM_PROFILE_STATE
-        builder.Property(p => p.State)
-            .HasConversion<string>()
+        // profiles.state is dead (superseded by User.State, #844) but not yet dropped, so it
+        // survives as a shadow property — there is no CLR property left to read or write.
+        builder.Property<string>("State")
             .HasMaxLength(50);
-#pragma warning restore HUM_PROFILE_STATE
 
         builder.Property(p => p.ConsentCheckStatus)
             .HasConversion<string>();

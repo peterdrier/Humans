@@ -87,7 +87,7 @@ Profile
 ├── EmergencyContactRelationship: string? (100) [board only]
 ├── AdminNotes: string? (4000) [admin only]
 ├── NoPriorBurnExperience: bool (default false)
-├── State: ProfileState? (Stub/Active/Suspended/AdminSuspended — the suspension source of truth)
+├── State: (shadow column — superseded by User.State; no C# property, pending a drop)
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```
@@ -206,7 +206,7 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 ## Admin Capabilities
 
 1. **View Any Profile**: Full access to all profile fields
-2. **Suspend Member**: Set `Profile.State` to `AdminSuspended` with AdminNotes
+2. **Suspend Member**: Set `User.State` to `AdminSuspended` with AdminNotes
 3. **Unsuspend Member**: Clear suspension status
 4. **Edit Admin Notes**: Internal notes not visible to member
 

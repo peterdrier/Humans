@@ -121,10 +121,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task GetAllUserInfosAsync_SeedsNullUserStateOnFirstBulkLoad()
+    public async Task GetAllUserInfosAsync_ReadsStoredUserStateWithoutWriting()
     {
         var userId = Guid.NewGuid();
-        SeedUser(userId);
+        var user = SeedUser(userId);
+        user.State = UserState.Active;
         Db.Profiles.Add(new Profile
         {
             Id = Guid.NewGuid(),
@@ -140,8 +141,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var infos = await _service.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
 
         infos.Single(u => u.Id == userId).State.Should().Be(UserState.Active);
-        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        reloaded.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]

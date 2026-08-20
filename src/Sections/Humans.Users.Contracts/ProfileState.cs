@@ -2,9 +2,10 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Superseded by <see cref="UserState"/> on <c>User.State</c>, which now stores suspension
-/// directly. Retained only to keep the <c>profiles.state</c> column mapped until a drop migration.
+/// directly. Unreferenced — retained only to document the values still sitting in the
+/// <c>profiles.state</c> column, which survives as an EF shadow property until a drop migration.
 /// </summary>
-[Obsolete("Superseded by UserState on User.State — nobodies-collective/Humans#844. Retained only for the mapped profiles.state column until a drop migration.", DiagnosticId = "HUM_PROFILE_STATE", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/844")]
+[Obsolete("Superseded by UserState on User.State — nobodies-collective/Humans#844. Unreferenced; goes away with the profiles.state drop migration.", DiagnosticId = "HUM_PROFILE_STATE", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/844")]
 public enum ProfileState
 {
     /// <summary>
