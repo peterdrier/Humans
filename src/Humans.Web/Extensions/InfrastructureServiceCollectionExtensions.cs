@@ -6,17 +6,15 @@ using Humans.Base.Services;
 using Humans.Web.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
-using Humans.Web.Hosting;
 
 namespace Humans.Web.Extensions;
 
 public static class InfrastructureServiceCollectionExtensions
 {
-    internal static IServiceCollection AddHumansInfrastructure(
+    public static IServiceCollection AddHumansInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment,
-        SectionAssemblySnapshot sections,
         ConfigurationRegistry? configRegistry = null)
     {
         // Cross-cutting infrastructure — options bindings, integrations, config metadata.
@@ -88,7 +86,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named.
-        services.AddDiscoveredSections(sections, configuration);
+        services.AddDiscoveredSections(configuration);
 
         return services;
     }

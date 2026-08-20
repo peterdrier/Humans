@@ -66,13 +66,6 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Before anything composes from discovery: which sections this deployment runs, and a hard
-// stop if the allowlist deactivates one an active section consumes (#1081). One snapshot
-// per host, never a static — several hosts share a process in the integration suite, and a
-// shared active set composes one host's sections inside another.
-var sectionAssemblies = SectionAssemblySnapshot.For(builder.Configuration);
-builder.Services.AddSingleton(sectionAssemblies);
-
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
 {
@@ -220,7 +213,7 @@ builder.Services.AddAuthentication()
     });
 
 // Canonical policies — see docs/authorization-inventory.md.
-builder.Services.AddHumansAuthorizationPolicies(sectionAssemblies);
+builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
@@ -289,7 +282,7 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<ConfigurationHealthCheck>("configuration");
 
 // Sections add their own checks; the names are monitoring keys, so they stay with the owner.
-foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>(sectionAssemblies))
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>())
 {
     contributor.AddHealthChecks(healthChecks, builder.Configuration);
 }
@@ -301,8 +294,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
     healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire");
 }
 
-builder.Services.AddHumansInfrastructure(
-    builder.Configuration, builder.Environment, sectionAssemblies, configRegistry);
+builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
 builder.Services.AddResponseCompression(options =>
 {
@@ -483,15 +475,14 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     });
 
 // A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
-// default provider only discovers public ones, and says nothing when it doesn't. Same
-// per-host snapshot the rest of composition read.
+// default provider only discovers public ones, and says nothing when it doesn't.
 mvcBuilder.ConfigureApplicationPartManager(apm =>
-    apm.FeatureProviders.Add(new SectionControllerFeatureProvider(sectionAssemblies)));
+    apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
 
 // …and the same for a section's view components, which MVC discovers through a separate,
 // equally public-only convention (Notifications' bell).
 mvcBuilder.ConfigureApplicationPartManager(apm =>
-    apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider(sectionAssemblies)));
+    apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
 
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so
 // ValidateOnBuild passes and /dev/login/* 404s cleanly. Must be added after
@@ -608,7 +599,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 // the set renders as its raw key. Checking that the manifest the localizer will look
 // for is actually embedded needs no key-name convention and no culture, so a new
 // section adds nothing here.
-foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes(sectionAssemblies))
+foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
 {
     var expected = resourceType.FullName + ".resources";
     var embedded = resourceType.Assembly.GetManifestResourceNames();
@@ -736,6 +727,12 @@ app.UseMiddleware<UserActivityTrackingMiddleware>();
 // after the response is produced; only text/html responses are counted.
 app.UseMiddleware<ClientStatsMiddleware>();
 
+// Dev-loop guard, not a runtime safety net — never Production/Testing. See #1055.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    app.UseMiddleware<ViewComponentTagSurvivalMiddleware>();
+}
+
 app.UseAuthorization();
 
 // Before MVC runs: a malformed TempData cookie throws an unloggable-context
@@ -835,32 +832,91 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 // Sections map what routing cannot discover on its own — hubs and the like.
-foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>(sectionAssemblies))
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
 {
     contributor.MapEndpoints(app);
 }
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
-    app.Services.GetRequiredService<IGlobalConfiguration>();
-    app.UseHumansRecurringJobs();
-}
-
+// Widened to also cover the Hangfire block below (nobodies-collective/Humans#1060): a preview
+// env whose database doesn't exist yet fails here first — every recurring-job registration
+// throws the same connection error, but each is caught and logged as a WARNING by
+// UseHumansRecurringJobs (a legitimate concern there: a stale distributed lock must not stop
+// the app booting). That warning is loud but incidental; the real fatal cause is whichever of
+// this block or DatabaseMigrationHostedService.StartingAsync (run inside RunAsync) throws
+// first, and previously only the RunAsync half was caught here.
 try
 {
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
+        app.Services.GetRequiredService<IGlobalConfiguration>();
+        app.UseHumansRecurringJobs();
+    }
+
     await app.RunAsync();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Application terminated unexpectedly");
+    LogStartupFailure(ex, builder.Configuration);
     throw;
 }
 finally
 {
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// One clear FATAL line for a startup crash, naming the database when the cause is a
+/// Postgres connectivity failure (nobodies-collective/Humans#1060) — e.g. a PR preview
+/// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
+/// generic message for anything else, so a startup failure is never silently unlabeled.
+/// </summary>
+static void LogStartupFailure(Exception ex, IConfiguration configuration)
+{
+    var pgEx = FindException<NpgsqlException>(ex);
+    if (pgEx is null)
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly");
+        return;
+    }
+
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    var database = connectionString is not null
+        ? new NpgsqlConnectionStringBuilder(connectionString).Database
+        : null;
+
+    if (pgEx is PostgresException { SqlState: PostgresErrorCodes.InvalidCatalogName })
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
+    }
+    else
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
+    }
+}
+
+/// <summary>Walks <paramref name="ex"/>'s InnerException chain (and AggregateException branches) for the first match.</summary>
+static T? FindException<T>(Exception? ex) where T : Exception
+{
+    for (; ex is not null; ex = ex.InnerException)
+    {
+        if (ex is T match)
+            return match;
+
+        if (ex is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+            {
+                var found = FindException<T>(inner);
+                if (found is not null)
+                    return found;
+            }
+        }
+    }
+
+    return null;
 }
 
 static async Task WriteDetailedHealthResponse(HttpContext context, HealthReport report)

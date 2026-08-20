@@ -43,7 +43,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [In-App Guide](../src/Sections/Humans.Guide/Docs/features/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
 | [Issues System](../src/Sections/Humans.Issues/Docs/features/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
 | [Legal Documents & Consent Management](../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
-| [Mailer Audience Debug Screen](../src/Sections/Humans.Mailer/Docs/features/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
+| [MailerLite Audience Debug Screen](../src/Sections/Humans.MailerLite/Docs/features/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
 | [Notification Inbox](../src/Sections/Humans.Notifications/Docs/features/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
 | [Onboarding Pipeline](../src/Sections/Humans.Onboarding/Docs/features/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
 | [Volunteer Status](../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
@@ -111,7 +111,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Holded](../src/Sections/Humans.Holded/Docs/Holded.md) | The ledger mirror: a local, re-derivable copy of Holded's daybook and chart of accounts, plus the sync that maintains it and the `/Holded` admin screen |
 | [Issues](../src/Sections/Humans.Issues/Docs/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |
 | [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |
-| [Mailer](../src/Sections/Humans.Mailer/Docs/Mailer.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
+| [MailerLite](../src/Sections/Humans.MailerLite/Docs/MailerLite.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
 | [Monitor](../src/Sections/Humans.Monitor/Docs/Monitor.md) | Operator-facing monitoring of the Google Workspace estate: detect unrequested permission changes, and show the Google-sync audit trail for one resource or one human |
 | [Notifications](../src/Sections/Humans.Notifications/Docs/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |

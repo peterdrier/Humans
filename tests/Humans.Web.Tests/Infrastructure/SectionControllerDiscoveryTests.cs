@@ -57,7 +57,7 @@ public sealed class SectionControllerDiscoveryTests
         // The provider relaxes IsPublic *only* for assemblies declaring an ISection entry
         // point. If that narrowing ever regressed, every internal class ending in
         // "Controller" anywhere would become routable.
-        var provider = new SectionControllerFeatureProvider(EverySectionActive);
+        var provider = new SectionControllerFeatureProvider();
         var feature = new ControllerFeature();
 
         provider.PopulateFeature(
@@ -70,7 +70,7 @@ public sealed class SectionControllerDiscoveryTests
 
     private static IReadOnlyList<Type> DiscoverControllers(IEnumerable<Assembly> assemblies)
     {
-        var provider = new SectionControllerFeatureProvider(EverySectionActive);
+        var provider = new SectionControllerFeatureProvider();
         var feature = new ControllerFeature();
 
         provider.PopulateFeature(
@@ -79,10 +79,6 @@ public sealed class SectionControllerDiscoveryTests
 
         return [.. feature.Controllers.Select(t => t.AsType())];
     }
-
-    /// <summary>The default composition: no allowlist, so every shipped section is active.</summary>
-    private static SectionAssemblySnapshot EverySectionActive =>
-        new(SectionDiscoveryExtensions.SectionAssemblies(), activeSections: null);
 
     private sealed class NotASectionController : Controller;
 }

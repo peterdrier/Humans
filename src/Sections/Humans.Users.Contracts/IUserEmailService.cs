@@ -171,7 +171,7 @@ public interface IUserEmailService
 
     /// <summary>
     /// Returns (userId, userEmailId) for any UserEmail row matching the address,
-    /// or null if no row matches. Used by Mailer import to identify the specific
+    /// or null if no row matches. Used by MailerLite import to identify the specific
     /// unverified row to delete before creating a contact.
     /// </summary>
     Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
@@ -226,7 +226,7 @@ public interface IUserEmailService
     /// Returns the distinct UserIds whose verified UserEmail matches the given
     /// address (including gmail/googlemail alternate). Same matching semantics
     /// as <see cref="FindVerifiedEmailWithUserAsync"/> but exposes the full
-    /// set. Callers that mutate user state (e.g. the Mailer import classifier)
+    /// set. Callers that mutate user state (e.g. the MailerLite import classifier)
     /// must treat count &gt; 1 as ambiguous and skip — service-enforced
     /// verified-email uniqueness can drift.
     /// </summary>

@@ -35,7 +35,7 @@ public interface ICommunicationPreferenceService
     /// <summary>
     /// Returns the existing preference row for a user+category, or null if none.
     /// Read-only — does NOT lazy-create defaults. Use this when the caller
-    /// needs to know whether a row exists (e.g. the mailer importer's plan
+    /// needs to know whether a row exists (e.g. the MailerLite importer's plan
     /// phase, which must not mutate state during preview).
     /// </summary>
     Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
@@ -85,7 +85,7 @@ public interface ICommunicationPreferenceService
     /// Deletes the preference row for a user+category, reverting the category to
     /// the "no preference recorded" (null) state — distinct from an explicit
     /// opt-out. No-op if no row exists. Logs an audit entry when a row is
-    /// removed. Used by the Mailer import GDPR remediation to undo Marketing
+    /// removed. Used by the MailerLite import GDPR remediation to undo Marketing
     /// opt-ins the erroneous whole-account import set.
     /// </summary>
     Task ResetPreferenceAsync(

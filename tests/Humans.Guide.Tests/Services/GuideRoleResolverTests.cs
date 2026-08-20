@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -15,13 +16,17 @@ public class GuideRoleResolverTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly ICampLeadDirectory _campLeads = Substitute.For<ICampLeadDirectory>();
 
     public GuideRoleResolverTests()
     {
-        // Default: empty team cache.
+        // Default: empty team cache, leads no camp.
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _campLeads
+            .IsLeadAnywhereAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
     }
 
     private ClaimsPrincipal PrincipalWithRoles(Guid? userId, params string[] roles)
@@ -39,7 +44,7 @@ public class GuideRoleResolverTests
         return new ClaimsPrincipal(identity);
     }
 
-    private GuideRoleResolver CreateResolver() => new(_teamService);
+    private GuideRoleResolver CreateResolver() => new(_teamService, _campLeads);
 
     private TeamInfo BuildTeam(Guid teamId, params TeamMemberInfo[] members) => new(
         Id: teamId,
@@ -82,7 +87,32 @@ public class GuideRoleResolverTests
 
         result.IsAuthenticated.Should().BeFalse();
         result.IsTeamCoordinator.Should().BeFalse();
+        result.IsCampLead.Should().BeFalse();
         result.SystemRoles.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Resolve_ActiveCampLead_IsCampLeadTrue()
+    {
+        var userId = Guid.NewGuid();
+        _campLeads.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var resolver = CreateResolver();
+
+        var result = await resolver.ResolveAsync(PrincipalWithRoles(userId), TestContext.Current.CancellationToken);
+
+        result.IsCampLead.Should().BeTrue();
+        result.IsTeamCoordinator.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Resolve_NotACampLead_IsCampLeadFalse()
+    {
+        var resolver = CreateResolver();
+
+        var result = await resolver.ResolveAsync(PrincipalWithRoles(Guid.NewGuid()), TestContext.Current.CancellationToken);
+
+        result.IsCampLead.Should().BeFalse();
     }
 
     [HumansFact]

@@ -10,7 +10,7 @@ coupling between sections.
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
 - Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary are collapsed onto the owning service node. The node names the full service; the read interface is the cross-section consumption surface.
 - Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
-- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IMailerAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
+- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
 ## Mermaid diagram
 
@@ -38,7 +38,7 @@ graph LR
     classDef dashboard fill:#f43f5e,color:#fff
     classDef notifications fill:#a855f7,color:#fff
     classDef email fill:#0d9488,color:#fff
-    classDef mailer fill:#10b981,color:#fff
+    classDef mailerlite fill:#10b981,color:#fff
     classDef search fill:#fb7185,color:#fff
     classDef issues fill:#fbbf24,color:#000
     classDef store fill:#7c3aed,color:#fff
@@ -163,8 +163,8 @@ graph LR
     Store[StoreService]:::store
     ExpenseReport[ExpenseReportService]:::expenses
     Container[ContainerService]:::containers
-    MailerSync[MailerAudienceSyncService]:::mailer
-    MailerImport[MailerImportService]:::mailer
+    MailerLiteSync[MailerLiteAudienceSyncService]:::mailerlite
+    MailerLiteImport[MailerLiteImportService]:::mailerlite
 
     EventSvc[EventService]:::events
     EarlyEntry[EarlyEntryService]:::earlyentry
@@ -472,7 +472,7 @@ graph LR
     Gate --> User
     Gate --> Audit
 
-    %% Expenses / Containers / Mailer / Events
+    %% Expenses / Containers / MailerLite / Events
     ExpenseReport --> Budget
     ExpenseReport --> Team
     ExpenseReport --> User
@@ -480,13 +480,13 @@ graph LR
     ExpenseReport --> Audit
     Container --> Camp
     Container --> Audit
-    MailerSync --> UEmail
-    MailerSync --> Audit
-    MailerImport --> UEmail
-    MailerImport --> User
-    MailerImport --> AcctProv
-    MailerImport --> CommPref
-    MailerImport --> Audit
+    MailerLiteSync --> UEmail
+    MailerLiteSync --> Audit
+    MailerLiteImport --> UEmail
+    MailerLiteImport --> User
+    MailerLiteImport --> AcctProv
+    MailerLiteImport --> CommPref
+    MailerLiteImport --> Audit
     EventSvc --> BurnSettings
     EventSvc --> User
     EventSvc --> Email

@@ -28,7 +28,7 @@
       Data-and-DbContext steps are skipped wholesale). The orchestrator fans out over
       IUserServiceRead / ITeamServiceRead / ICampServiceRead / IShiftManagementService, all
       on their owners' contracts leaves, plus IEventServiceRead off the Events leaf.
-      Scanner's, Cantina's, Mailer's and Onboarding's shape.
+      Scanner's, Cantina's, MailerLite's and Onboarding's shape.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->

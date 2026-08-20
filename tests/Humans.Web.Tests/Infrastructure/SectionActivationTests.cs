@@ -1,14 +1,14 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
-using Humans.Web.Hosting;
-using Microsoft.Extensions.Configuration;
 
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// The activation mechanism (nobodies-collective/Humans#1081): a config allowlist filters the
-/// discovered section set, and deactivating a section an active one consumes fails startup.
+/// The activation mechanism (nobodies-collective/Humans#1081): a section declares whether
+/// this deployment runs it via <see cref="ISection.IsActive"/>, and deactivating one that
+/// Shell or another running section consumes fails startup.
 /// </summary>
 /// <remarks>
 /// Every case drives off what discovery actually found and what the assemblies actually
@@ -22,55 +22,34 @@ public sealed class SectionActivationTests
     /// <summary>The Shell assembly, which always runs and consumes sections of its own.</summary>
     private static Assembly Shell => typeof(SectionActivation).Assembly;
 
-    private static IConfiguration Allowlist(params string[] sections) =>
-        new ConfigurationBuilder()
-            .AddInMemoryCollection(sections
-                .Select((name, i) => new KeyValuePair<string, string?>($"{SectionActivation.ActiveKey}:{i}", name)))
-            .Build();
+    private static IReadOnlySet<string> Active(params string[] sections) =>
+        sections.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private static IReadOnlySet<string> AllActive() =>
+        Discovered.Select(SectionName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     [HumansFact]
-    public void NoAllowlistActivatesEverySection()
+    public void EverySectionShipsActive()
     {
-        SectionActivation.Resolve(Discovered, Shell, new ConfigurationBuilder().Build())
-            .Should().BeNull(because: "the shipped default runs every section that ships");
+        var inactive = Discovered
+            .SelectMany(a => a.GetExportedTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISection).IsAssignableFrom(t))
+                .Select(t => (Section: SectionName(a), Instance: (ISection)Activator.CreateInstance(t)!)))
+            .Where(s => !s.Instance.IsActive)
+            .Select(s => s.Section)
+            .ToList();
 
-        new SectionAssemblySnapshot(Discovered, activeSections: null)
-            .Active.Should().BeEquivalentTo(Discovered);
+        inactive.Should().BeEmpty(
+            because: "IsActive defaults to true, and no section overrides it today — a deployment "
+                     + "that wants one off is what overriding is for");
     }
 
     [HumansFact]
-    public void AllowlistNamingEverySectionIsTheDefaultSet()
+    public void EverySectionActiveMeetsEveryDependency()
     {
-        var all = Discovered.Select(SectionName).ToList();
+        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, AllActive());
 
-        SectionActivation.Resolve(Discovered, Shell, Allowlist([.. all]))
-            .Should().BeEquivalentTo(all);
-    }
-
-    [HumansFact]
-    public void AllowlistIsMatchedCaseInsensitivelyAndCanonicalised()
-    {
-        var all = Discovered.Select(SectionName).ToList();
-
-        SectionActivation.Resolve(Discovered, Shell, Allowlist([.. all.Select(n => n.ToUpperInvariant())]))
-            .Should().BeEquivalentTo(all,
-                because: "names match case-insensitively and come back spelled as discovery found them");
-    }
-
-    [HumansFact]
-    public void ExplicitlyEmptyAllowlistIsZeroSectionsNotEverySection()
-    {
-        // How `"Sections:Active": []` binds: the key is present with an empty value, which
-        // is what separates it from the key being absent.
-        var empty = new ConfigurationBuilder()
-            .AddInMemoryCollection([new KeyValuePair<string, string?>(SectionActivation.ActiveKey, "")])
-            .Build();
-
-        var act = () => SectionActivation.Resolve(Discovered, Shell, empty);
-
-        act.Should().Throw<InvalidOperationException>(
-            because: "activating nothing leaves Shell running with none of the sections it consumes, "
-                     + "where the absent key means every section and resolves to null");
+        act.Should().NotThrow(because: "the shipped default runs every section that ships");
     }
 
     [HumansFact]
@@ -81,24 +60,14 @@ public sealed class SectionActivationTests
             because: "Shell's own controllers name section Contracts types");
 
         var dropped = shellDependencies[0];
-        var allowed = Discovered.Select(SectionName)
-            .Where(name => !name.Equals(dropped, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        var active = Active([.. Discovered.Select(SectionName)
+            .Where(name => !name.Equals(dropped, StringComparison.OrdinalIgnoreCase))]);
 
-        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist(allowed));
+        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, active);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage($"*{dropped}*{SectionName(Shell)}*",
-                because: "Shell always runs, so no allowlist may deactivate what Shell consumes");
-    }
-
-    [HumansFact]
-    public void AllowlistNamingSomethingThatIsNotASectionFails()
-    {
-        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist("NotASection"));
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*NotASection*", because: "a typo must not silently drop a section");
+                because: "Shell always runs, so nothing may deactivate what Shell consumes");
     }
 
     [HumansFact]
@@ -106,7 +75,7 @@ public sealed class SectionActivationTests
     {
         var (dependent, dependency) = FirstEdge();
 
-        var act = () => SectionActivation.Resolve(Discovered, Shell, Allowlist(dependent));
+        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, Active(dependent));
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage($"*{dependency}*{dependent}*",

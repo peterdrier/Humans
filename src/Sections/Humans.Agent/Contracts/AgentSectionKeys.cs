@@ -13,7 +13,7 @@ public static class AgentSectionKeys
     // Every user-facing section. A section left off this list is unreachable: the agent
     // either refuses the question outright or answers it from the community Discord FAQ
     // with an "unofficial, may be outdated" disclaimer — even for a first-party feature.
-    // Operator/internal-only sections (Finance, Holded, Email, Mailer, AuditLog, Debug,
+    // Operator/internal-only sections (Finance, Holded, Email, MailerLite, AuditLog, Debug,
     // admin-shell) stay off deliberately; add one when triage shows users asking about it.
     private static readonly HashSet<string> Canonical =
         new(StringComparer.OrdinalIgnoreCase)

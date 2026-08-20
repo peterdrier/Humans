@@ -70,6 +70,9 @@ internal static class GuideFilter
     {
         if (ctx.IsTeamCoordinator) return true;
         if (ctx.SystemRoles.Contains(RoleNames.Board) || ctx.SystemRoles.Contains(RoleNames.Admin)) return true;
+        // Camp lead is not a claim, so it is gated on the parenthetical rather than opening
+        // every Coordinator block the way IsTeamCoordinator does.
+        if (ctx.IsCampLead && paren.Contains(GuideRolePrivilegeMap.CampLead, StringComparer.Ordinal)) return true;
         foreach (var role in paren)
         {
             if (ctx.SystemRoles.Contains(role)) return true;

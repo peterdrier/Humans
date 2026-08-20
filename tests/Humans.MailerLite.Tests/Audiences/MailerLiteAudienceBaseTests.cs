@@ -1,0 +1,94 @@
+using AwesomeAssertions;
+using Humans.MailerLite.Services.Audiences;
+using NodaTime;
+using NSubstitute;
+using Humans.Users.Contracts;
+
+namespace Humans.MailerLite.Tests.Audiences;
+
+public class MailerLiteAudienceBaseTests
+{
+    [HumansFact]
+    public async Task ComputeMemberUserIdsAsync_ExcludesExplicitMarketingOptOuts_KeepsNullAndOptIn()
+    {
+        var optedIn = Guid.NewGuid();   // MarketingOptedOut == false → kept
+        var noPref = Guid.NewGuid();    // MarketingOptedOut == null  → kept
+        var optedOut = Guid.NewGuid();  // MarketingOptedOut == true  → removed
+
+        var audience = NewAudience(
+            raw: [optedIn, noPref, optedOut],
+            infos:
+            [
+                InfoWithMarketing(optedIn, optedOut: false),
+                InfoWithMarketing(noPref, optedOut: null),
+                InfoWithMarketing(optedOut, optedOut: true),
+            ]);
+
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        members.Should().BeEquivalentTo([optedIn, noPref]);
+    }
+
+    [HumansFact]
+    public async Task ComputeMemberUserIdsAsync_NoOptOuts_ReturnsRawUnchanged()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+
+        var audience = NewAudience(
+            raw: [a, b],
+            infos: [InfoWithMarketing(a, optedOut: null), InfoWithMarketing(b, optedOut: false)]);
+
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        members.Should().BeEquivalentTo([a, b]);
+    }
+
+    [HumansFact]
+    public async Task ComputeMemberUserIdsAsync_EmptyRaw_DoesNotEnumerateUsers()
+    {
+        var users = Substitute.For<IUserService>();
+        var audience = new FakeAudience([], users);
+
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        members.Should().BeEmpty();
+        await users.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+    }
+
+    private static FakeAudience NewAudience(HashSet<Guid> raw, List<UserInfo> infos)
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(infos);
+        return new FakeAudience(raw, users);
+    }
+
+    private static UserInfo InfoWithMarketing(Guid userId, bool? optedOut)
+    {
+        IReadOnlyList<CommunicationPreferenceInfo> prefs = optedOut is null
+            ? []
+            :
+            [
+                UserFixtures.Preference(
+                    category: MessageCategory.Marketing,
+                    optedOut: optedOut.Value,
+                    updatedAt: Instant.FromUnixTimeSeconds(0),
+                    updateSource: "Test"),
+            ];
+
+        return UserInfo.Create(
+            new User { Id = userId, DisplayName = "u", PreferredLanguage = "en" },
+            [], [], [], profile: null, prefs);
+    }
+
+    private sealed class FakeAudience(HashSet<Guid> raw, IUserService users)
+        : MailerLiteAudienceBase(users)
+    {
+        public override string Key => "fake";
+        public override string DisplayName => "Fake";
+        public override string MailerLiteGroupName => "Humans - Fake";
+
+        protected override Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
+            => Task.FromResult<IReadOnlySet<Guid>>(raw);
+    }
+}

@@ -16,7 +16,7 @@
       steps of G5-SECTION-TEMPLATE.md are skipped wholesale), no controllers and no
       views, so this is plain Microsoft.NET.Sdk rather than Sdk.Razor (TicketTailor's
       shape) and takes no Humans.Infrastructure reference (Scanner's shape, reached by a
-      connector that lived in Humans.Infrastructure/Services on the way in — Mailer's
+      connector that lived in Humans.Infrastructure/Services on the way in — MailerLite's
       case). Stripe fee values land on Tickets' TicketOrder and Store's Payment, both
       written through those sections' own repositories.
 

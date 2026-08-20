@@ -1,4 +1,5 @@
 using System.Reflection;
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 
@@ -20,8 +21,7 @@ namespace Humans.Web.Hosting;
 /// nameable from any other section. Scoped to assemblies declaring an
 /// <c>ISection</c> entry point, the same test the analyzers and DI discovery use.
 /// </remarks>
-internal sealed class SectionControllerFeatureProvider(SectionAssemblySnapshot sections)
-    : ControllerFeatureProvider
+internal sealed class SectionControllerFeatureProvider : ControllerFeatureProvider
 {
     private const string ControllerSuffix = "Controller";
 
@@ -29,7 +29,7 @@ internal sealed class SectionControllerFeatureProvider(SectionAssemblySnapshot s
     {
         // A deactivated section routes nothing, public or not — the base provider would
         // otherwise still take its public controllers (#1081).
-        if (sections.IsInactiveSection(typeInfo.Assembly))
+        if (SectionDiscoveryExtensions.IsInactiveSection(typeInfo.Assembly))
             return false;
 
         if (base.IsController(typeInfo))
@@ -37,7 +37,7 @@ internal sealed class SectionControllerFeatureProvider(SectionAssemblySnapshot s
 
         // Only relax the public check, and only for section assemblies. Every other
         // condition below mirrors ControllerFeatureProvider.IsController.
-        if (!sections.IsActiveSection(typeInfo.Assembly))
+        if (!SectionDiscoveryExtensions.IsActiveSection(typeInfo.Assembly))
             return false;
 
         if (!typeInfo.IsClass || typeInfo.IsAbstract || typeInfo.ContainsGenericParameters)

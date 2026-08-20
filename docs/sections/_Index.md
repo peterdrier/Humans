@@ -49,7 +49,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Holded | `src/Sections/Humans.Holded` | [Holded.md](../../src/Sections/Humans.Holded/Docs/Holded.md) — the ledger mirror; the HTTP connector moved in too and keeps [its own doc](../../src/Sections/Humans.Holded/Docs/Holded-connector.md) |
 | Guide | `src/Sections/Humans.Guide` | [Guide.md](../../src/Sections/Humans.Guide/Docs/Guide.md) |
 | Issues | `src/Sections/Humans.Issues` | [Issues.md](../../src/Sections/Humans.Issues/Docs/Issues.md) |
-| Mailer | `src/Sections/Humans.Mailer` | [Mailer.md](../../src/Sections/Humans.Mailer/Docs/Mailer.md) |
+| MailerLite | `src/Sections/Humans.MailerLite` | [MailerLite.md](../../src/Sections/Humans.MailerLite/Docs/MailerLite.md) |
 | Notifications | `src/Sections/Humans.Notifications` | [Notifications.md](../../src/Sections/Humans.Notifications/Docs/Notifications.md) |
 | Onboarding | `src/Sections/Humans.Onboarding` | [Onboarding.md](../../src/Sections/Humans.Onboarding/Docs/Onboarding.md) |
 | Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |
@@ -118,7 +118,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Cantina** | `CantinaController` (`Humans.Cantina.Controllers`) | — | `CantinaRosterService` (`Humans.Cantina.Services`) | — | — (reads Shifts via `IShiftManagementServiceRead`; owns no tables) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
 | **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |
-| **Mailer** | `MailerAdminController` (`Humans.Mailer.Controllers`) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` (`Humans.Mailer.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
+| **MailerLite** | `MailerLiteAdminController` (`Humans.MailerLite.Controllers`) | `MailerLiteImportService`, `MailerLiteAudienceSyncService` | `MailerLiteClient` (`Humans.MailerLite.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
 | **Monitor** | `MonitorController` (`Humans.Monitor.Controllers`, internal) | `DriveActivityMonitorService` (`Humans.Monitor.Services`, internal) | — | — | — (owns no tables; reads Google through GoogleIntegration's connector, writes through `IAuditLogService`) |
 | **Tour** | `TourController` (`src/Sections/Humans.Tour`) | — | — | — | — (presentational; owns no tables) |

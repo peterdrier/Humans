@@ -201,7 +201,7 @@ The 24 `.Contracts` projects are mostly hub artifacts: Application references 22
 each carve forced by a `Section → Application → Section` cycle, not a real knot. After the
 hub dies, fold back any leaf with no remaining external consumer into its section's
 `Contracts/` folder. Orphan candidates measured 2026-08-14: Camps, Shifts, Expenses, Gate,
-Mailer, Surveys, Agent, Monitor. Real knots/horizontals keep their leaf. Recorded on
+MailerLite, Surveys, Agent, Monitor. Real knots/horizontals keep their leaf. Recorded on
 nobodies-collective/Humans#1010.
 
 ## Enforcement stance

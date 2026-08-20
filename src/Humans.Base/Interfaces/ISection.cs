@@ -17,6 +17,14 @@ namespace Humans.Base.Interfaces;
 public interface ISection
 {
     /// <summary>
+    /// Whether this deployment runs the section. Every section assembly ships; a section
+    /// opts itself out by overriding this (nobodies-collective/Humans#1081), and Shell then
+    /// composes nothing it contributes — no registration, no route, no job, no nav, no
+    /// migration. Deactivating one another section consumes fails startup naming both.
+    /// </summary>
+    bool IsActive => true;
+
+    /// <summary>
     /// Registers the section's repositories, services, jobs, options and section-owned
     /// authorization handlers. Section-specific authorization <em>policies</em> are
     /// registered separately via <see cref="ISectionPolicies"/> (nobodies-collective/Humans#1076);

@@ -6,7 +6,7 @@ namespace Humans.Tickets.Services;
 /// <summary>
 /// Plan-and-apply import that creates Humans users for ticket attendees
 /// whose email doesn't already resolve to an existing user. Mirrors the
-/// Mailer import shape: <see cref="BuildPlanAsync"/> classifies, the admin
+/// MailerLite import shape: <see cref="BuildPlanAsync"/> classifies, the admin
 /// previews + selects, <see cref="ApplyAsync"/> executes only selected rows.
 ///
 /// Stateless: <see cref="ApplyAsync"/> re-queries unmatched attendees so
