@@ -214,20 +214,21 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> WriteBackUserStateIfNullAsync(
-        Guid userId, UserState state, CancellationToken ct = default)
+    public async Task<bool> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Load-mutate-save rather than ExecuteUpdateAsync so unit tests on the EF InMemory
-        // provider still see the update (EmailOutboxRepository does the same). The State IS NULL
-        // guard stays in code: already-seeded rows are left untouched, so the seed is idempotent.
-        // User is an IdentityUser with no UpdatedAt, so there is nothing to bump; at ~500-user
-        // single-server scale the first-touch race is immaterial (no concurrency tokens).
         var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null || user.State is not null)
+        if (user is null)
             return false;
 
-        user.State = state;
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        user.State = UserStateEvaluator.Classify(
+            user, profile,
+            isSuspended: suspended && !adminSuspension,
+            isAdminSuspended: suspended && adminSuspension);
         await ctx.SaveChangesAsync(ct);
         return true;
     }

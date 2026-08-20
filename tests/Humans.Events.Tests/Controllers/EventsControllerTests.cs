@@ -192,7 +192,6 @@ public class EventsControllerTests
             burnerName: burnerName,
             firstName: "Test",
             lastName: "User",
-            state: null,
             isApproved: true);
         var user = new User
         {

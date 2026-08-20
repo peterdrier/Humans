@@ -137,7 +137,6 @@ public class EventsApiControllerTests
             burnerName: burnerName,
             firstName: "Test",
             lastName: "Submitter",
-            state: null,
             isApproved: true);
         var user = new User
         {

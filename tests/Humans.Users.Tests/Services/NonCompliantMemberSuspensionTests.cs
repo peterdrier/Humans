@@ -69,7 +69,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             _userService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
             _emailService, _emailMessages, _notificationService, _googleSyncService, _auditLogService,
             _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator, _metrics, logger, _clock);
+            _shiftAuthorizationInvalidator, _metrics, logger);
     }
 
     public void Dispose()
@@ -103,7 +103,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         await _userService.Received(1).SuspendProfilesForMissingConsentAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
-            Now,
             Arg.Any<CancellationToken>());
     }
 
@@ -116,7 +115,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
 
         _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -133,7 +132,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
@@ -155,7 +153,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         // an empty lookup — job should not emit email/notification/audit.
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { userId });
 
@@ -327,7 +324,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     {
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<Instant>(),
             Arg.Any<CancellationToken>())
             .Returns(suspendedIds.ToHashSet());
     }

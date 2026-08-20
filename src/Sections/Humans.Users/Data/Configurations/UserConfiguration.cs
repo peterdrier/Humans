@@ -66,9 +66,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.MergedToUserId)
             .HasFilter("\"MergedToUserId\" IS NOT NULL");
 
-        // Lifecycle/access state. Nullable during lazy first-touch seed; enum persisted as string.
+        // Lifecycle/access state — required; enum persisted as string. The physical default is
+        // declared here so model and database agree (memory/architecture/required-columns-need-approval).
         builder.Property(u => u.State)
             .HasConversion<string>()
-            .HasMaxLength(50);
+            .HasMaxLength(50)
+            .HasDefaultValue(UserState.Bare)
+            .IsRequired();
     }
 }

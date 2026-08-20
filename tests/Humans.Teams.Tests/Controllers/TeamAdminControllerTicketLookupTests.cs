@@ -98,7 +98,6 @@ public class TeamAdminControllerTicketLookupTests
                 Id = Guid.NewGuid(),
                 UserId = id,
                 BurnerName = burnerName,
-                State = ProfileState.Active,
                 IsApproved = true,
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),

@@ -803,7 +803,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
                 allUsers.Select(u => u.ToUserInfo(
                     profile: UserFixtures.Profile(
-                        state: null, membershipTier: MembershipTier.Volunteer))).ToList()));
+                        membershipTier: MembershipTier.Volunteer))).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

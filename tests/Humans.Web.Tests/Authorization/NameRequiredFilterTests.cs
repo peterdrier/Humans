@@ -159,8 +159,7 @@ public class NameRequiredFilterTests
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Jane",
-            lastName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Doe",
-            state: string.IsNullOrWhiteSpace(burnerName) ? ProfileState.Stub : ProfileState.Active);
+            lastName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Doe");
         users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(profile)));
         return users;
@@ -168,7 +167,7 @@ public class NameRequiredFilterTests
 
     private static UserInfo MakeUserInfo(ProfileInfo? profile) =>
         UserInfo.Create(
-            new User { Id = UserId, PreferredLanguage = "en" },
+            new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
             [], [], [],
             profile: profile,
             []);

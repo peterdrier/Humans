@@ -236,7 +236,7 @@ public class AccountProvisioningServiceTests
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
-            IReadOnlyCollection<Guid> userIds, Instant now, CancellationToken ct = default) =>
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeTierForExpiredAsync(
             MembershipTier currentTier,
@@ -251,11 +251,8 @@ public class AccountProvisioningServiceTests
         public Task ReconcileCVEntriesAsync(
             Guid profileId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> WriteBackStateIfNullAsync(
-            Guid userId, ProfileState state, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<bool> WriteBackUserStateIfNullAsync(
-            Guid userId, UserState state, CancellationToken ct = default) =>
+        public Task<bool> SetSuspensionAsync(
+            Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>

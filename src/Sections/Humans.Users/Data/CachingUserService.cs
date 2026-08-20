@@ -598,11 +598,10 @@ internal sealed class CachingUserService(
 
     public async Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default)
     {
         var mutated = await WithInnerAsync(inner =>
-            inner.SuspendProfilesForMissingConsentAsync(userIds, now, ct));
+            inner.SuspendProfilesForMissingConsentAsync(userIds, ct));
         foreach (var userId in mutated)
             await RefreshEntryAsync(userId, ct);
         return mutated;

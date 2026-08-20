@@ -269,8 +269,11 @@ public class MembershipPartitionTests
             firstName: "Test",
             lastName: "User",
             isApproved: isApproved,
-            state: isSuspended ? ProfileState.Suspended : ProfileState.Active,
             createdAt: _clock.GetCurrentInstant());
+        var user = _usersById[userId];
+        user.State = isSuspended
+            ? UserState.Suspended
+            : user.DeletionRequestedAt.HasValue ? UserState.DeletePending : UserState.Active;
     }
 
     private void SeedConsent(Guid userId, Guid versionId)

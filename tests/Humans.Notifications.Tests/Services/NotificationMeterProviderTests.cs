@@ -229,7 +229,6 @@ public class NotificationMeterProviderTests : IDisposable
                     burnerName: "B",
                     firstName: "F",
                     lastName: "L",
-                    state: ProfileState.Active,
                     isApproved: false),
                 communicationPreferences: []);
         }).ToList();

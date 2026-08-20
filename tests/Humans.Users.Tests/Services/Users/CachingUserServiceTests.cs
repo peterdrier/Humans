@@ -58,7 +58,6 @@ public class CachingUserServiceTests
         BurnerName = burnerName,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        State = ProfileState.Active,
         IsApproved = true,
     };
 
@@ -580,6 +579,10 @@ public class CachingUserServiceTests
             Id = userId,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = isRejected ? UserState.Rejected
+                : isSuspended ? UserState.Suspended
+                : string.IsNullOrWhiteSpace(burnerName) ? UserState.Bare
+                : UserState.Active,
         };
 
         var userEmails = (emails ?? [])
@@ -607,7 +610,6 @@ public class CachingUserServiceTests
             IsApproved = isApproved,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = isSuspended ? ProfileState.Suspended : (isApproved ? ProfileState.Active : ProfileState.Stub),
             RejectedAt = isRejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
@@ -958,7 +960,6 @@ public class CachingUserServiceTests
             FirstName = "New",
             LastName = "Human",
             ProfilePictureContentType = "image/png",
-            State = ProfileState.Active,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         });
@@ -1083,7 +1084,6 @@ public class CachingUserServiceTests
             FirstName = "Alice",
             LastName = "Example",
             IsApproved = true,
-            State = ProfileState.Active,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         });
@@ -1098,7 +1098,6 @@ public class CachingUserServiceTests
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.IsApproved.Should().BeTrue();
-        refreshed.Profile.State.Should().Be(ProfileState.Active);
     }
 
     [HumansFact]

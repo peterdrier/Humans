@@ -842,7 +842,7 @@ public sealed class ExpenseReportServiceTests
 
         // Profile with no IBAN
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(state: null)));
+            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile()));
 
         var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -1653,8 +1653,7 @@ public sealed class ExpenseReportServiceTests
                 burnerName: "Meri",
                 firstName: "Maria",
                 lastName: "Garcia",
-                iban: "ES9121000418450200051332",
-                state: null)));
+                iban: "ES9121000418450200051332")));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
         _holdedFinance.EnsureCreditorContactAsync(
@@ -1701,8 +1700,7 @@ public sealed class ExpenseReportServiceTests
                 burnerName: burnerName,
                 firstName: legalFirst,
                 lastName: legalLast,
-                iban: iban,
-                state: null)));
+                iban: iban)));
 
         // Seed approved report with an attachment via the real service flow
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
@@ -1846,8 +1844,7 @@ public sealed class ExpenseReportServiceTests
                 burnerName: displayName,
                 firstName: firstName,
                 lastName: lastName,
-                iban: iban,
-                state: null)));
+                iban: iban)));
     }
 
     private static TeamInfo MakeTeamInfo(Guid teamId,

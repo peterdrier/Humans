@@ -35,7 +35,6 @@ internal static class UserInfoStubs
             [],
             profile: profile ?? UserFixtures.Profile(
                 burnerName: displayName,
-                state: ProfileState.Active,
                 isApproved: true),
             []);
 }

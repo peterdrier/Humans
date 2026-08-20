@@ -90,12 +90,11 @@ public class OnboardingWidgetControllerConsentsTests
         UserFixtures.Profile(
             burnerName: "Burner",
             firstName: "First",
-            lastName: "Last",
-            state: ProfileState.Active));
+            lastName: "Last"));
 
     private static UserInfo StubUserInfo(Guid userId) => WrapInUserInfo(
         userId,
-        UserFixtures.Profile(state: ProfileState.Stub));
+        UserFixtures.Profile());
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
@@ -104,6 +103,7 @@ public class OnboardingWidgetControllerConsentsTests
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
         eventParticipations: [],

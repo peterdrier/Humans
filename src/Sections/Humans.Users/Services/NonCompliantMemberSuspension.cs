@@ -43,8 +43,7 @@ internal sealed class NonCompliantMemberSuspension(
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IHumansMetrics metrics,
-    ILogger<NonCompliantMemberSuspension> logger,
-    IClock clock) : INonCompliantMemberSuspension
+    ILogger<NonCompliantMemberSuspension> logger) : INonCompliantMemberSuspension
 {
     /// <summary>
     /// The audit actor recorded against every suspension this sweep performs. It is a
@@ -68,13 +67,11 @@ internal sealed class NonCompliantMemberSuspension(
             return;
         }
 
-        var now = clock.GetCurrentInstant();
-
         // Apply the suspension write through IUserService — returns the
-        // subset of user ids whose profile was actually mutated (skips
-        // already-suspended / profileless users).
+        // subset of user ids actually mutated (skips already-suspended /
+        // profileless users).
         var suspendedIds = await userService
-            .SuspendProfilesForMissingConsentAsync(usersToSuspend, now, cancellationToken);
+            .SuspendProfilesForMissingConsentAsync(usersToSuspend, cancellationToken);
 
         if (suspendedIds.Count == 0)
         {

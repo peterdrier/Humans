@@ -70,13 +70,12 @@ public sealed class ConsentControllerTests
         return ctrl;
     }
 
-    private static ProfileInfo StubProfile() => UserFixtures.Profile(state: ProfileState.Stub);
+    private static ProfileInfo StubProfile() => UserFixtures.Profile();
 
     private static ProfileInfo ActiveProfile() => UserFixtures.Profile(
         burnerName: "Burner",
         firstName: "First",
-        lastName: "Last",
-        state: ProfileState.Active);
+        lastName: "Last");
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
@@ -85,6 +84,7 @@ public sealed class ConsentControllerTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
         eventParticipations: [],

@@ -34,7 +34,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task AddAsync_UpdatesUserStateFromNewProfile()
     {
         var user = await SeedUserAsync(UserState.Bare);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
 
         await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
 
@@ -46,14 +46,13 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task UpdateAsync_UpdatesUserStateFromChangedProfile()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
 
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
         detached.FirstName = "";
-        detached.State = ProfileState.Stub;
         detached.UpdatedAt = _clock.GetCurrentInstant();
 
         await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
@@ -212,7 +211,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 
-    private async Task<User> SeedUserAsync(UserState? state = null)
+    private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
     {
         var user = new User
         {
@@ -229,7 +228,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     private Profile NewProfile(
-        Guid userId, string burnerName, string firstName, string lastName, ProfileState state)
+        Guid userId, string burnerName, string firstName, string lastName)
     {
         var now = _clock.GetCurrentInstant();
         return new Profile
@@ -239,7 +238,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
             BurnerName = burnerName,
             FirstName = firstName,
             LastName = lastName,
-            State = state,
             CreatedAt = now,
             UpdatedAt = now,
         };

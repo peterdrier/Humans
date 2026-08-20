@@ -113,7 +113,8 @@ internal sealed class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>Lifecycle state — Stub/Active/Suspended. Nullable during lazy backfill.</summary>
+    /// <summary>Superseded by <c>User.State</c>. Retained for the DB column until a drop migration.</summary>
+    [Obsolete("Superseded by User.State (UserState) — nobodies-collective/Humans#844. Do not read or write; retained for the DB column until a drop migration.", DiagnosticId = "HUM_PROFILE_STATE", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/844")]
     public ProfileState? State { get; set; }
 
     /// <summary>Auto-set when consent check clears.</summary>

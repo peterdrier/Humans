@@ -52,12 +52,13 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasDefaultValue(MembershipTier.Volunteer)
             .HasConversion<string>();
 
-        // Issue #635 (§15i): nullable string column. Existing rows hold NULL
-        // until CachingUserService lazily computes and writes back. A
-        // follow-up PR promotes to NOT NULL after every row is populated.
+        // Profile.State is [Obsolete] (#844) — superseded by User.State. The column stays
+        // mapped so no migration is needed; suppress CS0618 here, there must be no other reader.
+#pragma warning disable HUM_PROFILE_STATE
         builder.Property(p => p.State)
             .HasConversion<string>()
             .HasMaxLength(50);
+#pragma warning restore HUM_PROFILE_STATE
 
         builder.Property(p => p.ConsentCheckStatus)
             .HasConversion<string>();

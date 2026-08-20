@@ -81,7 +81,6 @@ public class DevPersonaSeederTests
                 burnerName: "Dev Board",
                 firstName: "Dev",
                 lastName: "Board",
-                state: state == UserState.Suspended ? ProfileState.Suspended : ProfileState.Active,
                 isApproved: true),
             []);
 

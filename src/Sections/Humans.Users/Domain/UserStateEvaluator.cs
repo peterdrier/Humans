@@ -9,8 +9,19 @@ namespace Humans.Users.Domain;
 /// </summary>
 internal static class UserStateEvaluator
 {
-    /// <summary>Classify from entities, used by transition write-sites after they mutate fields.</summary>
-    public static UserState Classify(User user, Profile? profile)
+    /// <summary>
+    /// Classify after a non-suspension mutation. Suspension is stored on <see cref="User.State"/>,
+    /// so it is carried forward from the value already on the row.
+    /// </summary>
+    public static UserState Classify(User user, Profile? profile) =>
+        Classify(
+            user,
+            profile,
+            isSuspended: user.State == UserState.Suspended,
+            isAdminSuspended: user.State == UserState.AdminSuspended);
+
+    /// <summary>Classify at the suspend/unsuspend transition, which supplies the new suspension.</summary>
+    public static UserState Classify(User user, Profile? profile, bool isSuspended, bool isAdminSuspended)
     {
         var hasName = profile is not null
             && !string.IsNullOrWhiteSpace(profile.BurnerName)
@@ -22,8 +33,8 @@ internal static class UserStateEvaluator
             StringComparison.Ordinal);
         return UserStateClassifier.Classify(
             hasRequiredNameFields: hasName,
-            isSuspended: profile?.State == ProfileState.Suspended,
-            isAdminSuspended: profile?.State == ProfileState.AdminSuspended,
+            isSuspended: isSuspended,
+            isAdminSuspended: isAdminSuspended,
             isRejected: profile?.RejectedAt is not null,
             isDeletionPending: user.DeletionRequestedAt.HasValue,
             isMerged: user.MergedAt is not null && !isGdprDeleted,

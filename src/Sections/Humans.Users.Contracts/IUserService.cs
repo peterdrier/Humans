@@ -242,12 +242,11 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
 
     /// <summary>
-    /// Suspends the given profiles for missing consent and returns the user ids
+    /// Suspends the given users for missing consent and returns the user ids
     /// that were actually mutated.
     /// </summary>
     Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default);
 
     /// <summary>

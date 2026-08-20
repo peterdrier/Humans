@@ -133,7 +133,6 @@ public class GateControllerClaimTests
             [],
             profile: UserFixtures.Profile(
                 burnerName: displayName,
-                state: ProfileState.Active,
                 isApproved: true),
             []);
 

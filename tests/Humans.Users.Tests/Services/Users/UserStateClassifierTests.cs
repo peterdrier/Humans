@@ -66,15 +66,30 @@ public class UserStateClassifierTests
     }
 
     [HumansTheory]
-    [InlineData(ProfileState.Suspended, UserState.Suspended)]
-    [InlineData(ProfileState.AdminSuspended, UserState.AdminSuspended)]
-    public void Classify_entity_preserves_suspension_reason(ProfileState profileState, UserState expected)
+    [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
+    public void Classify_entity_carries_stored_suspension_forward(UserState stored)
     {
         var user = NewUser(displayName: "Real Name");
+        user.State = stored;
         var profile = NewNamedProfile(user.Id);
-        profile.State = profileState;
 
-        UserStateEvaluator.Classify(user, profile).Should().Be(expected);
+        UserStateEvaluator.Classify(user, profile).Should().Be(stored);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, UserState.Active)]
+    [InlineData(true, false, UserState.Suspended)]
+    [InlineData(true, true, UserState.AdminSuspended)]
+    public void Classify_entity_takes_the_suspension_the_transition_supplies(
+        bool isSuspended, bool isAdminSuspended, UserState expected)
+    {
+        var user = NewUser(displayName: "Real Name");
+        user.State = UserState.AdminSuspended;
+        var profile = NewNamedProfile(user.Id);
+
+        UserStateEvaluator.Classify(user, profile, isSuspended, isAdminSuspended)
+            .Should().Be(expected);
     }
 
     [HumansFact]
@@ -109,7 +124,6 @@ public class UserStateClassifierTests
         BurnerName = "Burner",
         FirstName = "First",
         LastName = "Last",
-        State = ProfileState.Active,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };

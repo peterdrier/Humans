@@ -222,6 +222,9 @@ public class OnboardingWidgetControllerNamesTests
                 DisplayName = burner,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
+                    ? UserState.Bare
+                    : UserState.Active,
             },
             userEmails: [],
             eventParticipations: [],
@@ -231,10 +234,7 @@ public class OnboardingWidgetControllerNamesTests
                 firstName: first,
                 lastName: last,
                 city: city,
-                bio: bio,
-                state: string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
-                    ? ProfileState.Stub
-                    : ProfileState.Active),
+                bio: bio),
             communicationPreferences: []);
 
     [HumansFact]
