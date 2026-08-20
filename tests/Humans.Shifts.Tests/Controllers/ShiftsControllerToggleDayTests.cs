@@ -113,9 +113,6 @@ public class ShiftsControllerToggleDayTests
             FirstName = first,
             LastName = last,
             DietaryPreference = dietary,
-            State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
-                ? ProfileState.Stub
-                : ProfileState.Active,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
@@ -126,6 +123,9 @@ public class ShiftsControllerToggleDayTests
                 DisplayName = burner,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
+                    ? UserState.Bare
+                    : UserState.Active,
             },
             userEmails: [],
             eventParticipations: [],

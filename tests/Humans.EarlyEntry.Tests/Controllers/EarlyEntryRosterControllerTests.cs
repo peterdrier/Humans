@@ -102,7 +102,6 @@ public class EarlyEntryRosterControllerTests
             profile: UserFixtures.Profile(
                 burnerName: burner,
                 firstName: first,
-                lastName: last,
-                state: ProfileState.Active),
+                lastName: last),
             communicationPreferences: []);
 }

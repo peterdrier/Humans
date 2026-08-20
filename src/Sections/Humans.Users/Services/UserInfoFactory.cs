@@ -89,7 +89,6 @@ internal static class UserInfoFactory
             ContributionInterests: profile.ContributionInterests,
             BoardNotes: profile.BoardNotes,
             Iban: profile.Iban,
-            State: profile.State,
             IsApproved: profile.IsApproved,
             MembershipTier: profile.MembershipTier,
             ConsentCheckStatus: profile.ConsentCheckStatus,

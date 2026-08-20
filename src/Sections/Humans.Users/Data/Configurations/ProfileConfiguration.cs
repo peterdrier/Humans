@@ -52,11 +52,9 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasDefaultValue(MembershipTier.Volunteer)
             .HasConversion<string>();
 
-        // Issue #635 (§15i): nullable string column. Existing rows hold NULL
-        // until CachingUserService lazily computes and writes back. A
-        // follow-up PR promotes to NOT NULL after every row is populated.
-        builder.Property(p => p.State)
-            .HasConversion<string>()
+        // profiles.state is dead (superseded by User.State, #844) but not yet dropped, so it
+        // survives as a shadow property — there is no CLR property left to read or write.
+        builder.Property<string>("State")
             .HasMaxLength(50);
 
         builder.Property(p => p.ConsentCheckStatus)

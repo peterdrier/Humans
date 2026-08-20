@@ -810,7 +810,6 @@ public sealed class GoogleGroupSyncServiceTests
         foreach (var u in users)
         {
             _profilesByUserId[u.UserId] = UserFixtures.Profile(
-                state: ProfileState.Active,
                 createdAt: _clock.GetCurrentInstant());
         }
     }
@@ -821,7 +820,6 @@ public sealed class GoogleGroupSyncServiceTests
         {
             _profilesByUserId[p.UserId] = UserFixtures.Profile(
                 burnerName: p.BurnerName ?? string.Empty,
-                state: ProfileState.Active,
                 createdAt: _clock.GetCurrentInstant());
         }
     }

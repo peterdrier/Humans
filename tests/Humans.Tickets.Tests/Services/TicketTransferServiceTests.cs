@@ -53,7 +53,7 @@ public sealed class TicketTransferServiceTests
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
                 UserFixtures.Profile(
-                    state: null, burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+                    burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
         _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
 
@@ -62,7 +62,7 @@ public sealed class TicketTransferServiceTests
             .Returns(WrapInUserInfo(
                 MakeUser(_senderId, "Bob"),
                 UserFixtures.Profile(
-                    state: null, burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
+                    burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
         _userEmailService.GetPrimaryEmailAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns("bob@example.com");
 

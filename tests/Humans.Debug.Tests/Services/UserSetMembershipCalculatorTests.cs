@@ -136,8 +136,7 @@ public class UserSetMembershipCalculatorTests
             ? UserFixtures.Profile(
                 burnerName: "Dusty",
                 firstName: "Dusty",
-                lastName: "Rhoads",
-                state: null)
+                lastName: "Rhoads")
             : null;
 
         var participations = ticketYear.HasValue

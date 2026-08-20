@@ -21,6 +21,21 @@ public static class UserFixtures
     /// <summary>The instant every fixture profile is created/updated at unless overridden.</summary>
     public static readonly Instant DefaultInstant = Instant.FromUtc(2026, 1, 1, 0, 0);
 
+    /// <summary>
+    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Rejected once
+    /// rejected, otherwise Bare until the required name fields are filled. Nothing derives state on
+    /// read any more, so a test that builds a <c>UserInfo</c> by hand must stamp it.
+    /// </summary>
+    public static UserState StateFor(ProfileInfo? profile) =>
+        profile switch
+        {
+            { RejectedAt: not null } => UserState.Rejected,
+            not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
+            _ => UserState.Bare,
+        };
+
     public static ProfileInfo Profile(
         Guid? id = null,
         string burnerName = "",
@@ -51,7 +66,6 @@ public static class UserFixtures
         string? contributionInterests = null,
         string? boardNotes = null,
         string? iban = null,
-        ProfileState? state = ProfileState.Active,
         bool isApproved = false,
         MembershipTier membershipTier = MembershipTier.Volunteer,
         ConsentCheckStatus? consentCheckStatus = null,
@@ -98,7 +112,6 @@ public static class UserFixtures
             ContributionInterests: contributionInterests,
             BoardNotes: boardNotes,
             Iban: iban,
-            State: state,
             IsApproved: isApproved,
             MembershipTier: membershipTier,
             ConsentCheckStatus: consentCheckStatus,

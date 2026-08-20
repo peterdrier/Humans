@@ -246,17 +246,16 @@ Consequences:
 ```csharp
 public async Task SuspendAsync(Guid userId, Guid actorId, string reason, CancellationToken ct)
 {
-    var profile = await _repo.GetByUserIdAsync(userId, ct);
-    if (profile is null) return;
+    var user = await _repo.GetByIdAsync(userId, ct);
+    if (user is null) return;
 
-    var previousState = profile.State;
-    profile.State = ProfileState.Suspended;
-    await _repo.UpdateAsync(profile, ct);   // business save first
-    _store.Upsert(profile);
+    var previousState = user.State;
+    await _repo.SetSuspensionAsync(userId, suspended: true, adminSuspension: true, ct);
+    _store.Upsert(userId);
 
     await _auditLog.LogAsync(               // then audit (self-persisting)
         AuditAction.ProfileSuspended, nameof(User), userId,
-        $"Suspended (was={previousState}): {reason}",
+        $"Suspended (was={previousState}): {reason}",   // the reason lives here, not on the row
         actorId);
 }
 ```

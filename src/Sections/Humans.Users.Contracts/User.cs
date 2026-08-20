@@ -146,8 +146,8 @@ public class User : IdentityUser<Guid>
     public Instant? MergedAt { get; set; }
 
     /// <summary>
-    /// Lifecycle state and the single source of truth for access — see <see cref="UserState"/>.
-    /// Written at each transition; nullable only during lazy first-touch seeding of legacy rows.
+    /// Lifecycle state and the single source of truth for access, suspension included —
+    /// see <see cref="UserState"/>. Written at each transition; never derived on read.
     /// </summary>
-    public UserState? State { get; set; }
+    public UserState State { get; set; }
 }

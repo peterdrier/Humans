@@ -34,7 +34,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task AddAsync_UpdatesUserStateFromNewProfile()
     {
         var user = await SeedUserAsync(UserState.Bare);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
 
         await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
 
@@ -46,14 +46,13 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task UpdateAsync_UpdatesUserStateFromChangedProfile()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
 
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
         detached.FirstName = "";
-        detached.State = ProfileState.Stub;
         detached.UpdatedAt = _clock.GetCurrentInstant();
 
         await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
@@ -212,7 +211,59 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 
-    private async Task<User> SeedUserAsync(UserState? state = null)
+    [HumansFact]
+    public async Task SuspendManyAsync_SkipsRowsAHigherPrecedenceStateOutranks()
+    {
+        // Rejected outranks Suspended, so the classifier returns the row unchanged. The caller
+        // notifies and audits off the returned set, so an unmoved row must not appear in it.
+        var rejected = await SeedUserAsync(UserState.Rejected);
+        var active = await SeedUserAsync(UserState.Active);
+        var rejectedProfile = NewProfile(rejected.Id, "Burner", "First", "Last");
+        rejectedProfile.RejectedAt = _clock.GetCurrentInstant();
+        _dbContext.Profiles.Add(rejectedProfile);
+        _dbContext.Profiles.Add(NewProfile(active.Id, "Burner", "First", "Last"));
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        var suspended = await _repo.SuspendManyAsync(
+            [rejected.Id, active.Id], Xunit.TestContext.Current.CancellationToken);
+
+        suspended.Should().BeEquivalentTo([active.Id]);
+        var stillRejected = await _dbContext.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == rejected.Id, Xunit.TestContext.Current.CancellationToken);
+        stillRejected.State.Should().Be(UserState.Rejected);
+    }
+
+    [HumansFact]
+    public async Task SetSuspensionAsync_WritesOnlyUserStateAndLeavesAdminNotesAlone()
+    {
+        // AdminNotes is a general-purpose field admins own. The suspension reason lives in the
+        // audit log and the notification, so suspending must not overwrite what is there.
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        profile.AdminNotes = "Prefers email contact";
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        var profileUpdatedAt = profile.UpdatedAt;
+
+        await _repo.SetSuspensionAsync(
+            user.Id, suspended: true, adminSuspension: true,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var persistedUser = await _dbContext.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var persistedProfile = await _dbContext.Profiles
+            .AsNoTracking()
+            .FirstAsync(p => p.UserId == user.Id, Xunit.TestContext.Current.CancellationToken);
+        persistedUser.State.Should().Be(UserState.AdminSuspended);
+        persistedProfile.AdminNotes.Should().Be("Prefers email contact");
+        persistedProfile.UpdatedAt.Should().Be(profileUpdatedAt);
+    }
+
+    private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
     {
         var user = new User
         {
@@ -229,7 +280,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     private Profile NewProfile(
-        Guid userId, string burnerName, string firstName, string lastName, ProfileState state)
+        Guid userId, string burnerName, string firstName, string lastName)
     {
         var now = _clock.GetCurrentInstant();
         return new Profile
@@ -239,7 +290,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
             BurnerName = burnerName,
             FirstName = firstName,
             LastName = lastName,
-            State = state,
             CreatedAt = now,
             UpdatedAt = now,
         };

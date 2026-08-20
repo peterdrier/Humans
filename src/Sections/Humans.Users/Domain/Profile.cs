@@ -113,9 +113,6 @@ internal sealed class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>Lifecycle state — Stub/Active/Suspended. Nullable during lazy backfill.</summary>
-    public ProfileState? State { get; set; }
-
     /// <summary>Auto-set when consent check clears.</summary>
     public bool IsApproved { get; set; }
 

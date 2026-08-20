@@ -121,10 +121,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task GetAllUserInfosAsync_SeedsNullUserStateOnFirstBulkLoad()
+    public async Task GetAllUserInfosAsync_ReadsStoredUserStateWithoutWriting()
     {
         var userId = Guid.NewGuid();
-        SeedUser(userId);
+        var user = SeedUser(userId);
+        user.State = UserState.Active;
         Db.Profiles.Add(new Profile
         {
             Id = Guid.NewGuid(),
@@ -132,7 +133,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             BurnerName = "Loaded",
             FirstName = "First",
             LastName = "Last",
-            State = ProfileState.Active,
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         });
@@ -141,8 +141,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var infos = await _service.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
 
         infos.Single(u => u.Id == userId).State.Should().Be(UserState.Active);
-        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        reloaded.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -307,10 +305,14 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedState()
+    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedStateWithoutTouchingAdminNotes()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
+        var seeded = await Db.Profiles.FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
+        seeded.AdminNotes = "Prefers email contact";
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Db.ChangeTracker.Clear();
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
@@ -321,8 +323,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         result.Success.Should().BeTrue();
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.State.Should().Be(ProfileState.Suspended);
-        profile.AdminNotes.Should().Be("Disruptive");
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Suspended);
+        // The reason goes to the audit log and the notification, never onto the profile row.
+        profile.AdminNotes.Should().Be("Prefers email contact");
     }
 
     [HumansFact]
@@ -340,9 +344,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 Notes: "Manual hold"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        profile.State.Should().Be(ProfileState.AdminSuspended);
         user.State.Should().Be(UserState.AdminSuspended);
     }
 
@@ -350,10 +352,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionFalse_RestoresActiveWhenIdentityComplete()
     {
         var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-        profile.State = ProfileState.Suspended;
+        await SeedUserWithProfileAsync(userId);
+        var suspended = await Db.Users.FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        suspended.State = UserState.Suspended;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Db.ChangeTracker.Clear();
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
@@ -362,8 +365,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 Suspended: false), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var fresh = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        fresh.State.Should().Be(ProfileState.Active);
+        var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        fresh.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -478,7 +481,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.BurnerName.Should().Be("Sparkle");
         profile.FirstName.Should().Be("Ada");
         profile.LastName.Should().Be("Lovelace");
-        profile.State.Should().Be(ProfileState.Active);
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -492,7 +496,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().BeEmpty();
-        profile.State.Should().Be(ProfileState.Stub);
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Bare);
     }
 
     [HumansFact]

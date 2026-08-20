@@ -116,7 +116,7 @@ public class ExpenseReportServiceGdprTests
             .Returns([report]);
 
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(UserId, UserFixtures.Profile(iban: "ES1234567890123456789012", state: null)));
+            .Returns(WrapInUserInfo(UserId, UserFixtures.Profile(iban: "ES1234567890123456789012")));
 
         var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 

@@ -61,11 +61,6 @@ internal sealed class UserService(
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
 
-        // First-touch seed: legacy rows hold a null State column until persisted once. UserInfo.Create
-        // already classified it into info.State, so just persist that. Idempotent at the repo (State
-        // IS NULL guard); transitions keep it current thereafter.
-        await SeedUserStateIfNullAsync(user, info, ct);
-
         return info;
     }
 
@@ -124,7 +119,6 @@ internal sealed class UserService(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
                 preferences);
-            await SeedUserStateIfNullAsync(user, info, ct);
             result.Add(info);
         }
 
@@ -315,9 +309,8 @@ internal sealed class UserService(
         };
 
         // Seeded names (magic-link signup) promote straight to Active, mirroring
-        // SaveProfileAsync; import/OAuth paths pass no names and stay Stub. see #635 / #812.
-        profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-
+        // SaveProfileAsync; import/OAuth paths pass no names and stay Bare.
+        // The repository derives User.State from the row it persists.
         await repo.AddAsync(profile, ct);
         InvalidateClaims(userId);
         return true;
@@ -389,15 +382,8 @@ internal sealed class UserService(
                 break;
 
             case UserProfileOnboardingMutation.SetSuspension:
-                var suspended = command.Suspended!.Value;
-                profile.State = suspended
-                    ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
-                    : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-
-                if (suspended)
-                    profile.AdminNotes = command.Notes;
-
-                profile.UpdatedAt = now;
+                // Nothing on the profile: suspension is users.State alone. command.Notes goes to
+                // the audit log and the notification via HumanLifecycleService, not onto the row.
                 break;
 
             case UserProfileOnboardingMutation.SetConsentCheckPending:
@@ -409,7 +395,12 @@ internal sealed class UserService(
                 throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
         }
 
-        await repo.UpdateAsync(profile, ct);
+        if (command.Mutation == UserProfileOnboardingMutation.SetSuspension)
+            await repo.SetSuspensionAsync(
+                userId, command.Suspended!.Value, command.AdminSuspension, ct);
+        else
+            await repo.UpdateAsync(profile, ct);
+
         InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
@@ -432,7 +423,6 @@ internal sealed class UserService(
                 UserId = userId,
                 CreatedAt = now,
                 UpdatedAt = now,
-                State = ProfileState.Stub,
             };
             await repo.AddAsync(profile, ct);
         }
@@ -492,12 +482,8 @@ internal sealed class UserService(
             _ => profile.ProfilePictureContentType,
         };
 
-        // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
-        if (profile.State is not (ProfileState.Suspended or ProfileState.AdminSuspended))
-        {
-            profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-        }
-
+        // Bare->Active promotion happens in the repository, which re-derives User.State from the
+        // saved names and carries any existing suspension forward.
         await repo.UpdateAsync(profile, ct);
         await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
         InvalidateClaims(userId);
@@ -525,7 +511,6 @@ internal sealed class UserService(
                 UserId = userId,
                 CreatedAt = now,
                 UpdatedAt = now,
-                State = ProfileState.Stub,
             };
             await repo.AddAsync(profile, ct);
         }
@@ -623,9 +608,8 @@ internal sealed class UserService(
 
     public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default) =>
-        repo.SuspendManyAsync(userIds, now, ct);
+        repo.SuspendManyAsync(userIds, ct);
 
     public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
         DowngradeMembershipTierForExpiredAsync(
@@ -992,7 +976,7 @@ internal sealed class UserService(
                 profile.MembershipTier,
                 profile.IsApproved,
                 // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
-                IsSuspended = profile.State is ProfileState.Suspended or ProfileState.AdminSuspended,
+                IsSuspended = user.State is UserState.Suspended or UserState.AdminSuspended,
                 profile.NoPriorBurnExperience,
                 ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
                 ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),
@@ -1192,20 +1176,9 @@ internal sealed class UserService(
             await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
-    private async Task SeedUserStateIfNullAsync(User user, UserInfo info, CancellationToken ct)
-    {
-        if (user.State is null && info.State is { } seeded)
-            await repo.WriteBackUserStateIfNullAsync(user.Id, seeded, ct);
-    }
-
     // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
     // profile transitions that can change the stored state (e.g. Bare after a name submit).
     private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
-
-    private static bool HasRequiredNameFields(Profile profile) =>
-        !string.IsNullOrWhiteSpace(profile.BurnerName)
-        && !string.IsNullOrWhiteSpace(profile.FirstName)
-        && !string.IsNullOrWhiteSpace(profile.LastName);
 
     private static string? GetAlternateEmail(string normalizedEmail)
     {

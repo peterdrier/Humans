@@ -460,10 +460,10 @@ internal sealed class SystemTeamSyncJob(
         var hasApprovedApp = await ApplicationDecisionService
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
-        var profile = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
 
         var isEligible = hasApprovedApp
-            && profile is { IsApproved: true, State: not ProfileState.Suspended and not ProfileState.AdminSuspended }
+            && info is { Profile.IsApproved: true, IsSuspended: false }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();

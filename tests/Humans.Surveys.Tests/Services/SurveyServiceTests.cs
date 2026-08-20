@@ -239,7 +239,7 @@ public class SurveyServiceTests
         AudienceLoggedInSince = loggedInSince,
     };
 
-    private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState? state = null) =>
+    private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
         UserInfo.Create(
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
             [], [], [], null, []);

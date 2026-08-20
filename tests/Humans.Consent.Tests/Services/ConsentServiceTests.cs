@@ -89,7 +89,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     burnerName: "Burner",
                     firstName: "First",
                     lastName: "Last",
-                    state: ProfileState.Active,
                     createdAt: Clock.GetCurrentInstant())));
 
         _service = new ConsentService(
@@ -111,6 +110,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
+            State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
         eventParticipations: [],
@@ -297,7 +297,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         // Stub profile = required identity fields blank.
         var stubProfile = UserFixtures.Profile(
-            state: ProfileState.Stub,
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, stubProfile));
@@ -320,7 +319,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             burnerName: "Burner",
             firstName: "First",
             lastName: "Last",
-            state: ProfileState.Active,
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, activeProfile));
@@ -530,7 +528,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             burnerName: "Test",
             firstName: "Jane",
             lastName: "Doe",
-            state: null,
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -553,7 +550,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             burnerName: "Test",
             firstName: "Jane",
             lastName: "Doe",
-            state: null,
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);

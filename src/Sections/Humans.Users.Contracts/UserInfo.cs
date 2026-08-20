@@ -100,7 +100,6 @@ public sealed record ProfileInfo(
     string? ContributionInterests,
     string? BoardNotes,
     string? Iban,
-    ProfileState? State,
     bool IsApproved,
     MembershipTier MembershipTier,
     ConsentCheckStatus? ConsentCheckStatus,
@@ -159,11 +158,9 @@ public sealed record UserInfo(
 {
     /// <summary>
     /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
-    /// for access; <see cref="UserState.Active"/> is the only state with full app access. Null only
-    /// for legacy rows not yet seeded; <c>UserService.GetUserInfoAsync</c> resolves and persists it
-    /// on first read, so callers observe a non-null value.
+    /// for access; <see cref="UserState.Active"/> is the only state with full app access.
     /// </summary>
-    public UserState? State { get; init; }
+    public UserState State { get; init; }
 
     /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
@@ -299,9 +296,8 @@ public sealed record UserInfo(
         .Select(p => p.CheckedInAt)
         .FirstOrDefault();
 
-    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row,
-    /// stub-state profile, or blank required names. Callers writing consents must block on this.
-    /// Derives from the stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
+    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row
+    /// or blank required names. Callers writing consents must block on this.</summary>
     public bool IsStub => State == UserState.Bare;
 
     /// <summary>Has a profile and is not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/>
@@ -310,7 +306,7 @@ public sealed record UserInfo(
         Profile is not null && State != UserState.Rejected;
 
     /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
-    /// stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
+    /// stored <see cref="State"/>, which is where suspension itself lives.</summary>
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
@@ -423,23 +419,6 @@ public sealed record UserInfo(
             State = user.State,
         };
 
-        // The stored users.State column is the access source, but legacy rows hold null until the
-        // first-touch seed persists them (UserService.GetUserInfoAsync). Classify on the fly here so
-        // every UserInfo carries a correct, non-null State in EVERY read path — including the
-        // batch/all-users path, which never seeds. State-derived predicates below stay reliable.
-        return info.State is null
-            ? info with
-            {
-                State = UserStateClassifier.Classify(
-                    hasRequiredNameFields: info.HasRequiredNameFields,
-                    isSuspended: info.Profile?.State == ProfileState.Suspended,
-                    isAdminSuspended: info.Profile?.State == ProfileState.AdminSuspended,
-                    isRejected: info.Profile?.RejectedAt is not null,
-                    isDeletionPending: info.IsDeletionPending,
-                    isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
-                    isGdprDeleted: info.IsGdprAnonymized
-                        || (info.IsTombstone && info.MergedAt is null))
-            }
-            : info;
+        return info;
     }
 }

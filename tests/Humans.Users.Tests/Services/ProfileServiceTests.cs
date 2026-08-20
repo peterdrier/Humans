@@ -88,13 +88,11 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     /// <summary>
-    /// Issue #635 (§15i): the Stub → Active transition. SaveProfileAsync that
-    /// populates BurnerName / FirstName / LastName promotes a freshly created
-    /// Profile from <see cref="ProfileState.Stub"/> to
-    /// <see cref="ProfileState.Active"/>.
+    /// The Bare → Active transition: SaveProfileAsync that populates
+    /// BurnerName / FirstName / LastName promotes the user's stored state.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileEditorService_SaveProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
+    public async Task ProfileEditorService_SaveProfileAsync_TransitionsBareToActive_WhenAllRequiredFieldsPopulated()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -102,25 +100,22 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await _editor.SaveProfileAsync(userId, "Jane Doe", request, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
-        profile.State.Should().Be(ProfileState.Active);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Active);
     }
 
-    /// <summary>
-    /// Issue #635 (§15i): missing required fields keeps the Profile in Stub.
-    /// </summary>
+    /// <summary>Missing required fields keeps the user Bare.</summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileEditorService_SaveProfileAsync_StaysStub_WhenRequiredFieldsBlank()
+    public async Task ProfileEditorService_SaveProfileAsync_StaysBare_WhenRequiredFieldsBlank()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
-        // BurnerName/FirstName/LastName all empty — Stub state.
         var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
 
         await _editor.SaveProfileAsync(userId, "Stub", request, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
-        profile.State.Should().Be(ProfileState.Stub);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Bare);
     }
 
     [HumansFact]

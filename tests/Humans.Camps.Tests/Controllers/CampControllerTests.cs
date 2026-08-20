@@ -334,7 +334,6 @@ public class CampControllerTests
             [],
             UserFixtures.Profile(
                 burnerName: "Lead Human",
-                state: ProfileState.Active,
                 isApproved: true),
             []);
 }

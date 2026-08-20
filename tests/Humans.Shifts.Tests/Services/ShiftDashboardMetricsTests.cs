@@ -1181,7 +1181,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public Task<bool> SaveProfileVolunteerHistoryAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguageInfo> languages, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(IReadOnlyCollection<Guid> userIds, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeMembershipTierForExpiredAsync(MembershipTier currentTier, IReadOnlyCollection<Guid> userIdsToKeep, IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserEmailAddResult> AddUserEmailAsync(Guid userId, UserEmailAddCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> UpdateUserEmailAsync(Guid userId, Guid emailId, UserEmailUpdateCommand command, CancellationToken ct = default) => throw new NotSupportedException();

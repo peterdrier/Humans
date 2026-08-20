@@ -1,19 +1,17 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Lifecycle state of a <see cref="Entities.User"/> — the single source of truth for access.
-/// Stored as a nullable string column on <c>users</c> (<see cref="Entities.User.State"/>) via
-/// <c>HasConversion&lt;string&gt;()</c>. Written at each transition point; legacy rows holding
-/// <c>null</c> are classified once on first read and persisted (see
-/// <c>UserService.GetUserInfoAsync</c> + <c>IUserRepository.WriteBackUserStateIfNullAsync</c>),
-/// mirroring the seed mechanism the superseded <see cref="ProfileState"/> used.
+/// Lifecycle state of a <see cref="Entities.User"/> — the single source of truth for access,
+/// suspension included. Stored as a required string column on <c>users</c>
+/// (<see cref="Entities.User.State"/>) via <c>HasConversion&lt;string&gt;()</c> and written at
+/// each transition point; nothing derives it on read.
 ///
 /// <para><b>Access rule:</b> the full app is reachable only when state is
 /// <see cref="Active"/>. <see cref="DeletePending"/> reaches only the cancel-deletion screen.
 /// <see cref="Bare"/> is routed to name entry. <see cref="Suspended"/>/<see cref="AdminSuspended"/>/
 /// <see cref="Rejected"/>/<see cref="Deleted"/>/<see cref="Merged"/> are shown the account-status wall only.</para>
 ///
-/// <para><b>Precedence</b> (most-final wins, used by the classify helper and the seed when
+/// <para><b>Precedence</b> (most-final wins, used by the classify helper when
 /// more than one underlying signal is present):
 /// <c>Merged &gt; Deleted &gt; Rejected &gt; AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active</c>.</para>
 /// </summary>

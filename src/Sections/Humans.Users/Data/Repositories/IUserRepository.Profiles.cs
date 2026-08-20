@@ -121,16 +121,14 @@ internal partial interface IUserRepository
     Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <see cref="Profile.State"/> to <c>Suspended</c> and stamps
-    /// <see cref="Profile.UpdatedAt"/> for every profile whose <c>UserId</c>
-    /// is in <paramref name="userIds"/> and that is not already suspended.
-    /// Persists in a single SaveChanges and returns the set of user ids
-    /// whose profile was actually mutated. Used by the non-compliant
-    /// suspension job — the caller writes the audit log separately.
+    /// Sets <c>User.State</c> to <c>Suspended</c> for every user in
+    /// <paramref name="userIds"/> that has a profile and is not already suspended.
+    /// Persists in a single SaveChanges and returns the set of user ids that were
+    /// actually mutated. Used by the non-compliant suspension job — the caller
+    /// writes the audit log separately.
     /// </summary>
     Task<IReadOnlySet<Guid>> SuspendManyAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default);
 
     /// <summary>
@@ -206,21 +204,5 @@ internal partial interface IUserRepository
     Task ReconcileCVEntriesAsync(
         Guid profileId,
         IReadOnlyList<CVEntry> entries,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Issue #635 (§15i): lazy-write-back of the computed
-    /// <see cref="Profile.State"/> for a row whose persisted state is currently
-    /// <c>NULL</c>. Issues a single <c>UPDATE</c> conditional on
-    /// <c>State IS NULL</c> so concurrent writers (admin button bulk
-    /// backfill) do not stomp each other. Does NOT bump
-    /// <see cref="Profile.UpdatedAt"/> — lazy backfill should be invisible to
-    /// users.
-    /// </summary>
-    /// <returns>true if a row was updated; false if the row was missing or
-    /// already had a non-null State.</returns>
-    Task<bool> WriteBackStateIfNullAsync(
-        Guid userId,
-        ProfileState state,
         CancellationToken ct = default);
 }

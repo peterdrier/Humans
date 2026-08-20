@@ -44,7 +44,7 @@ internal static class AdminHumanDetailViewModelBuilder
             ProfilePictureUrl = info.ProfilePictureUrl,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
-            State = info.State ?? UserState.Bare,
+            State = info.State,
             IsMerged = info.IsMerged,
             MergedToUserId = info.MergedToUserId,
             MergedAt = info.MergedAt?.ToDateTimeUtc(),

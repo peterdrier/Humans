@@ -1,14 +1,11 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Lifecycle state of a <see cref="Entities.Profile"/>. Issue #635 (§15i):
-/// stored as a nullable string column added by the additive migration. Existing
-/// rows hold <c>null</c> until first read; <c>CachingUserService</c> lazily
-/// computes the correct value from required-field presence and persists it via
-/// the repository so the next read is canonical. Eventually every row is touched
-/// and populated; the column is later promoted to <c>NOT NULL</c> in a separate
-/// schema change after soak.
+/// Superseded by <see cref="UserState"/> on <c>User.State</c>, which now stores suspension
+/// directly. Unreferenced — retained only to document the values still sitting in the
+/// <c>profiles.state</c> column, which survives as an EF shadow property until a drop migration.
 /// </summary>
+[Obsolete("Superseded by UserState on User.State — nobodies-collective/Humans#844. Unreferenced; goes away with the profiles.state drop migration.", DiagnosticId = "HUM_PROFILE_STATE", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/844")]
 public enum ProfileState
 {
     /// <summary>

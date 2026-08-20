@@ -133,7 +133,6 @@ internal sealed partial class UserRepository
 
     public async Task<IReadOnlySet<Guid>> SuspendManyAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -141,34 +140,42 @@ internal sealed partial class UserRepository
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
+
+        // Profileless users are skipped: consent suspension only applies to onboarded humans.
         var profiles = await ctx.Profiles
-            .Where(p => userIdList.Contains(p.UserId)
-                && p.State != ProfileState.Suspended
-                && p.State != ProfileState.AdminSuspended)
+            .AsNoTracking()
+            .Where(p => userIdList.Contains(p.UserId))
+            .ToListAsync(ct);
+        var profilesByUser = profiles.ToDictionary(p => p.UserId);
+
+        var users = await ctx.Users
+            .Where(u => userIdList.Contains(u.Id)
+                && u.State != UserState.Suspended
+                && u.State != UserState.AdminSuspended)
             .ToListAsync(ct);
 
-        foreach (var profile in profiles)
+        var suspended = new HashSet<Guid>();
+        foreach (var user in users)
         {
-            profile.State = ProfileState.Suspended;
-            profile.UpdatedAt = now;
+            if (!profilesByUser.TryGetValue(user.Id, out var profile))
+                continue;
+
+            var next = UserStateEvaluator.Classify(
+                user, profile, isSuspended: true, isAdminSuspended: false);
+            // A higher-precedence state (Rejected/Merged/Deleted) outranks Suspended, so the
+            // classifier returns the row unchanged. Report only rows that actually moved — the
+            // caller notifies and audits off this set.
+            if (next == user.State)
+                continue;
+
+            user.State = next;
+            suspended.Add(user.Id);
         }
 
-        if (profiles.Count > 0)
-        {
-            var affectedIds = profiles.Select(p => p.UserId).ToList();
-            var users = await ctx.Users
-                .Where(u => affectedIds.Contains(u.Id))
-                .ToListAsync(ct);
-            var profilesByUser = profiles.ToDictionary(p => p.UserId);
-            foreach (var user in users)
-            {
-                user.State = UserStateEvaluator.Classify(
-                    user, profilesByUser.GetValueOrDefault(user.Id));
-            }
+        if (suspended.Count > 0)
             await ctx.SaveChangesAsync(ct);
-        }
 
-        return profiles.Select(p => p.UserId).ToHashSet();
+        return suspended;
     }
 
     public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
@@ -424,21 +431,5 @@ internal sealed partial class UserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> WriteBackStateIfNullAsync(
-        Guid userId,
-        ProfileState state,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // ExecuteUpdate with the State IS NULL guard is the lazy-write
-        // discipline: idempotent across concurrent backfill (admin button
-        // + lazy reads), zero impact on already-set rows, no UpdatedAt bump.
-        var rows = await ctx.Profiles
-            .Where(p => p.UserId == userId && p.State == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(p => p.State, state), ct);
-        return rows > 0;
     }
 }

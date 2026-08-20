@@ -28,14 +28,14 @@ internal static class UserInfoStubs
             []);
 
     internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
-        => UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+    {
+        var info = profile ?? UserFixtures.Profile(burnerName: displayName, isApproved: true);
+        return UserInfo.Create(
+            new User { Id = userId, PreferredLanguage = "en", State = UserFixtures.StateFor(info) },
             [],
             [],
             [],
-            profile: profile ?? UserFixtures.Profile(
-                burnerName: displayName,
-                state: ProfileState.Active,
-                isApproved: true),
+            profile: info,
             []);
+    }
 }
