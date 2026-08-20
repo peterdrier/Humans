@@ -16,4 +16,10 @@ if [ -n "$PR_ID" ] && [ -n "$DB_PASSWORD" ]; then
   export ConnectionStrings__DefaultConnection="Host=humans-db;Database=humans_pr_${PR_ID};Username=humans;Password=${DB_PASSWORD}"
 fi
 
+# Preview deploys get the Admin dev-login persona; QA (same Staging environment name,
+# real integration credentials) does not. Only defaulted, so a deploy can override it.
+if [ -n "$PR_ID" ] && [ -z "$DevAuth__AllowAdmin" ]; then
+  export DevAuth__AllowAdmin=true
+fi
+
 exec dotnet Humans.Web.dll

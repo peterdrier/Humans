@@ -28,7 +28,8 @@ namespace Humans.Development.Tests;
 /// Covers <c>Development.md</c>'s Admin lockdown: dev login may not hand out an Admin
 /// session outside a dev host. QA runs as <c>Staging</c> with <c>DevAuth:Enabled</c> and
 /// real Google Workspace data, so both the <c>admin</c> persona route and impersonation of
-/// a human holding an active Admin assignment must 404 there.
+/// a human holding an active Admin assignment must 404 there. Per-PR previews run the same
+/// <c>Staging</c> name but opt back in with <c>DevAuth:AllowAdmin</c>.
 ///
 /// Same shape as <see cref="DevSeedControllerTests"/>: the environment gate runs inside the
 /// action, so both branches are exercised through a substituted
@@ -52,6 +53,13 @@ public class DevLoginControllerTests
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
+
+    public DevLoginControllerTests()
+    {
+        // QA and Production leave the opt-in unset. The substitute answers "" rather than null
+        // for an unstubbed section, which no IConfiguration does, so state the off case.
+        SetAllowAdmin(false);
+    }
 
     [HumansFact]
     public async Task SignIn_AdminPersona_OutsideDevelopment_ReturnsNotFoundBeforeSeeding()
@@ -96,6 +104,40 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
+    public async Task SignIn_AdminPersona_PreviewWithAllowAdmin_SignsIn()
+    {
+        // A per-PR preview: Staging like QA, but docker-entrypoint.sh set DevAuth:AllowAdmin
+        // because the container holds a throwaway cloned database and no real credentials.
+        _environment.EnvironmentName.Returns("Staging");
+        SetDevAuthEnabled(true);
+        SetAllowAdmin(true);
+        SeedExistingPersona("admin");
+
+        var result = await BuildSut().SignIn("admin");
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _signInManager.Received(1).SignInAsync(Arg.Any<User>(), true);
+    }
+
+    [HumansFact]
+    public async Task SignInAsUser_ActiveAdminAssignment_PreviewWithAllowAdmin_SignsIn()
+    {
+        // The chooser follows the same predicate, so a preview can also impersonate a real Admin.
+        _environment.EnvironmentName.Returns("Staging");
+        SetDevAuthEnabled(true);
+        SetAllowAdmin(true);
+        var id = Guid.NewGuid();
+        var user = new User { Id = id };
+        _userManager.FindByIdAsync(id.ToString()).Returns(user);
+        _roleAssignments.IsUserAdminAsync(id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await BuildSut().SignInAsUser(id);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _signInManager.Received(1).SignInAsync(user, true);
+    }
+
+    [HumansFact]
     public async Task SignInAsUser_ActiveAdminAssignment_OutsideDevelopment_ReturnsNotFound()
     {
         // The chooser's second hole: any real Admin is reachable by id without the persona route.
@@ -127,6 +169,21 @@ public class DevLoginControllerTests
         await _signInManager.Received(1).SignInAsync(user, true);
     }
 
+    [HumansFact]
+    public void PersonasFor_FollowsTheSamePredicateAsTheRoute()
+    {
+        // _DevLoginPanel renders this list; the button and the route must not disagree.
+        _environment.EnvironmentName.Returns("Staging");
+
+        DevLoginController.PersonasFor(_environment, _configuration)
+            .Should().NotContain(p => p.Slug == "admin");
+
+        SetAllowAdmin(true);
+
+        DevLoginController.PersonasFor(_environment, _configuration)
+            .Should().Contain(p => p.Slug == "admin");
+    }
+
     /// <summary>
     /// Makes the persona resolve to an already-seeded user, so <c>EnsurePersonaAsync</c>
     /// short-circuits to the repair path and the action reaches the sign-in.
@@ -137,14 +194,19 @@ public class DevLoginControllerTests
         _userManager.FindByIdAsync(id.ToString()).Returns(new User { Id = id });
     }
 
-    private void SetDevAuthEnabled(bool enabled)
+    private void SetDevAuthEnabled(bool enabled) => SetFlag("DevAuth:Enabled", "Enabled", enabled);
+
+    /// <summary>A preview container's shape: Staging, dev auth on, and Admin opted back in.</summary>
+    private void SetAllowAdmin(bool allowed) => SetFlag("DevAuth:AllowAdmin", "AllowAdmin", allowed);
+
+    private void SetFlag(string path, string key, bool value)
     {
         var section = Substitute.For<IConfigurationSection>();
-        section.Value.Returns(enabled ? "true" : "false");
-        section.Path.Returns("DevAuth:Enabled");
-        section.Key.Returns("Enabled");
-        _configuration.GetSection("DevAuth:Enabled").Returns(section);
-        _configuration["DevAuth:Enabled"].Returns(enabled ? "true" : "false");
+        section.Value.Returns(value ? "true" : "false");
+        section.Path.Returns(path);
+        section.Key.Returns(key);
+        _configuration.GetSection(path).Returns(section);
+        _configuration[path].Returns(value ? "true" : "false");
     }
 
     private DevLoginController BuildSut()

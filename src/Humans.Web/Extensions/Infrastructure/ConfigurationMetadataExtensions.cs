@@ -87,6 +87,8 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Stripe:WebhookCleanupRepository", "Stripe (Store)");
 
             configuration.GetOptionalSetting(configRegistry, "DevAuth:Enabled", "Development");
+            // Per-PR previews only, set by docker-entrypoint.sh; QA leaves it off.
+            configuration.GetOptionalSetting(configRegistry, "DevAuth:AllowAdmin", "Development");
 
             configRegistry.RegisterEnvironmentVariable("FEEDBACK_API_KEY", "Feedback API", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("ISSUES_API_KEY", "Issues API", isSensitive: true);

@@ -1,4 +1,5 @@
 @inject IWebHostEnvironment HostEnv
+@inject IConfiguration Config
 @*
     The dev sign-in panel on Shell's /Account/Login. It lives here rather than in that view
     because it enumerates DevLoginController.PersonasFor, which is internal to this section
@@ -21,9 +22,9 @@
             <div class="card-body py-3 text-center">
                 <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
                 <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
-                    @* PersonasFor drops the Admin persona outside a dev host — the button and
-                       the route share one predicate. *@
-                    @foreach (var persona in DevLoginController.PersonasFor(HostEnv))
+                    @* PersonasFor drops the Admin persona unless the host allows it — the
+                       button and the route share one predicate. *@
+                    @foreach (var persona in DevLoginController.PersonasFor(HostEnv, Config))
                     {
                         <a asp-controller="DevLogin" asp-action="SignIn"
                            asp-route-persona="@persona.Slug"
