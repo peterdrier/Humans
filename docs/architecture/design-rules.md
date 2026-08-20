@@ -250,7 +250,10 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
     if (user is null) return;
 
     var previousState = user.State;
-    await _repo.SetSuspensionAsync(userId, suspended: true, adminSuspension: true, ct);
+    // One repo call, one SaveChanges — users.State and the profile note it explains
+    // are a compound write per the atomicity rule below.
+    await _repo.SetSuspensionAsync(
+        userId, suspended: true, adminSuspension: true, reason, _clock.GetCurrentInstant(), ct);
     _store.Upsert(userId);
 
     await _auditLog.LogAsync(               // then audit (self-persisting)

@@ -160,8 +160,15 @@ internal sealed partial class UserRepository
             if (!profilesByUser.TryGetValue(user.Id, out var profile))
                 continue;
 
-            user.State = UserStateEvaluator.Classify(
+            var next = UserStateEvaluator.Classify(
                 user, profile, isSuspended: true, isAdminSuspended: false);
+            // A higher-precedence state (Rejected/Merged/Deleted) outranks Suspended, so the
+            // classifier returns the row unchanged. Report only rows that actually moved — the
+            // caller notifies and audits off this set.
+            if (next == user.State)
+                continue;
+
+            user.State = next;
             suspended.Add(user.Id);
         }
 

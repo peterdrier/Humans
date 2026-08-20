@@ -98,10 +98,17 @@ internal partial interface IUserRepository : IRepository
     /// <summary>
     /// Applies a suspension transition directly to <see cref="Domain.Entities.User.State"/>.
     /// Unsuspending re-classifies from the remaining fields (rejected/deletion/name/merge).
+    /// When suspending, <paramref name="adminNotes"/> and <paramref name="now"/> are stamped on the
+    /// profile in the same SaveChanges, so a suspension and the note explaining it cannot diverge.
     /// </summary>
     /// <returns>true if a row was updated; false if the user does not exist.</returns>
     Task<bool> SetSuspensionAsync(
-        Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default);
+        Guid userId,
+        bool suspended,
+        bool adminSuspension,
+        string? adminNotes,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,

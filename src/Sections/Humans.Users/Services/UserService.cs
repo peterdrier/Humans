@@ -382,11 +382,8 @@ internal sealed class UserService(
                 break;
 
             case UserProfileOnboardingMutation.SetSuspension:
-                if (command.Suspended!.Value)
-                {
-                    profile.AdminNotes = command.Notes;
-                    profile.UpdatedAt = now;
-                }
+                // Handled entirely by SetSuspensionAsync below — the users.State flip and the
+                // profile note that explains it must be one write (design-rules §7a).
                 break;
 
             case UserProfileOnboardingMutation.SetConsentCheckPending:
@@ -398,13 +395,11 @@ internal sealed class UserService(
                 throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
         }
 
-        await repo.UpdateAsync(profile, ct);
-
-        // Suspension is stored on User.State, not the profile row, so it is applied after
-        // the profile write (which carries the prior suspension forward unchanged).
         if (command.Mutation == UserProfileOnboardingMutation.SetSuspension)
             await repo.SetSuspensionAsync(
-                userId, command.Suspended!.Value, command.AdminSuspension, ct);
+                userId, command.Suspended!.Value, command.AdminSuspension, command.Notes, now, ct);
+        else
+            await repo.UpdateAsync(profile, ct);
 
         InvalidateClaims(userId);
         return new OnboardingResult(true);

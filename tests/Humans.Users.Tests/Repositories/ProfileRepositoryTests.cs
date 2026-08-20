@@ -211,6 +211,54 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 
+    [HumansFact]
+    public async Task SuspendManyAsync_SkipsRowsAHigherPrecedenceStateOutranks()
+    {
+        // Rejected outranks Suspended, so the classifier returns the row unchanged. The caller
+        // notifies and audits off the returned set, so an unmoved row must not appear in it.
+        var rejected = await SeedUserAsync(UserState.Rejected);
+        var active = await SeedUserAsync(UserState.Active);
+        var rejectedProfile = NewProfile(rejected.Id, "Burner", "First", "Last");
+        rejectedProfile.RejectedAt = _clock.GetCurrentInstant();
+        _dbContext.Profiles.Add(rejectedProfile);
+        _dbContext.Profiles.Add(NewProfile(active.Id, "Burner", "First", "Last"));
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        var suspended = await _repo.SuspendManyAsync(
+            [rejected.Id, active.Id], Xunit.TestContext.Current.CancellationToken);
+
+        suspended.Should().BeEquivalentTo([active.Id]);
+        var stillRejected = await _dbContext.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == rejected.Id, Xunit.TestContext.Current.CancellationToken);
+        stillRejected.State.Should().Be(UserState.Rejected);
+    }
+
+    [HumansFact]
+    public async Task SetSuspensionAsync_WritesStateAndAdminNotesInOneSave()
+    {
+        var user = await SeedUserAsync(UserState.Active);
+        _dbContext.Profiles.Add(NewProfile(user.Id, "Burner", "First", "Last"));
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        var now = _clock.GetCurrentInstant();
+
+        await _repo.SetSuspensionAsync(
+            user.Id, suspended: true, adminSuspension: true, "Disruptive", now,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var persistedUser = await _dbContext.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var persistedProfile = await _dbContext.Profiles
+            .AsNoTracking()
+            .FirstAsync(p => p.UserId == user.Id, Xunit.TestContext.Current.CancellationToken);
+        persistedUser.State.Should().Be(UserState.AdminSuspended);
+        persistedProfile.AdminNotes.Should().Be("Disruptive");
+        persistedProfile.UpdatedAt.Should().Be(now);
+    }
+
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
     {
         var user = new User
