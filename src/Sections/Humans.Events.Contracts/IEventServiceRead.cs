@@ -19,6 +19,12 @@ public interface IEventServiceRead
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
 
     /// <summary>
+    /// One approved event by id, or null. An O(1) hit on the approved-only cache — the key
+    /// <c>&lt;vc:events-search-result&gt;</c> is invoked with.
+    /// </summary>
+    Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
     /// The guide settings singleton (or null). Carries <c>TimeZoneId</c> so
     /// consumers can render <c>Instant</c> start times in the burn's local zone.
     /// </summary>

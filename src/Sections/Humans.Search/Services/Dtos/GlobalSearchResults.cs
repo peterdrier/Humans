@@ -17,26 +17,25 @@ internal enum SearchResultType
 }
 
 /// <summary>
-/// One non-human row in a global search result group (Team, Camp, Shift,
-/// or Event). Humans use <see cref="HumanSearchResult"/> directly — the view
-/// passes each hit's id to Users' own <c>&lt;vc:user-search-result&gt;</c>.
-/// The four types here are still projected by this section
-/// (nobodies-collective/Humans#1062 leaves them for their owners to publish).
+/// One non-human row in a global search result group (Team, Camp, Shift, or
+/// Event). Ids and ordering only — every display field is fetched by the owning
+/// section's own <c>&lt;vc:…-search-result&gt;</c>, which the view invokes with
+/// <see cref="Key"/> (nobodies-collective/Humans#1062). Humans use
+/// <see cref="HumanSearchResult"/> on the same terms.
 /// </summary>
 /// <param name="Type">Whether this is a Team, Camp, Shift, or Event hit.</param>
-/// <param name="Title">Primary display label (team name, camp season name,
-/// rota name, event title) — the only field matched against the query.</param>
-/// <param name="Subtitle">Secondary line: slug for teams/camps, owning-team
-/// name for shifts, category name for events.</param>
-/// <param name="Url">Canonical detail-page URL for the entity.</param>
-/// <param name="Score">Higher = better match. Derived from name-match
-/// strength (exact > prefix > contains). The controller orders each
-/// type bucket by descending Score then ascending Title.</param>
+/// <param name="Key">The owning section's entity id for the row, passed straight
+/// to the view component's tag attribute. Every bucket keys by Guid.</param>
+/// <param name="SortKey">Alphabetical tiebreak for the controller's secondary
+/// sort. Never rendered; naming another section's display field here would put
+/// its vocabulary back in this section.</param>
+/// <param name="Score">Higher = better match, scored by the owning section
+/// (exact &gt; prefix &gt; contains). The controller orders each type bucket by
+/// descending Score then ascending SortKey.</param>
 internal sealed record GlobalSearchResult(
     SearchResultType Type,
-    string Title,
-    string Subtitle,
-    string Url,
+    Guid Key,
+    string SortKey,
     int Score);
 
 /// <summary>
@@ -50,13 +49,13 @@ internal sealed record GlobalSearchResult(
 /// <c>&lt;vc:user-search-result&gt;</c> — this section builds no display
 /// model.</param>
 /// <param name="Teams">Team hits, scored but in unspecified order — the
-/// controller sorts by score desc then title asc before rendering.</param>
+/// controller sorts by score desc then sort key asc before rendering.</param>
 /// <param name="Camps">Camp hits, scored but in unspecified order — the
-/// controller sorts by score desc then title asc before rendering.</param>
+/// controller sorts by score desc then sort key asc before rendering.</param>
 /// <param name="Shifts">Rota (shift) hits, scored but in unspecified order
-/// — the controller sorts by score desc then title asc before rendering.</param>
+/// — the controller sorts by score desc then sort key asc before rendering.</param>
 /// <param name="Events">Approved event hits, scored but in unspecified order —
-/// the controller sorts by score desc then title asc before rendering. Empty
+/// the controller sorts by score desc then sort key asc before rendering. Empty
 /// when the <c>Features:Events</c> flag is off.</param>
 internal sealed record GlobalSearchResults(
     string Query,

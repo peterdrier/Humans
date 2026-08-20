@@ -6,11 +6,12 @@
    Search_MinChars, which Shell's /Profile/Search page renders too — carving one key out of
    that page's four-key message set to claim it would split the set.
 
-   The Humans bucket renders one <vc:user-search-result> per row — Users' own component,
-   keyed by user id (nobodies-collective/Humans#1062). The orchestrator passes ids and match
-   context and names no Users display field, but the element only binds because of the
-   @addTagHelper below: drop that line and every row ships as inert literal markup on a green
-   200. Guarded by SearchPageRenderTests (step 12). *@
+   Every result row is its owning section's own view component, invoked with the key this
+   orchestrator holds (nobodies-collective/Humans#1062) — <vc:user-search-result>,
+   <vc:teams-search-result>, <vc:camps-search-result>, <vc:shifts-search-result>,
+   <vc:events-search-result>. Each binds only through its @addTagHelper below: drop one and
+   that bucket ships as inert literal markup on a green 200. Guarded statically by
+   ViewComponentTagHelperBindingTests, and on a real page by GlobalSearchSectionRenderTests. *@
 @using Humans.Search
 @using Humans.Search.Models
 @using Humans.Search.Services.Dtos
@@ -26,5 +27,9 @@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
-@* <vc:user-search-result> is the Users section's own component. *@
+@* One line per publishing section — each owns the row its bucket renders. *@
 @addTagHelper *, Humans.Users
+@addTagHelper *, Humans.Teams
+@addTagHelper *, Humans.Camps
+@addTagHelper *, Humans.Shifts
+@addTagHelper *, Humans.Events

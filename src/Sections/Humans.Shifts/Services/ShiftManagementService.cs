@@ -55,6 +55,7 @@ internal sealed class ShiftManagementService(
     private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
     private ICampServiceRead CampService => serviceProvider.GetRequiredService<ICampServiceRead>();
+    private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds,
@@ -512,11 +513,10 @@ internal sealed class ShiftManagementService(
     {
         if (Guid.TryParse(query, out var id))
         {
-            var rota = await repo.GetRotaAsync(id, RotaReadShape.Shifts);
-            if (rota is null) return [];
-            var teams = await TeamService.GetTeamsAsync(cancellationToken);
-            var teamName = teams.TryGetValue(rota.TeamId, out var t) ? t.Name : string.Empty;
-            return [new RotaSearchHit(rota.Name, rota.TeamId, teamName)];
+            var rota = await repo.GetRotaAsync(id, RotaReadShape.None);
+            return rota is null
+                ? []
+                : [new RotaSearchHit(rota.Id, rota.Name, StringSearchExtensions.ExactNameScore)];
         }
 
         var settings = await repo.GetActiveEventSettingsAsync(cancellationToken);
@@ -525,21 +525,17 @@ internal sealed class ShiftManagementService(
         var rotas = await repo.SearchVolunteerVisibleRotasAsync(
             query, settings.Id,
             max, cancellationToken);
-        if (rotas.Count == 0) return [];
-
-        // Stitch team names via the Teams read model — cross-domain (§6).
-        var teamIds = rotas.Select(r => r.TeamId).Distinct().ToList();
-        var teamsById = await TeamService.GetTeamsAsync(cancellationToken);
-        var teamNames = teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
 
         return rotas
-            .Select(r => new RotaSearchHit(
-                r.Name,
-                r.TeamId,
-                teamNames.TryGetValue(r.TeamId, out var name) ? name : string.Empty))
+            .Select(r => new RotaSearchHit(r.Id, r.Name, r.Name.NameMatchScore(query)))
             .ToList();
+    }
+
+    public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default)
+    {
+        // Through the per-rota cache, so one search row costs no query once warm.
+        var view = await RowView.GetRotaAsync(rotaId, cancellationToken);
+        return view.Rota is null ? null : ToRotaInfo(view.Rota);
     }
 
     /// <summary>Re-export of <see cref="Shift.AllDayWindowStart"/>.</summary>

@@ -171,6 +171,18 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
     }
 
+    public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        // GetByIdAsync loads Seasons.Members, so the EE grant count projects correctly here
+        // (unlike the by-slug read above).
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null) return null;
+        var roles = await GetRoleProjectionForYearsAsync(
+            camp.Seasons.Select(season => season.Year).Distinct().ToList(),
+            cancellationToken);
+        return CreateCampInfo(camp, roles: roles);
+    }
+
     public async Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,

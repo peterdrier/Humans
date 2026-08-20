@@ -57,7 +57,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsEveryNonHumanBucket_ByScoreDescendingThenTitleAscending()
+    public async Task Index_SortsEveryNonHumanBucket_ByScoreDescendingThenSortKeyAscending()
     {
         var teams = new[]
         {
@@ -71,11 +71,11 @@ public sealed class SearchControllerTests
 
         var vm = await IndexAsync("query", filter: null);
 
-        // Title tiebreak is case-insensitive: "Alpha" must beat "beta" despite the lowercase b.
-        vm.TeamResults.Select(r => r.Title).Should().Equal("Zulu", "Alpha", "beta");
-        vm.CampResults.Select(r => r.Title).Should().Equal("Zulu", "Alpha", "beta");
-        vm.ShiftResults.Select(r => r.Title).Should().Equal("Zulu", "Alpha", "beta");
-        vm.EventResults.Select(r => r.Title).Should().Equal("Zulu", "Alpha", "beta");
+        // SortKey tiebreak is case-insensitive: "Alpha" must beat "beta" despite the lowercase b.
+        vm.TeamResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
+        vm.CampResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
+        vm.ShiftResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
+        vm.EventResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
     }
 
     [HumansFact]
@@ -174,8 +174,8 @@ public sealed class SearchControllerTests
         return controller;
     }
 
-    private static GlobalSearchResult Hit(SearchResultType type, string title, int score) =>
-        new(type, title, $"{title}-subtitle", $"/{type}/{title}", score);
+    private static GlobalSearchResult Hit(SearchResultType type, string sortKey, int score) =>
+        new(type, Guid.NewGuid(), sortKey, score);
 
     private static IReadOnlyList<GlobalSearchResult> Retype(
         IReadOnlyList<GlobalSearchResult> hits, SearchResultType type) =>

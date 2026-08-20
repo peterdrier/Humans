@@ -1,11 +1,11 @@
 ---
 name: Register new widgets in /WidgetGallery when adding them
-description: When adding or removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/`, update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed) so the admin Widget Gallery stays a complete catalog. The Skipped section is the legitimate exception list.
+description: When adding or removing a public TagHelper, ViewComponent, or user-facing shared partial in any section or in the Shell, update `src/Sections/Humans.Debug/Views/WidgetGallery/Index.cshtml` (and its controller if real sample data is needed) so the admin Widget Gallery stays a complete catalog. The Skipped section is the legitimate exception list.
 ---
 
-When you **add** a new TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/`, also register it in the Widget Gallery in the same PR:
+When you **add** a new TagHelper, ViewComponent, or user-facing shared partial — in any section, not just the Shell; the gallery is a fan-in over every section's public widgets — also register it in the Widget Gallery in the same PR:
 
-- Add a card in the appropriate section of `src/Humans.Web/Views/WidgetGallery/Index.cshtml` — header (name, type badge, source path), one-line note, parameters table via `@ParamsBlock(...)`, optional `@AuthLine(...)` for role/policy gating, and an example rendered against real data.
+- Add a card in the appropriate section of `src/Sections/Humans.Debug/Views/WidgetGallery/Index.cshtml` — header (name, type badge, source path), one-line note, parameters table via `@ParamsBlock(...)`, optional `@AuthLine(...)` for role/policy gating, and an example rendered against real data.
 - If the widget needs a real sample record that isn't already on `WidgetGalleryViewModel`, extend `WidgetGalleryController` to resolve it and add a property to the view model.
 - If the widget is genuinely not catalog-able (layout chrome, script-only partial, deeply context-bound rota / dashboard view model that can't be synthesized), add it to the **Skipped (with reason)** section instead — that section is the explicit allowlist for non-rendered widgets.
 
@@ -17,6 +17,7 @@ When you **remove** or **rename** a widget, also remove or rename its card in th
 
 - New TagHelper / ViewComponent / shared partial → add a gallery card before pushing the PR.
 - Each card MUST have: name, type badge (`kind-th` / `kind-vc` / `kind-pa`), source path, note, `@ParamsBlock`, example.
+- Cataloguing another section's `<vc:>` needs a `ProjectReference` to that assembly **and** an `@addTagHelper *, <Assembly>` line in `Humans.Debug`'s `Views/_ViewImports.cshtml`. Miss the line and the card ships as literal markup on a green build — cover the card in a render test.
 - Add `@AuthLine` whenever the widget self-gates by role/policy or hides itself for unauthenticated viewers — it's how viewers learn the access rules without reading the source.
 - For widgets that legitimately don't render in isolation (chrome, script-only, complex view models), add to the Skipped section with a one-line reason.
 

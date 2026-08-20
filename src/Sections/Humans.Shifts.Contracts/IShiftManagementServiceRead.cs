@@ -32,18 +32,28 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// Volunteer-visible rotas in the active event whose <c>Name</c>
-    /// contains <paramref name="query"/> (case-insensitive). The owning
-    /// team's display name is stitched in via <c>ITeamService</c>
-    /// (cross-domain — this service does not navigate the rota's team
-    /// navigation property). Capped at <paramref name="max"/>; returned
-    /// in unspecified order — the global search orchestrator scores and
-    /// ranks. Returns an empty list when no event is active. Used by the
-    /// global /Search page (<c>SearchService</c>); every caller sees the
-    /// public surface regardless of role.
+    /// contains <paramref name="query"/> (case-insensitive), each scored by
+    /// name-match strength. Capped at <paramref name="max"/>; returned in
+    /// unspecified order — the global search orchestrator ranks. Returns an
+    /// empty list when no event is active. Used by the global /Search page
+    /// (<c>SearchService</c>); every caller sees the public surface regardless
+    /// of role.
     /// </summary>
     Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One rota's header fields by id, or <c>null</c> when it does not exist.
+    /// Served from the per-rota cache — free once warm, but a miss populates that
+    /// cache's full view shape, which is far more than these two fields need (ledgered
+    /// 2026-08-20). Added so the section's own
+    /// <c>&lt;vc:shifts-search-result&gt;</c> can render a row the global-search
+    /// orchestrator holds only an id for (nobodies-collective/Humans#1062);
+    /// no visibility filter — the id already came from a filtered search, and
+    /// the destination page enforces access (nobodies-collective/Humans#985).
+    /// </summary>
+    Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets shifts ranked by urgency score, with optional filtering.
@@ -122,18 +132,20 @@ public interface IShiftManagementServiceRead
 
 /// <summary>
 /// One rota that matched a global-search query. Returned by
-/// <see cref="IShiftManagementServiceRead.SearchAsync"/> with the owning team's
-/// name already stitched so the orchestrator never has to call
-/// <c>ITeamService</c> just to render the subtitle. Names-only matching:
-/// only <see cref="Name"/> is matched.
+/// <see cref="IShiftManagementServiceRead.SearchAsync"/>, already scored by this
+/// section — the orchestrator ranks by <see cref="Score"/> and passes
+/// <see cref="RotaId"/> to <c>&lt;vc:shifts-search-result&gt;</c>, which fetches
+/// the row's team name and link itself (nobodies-collective/Humans#1062).
+/// Names-only matching: only <see cref="Name"/> is matched.
 /// </summary>
-/// <param name="Name">Rota display name (the only matched field).</param>
-/// <param name="TeamId">Owning team id; drives the rota detail URL.</param>
-/// <param name="TeamName">Owning team display name; surfaced as subtitle.</param>
+/// <param name="RotaId">The matched rota; the key the row's view component is invoked with.</param>
+/// <param name="Name">Rota display name (the only matched field). Ordering only —
+/// the orchestrator uses it as an alphabetical tiebreak and never renders it.</param>
+/// <param name="Score">Name-match strength, per <c>StringSearchExtensions.NameMatchScore</c>.</param>
 public record RotaSearchHit(
+    Guid RotaId,
     string Name,
-    Guid TeamId,
-    string TeamName);
+    int Score);
 
 [Flags]
 public enum ShiftBrowseQueryFlags

@@ -954,6 +954,110 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">TeamsSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/ViewComponents/TeamsSearchResultViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">One team-search result row (<code>&lt;vc:teams-search-result&gt;</code>), keyed by team id. Rendered by <code>/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Teams owns how a team renders — including the slug the row links to — so no caller builds a display model. Renders nothing when the id does not resolve.</div>
+                    @ParamsBlock(
+                        ("team-id", "<code>Guid</code> — the matched team")
+                    )
+                    <div class="wg-card-example">
+                        @if (Model.SearchRowKeys.TeamId is { } teamId)
+                        {
+                            <div class="list-group">
+                                <vc:teams-search-result team-id="@teamId" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No team in this environment to key the row from.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">CampsSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">One camp-search result row (<code>&lt;vc:camps-search-result&gt;</code>), keyed by camp id. Camps resolves the public-year season name itself and falls back to the slug when the camp has no season that year. Renders nothing when the id does not resolve.</div>
+                    @ParamsBlock(
+                        ("camp-id", "<code>Guid</code> — the matched camp")
+                    )
+                    <div class="wg-card-example">
+                        @if (Model.SearchRowKeys.CampId is { } campId)
+                        {
+                            <div class="list-group">
+                                <vc:camps-search-result camp-id="@campId" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No camp in this environment to key the row from.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">ShiftsSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/ShiftsSearchResultViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">One rota-search result row (<code>&lt;vc:shifts-search-result&gt;</code>), keyed by rota id. Shifts stitches the owning team's name itself; the link is the department-filtered list, since there is no single-rota page. Renders nothing when the id does not resolve.</div>
+                    @ParamsBlock(
+                        ("rota-id", "<code>Guid</code> — the matched rota")
+                    )
+                    <div class="wg-card-example">
+                        @if (Model.SearchRowKeys.RotaId is { } rotaId)
+                        {
+                            <div class="list-group">
+                                <vc:shifts-search-result rota-id="@rotaId" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No rota in the active burn to key the row from.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">EventsSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Events/ViewComponents/EventsSearchResultViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">One event-search result row (<code>&lt;vc:events-search-result&gt;</code>), keyed by event id. Events builds the <code>/Events/Browse?q=</code> link itself, since there is no single-event page. The component has no feature check of its own — callers gate on <code>Features:Events</code>, as this card and <code>/Search</code> both do. Renders nothing when the id is not an approved event.</div>
+                    @ParamsBlock(
+                        ("event-id", "<code>Guid</code> — the matched approved event")
+                    )
+                    <div class="wg-card-example">
+                        @if (Model.SearchRowKeys.EventId is { } eventId)
+                        {
+                            <div class="list-group">
+                                <vc:events-search-result event-id="@eventId" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No approved event to key the row from, or <code>Features:Events</code> is off.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_LanguageChooser.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>

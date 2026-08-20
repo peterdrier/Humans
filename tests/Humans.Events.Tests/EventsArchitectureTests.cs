@@ -78,7 +78,7 @@ public class EventsArchitectureTests
         // Public means Section, Contracts/, the resource marker, or a type the framework
         // silently drops when internal. Controllers stay internal —
         // SectionControllerFeatureProvider routes them; do not "fix" a 404 by going public.
-        // EventsCardViewComponent: Razor only builds <vc:events-card> from a public class.
+        // The two view components: Razor only builds a <vc:> tag from a public class.
         // SectionAdminNav stays internal too — Shell finds it via GetTypes(), not
         // GetExportedTypes() (nobodies-collective/Humans#1077).
         // Migrations are emitted public by dotnet ef, so they are excluded below.
@@ -94,6 +94,7 @@ public class EventsArchitectureTests
                 "Humans.Events.EventsResource",
                 "Humans.Events.Section",
                 "Humans.Events.ViewComponents.EventsCardViewComponent",
+                "Humans.Events.ViewComponents.EventsSearchResultViewComponent",
             ],
             because: "a section exposes its entry point, resource marker, Contracts/ folder, "
                    + "and what the framework needs public — nothing else");

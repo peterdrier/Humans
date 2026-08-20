@@ -60,7 +60,7 @@ internal sealed class SearchController(
             Query = results.Query,
             Filter = filter,
             // Display sort lives in controller (display-sort-in-controllers): humans by relevance
-            // (exact/prefix/contains, then name), others by Score desc + Title asc.
+            // (exact/prefix/contains, then name), others by Score desc + SortKey asc.
             HumanResults = results.Humans
                 .OrderByRelevance()
                 .ToList(),
@@ -74,6 +74,6 @@ internal sealed class SearchController(
         IReadOnlyList<GlobalSearchResult> bucket) =>
         bucket
             .OrderByDescending(r => r.Score)
-            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 }

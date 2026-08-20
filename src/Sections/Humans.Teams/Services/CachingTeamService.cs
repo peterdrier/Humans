@@ -2,6 +2,7 @@ using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces;
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -173,7 +174,7 @@ internal sealed class CachingTeamService(
         if (Guid.TryParse(query, out var id))
         {
             return teamsById.TryGetValue(id, out var byId)
-                ? [new TeamSearchHit(byId.Name, byId.Slug)]
+                ? [new TeamSearchHit(byId.Id, byId.Name, StringSearchExtensions.ExactNameScore)]
                 : [];
         }
 
@@ -184,7 +185,7 @@ internal sealed class CachingTeamService(
                 && t.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Take(max)
-            .Select(t => new TeamSearchHit(t.Name, t.Slug))
+            .Select(t => new TeamSearchHit(t.Id, t.Name, t.Name.NameMatchScore(trimmed)))
             .ToList();
     }
 

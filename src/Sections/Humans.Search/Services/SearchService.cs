@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
@@ -9,7 +10,8 @@ using Microsoft.Extensions.Configuration;
 namespace Humans.Search.Services;
 
 /// <summary>
-/// Per-entity-field search orchestrator (no cross-modal traversal): each section runs its own ILike, this scores hits and returns five buckets (unsorted).
+/// Per-entity-field search orchestrator (no cross-modal traversal): each section matches and scores its own hits, this returns five buckets of keys (unsorted).
+/// Events is the one bucket still scored here — it publishes no scored search hit (nobodies-collective/Humans#1062).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
 internal sealed class SearchService(
@@ -20,11 +22,6 @@ internal sealed class SearchService(
     IEventServiceRead eventService,
     IConfiguration configuration) : ISearchService
 {
-    // Name-match scoring: exact > prefix > contains.
-    private const int ScoreExactName = 100;
-    private const int ScorePrefixName = 80;
-    private const int ScoreContainsName = 60;
-
     private readonly bool _eventsFeatureEnabled = configuration.GetValue<bool>("Features:Events");
 
     // No per-type cap: at ~500-user scale a name match returns a handful of rows,
@@ -80,15 +77,12 @@ internal sealed class SearchService(
         string query, int limit, CancellationToken ct)
     {
         var hits = await teamService.SearchAsync(query, limit, ct);
-        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(t => new GlobalSearchResult(
                 Type: SearchResultType.Team,
-                Title: t.Name,
-                Subtitle: t.Slug,
-                Url: $"/Teams/{t.Slug}",
-                Score: isGuidQuery ? ScoreExactName : ScoreNameField(t.Name, query)))
-            .Where(r => r.Score > 0)
+                Key: t.TeamId,
+                SortKey: t.Name,
+                Score: t.Score))
             .ToList();
     }
 
@@ -96,15 +90,12 @@ internal sealed class SearchService(
         string query, int limit, CancellationToken ct)
     {
         var hits = await campService.SearchAsync(query, limit, ct);
-        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(c => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
-                Title: c.Name,
-                Subtitle: c.Slug,
-                Url: $"/Camps/{c.Slug}",
-                Score: isGuidQuery ? ScoreExactName : ScoreNameField(c.Name, query)))
-            .Where(r => r.Score > 0)
+                Key: c.CampId,
+                SortKey: c.Name,
+                Score: c.Score))
             .ToList();
     }
 
@@ -113,15 +104,12 @@ internal sealed class SearchService(
     {
         // Hits are Rotas (named shift groupings), not individual Shift rows (which have no title).
         var hits = await shiftService.SearchAsync(query, limit, ct);
-        var isGuidQuery = Guid.TryParse(query, out _);
         return hits
             .Select(r => new GlobalSearchResult(
                 Type: SearchResultType.Shift,
-                Title: r.Name,
-                Subtitle: r.TeamName,
-                Url: $"/Shifts?departmentId={r.TeamId}",
-                Score: isGuidQuery ? ScoreExactName : ScoreNameField(r.Name, query)))
-            .Where(r => r.Score > 0)
+                Key: r.RotaId,
+                SortKey: r.Name,
+                Score: r.Score))
             .ToList();
     }
 
@@ -129,10 +117,9 @@ internal sealed class SearchService(
         string query, int limit, CancellationToken ct)
     {
         // Reuse the public Browse query — Approved-only, filtered server-side by title/description.
-        // We re-score on Title here so the global "exact > prefix > contains" rubric still ranks the
-        // bucket; rows that only matched via Description fall through to a contains score so they
-        // still appear (matches what users expect from event search, which is more free-form than
-        // the other entity types).
+        // Scoring stays here, unlike the other three buckets: Events publishes no scored search hit
+        // to move it onto (nobodies-collective/Humans#1062). Rows that only matched via Description
+        // score 0 on Title and fall through to the contains tier so they still appear.
         var hits = await eventService.GetApprovedEventsAsync(
             campId: null, venueId: null, categoryId: null,
             q: query, excludedSlugs: Array.Empty<string>(), ct);
@@ -140,25 +127,15 @@ internal sealed class SearchService(
         return hits
             .Select(e =>
             {
-                var titleScore = ScoreNameField(e.Title, query);
+                var titleScore = e.Title.NameMatchScore(query);
                 return new GlobalSearchResult(
                     Type: SearchResultType.Event,
-                    Title: e.Title,
-                    Subtitle: e.CategoryName,
-                    Url: $"/Events/Browse?q={Uri.EscapeDataString(e.Title)}",
-                    Score: titleScore > 0 ? titleScore : ScoreContainsName);
+                    Key: e.Id,
+                    SortKey: e.Title,
+                    Score: titleScore > 0 ? titleScore : StringSearchExtensions.ContainsNameScore);
             })
             .OrderByDescending(r => r.Score) // arch:db-sort-ok top-N relevance selector
             .Take(limit)
             .ToList();
-    }
-
-    private static int ScoreNameField(string name, string query)
-    {
-        if (string.IsNullOrEmpty(name)) return 0;
-        if (string.Equals(name, query, StringComparison.OrdinalIgnoreCase)) return ScoreExactName;
-        if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase)) return ScorePrefixName;
-        if (name.Contains(query, StringComparison.OrdinalIgnoreCase)) return ScoreContainsName;
-        return 0;
     }
 }

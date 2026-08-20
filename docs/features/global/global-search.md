@@ -138,7 +138,11 @@ SearchController
 
 Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. **Events is cache-backed too:** `IEventServiceRead` is registered as the `CachingEventService` singleton (`Section.cs:55`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
-The orchestrator scores each non-human hit by name-match strength (humans arrive pre-scored by `PersonSearchMatcher`, which adds tiers for token-prefix and non-name-field matches):
+Every hit arrives pre-scored by the section that produced it, against one shared rubric —
+`StringSearchExtensions.NameMatchScore` in `Humans.Base` (humans use `PersonSearchMatcher`, which
+adds tiers for token-prefix and non-name-field matches). Events is the exception: it publishes no
+scored search-hit type, so the orchestrator still scores that one bucket off `Title`
+(nobodies-collective/Humans#1062).
 
 | Match shape     | Score |
 |-----------------|-------|
@@ -146,7 +150,7 @@ The orchestrator scores each non-human hit by name-match strength (humans arrive
 | Name (prefix)   |   80  |
 | Name (contains) |   60  |
 
-Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, Title asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Profile/Search`.
+Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, SortKey asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Profile/Search`.
 
 Counts reflect every match — there is no cap, so the chip count is the true number of hits the user can scroll to. There is no separate `CountMatchingAsync` per section; the buckets are already the full result set.
 
@@ -155,10 +159,10 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | DTO | Returned by | Used by |
 |---|---|---|
 | `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
-| `TeamSearchHit (Name, Slug)` | `ITeamServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `CampSearchHit (Slug, Name)` | `ICampServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts / Events |
+| `TeamSearchHit (TeamId, Name, Score)` | `ITeamServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `CampSearchHit (CampId, Name, Score)` | `ICampServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
 
 ## UI
@@ -166,7 +170,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 `/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
 
 - **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Profile/Search` renders the same component (nobodies-collective/Humans#1062).
-- **Teams / Camps / Shifts / Events** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial, still fed by orchestrator-projected `GlobalSearchResult` rows. This is not a third person-search surface (the person-search rule applies only to person rendering); it's a generic list-row template for the simpler types. Converting these four to per-section components needs an id and a score on each section's search-hit contract — see the "Needs new interface surface" note on nobodies-collective/Humans#1062.
+- **Teams / Camps / Shifts / Events** are rendered the same way: `_GlobalSearchSection` switches on the row's `Type` and emits that section's own component — `<vc:teams-search-result team-id>`, `<vc:camps-search-result camp-id>`, `<vc:shifts-search-result rota-id>`, `<vc:events-search-result event-id>`. Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062). Every bucket keys by the entity's `Guid`; a component that needs a slug for its link fetches it from the entity it just loaded.
 
 A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.
 
