@@ -36,8 +36,11 @@ internal interface ICampService : ICampServiceRead, IApplicationService
     Task RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
     Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
-    /// <summary>Camp lead or CampAdmin marks an Active season Full, closing it to new join requests.</summary>
-    Task MarkSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Camp lead or CampAdmin sets a season's status directly (currently used to toggle
+    /// Full on/off). Informational only — does not gate join requests or anything else.
+    /// </summary>
+    Task SetSeasonStatusAsync(Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default);
     // Camp updates
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);

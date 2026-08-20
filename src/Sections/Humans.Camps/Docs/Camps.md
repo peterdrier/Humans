@@ -174,7 +174,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 |-------|--------------|
 | Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
-| Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. Mark their camp's Active season Full, closing it to new join requests. |
+| Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. Mark their camp's Active season Full — an informational label only, shown to visitors, that does not block join requests. |
 | CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
 | Team/sub-team coordinator | View the read-only role-staffing compliance matrix at `/Camps/Admin/Compliance` (via `CampComplianceAccess`) — no camp-management authority. |
 | Admin | Delete camps |
@@ -182,8 +182,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 ## Invariants
 
 - Each camp has a unique slug used for URL routing.
-- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can mark an Active season Full (`MarkSeasonFullAsync`); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
-- A `Full` season blocks new membership requests — `RequestCampMembershipAsync` only matches an `Active` season for the public year. Existing `Active`/`Pending` members are unaffected; only new requests are blocked.
+- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
+- **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.
 - Only camp leads or CampAdmin can edit a camp.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.

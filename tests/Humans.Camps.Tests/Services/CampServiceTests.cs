@@ -790,22 +790,26 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RequestCampMembershipAsync_FullSeason_ReturnsNoOpenSeasonAndBlocksRequest()
+    public async Task RequestCampMembershipAsync_FullSeason_StillAcceptsRequest()
     {
+        // Full is informational only (Peter, 2026-08-20 PR #1427 correction) — it tells
+        // visitors the camp looks full, it does not gate join requests. Humans doesn't
+        // yet know everyone actually in the camp.
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
-        await _service.MarkSeasonFullAsync(season.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetSeasonStatusAsync(season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
 
         var result = await _service.RequestCampMembershipAsync(camp.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
-        result.Message.Should().Be("This camp is full and not accepting new members this year.");
-        result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Error);
-        (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        result.NoticeLevel.Should().Be(CampMemberRequestNoticeLevel.Success);
+        var member = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId, Xunit.TestContext.Current.CancellationToken);
+        member.Status.Should().Be(CampMemberStatus.Pending);
+        member.UserId.Should().Be(userId);
     }
 
     [HumansFact]
@@ -1266,14 +1270,14 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task MarkSeasonFullAsync_ActiveSeason_SetsFullAndAudits()
+    public async Task SetSeasonStatusAsync_SetsStatusAndAudits()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.MarkSeasonFullAsync(season.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetSeasonStatusAsync(season.Id, CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(CampSeasonStatus.Full);
@@ -1285,15 +1289,11 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task MarkSeasonFullAsync_NonActiveSeason_Throws()
+    public async Task SetSeasonStatusAsync_SeasonNotFound_Throws()
     {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken);
+        var action = () => _service.SetSeasonStatusAsync(Guid.NewGuid(), CampSeasonStatus.Full, Xunit.TestContext.Current.CancellationToken);
 
-        var action = () => _service.MarkSeasonFullAsync(season.Id, Xunit.TestContext.Current.CancellationToken);
-
-        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*mark full*");
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
     [HumansFact]

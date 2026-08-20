@@ -661,8 +661,8 @@ internal sealed class CampController(
 
         try
         {
-            await _campService.MarkSeasonFullAsync(seasonId);
-            SetSuccess("Season marked as full. New join requests are now blocked.");
+            await _campService.SetSeasonStatusAsync(seasonId, CampSeasonStatus.Full);
+            SetSuccess("Season marked as full.");
         }
         catch (InvalidOperationException ex)
         {

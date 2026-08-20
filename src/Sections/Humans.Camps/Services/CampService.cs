@@ -647,7 +647,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
     }
 
-    public async Task MarkSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
+    public async Task SetSeasonStatusAsync(Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var year = 0;
@@ -655,7 +655,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
-            season.MarkFull(now);
+            season.SetStatus(status, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
@@ -667,7 +667,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {year} marked as full",
+            $"Season {year} status set to {status}",
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
@@ -1116,18 +1116,18 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        // Active AND Full both accept requests — Full is an informational label the lead
+        // sets to say "we look full," not an enforcement gate. Humans doesn't yet know
+        // everyone actually in the camp, so people still need to be able to request/join.
         var season = camp?.Seasons.FirstOrDefault(s =>
-            s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Active);
+            s.Year == settings.PublicYear
+            && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
         if (season is null)
         {
-            var isFull = camp?.Seasons.Any(s =>
-                s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Full) == true;
             return new CampMemberRequestResult(
                 Guid.Empty,
                 CampMemberRequestOutcome.NoOpenSeason,
-                isFull
-                    ? "This camp is full and not accepting new members this year."
-                    : "Camp is not open for membership this year.",
+                "Camp is not open for membership this year.",
                 CampMemberRequestNoticeLevel.Error);
         }
 
