@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
@@ -25,10 +26,9 @@
   </ItemGroup>
 
   <!--
-    No EF Core package: MailerLite owns no tables, so there is no DbContext to fixture. That is
-    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
-    compile item — see the comment there. CapturingLogger is still linked in: the retry test
-    asserts on the client's 429 warning, and that helper has no EF dependency of its own.
+    EF Core InMemory since nobodies-collective/Humans#1082: the section owns
+    mailerlite_sync_states, and the repository tests fixture MailerLiteDbContext through the
+    shared TestDbContextFactory.
   -->
 
 </Project>

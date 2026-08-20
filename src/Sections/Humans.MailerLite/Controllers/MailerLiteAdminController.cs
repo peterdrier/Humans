@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.MailerLite.Models;
@@ -21,7 +20,6 @@ internal sealed class MailerLiteAdminController(
     IEnumerable<IMailerLiteAudience> audiences,
     IUserServiceRead users,
     ICommunicationPreferenceService prefs,
-    IAuditLogService audit,
     ILogger<MailerLiteAdminController> logger) : HumansControllerBase(users)
 {
     private readonly IReadOnlyList<IMailerLiteAudience> _audiences = audiences.ToList();
@@ -52,11 +50,7 @@ internal sealed class MailerLiteAdminController(
         var optedIn = await prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
         var optedOut = await prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
 
-        var recent = await audit.GetFilteredEntriesAsync(
-            actions: [AuditAction.MailerLiteReconciliationCompleted],
-            limit: 1,
-            ct: ct);
-        var last = recent.FirstOrDefault();
+        var last = await import.GetLastReconciliationAsync(ct);
 
         IReadOnlyList<AudienceCardRow> audienceRows;
         try
@@ -80,7 +74,7 @@ internal sealed class MailerLiteAdminController(
 
         var vm = new MailerLiteDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
-            last?.OccurredAt, last?.Description, drift, mlError,
+            last?.LastSyncAt, last?.Summary, drift, mlError,
             ml.LastFetchedAt,
             audienceRows);
         return View("~/Views/MailerLite/Admin/Index.cshtml", vm);

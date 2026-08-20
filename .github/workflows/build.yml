@@ -63,6 +63,7 @@ env:
     ShiftsDbContext:src/Sections/Humans.Shifts
     TeamsDbContext:src/Sections/Humans.Teams
     StoreDbContext:src/Sections/Humans.Store
+    MailerLiteDbContext:src/Sections/Humans.MailerLite
 
 jobs:
   build:

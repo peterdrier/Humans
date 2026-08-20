@@ -1,4 +1,6 @@
 using Humans.AuditLog.Contracts;
+using Humans.MailerLite.Data;
+using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
@@ -13,9 +15,16 @@ internal sealed class MailerLiteImportService(
     IAccountProvisioningService provisioning,
     ICommunicationPreferenceService prefs,
     IAuditLogService audit,
+    IMailerLiteRepository repository,
     IClock clock,
     ILogger<MailerLiteImportService> logger) : IMailerLiteImportService
 {
+    public async Task<MailerLiteSyncSnapshot?> GetLastReconciliationAsync(CancellationToken ct = default)
+    {
+        var state = await repository.GetSyncStateAsync(MailerLiteSyncKeys.Reconciliation, ct);
+        return state is null ? null : new MailerLiteSyncSnapshot(state.LastSyncAt, state.Summary);
+    }
+
     // The erroneous import pulled the whole MailerLite account; it must only ever
     // ingest the "Website" group. Resolved by name at runtime (group ids aren't
     // stable across environments). Reads of this group bypass the client's
@@ -258,9 +267,17 @@ internal sealed class MailerLiteImportService(
             Errors: errors,
             Elapsed: elapsed);
 
+        // The section's own state first, so the audit entry can point at a row that exists.
+        var state = await repository.UpsertSyncStateAsync(new MailerLiteSyncState
+        {
+            Key = MailerLiteSyncKeys.Reconciliation,
+            LastSyncAt = clock.GetCurrentInstant(),
+            Summary = result.FormatSummary(),
+        }, ct);
+
         await audit.LogAsync(
             AuditAction.MailerLiteReconciliationCompleted,
-            entityType: "MailerLite", entityId: Guid.Empty,
+            entityType: "MailerLite", entityId: state.Id,
             description: result.FormatSummary(),
             jobName: nameof(MailerLiteImportService));
 

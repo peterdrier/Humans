@@ -31,7 +31,6 @@ public class MailerLiteAdminControllerTests
     private readonly IMailerLiteAudienceSyncService _audienceSync = Substitute.For<IMailerLiteAudienceSyncService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
-    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private MailerLiteAdminController BuildSut(
         ImportPlanCounts? snapshotCounts = null,
@@ -39,7 +38,7 @@ public class MailerLiteAdminControllerTests
     {
         var ctrl = new MailerLiteAdminController(
             _mlService, _importService, _audienceSync, audiences ?? [],
-            _userService, _prefs, _audit,
+            _userService, _prefs,
             NullLogger<MailerLiteAdminController>.Instance);
 
         var http = new DefaultHttpContext
@@ -149,15 +148,6 @@ public class MailerLiteAdminControllerTests
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(0);
-        _audit.GetFilteredEntriesAsync(
-                entityType: Arg.Any<string?>(),
-                entityId: Arg.Any<Guid?>(),
-                userId: Arg.Any<Guid?>(),
-                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
-                limit: Arg.Any<int>(),
-                ct: Arg.Any<CancellationToken>())
-            .Returns([]);
-
         var ctrl = BuildSut();
 
         // Act
@@ -194,15 +184,6 @@ public class MailerLiteAdminControllerTests
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(3);
-        _audit.GetFilteredEntriesAsync(
-                entityType: Arg.Any<string?>(),
-                entityId: Arg.Any<Guid?>(),
-                userId: Arg.Any<Guid?>(),
-                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
-                limit: Arg.Any<int>(),
-                ct: Arg.Any<CancellationToken>())
-            .Returns([]);
-
         var ctrl = BuildSut();
 
         // Act

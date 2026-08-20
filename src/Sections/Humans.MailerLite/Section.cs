@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.MailerLite.Contracts;
+using Humans.MailerLite.Data;
 using Humans.MailerLite.Jobs;
 using Humans.MailerLite.Services;
 using Humans.MailerLite.Services.Audiences;
@@ -16,10 +18,11 @@ namespace Humans.MailerLite;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// MailerLite owns no tables, so there is no <c>AddSectionDbContext</c> call and no repository:
-/// MailerLite is the system of record for subscriber state, and every Humans-side write
+/// MailerLite stays the system of record for subscriber state — every Humans-side write to it
 /// routes through another section's service (<c>IUserEmailService</c>,
-/// <c>IAccountProvisioningService</c>, <c>ICommunicationPreferenceService</c>).
+/// <c>IAccountProvisioningService</c>, <c>ICommunicationPreferenceService</c>). The one thing
+/// this section owns is <c>mailerlite_sync_states</c>: when each audience last synced and what
+/// happened (nobodies-collective/Humans#1082).
 /// <para>
 /// <c>MailerLiteOptions</c> binds here rather than in Shell — unlike Email's settings, which
 /// four other sections read, <c>MailerLite:*</c> has exactly one consumer and it is the
@@ -36,6 +39,11 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        // The section's only table, and the only one this baseline creates — so its presence
+        // proves the baseline already ran.
+        services.AddSectionDbContext<MailerLiteDbContext>(sentinelTable: "mailerlite_sync_states");
+        services.AddScoped<IMailerLiteRepository, Repository>();
+
         // Bind MailerLite options from "MailerLite:*" config section.
         // Second Configure pass applies a flat env-var fallback for PR/prod
         // environments that cannot use dotted key names (MAILERLITE_API_KEY).

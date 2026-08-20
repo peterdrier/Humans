@@ -1,19 +1,25 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.MailerLite.Data;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteAudienceSyncServiceTests
 {
+    private static readonly Instant SyncedAt = Instant.FromUtc(2026, 8, 21, 9, 0);
+
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _emails = Substitute.For<IUserEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IMailerLiteRepository _repository = InMemoryMailerLiteRepository.New();
 
     [HumansFact]
     public async Task SyncAsync_NewUserNotInML_BulkImportsAndAssigns()
@@ -161,31 +167,87 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_WritesAuditEntryWithSerializedCounts()
+    public async Task SyncAsync_PersistsSyncStateAndAuditsInProse()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();
         var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
 
-        await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
+        await NewService(audience).SyncAsync(audience, ct: ct);
 
+        var state = await _repository.GetSyncStateAsync("a-aud", ct);
+        state.Should().NotBeNull();
+        state!.LastSyncAt.Should().Be(SyncedAt);
+        state.GroupId.Should().Be("g1");
+        state.GroupName.Should().Be("Humans - A");
+        state.Candidates.Should().Be(1);
+        state.Assigned.Should().Be(1);
+        state.Summary.Should().Be("0 created, 1 newly assigned, 0 unassigned, 0 errors.");
+
+        // Prose, not JSON, and pointed at the sync-state row rather than Guid.Empty.
         await _audit.Received(1).LogAsync(
             AuditAction.MailerLiteAudienceSyncCompleted,
             "MailerLiteAudience",
-            Guid.Empty,
-            Arg.Is<string>(d => d.Contains("\"audience_key\":\"a-aud\"")
-                             && d.Contains("\"assigned\":1")),
+            state.Id,
+            Arg.Is<string>(d => !d.StartsWith('{')
+                             && d.Contains("Humans - A", StringComparison.Ordinal)
+                             && d.Contains("1 newly assigned", StringComparison.Ordinal)),
             Arg.Any<string>(),
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
 
+    [HumansFact]
+    public async Task SyncAsync_SecondRun_OverwritesTheSameRow()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userA = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
+        SetupEmails((userA, "a@example.com"));
+        SetupGroups(Group("g1", "Humans - A"));
+        SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
+
+        var service = NewService(audience);
+        await service.SyncAsync(audience, ct: ct);
+        var first = await _repository.GetSyncStateAsync("a-aud", ct);
+
+        await service.SyncAsync(audience, ct: ct);
+        var states = await _repository.GetSyncStatesAsync(ct);
+
+        states.Should().ContainSingle().Which.Id.Should().Be(first!.Id);
+    }
+
+    [HumansFact]
+    public async Task ComputeAllStatsAsync_ReadsLastSyncFromTheSyncStateTable()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userA = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
+        SetupEmails((userA, "a@example.com"));
+        SetupGroups(Group("g1", "Humans - A"));
+        SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
+
+        var service = NewService(audience);
+        var before = await service.ComputeAllStatsAsync(ct);
+        before.Single().LastSyncAt.Should().BeNull();
+
+        await service.SyncAsync(audience, ct: ct);
+
+        var after = await service.ComputeAllStatsAsync(ct);
+        after.Single().LastSyncAt.Should().Be(SyncedAt);
+        after.Single().LastSyncSummary.Should().Be("0 created, 1 newly assigned, 0 unassigned, 0 errors.");
+        await _audit.DidNotReceive().GetFilteredEntriesAsync(
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
     // ---------- helpers ----------
 
     private MailerLiteAudienceSyncService NewService(params IMailerLiteAudience[] audiences) => new(
-        _ml, _emails, _audit, audiences,
+        _ml, _emails, _audit, _repository, new FakeClock(SyncedAt), audiences,
         NullLogger<MailerLiteAudienceSyncService>.Instance);
 
     private static IMailerLiteAudience NewAudience(

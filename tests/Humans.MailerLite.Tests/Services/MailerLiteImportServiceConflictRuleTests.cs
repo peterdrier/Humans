@@ -2,6 +2,7 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -134,6 +135,7 @@ internal sealed class ApplyHarness
             Substitute.For<IAccountProvisioningService>(),
             _prefs,
             _audit,
+            InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }

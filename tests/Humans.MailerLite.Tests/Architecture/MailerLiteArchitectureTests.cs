@@ -1,6 +1,8 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Humans.MailerLite.Tests.Architecture;
 
@@ -44,17 +46,35 @@ public class MailerLiteArchitectureTests
     }
 
     /// <summary>
-    /// MailerLite owns no tables, so the whole section assembly is EF-free — not just the two
-    /// orchestrators the pre-G5 version of this test named while they sat in
-    /// <c>Humans.Application</c>. Restated on the section assembly rather than deleted:
-    /// Calendar's rule is to keep the invariant and re-aim it, and here the wider form is
-    /// the honest one because there is no repository to legitimise a reference.
+    /// Only <c>Data/</c> may touch EF. The section gained a DbContext in
+    /// nobodies-collective/Humans#1082, which retired the assembly-wide EF-free rule this
+    /// replaces — but the services must still reach the table through the repository.
     /// </summary>
     [HumansFact]
-    public void SectionAssembly_DoesNotReferenceEFCore()
+    public void OnlyTheDataFolder_TouchesEFCore()
     {
-        SectionAssembly.GetReferencedAssemblies()
-            .Should().NotContain(a => string.Equals(a.Name, "Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+        var offenders = SectionAssembly.GetTypes()
+            .Where(t => t.Namespace?.StartsWith("Humans.MailerLite.Data", StringComparison.Ordinal) != true)
+            .Where(t => t.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                .Any(f => typeof(DbContext).IsAssignableFrom(f.FieldType)
+                          || (f.FieldType.IsGenericType
+                              && f.FieldType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>))))
+            .Select(t => t.FullName)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            "only the repository under Data/ may hold a MailerLiteDbContext");
+    }
+
+    /// <summary>
+    /// <c>mailerlite_sync_states</c> is one row per key, and the reconciliation run holds a
+    /// reserved one — an audience claiming it would overwrite that row.
+    /// </summary>
+    [HumansFact]
+    public void NoAudience_ClaimsTheReservedReconciliationKey()
+    {
+        AudienceInstances().Should().NotContain(
+            a => string.Equals(a.Key, MailerLiteSyncKeys.Reconciliation, StringComparison.Ordinal));
     }
 
     [HumansFact]

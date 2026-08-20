@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -292,6 +293,7 @@ internal sealed class ClassifierHarness
             Substitute.For<IAccountProvisioningService>(),
             _prefs,
             Substitute.For<IAuditLogService>(),
+            InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }
