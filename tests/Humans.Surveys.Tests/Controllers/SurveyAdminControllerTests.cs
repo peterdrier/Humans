@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Surveys.Controllers;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Models;
