@@ -52,6 +52,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// The second test measures the other half of the acceptance bar: one component
 /// instance per row must not mean one query per row.
 /// </para>
+/// <para>
+/// The third covers the other call site — <c>/WidgetGallery</c>, which catalogs all four
+/// and needs its own <c>@addTagHelper</c> lines in <c>Humans.Debug</c>.
+/// </para>
 /// </remarks>
 public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -79,6 +83,43 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
         html.Should().Contain($"{token} Event", because: "Events' component fetched the event by id");
         html.Should().Contain("/Events/Browse?q=", because: "Events' component built the Browse link");
+
+        html.Should().NotContain("<vc:", because: "an unbound element renders as literal markup on a green 200");
+        html.Should().NotContain("-view-component", because: "a ReSharper-rewritten vc tag is inert too");
+    }
+
+    /// <summary>
+    /// The widget gallery catalogs all four rows, so it needs its own <c>@addTagHelper</c>
+    /// lines — Teams and Events had none before these components existed.
+    /// </summary>
+    /// <remarks>
+    /// The gallery keys each card off the first real row it can find, not off a fixture, so
+    /// this cannot assert on a token for the two the environment already has rows of. Instead
+    /// it pins both halves: the fallback line is absent (a key resolved, so the component was
+    /// invoked at all) and no literal tag survives (it bound). The rota and the event are the
+    /// only ones a fresh database holds, so those two carry the token assertion outright.
+    /// </remarks>
+    [HumansFact(Timeout = 180000)]
+    public async Task The_widget_gallery_binds_all_four_rows()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var token = $"Zqx{Guid.NewGuid():N}"[..12];
+        await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
+
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var response = await Client.GetAsync("/WidgetGallery", ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+
+        foreach (var fallback in new[] { "No team in", "No camp in", "No rota in", "No approved event" })
+        {
+            html.Should().NotContain(fallback,
+                because: $"the seeding gives every card a key, so \"{fallback}…\" means the component never ran");
+        }
+
+        html.Should().Contain($"{token} Rota", because: "the seeded rota is the only one, so Shifts' card must show it");
+        html.Should().Contain($"{token} Event", because: "the seeded event is the only one, so Events' card must show it");
 
         html.Should().NotContain("<vc:", because: "an unbound element renders as literal markup on a green 200");
         html.Should().NotContain("-view-component", because: "a ReSharper-rewritten vc tag is inert too");
@@ -234,7 +275,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             };
             shiftsDb.EventSettings.Add(eventSettings);
         }
-        shiftsDb.Rotas.Add(new Rota
+        var rota = new Rota
         {
             Id = Guid.NewGuid(),
             EventSettingsId = eventSettings.Id,
@@ -244,6 +285,21 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             Policy = SignupPolicy.Public,
             Period = RotaPeriod.Event,
             IsVisibleToVolunteers = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        shiftsDb.Rotas.Add(rota);
+        // One slot under it: a rota with no shifts is invisible to every rota-listing read
+        // the app has, so a shiftless fixture would make the gallery card untestable.
+        shiftsDb.Shifts.Add(new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = 0,
+            StartTime = new LocalTime(10, 0),
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 1,
+            MaxVolunteers = 4,
             CreatedAt = now,
             UpdatedAt = now,
         });

@@ -12,16 +12,19 @@ namespace Humans.Events.ViewComponents;
 /// <remarks>
 /// Public because Razor's compile-time discovery filters on public — an internal
 /// view component ships <c>&lt;vc:…&gt;</c> as inert markup on a green build
-/// (HUM0034's framework exception). No <c>Features:Events</c> check of its own:
-/// the flag already gates the only producer of these ids, so an off flag means
-/// an empty bucket and no invocation.
+/// (HUM0034's framework exception). No <c>Features:Events</c> check of its own —
+/// callers gate on the flag: an off flag empties the search bucket, and the widget
+/// gallery skips the card outright.
 /// </remarks>
 public sealed class EventsSearchResultViewComponent(IEventServiceRead events) : ViewComponent
 {
     /// <param name="eventId">The matched approved event.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid eventId)
     {
-        // The approved-event list is cache-served, so a bucket of rows costs no query.
+        // Cache-served, so a bucket of rows costs no query — but it is a scan per row.
+        // CachingEventService.GetApprovedEventByIdAsync is the O(1) read; it is not on
+        // IEventServiceRead, and a public view component cannot take the internal
+        // IEventService (CS0051), so reaching it needs new public surface.
         var approved = await events.GetApprovedEventsAsync(
             campId: null, venueId: null, categoryId: null, q: null, excludedSlugs: []);
         var match = approved.FirstOrDefault(e => e.Id == eventId);

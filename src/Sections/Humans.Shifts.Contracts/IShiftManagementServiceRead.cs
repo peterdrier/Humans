@@ -45,7 +45,9 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// One rota's header fields by id, or <c>null</c> when it does not exist.
-    /// Served from the per-rota cache. Added so the section's own
+    /// Served from the per-rota cache — free once warm, but a miss populates that
+    /// cache's full view shape, which is far more than these two fields need (ledgered
+    /// 2026-08-20). Added so the section's own
     /// <c>&lt;vc:shifts-search-result&gt;</c> can render a row the global-search
     /// orchestrator holds only an id for (nobodies-collective/Humans#1062);
     /// no visibility filter — the id already came from a filtered search, and
