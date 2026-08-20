@@ -332,7 +332,6 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
-| State | *(shadow)* | null | Superseded by `User.State` (nobodies-collective/Humans#844). The C# property is gone; the column survives as an EF shadow property with no reader or writer, pending a drop migration. The `ProfileState` enum is `[Obsolete]` (`HUM_PROFILE_STATE`) and documents the stored values only. |
 | IsApproved | bool | false | Set automatically when consent check is cleared. |
 | MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment. |
 | ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed). |
@@ -576,7 +575,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth".
 - Membership tier (Volunteer, Colaborador, Asociado) is tracked on the profile, not as a role assignment.
 - Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
-- App access is gated by the stored `User.State` (`UserState`: Bare/Active/DeletePending/Suspended/Rejected/Deleted/Merged/AdminSuspended). `profiles.state` is a dead shadow column and the `ProfileState` enum is `[Obsolete]`.
+- App access is gated by the stored `User.State` (`UserState`: Bare/Active/DeletePending/Suspended/Rejected/Deleted/Merged/AdminSuspended). The old `profiles.state` column was dropped in nobodies-collective/Humans#844.
 - Profile deletion request sets `User.DeletionRequestedAt` and `User.DeletionScheduledFor = now + 30 days` on the User record. Team memberships and governance role assignments are revoked immediately. Actual data purge is deferred to a background job.
 - Data export returns all personal data as a JSON download (GDPR Article 15). `AccountMergeService` is this section's own `IUserDataContributor` implementation per design-rules §8a; the profile slices themselves are emitted by `UserService` (Users section) since profile storage was consolidated there in nobodies-collective/Humans#745. `ProfileService` implements no contributor interface. The orchestration lives in `GdprExportService`.
 - Profile pictures are stored on the filesystem via `IFileStorage` (key `uploads/profile-pictures/{profileId}{.ext}`) — the only store, since nobodies-collective/Humans#528 dropped the phase-1 `Profile.ProfilePictureData` DB fallback (issue nobodies-collective#527). `GetProfilePictureAsync` checks `ProfilePictureContentType` as the GDPR gate: null → 404, even if a stale file exists on disk. Uploaded images are validated against an allowed-content-type set (JPEG, PNG, WebP, HEIC/HEIF, AVIF) and a 20 MB upload cap, then resized by `ProfilePictureProcessor` to a long-side of 1000 px and re-encoded as JPEG before persistence.

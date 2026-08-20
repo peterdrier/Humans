@@ -56,3 +56,22 @@ src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns
 # Approval: Peter, 2026-08-20 — explicit per-instance approval for this drop (sprint dispatch for
 # nobodies-collective/Humans#507).
 src/Sections/Humans.Users/Data/Migrations/20260820170426_DropUserEmailIsOAuth.cs:DropColumn(name=IsOAuth,table=user_emails)#1
+
+# Dead profiles.State column (2026-08-21, nobodies-collective/Humans#844). Removed: the State
+# column on table profiles (character varying(50), the ProfileState enum persisted as a string).
+# Evidence: pickaxe over full history across every path Profile has lived at
+# (src/Humans.Domain/Entities/Profile.cs, src/Profiles.Domain/Entities/Profile.cs,
+# src/Sections/Humans.Users.Contracts/Profile.cs, src/Sections/Humans.Users/Domain/Profile.cs) plus
+# `git log -S 'State = ProfileState' --pickaxe-regex -- src/`. The column was introduced nullable by
+# #405 (2026-05-04, issue-635 §15i) and only ever carried Stub/Active/Suspended/AdminSuspended. Its
+# writers were: profile save (Stub↔Active promotion), stub-profile creation at the User-creation call
+# sites, the SetSuspension mutation, the bulk consent suspension in SuspendManyAsync, and the lazy
+# seed WriteBackStateIfNullAsync (ExecuteUpdate guarded on State IS NULL). Every one of them was
+# deleted by #1436 (merged 617394d80), which moved suspension and the Bare/Active/Rejected
+# classification onto users.State and promoted that column to NOT NULL. No migration and no raw SQL
+# ever wrote profiles.State — `git log -S 'UPDATE profiles'` returns only ConsentCheckStatus/
+# MembershipTier backfills. Since #1436 the column has been an EF shadow property with no reader and
+# no writer, and the ProfileState enum is [Obsolete] (HUM_PROFILE_STATE) with zero references.
+# Approval: Peter, 2026-08-20 — "drop the column, but be careful since we already have 2 migrations
+# in user section today."
+src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:DropColumn(name=State,table=profiles)#1
