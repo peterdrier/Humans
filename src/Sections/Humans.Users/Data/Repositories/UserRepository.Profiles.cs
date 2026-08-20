@@ -122,7 +122,7 @@ internal sealed partial class UserRepository
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)
-            user.State = UserStateClassifier.Classify(user, profile);
+            user.State = UserStateEvaluator.Classify(user, profile);
     }
 
     public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -162,7 +162,7 @@ internal sealed partial class UserRepository
             var profilesByUser = profiles.ToDictionary(p => p.UserId);
             foreach (var user in users)
             {
-                user.State = UserStateClassifier.Classify(
+                user.State = UserStateEvaluator.Classify(
                     user, profilesByUser.GetValueOrDefault(user.Id));
             }
             await ctx.SaveChangesAsync(ct);

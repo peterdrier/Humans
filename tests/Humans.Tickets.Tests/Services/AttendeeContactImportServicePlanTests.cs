@@ -53,7 +53,7 @@ public class AttendeeContactImportServicePlanTests
         harness.Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = userId, MergedToUserId = null },
-                [], [], [], null, [], [], [], []));
+                [], [], [], null, []));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -82,11 +82,11 @@ public class AttendeeContactImportServicePlanTests
         harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = deadId, MergedToUserId = liveId },
-                [], [], [], null, [], [], [], []));
+                [], [], [], null, []));
         harness.Users.GetUserInfoAsync(liveId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = liveId, MergedToUserId = null },
-                [], [], [], null, [], [], [], []));
+                [], [], [], null, []));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 

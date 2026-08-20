@@ -9,6 +9,7 @@ using Humans.Shifts.Data;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
 
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;

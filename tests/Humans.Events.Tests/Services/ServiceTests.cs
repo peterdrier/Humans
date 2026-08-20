@@ -351,7 +351,7 @@ public sealed class EventServiceTests
             .Returns(UserInfo.Create(
                 user,
                 [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true }],
-                [], [], profile: null, [], [], [], []));
+                [], [], profile: null, []));
         return userId;
     }
 

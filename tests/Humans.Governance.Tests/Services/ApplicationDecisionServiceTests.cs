@@ -513,7 +513,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             PreferredLanguage = "en"
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(user, [], [], [], null, [], [], [], []));
+            .Returns(UserInfo.Create(user, [], [], [], null, []));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 

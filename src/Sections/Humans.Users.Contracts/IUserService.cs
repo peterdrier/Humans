@@ -232,7 +232,7 @@ public interface IUserService : IUserServiceRead, IUserMerge
     /// </summary>
     Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
-        IReadOnlyList<ProfileLanguage> languages,
+        IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default);
 
     /// <summary>

@@ -147,9 +147,6 @@ public sealed class MagicLinkServiceTests : IDisposable
             [],
             [],
             null,
-            [],
-            [],
-            [],
             []);
 
     [HumansFact]

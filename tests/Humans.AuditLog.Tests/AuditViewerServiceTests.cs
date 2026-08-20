@@ -205,7 +205,7 @@ public class AuditViewerServiceTests
             u => u.Id,
             u => UserInfoStubHelpers.MakeUserInfo(
                 u.Id,
-                profile: new Profile { UserId = u.Id, BurnerName = u.BurnerName }));
+                profile: UserFixtures.Profile(burnerName: u.BurnerName, state: null)));
         userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
         return userService;

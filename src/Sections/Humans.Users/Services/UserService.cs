@@ -56,7 +56,7 @@ internal sealed class UserService(
         var communicationPreferences = await communicationPreferenceRepo
             .GetByUserIdReadOnlyAsync(userId, ct);
 
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             user, userEmails, participations, externalLogins,
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
@@ -120,7 +120,7 @@ internal sealed class UserService(
 
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
 
-            var info = UserInfo.Create(
+            var info = UserInfoFactory.Create(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
                 preferences);
@@ -589,10 +589,20 @@ internal sealed class UserService(
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
-        IReadOnlyList<ProfileLanguage> languages,
+        IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
-        await repo.ReplaceLanguagesAsync(profileId, languages, ct);
+        var rows = languages
+            .Select(l => new ProfileLanguage
+            {
+                Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
+                ProfileId = profileId,
+                LanguageCode = l.LanguageCode,
+                Proficiency = l.Proficiency,
+            })
+            .ToList();
+
+        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
         var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
         return new UserProfileLanguagesSaveResult(
             ownerUserId is not null,

@@ -1,11 +1,13 @@
 
-namespace Humans.Users.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>
 /// A language spoken by a member, with proficiency level.
 /// Uses ISO 639-1 two-letter language codes.
 /// </summary>
-public class ProfileLanguage
+internal sealed class ProfileLanguage
 {
     /// <summary>
     /// Unique identifier.

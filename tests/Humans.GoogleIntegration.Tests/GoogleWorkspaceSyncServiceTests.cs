@@ -676,5 +676,5 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 DisplayName = "Alice Test",
                 Email = email
             },
-            [], [], [], null, [], [], [], []);
+            [], [], [], null, []);
 }

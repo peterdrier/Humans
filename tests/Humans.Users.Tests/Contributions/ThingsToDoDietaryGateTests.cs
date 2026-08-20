@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
@@ -101,7 +102,7 @@ public class ThingsToDoDietaryGateTests
     private static ClaimsPrincipal Principal(Guid userId) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
 
-    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfo.Create(
+    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
         eventParticipations: [],

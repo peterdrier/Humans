@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Users.Data;
+using Humans.Users.Domain;
 
 namespace Humans.Integration.Tests.Controllers;
 

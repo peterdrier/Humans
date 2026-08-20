@@ -264,13 +264,10 @@ internal sealed class ProfileController(
         // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
             .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
-            .Select(l => new ProfileLanguage
-            {
-                Id = Guid.NewGuid(),
-                ProfileId = profileId,
-                LanguageCode = l.LanguageCode.Trim(),
-                Proficiency = l.Proficiency
-            })
+            .Select(l => new ProfileLanguageInfo(
+                Guid.NewGuid(),
+                l.LanguageCode.Trim(),
+                l.Proficiency))
             .ToList();
 
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);

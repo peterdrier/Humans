@@ -1,4 +1,5 @@
 using Humans.Auth.Contracts;
+using Humans.Users.Services;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -348,7 +349,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Where(cf => cf.ProfileId == profile.Id)
             .OrderBy(cf => cf.DisplayOrder)
             .ToList();
-        var info = UserInfo.Create(
+        var info = UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

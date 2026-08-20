@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,7 +40,7 @@ public class CachingUserServiceTests
         Guid userId,
         string displayName = "Alice",
         IReadOnlyList<EventParticipation>? eventParticipations = null) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: eventParticipations ?? [],
@@ -332,7 +333,7 @@ public class CachingUserServiceTests
                 ("Google", "ext-key-1"),
             };
 
-        var fullInfo = UserInfo.Create(
+        var fullInfo = UserInfoFactory.Create(
             user, [userEmail], [participation],
             externalLogins,
             profile, [contactField],
@@ -633,7 +634,7 @@ public class CachingUserServiceTests
             })
             .ToList();
 
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user, userEmails,
             eventParticipations: [],
             externalLogins: [],
@@ -896,7 +897,7 @@ public class CachingUserServiceTests
     // _inner.GetUserInfoAsync, so StubRefreshEntry overrides that return.
 
     private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: [],
@@ -908,7 +909,7 @@ public class CachingUserServiceTests
             communicationPreferences: []);
 
     private static UserInfo UserInfoWithEmail(Guid userId, string email) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails:
             [
@@ -1110,7 +1111,7 @@ public class CachingUserServiceTests
 
         _inner.SaveProfileLanguagesAsync(
                 profileId,
-                Arg.Any<IReadOnlyList<ProfileLanguage>>(),
+                Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new UserProfileLanguagesSaveResult(true, userId));
 
@@ -1134,12 +1135,7 @@ public class CachingUserServiceTests
         var result = await sut.SaveProfileLanguagesAsync(
             profileId,
             [
-                new ProfileLanguage
-                {
-                    ProfileId = profileId,
-                    LanguageCode = "es",
-                    Proficiency = LanguageProficiency.Native,
-                },
+                new ProfileLanguageInfo(Guid.NewGuid(), "es", LanguageProficiency.Native),
             ], Xunit.TestContext.Current.CancellationToken);
 
         result.Saved.Should().BeTrue();

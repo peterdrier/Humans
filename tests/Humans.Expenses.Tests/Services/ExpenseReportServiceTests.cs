@@ -85,10 +85,10 @@ public sealed class ExpenseReportServiceTests
             Options.Create(new TravelReimbursementConfig()));
     }
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
-            Id = profile.UserId,
+            Id = userId,
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
@@ -97,9 +97,6 @@ public sealed class ExpenseReportServiceTests
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
@@ -845,7 +842,7 @@ public sealed class ExpenseReportServiceTests
 
         // Profile with no IBAN
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter }));
+            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(state: null)));
 
         var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -1077,7 +1074,7 @@ public sealed class ExpenseReportServiceTests
         result.Message.Should().Be("IBAN saved.");
         await AuditLog.Received(1).LogAsync(
             AuditAction.IbanSet,
-            nameof(Profile),
+            AuditEntityTypes.Profile,
             submitter,
             "IBAN set",
             submitter);
@@ -1652,15 +1649,12 @@ public sealed class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = "Meri",
-                FirstName = "Maria",
-                LastName = "Garcia",
-                Iban = "ES9121000418450200051332",
-            }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
+                burnerName: "Meri",
+                firstName: "Maria",
+                lastName: "Garcia",
+                iban: "ES9121000418450200051332",
+                state: null)));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
         _holdedFinance.EnsureCreditorContactAsync(
@@ -1703,15 +1697,12 @@ public sealed class ExpenseReportServiceTests
         const string iban = "ES9121000418450200051332";
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = burnerName,
-                FirstName = legalFirst,
-                LastName = legalLast,
-                Iban = iban,
-            }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
+                burnerName: burnerName,
+                firstName: legalFirst,
+                lastName: legalLast,
+                iban: iban,
+                state: null)));
 
         // Seed approved report with an attachment via the real service flow
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
@@ -1851,15 +1842,12 @@ public sealed class ExpenseReportServiceTests
         var lastName = nameParts.Length > 1 ? nameParts[1] : "Tester";
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = displayName,
-                FirstName = firstName,
-                LastName = lastName,
-                Iban = iban
-            }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
+                burnerName: displayName,
+                firstName: firstName,
+                lastName: lastName,
+                iban: iban,
+                state: null)));
     }
 
     private static TeamInfo MakeTeamInfo(Guid teamId,

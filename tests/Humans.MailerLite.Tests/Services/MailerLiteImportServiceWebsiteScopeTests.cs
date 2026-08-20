@@ -194,18 +194,14 @@ public class MailerLiteImportServiceWebsiteScopeTests
     private static UserInfo Human(
         Guid id, string email, bool optedOut, string source, Instant? subscribedAt)
     {
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = id,
-            Category = MessageCategory.Marketing,
-            OptedOut = optedOut,
-            UpdatedAt = Instant.FromUtc(2026, 5, 19, 12, 0),
-            UpdateSource = source,
-            SubscribedAt = subscribedAt,
-        };
+        var pref = UserFixtures.Preference(
+            category: MessageCategory.Marketing,
+            optedOut: optedOut,
+            updatedAt: Instant.FromUtc(2026, 5, 19, 12, 0),
+            updateSource: source,
+            subscribedAt: subscribedAt);
         var ue = new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true };
-        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, [], [], [], [pref]);
+        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, [pref]);
     }
 }
 

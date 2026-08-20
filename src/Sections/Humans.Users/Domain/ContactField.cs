@@ -1,11 +1,13 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>
 /// A contact field on a member's profile with visibility controls.
 /// </summary>
-public class ContactField
+internal sealed class ContactField
 {
     /// <summary>
     /// Unique identifier for the contact field.

@@ -133,14 +133,11 @@ public class UserSetMembershipCalculatorTests
     {
         var id = Guid.NewGuid();
         var profile = hasProfile
-            ? new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = id,
-                BurnerName = "Dusty",
-                FirstName = "Dusty",
-                LastName = "Rhoads",
-            }
+            ? UserFixtures.Profile(
+                burnerName: "Dusty",
+                firstName: "Dusty",
+                lastName: "Rhoads",
+                state: null)
             : null;
 
         var participations = ticketYear.HasValue
@@ -157,18 +154,10 @@ public class UserSetMembershipCalculatorTests
             }
             : [];
 
-        var communicationPreferences = marketingOptedOut.HasValue
-            ? new List<CommunicationPreference>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    Category = MessageCategory.Marketing,
-                    OptedOut = marketingOptedOut.Value,
-                    UpdateSource = "test",
-                },
-            }
+        IReadOnlyList<CommunicationPreferenceInfo> communicationPreferences = marketingOptedOut.HasValue
+            ? [UserFixtures.Preference(
+                category: MessageCategory.Marketing,
+                optedOut: marketingOptedOut.Value)]
             : [];
 
         return UserInfo.Create(
@@ -183,9 +172,6 @@ public class UserSetMembershipCalculatorTests
             eventParticipations: participations,
             externalLogins: [],
             profile: profile,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: communicationPreferences);
     }
 }

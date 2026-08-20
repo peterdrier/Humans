@@ -1,4 +1,5 @@
 using Humans.Users.Controllers;
+using Humans.Users.Services;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -243,7 +244,7 @@ public class ProfileControllerPopoverTests
     }
 
     private static UserInfo BuildUserInfo(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: user,
             userEmails: userEmails ?? [],
             eventParticipations: [],

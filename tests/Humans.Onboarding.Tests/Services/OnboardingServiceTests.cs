@@ -67,7 +67,7 @@ public sealed class OnboardingServiceTests
         result.Success.Should().BeTrue();
         await _auditLogService.Received(1).LogAsync(
             AuditAction.ConsentCheckCleared,
-            nameof(Profile),
+            AuditEntityTypes.Profile,
             userId,
             "Consent check cleared",
             reviewerId);
@@ -95,7 +95,7 @@ public sealed class OnboardingServiceTests
         result.ErrorKey.Should().Be("AlreadyRejected");
         await _auditLogService.Received(0).LogAsync(
             AuditAction.SignupRejected,
-            nameof(Profile),
+            AuditEntityTypes.Profile,
             userId,
             Arg.Any<string>(),
             reviewerId);
@@ -113,17 +113,11 @@ public sealed class OnboardingServiceTests
     public async Task SetConsentCheckPendingIfEligibleAsync_WhenEligible_UsesUserServiceMutation()
     {
         var userId = Guid.NewGuid();
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Burner",
-            FirstName = "First",
-            LastName = "Last",
-            State = ProfileState.Active,
-            CreatedAt = Instant.FromUnixTimeSeconds(1),
-            UpdatedAt = Instant.FromUnixTimeSeconds(1),
-        };
+        var profile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "First",
+            lastName: "Last",
+            createdAt: Instant.FromUnixTimeSeconds(1));
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile)));
@@ -156,19 +150,13 @@ public sealed class OnboardingServiceTests
         // queue so a CC can resolve them — even if a prior admin override flipped IsApproved=true.
         var approvedFlaggedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
-        var approvedFlaggedProfile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = approvedFlaggedId,
-            BurnerName = "Burner",
-            FirstName = "Flagged",
-            LastName = "Approved",
-            State = ProfileState.Active,
-            ConsentCheckStatus = ConsentCheckStatus.Flagged,
-            IsApproved = true,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var approvedFlaggedProfile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "Flagged",
+            lastName: "Approved",
+            consentCheckStatus: ConsentCheckStatus.Flagged,
+            isApproved: true,
+            createdAt: now);
 
         StubReviewQueueDependencies(
             [UserInfoStubs.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]);
@@ -186,19 +174,13 @@ public sealed class OnboardingServiceTests
         // so a flagged+rejected row would be unresolvable from the queue UI. Exclude them.
         var rejectedFlaggedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
-        var rejectedFlaggedProfile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = rejectedFlaggedId,
-            BurnerName = "Burner",
-            FirstName = "Flagged",
-            LastName = "Rejected",
-            State = ProfileState.Active,
-            ConsentCheckStatus = ConsentCheckStatus.Flagged,
-            RejectedAt = now,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var rejectedFlaggedProfile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "Flagged",
+            lastName: "Rejected",
+            consentCheckStatus: ConsentCheckStatus.Flagged,
+            rejectedAt: now,
+            createdAt: now);
 
         StubReviewQueueDependencies(
             [UserInfoStubs.MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile)]);
@@ -217,18 +199,12 @@ public sealed class OnboardingServiceTests
         // NeedsConsentReview), it must never surface in the CC queue or its nav badge.
         var mergedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = mergedId,
-            BurnerName = "Burner",
-            FirstName = "Merged",
-            LastName = "Away",
-            State = ProfileState.Active,
-            IsApproved = false,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var profile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "Merged",
+            lastName: "Away",
+            isApproved: false,
+            createdAt: now);
         var mergedUser = new User
         {
             Id = mergedId,
@@ -252,18 +228,12 @@ public sealed class OnboardingServiceTests
         // not appear in the flagged queue — there is no live account left to clear.
         var mergedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = mergedId,
-            BurnerName = "Burner",
-            FirstName = "Flagged",
-            LastName = "Merged",
-            State = ProfileState.Active,
-            ConsentCheckStatus = ConsentCheckStatus.Flagged,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var profile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "Flagged",
+            lastName: "Merged",
+            consentCheckStatus: ConsentCheckStatus.Flagged,
+            createdAt: now);
         var mergedUser = new User
         {
             Id = mergedId,

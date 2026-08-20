@@ -400,7 +400,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         };
         _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user, [], [participation], [], null, [], [], [], [])));
+                user, [], [participation], [], null, [])));
     }
 
     [HumansFact]

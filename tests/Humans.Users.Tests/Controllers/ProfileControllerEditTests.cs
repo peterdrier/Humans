@@ -1,4 +1,5 @@
 using Humans.Users.Controllers;
+using Humans.Users.Services;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -173,7 +174,7 @@ public class ProfileControllerEditTests
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(true));
         _userService.SaveProfileLanguagesAsync(
-                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserProfileLanguagesSaveResult(true, _userId)));
 
         // The happy path now also writes meal-pref + allergies onto the shift
@@ -199,7 +200,7 @@ public class ProfileControllerEditTests
             Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
             Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileLanguagesAsync(
-            _profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>());
+            _profileId, Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>());
     }
 
     // The tier-application field rules live in IApplicationDecisionService (the service that
@@ -537,7 +538,7 @@ public class ProfileControllerEditTests
             ApplicationMotivation = motivation,
         };
 
-    private UserInfo BuildUserInfo(Profile? profile) => UserInfo.Create(
+    private UserInfo BuildUserInfo(Profile? profile) => UserInfoFactory.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
         userEmails: [],
         eventParticipations: [],

@@ -36,7 +36,7 @@ public class AdminHumanListAssemblerTests
             State = ProfileState.Active,
         };
 
-        return UserInfo.Create(user, [], [], [], profile, [], [], [], []);
+        return UserInfoFactory.Create(user, [], [], [], profile, [], [], [], []);
     }
 
     private static UserState StateOf(UserInfo u) =>

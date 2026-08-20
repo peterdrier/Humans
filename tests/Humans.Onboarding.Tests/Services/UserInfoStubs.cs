@@ -1,4 +1,3 @@
-using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Tests.Services;
@@ -19,36 +18,24 @@ internal static class UserInfoStubs
     internal static UserInfo ToUserInfo(
         this User user,
         IReadOnlyList<UserEmail>? userEmails = null,
-        Profile? profile = null)
+        ProfileInfo? profile = null)
         => UserInfo.Create(
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
             [],
             profile: profile,
-            [],
-            [],
-            [],
             []);
 
-    internal static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
+    internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
         => UserInfo.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
             [],
-            profile: profile ?? new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = displayName,
-                CreatedAt = SystemClock.Instance.GetCurrentInstant(),
-                UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-                State = ProfileState.Active,
-                IsApproved = true,
-            },
-            [],
-            [],
-            [],
+            profile: profile ?? UserFixtures.Profile(
+                burnerName: displayName,
+                state: ProfileState.Active,
+                isApproved: true),
             []);
 }

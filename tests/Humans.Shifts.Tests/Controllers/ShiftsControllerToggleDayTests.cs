@@ -19,6 +19,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -117,7 +119,7 @@ public class ShiftsControllerToggleDayTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

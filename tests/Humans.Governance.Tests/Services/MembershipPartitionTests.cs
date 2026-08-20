@@ -20,7 +20,7 @@ public class MembershipPartitionTests
     private readonly ILegalDocumentSyncServiceRead _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncServiceRead>();
 
     private readonly Dictionary<Guid, User> _usersById = new();
-    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
+    private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
     private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
 
@@ -264,18 +264,13 @@ public class MembershipPartitionTests
 
     private void SeedProfile(Guid userId, bool isApproved, bool isSuspended)
     {
-        _profilesByUserId[userId] = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Tester",
-            FirstName = "Test",
-            LastName = "User",
-            IsApproved = isApproved,
-            State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
+        _profilesByUserId[userId] = UserFixtures.Profile(
+            burnerName: "Tester",
+            firstName: "Test",
+            lastName: "User",
+            isApproved: isApproved,
+            state: isSuspended ? ProfileState.Suspended : ProfileState.Active,
+            createdAt: _clock.GetCurrentInstant());
     }
 
     private void SeedConsent(Guid userId, Guid versionId)
