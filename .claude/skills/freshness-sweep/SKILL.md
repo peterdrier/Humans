@@ -57,12 +57,59 @@ Path/branch collision: error; instruct `git worktree list` / `git worktree remov
 
 Abort on validation failure → Phase 8.
 
+## Phase 3.5: Verify and repair trigger globs
+
+Runs BEFORE Phase 4 computes the dirty list, so a glob repaired this run also
+fires as dirty in this same run — nobodies-collective/Humans#1021. A dead
+`freshness:triggers` entry (a glob or literal path that no longer resolves to
+any file) is **silent by construction**: it makes its doc look *clean*
+instead of *unchecked*, so the doc drops out of the dirty list before Phase 4
+ever runs and nobody notices. Two sweeps (2026-08-08, 2026-08-10) found large
+batches of these ad hoc, with a throwaway verifier, *after* the dirty list had
+already been computed from the broken globs — this phase exists so the sweep
+catches and repairs its own dead triggers as a matter of course, not as
+someone remembering to go look.
+
+1. From inside the worktree, run:
+   ```bash
+   bash docs/scripts/freshness-checks/verify-triggers.sh
+   ```
+   This walks every `.md` under the catalog's `editorial_trees` (honoring
+   `ignore:`), expands every `freshness:triggers` entry as a real glob
+   (`**`/`*`-aware — never a literal `test -e` per line, which under-reports:
+   the 2026-08-08 sweep's throwaway verifier compared globs literally and
+   missed the last 5 of 64 dead paths, caught only in PR review) as well as
+   every literal path, and for each dead one:
+   - **Repairs it in place** when the new location is unambiguous — a single
+     `find` hit by basename, which is also how a section-project move
+     resolves (a section's uniquely-named file or directory has exactly one
+     hit under its new `src/Sections/Humans.<Section>/**` home, no
+     section-specific logic needed). Emits `REPAIRED <doc> | <old> -> <new>`.
+   - **Leaves it and flags it** when no single unambiguous target exists
+     (zero or multiple `find` hits — never guessed). Emits
+     `UNRESOLVED <doc> | <old>` and `FORCE-DIRTY <doc>`.
+2. The script already edited the doc files for every `REPAIRED` line — those
+   are real content changes and ride in the sweep's own PR like any other
+   regen (memory/process/freshness-sweep-owns-its-verifier.md). Nothing
+   further to do for them.
+3. Carry the `UNRESOLVED` list and the `FORCE-DIRTY` doc list forward:
+   - Into **Phase 4**: union the `FORCE-DIRTY` docs into the dirty list,
+     regardless of whether anything in the diff window matches them — an
+     unresolved dead trigger means the doc needs a human-legible review this
+     run, not silent skipping.
+   - Into **Phase 6**: the report's new "Dead trigger globs" section (see
+     below).
+4. Mechanical catalog entries are unaffected by this phase — Phase 3's
+   existing "warn on trigger glob matching no files" already covers them;
+   this phase is the editorial-doc counterpart the issue exists to add.
+
 ## Phase 4: Match dirty entries
 
 1. `--full`/fallback: every candidate dirty.
 2. `git diff --name-only <previous-anchor>..upstream/main` → glob-match against each entry's triggers.
 3. `--scope <glob>`: filter to mechanical entries whose `id` matches.
-4. Empty dirty list → "No entries dirty — nothing to refresh." → Phase 8.
+4. Union in the Phase 3.5 `FORCE-DIRTY` set (editorial docs with an unresolved dead trigger) — always dirty this run regardless of diff match.
+5. Empty dirty list → "No entries dirty — nothing to refresh." → Phase 8.
 
 ## Phase 5: Dispatch updates (≤3 concurrent subagents)
 
@@ -206,7 +253,9 @@ A prune-analysis subagent's manifest may surface **medium-confidence wheat** (th
 
 ## Phase 6: Aggregate and write report
 
-Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); "Pruned" section (file, lines removed, evidence) from Phase 5.5, including a **"Wheat migrated"** sub-list (`source §section → destination`, with the code symbol that verified it); "Flagged for human review" (file, triggers, reason — subjective prose only, never concrete broken facts, which are fixed inline); "Proposed for review" ("None — all candidates resolved this sweep" unless a question to Peter is pending); "Questions" (anything you asked Peter inline this sweep); "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
+Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); **"Dead trigger globs"** section from Phase 3.5 — a `Repaired` sub-list (`doc — old → new`, one per `REPAIRED` line) and an `Unresolved` sub-list (`doc — old`, one per `UNRESOLVED` line, each noting it was force-included in this run's dirty list); "Pruned" section (file, lines removed, evidence) from Phase 5.5, including a **"Wheat migrated"** sub-list (`source §section → destination`, with the code symbol that verified it); "Flagged for human review" (file, triggers, reason — subjective prose only, never concrete broken facts, which are fixed inline); "Proposed for review" ("None — all candidates resolved this sweep" unless a question to Peter is pending); "Questions" (anything you asked Peter inline this sweep); "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
+
+Unresolved dead triggers are a record, not a delivery — like every other item needing Peter's judgment they also go through Phase 7.5 inline, phrased as a one-line decision each (e.g. "1. `Auth.md`'s `Authorization/Requirements/**` trigger is dead — Requirement classes now live per-section under each `Authorization/`; retarget to `src/Sections/*/Authorization/**Requirement.cs`, or drop the trigger?").
 
 **The report is the durable RECORD, not the delivery channel.** Every item that needs Peter's judgment — flagged drift that is a genuine judgment call, open questions, uncertain prune wheat — is delivered to him **inline** in Phase 7.5, not parked in the report for him to find later. Assume he never opens the report. Writing a review item only into the report and ending the run is a process failure.
 
@@ -281,7 +330,8 @@ Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTRE
 | Marker validation error | That doc → "Skipped (errors)"; others continue |
 | Subagent fails | That entry skipped; recorded in "Skipped (errors)" |
 | Duplicate target in catalog | Schema validation rejects at parse time |
-| Trigger glob matches nothing | Warning only |
+| Mechanical trigger glob matches nothing | Warning only (Phase 3) |
+| Editorial trigger glob/literal matches nothing | Repaired or force-dirtied by Phase 3.5, never silently skipped |
 | Push / PR creation fails | Worktree retained; fix manually |
 
 ## Constraints
