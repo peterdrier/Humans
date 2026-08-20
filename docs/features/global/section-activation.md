@@ -1,62 +1,46 @@
 <!-- freshness:triggers
+  src/Humans.Base/Interfaces/ISection.cs
   src/Humans.Web/Extensions/SectionActivation.cs
   src/Humans.Web/Extensions/SectionDiscoveryExtensions.cs
-  src/Humans.Web/Hosting/SectionAssemblySnapshot.cs
   src/Humans.Web/Hosting/SectionControllerFeatureProvider.cs
   src/Humans.Web/Hosting/SectionViewComponentFeatureProvider.cs
 -->
 <!-- freshness:flag-on-change
-  The `Sections:Active` contract, what startup validates, and the count of sections Shell itself pins — review whenever activation, discovery, or a Shell-to-section reference changes.
+  What startup validates and the count of sections Shell itself pins — review whenever activation, discovery, or a Shell-to-section reference changes.
 -->
 
 # Section Activation
 
 ## Business Context
 
-Every section assembly ships in every build. Which of them a given deployment actually
-runs is a per-deployment configuration decision (nobodies-collective/Humans#1081), so one
-artifact can serve a full production install, a stripped preview, or a demo without a
-separate build.
+Every section assembly ships in every build. Whether a deployment runs one is
+`ISection.IsActive`, which **defaults to true** (nobodies-collective/Humans#1081) — a
+section opts itself out by overriding it, and nothing else has to know.
 
-No section name is written down in Shell. The allowlist is validated against what
-discovery found, and the dependency graph is derived from real assembly references — a new
-section is activatable the moment it ships an `ISection` entry point.
+There is deliberately no configuration key and no name list. A list of section names is a
+string that can be misspelled, and a misspelling would silently drop a working section; a
+property on the interface cannot be. No section name is written down in Shell either — the
+dependency graph is derived from real assembly references, so a new section is covered the
+moment it ships an `ISection` entry point.
 
-## Configuration
-
-`Sections:Active` — an array of section names. A section's name is its assembly name
-without the `Humans.` prefix, so `Humans.Store` is `Store`. Matching is case-insensitive.
-
-| Value | Meaning |
-|---|---|
-| Key absent (the shipped default) | Every discovered section is active |
-| `["Store", "Users", …]` | Exactly those sections |
-| `[]` | Zero sections — a config error in practice, see below |
-
-Absent and `[]` are **not** the same. An absent key binds to `null`; an explicitly empty
-array binds to a zero-length array. Absent means "everything", empty means "nothing", and
-nothing is not a runnable configuration because Shell itself consumes sections.
-
-```json
+```csharp
+public sealed class Section : ISection
 {
-  "Sections": {
-    "Active": [ "Auth", "Users", "Teams" ]
-  }
+    public bool IsActive => false;   // this deployment does not run Cantina
+
+    public void Register(IServiceCollection services, IConfiguration configuration) { … }
 }
 ```
 
 ## What startup validates
 
-`SectionActivation.Resolve` runs once in `Program.cs`, producing that host's
-`SectionAssemblySnapshot` before anything composes from discovery. With the key absent it
-validates nothing and cannot fail. With an allowlist present it throws
-`InvalidOperationException` when:
+Deactivating a section that something running consumes throws `InvalidOperationException`
+before anything composes from discovery:
 
-- **A name is not a section.** The message lists every discovered section, so a typo is one
-  read away from its fix rather than a section that silently vanishes.
 - **An active section's dependency is deactivated.** A section reaches another only through
   that section's `.Contracts` assembly, so a referenced `Humans.X.Contracts` maps back to
-  section `X`; the graph is those edges.
+  section `X`; the graph is those edges. Transitivity needs no extra pass — every active
+  section is checked, so a chain breaks at whichever link is missing.
 - **A section Shell itself consumes is deactivated.** Shell always runs — `HomeController`
   names `IUserService` — so its own references are validated as if it were an active
   section. It appears in error messages under its assembly name, `Web`.
@@ -85,19 +69,20 @@ nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
   `HumansCampControllerBase`) or a generic runtime-availability mechanism; both are
   design decisions, tracked in #1090.
 
-Shell pins **26 of the 42 shipped sections** today. Any allowlist must therefore contain
-those 26 plus the transitive closure of what they consume, which leaves activation useful
-mainly for the sections Shell does not name. That number is the epic's debt measure, not a
-design target: each seam lane (nobodies-collective/Humans#1073 and its lanes) removes Shell
-references by moving nav, tiles, chrome and policies behind `ISectionContribution` seams,
-and the pinned set shrinks with it.
+Shell pins **26 of the 42 shipped sections** today, so those 26 plus the transitive closure
+of what they consume cannot be deactivated — which leaves activation useful mainly for the
+sections Shell does not name. That number is the epic's debt measure, not a design target:
+each seam lane (nobodies-collective/Humans#1073 and its lanes) removes Shell references by
+moving nav, tiles, chrome and policies behind `ISectionContribution` seams, and the pinned
+set shrinks with it.
 
 ## What a deactivated section contributes
 
-Nothing. Composition reads the host's `SectionAssemblySnapshot` throughout, so a
-deactivated section has no `Register` call, no DI registrations, no controllers, no view
-components, no recurring jobs, no authorization policies, no health checks, no endpoints,
-no nav or tile entries, and no resource types.
+Nothing. Composition reads `SectionDiscoveryExtensions.ActiveSectionAssemblies()`
+throughout, so a deactivated section has no `Register` call, no DI registrations, no
+controllers, no view components, no recurring jobs, no authorization policies, no health
+checks, no endpoints, no nav or tile entries, and no resource types. Its `DbContext` is
+never registered, so it never migrates.
 
 Controllers and view components need explicit removal rather than mere omission: MVC's
 default feature providers walk every application part and would otherwise keep a
@@ -105,18 +90,10 @@ deactivated section's *public* controllers routable and its *public* view compon
 resolvable, failing at request time on services nobody registered.
 `SectionControllerFeatureProvider` and `SectionViewComponentFeatureProvider` drop them.
 
-### One snapshot per host
-
-The active/inactive split is a `SectionAssemblySnapshot` built **per host** in `Program.cs`
-and passed through composition — never process-wide state. Several hosts share a process
-(every `WebApplicationFactory` in the integration suite builds one), and a shared active set
-serves whichever host composed first to all of them, registering one host's sections inside
-another and routing its controllers there.
-
-The composition-time consumers take it as a parameter (`AddDiscoveredSections`,
-`AddHumansInfrastructure`, `AddHumansAuthorizationPolicies`, the health-check, resource and
-endpoint loops, and the two feature providers at construction). It is also registered as a
-singleton, so the post-build pass that schedules recurring jobs resolves that host's own.
+The active set is resolved once per process and cached. That is safe here where a config
+key would not have been: `IsActive` is a property of the shipped code, so every host in a
+process — every `WebApplicationFactory` in the integration suite builds one — resolves the
+same set.
 
 ## Diagnosing
 
