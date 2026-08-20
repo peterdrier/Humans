@@ -77,17 +77,6 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a snapshot of every <see cref="UserEmail"/> row for the user that
-    /// also carries the legacy <c>IsOAuth</c> shadow-column value. Used by
-    /// <c>UserEmailProviderBackfillService</c> to read the legacy flag via
-    /// <c>EF.Property&lt;bool&gt;(...)</c> without reaching back into the
-    /// deleted CLR property.
-    /// </summary>
-    Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
-        GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
-            Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every user email, read-only. Used by the duplicate-account
     /// scan to detect overlapping addresses across users. Trivial to load in
     /// full at ~500-user scale.

@@ -95,10 +95,6 @@ public class AccountProvisioningServiceTests
             return Task.FromResult<User?>(null);
         }
 
-        public Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
-
         public Task<bool> SetContactSourceIfNullAsync(
             Guid userId, ContactSource source, CancellationToken ct = default)
         {
@@ -279,10 +275,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<int> ReassignUserEmailsToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
-            GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
-                Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
