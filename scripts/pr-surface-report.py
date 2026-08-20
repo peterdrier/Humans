@@ -203,6 +203,38 @@ def compare_number_maps(base: dict[str, int], head: dict[str, int]) -> list[tupl
     return sorted(rows, key=lambda row: (-abs(row[3]), row[0]))
 
 
+METRIC_ROWS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("locProd", ("locProd",)),
+    ("files", ("files",)),
+    ("classes", ("classes",)),
+    ("interfaces", ("interfaces",)),
+    ("methods", ("methods",)),
+    ("cognitive p95", ("cognitive", "p95")),
+    ("cognitive max", ("cognitive", "max")),
+    ("cyclomatic p95", ("cyclomatic", "p95")),
+    ("cyclomatic max", ("cyclomatic", "max")),
+    ("maxClassLoc", ("maxClassLoc",)),
+)
+
+
+def metric_at(score: dict, path: tuple[str, ...]) -> int:
+    node: object = score.get("metrics") or {}
+    for key in path:
+        if not isinstance(node, dict):
+            return 0
+        node = node.get(key)
+    return int(node or 0)
+
+
+def metrics_by_name(score: dict) -> dict[str, int]:
+    return {label: metric_at(score, path) for label, path in METRIC_ROWS}
+
+
+def write_surface_by_section(score: dict) -> dict[str, set[str]]:
+    by_section = (score.get("publicWriteSurface") or {}).get("bySection") or {}
+    return {str(name): set(map(str, ifaces)) for name, ifaces in by_section.items()}
+
+
 def groups_by_name(score: dict) -> dict[str, int]:
     return {
         str(group["name"]): int(group.get("total") or 0)
@@ -305,15 +337,16 @@ def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> 
         return "### Reforge Surface Score\n\nNot available for this run.\n"
 
     sections: list[str] = ["### Reforge Surface Score", ""]
-    total_delta = int(head_score.get("total") or 0) - int(base_score.get("total") or 0)
-    sections.extend(
-        [
-            "| metric | base | head | delta |",
-            "|---|---:|---:|---:|",
-            f"| total | {int(base_score.get('total') or 0)} | {int(head_score.get('total') or 0)} | {format_delta(total_delta)} |",
-            "",
-        ]
-    )
+    sections.extend(["| metric | base | head | delta |", "|---|---:|---:|---:|"])
+    # The total alone hides an offsetting trade: API added while method complexity is deleted nets
+    # to zero. The two axes are scored separately, so report them separately.
+    for label, key in (("total", "total"), ("surface", "surfaceTotal"), ("internal complexity", "internalComplexityTotal")):
+        if key not in base_score and key not in head_score:
+            continue  # an older reforge that never emitted the key: no row beats a row of zeros
+        base_value = int(base_score.get(key) or 0)
+        head_value = int(head_score.get(key) or 0)
+        sections.append(f"| {label} | {base_value} | {head_value} | {format_delta(head_value - base_value)} |")
+    sections.append("")
 
     section_rows = compare_number_maps(groups_by_name(base_score), groups_by_name(head_score))
     if section_rows:
@@ -337,7 +370,65 @@ def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> 
     else:
         sections.extend(["#### Rule Deltas", "", "No rule score changes.", ""])
 
+    # Size is the context a score delta lacks: surface can fall because the API shrank or because
+    # the code did, and most internal-complexity points are satisfiable without moving any code.
+    metric_rows = compare_number_maps(metrics_by_name(base_score), metrics_by_name(head_score))
+    if metric_rows:
+        sections.extend(["#### Corpus Size & Complexity", "", "| metric | base | head | delta |", "|---|---:|---:|---:|"])
+        sections.extend(
+            f"| {md_safe(name)} | {base} | {head} | {format_delta(delta)} |"
+            for name, base, head, delta in metric_rows
+        )
+        head_metrics = head_score.get("metrics") or {}
+        holders = [
+            f"largest class `{md_safe(str(head_metrics.get('maxClassLocName') or ''))}`"
+            if head_metrics.get("maxClassLocName")
+            else "",
+            f"most complex method `{md_safe(str((head_metrics.get('cognitive') or {}).get('maxMethod') or ''))}`"
+            if (head_metrics.get("cognitive") or {}).get("maxMethod")
+            else "",
+        ]
+        holders = [h for h in holders if h]
+        if holders:
+            sections.extend(["", "At head: " + ", ".join(holders) + "."])
+        sections.append("")
+
+    sections.extend(write_surface_markdown(base_score, head_score))
+
     return "\n".join(sections)
+
+
+def write_surface_markdown(base_score: dict, head_score: dict) -> list[str]:
+    """Which sections publish write capability another assembly can call. Reported, never scored."""
+    base_by_section = write_surface_by_section(base_score)
+    head_by_section = write_surface_by_section(head_score)
+    head_summary = head_score.get("publicWriteSurface") or {}
+    if not base_by_section and not head_by_section and not head_summary:
+        return []
+
+    lines = ["#### Published Write Surface", ""]
+    published = int(head_summary.get("publishingSections") or 0)
+    of_sections = int(head_summary.get("sections") or 0)
+    interfaces = int(head_summary.get("interfaces") or 0)
+    base_summary = base_score.get("publicWriteSurface") or {}
+    lines.append(
+        f"{published} of {of_sections} sections publish write capability, {interfaces} interfaces "
+        f"({format_delta(interfaces - int(base_summary.get('interfaces') or 0))})."
+    )
+
+    added: list[str] = []
+    removed: list[str] = []
+    for name in sorted(set(base_by_section) | set(head_by_section)):
+        before = base_by_section.get(name, set())
+        after = head_by_section.get(name, set())
+        added.extend(f"`{md_safe(name)}` -> `{md_safe(iface)}`" for iface in sorted(after - before))
+        removed.extend(f"`{md_safe(name)}` -> `{md_safe(iface)}`" for iface in sorted(before - after))
+    if added:
+        lines.extend(["", "**Newly published**", "", bullet_list(added)])
+    if removed:
+        lines.extend(["", "**No longer published**", "", bullet_list(removed)])
+    lines.append("")
+    return lines
 
 
 def build_markdown(
