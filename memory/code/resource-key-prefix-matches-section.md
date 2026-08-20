@@ -3,7 +3,9 @@ name: Resource key prefix matches the section name
 description: Every new resource key in a section's `<Section>Resource.resx` is prefixed with the section name plus an underscore — `Users_`, `Tickets_`, `Camps_`. Existing keys are not backfilled; new keys follow the rule.
 ---
 
-**A resource key's prefix is its section's name.** `Humans.Users` → `Users_`, `Humans.Tickets` → `Tickets_`, `Humans.CityPlanning` → `CityPlanning_`. The section name verbatim as the project spells it, then `_`, then whatever structure the key needs (`Users_Profile_Title`, `Camps_Index_BarrioGuide`).
+**A resource key's prefix is its section's name.** `Humans.Users` → `Users_`, `Humans.Tickets` → `Tickets_`, `Humans.CityPlanning` → `CityPlanning_`. The section name verbatim as the project spells it — **plural, PascalCase** — then `_`, then whatever structure the key needs (`Users_Profile_Title`, `Camps_Index_BarrioGuide`).
+
+Keys are PascalCase in every segment, not lowercase: all 2,618 keys in the tree on 2026-08-20 were, with no exceptions. The underscore is a separator between segments, not a word separator inside one.
 
 The prefix stops being a second, hand-maintained taxonomy. Once a section owns its own resx set, a key's *file* already says which section it belongs to — a prefix that disagrees is a name that has to be looked up instead of read, and a key living in the wrong set no longer announces itself.
 
