@@ -240,7 +240,7 @@ internal sealed partial class UserRepository : IUserRepository
         var profile = await ctx.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
-        user.State = UserStateClassifier.Classify(user, profile);
+        user.State = UserStateEvaluator.Classify(user, profile);
     }
 
     public async Task<bool> AnonymizeForMergeAsync(

@@ -188,17 +188,12 @@ public class EventsControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = burnerName,
-            FirstName = "Test",
-            LastName = "User",
-            IsApproved = true,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
+        var profile = UserFixtures.Profile(
+            burnerName: burnerName,
+            firstName: "Test",
+            lastName: "User",
+            state: null,
+            isApproved: true);
         var user = new User
         {
             Id = userId,
@@ -212,9 +207,6 @@ public class EventsControllerTests
             eventParticipations: [],
             externalLogins: [],
             profile: profile,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
     }
 }

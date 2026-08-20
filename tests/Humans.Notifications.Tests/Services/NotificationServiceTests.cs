@@ -130,14 +130,11 @@ public class NotificationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
-            Id = Guid.NewGuid(),
             UserId = userId,
             Category = MessageCategory.TeamUpdates,
             InboxEnabled = false,
-            UpdatedAt = _clock.GetCurrentInstant(),
-            UpdateSource = "Test"
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -157,14 +154,11 @@ public class NotificationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
-            Id = Guid.NewGuid(),
             UserId = userId,
             Category = MessageCategory.System,
             InboxEnabled = false,
-            UpdatedAt = _clock.GetCurrentInstant(),
-            UpdateSource = "Test"
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 

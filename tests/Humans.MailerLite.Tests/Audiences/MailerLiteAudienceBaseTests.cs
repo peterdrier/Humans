@@ -65,24 +65,20 @@ public class MailerLiteAudienceBaseTests
 
     private static UserInfo InfoWithMarketing(Guid userId, bool? optedOut)
     {
-        IReadOnlyList<CommunicationPreference> prefs = optedOut is null
+        IReadOnlyList<CommunicationPreferenceInfo> prefs = optedOut is null
             ? []
             :
             [
-                new CommunicationPreference
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    Category = MessageCategory.Marketing,
-                    OptedOut = optedOut.Value,
-                    UpdatedAt = Instant.FromUnixTimeSeconds(0),
-                    UpdateSource = "Test",
-                },
+                UserFixtures.Preference(
+                    category: MessageCategory.Marketing,
+                    optedOut: optedOut.Value,
+                    updatedAt: Instant.FromUnixTimeSeconds(0),
+                    updateSource: "Test"),
             ];
 
         return UserInfo.Create(
             new User { Id = userId, DisplayName = "u", PreferredLanguage = "en" },
-            [], [], [], profile: null, [], [], [], prefs);
+            [], [], [], profile: null, prefs);
     }
 
     private sealed class FakeAudience(HashSet<Guid> raw, IUserService users)

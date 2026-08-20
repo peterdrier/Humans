@@ -18,9 +18,23 @@ internal static class NotificationTestFixtures
     /// </summary>
     internal sealed class PreferenceRegistry
     {
-        public List<CommunicationPreference> CommunicationPreferences { get; } = [];
+        public List<PreferenceRow> CommunicationPreferences { get; } = [];
 
         public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// The columns of a <c>communication_preferences</c> row these tests seed. Owned here
+    /// rather than the section's entity, which is internal to <c>Humans.Users</c>
+    /// (nobodies-collective/Humans#1051).
+    /// </summary>
+    internal sealed class PreferenceRow
+    {
+        public Guid UserId { get; init; }
+
+        public MessageCategory Category { get; init; }
+
+        public bool InboxEnabled { get; init; } = true;
     }
 
     /// <summary>
@@ -47,5 +61,5 @@ internal static class NotificationTestFixtures
 
     /// <summary>Minimal <see cref="UserInfo"/> projection — the meter tests only read counts.</summary>
     internal static UserInfo ToUserInfo(this User user) =>
-        UserInfo.Create(user, [], [], [], profile: null, [], [], [], []);
+        UserInfo.Create(user, [], [], [], profile: null, []);
 }

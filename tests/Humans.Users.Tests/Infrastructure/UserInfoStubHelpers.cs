@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Infrastructure;
 
@@ -18,7 +19,7 @@ internal static class UserInfoStubHelpers
         this User user,
         IReadOnlyList<UserEmail>? userEmails = null,
         Profile? profile = null)
-        => UserInfo.Create(
+        => UserInfoFactory.Create(
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
@@ -30,7 +31,7 @@ internal static class UserInfoStubHelpers
             []);
 
     public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
-        => UserInfo.Create(
+        => UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],

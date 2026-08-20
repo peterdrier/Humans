@@ -76,7 +76,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             }
             : null;
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: user,
             userEmails: emails,
             eventParticipations: [],

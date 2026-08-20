@@ -249,7 +249,7 @@ public class ScannerControllerTests
                     CheckedInAt = checkedInAt,
                 },
             ],
-            [], profile: null, [], [], [], []));
+            [], profile: null, []));
 
         var calendarFeed = Substitute.For<IICalFeedService>();
         var shiftItem = new CalendarFeedItem(

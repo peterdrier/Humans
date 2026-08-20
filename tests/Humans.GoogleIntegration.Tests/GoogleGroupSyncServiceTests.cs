@@ -24,7 +24,7 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
+    private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
@@ -704,14 +704,9 @@ public sealed class GoogleGroupSyncServiceTests
 
         foreach (var u in users)
         {
-            _profilesByUserId[u.UserId] = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = u.UserId,
-                State = ProfileState.Active,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            };
+            _profilesByUserId[u.UserId] = UserFixtures.Profile(
+                state: ProfileState.Active,
+                createdAt: _clock.GetCurrentInstant());
         }
     }
 
@@ -719,15 +714,10 @@ public sealed class GoogleGroupSyncServiceTests
     {
         foreach (var p in profiles)
         {
-            _profilesByUserId[p.UserId] = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = p.UserId,
-                BurnerName = p.BurnerName ?? string.Empty,
-                State = ProfileState.Active,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            };
+            _profilesByUserId[p.UserId] = UserFixtures.Profile(
+                burnerName: p.BurnerName ?? string.Empty,
+                state: ProfileState.Active,
+                createdAt: _clock.GetCurrentInstant());
         }
     }
 

@@ -483,7 +483,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 // (design §15 step 8).
                 new Dictionary<Guid, UserInfo>
                 {
-                    [userId] = UserInfo.Create(testUser, [], [], [], profile: null, [], [], [], []),
+                    [userId] = UserInfo.Create(testUser, [], [], [], profile: null, []),
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));

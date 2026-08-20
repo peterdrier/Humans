@@ -46,24 +46,23 @@ public class CantinaDailyRosterServiceTests
         _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock);
     }
 
-    /// <summary>Builds a Profile carrying burner name + dietary (dietary lives on Profile).</summary>
-    private static Profile Human(
+    /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
+    private static (Guid UserId, ProfileInfo Profile) Human(
         Guid userId,
         string burner,
         string? dietary = null,
         IReadOnlyList<string>? allergies = null,
         string? allergyOther = null,
         IReadOnlyList<string>? intolerances = null,
-        string? intoleranceOther = null) => new()
-        {
-            UserId = userId,
-            BurnerName = burner,
-            DietaryPreference = dietary,
-            Allergies = allergies is null ? [] : [.. allergies],
-            AllergyOtherText = allergyOther,
-            Intolerances = intolerances is null ? [] : [.. intolerances],
-            IntoleranceOtherText = intoleranceOther,
-        };
+        string? intoleranceOther = null) => (
+        userId,
+        UserFixtures.Profile(
+            burnerName: burner,
+            dietaryPreference: dietary,
+            allergies: allergies,
+            allergyOtherText: allergyOther,
+            intolerances: intolerances,
+            intoleranceOtherText: intoleranceOther));
 
     private static BurnSettingsInfo ActiveEvent() => new(
         Id: Guid.NewGuid(),
@@ -249,13 +248,10 @@ public class CantinaDailyRosterServiceTests
 
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
-        SetupHumans(new Profile
-        {
-            UserId = userId,
-            BurnerName = "Sensitive",
-            DietaryPreference = "Omnivore",
-            MedicalConditions = "Severe peanut allergy",
-        });
+        SetupHumans((userId, UserFixtures.Profile(
+            burnerName: "Sensitive",
+            dietaryPreference: "Omnivore",
+            medicalConditions: "Severe peanut allergy")));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -325,19 +321,16 @@ public class CantinaDailyRosterServiceTests
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
-    private void SetupHumans(params Profile[] profiles)
+    private void SetupHumans(params (Guid UserId, ProfileInfo Profile)[] profiles)
     {
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
-                user: new User { Id = p.UserId, DisplayName = p.BurnerName, PreferredLanguage = "en" },
+                user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 eventParticipations: [],
                 externalLogins: [],
-                profile: p,
-                contactFields: [],
-                profileLanguages: [],
-                volunteerHistory: [],
+                profile: p.Profile,
                 communicationPreferences: []));
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

@@ -63,7 +63,7 @@ public abstract class AuthTestHarness : IDisposable
             Email = $"test-{id ?? Guid.NewGuid()}@test.com",
             PreferredLanguage = "en"
         };
-        _users[user.Id] = UserInfo.Create(user, [], [], [], profile: null, [], [], [], []);
+        _users[user.Id] = UserInfo.Create(user, [], [], [], profile: null, []);
         return user;
     }
 

@@ -317,9 +317,6 @@ public class IssuesApiControllerTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
         _users.GetUserInfosAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(issue.ReporterUserId)),

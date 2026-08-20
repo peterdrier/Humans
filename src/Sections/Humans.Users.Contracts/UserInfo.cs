@@ -346,17 +346,22 @@ public sealed record UserInfo(
         && Profile.RejectedAt is null
         && !IsTombstone;
 
-    /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
+    /// <summary>
+    /// Builds <see cref="UserInfo"/> from the projections of the 8 contributing tables;
+    /// snapshotting + ordering happen here so the cached payload is immutable. The six
+    /// Profile-side entities are internal to <c>Humans.Users</c>, so the entity-taking factory is
+    /// <c>Humans.Users.Services.UserInfoFactory</c> and this overload names none of them — it
+    /// stays public because thirty section test projects build a <see cref="UserInfo"/> through
+    /// it and internalising it would trade six <c>InternalsVisibleTo</c> grants for thirty
+    /// (nobodies-collective/Humans#1051).
+    /// </summary>
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
         IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
-        Profile? profile,
-        IReadOnlyList<ContactField> contactFields,
-        IReadOnlyList<ProfileLanguage> profileLanguages,
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
-        IReadOnlyList<CommunicationPreference> communicationPreferences)
+        ProfileInfo? profile,
+        IReadOnlyList<CommunicationPreferenceInfo> communicationPreferences)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -377,83 +382,13 @@ public sealed record UserInfo(
             .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
             .ToList();
 
-        ProfileInfo? profileInfo = null;
-        if (profile is not null)
-        {
-            var contactFieldInfos = contactFields
-                .OrderBy(c => c.DisplayOrder)
-                .Select(c => new ContactFieldInfo(
-                    c.Id, c.FieldType, c.CustomLabel, c.Value, c.Visibility, c.DisplayOrder))
-                .ToList();
-
-            var languageInfos = profileLanguages
-                .OrderByDescending(l => l.Proficiency)
-                .ThenBy(l => l.LanguageCode, StringComparer.OrdinalIgnoreCase)
-                .Select(l => new ProfileLanguageInfo(l.Id, l.LanguageCode, l.Proficiency))
-                .ToList();
-
-            var volunteerHistoryInfos = volunteerHistory
-                .OrderByDescending(v => v.Date)
-                .Select(v => new VolunteerHistoryInfo(v.Id, v.Date, v.EventName, v.Description))
-                .ToList();
-
-            profileInfo = new ProfileInfo(
-                Id: profile.Id,
-                BurnerName: profile.BurnerName,
-                FirstName: profile.FirstName,
-                LastName: profile.LastName,
-                City: profile.City,
-                CountryCode: profile.CountryCode,
-                Latitude: profile.Latitude,
-                Longitude: profile.Longitude,
-                PlaceId: profile.PlaceId,
-                Bio: profile.Bio,
-                Pronouns: profile.Pronouns,
-                BirthdayDay: profile.DateOfBirth?.Day,
-                BirthdayMonth: profile.DateOfBirth?.Month,
-                EmergencyContactName: profile.EmergencyContactName,
-                EmergencyContactPhone: profile.EmergencyContactPhone,
-                EmergencyContactRelationship: profile.EmergencyContactRelationship,
-                DietaryPreference: profile.DietaryPreference,
-                Allergies: profile.Allergies,
-                AllergyOtherText: profile.AllergyOtherText,
-                Intolerances: profile.Intolerances,
-                IntoleranceOtherText: profile.IntoleranceOtherText,
-                MedicalConditions: profile.MedicalConditions,
-                HasCustomPicture: profile.ProfilePictureContentType is not null,
-                ProfilePictureContentType: profile.ProfilePictureContentType,
-                CreatedAt: profile.CreatedAt,
-                UpdatedAt: profile.UpdatedAt,
-                AdminNotes: profile.AdminNotes,
-                ContributionInterests: profile.ContributionInterests,
-                BoardNotes: profile.BoardNotes,
-                Iban: profile.Iban,
-                State: profile.State,
-                IsApproved: profile.IsApproved,
-                MembershipTier: profile.MembershipTier,
-                ConsentCheckStatus: profile.ConsentCheckStatus,
-                ConsentCheckAt: profile.ConsentCheckAt,
-                ConsentCheckedByUserId: profile.ConsentCheckedByUserId,
-                ConsentCheckNotes: profile.ConsentCheckNotes,
-                RejectionReason: profile.RejectionReason,
-                RejectedAt: profile.RejectedAt,
-                RejectedByUserId: profile.RejectedByUserId,
-                NoPriorBurnExperience: profile.NoPriorBurnExperience,
-                ContactFields: contactFieldInfos,
-                Languages: languageInfos,
-                VolunteerHistory: volunteerHistoryInfos);
-        }
-
         var communicationPreferenceInfos = communicationPreferences
             .OrderBy(c => c.Category)
-            .Select(c => new CommunicationPreferenceInfo(
-                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
-                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
             .ToList();
 
         var legacyDisplayName = user.DisplayName;
-        var burnerName = profileInfo is not null && !string.IsNullOrWhiteSpace(profileInfo.BurnerName)
-            ? profileInfo.BurnerName
+        var burnerName = profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
+            ? profile.BurnerName
             : legacyDisplayName;
         var isGdprAnonymized = string.Equals(
             legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
@@ -482,7 +417,7 @@ public sealed record UserInfo(
             UserEmails: userEmailInfos,
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
-            Profile: profileInfo,
+            Profile: profile,
             CommunicationPreferences: communicationPreferenceInfos)
         {
             State = user.State,

@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Tickets.Contracts;
@@ -31,7 +32,7 @@ public class GuestAccountControllerTests
     private GuestAccountController BuildSut(User user)
     {
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+            .Returns(new ValueTask<UserInfo?>(UserInfoFactory.Create(
                 user,
                 [],
                 [],

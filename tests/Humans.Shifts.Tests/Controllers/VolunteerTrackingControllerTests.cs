@@ -24,6 +24,8 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -71,7 +73,7 @@ public class VolunteerTrackingControllerTests
         {
             _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
             _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
-                .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                .Returns(new ValueTask<UserInfo?>(UserInfoFactory.Create(
                     currentUser,
                     [],
                     [],
@@ -776,7 +778,7 @@ public class VolunteerTrackingControllerTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: user,
             userEmails: [],
             eventParticipations: [],

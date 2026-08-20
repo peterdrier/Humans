@@ -70,34 +70,18 @@ public sealed class ConsentControllerTests
         return ctrl;
     }
 
-    private static Profile StubProfile(Guid userId) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        BurnerName = "",
-        FirstName = "",
-        LastName = "",
-        State = ProfileState.Stub,
-        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    };
+    private static ProfileInfo StubProfile() => UserFixtures.Profile(state: ProfileState.Stub);
 
-    private static Profile ActiveProfile(Guid userId) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        BurnerName = "Burner",
-        FirstName = "First",
-        LastName = "Last",
-        State = ProfileState.Active,
-        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    };
+    private static ProfileInfo ActiveProfile() => UserFixtures.Profile(
+        burnerName: "Burner",
+        firstName: "First",
+        lastName: "Last",
+        state: ProfileState.Active);
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
-            Id = profile.UserId,
+            Id = userId,
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
@@ -106,9 +90,6 @@ public sealed class ConsentControllerTests
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     [HumansFact]
@@ -116,7 +97,7 @@ public sealed class ConsentControllerTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(StubProfile(userId)));
+            .Returns(WrapInUserInfo(userId, StubProfile()));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Review(Guid.NewGuid());
@@ -134,7 +115,7 @@ public sealed class ConsentControllerTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(StubProfile(userId)));
+            .Returns(WrapInUserInfo(userId, StubProfile()));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Submit(new ConsentSubmitModel
@@ -156,7 +137,7 @@ public sealed class ConsentControllerTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(ActiveProfile(userId)));
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
         var documentVersionId = Guid.NewGuid();
         // Service returns nothing — controller will NotFound. The point of
         // the test is that the Stub redirect was NOT taken; a NotFound is

@@ -57,16 +57,12 @@ public class MarketingAudienceTests
     private static UserInfo UserWithMarketingPref(Guid userId, bool optedOut) =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = "u", PreferredLanguage = "en" },
-            [], [], [], profile: null, [], [], [],
-            [new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = MessageCategory.Marketing,
-                OptedOut = optedOut,
-                UpdatedAt = Instant.FromUnixTimeSeconds(0),
-                UpdateSource = "Test",
-            }]);
+            [], [], [], profile: null,
+            [UserFixtures.Preference(
+                category: MessageCategory.Marketing,
+                optedOut: optedOut,
+                updatedAt: Instant.FromUnixTimeSeconds(0),
+                updateSource: "Test")]);
 
     private static UserInfo UserWithoutMarketingPref(Guid userId) =>
         UserInfoStubHelpers.MakeUserInfo(userId);

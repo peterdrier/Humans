@@ -19,6 +19,8 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -213,7 +215,7 @@ public class ShiftsControllerUserActiveSignupsTests
             IsShiftBrowsingOpen: true);
 
     private static UserInfo MakeUserInfo(Guid userId) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

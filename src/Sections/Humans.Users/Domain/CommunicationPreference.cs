@@ -1,12 +1,14 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>
 /// Tracks a user's opt-in/opt-out preference for a specific message category.
 /// One row per user per category. Used for CAN-SPAM/GDPR compliance.
 /// </summary>
-public class CommunicationPreference
+internal sealed class CommunicationPreference
 {
     public Guid Id { get; init; }
 

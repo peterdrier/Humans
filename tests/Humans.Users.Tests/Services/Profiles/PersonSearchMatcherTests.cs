@@ -109,7 +109,7 @@ public class PersonSearchMatcherTests
             })
             .ToList();
 
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: user,
             userEmails: emailEntities,
             eventParticipations: [],

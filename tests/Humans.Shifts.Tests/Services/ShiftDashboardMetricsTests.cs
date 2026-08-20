@@ -15,6 +15,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Services;
 
 using Humans.Shifts.Models;
 
@@ -1128,7 +1129,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             // tests that drive ComputeDashboardTrendsAsync (which now filters
             // LastLoginAt off the cached snapshot) can observe the fake's data.
             var users = db.Users.ToList();
-            IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfo.Create(
+            IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfoFactory.Create(
                 u,
                 userEmails: [],
                 eventParticipations: [],
@@ -1178,7 +1179,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(Guid userId, string contentType, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SaveProfileVolunteerHistoryAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguageInfo> languages, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(IReadOnlyCollection<Guid> userIds, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeMembershipTierForExpiredAsync(MembershipTier currentTier, IReadOnlyCollection<Guid> userIdsToKeep, IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser, Instant now, CancellationToken ct = default) => throw new NotSupportedException();

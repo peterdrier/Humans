@@ -116,7 +116,7 @@ public class EmailProvisioningServiceTests
             teamService);
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
             Id = userId,
@@ -128,15 +128,12 @@ public class EmailProvisioningServiceTests
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     private static void StubTargetUser(ProvisioningFixture f, Guid userId)
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Target", LastName = "Two" }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Target", lastName: "Two", state: null)));
     }
 
     [HumansFact]
@@ -215,7 +212,7 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test", state: null)));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
 
@@ -256,7 +253,7 @@ public class EmailProvisioningServiceTests
         var existingRowId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test", state: null)));
 
         // Pre-existing UNVERIFIED row before AdminMarkVerifiedAsync runs;
         // post-verification the row reads back verified but IsGoogle=false

@@ -17,6 +17,8 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -75,7 +77,7 @@ public class ShiftsControllerNameGateTests
     }
 
     private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,

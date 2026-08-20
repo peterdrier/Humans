@@ -1,11 +1,13 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>
 /// A volunteer history entry documenting a member's involvement in events, roles, or camps.
 /// </summary>
-public class VolunteerHistoryEntry
+internal sealed class VolunteerHistoryEntry
 {
     /// <summary>
     /// Unique identifier for the entry.

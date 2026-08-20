@@ -406,9 +406,6 @@ public class MailerLiteAdminControllerTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
     }
 
@@ -434,9 +431,6 @@ public class MailerLiteAdminControllerTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
     }
 }

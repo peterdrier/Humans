@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+using Humans.Base.Attributes;
+using Humans.Users.Contracts;
+
+namespace Humans.Users.Domain;
 
 /// <summary>Member profile. MembershipStatus is computed from RoleAssignments and ConsentRecords.</summary>
-public class Profile
+internal sealed class Profile
 {
     public Guid Id { get; init; }
 
