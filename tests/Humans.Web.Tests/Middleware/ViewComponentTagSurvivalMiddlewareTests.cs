@@ -85,10 +85,39 @@ public class ViewComponentTagSurvivalMiddlewareTests
     }
 
     [HumansFact]
-    public async Task NonHtmlNavigationRequest_NeverBuffers_EvenWithASurvivingElement()
+    public async Task Download_StreamsStraightThrough_EvenThoughTheBrowserAsksForItWithANavigationAcceptHeader()
     {
-        // Neither a browser page navigation (no GET, or no text/html Accept) — e.g. a JSON
-        // API call or a file download — must skip the buffer/scan entirely.
+        // A click on a download link (e.g. SurveyAdmin's "Download CSV") is an ordinary GET
+        // carrying the same `Accept: text/html` a page navigation sends — the browser cannot
+        // know the response type in advance. Only the response's Content-Type separates them,
+        // so a large export must never be collected in memory here.
+        var context = HtmlNavigationRequest();
+        var client = (MemoryStream)context.Response.Body;
+        const string csv = "id,answer\n1,yes\n";
+
+        var logger = new CapturingLogger<ViewComponentTagSurvivalMiddleware>();
+        var reachedClientBeforeNextReturned = false;
+        var middleware = new ViewComponentTagSurvivalMiddleware(
+            async ctx =>
+            {
+                ctx.Response.ContentType = "text/csv";
+                await ctx.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(csv));
+                reachedClientBeforeNextReturned = client.Length == csv.Length;
+            },
+            logger);
+
+        await middleware.InvokeAsync(context);
+
+        reachedClientBeforeNextReturned.Should().BeTrue(
+            "a non-HTML response must stream to the client as it is written, not be held until the pipeline unwinds");
+        Encoding.UTF8.GetString(client.ToArray()).Should().Be(csv);
+        logger.Entries.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task NonGetRequest_ReachesNextWithTheResponseBodyUntouched()
+    {
+        // No page renders on a POST, so the response body is never wrapped at all.
         var context = new DefaultHttpContext();
         context.Request.Method = "POST";
         context.Request.Headers.Accept = "application/json";
@@ -99,8 +128,8 @@ public class ViewComponentTagSurvivalMiddlewareTests
         var middleware = new ViewComponentTagSurvivalMiddleware(
             ctx =>
             {
-                // If the middleware buffered, Response.Body would be a MemoryStream it owns,
-                // not the one this test assigned above.
+                // If the middleware wrapped it, Response.Body would be the middleware's own
+                // stream, not the one this test assigned above.
                 bodyPassedThrough = ReferenceEquals(ctx.Response.Body, context.Response.Body);
                 return Task.CompletedTask;
             },
@@ -108,7 +137,7 @@ public class ViewComponentTagSurvivalMiddlewareTests
 
         await middleware.InvokeAsync(context);
 
-        bodyPassedThrough.Should().BeTrue("a non-navigation request must reach `next` with the original body untouched");
+        bodyPassedThrough.Should().BeTrue("a non-GET request must reach `next` with the original body untouched");
         logger.Entries.Should().BeEmpty();
     }
 }

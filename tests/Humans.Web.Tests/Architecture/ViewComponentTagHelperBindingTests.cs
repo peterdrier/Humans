@@ -196,6 +196,10 @@ public class ViewComponentTagHelperBindingTests
     }
 
     // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
+    // Comments are stripped first for the same reason call sites are: several _ViewImports
+    // files quote the exact `@addTagHelper *, Humans.Base` text inside a `@* ... *@` block to
+    // explain why the directive is there (e.g. Humans.Email's), and a quoted directive binds
+    // nothing — counting it would let the real directive be deleted with this test still green.
     private static bool ImportsAssembly(string viewPath, string srcRoot, string assemblyName)
     {
         var directive = $"@addTagHelper *, {assemblyName}";
@@ -204,11 +208,14 @@ public class ViewComponentTagHelperBindingTests
              dir = dir.Parent)
         {
             var imports = Path.Combine(dir.FullName, "_ViewImports.cshtml");
-            if (File.Exists(imports) && File.ReadAllText(imports).Contains(directive, StringComparison.Ordinal))
+            if (File.Exists(imports) && ActiveDirectives(imports).Contains(directive, StringComparison.Ordinal))
                 return true;
         }
         return false;
     }
+
+    private static string ActiveDirectives(string importsPath) =>
+        RazorComment.Replace(File.ReadAllText(importsPath), string.Empty);
 
     private static IEnumerable<string> RazorFiles(string srcRoot) =>
         Directory
