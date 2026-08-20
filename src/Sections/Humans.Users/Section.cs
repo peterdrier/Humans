@@ -128,7 +128,6 @@ public sealed class Section : ISection
         services.AddScoped<IEmailProblemsService, EmailProblemsService>();
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
-        services.AddScoped<IUserEmailProviderBackfillService, UserEmailProviderBackfillService>();
 
         // Resource-based authorization handler for UserEmail operations. The *policy* stays in
         // Shell's AuthorizationPolicyExtensions; the handler moves in with the section

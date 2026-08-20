@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Users.Data.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20260820185449_UserStateRequired")]
-    partial class UserStateRequired
+    [Migration("20260820170426_DropUserEmailIsOAuth")]
+    partial class DropUserEmailIsOAuth
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -175,11 +175,8 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("State")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Bare");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("SuppressScheduleChangeEmails")
                         .HasColumnType("boolean");
@@ -237,10 +234,6 @@ namespace Humans.Users.Data.Migrations
 
                     b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");
-
-                    b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsOAuth");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")

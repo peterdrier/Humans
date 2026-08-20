@@ -45,15 +45,6 @@ internal partial interface IUserRepository : IRepository
     Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the legacy <c>GoogleEmail</c> shadow-column value for the given
-    /// users (only entries where the column is non-null are present in the
-    /// result). The CLR property is gone — this is the only way to observe the
-    /// legacy column for the deferred backfill admin button. Read-only.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================

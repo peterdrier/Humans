@@ -172,11 +172,8 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("State")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Bare");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("SuppressScheduleChangeEmails")
                         .HasColumnType("boolean");
@@ -234,10 +231,6 @@ namespace Humans.Users.Data.Migrations
 
                     b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");
-
-                    b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsOAuth");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")
