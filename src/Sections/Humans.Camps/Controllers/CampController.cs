@@ -649,6 +649,31 @@ internal sealed class CampController(
     }
 
     [Authorize]
+    [HttpPost("{slug}/MarkFull/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkFull(string slug, Guid seasonId)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        try
+        {
+            await _campService.MarkSeasonFullAsync(seasonId);
+            SetSuccess("Season marked as full. New join requests are now blocked.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [Authorize]
     [HttpPost("{slug}/Rejoin/{seasonId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Rejoin(string slug, Guid seasonId)

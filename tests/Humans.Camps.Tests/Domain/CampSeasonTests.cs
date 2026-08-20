@@ -67,6 +67,32 @@ public class CampSeasonTests
         season.UpdatedAt.Should().Be(Now);
     }
 
+    [HumansFact]
+    public void MarkFull_FromActive_SetsFull()
+    {
+        var season = CreateSeason(CampSeasonStatus.Active);
+
+        season.MarkFull(Now);
+
+        season.Status.Should().Be(CampSeasonStatus.Full);
+        season.UpdatedAt.Should().Be(Now);
+    }
+
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Full)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    [InlineData(CampSeasonStatus.Withdrawn)]
+    public void MarkFull_FromNonActiveStatus_Throws(CampSeasonStatus source)
+    {
+        var season = CreateSeason(source);
+
+        var action = () => season.MarkFull(Now);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage($"Cannot mark full a season with status {source}.");
+    }
+
     [HumansTheory]
     [InlineData(CampSeasonStatus.Pending)]
     [InlineData(CampSeasonStatus.Active)]

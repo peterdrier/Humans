@@ -117,6 +117,14 @@ internal sealed class CampSeason
         UpdatedAt = now;
     }
 
+    public void MarkFull(Instant now)
+    {
+        EnsureStatus(CampSeasonStatus.Active, "mark full");
+
+        Status = CampSeasonStatus.Full;
+        UpdatedAt = now;
+    }
+
     public void Withdraw(Instant now)
     {
         if (Status != CampSeasonStatus.Pending && Status != CampSeasonStatus.Active)

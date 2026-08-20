@@ -363,6 +363,13 @@
                                     You are a lead for @Model.Membership.OpenSeasonYear.
                                 </div>
                             }
+                            else if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
+                            {
+                                <div class="alert alert-secondary py-2 mb-0">
+                                    <i class="fa-solid fa-ban me-1"></i>
+                                    This camp is full and not accepting new members for @Model.Membership.OpenSeasonYear.
+                                </div>
+                            }
                             else
                             {
                                 <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
@@ -435,6 +442,15 @@
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Are you sure you want to withdraw from this season?">
                                     <i class="fa-solid fa-right-from-bracket me-1"></i> Withdraw Season
+                                </button>
+                            </form>
+                        }
+                        @if ((Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin) && s.Status == CampSeasonStatus.Active)
+                        {
+                            <form asp-controller="Camp" asp-action="MarkFull" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Mark this season full? New join requests will be blocked until the season is reactivated.">
+                                    <i class="fa-solid fa-ban me-1"></i> Mark Season Full
                                 </button>
                             </form>
                         }

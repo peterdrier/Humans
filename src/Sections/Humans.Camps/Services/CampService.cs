@@ -647,6 +647,32 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         }
     }
 
+    public async Task MarkSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var year = 0;
+        var campId = Guid.Empty;
+
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            season.MarkFull(now);
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
+
+        await _auditLog.LogAsync(
+            AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
+            $"Season {year} marked as full",
+            "CampService",
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+
+    }
+
     public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -1091,14 +1117,17 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         var settings = await GetSettingsAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         var season = camp?.Seasons.FirstOrDefault(s =>
-            s.Year == settings.PublicYear
-            && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
+            s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Active);
         if (season is null)
         {
+            var isFull = camp?.Seasons.Any(s =>
+                s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Full) == true;
             return new CampMemberRequestResult(
                 Guid.Empty,
                 CampMemberRequestOutcome.NoOpenSeason,
-                "Camp is not open for membership this year.",
+                isFull
+                    ? "This camp is full and not accepting new members this year."
+                    : "Camp is not open for membership this year.",
                 CampMemberRequestNoticeLevel.Error);
         }
 
