@@ -15,8 +15,14 @@ using Humans.Shifts.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
@@ -42,6 +48,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// Negative probe (run by hand, 2026-08-20): deleting any one of the four
 /// <c>@addTagHelper</c> lines turns this test red on that bucket's marker.
 /// </para>
+/// <para>
+/// The second test measures the other half of the acceptance bar: one component
+/// instance per row must not mean one query per row.
+/// </para>
 /// </remarks>
 public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -50,7 +60,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var token = $"Zqx{Guid.NewGuid():N}"[..12];
-        var seeded = await SeedOneRowPerBucketAsync(token, ct);
+        var seeded = await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
 
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var response = await Client.GetAsync($"/Search?q={token}", ct);
@@ -74,11 +84,96 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         html.Should().NotContain("-view-component", because: "a ReSharper-rewritten vc tag is inert too");
     }
 
+    /// <summary>
+    /// One component instance per result row is only cheap if every one of them reads a
+    /// cache the section already holds, so measure it rather than assert it in a comment:
+    /// tripling the rows in each bucket must not move the query count.
+    /// </summary>
+    [HumansFact(Timeout = 180000)]
+    public async Task Tripling_the_rows_costs_no_extra_query()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var token = $"Zqx{Guid.NewGuid():N}"[..12];
+        await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
+
+        var counter = new DbCommandCounter();
+        // Replace the factory outright rather than adding a provider: Program.cs calls
+        // UseSerilog, which swaps ILoggerFactory wholesale and drops added providers.
+        // Scoped to this host, so a parallel test class cannot bleed into the count.
+        await using var counted = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(
+            services => services.AddSingleton<ILoggerFactory>(new LoggerFactory([counter]))));
+        var client = counted.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        // Dev login straight against this host: the factory helper resolves the seeded id
+        // through the *other* host's caches, which never saw it. A fresh clone has no
+        // required legal documents, so the consent seeding it also does is a no-op here.
+        await client.GetAsync($"/dev/login/{DevPersona.Admin.Slug}", ct);
+
+        // A counter that never moves would make the comparison below pass vacuously.
+        await client.GetAsync($"/Search?q={token}", ct);
+        counter.Count.Should().BeGreaterThan(0, because: "the cold pass has to reach the database");
+
+        var oneRowPerBucket = await MeasureSearchAsync(counter, client, token, ct);
+
+        await SeedOneRowPerBucketAsync(token, 1, counted.Services, ct);
+        await SeedOneRowPerBucketAsync(token, 2, counted.Services, ct);
+        var threeRowsPerBucket = await MeasureSearchAsync(counter, client, token, ct);
+
+        // Measured 2026-08-20: two commands for the whole page either way — per-request
+        // auth reads, nothing from the result rows.
+        threeRowsPerBucket.Should().Be(oneRowPerBucket,
+            because: "every row is served from its section's cache, so row count must not reach the database");
+    }
+
+    private static async Task<int> MeasureSearchAsync(
+        DbCommandCounter counter, HttpClient client, string token, CancellationToken ct)
+    {
+        // Warm first — the per-rota view cache fills one row at a time, so the cold
+        // pass is not the steady state. Then measure the request after it.
+        await client.GetAsync($"/Search?q={token}", ct);
+        counter.Reset();
+        var response = await client.GetAsync($"/Search?q={token}", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return counter.Count;
+    }
+
+    /// <summary>Counts executed commands across every section's context, off EF's own log.</summary>
+    private sealed class DbCommandCounter : ILoggerProvider, ILogger
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public void Reset() => Interlocked.Exchange(ref _count, 0);
+
+        public ILogger CreateLogger(string categoryName) =>
+            string.Equals(categoryName, DbLoggerCategory.Database.Command.Name, StringComparison.Ordinal)
+                ? this
+                : NullLogger.Instance;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (eventId.Id == RelationalEventId.CommandExecuted.Id)
+                Interlocked.Increment(ref _count);
+        }
+
+        public void Dispose() { }
+    }
+
     private sealed record SeededRows(string TeamSlug, Guid TeamId, string CampSlug);
 
-    private async Task<SeededRows> SeedOneRowPerBucketAsync(string token, CancellationToken ct)
+    /// <param name="index">Distinguishes repeat seedings under one token; row 0 keeps the bare names the bind test asserts on.</param>
+    private static async Task<SeededRows> SeedOneRowPerBucketAsync(
+        string token, int index, IServiceProvider rootServices, CancellationToken ct)
     {
-        await using var scope = Factory.Services.CreateAsyncScope();
+        var suffix = index == 0 ? string.Empty : $" {index}";
+        var slugSuffix = index == 0 ? string.Empty : $"-{index}";
+        await using var scope = rootServices.CreateAsyncScope();
         var sp = scope.ServiceProvider;
         var now = SystemClock.Instance.GetCurrentInstant();
 
@@ -86,8 +181,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         var team = new Team
         {
             Id = Guid.NewGuid(),
-            Name = $"{token} Team",
-            Slug = token.ToLowerInvariant(),
+            Name = $"{token} Team{suffix}",
+            Slug = $"{token.ToLowerInvariant()}{slugSuffix}",
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now,
@@ -100,7 +195,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         var camp = new Camp
         {
             Id = Guid.NewGuid(),
-            Slug = $"{token.ToLowerInvariant()}-camp",
+            Slug = $"{token.ToLowerInvariant()}-camp{slugSuffix}",
             ContactEmail = "search@example.org",
             ContactPhone = string.Empty,
             CreatedAt = now,
@@ -112,7 +207,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             Id = Guid.NewGuid(),
             CampId = camp.Id,
             Year = publicYear,
-            Name = $"{token} Camp",
+            Name = $"{token} Camp{suffix}",
             Status = CampSeasonStatus.Active,
             CreatedAt = now,
             UpdatedAt = now,
@@ -144,7 +239,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             Id = Guid.NewGuid(),
             EventSettingsId = eventSettings.Id,
             TeamId = team.Id,
-            Name = $"{token} Rota",
+            Name = $"{token} Rota{suffix}",
             Priority = ShiftPriority.Normal,
             Policy = SignupPolicy.Public,
             Period = RotaPeriod.Event,
@@ -160,8 +255,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         var category = new EventCategory
         {
             Id = Guid.NewGuid(),
-            Name = $"{token} Category",
-            Slug = $"{token.ToLowerInvariant()}-category",
+            Name = $"{token} Category{suffix}",
+            Slug = $"{token.ToLowerInvariant()}-category{slugSuffix}",
             DisplayOrder = 99,
             IsActive = true,
         };
@@ -172,7 +267,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             CampId = camp.Id,
             SubmitterUserId = Guid.NewGuid(),
             CategoryId = category.Id,
-            Title = $"{token} Event",
+            Title = $"{token} Event{suffix}",
             Description = "Seeded for the global-search render test.",
             StartAt = now,
             DurationMinutes = 60,
