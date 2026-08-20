@@ -20,6 +20,7 @@ public class GuideRolePrivilegeMapTests
     [InlineData("Ticket Admin", RoleNames.TicketAdmin)]
     [InlineData("Consent Coordinator", RoleNames.ConsentCoordinator)]
     [InlineData("Volunteer Coordinator", RoleNames.VolunteerCoordinator)]
+    [InlineData("Camp Lead", GuideRolePrivilegeMap.CampLead)]
     public void TryResolve_KnownDisplayName_ReturnsSystemRole(string displayName, string expectedRole)
     {
         GuideRolePrivilegeMap.TryResolve(displayName, out var role).Should().BeTrue();
@@ -30,11 +31,19 @@ public class GuideRolePrivilegeMapTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Unknown")]
-    [InlineData("Camp Coordinator")] // A team-coordinator, not a system role
+    [InlineData("Camp Coordinator")] // Not a thing: the domain term is Camp Lead
     public void TryResolve_UnknownOrEmpty_ReturnsFalse(string input)
     {
         GuideRolePrivilegeMap.TryResolve(input, out var role).Should().BeFalse();
         role.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void MappedRoles_ExcludesCampLead()
+    {
+        // MappedRoles is the resolver's IsInRole probe list. Camp lead is a per-camp role,
+        // never a claim, so probing it would be dead work and imply a system role exists.
+        GuideRolePrivilegeMap.MappedRoles.Should().NotContain(GuideRolePrivilegeMap.CampLead);
     }
 
     [HumansFact]
