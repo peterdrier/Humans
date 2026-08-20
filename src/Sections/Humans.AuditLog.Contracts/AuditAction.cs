@@ -125,6 +125,7 @@ public enum AuditAction
     StoreProductUpdated,
     StoreProductPriceChanged,
     StoreProductDeactivated,
+    StoreInvoiceIssued,
     StorePaymentRecorded,
     StorePaymentSettled,
     StorePaymentFailed,

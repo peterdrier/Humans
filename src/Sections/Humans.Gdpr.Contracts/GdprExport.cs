@@ -7,7 +7,7 @@ namespace Humans.Gdpr.Contracts;
 /// </summary>
 /// <param name="ExportedAt">
 /// Invariant ISO-8601 instant string (UTC) when the export was generated.
-/// Uses <c>Humans.Application.Extensions.NodaTimeFormattingExtensions.ToIso8601</c>.
+/// Uses <c>Humans.Base.Extensions.NodaTimeFormattingExtensions.ToIso8601</c>.
 /// </param>
 /// <param name="Sections">
 /// Ordered dictionary of section name → section data. Keys are stable JSON

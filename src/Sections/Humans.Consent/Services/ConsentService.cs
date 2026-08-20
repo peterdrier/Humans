@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
-using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
+using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;

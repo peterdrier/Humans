@@ -1,20 +1,19 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    `<vc:human>`'s component lives in the Humans.Interfaces assembly (namespace still
-   Humans.UI), so `@addTagHelper *, Humans.Interfaces` resolves it; a component still in
+   Humans.UI), so `@addTagHelper *, Humans.Base` resolves it; a component still in
    Humans.Web would render as inert literal markup (Gate).
    Guarded by EmailPageRenderTests (step 12). *@
-@using Humans.Application.Extensions
-@using Humans.Domain.Enums
+@using Humans.Base.Extensions
+@using Humans.Base.Enums
 @using Humans.Email
 @using Humans.Email.Contracts
 @using Humans.Email.Controllers
 @using Humans.Email.Models
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<EmailResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base

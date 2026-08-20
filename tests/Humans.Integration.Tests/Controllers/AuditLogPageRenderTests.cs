@@ -141,6 +141,112 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     }
 
     /// <summary>
+    /// The Profile sent-messages panel renders through <c>layout="table"</c>, in
+    /// <c>Humans.Users</c>' <c>Views/Profile</c> folder — a different
+    /// <c>_ViewImports.cshtml</c> from <c>Views/UsersAdmin</c>'s.
+    /// </summary>
+    /// <remarks>
+    /// The panel is coordinator-gated and never shows on one's own profile, so this signs in
+    /// twice: once as the volunteer whose profile is the subject, then as the admin who
+    /// satisfies <c>PolicyNames.PrivilegedSignupApprover</c>.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_profile_sent_messages_panel_renders_through_the_table_layout()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var volunteerId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var marker = $"sent-message-probe-{Guid.NewGuid():N}";
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                entityType: "User",
+                entityId: volunteerId,
+                description: marker,
+                actorUserId: adminId);
+        }
+
+        var url = $"/Profile/{volunteerId}";
+        var response = await Client.GetAsync(url, ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain(marker,
+            $"GET {url}: the seeded audit row must reach the panel — an unbound <vc:audit-log> renders nothing");
+        html.Should().NotContain("<vc:audit-log",
+            $"GET {url}: the widget must bind, not ship as literal markup");
+    }
+
+    /// <summary>
+    /// The Profile panel's column headers are localized, in a section that ships no resource
+    /// set at all.
+    /// </summary>
+    /// <remarks>
+    /// <c>layout="table"</c> would otherwise punch three English holes ("When"/"Actor"/
+    /// "Description") into a member-facing page translated in six languages. The host passes
+    /// its own <c>Common_Date</c>/<c>Common_Sender</c>/<c>Common_Preview</c> through
+    /// <c>column-labels</c>, the same caller-localizes pattern as <c>title</c> and
+    /// <c>empty-text</c>, so <c>AuditLogArchitectureTests.SectionTypesTakeNoStringLocalizer</c>
+    /// stays green. The seeded-marker test above cannot catch this — the rows arrive either way.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_profile_sent_messages_panel_localizes_its_column_headers()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var volunteerId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        // Headers only render when the table has rows; the empty state has no <thead>.
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                entityType: "User",
+                entityId: volunteerId,
+                description: $"header-localization-probe-{Guid.NewGuid():N}",
+                actorUserId: adminId);
+        }
+
+        var url = $"/Profile/{volunteerId}";
+
+        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
+        // answers from the user's PreferredLanguage and short-circuits the chain. Switch the
+        // language the way the UI does.
+        var token = ExtractAntiForgeryToken(await (await Client.GetAsync(url, ct)).Content.ReadAsStringAsync(ct));
+        token.Should().NotBeNullOrEmpty();
+        await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("culture", "es"),
+            ]), ct);
+
+        var response = await Client.GetAsync(url, ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("Mensajes enviados", "Profile_SentMessages is the panel title");
+        html.Should().Contain("Remitente", "Common_Sender must reach the Actor column header");
+        html.Should().Contain("Vista previa", "Common_Preview must reach the Description column header");
+        html.Should().NotContain("Sender", "the English default header must not survive column-labels");
+        html.Should().NotContain("Preview", "the English default header must not survive column-labels");
+    }
+
+    private static string? ExtractAntiForgeryToken(string html)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            html,
+            "name=\"__RequestVerificationToken\"[^>]{0,200}value=\"(?<token>[^\"]+)\"",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                | System.Text.RegularExpressions.RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2));
+        return match.Success ? match.Groups["token"].Value : null;
+    }
+
+    /// <summary>
     /// Every <c>&lt;vc:audit-log&gt;</c> call site in the tree sits under a
     /// <c>_ViewImports.cshtml</c> chain that binds <c>Humans.AuditLog</c>'s tag helpers.
     /// </summary>

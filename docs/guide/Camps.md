@@ -74,7 +74,7 @@ Your camp profile is **persistent year to year** — next year you only update i
 | Barrio Support comms | Barrio Support uses Humans to send communications to camp leads — water schedules, LNT reminders, power obligations. Being registered is how you receive these. |
 | Barrio store (rolling out) | Barrio services — water, ice, tokens — are becoming orderable through a store inside Humans. Details to follow from Production & Logistics. |
 
-## As a [Coordinator](Glossary.md#coordinator) (Camp Coordinator)
+## As a [Coordinator](Glossary.md#coordinator) (Camp Lead)
 
 If you are a **Camp Lead**, you can manage your specific camp. You cannot edit camps you don't lead.
 

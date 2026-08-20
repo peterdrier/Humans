@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Logging;
+using Humans.Base.Logging;
 using Serilog.Events;
 
 namespace Humans.Web.Tests.Infrastructure;

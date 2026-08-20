@@ -51,7 +51,7 @@ Each major section of the app has a terse invariant doc defining: concepts, data
 
 A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries that doc inside the project — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). Everything not yet moved is still in [`docs/sections/`](docs/sections/), and [`docs/sections/_Index.md`](docs/sections/_Index.md) is the map to both.
 
-`/Admin/*` is a nav holder, not a section — its services belong to the sections they act on.
+`/` (Home) and `/Admin/*` are Shell frames, not sections — decided in nobodies-collective/Humans#1091: they stay in `Humans.Web`, thin toward pure composition (their page bodies are section-contributed), and their services belong to the sections they act on.
 
 ## Scale and Deployment
 
@@ -100,8 +100,7 @@ After running any recurring maintenance process, update [`docs/architecture/main
 | **Code review rules (reviewer handoff)** | **[`docs/architecture/code-review-rules.md`](docs/architecture/code-review-rules.md)** |
 | **Section invariants** | **[`docs/sections/`](docs/sections/)** |
 | **Section template** | [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md) |
-| **Feature specs** | [`docs/features/`](docs/features/) |
-| Data model | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
+| **Feature specs** | `src/Sections/<Project>/Docs/features/` (per section) · [`docs/features/global/`](docs/features/global/) (cross-section) |
 | Dependency graph | [`docs/architecture/dependency-graph.md`](docs/architecture/dependency-graph.md) |
 | Analyzers/ReSharper | [`docs/architecture/code-analysis.md`](docs/architecture/code-analysis.md) |
 | Maintenance log | [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) |

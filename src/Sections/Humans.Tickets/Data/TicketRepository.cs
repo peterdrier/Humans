@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
@@ -613,6 +613,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 BuyerName = o.BuyerName,
                 BuyerEmail = o.BuyerEmail,
                 VendorOrderId = o.VendorOrderId,
+                DiscountAmount = o.DiscountAmount,
+                IsPaid = o.PaymentStatus == TicketPaymentStatus.Paid,
             })
             .ToListAsync(ct);
     }

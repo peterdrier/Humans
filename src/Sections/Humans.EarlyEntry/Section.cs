@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Services;
 using Microsoft.Extensions.Configuration;

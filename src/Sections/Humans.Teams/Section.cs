@@ -1,11 +1,11 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
@@ -65,5 +65,9 @@ public sealed class Section : ISection
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<TeamsMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
     }
 }

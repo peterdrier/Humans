@@ -19,7 +19,7 @@
     The camp enums live here rather than in the section's internal Domain/ because the
     leaf's own records name them (Budget's rule). Teams' hard floor does not apply: no
     Humans.UI partial renders any of them — _CampCard.cshtml is the section's own view.
-    G5 lane 4b-2k brought the last six of them home from Humans.Domain.Enums
+    G5 lane 4b-2k brought the last six of them home from Humans.Base.Enums
     (AdultPlayspacePolicy, KidsVisitingPolicy, ElectricalGrid, PerformanceSpaceStatus,
     SoundZone, SpaceSize) plus the CampLink value object.
 
@@ -30,7 +30,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

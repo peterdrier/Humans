@@ -2,8 +2,8 @@ using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Holded.Models;
 using Humans.Holded.Services;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
@@ -41,6 +41,16 @@ internal sealed class HoldedController(
         var statement = await admin.GetAccountStatementAsync(number, ct);
         if (statement is null) return NotFound();
         return View(statement);
+    }
+
+    /// <summary>Every leg of one journal entry — the "+N more" landing page from the account
+    /// statement's counterparty column, and the target of every Entry cell link.</summary>
+    [HttpGet("Entries/{number:int}")]
+    public async Task<IActionResult> Entry(int number, CancellationToken ct)
+    {
+        var entry = await admin.GetEntryAsync(number, ct);
+        if (entry is null) return NotFound();
+        return View(entry);
     }
 
     [HttpPost("SyncNow")]

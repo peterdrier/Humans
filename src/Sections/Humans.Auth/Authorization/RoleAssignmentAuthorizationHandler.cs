@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Auth.Authorization;

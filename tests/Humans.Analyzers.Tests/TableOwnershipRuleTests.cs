@@ -24,12 +24,12 @@ public sealed class TableOwnershipRuleTests
             }
         }
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -90,7 +90,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -99,7 +99,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -123,7 +123,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Surveys
             {
-                public sealed class SurveyRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class SurveyRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Persistence.Surveys.SurveysDbContext ctx) =>
                         ctx.Set<Humans.Domain.Entities.Survey>().Add(new Humans.Domain.Entities.Survey());
@@ -132,7 +132,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Reporting
             {
-                public sealed class ReportingRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class ReportingRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Persistence.Surveys.SurveysDbContext ctx) =>
                         ctx.Set<Humans.Domain.Entities.Survey>().Add(new Humans.Domain.Entities.Survey());
@@ -153,7 +153,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -176,7 +176,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -185,7 +185,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public int Count(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Count();
@@ -205,8 +205,8 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                [Humans.Base.Attributes.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -215,8 +215,8 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
+                [Humans.Base.Attributes.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -239,8 +239,8 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                [Humans.Base.Attributes.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -249,7 +249,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -272,7 +272,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -281,8 +281,8 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.AuditLog
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "AuditLogEntries")]
-                public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
+                [Humans.Base.Attributes.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "AuditLogEntries")]
+                public sealed class AuditLogRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -305,7 +305,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Events
             {
-                public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class EventRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
@@ -336,7 +336,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Users
             {
-                public sealed class UserRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class UserRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public int Count(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Users.Count();
@@ -345,7 +345,7 @@ public sealed class TableOwnershipRuleTests
 
             namespace Humans.GoogleIntegration.Data
             {
-                public sealed class DriveActivityMonitorRepository : Humans.Application.Interfaces.Repositories.IRepository
+                public sealed class DriveActivityMonitorRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {
                     public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Set<Humans.Domain.Entities.User>().Add(new Humans.Domain.Entities.User());

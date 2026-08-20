@@ -5,7 +5,7 @@ using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 
 namespace Humans.Users.Services;
 

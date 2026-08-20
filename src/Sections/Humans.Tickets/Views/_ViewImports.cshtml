@@ -5,18 +5,17 @@
    Two localizers by design (design §15 step 3b, Governance's variant): the section owns
    its TicketTransfer_* set, and the transfer wizard also renders Common_Back /
    Common_Cancel, which are genuinely shared vocabulary and stay in SharedResource. *@
-@using Humans.Application.Extensions
-@using Humans.Domain.Enums
+@using Humans.Base.Extensions
+@using Humans.Base.Enums
 @using Humans.Tickets
 @using Humans.Tickets.Contracts
 @using Humans.Tickets.Controllers
 @using Humans.Tickets.Domain
 @using Humans.Tickets.Models
 @using Humans.Tickets.Services.Dtos
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<TicketsResource> Localizer
@@ -26,7 +25,7 @@
    default provider discovers it and the tag helper is generated (step 6). Everything else
    the views open — <vc:human>, <vc:human-search>, <vc:access-matrix> — is Humans.UI's.
    <vc:human-summary> is still Shell's and is invoked by name. *@
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base
 @addTagHelper *, Humans.Tickets
 @* <vc:audit-log> (TicketTransferAdmin/Detail) is the AuditLog section's own component since
    G5 lane 4b-2h (nobodies-collective/Humans#866); it used to be Humans.UI's. *@

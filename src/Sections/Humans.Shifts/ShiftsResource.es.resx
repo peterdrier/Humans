@@ -1112,4 +1112,61 @@
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Los turnos de montaje ya están cerrados — contacta con tu coordinación si no puedes venir.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
+    <value>Turnos que necesitan humans ahora</value>
+  </data>
+  <data name="GetInvolved_Title" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="GetInvolved_Intro" xml:space="preserve">
+    <value>El evento funciona con energía humana. Elige turnos que encajen en tu horario — cada hora cuenta.</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
+    <value>Montaje</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
+    <value>Construye el recinto antes de abrir puertas. Trabajo físico, horarios flexibles, ideal para conocer al equipo.</value>
+  </data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve">
+    <value>Evento</value>
+  </data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
+    <value>Mantén todo en marcha durante el evento. Barras, puertas, seguridad, arte — hay algo para todos.</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
+    <value>Desmontaje</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
+    <value>Desmonta todo y no dejes rastro. Trabajo gratificante, normalmente de menor duración.</value>
+  </data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
+    <value>Ver todos los turnos</value>
+  </data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve">
+    <value>Mis turnos</value>
+  </data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve">
+    <value>plaza</value>
+  </data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve">
+    <value>plazas</value>
+  </data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
+    <value>Esto no se monta solo.</value>
+  </data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
+    <value>Mira qué hace falta y apúntate.</value>
+  </data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve">
+    <value>Encuentra a tu gente. O conviértete en la gente de alguien.</value>
+  </data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve">
+    <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
+  </data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Necesitamos tus datos alimentarios</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás apuntada a un turno largo. La cantina no puede planificar tus comidas hasta que nos digas tus preferencias.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
 </root>

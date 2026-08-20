@@ -1,8 +1,8 @@
 using System.Text;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Domain;
 using Humans.AuditLog.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.AuditLog.Contracts;

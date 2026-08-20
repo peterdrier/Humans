@@ -1,0 +1,102 @@
+namespace Humans.Base.Authorization;
+
+/// <summary>
+/// Canonical authorization policy names. Each name corresponds to a registered ASP.NET Core
+/// authorization policy. Use these constants in [Authorize(Policy = ...)] attributes,
+/// authorize-policy TagHelper attributes, and IAuthorizationService calls.
+/// </summary>
+public static class PolicyNames
+{
+    public const string AdminOnly = nameof(AdminOnly);
+    public const string BoardOrAdmin = nameof(BoardOrAdmin);
+    public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
+    public const string HumanAdminOrAdmin = nameof(HumanAdminOrAdmin);
+    public const string TeamsAdminBoardOrAdmin = nameof(TeamsAdminBoardOrAdmin);
+
+    /// <summary>
+    /// TeamsAdmin or Admin — deliberately narrower than <see cref="TeamsAdminBoardOrAdmin"/>
+    /// (Board is not included) for gates where Board access would dead-end the viewer
+    /// (e.g. the Team page's "Open store" link, which Board members can't otherwise use).
+    /// </summary>
+    public const string TeamsAdminOrAdmin = nameof(TeamsAdminOrAdmin);
+    public const string CampAdminOrAdmin = nameof(CampAdminOrAdmin);
+    public const string TicketAdminBoardOrAdmin = nameof(TicketAdminBoardOrAdmin);
+    public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
+    public const string FinanceAdminOrAdmin = nameof(FinanceAdminOrAdmin);
+    public const string EventsAdminOrAdmin = nameof(EventsAdminOrAdmin);
+    public const string CantinaAdminOrAdmin = nameof(CantinaAdminOrAdmin);
+    public const string StoreCatalogAdmin = nameof(StoreCatalogAdmin);
+    public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
+    public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
+    public const string ShiftDashboardAccess = nameof(ShiftDashboardAccess);
+    public const string VolunteerTrackingWrite = nameof(VolunteerTrackingWrite);
+    public const string ShiftDepartmentManager = nameof(ShiftDepartmentManager);
+    public const string PrivilegedSignupApprover = nameof(PrivilegedSignupApprover);
+    public const string VolunteerManager = nameof(VolunteerManager);
+    public const string MedicalDataViewer = nameof(MedicalDataViewer);
+
+    /// <summary>
+    /// Scanner tools (/Scanner/*): TicketAdmin, Board, or Admin — plus the shared
+    /// gate-terminal account (matched by its well-known id, not a role, so it never
+    /// shows up in role-assignment UI). Composite assertion policy.
+    /// </summary>
+    public const string ScannerAccess = nameof(ScannerAccess);
+
+    /// <summary>
+    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Claim POST): records a
+    /// durable admission or claims the scanning session. Deliberately distinct
+    /// from the read-only <see cref="ScannerAccess"/> so the gate's write surface
+    /// never rides on the Scanner read gate. Same principals today (TicketAdmin,
+    /// Board, Admin, or the shared gate-terminal account) but kept separate so the
+    /// two can diverge without re-opening the read path. Composite assertion policy.
+    /// </summary>
+    public const string GateAdmit = nameof(GateAdmit);
+
+    /// <summary>
+    /// Can use the app: <c>UserState == Active</c> (entered legal name).
+    /// The single nav-visibility gate replaces the former
+    /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).
+    /// </summary>
+    public const string AppAccess = nameof(AppAccess);
+
+    /// <summary>
+    /// HumanAdmin who is NOT also Admin or Board. Used for the nav "Humans" link
+    /// that only shows when the user has HumanAdmin but not the broader Board/Admin access.
+    /// Composite policy requiring a custom authorization handler.
+    /// </summary>
+    public const string HumanAdminOnly = nameof(HumanAdminOnly);
+
+    /// <summary>
+    /// Board member (standalone). Used rarely — most Board gates also include Admin.
+    /// </summary>
+    public const string BoardOnly = nameof(BoardOnly);
+
+    /// <summary>
+    /// Read-only Barrios compliance matrix: CampAdmin OR Admin OR a coordinator /
+    /// management role-holder on any team or sub-team. Broader than
+    /// <see cref="CampAdminOrAdmin"/> (which gates the camp-management surface) so
+    /// team coordinators can also see role staffing across barrios. Composite
+    /// policy requiring a custom authorization handler.
+    /// </summary>
+    public const string CampComplianceAccess = nameof(CampComplianceAccess);
+
+    /// <summary>
+    /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,
+    /// TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, NoInfoAdmin,
+    /// VolunteerCoordinator, or ConsentCoordinator. Gates the admin-shell entry
+    /// point (/Admin) so domain admins (e.g. FinanceAdmin) can reach the dashboard
+    /// and see only the sidebar items their per-item authorization permits. The
+    /// dashboard tiles themselves are aggregate counts that are safe across all
+    /// admin roles.
+    /// </summary>
+    public const string AnyAdminRole = nameof(AnyAdminRole);
+
+    /// <summary>
+    /// May assign or end the role passed as the authorization <em>resource</em> (a role-name
+    /// string): <c>AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)</c>.
+    /// Backed by Auth's resource-based <c>RoleAssignmentAuthorizationHandler</c>. The name
+    /// exists so callers outside <c>Humans.Auth</c> — <c>UsersAdminController</c> — can reach
+    /// the gate without naming the requirement type, which lives inside the section.
+    /// </summary>
+    public const string RoleAssignmentManage = nameof(RoleAssignmentManage);
+}

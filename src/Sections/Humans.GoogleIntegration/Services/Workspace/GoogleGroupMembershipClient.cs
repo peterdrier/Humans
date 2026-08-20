@@ -1,8 +1,8 @@
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Services;
-using Humans.Application.Extensions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;

@@ -2,12 +2,9 @@
 namespace Humans.Finance.Contracts;
 
 /// <summary>One row of the admin creditor-accounts overview: a cached 400000xx balance + its member bindings.</summary>
-/// <param name="Bindings">
-/// Every member bound here, oldest first — not just one. Two members on a single 400000xx point
-/// one person's expense payments at the other's creditor account, and the automatic write paths
-/// record what Holded assigned rather than refusing, so the overview must show the collision
-/// rather than pick a winner (nobodies-collective/Humans#975).
-/// </param>
+/// <param name="Bindings">Every member bound here, oldest first — not just one. The automatic write
+/// paths record a collision rather than refuse it, so the overview must show it, not pick a winner
+/// (nobodies-collective/Humans#975).</param>
 public sealed record HoldedCreditorAccountRow(
     int SupplierAccountNum,
     string Name,                    // Holded account name (legal name for member creditors)
@@ -31,13 +28,11 @@ public sealed record CreditorContactBinding(
     CreditorContactSource Source);
 
 /// <summary>Per-account statement: balance plus itemized journal lines (credit = owed/in, debit = paid/out).</summary>
-/// <param name="Contact">The Holded contact holding this account, for the statement header. Null
-/// when the cached contact list carries no contact for the number — including when Holded is
-/// unreachable, which must cost the header and not the statement.</param>
+/// <param name="Contact">The Holded contact behind this account, for the statement header. Null when
+/// the cached list has none — including when Holded is down, which costs the header, not the statement.</param>
 public sealed record HoldedCreditorLedger(
     int SupplierAccountNum,
-    string? Name,
-    decimal? Balance,
+    decimal Balance,
     decimal OwedToMember,
     IReadOnlyList<CreditorLedgerLine> Lines,
     HoldedContactInfo? Contact = null);

@@ -1,6 +1,6 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Services;
@@ -26,7 +26,7 @@ public class IssuesArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
-            because: "IssuesService owns the per-user actionable-count cache surfaced by NavBadgesViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
+            because: "IssuesService owns the per-user actionable-count cache surfaced by IssuesUserMenuViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
     }
 
     [HumansFact]

@@ -1,27 +1,13 @@
-using Humans.Domain.Enums;
-using Humans.AuditLog.Contracts;
-
 namespace Humans.Monitor.Models;
 
-internal sealed class GoogleSyncAuditEntryViewModel
-{
-    public AuditAction Action { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public string? Role { get; set; }
-    public GoogleSyncSource? SyncSource { get; set; }
-    public DateTime OccurredAt { get; set; }
-    public bool? Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public string? ResourceName { get; set; }
-    public Guid? ResourceId { get; set; }
-    public Guid? RelatedEntityId { get; set; }
-}
-
-internal sealed class GoogleSyncAuditListViewModel
-{
-    public List<GoogleSyncAuditEntryViewModel> Entries { get; set; } = [];
-    public string Title { get; set; } = string.Empty;
-    public string? BackUrl { get; set; }
-    public string? BackLabel { get; set; }
-}
+/// <summary>
+/// Page shell for the two Google-sync audit pages. The rows come from
+/// <c>&lt;vc:audit-log layout="sync"&gt;</c>, which owns the read and the render; exactly one
+/// of <see cref="ResourceId"/> / <see cref="UserId"/> is the predicate.
+/// </summary>
+internal sealed record SyncAuditViewModel(
+    string Title,
+    string? BackUrl,
+    string? BackLabel,
+    Guid? ResourceId,
+    Guid? UserId);

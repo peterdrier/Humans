@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Services;

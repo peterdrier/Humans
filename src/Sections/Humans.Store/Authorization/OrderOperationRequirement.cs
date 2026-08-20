@@ -20,6 +20,8 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement Pay = new(nameof(Pay));
     /// <summary>Delete a zero-balance order. Admin-only — camp leads and team coordinators cannot delete their own orders.</summary>
     public static readonly OrderOperationRequirement Delete = new(nameof(Delete));
+    /// <summary>Issue the order's Holded factura. Admin-only, and never on a non-billable team order.</summary>
+    public static readonly OrderOperationRequirement IssueInvoice = new(nameof(IssueInvoice));
 
     public string OperationName { get; }
 

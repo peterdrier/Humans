@@ -74,7 +74,7 @@ public class CampaignPageRenderTests(HumansTestDatabase database) : IntegrationT
             CampaignCodeId = codeId,
             UserId = adminUserId,
             AssignedAt = now,
-            LatestEmailStatus = Domain.Enums.EmailOutboxStatus.Sent,
+            LatestEmailStatus = Base.Enums.EmailOutboxStatus.Sent,
             LatestEmailAt = now,
         });
 

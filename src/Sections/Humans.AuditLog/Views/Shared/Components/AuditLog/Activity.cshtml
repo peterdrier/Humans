@@ -1,0 +1,27 @@
+@model Humans.AuditLog.ViewComponents.AuditLogComponentViewModel
+
+@* Dashboard feed: bubble, action, description, timestamp. Card chrome is the host page's. *@
+@if (Model.Events.Count == 0)
+{
+    <p class="text-muted px-3 py-3">@Model.EmptyText</p>
+}
+else
+{
+    foreach (var entry in Model.Events)
+    {
+        var bubble = entry.Action switch
+        {
+            AuditAction.TierApplicationApproved or AuditAction.TierApplicationRejected => "✓",
+            AuditAction.RoleAssigned or AuditAction.RoleEnded => "🔑",
+            _ => "·"
+        };
+        <div class="activity-item">
+            <div class="bubble">@bubble</div>
+            <div>
+                <strong>@entry.Action</strong>
+                <p>@entry.Description</p>
+            </div>
+            <span class="time">@entry.OccurredAt.ToInvariantTimestamp()</span>
+        </div>
+    }
+}

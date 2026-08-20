@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -198,5 +198,8 @@ public class CommunityFaqReaderTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(Files.Keys.ToList());
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 }

@@ -8,7 +8,7 @@ using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;

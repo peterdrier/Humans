@@ -20,7 +20,7 @@
 
     References Humans.Interfaces and nothing else — it is below Humans.Application, so this
     cannot cycle. EmailOutboxStatus, the Email section's enum, appears in CampaignGrantSummary
-    and UpdateGrantEmailStatusAsync; it keeps the Humans.Domain.Enums namespace but lives in
+    and UpdateGrantEmailStatusAsync; it keeps the Humans.Base.Enums namespace but lives in
     the Humans.Interfaces assembly since G5 lane 3a-1, so the separate Humans.Domain reference
     went with that project when lane 3b deleted it. The delivery state is
     Base vocabulary the section re-exports rather than owns, so it does not move onto the
@@ -28,7 +28,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

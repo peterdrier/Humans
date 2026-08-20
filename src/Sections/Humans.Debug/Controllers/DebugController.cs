@@ -1,16 +1,17 @@
-using Humans.Application.Configuration;
-using Humans.Application.Diagnostics;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Caching;
+using Humans.Base.Configuration;
+using Humans.Base.Diagnostics;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Admin;
+using Humans.Base.Interfaces.Caching;
 using Humans.Debug.Models;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Logging;
-using Humans.UI.Controllers;
-using Humans.UI;
-using Humans.UI.Authorization;
-using Humans.UI.Extensions;
-using Humans.UI.Models;
+using Humans.Base.Data;
+using Humans.Base.Logging;
+using Humans.Base.Controllers;
+using Humans.Base;
+using Humans.Base.Authorization;
+using Humans.Base.Extensions;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -225,7 +226,7 @@ internal sealed class DebugController(
                 Entries = snapshot.Select(e =>
                 {
                     entryCounts.TryGetValue(e.KeyType, out var activeCount);
-                    Application.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                    CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
                     return new CacheStatEntryViewModel
                     {
                         KeyType = e.KeyType,

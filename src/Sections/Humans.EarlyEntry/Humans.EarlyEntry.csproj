@@ -25,10 +25,10 @@
     <!--
       No Humans.Infrastructure reference: the section owns no tables, has no DbContext and
       no G4 gate (Scanner's shape, design §15 preconditions). TrackedCache / ICacheStats
-      live in Humans.Application.Interfaces.Caching, and HumansControllerBase / PolicyNames
+      live in Humans.Base.Interfaces.Caching, and HumansControllerBase / PolicyNames
       in Humans.UI.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

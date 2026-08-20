@@ -1,5 +1,5 @@
 using Hangfire;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Issues.Contracts;
 
 namespace Humans.Issues.Jobs;

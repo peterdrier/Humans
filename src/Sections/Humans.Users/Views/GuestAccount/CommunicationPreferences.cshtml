@@ -1,0 +1,205 @@
+@model CommunicationPreferencesViewModel
+@{
+    ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 900px;">
+        @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
+        {
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Guest" asp-action="Index">@Localizer["Dashboard_Title"]</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Localizer["CommPrefs_Title"]</li>
+                </ol>
+            </nav>
+        }
+
+        <h1>@Localizer["CommPrefs_Title"]</h1>
+        <p class="text-muted">@Localizer["CommPrefs_Description"]</p>
+
+
+        @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
+        {
+            // Reuse the controller-built DisplayName (sourced from IClock for Ticketing year).
+            // Avoids a raw DateTime.UtcNow in the view — see memory/code/nodatime-for-dates.md.
+            var highlightName = Model.Categories.FirstOrDefault(c => c.Category == highlight)?.DisplayName
+                ?? highlight.ToDisplayName();
+            <div id="oneClickBanner"
+                 class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
+                 data-category="@highlight">
+                <div>
+                    <strong>@string.Format(Localizer["CommPrefs_OneClick_Prompt"].Value, highlightName)</strong>
+                    <div class="form-text mb-0">@Localizer["CommPrefs_OneClick_Hint"]</div>
+                </div>
+                <button type="button" id="oneClickUnsubscribe" class="btn btn-warning text-nowrap">
+                    @string.Format(Localizer["CommPrefs_OneClick_Button"].Value, highlightName)
+                </button>
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 250px;">@Localizer["CommPrefs_Category"]</th>
+                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Email"]</th>
+                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Alert"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Categories.Count; i++)
+                        {
+                            var item = Model.Categories[i];
+
+                            <tr class="@(!item.EmailEditable ? "table-light" : (Model.HighlightCategory == item.Category ? "table-warning" : ""))"
+                                data-category-row="@item.Category">
+                                <td>
+                                    <div class="fw-semibold">@item.DisplayName</div>
+                                    <div class="form-text mb-0">@item.Description</div>
+                                    @if (item.Note is not null)
+                                    {
+                                        <div class="form-text text-warning-emphasis mb-0">
+                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                        </div>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.EmailEditable)
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input pref-toggle"
+                                               data-category="@item.Category"
+                                               data-channel="email"
+                                               @(item.EmailEnabled ? "checked" : null) />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               checked
+                                               disabled />
+                                        <span class="text-muted small">@Localizer["CommPrefs_AlwaysOn"]</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.AlertEditable)
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input pref-toggle"
+                                               data-category="@item.Category"
+                                               data-channel="alert"
+                                               @(item.AlertEnabled ? "checked" : null) />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               checked
+                                               disabled />
+                                        <span class="text-muted small">@Localizer["CommPrefs_AlwaysOn"]</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
+        {
+            <a asp-controller="Guest" asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToDashboard"]</a>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.pref-toggle').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var row = this.closest('tr');
+            var category = this.dataset.category;
+            var value = this.checked;
+
+            var emailCb = row.querySelector('[data-channel="email"]');
+            var alertCb = row.querySelector('[data-channel="alert"]');
+
+            var body = new URLSearchParams();
+            body.append('category', category);
+            body.append('emailEnabled', emailCb ? emailCb.checked : true);
+            body.append('alertEnabled', alertCb ? alertCb.checked : true);
+            body.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+            @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
+            {
+                @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
+            }
+
+            this.disabled = true;
+            var self = this;
+
+            fetch('@Url.Action("UpdatePreference")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error(resp.statusText);
+                row.classList.add('table-success');
+                setTimeout(function () { row.classList.remove('table-success'); }, 600);
+            }).catch(function () {
+                self.checked = !value;
+                row.classList.add('table-danger');
+                setTimeout(function () { row.classList.remove('table-danger'); }, 1500);
+            }).finally(function () {
+                self.disabled = false;
+            });
+        });
+    });
+
+    // One-click unsubscribe banner: fires the same UpdatePreference call with emailEnabled=false
+    // for the highlighted category, then collapses the banner and unchecks the matrix row.
+    var oneClickBtn = document.getElementById('oneClickUnsubscribe');
+    if (oneClickBtn) {
+        oneClickBtn.addEventListener('click', function () {
+            var banner = document.getElementById('oneClickBanner');
+            var category = banner.dataset.category;
+            var row = document.querySelector('[data-category-row="' + category + '"]');
+            var emailCb = row ? row.querySelector('[data-channel="email"]') : null;
+            var alertCb = row ? row.querySelector('[data-channel="alert"]') : null;
+
+            var body = new URLSearchParams();
+            body.append('category', category);
+            body.append('emailEnabled', 'false');
+            body.append('alertEnabled', alertCb ? alertCb.checked : true);
+            body.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+            @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
+            {
+                @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
+            }
+
+            oneClickBtn.disabled = true;
+            fetch('@Url.Action("UpdatePreference")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error(resp.statusText);
+                if (emailCb) emailCb.checked = false;
+                banner.classList.remove('alert-warning');
+                banner.classList.add('alert-success');
+                banner.innerHTML = '<strong>@Html.Raw(Html.Encode(Localizer["CommPrefs_OneClick_Done"].Value))</strong>';
+            }).catch(function () {
+                banner.classList.remove('alert-warning');
+                banner.classList.add('alert-danger');
+                oneClickBtn.disabled = false;
+            });
+        });
+    }
+</script>
+}
+
+@* Anti-forgery token for AJAX posts *@
+<form id="__AjaxAntiForgeryForm" asp-antiforgery="true" style="display:none;"></form>

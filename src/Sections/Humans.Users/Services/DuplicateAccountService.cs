@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 

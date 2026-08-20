@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Teams.Models;
 

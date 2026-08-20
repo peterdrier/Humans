@@ -5,19 +5,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Finance.Data;
 
 /// <summary>
-/// Per-section database context for the Finance section
-/// (nobodies-collective/Humans#858): maps only <c>holded_expense_docs</c>,
-/// <c>holded_category_map</c>, <c>holded_creditor_contacts</c> and
-/// <c>holded_doc_sync_state</c> (the ledger mirror moved to the Holded section), with its own
-/// <c>__EFMigrationsHistory_Finance</c> table and migrations under
-/// <c>Migrations/Finance/</c>. Same database, same connection — the split
-/// is a code-side partition of the EF model.
+/// Finance's own context (nobodies-collective/Humans#858): the four holded_* tables it owns, its own
+/// <c>__EFMigrationsHistory_Finance</c>, same database and connection. Configurations are applied
+/// explicitly, never by assembly scan, so this model cannot accrete another section's tables.
 /// </summary>
-/// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// </remarks>
 internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     : DbContext(options)
 {

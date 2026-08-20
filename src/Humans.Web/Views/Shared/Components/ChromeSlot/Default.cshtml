@@ -1,0 +1,6 @@
+@using Humans.Base.Interfaces
+@model IReadOnlyList<ChromeComponent>
+@foreach (var component in Model)
+{
+    @await Component.InvokeAsync(component.ComponentName)
+}

@@ -191,4 +191,115 @@
   <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>No se pudo inscribir.</value></data>
   <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>No se pudo inscribir para el rango de fechas.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Elige un turno</value></data>
+  <data name="Welcome_Title" xml:space="preserve">
+    <value>Bienvenida</value>
+  </data>
+  <data name="Welcome_Heading" xml:space="preserve">
+    <value>Ya estás dentro.</value>
+  </data>
+  <data name="Welcome_Subtitle" xml:space="preserve">
+    <value>Tu entrada para Elsewhere 2026 está confirmada.</value>
+  </data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve">
+    <value>Ahora vamos a hacer que esto pase entre todos.</value>
+  </data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve">
+    <value>Elsewhere no es un festival al que vienes — es uno que ayudas a construir. Cada human elige turnos: montaje antes, operación durante y desmontaje después.</value>
+  </data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve">
+    <value>Para ver los turnos y apuntarte, necesitas una cuenta en Humans. Solo lleva un par de minutos.</value>
+  </data>
+  <data name="Welcome_CTA" xml:space="preserve">
+    <value>Iniciar sesión o crear cuenta</value>
+  </data>
+  <data name="Welcome_Footer" xml:space="preserve">
+    <value>¿Ya tienes cuenta? El mismo botón — inicia sesión y llegarás directamente a los turnos.</value>
+  </data>
+  <data name="Welcome_Contact" xml:space="preserve">
+    <value>¿Preguntas? Escríbenos a</value>
+  </data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve">
+    <value>Aunque no tengas perfil, puedes gestionar tu cuenta y tus datos.</value>
+  </data>
+  <data name="Guest_AccountTitle" xml:space="preserve">
+    <value>Tus cosas</value>
+  </data>
+  <data name="Guest_BarriosDescription" xml:space="preserve">
+    <value>Los barrios que la gente construye y donde vive durante el evento</value>
+  </data>
+  <data name="Guest_CommsDescription" xml:space="preserve">
+    <value>Elige qué emails y notificaciones quieres recibir</value>
+  </data>
+  <data name="Guest_CommsTitle" xml:space="preserve">
+    <value>Comunicaciones</value>
+  </data>
+  <data name="Guest_CreateProfile" xml:space="preserve">
+    <value>Crear mi perfil</value>
+  </data>
+  <data name="Guest_DataDescription" xml:space="preserve">
+    <value>Descarga todo lo que tenemos sobre ti — es tuyo</value>
+  </data>
+  <data name="Guest_DataTitle" xml:space="preserve">
+    <value>Tus datos</value>
+  </data>
+  <data name="Guest_DeleteDescription" xml:space="preserve">
+    <value>Solicita la eliminación de tu cuenta — 30 días para cambiar de opinión</value>
+  </data>
+  <data name="Guest_DeleteTitle" xml:space="preserve">
+    <value>Desaparecer</value>
+  </data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve">
+    <value>He cambiado de opinión</value>
+  </data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve">
+    <value>Lo borraremos todo después del {0} — esperando a que termine el evento.</value>
+  </data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve">
+    <value>Vas de salida</value>
+  </data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve">
+    <value>Solicitado el {0}.</value>
+  </data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve">
+    <value>Todo desaparece el {0}. En serio.</value>
+  </data>
+  <data name="Guest_Explore" xml:space="preserve">
+    <value>Echa un vistazo</value>
+  </data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve">
+    <value>No necesitas perfil. Solo curiosidad.</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve">
+    <value>Puedes unirte a equipos</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve">
+    <value>Puedes coger turnos</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve">
+    <value>La gente sabe quién eres</value>
+  </data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve">
+    <value>Ahora mismo existes… pero nadie te ve. Crea tu perfil y de repente:</value>
+  </data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve">
+    <value>Son ~2 minutos.</value>
+  </data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve">
+    <value>¿Listo/a para dejar de ser un fantasma?</value>
+  </data>
+  <data name="Guest_Greeting" xml:space="preserve">
+    <value>Hola, {0}.</value>
+  </data>
+  <data name="Guest_Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Guest_LegalDescription" xml:space="preserve">
+    <value>Política de privacidad, términos, consentimientos — lo aburrido pero importante</value>
+  </data>
+  <data name="Guest_Subtitle" xml:space="preserve">
+    <value>Bienvenido/a a Humans — donde Nobodies Collective gestiona todo para Elsewhere.</value>
+  </data>
+  <data name="Guest_TeamsDescription" xml:space="preserve">
+    <value>Los equipos que hacen que todo funcione — sonido, seguridad, construcción, todo</value>
+  </data>
 </root>

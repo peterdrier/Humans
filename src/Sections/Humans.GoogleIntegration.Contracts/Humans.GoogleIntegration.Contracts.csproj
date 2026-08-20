@@ -56,7 +56,7 @@
 
     References Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and nothing else.
     The old Humans.Domain edge is gone with the project itself (lane 3b):
-      - GoogleSyncSource — did not come here. It keeps the Humans.Domain.Enums namespace inside
+      - GoogleSyncSource — did not come here. It keeps the Humans.Base.Enums namespace inside
         the Humans.Interfaces assembly, because Humans.AuditLog.Contracts names it in
         IAuditLogService's signature and Base's AuditEvent names it too; Base and another leaf
         cannot reach this one, so a shared home below both is the only place it fits.
@@ -65,7 +65,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

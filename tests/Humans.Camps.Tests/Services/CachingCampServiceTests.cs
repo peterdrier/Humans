@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -1,16 +1,18 @@
+using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
 
 public sealed record AdminBreadcrumbViewModel(string? GroupLabel, string? ItemLabel, string? FallbackTitle);
 
-public sealed class AdminBreadcrumbViewComponent : ViewComponent
+public sealed class AdminBreadcrumbViewComponent(
+    IEnumerable<ISectionAdminNav> navContributors) : ViewComponent
 {
     public IViewComponentResult Invoke()
     {
         var controller = (string?)RouteData.Values["controller"];
         var action = (string?)RouteData.Values["action"];
-        foreach (var group in AdminNavTree.Groups)
+        foreach (var group in AdminNavComposition.Compose(navContributors))
         {
             foreach (var item in group.Items)
             {

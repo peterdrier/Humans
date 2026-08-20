@@ -1,6 +1,6 @@
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;

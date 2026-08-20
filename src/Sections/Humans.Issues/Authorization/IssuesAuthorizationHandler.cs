@@ -1,4 +1,4 @@
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Issues.Domain;
 using Humans.Issues.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;

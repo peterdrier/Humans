@@ -1,5 +1,7 @@
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
+using Humans.AuditLog.Contracts;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using System.Net;
@@ -74,6 +76,79 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
             (resp.Headers.Location?.PathAndQuery ?? string.Empty)
                 .Should().NotContain("/Store/Order/");
         }
+    }
+
+    /// <summary>
+    /// The order page's price-change panel renders through
+    /// <c>&lt;vc:audit-log layout="table" since="..."&gt;</c> since the read moved out of
+    /// <c>StoreService</c> (nobodies-collective/Humans#816). Asserting a seeded marker is the
+    /// only probe that catches an unbound tag helper: it ships as inert literal markup with a
+    /// green build and no runtime error.
+    /// </summary>
+    [HumansFact(Timeout = 60000)]
+    public async Task Order_page_renders_price_changes_through_the_audit_view_component()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var leadId = await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
+        await SeedActiveProductAsync("Price-probe product");
+        var seasonId = await GetBarrioOneCampSeasonIdAsync();
+        seasonId.Should().NotBe(Guid.Empty);
+
+        var orderCreatedAt = SystemClock.Instance.GetCurrentInstant().Minus(Duration.FromDays(1));
+        Guid orderId;
+        Guid productId;
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
+            var product = await storeDb.Products.FirstAsync(p => p.Name == "Price-probe product", ct);
+            productId = product.Id;
+            var order = new Order
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = seasonId,
+                Year = product.Year,
+                State = OrderState.Open,
+                CreatedAt = orderCreatedAt,
+                UpdatedAt = orderCreatedAt
+            };
+            order.Lines.Add(new OrderLine
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProductId = productId,
+                Qty = 1,
+                UnitPriceSnapshot = product.UnitPriceEur,
+                VatRateSnapshot = product.VatRatePercent,
+                AddedAt = orderCreatedAt,
+                AddedByUserId = leadId
+            });
+            storeDb.Orders.Add(order);
+            await storeDb.SaveChangesAsync(ct);
+            orderId = order.Id;
+        }
+
+        // Written now, so it lands after the order's CreatedAt and survives the since filter.
+        var marker = $"price-change-probe-{Guid.NewGuid():N}";
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            await auditLog.LogAsync(
+                AuditAction.StoreProductPriceChanged,
+                entityType: "StoreProduct",
+                entityId: productId,
+                description: marker,
+                actorUserId: leadId);
+        }
+
+        var url = $"/Store/Order/{orderId}";
+        var response = await Client.GetAsync(url, ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain(marker,
+            $"GET {url}: the seeded price-change row must reach the panel");
+        html.Should().NotContain("<vc:audit-log",
+            $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     private async Task<int> SeedActiveProductAsync(string name)

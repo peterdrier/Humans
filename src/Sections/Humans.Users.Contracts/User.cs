@@ -56,7 +56,7 @@ public class User : IdentityUser<Guid>
 #pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailService for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     // COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866): dropped
-    // [Humans.Domain.Architecture.ExpiresOn("2026-09-01", reason: "Issue #635 — Identity shadow
+    // [Humans.Base.Attributes.ExpiresOn("2026-09-01", reason: "Issue #635 — Identity shadow
     // column; application reads should go through User.Email / IUserEmailService.")].
     // ExpiresOnAttribute lives in Humans.Interfaces and this leaf must reach zero
     // <ProjectReference> so Base may reference it. Lost: HUM0010 (usage sites) and HUM0011

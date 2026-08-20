@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.DependencyModel;
 

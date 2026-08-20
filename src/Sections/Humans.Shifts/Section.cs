@@ -1,17 +1,19 @@
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
+using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts;
@@ -90,6 +92,12 @@ public sealed class Section : ISection
 
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
+
+        // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
+        // SectionPolicies. CampComplianceAccessHandler moved to Camps — policy, consumers,
+        // requirement and handler are all Camps'; it reads the coordinator lookup through
+        // this section's contracts leaf (nobodies-collective/Humans#1091).
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
         // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's
         // contracts leaf — so the section pushes its own rows in

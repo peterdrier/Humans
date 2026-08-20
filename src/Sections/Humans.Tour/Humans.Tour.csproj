@@ -24,7 +24,7 @@
       No Humans.Infrastructure reference: Tour owns no tables — no DbContext, no repository,
       no migrations (the Scanner shape, G5-SECTION-TEMPLATE.md preconditions).
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

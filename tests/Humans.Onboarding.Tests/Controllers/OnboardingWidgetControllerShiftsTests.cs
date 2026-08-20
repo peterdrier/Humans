@@ -4,7 +4,7 @@ using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.UI.Constants;
+using Humans.Base.Constants;
 using Humans.Onboarding.Controllers;
 using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Http;

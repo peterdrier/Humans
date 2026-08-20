@@ -35,7 +35,6 @@ internal static class AdminHumanListAssembler
                 u.Id,
                 email,
                 u.BurnerName,
-                u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),
                 StateOf(u));

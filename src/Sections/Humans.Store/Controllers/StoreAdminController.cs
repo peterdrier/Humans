@@ -2,13 +2,13 @@ using Humans.Shifts.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Store.Models;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Store.Controllers;
@@ -103,6 +103,7 @@ internal sealed class StoreAdminController(
             UnitPriceEur = p.UnitPriceEur,
             VatRatePercent = p.VatRatePercent,
             DepositAmountEur = p.DepositAmountEur,
+            HoldedRevenueAccountNum = p.HoldedRevenueAccountNum,
             OrderableUntil = LocalDatePattern.Iso.Format(p.OrderableUntil),
             IsActive = p.IsActive
         };
@@ -129,7 +130,8 @@ internal sealed class StoreAdminController(
                 input.VatRatePercent,
                 input.DepositAmountEur,
                 input.OrderableUntil,
-                input.IsActive),
+                input.IsActive,
+                input.HoldedRevenueAccountNum),
             user.Id,
             ct);
 

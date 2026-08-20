@@ -9,7 +9,7 @@ namespace Humans.Tickets.Contracts;
 /// in appsettings.
 /// </summary>
 /// <remarks>
-/// Lives in <c>Humans.Application.Configuration</c> rather than
+/// Lives in <c>Humans.Base.Configuration</c> rather than
 /// <c>Humans.Infrastructure</c> so the Application-layer
 /// <c>TicketSyncService</c> can consume <c>IsConfigured</c> / <c>EventId</c>
 /// without reaching into Infrastructure. The TicketTailor HTTP client and stub

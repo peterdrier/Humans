@@ -2,7 +2,7 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -16,7 +16,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Users.Tests.Infrastructure;
-using Humans.UI;
+using Humans.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -126,8 +126,7 @@ public class ProfileControllerEditTests
                 NullLogger<SignInManager<User>>.Instance,
                 Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
                 Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()),
-            Substitute.For<IAuditViewerService>());
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())

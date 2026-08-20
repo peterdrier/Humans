@@ -24,7 +24,7 @@ Pure orchestrator over Profiles, Consent, Teams, and Governance. Owns no tables.
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService` (nobodies-collective#583).
 > - **Board voting** (`GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `HasBoardVotesAsync`, `CastBoardVoteAsync`, `GetUnvotedApplicationCountAsync`) → `IApplicationDecisionService` (Governance owns the `applications` + `board_votes` tables; this PR removed the OnboardingService delegating wrappers).
-> - **Admin dashboard aggregation** (`GetAdminDashboardAsync`, `GetPendingReviewCountAsync`) → `IAdminDashboardService` (`Humans.Application.Services.Dashboard`). Distinct from `IDashboardService` (single-user member dashboard) — different shapes, different consumers.
+> - **Admin dashboard aggregation** (`GetAdminDashboardAsync`) → `IAdminDashboardService` (`Humans.Base.Interfaces.Admin`, implemented by `Humans.Users.Services.AdminDashboardService`). `GetPendingReviewCountAsync` was dropped — its sole caller, the nav-badge "review" queue, dissolved with `NavBadgesViewComponent` (nobodies-collective/Humans#1091). The single-user member dashboard's old `IDashboardService` is gone too — its content is section-contributed chrome now (also #1091).
 > - **Account deletion cascade** → future `IAccountDeletionService` (nobodies-collective#582).
 
 ## Concepts

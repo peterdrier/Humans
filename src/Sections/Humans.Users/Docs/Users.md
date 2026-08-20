@@ -526,7 +526,7 @@ Self-service profile functionality lives under `/Profile`; human administration 
 | `/Profile/{id}/Admin/Emails/ClearGoogle`, `/Profile/{id}/Admin/Emails/ClearPrimary` | Admin remediation — drop a single row's flag without auto-promoting a successor |
 | `/Profile/{id}/Admin/Emails/Verify` | Admin manual verification (`PolicyNames.AdminOnly`) — marks a pending plain UserEmail row verified without consuming a token; creates a merge request when the address is already verified on another account |
 | `/Profile/Me/ShiftInfo` | Shift preferences |
-| `/Profile/Me/DietaryMedical` | Dietary preference, allergies, intolerances, medical conditions (per spec [#279](../../../../docs/features/profiles/dietary-medical-nudge.md); dashboard nudge surfaces this when a human has an active 6h+ signup) |
+| `/Profile/Me/DietaryMedical` | Dietary preference, allergies, intolerances, medical conditions (per spec [#279](features/dietary-medical-nudge.md); dashboard nudge surfaces this when a human has an active 6h+ signup) |
 | `/Profile/Me/CommunicationPreferences` | Per-category email/in-app communication preferences |
 | `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |
 | `/Profile/Me/Privacy` | Privacy / deletion |
@@ -562,14 +562,14 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 |-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
-| Coordinator (any team) or PrivilegedSignupApprover | On another human's `/Profile/{id}`, view the **Sent messages** panel — a history of in-platform messages sent to that human (`AuditAction.FacilitatedMessageSent`, up to 50 entries), sourced via `IAuditViewerService`. Not shown on own-profile views. |
+| Coordinator (any team) or PrivilegedSignupApprover | On another human's `/Profile/{id}`, view the **Sent messages** panel — a history of in-platform messages sent to that human (`AuditAction.FacilitatedMessageSent`, up to 50 entries), rendered by `<vc:audit-log layout="table">` with `column-labels` carrying the page's own `Common_Date`/`Common_Sender`/`Common_Preview` — the controller decides visibility, AuditLog owns the read, Profile owns the copy. Not shown on own-profile views. |
 | HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, approve volunteer, reject signup, view audit log, add or end role assignments). (Membership tier changes go through tier applications in Governance, not the profile admin page.) |
 | Admin | Review duplicate-account candidates and approve/reject `AccountMergeRequest`s at the unified `/Users/Admin/AccountMerges` queue (`PolicyNames.AdminOnly`; **Users** section — see [Part 1 — Users / Identity](#part-1--users--identity). |
 | Admin (non-production only) | Purge a human and all associated data |
 
 ## Invariants
 
-- `Profile.DietaryPreference` is stored as free text (`varchar(200)?`), not a constrained enum. The `/Profile/Me/Edit` and `/Profile/Me/DietaryMedical` radio groups constrain the UI to `DietaryOptions.DietaryPreferences` (Omnivore / Vegetarian / Vegan / Pescatarian), but neither `ProfileController` nor `UserService.SaveDietaryMedicalAsync` re-checks membership on POST — any non-blank string persists. Deliberate: legacy free-text values predating [#279](../../../../docs/features/profiles/dietary-medical-nudge.md) stay readable without a data migration. Allergies are the exception — the Edit path filters them against `DietaryOptions.AllergyOptions` before saving.
+- `Profile.DietaryPreference` is stored as free text (`varchar(200)?`), not a constrained enum. The `/Profile/Me/Edit` and `/Profile/Me/DietaryMedical` radio groups constrain the UI to `DietaryOptions.DietaryPreferences` (Omnivore / Vegetarian / Vegan / Pescatarian), but neither `ProfileController` nor `UserService.SaveDietaryMedicalAsync` re-checks membership on POST — any non-blank string persists. Deliberate: legacy free-text values predating [#279](features/dietary-medical-nudge.md) stay readable without a data migration. Allergies are the exception — the Edit path filters them against `DietaryOptions.AllergyOptions` before saving.
 - Every authenticated human can edit their own profile regardless of membership status (available during onboarding).
 - Contact field visibility is enforced per-field: a human viewing their own profile sees everything. Board members see everything. Coordinators see CoordinatorsAndBoard-level and below. Shared-team members see MyTeams-level and below. Other active members see only AllActiveProfiles fields.
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth".

@@ -4,12 +4,12 @@ description: Per-declaration `[Grandfathered("HUM####", ...)]` attributes (on th
 type: feedback
 ---
 
-When an analyzer rule (HUMxxxx) needs to allow existing violators while still blocking new ones, the exception **lives as an attribute on the violating declaration itself** (class, interface, or — for method-level rules like HUM0031 — the method). Use `[Grandfathered(ruleId, justification, since, issueRef)]` from `Humans.Application.Architecture`. The analyzer detects the attribute and downgrades the diagnostic from Error to Warning for that declaration only.
+When an analyzer rule (HUMxxxx) needs to allow existing violators while still blocking new ones, the exception **lives as an attribute on the violating declaration itself** (class, interface, or — for method-level rules like HUM0031 — the method). Use `[Grandfathered(ruleId, justification, since, issueRef)]` from `Humans.Base.Attributes`. The analyzer detects the attribute and downgrades the diagnostic from Error to Warning for that declaration only.
 
 **Why:** Centralised lists conflict on every merge and pull cleanup attention away from the violating code. We've been bitten by this pattern enough times (analyzer-internal allowlists, baseline-text-files, surface-budget history blocks, `.editorconfig` per-file overrides) that the project's posture is now: **lists for this purpose are dead**.
 
 **How to apply:**
-- Adding a grandfathered class: put `[Grandfathered("HUM####", justification: "<why>", since: "<YYYY-MM-DD>", issueRef: "<umbrella issue or per-class issue>")]` on the class declaration. Add a `using Humans.Application.Architecture;`. Done — no analyzer change, no editorconfig change, no test baseline.
+- Adding a grandfathered class: put `[Grandfathered("HUM####", justification: "<why>", since: "<YYYY-MM-DD>", issueRef: "<umbrella issue or per-class issue>")]` on the class declaration. Add a `using Humans.Base.Attributes;`. Done — no analyzer change, no editorconfig change, no test baseline.
 - Fixing a grandfathered class: refactor the code so the rule no longer fires, then **delete the `[Grandfathered]` attribute in the same commit**. Symmetric. The analyzer will fire Error on regression.
 - Filing a new rule: design the analyzer to inspect `INamedTypeSymbol.GetAttributes()` for `[Grandfathered]` with the matching ruleId. Emit at `DiagnosticSeverity.Warning` when matched, `DiagnosticSeverity.Error` otherwise, via the `Diagnostic.Create` overload that takes an `effectiveSeverity` argument.
 

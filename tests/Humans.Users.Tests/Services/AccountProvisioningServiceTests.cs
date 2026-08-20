@@ -2,8 +2,8 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
-using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
+using Humans.Base.Enums;
+using Humans.Base.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -53,10 +53,6 @@ file sealed class StubAuditLog : IAuditLogService
         int limit = 20,
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlyList<Guid>)[]);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>

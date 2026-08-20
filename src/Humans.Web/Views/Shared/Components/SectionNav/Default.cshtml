@@ -1,0 +1,59 @@
+@using Humans.Base.Interfaces
+@using Microsoft.Extensions.Localization
+@model IReadOnlyList<MemberNavItem>
+@inject IStringLocalizer<Humans.Base.SharedResource> NavLocalizer
+@foreach (var item in Model)
+{
+    @if (item.Children is { Count: > 0 })
+    {
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">@NavLocalizer[item.Label]</a>
+            <ul class="dropdown-menu">
+                @foreach (var child in item.Children)
+                {
+                    @if (child.Divider)
+                    {
+                        <li><hr class="dropdown-divider" /></li>
+                    }
+                    else
+                    {
+                        <li>
+                            @if (child.RawHref is not null)
+                            {
+                                <a class="dropdown-item" href="@child.RawHref">@NavLocalizer[child.Label]</a>
+                            }
+                            else
+                            {
+                                <a class="dropdown-item" asp-area="" asp-controller="@child.Controller" asp-action="@child.Action">@NavLocalizer[child.Label]</a>
+                            }
+                        </li>
+                    }
+                }
+            </ul>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            @if (item.IconCssClass is not null)
+            {
+                @if (item.RawHref is not null)
+                {
+                    <a class="nav-link @item.CssClass" href="@item.RawHref" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                }
+                else
+                {
+                    <a class="nav-link @item.CssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action" aria-label="@NavLocalizer[item.Label]" title="@NavLocalizer[item.Label]"><i class="@item.IconCssClass"></i></a>
+                }
+            }
+            else if (item.RawHref is not null)
+            {
+                <a class="nav-link @item.CssClass" href="@item.RawHref">@NavLocalizer[item.Label]</a>
+            }
+            else
+            {
+                <a class="nav-link @item.CssClass" asp-area="" asp-controller="@item.Controller" asp-action="@item.Action">@NavLocalizer[item.Label]</a>
+            }
+        </li>
+    }
+}

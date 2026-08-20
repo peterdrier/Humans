@@ -1,4 +1,4 @@
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Web.Data;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -9,7 +9,7 @@ namespace Humans.Web.Extensions;
 /// </summary>
 /// <remarks>
 /// The generic <c>AddSectionDbContext&lt;TContext&gt;</c> seam left for
-/// <see cref="Humans.Infrastructure.Hosting.SectionDbContextServiceCollectionExtensions"/> in the
+/// <see cref="Humans.Base.Hosting.SectionDbContextServiceCollectionExtensions"/> in the
 /// Humans.Interfaces (Base) assembly at G5 lane 3a-2 (nobodies-collective/Humans#866) — sections
 /// call it and may not reference Web. The rest of the type came here at lane 5b-6, which deleted
 /// Humans.Infrastructure, and was renamed from <c>InfrastructureServiceCollectionExtensions</c>
@@ -46,7 +46,7 @@ public static class PersistenceServiceCollectionExtensions
     {
         services.AddSingleton<Repositories.Admin.IAdminDatabaseDiagnosticsRepository,
             Repositories.Admin.AdminDatabaseDiagnosticsRepository>();
-        services.AddScoped<Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService,
+        services.AddScoped<Base.Interfaces.Admin.IAdminDatabaseDiagnosticsService,
             Services.AdminDatabaseDiagnosticsService>();
         return services;
     }

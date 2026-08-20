@@ -1,13 +1,14 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Stores;
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
@@ -20,10 +21,9 @@ namespace Humans.Tickets;
 /// </summary>
 /// <remarks>
 /// <c>TicketSyncJob</c> lives in this project's <c>Contracts/</c> folder since G5 lane 5b-3
-/// (nobodies-collective/Humans#866) but is <em>not</em> registered here: recurring jobs are
-/// named by concrete type in Shell's <c>UseHumansRecurringJobs</c> roll-call and there is no
-/// discovery seam for them yet, so the registration stays in Shell (design §15.6b). The
-/// other two jobs the section used to be credited with went to their real owners in the same
+/// (nobodies-collective/Humans#866); its registration and schedule are contributed via
+/// <c>SectionJobs.cs</c> (#1074's jobs seam). The other two jobs the section used to be credited
+/// with went to their real owners in the same
 /// move — <c>TicketingBudgetSyncJob</c> to <c>Humans.Budget</c> (both its collaborators are
 /// Budget's) and <c>GateVendorCheckInJob</c> to <c>Humans.Gate</c> (both its enqueue sites
 /// are Gate controllers). Shell's <c>TicketVendorHealthCheck</c> is the same shape, and it
@@ -37,6 +37,10 @@ public sealed class Section : ISection
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();
+
+        // Gate-terminal account management, provisioned from /Tickets/Admin/Gate — moved
+        // here with that controller (nobodies-collective/Humans#1091).
+        services.AddScoped<GateTerminalAccountSeeder>();
         services.AddScoped<TicketSyncService>();
         services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketSyncService>());
         services.AddScoped<ITicketSync>(sp => sp.GetRequiredService<TicketSyncService>());
@@ -83,5 +87,7 @@ public sealed class Section : ISection
             [TicketPaymentStatus.Refunded] = "bg-danger",
             [TicketPaymentStatus.Cancelled] = "bg-secondary",
         });
+
+        services.AddScoped<TicketSyncJob>();
     }
 }

@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 namespace Humans.Governance.Services;
 

@@ -33,11 +33,11 @@ Several system operations need to run automatically without user interaction: sy
 | GoogleResourceReconciliationJob | Daily 3:00 AM | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
 | HoldedExpenseOutboxJob | Every minute | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
-| HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals, plus a trailing 364-day sweep of the creditor daybook ledger (full-history backfill only on a cold cache or via the on-demand `POST /Finance/Creditors/Resync`) |
+| HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals, plus a trailing 364-day sweep of the creditor daybook ledger (full-history backfill only on a cold cache or via the on-demand `POST /Holded/FullSync`) |
 | GateRetentionJob | Daily 3:45 AM | Purge `gate_scan_events` older than `Gate:RetentionDays` (default 365; ≤ 0 disables the purge) |
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
-| MailerAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Registered only when `MailerLite:AudienceSyncCron` is set to a cron expression — the setting ships empty, so by default this job does not run at all and syncing is on-demand via the `/Mailer/Admin` "Push Now" button |
+| MailerLiteAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Registered only when `MailerLite:AudienceSyncCron` is set to a cron expression — the setting ships empty, so by default this job does not run at all and syncing is on-demand via the `/MailerLite/Admin` "Push Now" button |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 
@@ -166,7 +166,7 @@ Day 30: Suspension (handled by SuspendJob)
 
 **Preserved for audit trail**: ConsentRecords and Applications are kept (anonymized implicitly via the user record). ConsentRecords are immutable (DB triggers prevent UPDATE/DELETE).
 
-See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
+See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/features/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
 
 ---
 
@@ -380,8 +380,8 @@ BackgroundJob.Enqueue<SystemTeamSyncJob>(
 
 ## Related Features
 
-- [Legal Documents & Consent](../legal-and-consent/legal-documents-consent.md) - Document sync job
-- [Volunteer Status](../onboarding/volunteer-status.md) - Compliance jobs
-- [Teams](../teams/teams.md) - System team sync
-- [Google Integration](../google-integration/google-integration.md) - Resource provisioning job
-- [Drive Activity Monitoring](../google-integration/drive-activity-monitoring.md) - Anomalous permission detection
+- [Legal Documents & Consent](../../../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) - Document sync job
+- [Volunteer Status](../../../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) - Compliance jobs
+- [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - System team sync
+- [Google Integration](../../../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) - Resource provisioning job
+- [Drive Activity Monitoring](../../../src/Sections/Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

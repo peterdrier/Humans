@@ -20,7 +20,7 @@ an empty literal.
 reference that leaf is smaller in the moment and correct for exactly one section. Applied ten times
 it ends with Base holding a project reference to every section's vocabulary, which is the coupling
 the split exists to remove — locally cheapest, globally worst. Same verdict for
-`Humans.Interfaces`: it is the right home for an enum **two sections genuinely branch on**, and the
+`Humans.Base`: it is the right home for an enum **two sections genuinely branch on**, and the
 wrong home for one whose only cross-boundary use is a colour lookup. The test is whether the
 *type* is shared or the *concern* is; the mechanism belongs where the shared concern is.
 

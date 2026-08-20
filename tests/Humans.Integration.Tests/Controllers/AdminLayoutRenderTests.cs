@@ -1,9 +1,10 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -77,7 +78,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Google", "Humans.GoogleIntegration — Views/Google/_ViewStart"),
         ("/Governance/BoardVoting", "Humans.Governance — Views/Governance/BoardVoting/_ViewStart"),
         ("/Governance/Applications/Admin", "Humans.Governance — inline override in Applications/Admin.cshtml"),
-        ("/Mailer/Admin", "Humans.Mailer — Views/Mailer/Admin/_ViewStart"),
+        ("/MailerLite/Admin", "Humans.MailerLite — Views/MailerLite/Admin/_ViewStart"),
         ("/OnboardingReview", "Humans.Onboarding — Views/OnboardingReview/_ViewStart"),
         ("/Scanner", "Humans.Scanner — Views/Scanner/_ViewStart"),
         ("/Shifts/Dashboard", "Humans.Shifts — Views/ShiftDashboard/_ViewStart"),
@@ -137,11 +138,11 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// host — with no way to mint the session. The narrower roles keep their rows there;
     /// the widest one only exists here.
     /// <para>
-    /// Derived from <see cref="AdminNavTree.Groups"/> rather than a pinned list, so a group
-    /// or an <c>AdminOnly</c> item added later is covered without touching this file. Only
-    /// <c>AdminOnly</c> items are asserted individually: every other item carries a policy
-    /// whose satisfaction this test would have to re-derive, and re-deriving the view
-    /// component's own filter proves nothing.
+    /// Derived from the composed admin nav (<see cref="AdminNavComposition"/>) rather than a
+    /// pinned list, so a group or an <c>AdminOnly</c> item added later is covered without
+    /// touching this file. Only <c>AdminOnly</c> items are asserted individually: every other
+    /// item carries a policy whose satisfaction this test would have to re-derive, and
+    /// re-deriving the view component's own filter proves nothing.
     /// </para>
     /// </remarks>
     [HumansFact(Timeout = 180000)]
@@ -154,13 +155,16 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        foreach (var group in AdminNavTree.Groups)
+        var groups = AdminNavComposition.Compose(
+            Factory.Services.GetRequiredService<IEnumerable<ISectionAdminNav>>());
+
+        foreach (var group in groups)
         {
             html.Should().Contain($"data-group=\"{group.Label}\"",
                 $"an Admin must see the '{group.Label}' sidebar group");
         }
 
-        var adminOnlyItems = AdminNavTree.Groups
+        var adminOnlyItems = groups
             .SelectMany(g => g.Items)
             .Where(i => string.Equals(i.Policy, PolicyNames.AdminOnly, StringComparison.Ordinal))
             .ToList();
@@ -179,9 +183,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// The dashboard's two <c>AdminOnly</c> panels render for a full Admin.
     /// </summary>
     /// <remarks>
-    /// The feedback tile and the recent-activity card carry
-    /// <c>authorize-policy="AdminOnly"</c> (nobodies-collective/Humans#977): every other
-    /// admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
+    /// The feedback tile (its contribution's <c>Policy</c>) and the recent-activity card
+    /// (<c>authorize-policy="AdminOnly"</c>) are AdminOnly (nobodies-collective/Humans#977):
+    /// every other admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
     /// assert them once #1332 took the admin one away, and a tile that silently stops
     /// rendering looks identical to one the viewer was never entitled to.
     /// Filed here because this is the suite's only <c>/Admin</c> render.
@@ -196,7 +200,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Open feedback", "_DashboardStats' AdminOnly tile must render for an Admin");
+        html.Should().Contain("Open feedback", "Feedback's AdminOnly contributed tile must render for an Admin");
         html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
 
         // The tag helper strips the attribute when it lets an element through; an element

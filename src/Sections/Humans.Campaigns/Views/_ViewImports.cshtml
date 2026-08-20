@@ -1,7 +1,7 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    Guarded by CampaignPageRenderTests (step 12). *@
-@using Humans.Application.Extensions
+@using Humans.Base.Extensions
 @using Humans.Campaigns
 @using Humans.Campaigns.Contracts
 @using Humans.Campaigns.Controllers
@@ -9,14 +9,13 @@
 @using Humans.Campaigns.Models
 @using Humans.Campaigns.Services
 @using Humans.Campaigns.Services.Dtos
-@using Humans.Domain.Enums
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models
+@using Humans.Base.Enums
+@using Humans.Base
+@using Humans.Base.Models
 @using NodaTime
 @* No localizer of either kind: Campaigns' views carry no Localizer[…] call and
    SharedResource has no Campaign_ key, so the section ships no resource set at all
    (§15.3b — Finance and Gate are the other two). GateArchitectureTests' structural
    guard is the backstop if someone adds copy. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base

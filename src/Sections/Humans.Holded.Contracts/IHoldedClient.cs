@@ -45,6 +45,26 @@ public interface IHoldedClient
     /// <summary>Creates or updates a contact; returns the contact id.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
 
+    /// <summary>Creates a draft invoice or sales receipt; returns the new doc id. A draft books
+    /// nothing — follow with <see cref="ApproveSalesDocumentAsync"/>.</summary>
+    Task<string> CreateSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, HoldedSalesDocumentInput input, CancellationToken ct = default);
+
+    /// <summary>Approves a sales document. Only an approved doc books revenue and gets a number.</summary>
+    Task ApproveSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    /// <summary>Ids of the sales documents of <paramref name="kind"/> carrying <paramref name="tag"/>.
+    /// v2 has no server-side tag filter and its list responses omit <c>notes</c>, so the collection is
+    /// walked and matched on the tag client-side. Used to find a document a previous attempt already
+    /// issued before issuing a second one.</summary>
+    Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
+        HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default);
+
+    /// <summary>Reads a sales document back — the post-approval document number and totals.</summary>
+    Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
     /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 

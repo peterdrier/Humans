@@ -15,7 +15,7 @@ An **Orchestrator** exists because an action genuinely crosses multiple sections
 
 **Homed ≠ owns.** An Orchestrator may be *homed* in a section's namespace for controller-wiring convenience while *owning* no lane. Code location is not table ownership.
 
-**Enforcement (built — SP1, PR #805).** Marker `IOrchestrator` lives in `Humans.Application.Interfaces` as a sibling of `IApplicationService`. Two analyzers run in the `Humans.Application` compilation:
+**Enforcement (built — SP1, PR #805).** Marker `IOrchestrator` lives in `Humans.Base.Interfaces` as a sibling of `IApplicationService`. Two analyzers run in the `Humans.Application` compilation:
 
 - **HUM0026 — Error.** A type implementing `IOrchestrator` may not inject any `I*Repository`, section DbContext, or `IDbContextFactory<TContext>`. No grandfather machinery; a violation means the role marker is wrong (relocate the access into the owning section's Section service).
 - **HUM0027 — Error.** A type may carry `IOrchestrator` xor `IApplicationService`, never both. The role axis is exclusive — `IApplicationService` grants own-lane repository access, which an orchestrator is banned from.

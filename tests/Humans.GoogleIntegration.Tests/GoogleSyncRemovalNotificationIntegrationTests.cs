@@ -5,7 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;

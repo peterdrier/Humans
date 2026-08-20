@@ -1,15 +1,15 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
   src/Sections/Humans.Auth.Contracts/**
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
-  src/Humans.Interfaces/Authorization/PolicyNames.cs
-  src/Humans.Interfaces/Authorization/RoleChecks.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
+  src/Humans.Base/Authorization/RoleChecks.cs
   src/Humans.Web/Authorization/Requirements/**
-  src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs
-  src/Humans.Interfaces/ViewComponents/AccessMatrixViewComponent.cs
+  src/Humans.Base/Models/AccessMatrixDefinitions.cs
+  src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change.
@@ -39,7 +39,7 @@ All under `/Account`. Anti-forgery on every POST.
 | POST | `MagicLink` | anonymous | Verifies login token, signs the user in, stamps `LastLoginAt` |
 | GET | `MagicLinkSignup` | anonymous | Verifies signup token and renders the complete-signup form |
 | POST | `CompleteSignup` | anonymous | Re-verifies signup token, creates the `User` + `UserEmail`, signs the new user in (double-click safe) |
-| GET | `GateLogin` | anonymous | Renders the gate-terminal username/password form (shared laptop at gate; see `docs/features/scanner/gate-terminal-login.md`) |
+| GET | `GateLogin` | anonymous | Renders the gate-terminal username/password form (shared laptop at gate; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | POST | `GateLogin` | anonymous | Checks the credential against the well-known gate account (`SystemUserIds.GateTerminal`). Failures throttle per source IP (`GateLoginThrottle`, 10/min) — never per account, so nobody can lock the gate out; the account has Identity lockout disabled. Success signs in `isPersistent: true`, stamps `LastLoginAt`, redirects to `/Gate` (the gate terminal, which forwards to the claim screen to pick who's scanning) |
 | POST | `Logout` | (any) | Sign-out and redirect to `Home/Index` |
 | GET | `AccessDenied` | (any) | Renders the access-denied page |
@@ -67,7 +67,7 @@ Cross-domain navs `RoleAssignment.User` and `RoleAssignment.CreatedByUser` were 
 
 ### RoleNames (constants)
 
-Defined in `src/Humans.Interfaces/Constants/RoleNames.cs`.
+Defined in `src/Humans.Base/Constants/RoleNames.cs`.
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -93,10 +93,10 @@ Defined in `src/Humans.Interfaces/Constants/RoleNames.cs`.
 
 The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-authorization-transition.md`:
 
-- **Phase 1 — coarse policies** (`Humans.Interfaces/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
+- **Phase 1 — coarse policies** (`Humans.Base/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Base.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
 - **Phase 2 — resource-based authorization (first vertical slices):** shipped. Production handlers registered by `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` (`src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs`): `CampAuthorizationHandler` (resource: `Camp`) and `UserEmailAuthorizationHandler` (resource: `UserEmail`). Composite custom handlers (`HumanAdminOnlyHandler`, `IsAnyTeamManagerOrCoordinatorHandler`, and `CampComplianceAccessHandler` (policy `CampComplianceAccess`: succeeds for CampAdmin/Admin, or any team/sub-team coordinator via the cached `IShiftManagementService.GetCoordinatorTeamIdsAsync` lookup — gates the read-only Barrios role-staffing compliance matrix, broader than the CampAdmin-only `CampAdminOrAdmin` management surface)) are also registered here. The nav-visibility gate is the single `AppAccess` policy — a plain `RequireAssertion` (`UserState == Active`), no custom handler.
 
-  Section-owned resource handlers now register themselves from inside their own section (each section's `Section.cs`), not from Auth's extension method — they reuse `PolicyNames`/`RoleChecks` from `Humans.UI.Authorization` but are not part of Auth's registration surface: `TeamAuthorizationHandler` (resource: `Team`; `src/Sections/Humans.Teams/Authorization/` — gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EETeamAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; `src/Sections/Humans.Auth/Authorization/` — moved with the rest of Auth at its own G5), `AgentRateLimitHandler` (+ its now-section-internal `AgentRateLimitRequirement`; `src/Sections/Humans.Agent/Authorization/` — the requirement and the `PolicyNames.AgentRateLimit` constant left Base with the G5 Agent move), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits; `src/Sections/Humans.Budget/Authorization/`), `IssuesAuthorizationHandler` (resource: `Issue`; `src/Sections/Humans.Issues/Authorization/`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`; `src/Sections/Humans.Containers/Authorization/`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/CategoryOverride) and `IbanAccessHandler` (gates raw IBAN access for self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page) (both `src/Sections/Humans.Expenses/Authorization/`), and `OrderAuthorizationHandler` (resource: `OrderDto` / `OrderCreateContext` / `OrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths; `src/Sections/Humans.Store/Authorization/`, renamed from `StoreOrderAuthorizationHandler` when Store moved into its own project, nobodies-collective/Humans#866).
+  Section-owned resource handlers now register themselves from inside their own section (each section's `Section.cs`), not from Auth's extension method — they reuse `PolicyNames`/`RoleChecks` from `Humans.Base.Authorization` but are not part of Auth's registration surface: `TeamAuthorizationHandler` (resource: `Team`; `src/Sections/Humans.Teams/Authorization/` — gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EETeamAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; `src/Sections/Humans.Auth/Authorization/` — moved with the rest of Auth at its own G5), `AgentRateLimitHandler` (+ its now-section-internal `AgentRateLimitRequirement`; `src/Sections/Humans.Agent/Authorization/` — the requirement and the `PolicyNames.AgentRateLimit` constant left Base with the G5 Agent move), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits; `src/Sections/Humans.Budget/Authorization/`), `IssuesAuthorizationHandler` (resource: `Issue`; `src/Sections/Humans.Issues/Authorization/`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`; `src/Sections/Humans.Containers/Authorization/`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/CategoryOverride) and `IbanAccessHandler` (gates raw IBAN access for self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page) (both `src/Sections/Humans.Expenses/Authorization/`), and `OrderAuthorizationHandler` (resource: `OrderDto` / `OrderCreateContext` / `OrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths; `src/Sections/Humans.Store/Authorization/`, renamed from `StoreOrderAuthorizationHandler` when Store moved into its own project, nobodies-collective/Humans#866).
 - **Phase 3 — broad service-layer authorization enforcement:** **cancelled / tombstoned.** Superseded by `docs/architecture/design-rules.md §11`: services are auth-free by default; controllers call `IAuthorizationService.AuthorizeAsync` and do not pass `isPrivileged` booleans. The sole exception is the documented full-Admin destructive-delete/reset guard via `IAdminAuthorizationService`.
 
 ### Magic-link state
@@ -146,7 +146,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 ## Access Matrix UI (per-section)
 
 
-Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Interfaces/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Base/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 
 - **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
 - **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.

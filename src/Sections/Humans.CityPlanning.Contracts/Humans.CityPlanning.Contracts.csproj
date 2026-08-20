@@ -17,7 +17,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,13 +1,14 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Jobs;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -28,11 +29,12 @@ namespace Humans.Users;
 /// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
 /// </para>
 /// <para>
-/// Two registrations did <b>not</b> come across. <c>IDashboardService</c> and
-/// <c>IAdminDashboardService</c> sat inside <c>AddUsersSection</c> but belong to Dashboard,
-/// a Base orchestrator pair that aggregates from every section's services; they moved to
-/// Shell's <c>ServiceCollectionExtensions</c> (Governance's rule — the section that owns the
-/// file is not always the section that owns the line).
+/// <c>IDashboardService</c> and <c>IAdminDashboardService</c> are both gone entirely — the
+/// member dashboard's content and the admin dashboard's tiles are section-contributed chrome
+/// now (nobodies-collective/Humans#1091). The admin-dashboard aggregator's pieces scattered to
+/// their owning sections: the tier-applications card to Governance, the preferred-language
+/// card and audience-segmentation diagnostic stayed here (<c>IUsersAudienceService</c>), and
+/// the Venn/UpSet set-membership card to Debug.
 /// </para>
 /// <para>
 /// The <c>CachingUserService</c> block is copied as-is and is deliberately not tidied: one
@@ -42,9 +44,9 @@ namespace Humans.Users;
 /// </para>
 /// <para>
 /// <c>ProcessAccountDeletionsJob</c> and <c>SuspendNonCompliantMembersJob</c> moved into this
-/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866) but are
-/// still <em>registered</em> from Shell's <c>AdminSectionExtensions</c>: there is no
-/// <c>ISection</c>-style discovery seam for jobs (design §15 step 6b).
+/// project's <c>Contracts/</c> folder at G5 lane 5b-4 (nobodies-collective/Humans#866), and
+/// their registration followed from Shell's <c>AdminSectionExtensions</c> at #1074's jobs
+/// seam — their schedule is contributed via <c>SectionJobs.cs</c>.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -133,6 +135,9 @@ public sealed class Section : ISection
         // (design §15 step 6's asymmetry).
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
+        // Backs PolicyNames.HumanAdminOnly (registered in this section's Policies).
+        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
+
         // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
@@ -153,5 +158,12 @@ public sealed class Section : ISection
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
+
+        services.AddScoped<ProcessAccountDeletionsJob>();
+        services.AddScoped<SuspendNonCompliantMembersJob>();
+
+        // Audience-segmentation diagnostic for UsersAdminController.Audience — split off the
+        // deleted admin-dashboard aggregator at nobodies-collective/Humans#1091.
+        services.AddScoped<IUsersAudienceService, UsersAudienceService>();
     }
 }

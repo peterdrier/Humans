@@ -82,7 +82,7 @@ If a repo atom is weaker than the external version (drops a constraint or "why")
 
 ### Files in Scope
 
-`memory/INDEX.md`, `memory/META.md`, `memory/**/*.md`, `CLAUDE.md`, `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `docs/architecture/coding-rules.md`, `docs/architecture/data-model.md`, `docs/sections/*.md`
+`memory/INDEX.md`, `memory/META.md`, `memory/**/*.md`, `CLAUDE.md`, `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `docs/architecture/coding-rules.md`, `docs/sections/*.md`
 
 ### Checks
 

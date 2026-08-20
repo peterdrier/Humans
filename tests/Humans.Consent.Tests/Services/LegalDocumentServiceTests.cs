@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application;
+using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Consent.Services;

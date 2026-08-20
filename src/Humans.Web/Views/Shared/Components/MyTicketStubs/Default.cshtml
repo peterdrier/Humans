@@ -1,8 +1,0 @@
-@model IReadOnlyList<Humans.Tickets.Contracts.TicketStubInfo>
-
-<div class="d-flex flex-wrap gap-3 mt-3">
-    @foreach (var stub in Model)
-    {
-        <vc:ticket-stub stub="@stub" />
-    }
-</div>

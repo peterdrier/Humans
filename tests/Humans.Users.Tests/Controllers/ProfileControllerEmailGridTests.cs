@@ -1,7 +1,7 @@
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -15,7 +15,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Users.Tests.Infrastructure;
-using Humans.UI;
+using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -106,8 +106,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculatorRead>(),
             _signInManager,
-            Options.Create(new GoogleWorkspaceOptions()),
-            Substitute.For<IAuditViewerService>());
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())

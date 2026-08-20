@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
+using Humans.Base.Interfaces;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Campaigns.Contracts;

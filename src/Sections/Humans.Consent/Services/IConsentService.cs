@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using NodaTime;
 

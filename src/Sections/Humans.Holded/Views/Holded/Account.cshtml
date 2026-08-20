@@ -15,8 +15,8 @@
 </div>
 
 <p class="text-muted">
-    Holded's own sign convention: debit and credit as posted, balance = Σdebit − Σcredit. Read
-    straight from the mirror — this page makes no Holded calls.
+    Every figure below reads in the association's own point of view: + means its money went up,
+    − means it went down. Read straight from the mirror — this page makes no Holded calls.
     @if (!string.IsNullOrWhiteSpace(a.Group))
     {
         <text>Group: <strong>@a.Group</strong>.</text>
@@ -27,13 +27,13 @@
     <div class="col-md-3">
         <div class="card text-center h-100"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Holded balance</h6>
-            <span class="fs-4">@a.HoldedBalance.ToEuro()</span>
+            <span class="fs-4">@a.HoldedBalance.ToSignedEuro()</span>
         </div></div>
     </div>
     <div class="col-md-3">
         <div class="card text-center h-100"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Local balance</h6>
-            <span class="fs-4">@(a.LocalBalance is null ? "—" : a.LocalBalance.ToEuro())</span>
+            <span class="fs-4">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</span>
         </div></div>
     </div>
     <div class="col-md-3">
@@ -69,8 +69,8 @@
             <table class="table table-sm table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>Date</th><th>Entry</th><th>Type</th><th>Description</th>
-                        <th class="text-end">Debit</th><th class="text-end">Credit</th>
+                        <th>Date</th><th>Entry</th><th>Counterparty</th><th>Type</th><th>Description</th>
+                        <th class="text-end">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,11 +78,31 @@
                 {
                     <tr>
                         <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
-                        <td class="text-nowrap text-muted small">@l.EntryNumber/@l.Line</td>
+                        <td class="text-nowrap text-muted small">
+                            <a asp-action="Entry" asp-route-number="@l.EntryNumber">@l.EntryNumber/@l.Line</a>
+                        </td>
+                        <td class="text-nowrap">
+                            @if (l.Counterparty is { } cp)
+                            {
+                                if (cp.TotalOpposingLines <= 1)
+                                {
+                                    <a asp-action="Account" asp-route-number="@cp.AccountNum"><code>@cp.AccountNum</code> @cp.AccountName</a>
+                                }
+                                else
+                                {
+                                    <a asp-action="Entry" asp-route-number="@l.EntryNumber">
+                                        <code>@cp.AccountNum</code> @cp.AccountName <span class="text-muted">+@(cp.TotalOpposingLines - 1) more</span>
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
                         <td class="text-muted small">@l.Type</td>
                         <td>@l.Description</td>
-                        <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
-                        <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
+                        <td class="text-end">@l.Amount.ToSignedEuro()</td>
                     </tr>
                 }
                 </tbody>

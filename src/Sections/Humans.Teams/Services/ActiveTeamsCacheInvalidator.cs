@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Caching;
 using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;

@@ -2,7 +2,7 @@
   <Project Path="docs/docs.csproj" />
   <Folder Name="/src/">
     <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
-    <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
+    <Project Path="src/Humans.Base/Humans.Base.csproj" />
     <Project Path="src/Humans.Web/Humans.Web.csproj" />
   </Folder>
   <Folder Name="/src/Sections/">
@@ -49,7 +49,7 @@
     <Project Path="src/Sections/Humans.Holded.Contracts/Humans.Holded.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Issues/Humans.Issues.csproj" />
     <Project Path="src/Sections/Humans.Issues.Contracts/Humans.Issues.Contracts.csproj" />
-    <Project Path="src/Sections/Humans.Mailer/Humans.Mailer.csproj" />
+    <Project Path="src/Sections/Humans.MailerLite/Humans.MailerLite.csproj" />
     <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
     <Project Path="src/Sections/Humans.Notifications.Contracts/Humans.Notifications.Contracts.csproj" />
@@ -74,7 +74,7 @@
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
-    <Project Path="tests/Humans.Interfaces.Tests/Humans.Interfaces.Tests.csproj" />
+    <Project Path="tests/Humans.Base.Tests/Humans.Base.Tests.csproj" />
     <Project Path="tests/Humans.Testing/Humans.Testing.csproj" />
     <Project Path="tests/Humans.Testing.Tests/Humans.Testing.Tests.csproj" />
     <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />
@@ -104,8 +104,8 @@
     <Project Path="tests/Humans.Guide.Tests/Humans.Guide.Tests.csproj" />
     <Project Path="tests/Humans.Holded.Tests/Humans.Holded.Tests.csproj" />
     <Project Path="tests/Humans.Issues.Tests/Humans.Issues.Tests.csproj" />
-    <Project Path="tests/Humans.Mailer.Tests/Humans.Mailer.Tests.csproj" />
     <Project Path="tests/Humans.GoogleIntegration.Tests/Humans.GoogleIntegration.Tests.csproj" />
+    <Project Path="tests/Humans.MailerLite.Tests/Humans.MailerLite.Tests.csproj" />
     <Project Path="tests/Humans.Monitor.Tests/Humans.Monitor.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />

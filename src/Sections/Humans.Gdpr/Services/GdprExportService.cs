@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;

@@ -1,6 +1,6 @@
 using Humans.Users.Models;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;

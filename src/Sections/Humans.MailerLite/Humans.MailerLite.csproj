@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.MailerLite.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No Humans.Infrastructure reference: MailerLite owns no tables, so there is no DbContext,
+      no repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the
+      Data-and-DbContext steps are skipped wholesale). MailerLiteClient came out of
+      Humans.Infrastructure/Services and still needs nothing from it — IHttpClientFactory
+      arrives through the ASP.NET Core shared framework, and its two helpers are
+      Base's (the Humans.Base.Extensions / .Threading namespaces). Every Humans-side
+      read and write routes through another section's service interface, all of them
+      contracts-leaf types registered by their owners.
+    -->
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
+      the build with NU1010 under Central Package Management. Everything the controller and
+      the MailerLite client need arrives through the framework reference Sdk.Razor already
+      adds (design §15 step 1). No EF Core either — the section owns no tables.
+    -->
+    <!-- Contracts/MailerLiteAudienceSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob,
+         since G5 lane 5b-5. Package, not project, so no cycle is possible; it was already
+         arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

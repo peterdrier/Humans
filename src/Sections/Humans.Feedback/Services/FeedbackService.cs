@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
-using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Extensions;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Application;
+using Humans.Base.Caching;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;

@@ -184,7 +184,7 @@ public class ControllerDbContextRuleTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Admin
+            namespace Humans.Base.Interfaces.Admin
             {
                 public interface IAdminDatabaseDiagnosticsService { }
             }
@@ -193,7 +193,7 @@ public class ControllerDbContextRuleTests
             {
                 public sealed class AdminController : Microsoft.AspNetCore.Mvc.Controller
                 {
-                    public AdminController(Humans.Application.Interfaces.Admin.IAdminDatabaseDiagnosticsService diagnostics)
+                    public AdminController(Humans.Base.Interfaces.Admin.IAdminDatabaseDiagnosticsService diagnostics)
                     {
                     }
                 }

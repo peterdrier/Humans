@@ -6,7 +6,7 @@ namespace Humans.Analyzers.Tests;
 public class CachingDecoratorRuleTests
 {
     private const string Stubs = """
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
             public interface ITeamRepository : IRepository
@@ -15,7 +15,7 @@ public class CachingDecoratorRuleTests
             }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -29,14 +29,14 @@ public class CachingDecoratorRuleTests
     // Section : ISection entry point in the assembly's root namespace, exactly as boot
     // discovery finds it. Paired with the "Humans.Teams" assembly name below.
     private const string SectionEntryPoint = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface ISection { }
         }
 
         namespace Humans.Teams
         {
-            public sealed class Section : Humans.Application.Interfaces.ISection { }
+            public sealed class Section : Humans.Base.Interfaces.ISection { }
         }
         """;
 
@@ -51,7 +51,7 @@ public class CachingDecoratorRuleTests
             namespace Humans.Infrastructure.Services.Teams
             {
                 public sealed class CachingTeamService(
-                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                    Humans.Base.Interfaces.Repositories.ITeamRepository repository)
                 {
                 }
             }
@@ -78,7 +78,7 @@ public class CachingDecoratorRuleTests
                 {
                     private sealed class OrdersCache
                     {
-                        private readonly Humans.Application.Interfaces.Repositories.ITeamRepository _repository = null!;
+                        private readonly Humans.Base.Interfaces.Repositories.ITeamRepository _repository = null!;
                     }
                 }
             }
@@ -101,7 +101,7 @@ public class CachingDecoratorRuleTests
             {
                 public sealed class CachingTeamService
                 {
-                    public string Load(Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                    public string Load(Humans.Base.Interfaces.Repositories.ITeamRepository repository)
                     {
                         return repository.GetTeam();
                     }
@@ -126,7 +126,7 @@ public class CachingDecoratorRuleTests
             {
                 public sealed class CachingTeamService
                 {
-                    public Humans.Application.Interfaces.Repositories.ITeamRepository Repo { get; init; } = null!;
+                    public Humans.Base.Interfaces.Repositories.ITeamRepository Repo { get; init; } = null!;
                 }
             }
             """;
@@ -148,7 +148,7 @@ public class CachingDecoratorRuleTests
             {
                 public sealed class CachingTeamService
                 {
-                    public Humans.Application.Interfaces.Repositories.ITeamRepository GetRepo() => null!;
+                    public Humans.Base.Interfaces.Repositories.ITeamRepository GetRepo() => null!;
                 }
             }
             """;
@@ -169,7 +169,7 @@ public class CachingDecoratorRuleTests
             namespace Humans.Infrastructure.Services.Teams
             {
                 public sealed class CachingTeamService(
-                    System.Func<Humans.Application.Interfaces.Repositories.ITeamRepository> repositoryFactory)
+                    System.Func<Humans.Base.Interfaces.Repositories.ITeamRepository> repositoryFactory)
                 {
                 }
             }
@@ -193,7 +193,7 @@ public class CachingDecoratorRuleTests
                 public sealed class CachingTeamService
                 {
                     public TRepository GetRepo<TRepository>()
-                        where TRepository : Humans.Application.Interfaces.Repositories.IRepository
+                        where TRepository : Humans.Base.Interfaces.Repositories.IRepository
                         => default!;
                 }
             }
@@ -215,7 +215,7 @@ public class CachingDecoratorRuleTests
             namespace Humans.Infrastructure.Services.Teams
             {
                 public sealed class TeamService(
-                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                    Humans.Base.Interfaces.Repositories.ITeamRepository repository)
                 {
                 }
             }
@@ -245,7 +245,7 @@ public class CachingDecoratorRuleTests
             namespace Humans.Teams.Services
             {
                 public sealed class CachingTeamService(
-                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                    Humans.Base.Interfaces.Repositories.ITeamRepository repository)
                 {
                 }
             }
@@ -268,13 +268,13 @@ public class CachingDecoratorRuleTests
 
             namespace Humans.Infrastructure.Services.Teams
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0020",
                     justification: "Existing repository-backed warm path.",
                     since: "2026-05-24",
                     issueRef: "docs/architecture/roslyn-analysis.md#hum0020")]
                 public sealed class CachingTeamService(
-                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                    Humans.Base.Interfaces.Repositories.ITeamRepository repository)
                 {
                 }
             }

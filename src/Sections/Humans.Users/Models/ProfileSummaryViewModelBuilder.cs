@@ -1,5 +1,5 @@
 using Humans.Teams.Contracts;
-using Humans.UI.Helpers;
+using Humans.Base.Helpers;
 using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 

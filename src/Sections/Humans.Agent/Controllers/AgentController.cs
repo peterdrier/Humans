@@ -1,9 +1,9 @@
 using Humans.Agent.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Agent.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

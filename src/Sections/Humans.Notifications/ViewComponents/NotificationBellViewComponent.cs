@@ -10,6 +10,11 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
+        // Was gated by Shell's `@if (User.Identity?.IsAuthenticated == true)` around the
+        // by-name invocation; the chrome slot invokes unconditionally, so gate here instead.
+        if (UserClaimsPrincipal?.Identity?.IsAuthenticated != true)
+            return Content(string.Empty);
+
         var userId = GetUserId();
         if (userId is null)
             return View(new NotificationBadgeViewModel());

@@ -11,7 +11,7 @@ namespace Humans.Analyzers.Internal;
 internal static class Sections
 {
     public const string ServiceNamespacePrefix = "Humans.Application.Services.";
-    public const string InterfaceNamespacePrefix = "Humans.Application.Interfaces.";
+    public const string InterfaceNamespacePrefix = "Humans.Base.Interfaces.";
 
     private const string AssemblyPrefix = "Humans.";
     private const string ContractsSuffix = ".Contracts";

@@ -1,8 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

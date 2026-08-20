@@ -1,11 +1,11 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
-using Humans.Infrastructure.Hosting;
-using Humans.UI.Models.Tables;
+using Humans.Base.Hosting;
+using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;

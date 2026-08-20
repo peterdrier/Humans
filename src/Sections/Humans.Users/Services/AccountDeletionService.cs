@@ -1,14 +1,14 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using NodaTime;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;

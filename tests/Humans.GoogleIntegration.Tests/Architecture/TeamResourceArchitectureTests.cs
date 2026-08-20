@@ -24,7 +24,7 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 ///     <c>memory/architecture/team-resources-google-integration-section.md</c>).
 ///   </description></item>
 ///   <item><description>
-///     <see cref="IGoogleResourceRepository"/> in <c>Humans.Application.Interfaces.Repositories</c>
+///     <see cref="IGoogleResourceRepository"/> in <c>Humans.Base.Interfaces.Repositories</c>
 ///     is the only path to <c>DbSet&lt;GoogleResource&gt;</c>.
 ///   </description></item>
 ///   <item><description>

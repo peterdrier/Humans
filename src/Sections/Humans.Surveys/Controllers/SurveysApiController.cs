@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Humans.Base.Controllers;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Filters;
@@ -8,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.UI.Controllers;
 using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Controllers;

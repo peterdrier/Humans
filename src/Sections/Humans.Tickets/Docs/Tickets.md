@@ -21,7 +21,7 @@ External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-ma
 - **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, every 5 min via `TicketVendor:SyncIntervalMinutes`) that pulls order, attendee, and gate check-in data from the vendor through `ITicketVendorService`.
 - **TicketTransferRequest** is a Sender-initiated request to send an issued ticket to another Humans user (the Receiver). Lifecycle: `Pending → Approved | Rejected | Cancelled`. The ticket team either runs the **automated TicketTailor void(-to-hold)+reissue** (`ProcessTransferAsync` — the "Process transfer" button) or voids+reissues by hand and records the outcome (`ApproveAsync` = "mark successful"). Both are admin-only (`TicketAdminOrAdmin`). `Approved` = transferred; `Rejected` = "cancelled with a reason"; `Cancelled` = Sender self-cancel. The next ticket sync reconciles local attendee rows. Request → emails Sender + tickets@; decision → emails Sender + Receiver. (The automated path records its outcome in `VendorResult`/`VendorMessage`/`NewVendorTicketId`/`VendorHoldId`; the unused `VendorStepsJson` column stays dormant pending a post-soak drop PR — see [`memory/architecture/no-drops-until-prod-verified.md`](../../../../memory/architecture/no-drops-until-prod-verified.md).)
 - **Vendor connector** is a thin Infrastructure adapter behind `ITicketVendorService`. Production binds `TicketTailorService` (HTTP client against `https://api.tickettailor.com/v1`); non-production binds `StubTicketVendorService` (deterministic in-memory fixture with ~450 orders / ~600 tickets).
-- **Attendee Contact Import** is a manually-triggered admin job (`IAttendeeContactImportService`) that creates a no-profile Humans user for each unmatched ticket attendee whose email doesn't already resolve to an existing UserEmail. Mirrors the Mailer import's plan/apply shape with squatter protection (unverified UserEmail rows are deleted before a fresh verified row is created for the new user). Decoupled from the sync today; Phase 2 will run it automatically at the end of each `TicketSyncService` run.
+- **Attendee Contact Import** is a manually-triggered admin job (`IAttendeeContactImportService`) that creates a no-profile Humans user for each unmatched ticket attendee whose email doesn't already resolve to an existing UserEmail. Mirrors the MailerLite import's plan/apply shape with squatter protection (unverified UserEmail rows are deleted before a fresh verified row is created for the new user). Decoupled from the sync today; Phase 2 will run it automatically at the end of each `TicketSyncService` run.
 
 ## Data Model
 
@@ -72,7 +72,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 |-------|--------------|
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
-| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `docs/features/scanner/gate-terminal-login.md`) |
+| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`) |
 
 ## Invariants
@@ -114,7 +114,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Codes` | GET | `TicketAdminBoardOrAdmin` | Discount code redemption tracking |
 | `/Tickets/GateList` | GET | `TicketAdminBoardOrAdmin` | Placeholder page (gate lookup is handled via `/Scanner/Tickets`) |
 | `/Tickets/WhoHasntBought` | GET | `TicketAdminBoardOrAdmin` | Active Volunteers without a ticket |
-| `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + quarterly aggregate reports |
+| `/Tickets/SalesAggregates` | GET | `TicketAdminBoardOrAdmin` | Weekly + quarterly aggregate reports, by ticket type, discount codes by campaign |
 | `/Tickets/Sync` | POST | `TicketAdminOrAdmin` | Trigger incremental sync |
 | `/Tickets/FullResync` | POST | `AdminOnly` | Trigger full re-sync |
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview attendee-contact-import plan |
@@ -171,7 +171,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - `TicketSyncService` — vendor sync orchestrator (orders + attendees upsert, Stripe enrichment, VAT compute, code redemption push, EventParticipation derivation); also implements `IUserMerge` so account merges re-FK `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId`.
 - `TicketTransferService` — transfer request lifecycle: `GetMyAttendeesAsync`, `GetConfirmationAsync`, `CreateRequestAsync`, `CancelAsync`, `ApproveAsync` (mark successful — no vendor call), `ProcessTransferAsync` (automated void(-to-hold)+reissue), `RetryReissueAsync` (one-click reissue from the held seat after a partial failure), `RejectAsync` (cancel with reason). Emails Sender + tickets@ on request, Sender + Receiver on decision.
 - `TicketVendorGateway` — the section's forwarding edge onto the Base vendor port, and the only place in the codebase that names both the application's ticketing vocabulary (`TicketDiscountCodeRequest` / `TicketDiscountKind`) and the port's (`DiscountCodeSpec` / `DiscountType`). Serves `ITicketDiscountCodes` (Campaigns' grant waves) and `ITicketVendorMirror` (`GateVendorCheckInJob`'s gate-admission mirror).
-- `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the Mailer import; squatter protection deletes unverified UserEmail rows before creating fresh verified ones).
+- `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the MailerLite import; squatter protection deletes unverified UserEmail rows before creating fresh verified ones).
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`
 
@@ -196,10 +196,10 @@ nothing in `Humans.Tickets`, in Base or in any consumer changes.
 (`ISection.Register` has no `IHostEnvironment`) and fails closed: anything but an exactly-Production
 environment name gets the stub, so a developer holding a real `TICKET_VENDOR_API_KEY` still cannot
 write to a live ticketing account. The port's `IOptions<TicketVendorSettings>` binding stays in
-Shell — the settings belong to the port, which `TicketSyncService` and Shell's
+Shell — the settings belong to the port, which `TicketSyncService` and the section's own
 `TicketVendorHealthCheck` also read, and deleting the adapter must not take them with it.
 
-**Only two things may inject `ITicketVendorService`:** `Humans.Tickets` and Shell's
+**Only `Humans.Tickets` may inject `ITicketVendorService`:** the section's services and its own
 `TicketVendorHealthCheck` (which probes the connector deliberately). Everything else asks Tickets,
 through `Humans.Tickets.Contracts`. Pinned by
 `tests/Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests.cs`.
@@ -224,7 +224,7 @@ leaf carries what Base consumers need, the folder carries public surface that is
 (`TicketStubViewComponent`). The split is a judgement about what cross-section consumers should
 have to see, **not** a compiler constraint: G5 lane 3c measured (2026-08-15,
 `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`) that every
-leaf referencing `Humans.Interfaces` resolves `Microsoft.AspNetCore.App` transitively, so
+leaf referencing `Humans.Base` resolves `Microsoft.AspNetCore.App` transitively, so
 "the leaf stays framework-free" — this doc's earlier wording — is false and always was. All section services route every database
 read/write through `ITicketRepository`; neither `TicketQueryService.cs` nor `TicketSyncService.cs` imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`. Umbrella issue nobodies-collective/Humans#545 closed by sub-tasks #545a (TicketQueryService → Application), #545b (TicketingBudgetService → Application, originally with its own `ITicketingBudgetRepository` — removed in #815), #545c (TicketSyncService → Application + `IShiftManagementService` / `IUserService` routing). `ITicketVendorService` connector split landed in peterdrier/Humans PR #277. The bridge itself has since left this section: with Budget's G5 move, `TicketingBudgetService` became internal to `Humans.Budget.Services`, and its `ITicketingBudgetService` contract joined it there and went internal too (Peter's ruling 43), shrinking to `SyncActualsAsync` (projection refresh and parameter writes are Budget-admin-only, so they stayed off it).
 
@@ -233,7 +233,7 @@ read/write through `ITicketRepository`; neither `TicketQueryService.cs` nor `Tic
 **Architecture tests:**
 - `tests/Humans.Tickets.Tests/Architecture/TicketQueryArchitectureTests.cs` — sealed inner + decorator, the decorator implements `ITicketService` / `ITicketServiceRead` / `ITicketCacheInvalidator` and is the only implementation of the invalidator, and `ITicketServiceRead` exposes no entity types.
 - `tests/Humans.Tickets.Tests/Architecture/TicketSyncArchitectureTests.cs` — `TicketSyncService`'s constructor takes no store abstraction.
-- `tests/Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests.cs` — **the one that matters for the vendor swap**: only `Humans.Tickets` and Shell's health check inject `ITicketVendorService`, every implementation of it lives in `Humans.TicketTailor`, and the Tickets leaf names none of the port's vocabulary.
+- `tests/Humans.Application.Tests/Architecture/TicketVendorPortArchitectureTests.cs` — **the one that matters for the vendor swap**: only `Humans.Tickets` injects `ITicketVendorService`, its own `TicketVendorHealthCheck` included, every implementation of it lives in `Humans.TicketTailor`, and the Tickets leaf names none of the port's vocabulary.
 - `tests/Humans.TicketTailor.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins the port in `Humans.Tickets.Contracts` (the `Humans.Tickets` assembly, not the leaf), no HTTP/vendor-SDK type in its signatures, and the two adapters in `Humans.TicketTailor.Services`.
 - `tests/Humans.Integration.Tests/Controllers/TicketsPageRenderTests.cs` — the §15 step 12 render check: every admin page, the transfer wizard's copy in English and Spanish, the Shell access-matrix widget invoked by name, and the volunteer's `302 → /Account/AccessDenied`.
 

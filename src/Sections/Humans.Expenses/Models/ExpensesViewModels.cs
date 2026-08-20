@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 
 namespace Humans.Expenses.Models;
 
@@ -24,6 +24,11 @@ internal sealed class ExpensesIndexViewModel
     /// <summary>Bound, but Holded has booked nothing to the account yet — expected for a new account
     /// before its first journal entry, and not the same thing as an unresolved binding.</summary>
     public bool AwaitingFirstLedgerActivity => BoundAccountNum is not null && AccountLedger is null;
+
+    /// <summary>Unbound although a report already reached Holded — auto-bind failed and only a manual
+    /// bind clears it (nobodies-collective/Humans#972). Unbound with no pushed report is just "not yet".</summary>
+    public bool CreditorBindingFailed =>
+        BoundAccountNum is null && Reports.Any(r => r.HoldedDocId is not null);
 
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }
@@ -109,6 +114,29 @@ internal sealed class ExpenseDetailViewModel
     public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
 }
 
+internal sealed class ExpenseLineNewViewModel
+{
+    public required Guid ReportId { get; init; }
+    /// <summary>Invoice mode: the payee is a business invoicing the association (VAT-recoverable).</summary>
+    public required bool IsInvoice { get; init; }
+}
+
+internal sealed class ExpenseLineEditViewModel
+{
+    public required ExpenseReportDto Report { get; init; }
+    public required ExpenseLineDto Line { get; init; }
+    public required bool CanEditLines { get; init; }
+}
+
+internal sealed class ExpenseLineProofsViewModel
+{
+    public required ExpenseReportDto Report { get; init; }
+    public required ExpenseLineDto InvoiceLine { get; init; }
+    public required IReadOnlyList<ExpenseLineDto> Proofs { get; init; }
+    public required bool CanEditLines { get; init; }
+    public decimal ProofTotal => Proofs.Sum(p => p.Amount);
+}
+
 internal sealed class AddLineInputModel
 {
     [Required, StringLength(500)]
@@ -116,6 +144,12 @@ internal sealed class AddLineInputModel
 
     [Required, Range(0.01, 1_000_000)]
     public decimal Amount { get; set; }
+
+    /// <summary>Receipt (default) or Invoice; the service rejects travel types on this path.</summary>
+    public ExpenseLineType LineType { get; set; } = ExpenseLineType.Receipt;
+
+    /// <summary>Set when adding a proof row under an invoice line.</summary>
+    public Guid? ParentLineId { get; set; }
 }
 
 internal sealed class EditLineInputModel
@@ -146,6 +180,9 @@ internal sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
+    /// <summary>Budget category id → department. Department-group categories are one per team, so
+    /// the category name is the department; other groups show as "Group / Category".</summary>
+    public required IReadOnlyDictionary<Guid, string> DepartmentNames { get; init; }
     /// <summary>Pushes to Holded that were written off and need a finance admin to look at them.
     /// Zero hides the banner.</summary>
     public required int FailedHoldedPushCount { get; init; }

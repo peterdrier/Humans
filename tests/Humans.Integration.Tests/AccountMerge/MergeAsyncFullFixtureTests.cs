@@ -3,7 +3,7 @@ using Humans.Auth.Domain;
 using Humans.AuditLog.Data;
 using Humans.Teams.Data;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

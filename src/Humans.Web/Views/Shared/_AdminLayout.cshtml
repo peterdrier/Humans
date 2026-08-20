@@ -49,13 +49,13 @@
                     <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
                     <span>Exit admin</span>
                 </a>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    @await Component.InvokeAsync("NotificationBell")
-                }
+                <vc:chrome-slot name="header-right" />
                 <partial name="_LoginPartial" />
             </div>
         </nav>
+
+        @* Sections contribute chrome here too; renders nothing while none do. *@
+        <vc:chrome-slot name="above-content" />
 
         <div class="app-shell">
             <aside class="sidebar">
@@ -84,6 +84,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
-    @await Component.InvokeAsync("HelpWidget")
+    <vc:chrome-slot name="body-end" />
 </body>
 </html>

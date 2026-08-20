@@ -1,0 +1,1336 @@
+@using Humans.Teams.Contracts
+@model Humans.Debug.Controllers.WidgetGalleryViewModel
+@using Humans.Base.Authorization
+@using Humans.Base.Models.Tables
+@using Humans.Shifts.Contracts
+@using Humans.Tickets.Contracts
+@using Humans.Base.Enums
+@using Microsoft.AspNetCore.Html
+@* This page's whole job is a fan-in catalog of every section's public widgets, so it is
+   the one Debug view that names other sections' contracts (nobodies-collective/Humans#1091).
+   The section tag-helper assemblies it renders are opened in Views/_ViewImports.cshtml.
+   Shell-resident components (AdminBreadcrumb, ChromeSlot, SectionNav, …) are invoked by name —
+   Debug cannot addTagHelper against Humans.Web. *@
+@{
+    ViewData["Title"] = "Widget Gallery";
+    Layout = "_Layout";
+}
+
+<style nonce="@Context.Items["CspNonce"]">
+    .wg-toc {
+        position: sticky;
+        top: 1rem;
+        background: var(--h-bg-card);
+        border: 1px solid var(--h-border);
+        border-radius: var(--h-radius);
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+    .wg-toc h6 {
+        font-family: var(--h-font-display);
+        margin-bottom: 0.5rem;
+    }
+    .wg-toc a {
+        display: block;
+        padding: 0.15rem 0;
+        color: var(--h-aged-ink);
+        text-decoration: none;
+    }
+    .wg-toc a:hover { color: var(--h-gold); }
+    .wg-section { margin-bottom: 3rem; }
+    .wg-section > h2 {
+        font-family: var(--h-font-display);
+        border-bottom: 2px solid var(--h-gold);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .wg-card {
+        border: 1px solid var(--h-border);
+        border-radius: var(--h-radius);
+        padding: 1rem;
+        background: var(--h-bg-card);
+        margin-bottom: 1.5rem;
+    }
+    .wg-card-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--h-border-light);
+    }
+    .wg-card-name {
+        font-family: 'Source Sans 3', monospace;
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--h-aged-ink);
+    }
+    .wg-card-kind {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.15rem 0.5rem;
+        border-radius: var(--h-radius);
+        background: var(--h-bg-subtle, #eee);
+        color: var(--h-sepia);
+    }
+    .wg-card-kind.kind-th { background: #d6e9ff; color: #0a3d6b; }
+    .wg-card-kind.kind-vc { background: #ffe1cc; color: #6b3a0a; }
+    .wg-card-kind.kind-pa { background: #d8f0d8; color: #1f5b1f; }
+    .wg-card-path {
+        font-family: 'Source Sans 3', monospace;
+        font-size: 0.7rem;
+        color: var(--h-sepia-light);
+        word-break: break-all;
+    }
+    .wg-card-note {
+        font-size: 0.85rem;
+        color: var(--h-sepia);
+        margin-bottom: 0.75rem;
+    }
+
+    /* Parameters table */
+    .wg-params {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        column-gap: 0.75rem;
+        row-gap: 0.25rem;
+        margin: 0 0 0.75rem 0;
+        padding: 0.6rem 0.75rem;
+        background: var(--h-bg-page, #fafafa);
+        border-left: 3px solid var(--h-gold);
+        border-radius: 0 var(--h-radius) var(--h-radius) 0;
+        font-size: 0.8rem;
+    }
+    .wg-params dt {
+        font-family: 'Source Sans 3', monospace;
+        font-weight: 600;
+        color: var(--h-aged-ink);
+        margin: 0;
+    }
+    .wg-params dd {
+        margin: 0;
+        color: var(--h-sepia);
+    }
+    .wg-params dd code,
+    .wg-params dt code {
+        font-family: 'Source Sans 3', monospace;
+        font-size: 0.78rem;
+        background: rgba(0,0,0,0.04);
+        padding: 0 0.25rem;
+        border-radius: 3px;
+    }
+    .wg-params .wg-params-none {
+        grid-column: 1 / -1;
+        font-style: italic;
+        color: var(--h-sepia-light);
+    }
+    .wg-auth-line {
+        font-size: 0.78rem;
+        color: var(--h-sepia);
+        margin: 0 0 0.6rem 0;
+        padding: 0.35rem 0.6rem;
+        background: rgba(255, 215, 0, 0.08);
+        border-left: 3px solid #ffaa00;
+        border-radius: 0 4px 4px 0;
+    }
+    .wg-auth-line::before {
+        content: "🔒 ";
+    }
+
+    /* Single example block (no variants) */
+    .wg-card-example {
+        padding: 0.75rem;
+        background: var(--h-bg-page, #fafafa);
+        border-radius: var(--h-radius);
+        border: 1px dashed var(--h-border-light);
+    }
+    .wg-card-example.is-empty {
+        font-style: italic;
+        color: var(--h-sepia-light);
+    }
+
+    /* Two-column variant grid */
+    .wg-variants {
+        display: grid;
+        grid-template-columns: minmax(160px, 240px) 1fr;
+        gap: 0;
+        background: var(--h-bg-page, #fafafa);
+        border-radius: var(--h-radius);
+        border: 1px dashed var(--h-border-light);
+        overflow: hidden;
+    }
+    .wg-variants > .wg-variant-label,
+    .wg-variants > .wg-variant-render {
+        padding: 0.65rem 0.85rem;
+        border-bottom: 1px solid var(--h-border-light);
+    }
+    .wg-variants > .wg-variant-label {
+        background: rgba(0,0,0,0.025);
+        border-right: 1px solid var(--h-border-light);
+        font-size: 0.78rem;
+        font-family: 'Source Sans 3', monospace;
+        color: var(--h-aged-ink);
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .wg-variants > .wg-variant-label .wg-variant-sub {
+        font-size: 0.7rem;
+        color: var(--h-sepia-light);
+        font-family: 'Source Sans 3', sans-serif;
+    }
+    .wg-variants > .wg-variant-render {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .wg-variants > .wg-variant-label:last-of-type,
+    .wg-variants > .wg-variant-render:last-of-type {
+        border-bottom: none;
+    }
+</style>
+
+@functions {
+    private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new HtmlString(html.ToString());
+    }
+
+    private static IHtmlContent AuthLine(string text)
+    {
+        return new HtmlString(
+            $"<div class=\"wg-auth-line\">{text}</div>");
+    }
+}
+
+<div class="container my-4">
+    <h1>Widget Gallery</h1>
+    <p class="text-muted mb-4">
+        A live catalog of every reusable UI widget — TagHelpers, ViewComponents, and shared partials —
+        rendered against real data. Companion to <a href="/ColorPalette">/ColorPalette</a>.
+        Admin-only. Resolved sample data: current human
+        <strong>@Model.CurrentUserDisplayName</strong>@if (Model.SampleTeamName is not null) {<text>, sample team <strong>@Model.SampleTeamName</strong></text>}@if (Model.SampleEventSettings is not null) {<text>, active event <strong>@Model.SampleEventSettings.EventName</strong></text>}.
+    </p>
+
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <nav class="wg-toc">
+                <h6>Sections</h6>
+                <a href="#profile">Profile &amp; Identity</a>
+                <a href="#dashboard">Personal Dashboard</a>
+                <a href="#shifts">Shifts &amp; Rota</a>
+                <a href="#alerts">Notifications &amp; Alerts</a>
+                <a href="#admin">Admin Chrome</a>
+                <a href="#forms">Forms &amp; Inputs</a>
+                <a href="#layout">Layout Bits</a>
+                <a href="#skipped">Skipped (with reason)</a>
+                <a href="#choosing">Choosing between them</a>
+                <a href="#wg-tables">Tables</a>
+            </nav>
+        </div>
+
+        <div class="col-md-9">
+
+            @* ============== PROFILE & IDENTITY ============== *@
+            <section id="profile" class="wg-section">
+                <h2>Profile &amp; Identity</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:human&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        One-stop human reference — text link, avatar, avatar+name, or card. Display name and avatar are resolved internally from the Profile section by human id.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required"),
+                        ("layout", "<code>HumanLayout</code> — Text (default) · Avatar · AvatarName · Card"),
+                        ("link", "<code>HumanLink</code> — Public (default) · Admin · None"),
+                        ("popover", "<code>bool</code> — hover-popover with profile summary (default true)"),
+                        ("size", "<code>int</code> — avatar pixel size (default 40); applies to non-Text layouts"),
+                        ("css-class", "<code>string?</code> — extra classes on the avatar element"),
+                        ("bg-color", "<code>string</code> — background class for the initial fallback (default <code>bg-secondary</code>)")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">layout="Text"<span class="wg-variant-sub">default</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" /></div>
+
+                        <div class="wg-variant-label">layout="Avatar"<span class="wg-variant-sub">size=48</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" /></div>
+
+                        <div class="wg-variant-label">layout="AvatarName"<span class="wg-variant-sub">size=48</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="AvatarName" size="48" /></div>
+
+                        <div class="wg-variant-label">layout="Card"<span class="wg-variant-sub">size=64</span></div>
+                        <div class="wg-variant-render"><div style="max-width: 160px;"><vc:human user-id="@Model.CurrentUserId" layout="Card" size="64" /></div></div>
+
+                        <div class="wg-variant-label">link="Admin"<span class="wg-variant-sub">links to AdminDetail</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" link="Admin" /></div>
+
+                        <div class="wg-variant-label">link="None"<span class="wg-variant-sub">no link, no popover</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" link="None" /></div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:profile-card&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Full profile card. The view mode controls which sensitive fields render — legal name, board notes, emergency contacts.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required"),
+                        ("viewMode", "<code>ProfileCardViewMode</code> — Self · Public · Admin")
+                    )
+                    @AuthLine("In <code>Public</code> mode, viewer's roles drive whether legal-name fields render — board members see legal name, others don't.")
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            @await Component.InvokeAsync("ProfileCard", new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Admin })
+                        </div>
+                    </div>
+                </div>
+
+                @* _ProfileCard + _HumanPopover cards: their ProfileSummaryViewModel sample is
+                   internal to Humans.Users, so the Users section renders both cards itself
+                   (ShiftsGallery's shape; nobodies-collective/Humans#1091). *@
+                @await Component.InvokeAsync("UsersGallery", new { currentUserId = Model.CurrentUserId, displayName = Model.CurrentUserDisplayName })
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required"),
+                        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId })
+                        </div>
+
+                        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.CurrentUserId, readOnly = true })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/HumanSummaryViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required")
+                    )
+                    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            @await Component.InvokeAsync("HumanSummary", new { userId = Model.CurrentUserId })
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Indicates whether a human has a <code>nobodies.team</code> Workspace email. Five modes selected by the caller.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required"),
+                        ("mode", "<code>string</code> — badge (default) · status · email · provision · detail"),
+                        ("teamSlug", "<code>string?</code> — required for <code>provision</code> mode (which team to provision into)")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">mode="badge"<span class="wg-variant-sub">icon badge for cards</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "badge" })</div>
+
+                        <div class="wg-variant-label">mode="status"<span class="wg-variant-sub">warning when not primary</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "status" })</div>
+
+                        <div class="wg-variant-label">mode="email"<span class="wg-variant-sub">show address</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "email" })</div>
+
+                        <div class="wg-variant-label">mode="detail"<span class="wg-variant-sub">address + linked badge</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.CurrentUserId, mode = "detail" })</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
+                        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
+                        account holds a tier.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        @await Component.InvokeAsync("MembershipTierBadge", new { userId = Model.CurrentUserId })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
+                    </div>
+                    @ParamsBlock(
+                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary/medical from Profile)")
+                    )
+                    @AuthLine("<code>ShowMedical=true</code> only when the viewer is allowed to see medical info — gate at the call site.")
+                    <div class="wg-card-example @(Model.SampleVolunteerProfile is null ? "is-empty" : "")">
+                        @if (Model.SampleVolunteerProfile is not null)
+                        {
+                            @await Html.PartialAsync("_VolunteerProfileBadges",
+                                new VolunteerBadgesViewModel(
+                                    Model.SampleVolunteerProfile.Skills,
+                                    Model.SampleVolunteerProfile.Quirks,
+                                    Model.SampleVolunteerProfile.Languages,
+                                    DietaryPreference: null,
+                                    MedicalConditions: null,
+                                    ShowMedical: true))
+                        }
+                        else
+                        {
+                            <text>(No volunteer event profile for the current human — fill out shift info on /Profile/ShiftInfo to see this populated.)</text>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            @* ============== PERSONAL DASHBOARD ============== *@
+            <section id="dashboard" class="wg-section">
+                <h2>Personal Dashboard</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:ticket-stub&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TicketStubViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
+                    @ParamsBlock(
+                        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketServiceRead</code>")
+                    )
+                    <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+                        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_DashboardActionCard.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_DashboardActionCard.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Reusable dashboard/guest action card. Caller supplies the route, text, icon, visual variant, and compact/full layout mode.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>DashboardActionCardViewModel</code> -- Controller, Action, Title, Description, IconCssClass, IconVariant, ColumnClass, Compact, IsPost, ConfirmMessage")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                        {
+                            Controller = "Profile",
+                            Action = "Index",
+                            Title = "Edit profile",
+                            Description = "Open the profile settings surface.",
+                            IconCssClass = "fa-solid fa-user-pen",
+                            IconVariant = "primary",
+                            ColumnClass = string.Empty,
+                            Compact = true,
+                        })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/MyCampsViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Camp memberships for the current human, grouped by year. Renders nothing if the human belongs to no camps.</div>
+                    @ParamsBlock()
+                    @AuthLine("Authenticated only — uses <code>UserManager.GetUserAsync</code>; logs and renders nothing on failure.")
+                    <div class="wg-card-example">
+                        <vc:my-camps />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:my-google-resources&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.GoogleIntegration/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Google Drive / Calendar / Group resources the current human can access via team membership.</div>
+                    @ParamsBlock()
+                    @AuthLine("Authenticated only.")
+                    <div class="wg-card-example">
+                        @* Invoked by name: the component is internal to Humans.GoogleIntegration and
+                           routed by SectionViewComponentFeatureProvider, so the compile-time <vc:>
+                           tag helper cannot see it and would ship as inert literal markup. The
+                           dashboard's call site already used this form (step 6). *@
+                        @await Component.InvokeAsync("MyGoogleResources")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required"),
+                        ("viewMode", "<code>ShiftSignupsViewMode</code> — Self · Admin"),
+                        ("displayName", "<code>string?</code> — caller-provided name to label the panel")
+                    )
+                    <div class="wg-card-example">
+                        <vc:shift-signups user-id="@Model.CurrentUserId"
+                                          view-mode="@ShiftSignupsViewMode.Self"
+                                          display-name="@Model.CurrentUserDisplayName" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Calendar/Contracts/UserCalendarViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-calendar user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:things-to-do&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs + each section&#39;s ThingsToDo.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Onboarding checklist on the human dashboard, merged from every section's
+                        <code>ISectionThingsToDo</code> contribution for the signed-in member. Auto-hides when all
+                        items are done — if you see nothing here, your account is fully onboarded.
+                    </div>
+                    <div class="wg-card-example">
+                        @await Component.InvokeAsync("ThingsToDo")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:dietary-missing-banner&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Red dietary-info nudge shown on /Shifts and /Shifts/Mine. Self-gates: renders only when the user has a
+                        qualifying cantina signup but no dietary preference on file — so it's empty here unless your account matches.
+                    </div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.CurrentUserId })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:member-ticket-status&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/MemberTicketStatusViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member dashboard's ticket card for the signed-in viewer: confirmed, not attending, or
+                        missing, plus the buy/declare actions that go with each. Shows a "not configured" note
+                        instead of hiding when no ticket vendor is set up.
+                    </div>
+                    <div class="wg-card-example">
+                        <vc:member-ticket-status />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:guest-ticket-orders&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/GuestTicketOrdersViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The profileless-account page's ticket card: the orders the signed-in viewer bought.
+                        Renders nothing for an account with no ticket and no order — so it's empty here unless
+                        your account has one.
+                    </div>
+                    <div class="wg-card-example">
+                        <vc:guest-ticket-orders />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:member-term-status&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Governance/ViewComponents/MemberTermStatusViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member dashboard's term card for a Colaborador/Asociado: expired, expiring within 90
+                        days, renewal pending, or active. Renders nothing for a plain Volunteer, which is nearly
+                        everyone — so it's empty here unless your account holds a tracked term.
+                    </div>
+                    <div class="wg-card-example">
+                        @await Component.InvokeAsync("MemberTermStatus")
+                    </div>
+                </div>
+            </section>
+
+            @* ============== SHIFTS & ROTA ============== *@
+            <section id="shifts" class="wg-section">
+                <h2>Shifts &amp; Rota</h2>
+
+                @if (Model.SampleEventSettings is null)
+                {
+                    <div class="alert alert-warning">
+                        No active <code>EventSettings</code> in the database — the widgets in this section render against the active event,
+                        so they'll appear empty until an event is configured under <a href="/Admin/Events">/Admin/Events</a>.
+                    </div>
+                }
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_ShiftsSummaryCard.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Compact shift-staffing card — progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>ShiftsSummaryCardViewModel</code> — TotalSlots, ConfirmedCount, PendingCount, UniqueVolunteerCount, ShiftsUrl, CanManageShifts, IncludesSubTeamCount")
+                    )
+                    <div class="wg-card-example" style="max-width: 360px;">
+                        @await Html.PartialAsync("_ShiftsSummaryCard", Model.SampleShiftsSummary)
+                    </div>
+                </div>
+
+                @* The four rota cards live in Humans.Shifts: they construct RotaHeaderViewModel,
+                   RotaInfo, ShiftTag and EventRotaTableViewModel, all internal to that section
+                   since its G5. Resolved by name across application parts
+                   (nobodies-collective/Humans#866). *@
+                @await Component.InvokeAsync("ShiftsGallery", new { currentUserId = Model.CurrentUserId })
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_StaffingChart.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_StaffingChart.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Per-day staffing chart: confirmed vs total slots, set-up / event / strike. Caller passes a unique chart id so multiple instances can coexist.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>(List&lt;DailyStaffingData&gt; Data, string ChartId)</code> tuple — slots and bookings by day")
+                    )
+                    <div class="wg-card-example @(Model.SampleStaffingData.Count == 0 ? "is-empty" : "")">
+                        @if (Model.SampleStaffingData.Count > 0)
+                        {
+                            @await Html.PartialAsync("_StaffingChart",
+                                (Data: Model.SampleStaffingData.ToList(), ChartId: "wg-staffing-chart"))
+                        }
+                        else
+                        {
+                            <text>(No staffing data — the active event has no rotas with shifts yet.)</text>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_StaffingHoursChart.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_StaffingHoursChart.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Per-day staffing hours, stacked by shift priority (Essential / Important / Normal). Hours = duration × MaxVolunteers; all-day shifts count 8h per slot.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>(List&lt;DailyStaffingHours&gt; Data, string ChartId)</code> tuple")
+                    )
+                    <div class="wg-card-example @(Model.SampleStaffingHours.Count == 0 ? "is-empty" : "")">
+                        @if (Model.SampleStaffingHours.Count > 0)
+                        {
+                            @await Html.PartialAsync("_StaffingHoursChart",
+                                (Data: Model.SampleStaffingHours.ToList(), ChartId: "wg-staffing-hours-chart"))
+                        }
+                        else
+                        {
+                            <text>(No staffing-hours data — the active event has no rotas with shifts yet.)</text>
+                        }
+                    </div>
+                </div>
+            </section>
+
+            @* ============== NOTIFICATIONS & ALERTS ============== *@
+            <section id="alerts" class="wg-section">
+                <h2>Notifications &amp; Alerts</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:notification-bell&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Notifications/ViewComponents/NotificationBellViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Unread-counts bell rendered in the topbar. Caches per-human counts for 2 minutes.</div>
+                    @ParamsBlock()
+                    @AuthLine("Authenticated only — empty model when unauthenticated.")
+                    <div class="wg-card-example">
+                        @* Internal to the Notifications section, so the <vc:> tag helper cannot see it
+                           from Shell — invoke by name across application parts instead (design §15 step 6). *@
+                        @await Component.InvokeAsync("NotificationBell")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:temp-data-alerts&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/TempDataAlertsViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Renders flash messages from <code>TempData</code> (success / error / info). Empty here because no flash
+                        was set on this request — see <code>HumansControllerBase.SetSuccess/SetError/SetInfo</code>.
+                    </div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        <div class="text-muted small">↑ empty when no TempData keys are present.</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:help-widget&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Agent/ViewComponents/HelpWidgetViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Floating "Help" launcher with a popover menu — replaces the previous separate Issues and Agent FABs.
+                        Menu items: "Talk with the Assistant" (when <code>AgentSettings.Enabled</code>) and "Create issue".
+                        Already injected by <code>_Layout</code> on every page (including this one), so look for the floating button
+                        in the page chrome rather than rendering a duplicate here.
+                    </div>
+                    @ParamsBlock()
+                    @AuthLine("Authenticated only. The Assistant panel includes an &quot;AI Terms&quot; link (<code>/Legal/agent-chat</code>) below the composer; no consent gate.")
+                    <div class="wg-card-example is-empty">
+                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating launcher at the bottom-right of this page.
+                    </div>
+                </div>
+            </section>
+
+            @* ============== ADMIN CHROME ============== *@
+            <section id="admin" class="wg-section">
+                <h2>Admin Chrome</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:admin-breadcrumb&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Auto-resolves the admin breadcrumb from <code>AdminNavTree</code> based on the current route. Falls back to the page title when no nav match.</div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        @await Component.InvokeAsync("AdminBreadcrumb")
+                        <div class="text-muted small">↑ resolves to whatever AdminNavTree entry matches this route, or the page title.</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:access-matrix&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.UI/ViewComponents/AccessMatrixViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Section-help bundle: guide markdown + glossary + access matrix. Renders nothing for sections with no help content registered.</div>
+                    @ParamsBlock(
+                        ("section", "<code>string</code> — section key from <code>AccessMatrixDefinitions.Sections</code> (e.g. teams, shifts, profile)")
+                    )
+                    <div class="wg-card-example">
+                        <vc:access-matrix section="Teams" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:audit-log&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.AuditLog/ViewComponents/AuditLogViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Filtered audit log — the only sanctioned way for a section to <em>show</em> audit history. Filters can stack; the AuditLog section owns the read and the render.</div>
+                    @ParamsBlock(
+                        ("entityType", "<code>string?</code> — e.g. <code>User</code>, <code>Team</code>, <code>Application</code>"),
+                        ("entityId", "<code>Guid?</code> — scoped to one entity"),
+                        ("entityIds", "<code>IReadOnlyList&lt;Guid&gt;?</code> — several entities of one type, merged newest-first"),
+                        ("userId", "<code>Guid?</code> — scoped to actions taken by/on a user"),
+                        ("resourceId", "<code>Guid?</code> — scoped to one Google resource"),
+                        ("googleSyncOnly", "<code>bool</code> — with <code>userId</code>, only Google-sync entries"),
+                        ("actions", "<code>string?</code> — CSV of <code>AuditAction</code> values"),
+                        ("since", "<code>Instant?</code> — drop entries older than this"),
+                        ("limit", "<code>int</code> — page size (default 20)"),
+                        ("layout", "<code>string</code> — <code>line</code> (default, narrative), <code>table</code>, or <code>sync</code>"),
+                        ("columns", "<code>string?</code> — CSV subset of When/Actor/Action/Subject/Description/Target; <code>table</code> only"),
+                        ("columnLabels", "<code>string?</code> — keyed header overrides, <code>when:Fecha,actor:Remitente</code>; <code>table</code> only. Unknown/unsupplied keys keep the English name"),
+                        ("title", "<code>string</code> — heading text (default \"Audit History\")"),
+                        ("emptyText", "<code>string</code> — no-rows copy (default \"No audit history.\")"),
+                        ("showCard", "<code>bool</code> — wrap in a Bootstrap card (default true)")
+                    )
+                    <div class="wg-card-example">
+                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" title="Recent audit entries for current human" />
+                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" layout="table" columns="when,actor,description"
+                                      title="Same entries, layout=&quot;table&quot;" />
+                    </div>
+                </div>
+            </section>
+
+            @* ============== FORMS & INPUTS ============== *@
+            <section id="forms" class="wg-section">
+                <h2>Forms &amp; Inputs</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">HumanSearchViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Type-ahead human picker (<code>&lt;vc:human-search&gt;</code>). Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form. Pass <code>selected-user-id</code> to prefill for edit forms.</div>
+                    @ParamsBlock(
+                        ("field-name", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
+                        ("instance-key", "<code>string?</code> — required when multiple instances render on the same page"),
+                        ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
+                        ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
+                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
+                        ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)"),
+                        ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces"),
+                        ("ticket-lookup-url", "<code>string?</code> — when set, the picker also queries this URL (<code>?q=…</code>) in parallel and merges any rows after the profile results; used by the Early Entry card for ticket-barcode lookup (default null = disabled)")
+                    )
+                    <div class="wg-card-example" style="max-width: 400px;">
+                        <vc:human-search field-name="exampleUserId"
+                                         instance-key="widget-gallery-demo"
+                                         placeholder="Type a name to search…" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">UserSearchResultViewComponent.cs</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/UserSearchResultViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">One person-search result row (<code>&lt;vc:user-search-result&gt;</code>), keyed by user id. Rendered by <code>/Search</code> and <code>/Profile/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Users owns how a human renders, so no caller builds a display model.</div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — the matched human"),
+                        ("match-field", "<code>string?</code> — which bucket matched (\"Name\", \"Bio\", …); the badge is omitted when null"),
+                        ("match-snippet", "<code>string?</code> — highlighted long-form excerpt, when there is one"),
+                        ("matched-email", "<code>string?</code> — the address that matched, on admin-bit searches only")
+                    )
+                    <div class="wg-card-example">
+                        <div class="list-group">
+                            <vc:user-search-result user-id="@Model.CurrentUserId"
+                                                   match-field="Bio"
+                                                   match-snippet="...love fire dancing and welding..." />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_LanguageChooser.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_LanguageChooser.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Dropdown to switch UI culture; posts <code>culture</code> + <code>returnUrl</code> to <code>/Language/SetLanguage</code>.</div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_LanguageChooser")
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;markdown-editor&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/TagHelpers/MarkdownEditorTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Textarea upgraded with the EasyMDE WYSIWYG-ish Markdown editor (toolbar, preview, syntax help).
+                        Server-side rendering is unchanged — the textarea posts raw Markdown and <code>HtmlHelperExtensions.SanitizedMarkdown</code> still owns rendering. Loads EasyMDE from jsDelivr with SRI; degrades to a plain textarea if JS fails.
+                        The toolbar "?" button modal (<code>_MarkdownHelp</code>) is auto-emitted once per request — no manual <code>&lt;partial&gt;</code> needed.
+                    </div>
+                    @ParamsBlock(
+                        ("asp-for", "<code>ModelExpression?</code> — standard model binding (preferred); validation/ModelState work as with a plain textarea"),
+                        ("name", "<code>string?</code> — explicit name when <code>asp-for</code> is not used"),
+                        ("value", "<code>string?</code> — explicit initial value when <code>asp-for</code> is not used"),
+                        ("id", "<code>string?</code> — optional explicit id; defaults to the asp-for/name expression"),
+                        ("rows", "<code>int</code> — textarea height before the EasyMDE upgrade (default 6)"),
+                        ("class", "<code>string?</code> — additional CSS classes for the textarea (<code>form-control</code> is always applied)"),
+                        ("required", "<code>bool</code> — emits HTML <code>required</code>"),
+                        ("maxlength", "<code>int</code> — emits HTML <code>maxlength</code> when &gt; 0"),
+                        ("placeholder", "<code>string?</code> — HTML <code>placeholder</code>")
+                    )
+                    <div class="wg-card-example">
+                        <markdown-editor name="widget-gallery-markdown" value="**Hello** _editor_." rows="4" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_MarkdownHelp.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_MarkdownHelp.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Hidden Bootstrap modal — include once per page, then trigger with
+                        <code>data-bs-toggle="modal" data-bs-target="#markdownHelpModal"</code>.
+                    </div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                            <i class="fa-solid fa-circle-info me-1"></i> Open Markdown help
+                        </button>
+                        @await Html.PartialAsync("_MarkdownHelp")
+                    </div>
+                </div>
+            </section>
+
+            @* ============== LAYOUT BITS ============== *@
+            <section id="layout" class="wg-section">
+                <h2>Layout Bits</h2>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_RoleBadge.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_RoleBadge.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Badge for a TeamMemberRole. Coordinator = warning gold; Member = secondary.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>TeamMemberRole</code> — Coordinator · Member")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">Coordinator<span class="wg-variant-sub">warning gold</span></div>
+                        <div class="wg-variant-render">@await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)</div>
+
+                        <div class="wg-variant-label">Member<span class="wg-variant-sub">secondary grey</span></div>
+                        <div class="wg-variant-render">@await Html.PartialAsync("_RoleBadge", TeamMemberRole.Member)</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_AuthorizationPill.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_AuthorizationPill.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Locked-pill describing which roles can perform an action. Renders nothing when no roles are passed.</div>
+                    @ParamsBlock(
+                        ("ViewData[\"AuthPillRoles\"]", "<code>string</code> — display text (e.g. \"Admin · Board · Coordinator\")")
+                    )
+                    <div class="wg-card-example">
+                        @{
+                            var authPillData = new ViewDataDictionary(ViewData) { ["AuthPillRoles"] = "Admin · Board · Coordinator" };
+                        }
+                        @await Html.PartialAsync("_AuthorizationPill", model: null, viewData: authPillData)
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_Pager.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Pager.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Numbered pager with first/last + window. Hidden entirely when <code>TotalPages &lt;= 1</code>. Synthetic 8-page pager below.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>PagerViewModel</code> — TotalPages, CurrentPage, Action, Window (default 2)")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_Pager", Model.SamplePager)
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">authorize-policy="…"</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Attribute that conditionally renders an element based on a named ASP.NET Core authorization policy.
+                        Unknown policies fail closed (element hidden + warning logged).
+                    </div>
+                    @ParamsBlock(
+                        ("authorize-policy", "<code>string</code> — required; must match a registered policy name from <code>PolicyNames</code>")
+                    )
+                    @AuthLine("Both lines below are wrapped in <code>&lt;span authorize-policy=\"…\"&gt;</code>: only the first should render (you're an admin); the bogus-policy line is suppressed.")
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">authorize-policy="AdminOnly"<span class="wg-variant-sub">should render</span></div>
+                        <div class="wg-variant-render">
+                            <span authorize-policy="@PolicyNames.AdminOnly">✓ AdminOnly element rendered.</span>
+                        </div>
+
+                        <div class="wg-variant-label">authorize-policy="BogusPolicy"<span class="wg-variant-sub">should be suppressed</span></div>
+                        <div class="wg-variant-render">
+                            <span authorize-policy="DefinitelyNotARealPolicyName">✗ Bogus policy — should be hidden.</span>
+                            <span class="text-muted small">(nothing should appear to the left of this line.)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:chrome-slot&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ChromeSlotViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        A named hole in the layout that sections fill. Renders whatever the active sections
+                        contributed through <code>ISectionChrome</code> / <code>ISectionMemberDashboard</code>,
+                        ordered by weight — so a section that is switched off takes its chrome with it. The
+                        examples below render the live slots: whatever appears is a real section contribution,
+                        and a slot nothing has contributed to renders nothing at all.
+                    </div>
+                    @ParamsBlock(
+                        ("name", "<code>string</code> — slot name from <code>ChromeSlots</code>: <code>header-right</code> · <code>above-content</code> · <code>member-dashboard</code> · <code>guest-page</code>")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">name="header-right"<span class="wg-variant-sub">member top nav, beside language + login</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "header-right" })</div>
+
+                        <div class="wg-variant-label">name="above-content"<span class="wg-variant-sub">between header and page, member + admin layouts</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "above-content" })</div>
+
+                        <div class="wg-variant-label">name="member-dashboard"<span class="wg-variant-sub">contributed area of the member dashboard</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "member-dashboard" })</div>
+
+                        <div class="wg-variant-label">name="guest-page"<span class="wg-variant-sub">contributed area of the profileless-account page</span></div>
+                        <div class="wg-variant-render">@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })</div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:section-nav&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/SectionNavViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The member top-nav links sections contributed through <code>ISectionNav</code>, ordered by
+                        weight, with an item carrying children rendering as a dropdown. Emits bare <code>&lt;li&gt;</code>
+                        elements for the layout's <code>&lt;ul class="navbar-nav"&gt;</code>, so the example below
+                        supplies its own list. Renders nothing while no section contributes.
+                    </div>
+                    @ParamsBlock()
+                    @AuthLine("Every item is filtered by its optional <code>Policy</code> and its <code>Visible</code> predicate. Dropdown children are gated the same way, and a dropdown left with no visible children is dropped rather than rendered empty.")
+                    <div class="wg-card-example">
+                        <ul class="nav">@await Component.InvokeAsync("SectionNav")</ul>
+                        <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
+                    </div>
+                </div>
+            </section>
+
+            @* ============== SKIPPED ============== *@
+            <section id="skipped" class="wg-section">
+                <h2>Skipped (with reason)</h2>
+                <p class="text-muted">A handful of widgets are intentionally not rendered standalone here:</p>
+                <ul>
+                    <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavTree</code>, <code>AdminNav</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
+                    <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
+                    <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/OnboardingWidget/SignUpRange</code> (onboarding-only — the <code>ShiftsController</code> SignUpRange route was removed). Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
+                    <li><strong>Event rota row</strong> — <code>_EventRotaRow.cshtml</code>: context-bound rota row, rendered only inside <code>_EventRotaTable</code>. Needs the row's shift/signup state from the parent table; renders nothing standalone.</li>
+                    <li><strong>Build/Strike rota row</strong> — <code>_BuildStrikeRotaRow.cshtml</code>: context-bound rota row, rendered only inside <code>_BuildStrikeRotaTable</code>. Needs the row's all-day shift/signup state from the parent table; renders nothing standalone.</li>
+                    <li><strong>Coordinator dashboard</strong> — <code>AdminSummaryViewComponent</code>, <code>vc:staffing-by-department</code>, <code>vc:audit-log layout="activity"</code>: the summary strip is assembled from the tiles sections contribute, so it only renders inside a request that carries an admin identity. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
+                    <li><strong>Form fragments</strong> — <code>_LegalDocumentFormFields</code>, <code>_TabbedMarkdownDocuments</code>, <code>_TeamDescriptionAndApprovalFields</code>, <code>_TeamGoogleAndParentFields</code>: form sub-views inside parent forms; see Team admin and Legal pages.</li>
+                    <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
+                    <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
+                    <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
+                    <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>: accepts a <code>HeatmapPartialModel</code>; can render in isolation via <code>&lt;vc:volunteer-build-strip&gt;</code> on the profile page (single-user mode, <code>ShowAvailabilityControls=true</code>). <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.</li>
+                    <li><strong>Container card fragments</strong> — <code>_ContainerCardRow</code>, <code>_ContainerCardModals</code>, <code>_ContainerFormFields</code>: context-bound — render only as part of a populated <code>ContainerCardModel</code> on the container list/admin pages, with route values, placement state, and the parent modal-target form action. See <a href="/CityPlanning/BarrioMap/Admin/Containers/2026">/CityPlanning/BarrioMap/Admin/Containers/{year}</a>.</li>
+                    <li><strong>My ticket stubs</strong> — <code>MyTicketStubsViewComponent</code> (<code>&lt;vc:my-ticket-stubs&gt;</code>): can't render standalone — fetches the viewer's owned-ticket holdings (<code>GetUserTicketHoldingsAsync</code>) plus their cross-source Early Entry date, and renders nothing without them. The stub it draws is the <code>vc:ticket-stub</code> card above. See the homepage <a href="/">dashboard</a>.</li>
+                    <li><strong>Public coordinator popover</strong> — <code>_HumanPopoverPublic.cshtml</code>: context-bound — takes a <code>PublicPopoverViewModel</code> built by <code>ProfileController.PublicPopover</code> after gating that the target user is an active coordinator on a team where <code>IsPublicPage &amp;&amp; ShowCoordinatorsOnPublicPage</code>. The reduced popover (avatar + BurnerName + role labels) is served only via <code>[AllowAnonymous] /Profile/{id}/PublicPopover</code> on the public team page. See <code>_HumanPopover.cshtml</code> above for the authenticated equivalent.</li>
+                    <li><strong>Events card</strong> — <code>EventsCardViewComponent</code> (<code>&lt;vc:events-card&gt;</code>): can't render standalone — needs a live camp id (or user id) whose approved events exist in the current edition, self-gates to authenticated viewers, and hides entirely when the <code>Features:Events</code> flag is off. Renders nothing without all three. See a barrio detail page under <a href="/Barrios">/Barrios</a> or a <a href="/Profile/Me">profile</a>.</li>
+                </ul>
+            </section>
+
+            @* ============== CHOOSING BETWEEN THEM ============== *@
+            <section id="choosing" class="wg-section">
+                <h2>Choosing between them</h2>
+                <p class="text-muted">
+                    The three card types above (<span class="wg-card-kind kind-th">TagHelper</span>
+                    <span class="wg-card-kind kind-vc">ViewComponent</span>
+                    <span class="wg-card-kind kind-pa">Partial</span>) are not interchangeable. They sit at different
+                    layers of the Razor pipeline and the choice matters for performance, testability, and where data fetching lives.
+                </p>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered align-top mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:18%;">Aspect</th>
+                                <th style="width:27%;"><span class="wg-card-kind kind-th">TagHelper</span></th>
+                                <th style="width:27%;"><span class="wg-card-kind kind-vc">ViewComponent</span></th>
+                                <th style="width:28%;"><span class="wg-card-kind kind-pa">Partial</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>Shape on disk</th>
+                                <td>One C# class deriving from <code>TagHelper</code></td>
+                                <td>One C# class deriving from <code>ViewComponent</code> + a <code>Default.cshtml</code> under <code>Views/Shared/Components/&lt;Name&gt;/</code></td>
+                                <td>One <code>.cshtml</code> file with a <code>@@model</code>, no code-behind</td>
+                            </tr>
+                            <tr>
+                                <th>How it's invoked</th>
+                                <td>HTML-like syntax — element name (<code>&lt;environment names="Development"&gt;</code>) or attribute on an existing element (<code>&lt;li authorize-policy="…"&gt;</code>)</td>
+                                <td><code>&lt;vc:name attr="…"/&gt;</code> or <code>@@await Component.InvokeAsync("Name", new { … })</code></td>
+                                <td><code>@@await Html.PartialAsync("_Name", model)</code> or <code>&lt;partial name="…" model="@@x"/&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <th>Data fetching</th>
+                                <td>Yes — has DI, can be async (<code>ProcessAsync</code>); fetch in <code>Process</code></td>
+                                <td>Yes — has DI, async <code>InvokeAsync</code>; the class is the data fetcher, the view is presentation</td>
+                                <td>No — caller must pass a fully-populated model</td>
+                            </tr>
+                            <tr>
+                                <th>Self-gating by auth</th>
+                                <td>Possible (e.g. <code>AuthorizeViewTagHelper</code> reads <code>IHttpContextAccessor</code>); not the typical use</td>
+                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>)</td>
+                                <td>No — caller decides whether to render</td>
+                            </tr>
+                            <tr>
+                                <th>Output shape</th>
+                                <td>Mutates the surrounding HTML element (sets tag name, attributes, content) — feels native to HTML</td>
+                                <td>Renders its own view fragment, full <code>IHtmlContent</code></td>
+                                <td>Renders its own view fragment, full <code>IHtmlContent</code></td>
+                            </tr>
+                            <tr>
+                                <th>Cost per render</th>
+                                <td>Low — single class instance, no extra view lookup beyond what the parent already does</td>
+                                <td>Highest — per-render component instance, separate view resolution + rendering pipeline</td>
+                                <td>Lowest — no class instance, just a view lookup</td>
+                            </tr>
+                            <tr>
+                                <th>Discoverability</th>
+                                <td>Registered via <code>@@addTagHelper *, Humans.Web</code> in <code>_ViewImports</code></td>
+                                <td>Auto-discovered by the framework</td>
+                                <td>Looked up by file path; conventions in <code>Views/Shared/</code> for cross-area reuse</td>
+                            </tr>
+                            <tr>
+                                <th>Testability</th>
+                                <td>Unit-testable as a plain C# class</td>
+                                <td>Unit-testable as a plain C# class; the view is integration-tested via the host</td>
+                                <td>Integration-tested via Razor host; no class to unit-test</td>
+                            </tr>
+                            <tr>
+                                <th>Examples in this gallery</th>
+                                <td><code>authorize-policy="…"</code></td>
+                                <td><code>&lt;vc:profile-card&gt;</code>, <code>&lt;vc:audit-log&gt;</code>, <code>&lt;vc:nav-badges&gt;</code>, <code>&lt;vc:notification-bell&gt;</code></td>
+                                <td><code>_ProfileCard</code>, <code>_RoleBadge</code>, <code>_Pager</code>, <code>_ShiftsSummaryCard</code>, <code>_EventRotaTable</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h5>Decision flow</h5>
+                <ol class="mb-3">
+                    <li>
+                        <strong>Does it need to fetch data, hit DI, or check authorization itself?</strong>
+                        Yes → <span class="wg-card-kind kind-vc">ViewComponent</span>. The widget is the data-fetcher; the caller just drops it in.
+                    </li>
+                    <li>
+                        <strong>Otherwise — does it want to feel native to HTML?</strong>
+                        i.e. add behavior to an element via an attribute (<code>authorize-policy</code>).
+                        Yes → <span class="wg-card-kind kind-th">TagHelper</span>. Best when the caller would otherwise hand-write the same HTML repeatedly with small variations.
+                    </li>
+                    <li>
+                        <strong>Otherwise — caller has the data, you're sharing presentation only?</strong>
+                        Yes → <span class="wg-card-kind kind-pa">Partial</span>. Cheapest, simplest. Use this whenever the data is already on the parent's view model.
+                    </li>
+                </ol>
+
+                <h5>Common pitfalls</h5>
+                <ul class="mb-0">
+                    <li><strong>Don't reach for a ViewComponent when a Partial would do.</strong> ViewComponents are a "mini controller + view" — every render spins one up. If the caller already has the data, a Partial is faster, simpler, and easier to test.</li>
+                    <li><strong>Don't reach for a TagHelper when you really need data.</strong> TagHelpers can do DI, but the result is a class that's secretly a controller. ViewComponents are the explicit form of that pattern.</li>
+                    <li><strong>Don't put data fetching in a Partial</strong> by injecting services into the <code>.cshtml</code> via <code>@@inject</code>. That's a ViewComponent in disguise, untestable, and easy to N+1.</li>
+                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> is the canonical floating-widget example.</li>
+                    <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
+                </ul>
+            </section>
+
+
+            @* ============== TABLES ============== *@
+            <section class="wg-section" id="wg-tables">
+                <h2>Tables</h2>
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_Table.cshtml (TableModel)</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Table.cshtml · src/Humans.Web/Models/Tables/</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Column-model table component — the single authority for list tables. Sorting, filtering,
+                        and formatting are per-column config. Client mode shown here (sort: click headers;
+                        filter row + search box). Server mode (query-param sort links, GET filter form, _Pager)
+                        is live on /Ticket/Attendees. Spec: docs/superpowers/specs/2026-06-10-table-component-design.md
+                    </div>
+                    <div class="wg-card-example">
+                        @{
+                            var demoTable = TableModel.For(Model.SampleTableRows)
+                                .Column("Name", r => r.Name, c => c.TextFilter())
+                                .Column("Joined", r => r.JoinedAt, c => c.Date())
+                                .Column("Amount", r => r.Amount, c => c.Currency().End())
+                                .Column("Status", r => r.Status, c => c.EnumBadge().SelectFilter())
+                                .Column("VIP", r => r.IsVip, c => c.BoolIcon())
+                                .SearchBox(placeholder: "Search demo rows...")
+                                .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
+                                        new TableFooterCell(Model.SampleTableRows.Sum(r => r.Amount).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
+                                        new TableFooterCell(""), new TableFooterCell(""))
+                                .Build();
+                        }
+                        <partial name="_Table" model="demoTable" />
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>

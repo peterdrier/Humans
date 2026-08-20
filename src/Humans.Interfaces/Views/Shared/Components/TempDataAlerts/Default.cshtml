@@ -1,9 +1,0 @@
-@model List<Humans.UI.ViewComponents.TempDataAlertsViewComponent.TempDataAlert>
-
-@foreach (var alert in Model)
-{
-    <div class="alert alert-@alert.CssClass alert-dismissible fade show" role="alert">
-        @alert.Message
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}

@@ -1,7 +1,7 @@
 using Humans.Issues.Services.Dtos;
 using Humans.Issues.Domain;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Issues.Data;
 

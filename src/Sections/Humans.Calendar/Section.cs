@@ -1,9 +1,9 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

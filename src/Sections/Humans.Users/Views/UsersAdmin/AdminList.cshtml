@@ -99,7 +99,42 @@
 }
 else
 {
-    @await Html.PartialAsync("_HumanSearchResults", Model.Humans)
+    @* Admin directory rows, not search results (nobodies-collective/Humans#1062): the email is
+       the notification target the controller batch-resolved, and the joined / last-login columns
+       are the ones the sort links above address. <vc:human> still owns avatar and name. *@
+    <div class="list-group">
+        @foreach (var human in Model.Humans)
+        {
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <vc:human user-id="@human.UserId" layout="Avatar" size="48" link="Admin" />
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <strong><vc:human user-id="@human.UserId" link="Admin" /></strong>
+                            @if (!string.IsNullOrEmpty(human.Email))
+                            {
+                                <small class="text-muted">@human.Email</small>
+                            }
+                            <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(human.StatusLabel)">
+                                @human.StatusLabel
+                            </span>
+                            @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = human.UserId, mode = "status" })
+                        </div>
+                        <div class="small text-muted mt-1">
+                            <span>@Localizer["Admin_Joined"] @human.CreatedAt.ToDate()</span>
+                            @if (human.LastLoginAt.HasValue)
+                            {
+                                <span class="ms-2">@Localizer["Admin_LastLogin"] @human.LastLoginAt.Value.ToDate()</span>
+                            }
+                        </div>
+                    </div>
+                    <a asp-action="AdminDetail" asp-route-id="@human.UserId" class="btn btn-sm btn-outline-primary">
+                        @Localizer["MyTeams_View"]
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
 }
 
 @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "AdminList") { NavCssClass = "mt-4" }; }

@@ -6,7 +6,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 

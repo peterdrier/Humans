@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Stripe.Contracts;
 using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;

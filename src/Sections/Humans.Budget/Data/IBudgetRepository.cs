@@ -1,7 +1,7 @@
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Budget.Data;
 

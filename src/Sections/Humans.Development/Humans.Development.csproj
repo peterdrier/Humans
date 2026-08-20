@@ -54,7 +54,7 @@
       Consent and Governance — arrived transitively through Humans.Application until G5 lane
       5c dropped that reference; they are declared below.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />

@@ -1,5 +1,5 @@
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Jobs;
 

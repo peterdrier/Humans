@@ -1,5 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;

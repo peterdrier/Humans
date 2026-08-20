@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

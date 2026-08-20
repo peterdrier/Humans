@@ -1,6 +1,5 @@
-using Humans.UI.Helpers;
 using Humans.Auth.Contracts;
-using Humans.Domain.Helpers;
+using Humans.Base.Helpers;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

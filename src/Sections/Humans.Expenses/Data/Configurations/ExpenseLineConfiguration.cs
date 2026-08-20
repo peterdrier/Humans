@@ -25,6 +25,13 @@ internal sealed class ExpenseLineConfiguration : IEntityTypeConfiguration<Expens
             .HasForeignKey(x => x.AttachmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Proof rows point at their Invoice line. Restrict, not cascade: the service removes
+        // proofs explicitly so their attachment rows + files are cleaned up too.
+        b.HasOne<ExpenseLine>()
+            .WithMany()
+            .HasForeignKey(x => x.ParentLineId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasIndex(x => x.ExpenseReportId);
     }
 }

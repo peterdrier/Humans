@@ -1,0 +1,15 @@
+using Humans.Base.Interfaces;
+using Humans.Surveys.Jobs;
+
+namespace Humans.Surveys;
+
+/// <summary>Surveys' recurring jobs. Discovered by Shell — nothing names it, so it needs no section prefix.</summary>
+internal sealed class SectionJobs : ISectionJobs
+{
+    public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
+    {
+        // Send the one-time 7-day survey reminder to invitees who haven't completed.
+        yield return new RecurringJobDescriptor(
+            "surveys-reminder", typeof(SendSurveyReminderJob), "0 9 * * *");
+    }
+}

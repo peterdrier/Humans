@@ -6,12 +6,12 @@ public class SurfaceBudgetAnalyzerTests
 {
     /// <summary>
     /// Synthetic stand-in for
-    /// <c>Humans.Application.Architecture.SurfaceBudgetAttribute</c>. The
+    /// <c>Humans.Base.Attributes.SurfaceBudgetAttribute</c>. The
     /// analyzer resolves the attribute by full metadata name, so a stub with
     /// the matching namespace + name is sufficient for tests.
     /// </summary>
     private const string AttributeStub = """
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(
                 System.AttributeTargets.Interface | System.AttributeTargets.Class | System.AttributeTargets.Struct)]
@@ -36,7 +36,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(2)]
                 public interface ISample
@@ -62,7 +62,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(2)]
                 public interface ISample
@@ -90,7 +90,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(5)]
                 public interface ISample
@@ -118,7 +118,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(1)]
                 public interface ISample
@@ -144,7 +144,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(1)]
                 public interface ISample
@@ -170,7 +170,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(1)]
                 public interface ISample
@@ -198,7 +198,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 public interface IBase
                 {
@@ -255,7 +255,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(2)]
                 public class Sample
@@ -285,7 +285,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(1)]
                 public class Sample
@@ -315,7 +315,7 @@ public class SurfaceBudgetAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Application.Architecture;
+                using Humans.Base.Attributes;
 
                 [SurfaceBudget(1)]
                 public struct Sample

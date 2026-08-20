@@ -1,11 +1,11 @@
 using Hangfire;
-using Humans.Application.Csv;
+using Humans.Base.Csv;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Services;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
-using Humans.UI.Extensions;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -252,6 +252,14 @@ internal sealed class TicketController(
                 Price = t.Price,
                 TicketsSold = t.TicketsSold,
                 FaceValue = t.FaceValue,
+            }).ToList(),
+            ByDiscountCampaign = aggregates.ByDiscountCampaign.Select(d => new DiscountCampaignRow
+            {
+                CampaignTitle = d.CampaignTitle,
+                CodesGranted = d.CodesGranted,
+                CodesUsed = d.CodesUsed,
+                AverageDiscount = d.AverageDiscount,
+                TotalDiscount = d.TotalDiscount,
             }).ToList(),
         };
 

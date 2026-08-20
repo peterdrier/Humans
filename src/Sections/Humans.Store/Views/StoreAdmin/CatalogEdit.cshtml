@@ -61,6 +61,18 @@
                     <input asp-for="OrderableUntil" type="date" class="form-control" />
                     <span asp-validation-for="OrderableUntil" class="text-danger small"></span>
                 </div>
+                <div class="col-md-6">
+                    <label asp-for="HoldedRevenueAccountNum" class="form-label">Holded revenue account</label>
+                    <input asp-for="HoldedRevenueAccountNum" type="number" step="1" class="form-control"
+                           placeholder="e.g. 75900002" />
+                    <span asp-validation-for="HoldedRevenueAccountNum" class="text-danger small"></span>
+                    <div class="form-text">
+                        The per-item account Acountax issued. Invoices book this item's revenue here, so
+                        per-item break-even reads straight off the ledger. Internal department recharges
+                        go to the derived twin (<code>75910002</code> for <code>75900002</code>) — it is
+                        not stored. Required before this item can be invoiced.
+                    </div>
+                </div>
                 <div class="col-12">
                     <div class="form-check">
                         <input asp-for="IsActive" class="form-check-input" />

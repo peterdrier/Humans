@@ -1,0 +1,160 @@
+@model GuestDashboardViewModel
+@{
+    ViewData["Title"] = SharedLocalizer["Dashboard_Title"].Value;
+}
+
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8 text-center">
+        <h1 class="mb-1">@Html.Raw(string.Format(Localizer["Guest_Greeting"].Value, Html.Encode(Model.DisplayName)))</h1>
+        <p class="text-muted">@Localizer["Guest_Subtitle"]</p>
+    </div>
+</div>
+
+
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow dashboard-callout">
+            <div class="card-body text-center py-5 px-4">
+                <h2 class="display-5 fw-bold mb-3 dashboard-callout-title">@Localizer["Guest_GetInvolvedTitle"]</h2>
+                <p class="mb-2 dashboard-callout-copy">
+                    @Localizer["Guest_GetInvolvedDescription"]
+                </p>
+                <ul class="list-unstyled mb-2 dashboard-callout-copy">
+                    <li>@Localizer["Guest_GetInvolvedBullet1"]</li>
+                    <li>@Localizer["Guest_GetInvolvedBullet2"]</li>
+                    <li>@Localizer["Guest_GetInvolvedBullet3"]</li>
+                </ul>
+                <p class="mb-3 dashboard-callout-muted">
+                    <small>@Localizer["Guest_GetInvolvedHint"]</small>
+                </p>
+                <a asp-controller="Profile" asp-action="Edit" class="btn btn-lg px-5 dashboard-callout-primary">
+                    <i class="fa-solid fa-arrow-right me-2"></i>@Localizer["Guest_CreateProfile"]
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Tickets contributes the order summary here; renders nothing without an order.
+   ChromeSlotViewComponent is Shell-resident (Humans.Web) — a section RCL cannot
+   @addTagHelper it, so invoke by name (design §15 step 6). *@
+@await Component.InvokeAsync("ChromeSlot", new { name = "guest-page" })
+
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <h5 class="text-muted mb-1">@Localizer["Guest_Explore"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_ExploreSubtitle"]</p>
+        <div class="row g-3">
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Camp",
+                Action = "Index",
+                Title = SharedLocalizer["Camp_Plural"].Value,
+                Description = Localizer["Guest_BarriosDescription"].Value,
+                IconCssClass = "fa-solid fa-campground fa-lg",
+                ColumnClass = "col-sm-4"
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Team",
+                Action = "Index",
+                Title = SharedLocalizer["Nav_Teams"].Value,
+                Description = Localizer["Guest_TeamsDescription"].Value,
+                IconCssClass = "fa-solid fa-people-group fa-lg",
+                ColumnClass = "col-sm-4"
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Legal",
+                Action = "Index",
+                Title = Localizer["Guest_Legal"].Value,
+                Description = Localizer["Guest_LegalDescription"].Value,
+                IconCssClass = "fa-solid fa-scale-balanced fa-lg",
+                ColumnClass = "col-sm-4"
+            })
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <h5 class="text-muted mb-1">@Localizer["Guest_AccountTitle"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_AccountSubtitle"]</p>
+        <div class="row g-3">
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "GuestAccount",
+                Action = "CommunicationPreferences",
+                Title = Localizer["Guest_CommsTitle"].Value,
+                Description = Localizer["Guest_CommsDescription"].Value,
+                IconCssClass = "fa-solid fa-bell",
+                IconVariant = "info",
+                Compact = true
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "GuestData",
+                Action = "DownloadData",
+                Title = Localizer["Guest_DataTitle"].Value,
+                Description = Localizer["Guest_DataDescription"].Value,
+                IconCssClass = "fa-solid fa-download",
+                IconVariant = "info",
+                Compact = true
+            })
+            @if (!Model.IsDeletionPending)
+            {
+                @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                {
+                    Controller = "GuestAccount",
+                    Action = "RequestDeletion",
+                    Title = Localizer["Guest_DeleteTitle"].Value,
+                    Description = Localizer["Guest_DeleteDescription"].Value,
+                    IconCssClass = "fa-solid fa-trash-can",
+                    IconVariant = "danger",
+                    Compact = true,
+                    IsPost = true,
+                    ConfirmMessage = "Are you sure you want to request account deletion? This action can be cancelled before the deletion date."
+                })
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.IsDeletionPending)
+{
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-8">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body d-flex align-items-start py-3">
+                    <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3 mt-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">@Localizer["Guest_DeletionPendingTitle"]</h6>
+                        <p class="mb-1 small text-muted">
+                            @Html.Raw(string.Format(Localizer["Guest_DeletionRequestedOn"].Value, "<strong>" + Html.Encode(Model.DeletionRequestedAt?.ToDate()) + "</strong>"))
+                        </p>
+                        @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
+                        {
+                            <p class="mb-2 small text-muted">
+                                @Html.Raw(string.Format(Localizer["Guest_DeletionHeldUntil"].Value, "<strong>" + Html.Encode(Model.DeletionEligibleAfter?.ToDate()) + "</strong>"))
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="mb-2 small text-muted">
+                                @Html.Raw(string.Format(Localizer["Guest_DeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDate()) + "</strong>"))
+                            </p>
+                        }
+                        <form asp-controller="GuestAccount" asp-action="CancelDeletion" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Guest_DeletionCancelButton"]
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+

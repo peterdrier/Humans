@@ -1,4 +1,4 @@
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

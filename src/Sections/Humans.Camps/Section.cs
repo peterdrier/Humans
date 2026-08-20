@@ -1,10 +1,10 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Camps.Authorization;
 using Humans.CityPlanning.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,5 +78,9 @@ public sealed class Section : ISection
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+
+        // Backs CampComplianceAccess, registered by this section's SectionPolicies
+        // (nobodies-collective/Humans#1091).
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
     }
 }

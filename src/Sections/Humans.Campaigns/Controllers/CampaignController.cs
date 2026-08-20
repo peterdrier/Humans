@@ -1,7 +1,7 @@
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;

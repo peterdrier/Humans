@@ -1,7 +1,7 @@
 using NodaTime;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Agent.Data;
 

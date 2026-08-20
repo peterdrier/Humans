@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;

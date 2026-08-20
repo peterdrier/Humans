@@ -2,7 +2,7 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -15,7 +15,7 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
-using Humans.UI;
+using Humans.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -45,7 +45,7 @@ namespace Humans.Users.Tests.Controllers;
 ///
 /// The replay path is load-bearing because without it the redirect-then-replay
 /// flow strands the user on Home/Index with no signup performed, which is the
-/// exact UX failure US-35.6 in docs/features/profiles/dietary-medical-nudge.md
+/// exact UX failure US-35.6 in src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md
 /// exists to prevent. The
 /// "replay failed but dietary save persisted" test pins down that the dietary
 /// save is NOT rolled back on signup-replay failure — the user can retry the
@@ -120,8 +120,7 @@ public class ProfileControllerDietaryMedicalReplayTests
                 NullLogger<SignInManager<User>>.Instance,
                 Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
                 Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()),
-            Substitute.For<IAuditViewerService>());
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity(new[]
         {

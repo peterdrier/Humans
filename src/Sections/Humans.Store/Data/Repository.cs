@@ -43,15 +43,13 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         return await ctx.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Product>> GetProductsByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
     {
-        if (ids.Count == 0) return new Dictionary<Guid, string>();
+        if (ids.Count == 0) return [];
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Products.AsNoTracking()
+        return await ctx.Products.AsNoTracking()
             .Where(p => ids.Contains(p.Id))
-            .Select(p => new { p.Id, p.Name })
             .ToListAsync(ct);
-        return rows.ToDictionary(r => r.Id, r => r.Name);
     }
 
     public async Task AddProductAsync(Product product, CancellationToken ct = default)
@@ -261,10 +259,30 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
     // Invoices
     // ==========================================================================
 
-    public async Task AddInvoiceAsync(Invoice invoice, CancellationToken ct = default)
+    public async Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Invoices.Add(invoice);
+
+        // The order arrives detached (AsNoTracking + Includes) from a read taken before several
+        // Holded round-trips, so its Payments are stale — a Stripe webhook may have settled one in
+        // the meantime. Update(order) would mark that whole graph modified and write the stale
+        // payment rows back, and there is no concurrency token to catch it
+        // (memory/architecture/no-concurrency-tokens.md). So attach the aggregate and mark only the
+        // columns issuance owns: the state flip, and the repriced line snapshots.
+        ctx.Orders.Attach(order);
+        var orderEntry = ctx.Entry(order);
+        orderEntry.Property(o => o.State).IsModified = true;
+        orderEntry.Property(o => o.IssuedInvoiceId).IsModified = true;
+        orderEntry.Property(o => o.UpdatedAt).IsModified = true;
+        foreach (var line in order.Lines)
+        {
+            var lineEntry = ctx.Entry(line);
+            lineEntry.Property(l => l.UnitPriceSnapshot).IsModified = true;
+            lineEntry.Property(l => l.VatRateSnapshot).IsModified = true;
+            lineEntry.Property(l => l.DepositAmountSnapshot).IsModified = true;
+        }
+
         await ctx.SaveChangesAsync(ct);
     }
 

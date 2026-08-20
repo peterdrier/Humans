@@ -44,7 +44,7 @@ binding is `SharedResource` *by design*, the first to send a Shell helper furthe
 `tests/Directory.Build.props` exclusion), and Development (the first whose `Section.Register`
 had to gate on the **host environment**, the first whose move took a block of markup out of a
 Shell view to keep a *type* internal rather than a resource key, and the first named by
-`typeof` from Shell's own production code), and Mailer (the first whose *whole* outward
+`typeof` from Shell's own production code), and MailerLite (the first whose *whole* outward
 surface is one `int`, the first whose vendor connector left `Humans.Infrastructure` without
 needing a reference back to it, and the first whose controller names its views by absolute
 path), and Gdpr (the first whose leaf exists because Base *implements* its contract at
@@ -284,10 +284,10 @@ Git Bash.)
    that pair is the whole accessibility convention, and HUM0034 enforces it. Ship only the
    folders the section has.
    **A controller that names its views by absolute path pins the folder layout** — an RCL's
-   compiled view paths are project-relative, so `View("~/Views/Mailer/Admin/Index.cshtml")`
-   keeps resolving only if `Views/Mailer/Admin/` moves verbatim rather than being tidied into
+   compiled view paths are project-relative, so `View("~/Views/MailerLite/Admin/Index.cshtml")`
+   keeps resolving only if `Views/MailerLite/Admin/` moves verbatim rather than being tidied into
    the `Views/<Controller>/` shape. Renaming it compiles, then 500s on every page and reads as
-   a routing bug (proven: Mailer). Migrations
+   a routing bug (proven: MailerLite). Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
    sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
@@ -555,8 +555,8 @@ Git Bash.)
    - **A configuration type named after the section can still be Base's, and
      `Section.Register` cannot see `IHostEnvironment`.** `EmailSettings` binds `Email:*`, lives
      in `Humans.Infrastructure/Configuration`, and is read by Auth's `MagicLinkUrlBuilder`,
-     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Shell's
-     `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
+     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's
+     own `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
      rule: the section that owns the file is not always the section that owns the line). The
      startup guard beside it — "Production must have SMTP configured" — stayed for a second
      reason: `ISection.Register(IServiceCollection, IConfiguration)` has no `IHostEnvironment`,
@@ -923,9 +923,9 @@ Git Bash.)
        reference `Humans.Infrastructure`, because that is where the file was.
        `MailerLiteClient` is a `Humans.Infrastructure/Services` file whose every dependency is
        either the ASP.NET shared framework (`IHttpClientFactory`) or `Humans.Application`
-       (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
+       (`Extensions`, `Threading`), so `Humans.MailerLite` took **no `Humans.Infrastructure`
        reference at all** — Scanner's table-less shape, reached by a section that had code in
-       Base's service folder on the way in (proven: Mailer).
+       Base's service folder on the way in (proven: MailerLite).
      - **…and a third disposition, when the connector is *replaceable*: give it its own
        section, and give the port to the section that owns the concern.** Agent's rule takes
        the connector into the section; Guide's leaves it in Base. Neither fits a vendor that is
@@ -945,7 +945,7 @@ Git Bash.)
        adapter picks up the owner's transitive references, which for TicketTailor meant losing
        its "no `Humans.Infrastructure` reference" property. Nothing in it names them.
        **The load-bearing half is the invariant, not the folder:** an architecture test
-       asserts that only the owning section and Shell's health check inject the port, because
+       asserts that only the owning section injects the port, its own health check included, because
        what actually breaks a vendor swap is a second section reaching past the door
        (Campaigns was doing exactly that for discount codes, and this lane closed it). Where
        a consumer needs a port operation, the section publishes it on its own leaf in its own
@@ -954,10 +954,10 @@ Git Bash.)
      **The same test can keep a connector in Base when the connector carries the section's own
      name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
-     are not Guide's: the signatures name only `string`, and three of the four consumers are
+     are not Guide's: the signatures name only `string`, and the consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
-     `CommunityFaqReader` over `docs/sections`, `docs/features` and `docs/community-kb`,
-     Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
+     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
      string fetch, and split `GuideSettings` from the type binding it. Left in
@@ -1139,14 +1139,12 @@ Git Bash.)
      former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
      fetched — otherwise the component re-queries and the move quietly doubles a page's reads
      (proven: Onboarding).
-   - **A SignalR hub goes under the owning section's `Contracts/`.** `Program.cs`'s
-     `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so the hub must be `public`, and the
-     section's own `IHubContext<TheHub>` injection needs it visible too. HUM0034's `Contracts/`
-     carve-out is exactly that split — a deliberate surface Shell and the section both depend on —
-     so `CityPlanningHub` lives at `Humans.CityPlanning/Contracts/CityPlanningHub.cs` (G5 lane
-     4b-ii). It sat in `Humans.UI/Hubs` until then, on the reading that a section type could not be
-     public at all; that was wrong, and Shell is not an option in the other direction because the
-     section names the type and a section may not reference Shell (proven: CityPlanning).
+   - **A SignalR hub is `internal`, and the section maps it itself.** The section's
+     `SectionEndpoints : ISectionEndpoints` calls `endpoints.MapHub<TheHub>("/hubs/…")` from
+     inside its own assembly, so Shell never names the concrete type and the hub needs no public
+     surface — `CityPlanningHub` lives at `Humans.CityPlanning/Services/CityPlanningHub.cs`
+     (nobodies-collective/Humans#1075). The section's own `IHubContext<TheHub>` injection is
+     inside that assembly too, so it sees the internal type (proven: CityPlanning).
    - **The third case: the component belongs to the section, and moving it in needs a feature
      provider Shell did not have.** Gate's rule moves a section-neutral component *down* to
      `Humans.UI`; City Planning's leaves a registry-reading one in Shell and invokes it by
@@ -1287,12 +1285,11 @@ Git Bash.)
    whether the job is the *only* out-of-section consumer before you cite it: if it is, the
    section wants a `Contracts/` **folder**, not a leaf project.
 
-   **Health checks are the same shape and are unmeasured** — `Program.cs`'s `AddHealthChecks()`
-   chain names each `IHealthCheck` by concrete type, which is the same "Shell names it, so it is
-   Shell-facing surface" argument. Today they stay in Shell and consume the section through
-   `Contracts/` (Agent kept `AgentDocsHealthCheck` and `AnthropicHealthCheck` in Shell, which is
-   what put a one-property `IAgentAvailability` on its leaf). Re-measure before repeating that as
-   a constraint.
+   **Health checks moved the same way.** A section registers its own through
+   `SectionHealthChecks : ISectionHealthChecks`, so Shell names no `IHealthCheck` by concrete type
+   and a check stays `internal` to its section — `AgentDocsHealthCheck` and `AnthropicHealthCheck`
+   live in `Humans.Agent/Health/` (nobodies-collective/Humans#1075). The one-property
+   `IAgentAvailability` on Agent's leaf is what the previous Shell-owned arrangement cost.
    - **A job that orchestrates across the section's repository + service + store is a layer skip,
      and the move is when to fix it.** Carving `IAgentConversationRetention` — one method,
      returning the deleted count — moved the retention rule inside the section and took three
@@ -1360,17 +1357,17 @@ Git Bash.)
      `AgentPageRenderTests` has one of each, and the pre/post HTML capture confirmed the only
      difference across every page in English and Spanish was the URL prefix — the `?v=` hashes
      were byte-identical before and after the move.
-7b. [ ] The section's **invariants doc** moves into `Docs/` along with its own design specs;
-   **its `docs/features/*.md` spec does not.** `AgentFeatureSpecReader` lists and fetches
-   `docs/features/{stem}.md` from GitHub at runtime with **no whitelist** — the stem set is the
-   folder listing — so moving a feature doc silently removes it from what the agent can serve,
-   with no probe and no fallback (contrast `AgentSectionDocReader`, which probes
-   `src/Sections/Humans.{key}/Docs/{key}.md` second and is why the *invariants* doc may move).
-   Rewrite the feature doc's own `freshness:triggers` to `src/Sections/Humans.<Section>/**` and
-   leave the file where it is (proven: Gate, whose `gate-admissions.md` stayed).
+7b. [ ] The section's **invariants doc and its own design specs move into `Docs/`; its feature
+   specs move into `Docs/features/`.** `AgentFeatureSpecReader` derives the servable spec set
+   from the repository structure — every `src/Sections/*/Docs/features/*.md`, plus
+   `docs/features/global/` — so a spec is served from wherever its section keeps it, with
+   nothing to register per file. The folder is the whole rule: the invariants doc, the generated
+   companions (`authorization.md`, `data-access.md`, `health.md`) and the dated `20*.md` records
+   stay directly in `Docs/` and are excluded by sitting outside `features/`. Only genuinely
+   cross-section specs belong in `docs/features/global/`.
    Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
-   `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
+   **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and
@@ -1386,7 +1383,7 @@ Git Bash.)
    **A docs path is an API until you have proved otherwise** (spec §7a).
    - **…and the probe you have to find is not always in `Humans.Agent`.** The
      invariants doc may move because `AgentSectionDocReader` falls back to
-     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Web/Health/AgentDocsHealthCheck`
+     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Agent/Health/AgentDocsHealthCheck`
      does not: it fetches `docs/sections/{ProbeSection}.md` through `IGuideContentSource`
      directly — deliberately, so a cached reader cannot keep reporting Healthy through an
      outage — with the section key as a literal, and the section it happened to name was
@@ -1399,8 +1396,7 @@ Git Bash.)
      "until Guide's own G5", which read as a scheduled move; it is not one.
      `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from
      `nobodies-collective/Humans@main` **over the network at request time**, so the folder is a
-     live API against *production's* branch with no fallback and no whitelist — the
-     `AgentFeatureSpecReader` case (Gate finding 4), one step worse. Moving it into `Docs/`
+     live API against *production's* branch with no fallback and no whitelist. Moving it into `Docs/`
      would 404 all 28 files on every deployed instance from the moment the fork's `main`
      deploys until the change reached production `main`, and would need `FolderPath`'s default
      changed in the same commit. The section's *invariants* doc still moves — that probe has a
@@ -1522,10 +1518,10 @@ Git Bash.)
    - **…and the opt-out is per *helper*, not per item group.** `CapturingLogger` was
      `Compile`-included in the same `ItemGroup` as `TestDbContextFactory`, inside the condition
      that excludes the table-less test projects — so a section with no EF on its compile path
-     that still wants an in-memory `ILogger` (Mailer's client asserts on its own 429 warning)
+     that still wants an in-memory `ILogger` (MailerLite's client asserts on its own 429 warning)
      could have neither, or take the EF package to get one. Split the group: `CapturingLogger`
      is unconditional, `TestDbContextFactory` keeps the exclusion list. Governance's "split the
-     helper before deciding", applied to an MSBuild item (proven: Mailer).
+     helper before deciding", applied to an MSBuild item (proven: MailerLite).
    - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
      package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
      `TestDbContextFactory` (and `CapturingLogger`) into every test project but
@@ -1884,7 +1880,7 @@ Git Bash.)
       first `await foreach` NREs, so the stub is hand-written), and the page whose action calls
       the vendor *outside* a `try` is a 500 rather than the error banner its sibling degrades
       to — so "the pages handle a dead vendor" is not a substitute for the stub (proven:
-      Mailer).
+      MailerLite).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

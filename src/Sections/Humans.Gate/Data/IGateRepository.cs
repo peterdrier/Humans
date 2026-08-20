@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Gate.Domain;
 using NodaTime;
 

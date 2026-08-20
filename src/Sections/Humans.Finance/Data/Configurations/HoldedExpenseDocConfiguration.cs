@@ -19,6 +19,5 @@ internal sealed class HoldedExpenseDocConfiguration : IEntityTypeConfiguration<H
         b.Property(x => x.HoldedDocId).HasMaxLength(64);
         b.Property(x => x.Currency).HasMaxLength(3);
         b.Property(x => x.TagsJson).HasColumnType("jsonb");
-        b.Property(x => x.RawPayload).HasColumnType("jsonb");
     }
 }

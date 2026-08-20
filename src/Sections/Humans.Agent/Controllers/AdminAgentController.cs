@@ -1,5 +1,5 @@
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Humans.Agent.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

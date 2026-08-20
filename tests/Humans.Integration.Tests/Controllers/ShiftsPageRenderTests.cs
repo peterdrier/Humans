@@ -245,8 +245,9 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 60000)]
     public void The_shift_info_action_pair_shell_addresses_still_resolves()
     {
-        // Shell's ThingsToDoViewComponent addresses the shift-info page by (action,
-        // controller) string pair: Url.Action("ShiftInfo", "ShiftProfile"). The move
+        // Shifts' ThingsToDo contribution addresses the shift-info page by (action,
+        // controller) string pair, which Shell resolves with Url.Action("ShiftInfo",
+        // "ShiftProfile"). The move
         // rehomed that action off ProfileController, and an unresolvable pair returns
         // **null** rather than throwing — the to-do renders without an href, on a green
         // 200, indistinguishable from its "already filled in" branch. Nothing else in the
@@ -257,15 +258,11 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         // sees what MVC really routes — the section's controllers are internal and reach
         // the table only through SectionControllerFeatureProvider.
         //
-        // Asserted here rather than off a rendered page, and the fixture is not what stands
-        // in the way: /WidgetGallery renders <vc:things-to-do … has-shift-signups="true" />
-        // with the flag hard-coded, so the branch needs no signup at all — but the component
-        // returns Content(string.Empty) for a fully-onboarded admin on both /WidgetGallery
-        // and /Home/Dashboard, so there is no card to read an href off. That is Shell
-        // behaviour on Shell's own inputs (this section changed none of them, and a carved
-        // resource key returns its own name rather than throwing). Residual gap, stated:
-        // this proves the pair the component writes today resolves, not that the component
-        // still writes it.
+        // Asserted here rather than off a rendered page: the component returns
+        // Content(string.Empty) for a fully-onboarded admin on both /WidgetGallery and
+        // /Home/Dashboard, so there is no card to read an href off. Residual gap, stated:
+        // this proves the pair the contribution writes today resolves, not that it still
+        // writes it.
         var actions = Factory.Services
             .GetRequiredService<IActionDescriptorCollectionProvider>()
             .ActionDescriptors.Items
@@ -276,7 +273,7 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
             .ToList();
 
         actions.Should().NotBeEmpty(
-            "ThingsToDoViewComponent addresses (\"ShiftInfo\", \"ShiftProfile\") and Url.Action returns null for an unresolvable pair");
+            "Shifts' ThingsToDo entry addresses (\"ShiftInfo\", \"ShiftProfile\") and Url.Action returns null for an unresolvable pair");
 
         actions.Select(a => a.AttributeRouteInfo?.Template)
             .Should().AllBe("Profile/Me/ShiftInfo",

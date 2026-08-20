@@ -9,7 +9,7 @@ public class SectionRulesAnalyzerTests
     private const string SectionEntryPoint = """
         namespace Humans.Test
         {
-            public sealed class Section : Humans.Application.Interfaces.ISection { }
+            public sealed class Section : Humans.Base.Interfaces.ISection { }
         }
 
         """;
@@ -18,7 +18,7 @@ public class SectionRulesAnalyzerTests
     // they are compiled here as a referenced assembly rather than as symbols of the
     // compilation under test.
     private const string ReferencedStubs = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface ISection { }
 
@@ -50,7 +50,7 @@ public class SectionRulesAnalyzerTests
             public interface ITagHelper { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -186,7 +186,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Jobs
             {
-                public sealed class SyncStuffJob : Humans.Application.Interfaces.IRecurringJob
+                public sealed class SyncStuffJob : Humans.Base.Interfaces.IRecurringJob
                 {
                     public System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken cancellationToken = default) =>
                         System.Threading.Tasks.Task.CompletedTask;
@@ -445,7 +445,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test
             {
-                [Humans.Application.Architecture.Grandfathered("HUM0034", "test", "2026-08-10", "test")]
+                [Humans.Base.Attributes.Grandfathered("HUM0034", "test", "2026-08-10", "test")]
                 public sealed class LeakedType { }
             }
             """;
@@ -466,7 +466,7 @@ public class SectionRulesAnalyzerTests
 
     private const string RepositoryStub = """
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
         }
@@ -479,7 +479,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Contracts
             {
-                public interface ITestRepository : Humans.Application.Interfaces.Repositories.IRepository { }
+                public interface ITestRepository : Humans.Base.Interfaces.Repositories.IRepository { }
             }
             """;
 
@@ -499,7 +499,7 @@ public class SectionRulesAnalyzerTests
 
             namespace Humans.Test.Data
             {
-                internal interface ITestRepository : Humans.Application.Interfaces.Repositories.IRepository { }
+                internal interface ITestRepository : Humans.Base.Interfaces.Repositories.IRepository { }
             }
             """;
 

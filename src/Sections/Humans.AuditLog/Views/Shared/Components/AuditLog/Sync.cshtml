@@ -1,0 +1,83 @@
+@using Humans.Base.Models.Tables
+@using Microsoft.AspNetCore.Html
+@model Humans.AuditLog.ViewComponents.AuditLogComponentViewModel
+
+@* Google-specific audit columns. Expected to go with nobodies-collective/Humans#1083. *@
+@{
+    ITableModel? table = null;
+    if (Model.Events.Count > 0)
+    {
+        Func<AuditEvent, IHtmlContent> actionCell =
+            @<text><span class="badge bg-secondary">@item.Action</span></text>;
+        Func<AuditEvent, IHtmlContent> descriptionCell = @<text>
+            @item.Description
+            @if (item.ResourceName != null)
+            {
+                <br />
+                <small class="text-muted">Resource: @item.ResourceName</small>
+            }
+        </text>;
+        Func<AuditEvent, IHtmlContent> resultCell = @<text>
+            @if (item.Success == true)
+            {
+                <span class="badge bg-success">OK</span>
+            }
+            else if (item.Success == false)
+            {
+                <span class="badge bg-danger" title="@item.ErrorMessage">Failed</span>
+                @if (!string.IsNullOrEmpty(item.ErrorMessage))
+                {
+                    <br />
+                    <small class="text-danger">@item.ErrorMessage</small>
+                }
+            }
+            else
+            {
+                <span class="text-muted">--</span>
+            }
+        </text>;
+        Func<AuditEvent, IHtmlContent> actorCell =
+            @<text><span class="badge bg-info">System</span></text>;
+        Func<AuditEvent, IHtmlContent> whenCell =
+            @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+        table = TableModel.For(Model.Events)
+            .Template("Action", actionCell, c => c.NoSort())
+            .Template("Description", descriptionCell)
+            .Column("User", e => e.UserEmail ?? "--")
+            .Column("Role", e => e.Role ?? "--")
+            .Column("Source", e => e.SyncSource != null ? e.SyncSource.ToString() : "--")
+            .Template("Result", resultCell, c => c.NoSort())
+            .Template("Actor", actorCell, c => c.NoSort())
+            .Template("When", whenCell)
+            .RowCss(e => e.Success == false ? "table-danger" : null)
+            .Build();
+    }
+}
+
+@if (Model.ShowCard)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Model.Title</div>
+        @if (table is not null)
+        {
+            <partial name="_Table" model="table" />
+        }
+        else
+        {
+            <div class="card-body text-muted">
+                @Model.EmptyText
+            </div>
+        }
+    </div>
+}
+else
+{
+    @if (table is not null)
+    {
+        <partial name="_Table" model="table" />
+    }
+    else
+    {
+        <p class="text-muted mb-0">@Model.EmptyText</p>
+    }
+}

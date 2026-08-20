@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
 using Humans.Notifications.Contracts;

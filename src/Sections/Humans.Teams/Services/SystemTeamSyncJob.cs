@@ -1,18 +1,18 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;

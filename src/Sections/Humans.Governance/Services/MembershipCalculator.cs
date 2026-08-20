@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
@@ -21,6 +21,10 @@ internal sealed class MembershipCalculator(
     // Lazy IConsentServiceRead resolve — ConsentService depends on IMembershipCalculator.
 
     private IConsentServiceRead ConsentService => serviceProvider.GetRequiredService<IConsentServiceRead>();
+
+    // Request-scoped memo (the service is Scoped): several dashboard chrome components ask
+    // for the same user's snapshot in one render (nobodies-collective/Humans#1091 review).
+    private readonly Dictionary<Guid, MembershipSnapshot> _snapshotMemo = [];
 
     public async Task<MembershipStatus> ComputeStatusAsync(
         Guid userId,
@@ -66,6 +70,11 @@ internal sealed class MembershipCalculator(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        if (_snapshotMemo.TryGetValue(userId, out var memoized))
+        {
+            return memoized;
+        }
+
         var status = await ComputeStatusAsync(userId, cancellationToken);
 
         var eligibleTeamIds = await GetRequiredTeamIdsForUserAsync(userId, cancellationToken);
@@ -87,12 +96,14 @@ internal sealed class MembershipCalculator(
         var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
-        return new MembershipSnapshot(
+        var snapshot = new MembershipSnapshot(
             status,
             isVolunteerMember,
             requiredVersionIds.Count,
             missingVersionIds.Count,
             missingVersionIds);
+        _snapshotMemo[userId] = snapshot;
+        return snapshot;
     }
 
     public Task<bool> HasAllRequiredConsentsAsync(

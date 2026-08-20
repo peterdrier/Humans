@@ -1,0 +1,32 @@
+@* One person-search result row (<vc:user-search-result>). Users owns how a human renders;
+   callers pass an id plus the match context their own search produced
+   (nobodies-collective/Humans#1062). The row's people data is fetched by <vc:human>, this
+   section's id-keyed lookup component — no caller supplies a Users display model. *@
+@model Humans.Users.ViewComponents.UserSearchResultViewModel
+
+<div class="list-group-item">
+    <div class="d-flex align-items-center gap-3">
+        <vc:human user-id="@Model.UserId" layout="Avatar" size="48" link="Public" />
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <strong><vc:human user-id="@Model.UserId" link="Public" /></strong>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.MatchField))
+            {
+                <small>
+                    <span class="badge bg-secondary">
+                        @Localizer["Search_MatchedIn"] @Model.MatchField
+                    </span>
+                    @if (!string.IsNullOrEmpty(Model.MatchSnippet))
+                    {
+                        <span class="text-muted ms-1">@Model.MatchSnippet</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.MatchedEmail))
+                    {
+                        <span class="text-muted ms-1">@Model.MatchedEmail</span>
+                    }
+                </small>
+            }
+        </div>
+    </div>
+</div>

@@ -1,13 +1,13 @@
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 using Humans.Governance.Services;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Governance.Contracts;
-using Humans.UI;
-using Humans.UI.Authorization;
+using Humans.Base;
+using Humans.Base.Authorization;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;
 

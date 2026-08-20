@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Web.Services;
 using Xunit;
 

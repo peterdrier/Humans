@@ -1,11 +1,14 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Jobs;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Configuration;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Application.Interfaces;
+using Microsoft.Extensions.Hosting;
+using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration;
 
@@ -20,27 +23,41 @@ namespace Humans.GoogleIntegration;
 /// <c>GoogleWorkspaceInfrastructureExtensions</c> (the connector graph).
 /// </para>
 /// <para>
-/// Three lines did **not** come with them, because the section owns the file but not the
-/// line (Governance's rule). <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> and
-/// <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> bind Base-owned types that Base and Shell
-/// read too — <c>CampRoleService</c> and <c>ProfileController</c> take the options,
-/// <c>GoogleWorkspaceHealthCheck</c> takes the settings — and the
-/// "Production must have Google credentials" startup guard beside them needs an
-/// <c>IHostEnvironment</c>, which <see cref="ISection.Register"/> is not handed. All three
-/// stayed in Shell's <c>InfrastructureServiceCollectionExtensions</c>. The half that is
-/// genuinely the section's — which of its two connector sets to bind — reads the same
-/// configuration keys the guard does (Email's split, G5-SECTION-TEMPLATE.md step 4).
+/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> and its "Production must have Google
+/// credentials" guard moved in here too (nobodies-collective/Humans#1091): once
+/// <c>GoogleWorkspaceHealthCheck</c> followed the connectors into this section, the settings
+/// had no reader left outside it. <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> stays in
+/// Shell's <c>InfrastructureServiceCollectionExtensions</c> — Camps' <c>CampRoleService</c>
+/// and Users' <c>ProfileController</c> still read it directly (Governance's rule: the section
+/// that owns the file is not always the section that owns the line). <see
+/// cref="ISection.Register"/> is handed no <c>IHostEnvironment</c>, so the guard reads
+/// <c>HostDefaults.EnvironmentKey</c> off the configuration it does get and fails closed —
+/// the same mechanism Development's section uses.
 /// </para>
 /// <para>
-/// The recurring jobs live in this project's <c>Contracts/</c> folder but are registered from
-/// Shell with the rest of the roll-call: <c>UseHumansRecurringJobs</c> names them by concrete
-/// type and there is no <c>ISection</c>-style discovery seam for jobs yet (step 6b).
+/// The two recurring jobs live in this project's <c>Contracts/</c> folder; their registration
+/// and schedule are contributed via <c>SectionJobs.cs</c> (#1074's jobs seam).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
+
+        var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
+        var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
+                                   !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
+
+        var environmentName = configuration[HostDefaults.EnvironmentKey];
+        if (!hasGoogleCredentials
+            && string.Equals(environmentName, Environments.Production, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Google Workspace credentials are required in production. " +
+                "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
+        }
+
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
 
         services.AddSingleton<ISyncSettingsRepository, SyncSettingsRepository>();
@@ -63,12 +80,8 @@ public sealed class Section : ISection
         services.AddScoped<ITeamResourceService, TeamResourceService>();
 
         // Real Google clients when a service-account key is configured, stubs otherwise. The
-        // "otherwise" arm is unreachable in Production — Shell throws at startup before this
-        // runs (see the remarks above).
-        var googleWorkspaceConfig = configuration.GetSection("GoogleWorkspace");
-        var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
-                                   !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
-
+        // "otherwise" arm is unreachable in Production — the guard above throws before this
+        // runs.
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
@@ -107,5 +120,12 @@ public sealed class Section : ISection
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
         services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
+
+        services.AddScoped<GoogleResourceReconciliationJob>();
+        services.AddScoped<ProcessGoogleSyncOutboxJob>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<GoogleIntegrationMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<GoogleIntegrationMetricsService>());
     }
 }

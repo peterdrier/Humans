@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Data;

@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Reflection;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using NodaTime;
 using NodaTime.Text;
 

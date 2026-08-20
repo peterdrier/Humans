@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Agent/**
-  src/Humans.Interfaces/Services/GitHubCommunityKbContentSource.cs
-  src/Humans.Interfaces/Configuration/CommunityKbSettings.cs
+  src/Humans.Base/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Base/Configuration/CommunityKbSettings.cs
 -->
 <!-- freshness:flag-on-change
   Agent conversation/message/settings invariants, preload-corpus tiers + the tool surface (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue / get_audit_history), the community knowledge base (separate nobodies-collective/knowledge-base repo, cached in RAM, admin-reloadable), rate-limit/abuse gating, and the admin status/reload/prompt-preview surface — review when agent services, stores, the tool catalog, the preload/community-KB readers, or the agent controllers change.
@@ -129,7 +129,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 
 ## Architecture
 
-**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AnthropicClient`. `AgentPreloadAugmentor` stays in Shell (it reads Shell-owned help content) and implements `IAgentPreloadAugmentor` from this project's `Contracts/` folder; `AgentConversationRetentionJob` moved into the same folder at G5 lane 5b-5 and calls `IAgentConversationRetention` beside it. Only the job's DI registration and its roll-call entry stay in Shell.
+**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`. `AgentPreloadAugmentor` moved into this project at nobodies-collective/Humans#1091 (it reads `Humans.Base`'s shared help registries, not anything Web-owned) and implements `IAgentPreloadAugmentor` from this project's `Contracts/` folder; `AgentConversationRetentionJob` moved into the same folder at G5 lane 5b-5 and calls `IAgentConversationRetention` beside it. Only the job's DI registration and its roll-call entry stay in Shell.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
 **Status:** (A) G5 — the section lives in its own project, `src/Sections/Humans.Agent`, with its cross-section surface in the project's own `Contracts/` folder (nobodies-collective/Humans#866, wave A4b); the `Humans.Agent.Contracts` leaf it once occupied folded back in (ruling 44). Everything except `Section`, `AgentResource`, the generated migrations, and the four `Contracts/` types (`AgentSectionKeys`, `IAgentAvailability`, `IAgentConversationRetention`, `IAgentPreloadAugmentor`) is `internal`, enforced at build time by HUM0034. Architecture tests: `tests/Humans.Agent.Tests/AgentArchitectureTests.cs`; page rendering: `tests/Humans.Integration.Tests/Controllers/AgentPageRenderTests.cs`. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
 
@@ -144,7 +144,7 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 ### Touch-and-clean guidance
 
 - Do **not** call the Anthropic SDK directly outside `AnthropicClient`.
-- Do **not** fetch `docs/sections/`, `docs/features/` or `src/Sections/Humans.<Section>/Docs/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation.
+- Do **not** fetch `docs/sections/`, `docs/features/global/` or `src/Sections/Humans.<Section>/Docs/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation. `AgentFeatureSpecReader` derives its servable set from the repository tree — every section `Docs/features/*.md`, plus `docs/features/global/` — so a new spec needs no registration.
 - Do **not** add new tool names without updating both `AgentToolNames` and `IAgentToolDispatcher` whitelist; an unknown name must be a hard error, never a fallthrough.
 - Do **not** make `route_to_issue` (or any future handoff tool) write rows server-side. Handoffs are propose-only; the user submits.
 <!-- NOTE: The originally-planned Phase-2 AgentFaq entity and IAgentFaqService were never built. The community knowledge-base tool (fetch_community_faq) backed by GitHubCommunityKbContentSource (nobodies-collective/knowledge-base repo, cached in RAM) replaced that design entirely. There is no AgentFaq table; CommunityKbSettings holds the repo/branch config. -->

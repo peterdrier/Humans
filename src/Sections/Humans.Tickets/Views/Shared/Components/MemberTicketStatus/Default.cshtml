@@ -1,0 +1,90 @@
+@using Humans.Tickets.ViewComponents
+@using Humans.Users.Contracts
+@model MemberTicketStatusViewModel
+
+@* ─── Ticket Status ─── *@
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                @if (!Model.TicketsConfigured)
+                {
+                    <div class="d-flex align-items-center">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <strong>@SharedLocalizer["Dashboard_TicketNotConfigured"]</strong>
+                        </div>
+                    </div>
+                }
+                else if (Model.HasTicket)
+                {
+                    <div class="d-flex align-items-center">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-success me-3">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">@SharedLocalizer["Dashboard_TicketConfirmed"]</h5>
+                            @if (Model.UserTicketCount > 1)
+                            {
+                                <small class="text-muted">@string.Format(SharedLocalizer["Dashboard_TicketCount"].Value, Model.UserTicketCount)</small>
+                            }
+                        </div>
+                    </div>
+                    <vc:my-ticket-stubs user-id="@Model.UserId" />
+                    <div class="mt-3">
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-controller="TicketTransfer" asp-action="Index">Transfers…</a>
+                    </div>
+                }
+                else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
+                {
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-neutral me-3">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">@SharedLocalizer["Dashboard_NotAttending"]</h5>
+                            <small class="text-muted">@SharedLocalizer["Dashboard_NotAttendingHint"]</small>
+                        </div>
+                    </div>
+                    <form asp-controller="Profile" asp-action="UndoNotAttending" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <i class="fa-solid fa-rotate-left me-1"></i> @SharedLocalizer["Dashboard_UndoNotAttending"]
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-info me-3">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">@SharedLocalizer["Dashboard_TicketMissing"]</h5>
+                            <small class="text-muted">@SharedLocalizer["Dashboard_TicketMissingHint"]</small>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
+                            <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
+                        </a>
+                        <a asp-controller="Profile" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                    </div>
+                    @if (Model.EventYear.HasValue)
+                    {
+                        <hr />
+                        <form asp-controller="Profile" asp-action="DeclareNotAttending" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-xmark me-1"></i> @SharedLocalizer["Dashboard_DeclareNotAttending"]
+                            </button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

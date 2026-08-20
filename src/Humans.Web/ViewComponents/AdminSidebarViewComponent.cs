@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,15 +8,17 @@ public sealed class AdminSidebarViewComponent(
     IAuthorizationService authorization,
     IWebHostEnvironment environment,
     IServiceProvider serviceProvider,
+    IEnumerable<ISectionAdminNav> navContributors,
     ILogger<AdminSidebarViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var activeController = (string?)RouteData.Values["controller"];
         var activeAction = (string?)RouteData.Values["action"];
-        var visibleGroups = new List<AdminSidebarGroupViewModel>(AdminNavTree.Groups.Count);
+        var groups = AdminNavComposition.Compose(navContributors);
+        var visibleGroups = new List<AdminSidebarGroupViewModel>(groups.Count);
 
-        foreach (var group in AdminNavTree.Groups)
+        foreach (var group in groups)
         {
             var visibleItems = new List<AdminSidebarItemViewModel>(group.Items.Count);
             foreach (var item in group.Items)

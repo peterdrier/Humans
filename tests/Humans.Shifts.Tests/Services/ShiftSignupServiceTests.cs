@@ -9,7 +9,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;

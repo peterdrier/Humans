@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;

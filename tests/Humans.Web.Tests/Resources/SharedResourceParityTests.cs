@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using Humans.UI;
-using Humans.UI.Models;
+using Humans.Base;
+using Humans.Base.Models;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -31,7 +31,7 @@ public class SharedResourceParityTests
     /// <c>AddLocalization()</c> with no <c>ResourcesPath</c>, so
     /// <c>ResourceManagerStringLocalizerFactory</c> derives the baseName from
     /// <c>typeof(SharedResource).FullName</c> and looks it up in that type's own assembly —
-    /// i.e. it needs <c>Humans.UI.SharedResource.resources</c> to be embedded in whichever
+    /// i.e. it needs <c>Humans.Base.SharedResource.resources</c> to be embedded in whichever
     /// assembly declares the type. The SDK produces that name only through
     /// <c>EmbeddedResourceUseDependentUponConvention</c>: <c>SharedResource.resx</c> is named
     /// after the type declared in the <c>SharedResource.cs</c> sitting in the SAME folder.
@@ -53,7 +53,7 @@ public class SharedResourceParityTests
         var assembly = typeof(SharedResource).Assembly;
 
         assembly.GetManifestResourceNames().Should().Contain(
-            "Humans.UI.SharedResource.resources",
+            "Humans.Base.SharedResource.resources",
             "AddLocalization() resolves SharedResource by its type's full name against its own "
             + $"assembly ({assembly.GetName().Name}); a different manifest name renders every key raw");
     }

@@ -1,4 +1,4 @@
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.AuditLog.Models;
 

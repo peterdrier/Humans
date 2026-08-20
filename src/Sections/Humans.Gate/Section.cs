@@ -1,11 +1,12 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
+using Humans.Gate.Jobs;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,13 +23,12 @@ namespace Humans.Gate;
 /// <para>
 /// <c>GateRetentionJob</c> and <c>GateVendorCheckInJob</c> live in this project's
 /// <c>Jobs/</c> folder (moved there from <c>Contracts/</c> by the HUM0034 carve-out,
-/// nobodies-collective/Humans#1353), but are
-/// <em>not</em> registered here: jobs are named by concrete type in Shell's
-/// <c>UseHumansRecurringJobs</c> roll-call and by Hangfire's serialized method reference, and
-/// there is no discovery seam for them yet, so the registration stays in Shell (design
-/// §15.6b). The retention job reaches the section through <see cref="IGateScanRetention"/>;
-/// the vendor mirror job needs no Gate type at all, only Tickets'
-/// <c>ITicketVendorMirror</c>.
+/// nobodies-collective/Humans#1353); their registration moved here at #1074's jobs seam.
+/// Only <c>GateRetentionJob</c> is a recurring job, contributed via <c>SectionJobs.cs</c>;
+/// <c>GateVendorCheckInJob</c> is enqueued fire-and-forget on admit and needs only DI
+/// registration. The retention job reaches the section through
+/// <see cref="IGateScanRetention"/>; the vendor mirror job needs no Gate type at all, only
+/// Tickets' <c>ITicketVendorMirror</c>.
 /// </para>
 /// <para>
 /// No caching decorator: gate reads must be live (a stale verdict admits or blocks the wrong
@@ -62,5 +62,8 @@ public sealed class Section : ISection
         services.AddScoped<IGateScanRetention>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GateService>());
+
+        services.AddScoped<GateRetentionJob>();
+        services.AddScoped<GateVendorCheckInJob>();
     }
 }

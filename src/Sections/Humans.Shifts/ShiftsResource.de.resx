@@ -1114,4 +1114,61 @@
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Die Aufbau-Schichten stehen fest — melde dich bei deiner Koordination, wenn du nicht kommen kannst.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
+    <value>Schichten, die jetzt humans brauchen</value>
+  </data>
+  <data name="GetInvolved_Title" xml:space="preserve">
+    <value>Mach mit</value>
+  </data>
+  <data name="GetInvolved_Intro" xml:space="preserve">
+    <value>Das Event lebt von humans. Wähle Schichten, die in deinen Zeitplan passen — jede Stunde zählt.</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
+    <value>Aufbau</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
+    <value>Baue das Gelände auf, bevor die Tore öffnen. Körperliche Arbeit, flexible Zeiten, ideal um das Team kennenzulernen.</value>
+  </data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve">
+    <value>Event</value>
+  </data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
+    <value>Halte alles am Laufen während des Events. Bars, Einlass, Sicherheit, Kunst — für jeden etwas dabei.</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
+    <value>Abbau</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
+    <value>Alles abbauen und keine Spuren hinterlassen. Befriedigende Arbeit, meist kürzerer Einsatz.</value>
+  </data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
+    <value>Alle Schichten ansehen</value>
+  </data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve">
+    <value>Meine Schichten</value>
+  </data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve">
+    <value>Platz</value>
+  </data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve">
+    <value>Plätze</value>
+  </data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve">
+    <value>Mach mit</value>
+  </data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
+    <value>Das baut sich nicht von allein.</value>
+  </data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
+    <value>Schau was ansteht und trag dich ein.</value>
+  </data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve">
+    <value>Finde deine Leute. Oder werde die Leute von jemand anderem.</value>
+  </data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve">
+    <value>Die Nachbarschaften, die Elsewhere wie zuhause fühlen lassen.</value>
+  </data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
 </root>

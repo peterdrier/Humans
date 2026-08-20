@@ -7,7 +7,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Data;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Users.Contracts;

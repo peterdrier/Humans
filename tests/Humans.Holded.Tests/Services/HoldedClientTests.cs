@@ -83,6 +83,19 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task GetPurchaseDocumentAsync_surfaces_an_unreadable_body_as_permanent_not_a_raw_parse_throw()
+    {
+        // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
+        // stored value would escape the client and leak an Infrastructure detail upward.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task GetPurchaseDocumentAsync_404Throws_HoldedPermanent()
     {
         var handler = new StubHandler(_ => Respond(HttpStatusCode.NotFound, "{}"));

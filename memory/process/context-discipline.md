@@ -59,6 +59,8 @@ Plain grep is still right for: text searches that aren't symbols (string literal
 
 If a multi-file change is held entirely in working-tree limbo until the end, every file's contents stay context-relevant for the whole session. Commit logical chunks as you go (interfaces, then implementations, then tests, then docs) — once committed, the diff is in git and you don't need to keep re-reading the same files to remember what you changed.
 
-### 6. cd-once-then-absolute-paths
+### 6. cd once in the main loop; absolute paths in subagents
 
-`cd` doesn't persist between separate `Bash` calls (the docs claim it does, but in practice it doesn't). Don't waste round-trips testing this. Use absolute paths everywhere, or `git -C <path>` for git, or pass the full path to `dotnet`. Stop trying to maintain shell state.
+`cd` **does** persist between `Bash` calls in the main loop — `cd` once into the worktree and run everything unprefixed from there. It does **not** persist reliably inside a subagent, where the working directory resets between calls and can land in a sibling agent's worktree (anthropics/claude-code#87953); a subagent must use absolute paths for every read, edit and build, and must not run git at all.
+
+**Never `git -C <path>`.** It defeats every `Bash(git …:*)` permission-allowlist prefix and forces a classifier round-trip on each call.

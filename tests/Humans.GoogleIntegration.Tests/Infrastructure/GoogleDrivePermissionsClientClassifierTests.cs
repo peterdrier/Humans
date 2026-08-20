@@ -9,7 +9,7 @@ namespace Humans.GoogleIntegration.Tests.Infrastructure;
 /// Focused unit tests for <see cref="GoogleDrivePermissionsClient.IsDuplicatePermissionError"/>,
 /// the classifier that decides whether an HTTP 400 from
 /// <c>drive.permissions.create</c> should be treated as an idempotent
-/// <see cref="Humans.Application.Interfaces.GoogleIntegration.DrivePermissionCreateOutcome.AlreadyExists"/>
+/// <see cref="Humans.Base.Interfaces.GoogleIntegration.DrivePermissionCreateOutcome.AlreadyExists"/>
 /// (the user already has a permission) or a real failure that should
 /// surface to the caller for retry / investigation.
 ///

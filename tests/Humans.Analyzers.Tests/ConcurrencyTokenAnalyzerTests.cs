@@ -20,7 +20,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     // synthetic compilation can resolve it — the real build references it
     // transitively from Humans.Application.
     private const string GrandfatheredStub = """
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -183,7 +183,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
 
             namespace Humans.Infrastructure.Data.Configurations.Users
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0007",
                     justification: "Pre-rule row-version pending removal.",
                     since: "2026-05-25",
@@ -213,7 +213,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
 
             namespace Humans.Domain.Entities
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0007",
                     justification: "Pre-rule concurrency check pending removal.",
                     since: "2026-05-25",
@@ -243,7 +243,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
 
             namespace Humans.Infrastructure.Data.Configurations.Users
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0042",
                     justification: "Different rule.",
                     since: "2026-05-25",

@@ -1,0 +1,211 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!--
+      G5 lane 4b-iii B. MVC views/partials/view components, not Blazor components — the same
+      pair Humans.UI carried, moved verbatim with the Razor half of that project. Razor binds
+      tag helpers, view components and SharedResource by ASSEMBLY name, so those files could
+      only follow their namespace down here once this project could compile .cshtml.
+    -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <!--
+    Lowest-level project: system marker interfaces, architecture attributes, and
+    shape interfaces shared by Domain entities and their Application DTOs. Those
+    shape interfaces may carry default-implemented members when a rule must have a
+    single home across both implementers (IBurnSettingsInfo's early-entry clock) —
+    so a little behaviour lives here, deliberately, not just declarations.
+    THE ONE INVARIANT, restated for what it always meant: Base must stay the bottom of
+    the graph, so every project it references must sit on a chain that TERMINATES.
+    G5 lane 4b-iii A added the first and so far only ProjectReference —
+    Humans.Users.Contracts — and the chain is
+      Humans.Interfaces -> Humans.Users.Contracts -> Humans.Onboarding.Contracts -> nothing.
+    A terminating chain cannot cycle, which is why lanes 3b (#1316) and 3c (#1318) spent
+    themselves making Humans.Users.Contracts terminal before this reference was allowed.
+    Do NOT add a reference to anything that is not on such a chain, and do NOT add an
+    outbound reference to Humans.Users.Contracts or Humans.Onboarding.Contracts — either
+    closes an assembly cycle through Base.
+
+    EXTERNAL DEPENDENCIES ARE UNRESTRICTED — Peter's ruling, 2026-08-15. Base may take
+    any NuGet package or shared framework it needs; only Humans.* ProjectReferences are
+    forbidden. Earlier revisions of this comment claimed a "no-NuGet-packages promise"
+    and described Base as framework-free. Both were false when written: this project has
+    carried FrameworkReference Microsoft.AspNetCore.App since ISection landed, long
+    before phase 3, and it now also carries CsvHelper, Serilog, Octokit, EF Core and
+    Npgsql. Do not reason from package count when placing a type here; reason from the
+    ProjectReference rule above and from whether the type is genuinely cross-section.
+
+    NodaTime is here because IBurnSettingsInfo's calendar members are LocalDate and
+    Instant. Namespaces intentionally remain Humans.Application.* (namespace ≠ assembly)
+    so call sites and the Humans.Analyzers full-name constants are unaffected by the move.
+
+    G5 lane 3a-1 (nobodies-collective/Humans#866) made this the Base fill: 60 generic files
+    arrived from Humans.Application (34), Humans.Domain (16) and Humans.Infrastructure (10) —
+    the configuration registry, CacheKeys, the CSV seam, the formatting/timing extensions,
+    the cross-cutting cache interfaces and their six IMemoryCache implementations, the
+    metering trio, the Serilog enrichers/sink, the GitHub markdown connectors, the role and
+    team constants, and four enums. Every one kept its original namespace, so no `using`,
+    `_ViewImports`, `<Using Include>` or analyzer full-name constant changed anywhere in the
+    repo. The rename of this project to Humans.Base is a later lane.
+
+    G5 lane 4b-iii A brought the non-Razor half of Humans.UI down here: Authorization/
+    (PolicyNames, RoleChecks, ShiftRoleChecks), Constants/TempDataKeys, Controllers/
+    (HumansControllerBase, ApiControllerBase), the eight Extensions/, Filters/
+    ApiKeyAuthFilterBase, Helpers/LanguageCatalog, twelve Models/ view models and
+    Models/Tables/. Namespaces are still Humans.UI.* on purpose — every `using`,
+    `@using` and `_ViewImports` in the repo is unchanged. Humans.UI keeps everything a
+    Razor file binds by ASSEMBLY name (tag helpers, view components, views, SharedResource
+    and its resx set); lane B takes those with the SDK change.
+
+    G5 lane 4b-iii B then brought that Razor half down and emptied Humans.UI: the four
+    TagHelpers/, the five ViewComponents/ and their four Views/Shared/Components/**/Default.cshtml,
+    the ten Views/Shared/ partials, Views/_ViewImports.cshtml, TranslationsGalleryViewModel
+    (it takes IStringLocalizer<SharedResource>, so it could only follow the resx) and
+    Resources/ — SharedResource.cs beside its seven .resx files, folder layout untouched.
+    Namespaces are still Humans.UI.*, so no `using`, `@using` or analyzer constant moved; the
+    48 `@addTagHelper *, Humans.UI` directives under src/ became `*, Humans.Interfaces`
+    because that directive names an ASSEMBLY, not a namespace.
+
+    G5 lane 3a-2 followed with the AddSectionDbContext cluster: the generic registration seam
+    (SectionDbContextServiceCollectionExtensions), SectionDbContextRegistration,
+    SectionMigrationRunner, DatabaseMigrationHostedService, PreMigrationSnapshot,
+    SectionMigrationsHistory, QueryMonitoringInterceptor and QueryStatistics. All 28
+    table-owning sections call the seam from their own Section.cs and none of them may
+    reference Humans.Infrastructure, so Base is the only place it can live. Namespaces
+    preserved again (Humans.Infrastructure.Data / .Hosting), so no call site moved.
+    InfrastructureServiceCollectionExtensions itself deliberately stayed in
+    Humans.Infrastructure — two architecture rules read typeof(…).Assembly off it to mean
+    "the Humans.Infrastructure assembly".
+
+    G5 lane 5b-6 then deleted src/Humans.Infrastructure outright. Its last two settings POCOs
+    (EmailSettings, GoogleWorkspaceSettings) landed here beside CommunityKbSettings and
+    GuideSettings: five sections plus Web bind EmailSettings, so no section owns it, and the
+    design's placement test puts anything sections reference on the floor. Namespace preserved
+    again (Humans.Infrastructure.Configuration), so no call site moved. Everything else went to
+    Humans.Web — including InfrastructureServiceCollectionExtensions, whose two anchor rules
+    were self-retiring and went with the assembly.
+  -->
+
+  <!--
+    Followed the G5 lane 3a-1 arrivals out of Humans.Application: TrackedCache's
+    MarkWarmedForTesting, LoggerTimingExtensions.SelectLogLevel and TrackedLock.WaitToLogLevel
+    are internal and were already visible to these two test assemblies from there.
+  -->
+  <!--
+    Microsoft.NET.Sdk.Web puts these in ImplicitUsings; neither Microsoft.NET.Sdk nor
+    Microsoft.NET.Sdk.Razor does. Declaring them keeps the files G5 lanes 4b-iii A and B moved
+    out of Humans.UI (which declared the same three items for the same reason) byte-identical to
+    their originals — DateTimeDisplayExtensions names IHttpContextAccessor and ISession,
+    HumansControllerBase names ILoggerFactory, NonceTagHelper and AuthorizeViewTagHelper name
+    IHttpContextAccessor and ILogger, Views/Shared/_Pager.cshtml calls Context.GetRouteData(),
+    and none of them carries a using of its own. Global usings reach Razor-generated code too,
+    since it compiles in this same compilation.
+  -->
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Base.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
+    <!--
+      Followed the G5 lane 3a-2 arrivals: DatabaseMigrationHostedService,
+      SectionDbContextRegistration, SectionMigrationRunner and PreMigrationSnapshot are internal
+      and stay that way — 26 .Contracts leaves inherit this assembly's public surface, and the
+      migration plumbing is not part of it. Humans.Web names two of them (AddHumansPersistence
+      registers the hosted service, AdminDatabaseDiagnosticsRepository injects the
+      registrations) and Humans.Integration.Tests drives SectionMigrationRunner directly; both
+      were already inside Humans.Infrastructure's own InternalsVisibleTo set before the move.
+      The grant followed those two files to Humans.Web at G5 lane 5b-6, which deleted
+      Humans.Infrastructure. It is also why this assembly's Razor imports sit at
+      Views/Shared/_ViewImports.cshtml and not Views/: a root _ViewImports in both assemblies
+      generates the same internal Views__ViewImports type and Humans.Web fails with CS0436.
+    -->
+    <InternalsVisibleTo Include="Humans.Web" />
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      Lane 4b-iii A's `InternalsVisibleTo Humans.UI` is GONE, one lane earlier than it said:
+      it existed only because HumanSearchPickerViewModel.SelectedBurnerName has an `internal`
+      setter (no caller may supply a name, only the component may resolve one from
+      SelectedUserId) and its one privileged writer, HumanSearchViewComponent, was still in
+      Humans.UI. Lane B brought that writer into this assembly, so the invariant now holds
+      without a grant.
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+    <!--
+      ISection names IServiceCollection and IConfiguration, and the G5 lane 3a-1 arrivals
+      below use IMemoryCache, ILogger, IOptions and IHostEnvironment. All live in the
+      ASP.NET Core shared framework.
+
+      Consequence worth knowing, measured 2026-08-15 with
+      `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`:
+      FrameworkReference flows transitively through ProjectReference, so all 26 .Contracts
+      leaves that reference this project resolve Microsoft.AspNetCore.App with
+      IsTransitiveFrameworkReference=true. Those leaves are NOT framework-free and cannot be
+      used as a "cannot name an ASP.NET type" oracle. Only the three leaves with no path here
+      — Humans.Events.Contracts, Humans.Onboarding.Contracts (both zero-ProjectReference) and
+      Humans.Users.Contracts (one edge, to Onboarding) — resolve Microsoft.NETCore.App alone.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+    <!--
+      Added by G5 lane 3a-1 (nobodies-collective/Humans#866), each forced by exactly one
+      arrival. The real invariant is the ProjectReference rule at the top of this file, not a
+      package count: 26 .Contracts leaves reference this project, so an external package landing
+      here reaches all of them, but per Peter's ruling of 2026-08-15 that is allowed and only a
+      Humans.* ProjectReference is not. Add a package because an arrival names it, and say which.
+        CsvHelper — Csv/HumansCsv.cs, the single CSV seam (memory/code/csv-use-csvhelper.md).
+        Serilog   — Logging/{CurrentUserEnricher,PiiRedactionEnricher,InMemoryLogSink}.cs,
+                    which implement Serilog.Core.ILogEventEnricher / ILogEventSink.
+        Octokit   — Services/GitHub{Guide,CommunityKb}ContentSource.cs, the Guide and
+                    community-KB markdown readers.
+    -->
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Octokit" />
+
+    <!--
+      Added by G5 lane 3a-2 (nobodies-collective/Humans#866) with the AddSectionDbContext
+      cluster: the generic registration seam is called from all 28 table-owning sections, so it
+      has to live below every one of them, and its body names DbContext, AddDbContext,
+      AddDbContextFactory, IInterceptor, CoreEventId, UseNpgsql and UseNodaTime. This is the
+      moment Base stops being EF-free — approved for that reason, not by drift. It changes no
+      leaf's own reference set: the compiler emits an assembly reference only for what a project
+      actually uses, and no .Contracts leaf names an EF type.
+        Microsoft.EntityFrameworkCore                    — DbContext, the options builders, the
+                                                           interceptor base and the migration runner.
+        Npgsql.EntityFrameworkCore.PostgreSQL            — UseNpgsql / NpgsqlDataSource.
+        Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime   — UseNodaTime on the Npgsql builder.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+
+    <!--
+      Added by G5 lane 4b-iii A with Extensions/HtmlHelperExtensions.cs, the single
+      Html.SanitizedMarkdown seam that ~25 section views render through. Markdig parses,
+      HtmlSanitizer scrubs; nothing else in this project names either package.
+    -->
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <!--
+    THE ONLY ProjectReference this project has, and it may not gain a second one that is
+    not on a terminating chain — see the invariant at the top of this file.
+    Forced by six arrivals from Humans.UI in G5 lane 4b-iii A: HumansControllerBase and
+    ApiControllerBase (User, IUserService), RoleChecks, SearchResultMappingExtensions and
+    PersonSearchOrderingExtensions.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

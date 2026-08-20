@@ -1,10 +1,11 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
+using Humans.Consent.Jobs;
 using Humans.Consent.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,13 +16,10 @@ namespace Humans.Consent;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// The two Hangfire jobs the old extension registered (<c>SyncLegalDocumentsJob</c>,
-/// <c>SendReConsentReminderJob</c>) are still <em>registered</em> in Shell's
-/// <c>InfrastructureServiceCollectionExtensions</c> beside the other moved-out sections':
-/// there is no <c>ISection</c>-style discovery seam for jobs (design §15 step 6b). The
-/// registration site is not the job's home, though — both moved into this project's
-/// <c>Contracts/</c> folder (nobodies-collective/Humans#866): <c>SyncLegalDocumentsJob</c> at
-/// G5 lane 5b-4, <c>SendReConsentReminderJob</c> at lane 5b-5.
+/// <c>SyncLegalDocumentsJob</c> and <c>SendReConsentReminderJob</c> moved into this project's
+/// <c>Contracts/</c> folder (nobodies-collective/Humans#866): the former at G5 lane 5b-4, the
+/// latter at lane 5b-5. Their registration followed at #1074's jobs seam, whose schedule is
+/// contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -88,5 +86,12 @@ public sealed class Section : ISection
 
         // Hosted for symmetry; warmOnStartup: false so StartAsync is a no-op.
         services.AddHostedService(sp => sp.GetRequiredService<CachingConsentService>());
+
+        services.AddScoped<SyncLegalDocumentsJob>();
+        services.AddScoped<SendReConsentReminderJob>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<ConsentMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<ConsentMetricsService>());
     }
 }

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Architecture;
-using Humans.Domain.Architecture;
+using Humans.Base.Attributes;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
@@ -23,7 +22,7 @@ namespace Humans.Analyzers.Tests;
 /// The other analyzer tests stub their marker attribute inline, so the stub and
 /// the analyzer agree with each other no matter what the real class says. These
 /// tests instead compile the <b>production source file</b>, embedded verbatim
-/// from <c>src/Humans.Interfaces/Architecture/</c> by the test csproj, into the
+/// from <c>src/Humans.Base/Attributes/</c> by the test csproj, into the
 /// referenced assembly — the same shape as production, where the attribute lives
 /// outside the assembly under analysis. If the analyzers' compiled copy ever
 /// diverges from that file — the link dropped, a literal re-inlined, a hand-made
@@ -52,7 +51,7 @@ public class ArchitectureAttributeIdentityTests
             typeof(ArchitectureAttributeIdentityTests).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException(
                 $"Embedded resource '{resourceName}' is missing. It is declared in " +
-                "Humans.Analyzers.Tests.csproj against src/Humans.Interfaces/Architecture/ — " +
+                "Humans.Analyzers.Tests.csproj against src/Humans.Base/Attributes/ — " +
                 "if the attributes moved, move the declaration with them rather than " +
                 "dropping it, or the analyzers lose their only end-to-end check.");
 
@@ -135,7 +134,7 @@ public class ArchitectureAttributeIdentityTests
                 public sealed class HttpPostAttribute : System.Attribute { }
             }
 
-            namespace Humans.Application.Interfaces
+            namespace Humans.Base.Interfaces
             {
                 public interface ISyncService
                 {
@@ -148,7 +147,7 @@ public class ArchitectureAttributeIdentityTests
             {
                 public sealed class SyncController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    private readonly Humans.Application.Interfaces.ISyncService _sync = null!;
+                    private readonly Humans.Base.Interfaces.ISyncService _sync = null!;
 
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public System.Threading.Tasks.Task Execute() =>
@@ -212,7 +211,7 @@ public class ArchitectureAttributeIdentityTests
     {
         var ns = typeof(GrandfatheredAttribute).Namespace;
         var source = $$"""
-            namespace Humans.Application.Interfaces.Repositories
+            namespace Humans.Base.Interfaces.Repositories
             {
                 public interface IRepository { }
                 public interface ICampRepository : IRepository { }
@@ -229,7 +228,7 @@ public class ArchitectureAttributeIdentityTests
                 public sealed class CampsController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     public CampsController(
-                        Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
+                        Humans.Base.Interfaces.Repositories.ICampRepository repo) { }
                 }
             }
             """;

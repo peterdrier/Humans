@@ -1,4 +1,4 @@
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Humans.Web.Health;

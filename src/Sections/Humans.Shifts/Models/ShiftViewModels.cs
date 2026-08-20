@@ -374,15 +374,6 @@ internal sealed class ShiftAdminViewModel
     public bool IncompleteOnboardingFilter { get; set; }
 }
 
-// === Homepage ===
-
-/// <summary>
-/// The home dashboard's shift cards. Binds <see cref="IDashboardService"/>'s own
-/// records rather than the section's presentation types: the dashboard resolves
-/// rota name, department name and the absolute window itself, so this page never
-/// names a Shifts type (nobodies-collective/Humans#866, G5).
-/// </summary>
-
 // === Shift Info (user-scoped profile) ===
 
 internal sealed class ShiftInfoViewModel

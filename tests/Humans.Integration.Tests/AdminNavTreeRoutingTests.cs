@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -7,8 +8,8 @@ using Xunit;
 namespace Humans.Integration.Tests;
 
 /// <summary>
-/// Every <see cref="AdminNavTree"/> entry must name a controller/action pair that actually
-/// exists in the running app's routing table.
+/// Every composed admin nav entry (<see cref="AdminNavComposition"/>) must name a
+/// controller/action pair that actually exists in the running app's routing table.
 /// </summary>
 /// <remarks>
 /// This is a silent failure with no other guard. <c>AdminSidebar</c>'s view renders each item
@@ -47,7 +48,10 @@ public class AdminNavTreeRoutingTests(HumansTestDatabase database) : Integration
             .Where(x => x.Controller is not null && x.Action is not null)
             .ToHashSet();
 
-        var unresolvable = AdminNavTree.Groups
+        var groups = AdminNavComposition.Compose(
+            Factory.Services.GetRequiredService<IEnumerable<ISectionAdminNav>>());
+
+        var unresolvable = groups
             .SelectMany(g => g.Items)
             // RawHref items are absolute or external links and bypass the tag helper entirely.
             .Where(i => i.RawHref is null && !string.IsNullOrEmpty(i.Controller))

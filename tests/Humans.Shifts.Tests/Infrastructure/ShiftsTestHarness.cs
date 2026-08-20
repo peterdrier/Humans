@@ -1,7 +1,7 @@
 using Humans.EarlyEntry.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;

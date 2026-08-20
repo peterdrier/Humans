@@ -19,12 +19,12 @@
     Nothing else exists: the section is the 70-line fan-out itself, which is internal.
 
     References Humans.Interfaces only — the bottom of the graph. IFanout and IOrchestrator
-    live there (in the Humans.Application.Interfaces namespace, which is why the two
+    live there (in the Humans.Base.Interfaces namespace, which is why the two
     interface files carry a using for it).
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,11 +1,11 @@
 using Humans.Auth.Contracts;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using Humans.Agent.Models;
 using Humans.Users.Contracts;

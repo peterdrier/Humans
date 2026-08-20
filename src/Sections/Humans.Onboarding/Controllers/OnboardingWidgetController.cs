@@ -1,4 +1,4 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;

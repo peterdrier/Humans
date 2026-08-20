@@ -1,6 +1,6 @@
-using Humans.UI.Models.Tables;
+using Humans.Base.Models.Tables;
 using Humans.Governance.Services;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Governance.Models;

@@ -1,5 +1,5 @@
 using Humans.Containers.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;

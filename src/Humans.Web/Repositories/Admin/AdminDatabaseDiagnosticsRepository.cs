@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces.Admin;
+using Humans.Base.Interfaces.Admin;
 using Humans.Web.Data;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Repositories.Admin;

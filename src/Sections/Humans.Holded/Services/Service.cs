@@ -188,9 +188,14 @@ internal sealed class Service(
             {
                 var hasLines = local.TryGetValue(a.Number, out var cached);
                 decimal? localBalance = hasLines ? cached.Balance : null;
+                // Reconciled compares the raw (Debit − Credit) convention — the same one Holded's
+                // own chart balance is in — never the POV-flipped display value below.
+                var reconciled = a.Balance == (localBalance ?? 0m);
                 return new HoldedAccountRow(
-                    a.Number, a.Name, GroupName(a.Number), a.Balance, localBalance,
-                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m),
+                    a.Number, a.Name, GroupName(a.Number),
+                    ToAssociationPov(a.Number, a.Balance),
+                    localBalance is null ? null : ToAssociationPov(a.Number, localBalance.Value),
+                    hasLines ? cached.Count : 0, reconciled,
                     a.Debit != 0m || a.Credit != 0m);
             })
             .ToList();
@@ -209,26 +214,57 @@ internal sealed class Service(
         int number, CancellationToken ct = default)
     {
         var lines = await repo.GetLedgerLinesByAccountNumAsync(number, ct);
-        var account = (await repo.GetAccountsAsync(ct)).FirstOrDefault(a => a.Number == number);
+        var accounts = await repo.GetAccountsAsync(ct);
+        var account = accounts.FirstOrDefault(a => a.Number == number);
         if (account is null && lines.Count == 0)
             return null;
 
         // Archived accounts are not filtered out here the way the overview filters them: a direct
         // link to one is a deliberate lookup, and its history is still the answer.
-        decimal? localBalance = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
-        var holdedBalance = account?.Balance ?? 0m;
+        decimal? localBalanceRaw = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
+        var holdedBalanceRaw = account?.Balance ?? 0m;
+        // Reconciled compares the raw convention, never the POV-flipped display value below.
+        var reconciled = holdedBalanceRaw == (localBalanceRaw ?? 0m);
+
+        // Counterparties are resolved from the entry's OTHER legs, which can post to any account —
+        // not just this one — so the lookup needs the whole mirror, not this account's slice of it.
+        var byEntry = (await repo.GetAllLedgerLinesAsync(ct))
+            .GroupBy(l => l.EntryNumber)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var accountsByNumber = accounts.ToDictionary(a => a.Number);
 
         return new HoldedAccountStatement(
             new HoldedAccountRow(
-                number, account?.Name ?? "", GroupName(number), holdedBalance,
-                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m),
+                number, account?.Name ?? "", GroupName(number),
+                ToAssociationPov(number, holdedBalanceRaw),
+                localBalanceRaw is null ? null : ToAssociationPov(number, localBalanceRaw.Value),
+                lines.Count, reconciled,
                 account is { } a && (a.Debit != 0m || a.Credit != 0m)),
             lines
                 .OrderBy(l => l.Date)
                 .ThenBy(l => l.EntryNumber)
                 .ThenBy(l => l.Line)
-                .Select(ToInfo)
+                .Select(l => ToStatementLine(l, number, byEntry, accountsByNumber))
                 .ToList());
+    }
+
+    public async Task<HoldedEntry?> GetEntryAsync(int entryNumber, CancellationToken ct = default)
+    {
+        var lines = (await repo.GetAllLedgerLinesAsync(ct))
+            .Where(l => l.EntryNumber == entryNumber)
+            .OrderBy(l => l.Line)
+            .ToList();
+        if (lines.Count == 0)
+            return null;
+
+        var accountsByNumber = (await repo.GetAccountsAsync(ct)).ToDictionary(a => a.Number);
+        return new HoldedEntry(entryNumber, lines.Select(l =>
+        {
+            accountsByNumber.TryGetValue(l.AccountNum, out var account);
+            return new HoldedEntryLine(
+                l.AccountNum, account?.Name, l.Type, l.Description,
+                ToAssociationPov(l.AccountNum, l.Debit - l.Credit));
+        }).ToList());
     }
 
     /// <summary>Refreshes the chart cache, then compares every non-archived account's Holded
@@ -330,12 +366,8 @@ internal sealed class Service(
     /// ("Financiación básica", "Acreedores y deudores operaciones de la actividad") and is
     /// free text we would be translating by string match. The digit is the definition.
     /// </summary>
-    private static string GroupName(int number)
-    {
-        var leading = Math.Abs(number);
-        while (leading >= 10) leading /= 10;
-
-        return leading switch
+    private static string GroupName(int number) =>
+        LeadingDigit(number) switch
         {
             1 => "Equity and long-term financing",
             2 => "Non-current assets",
@@ -348,6 +380,54 @@ internal sealed class Service(
             9 => "Income charged to equity",
             _ => "Unclassified",
         };
+
+    /// <summary>The account number's leading digit — the Spanish PGC group.</summary>
+    private static int LeadingDigit(int number)
+    {
+        var leading = Math.Abs(number);
+        while (leading >= 10) leading /= 10;
+        return leading;
+    }
+
+    /// <summary>
+    /// The association's own point of view: + means its money went up, − means it went down.
+    /// Groups 1–5 (equity, assets, banks, debtors, creditors) keep the raw Debit − Credit sign;
+    /// groups 6–9 (expenses, income, and their equity-charged counterparts) carry the opposite
+    /// bookkeeping sign, so the display flips it. Display-only: reconciliation always compares
+    /// the raw (Debit − Credit) convention, before this flip is applied.
+    /// </summary>
+    private static decimal ToAssociationPov(int accountNum, decimal debitMinusCredit) =>
+        LeadingDigit(accountNum) is 1 or 2 or 3 or 4 or 5 ? debitMinusCredit : -debitMinusCredit;
+
+    private static HoldedStatementLine ToStatementLine(
+        HoldedLedgerLine line, int accountNum,
+        IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
+        IReadOnlyDictionary<int, HoldedAccount> accountsByNumber) => new(
+        line.EntryNumber, line.Line, line.Date, line.Type, line.Description,
+        ToAssociationPov(accountNum, line.Debit - line.Credit),
+        ResolveCounterparty(line, byEntry, accountsByNumber));
+
+    /// <summary>The entry's opposing-side legs: a debit line's counterparties are the entry's
+    /// credit lines (and vice versa) — Holded's API does not return a contra account, so this is
+    /// derived by grouping on <see cref="HoldedLedgerLine.EntryNumber"/>. Null when the entry
+    /// carries no opposing leg (an unbalanced or partially-mirrored entry).</summary>
+    private static HoldedCounterparty? ResolveCounterparty(
+        HoldedLedgerLine line,
+        IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
+        IReadOnlyDictionary<int, HoldedAccount> accountsByNumber)
+    {
+        if (!byEntry.TryGetValue(line.EntryNumber, out var siblings))
+            return null;
+
+        var opposing = line.Debit > 0
+            ? siblings.Where(s => s.Line != line.Line && s.Credit > 0).ToList()
+            : siblings.Where(s => s.Line != line.Line && s.Debit > 0).ToList();
+        if (opposing.Count == 0)
+            return null;
+
+        var largest = opposing.OrderByDescending(s => Math.Max(s.Debit, s.Credit)).First();
+        accountsByNumber.TryGetValue(largest.AccountNum, out var account);
+        return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }
 
     private static Instant ToWindowStart(LocalDate from) =>

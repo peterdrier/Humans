@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;

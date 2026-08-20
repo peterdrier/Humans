@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 
@@ -121,7 +121,7 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
     public IReadOnlyList<AnthropicToolDefinition> BuildToolDefinitions() =>
     [
         new(Name: AgentToolNames.FetchFeatureSpec,
-            Description: "Fetch a feature specification from docs/features/{name}.md. Use only for whitelisted filename stems.",
+            Description: "Fetch a feature specification by its filename stem (e.g. \"shift-management\"). A miss lists every stem you may ask for.",
             JsonSchema: """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}"""),
         new(Name: AgentToolNames.FetchSectionGuide,
             Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",

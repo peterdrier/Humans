@@ -44,8 +44,11 @@ else
                 <tr>
                     <th>Report</th>
                     <th>Submitter</th>
+                    <th>Department</th>
                     <th>Subject</th>
-                    <th>Total</th>
+                    <th class="text-end">Requested</th>
+                    <th class="text-end">Max</th>
+                    <th class="text-end">Payable</th>
                     <th>Status</th>
                     <th>Submitted</th>
                     <th class="text-end">Actions</th>
@@ -61,15 +64,18 @@ else
                             </a>
                         </td>
                         <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                        <td>@(r.Note is { Length: > 60 } n ? n[..60] + "…" : r.Note)</td>
-                        @* Capped reports pay the cap, not the receipts total — show both so the difference is visible. *@
-                        <td>
-                            @r.Payable.ToEuro()
-                            @if (r.Payable < r.Total)
+                        <td>@(Model.DepartmentNames.TryGetValue(r.BudgetCategoryId, out var dept) ? dept : "(unknown)")</td>
+                        <td>@(r.Note is { Length: > 80 } n ? n[..80] + "…" : r.Note)</td>
+                        @* Requested is the receipts total; a capped report pays the cap instead, so all
+                           three columns stay visible rather than collapsing into one. *@
+                        <td class="text-end">@r.Total.ToEuro()</td>
+                        <td class="text-end">
+                            @if (r.MaxAmount is { } cap)
                             {
-                                <span class="text-muted small ms-1"><s>@r.Total.ToEuro()</s></span>
+                                @cap.ToEuro()
                             }
                         </td>
+                        <td class="text-end @(r.Payable < r.Total ? "fw-semibold text-danger" : "")">@r.Payable.ToEuro()</td>
                         <td>
                             <span class="badge @badgeClass(r.Status)">@r.Status</span>
                         </td>

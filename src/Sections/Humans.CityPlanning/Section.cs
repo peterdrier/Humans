@@ -1,8 +1,8 @@
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
-using Humans.Infrastructure.Hosting;
-using Humans.Application.Interfaces;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Application;
-using Humans.Application.Extensions;
+using Humans.Base.Caching;
+using Humans.Base.Extensions;
 
 namespace Humans.Auth.Services;
 

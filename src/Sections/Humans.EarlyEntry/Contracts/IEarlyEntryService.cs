@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using NodaTime;
 
 namespace Humans.EarlyEntry.Contracts;

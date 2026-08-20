@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 namespace Humans.Camps.Models;
 

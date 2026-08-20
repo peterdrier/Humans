@@ -1,7 +1,7 @@
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
-using Humans.Application.Extensions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using SdkFile = Google.Apis.Drive.v3.Data.File;
 using SdkPermission = Google.Apis.Drive.v3.Data.Permission;

@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Domain;
-using Humans.UI.Extensions;
-using Humans.UI.Models;
+using Humans.Base.Extensions;
+using Humans.Base.Models;
 using Humans.Teams.Models;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using NodaTime.Text;
 
 namespace Humans.Teams.Controllers;

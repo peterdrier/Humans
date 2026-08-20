@@ -4,13 +4,13 @@
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
-  src/Humans.Interfaces/Authorization/PolicyNames.cs
+  src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
   src/Sections/Humans.Governance/Views/Governance/**
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
   Admin/Profile/Google route tables, role catalog, dashboard metrics, and the Board-vs-Admin role split — review when admin-area controllers, role names, or authorization policies change.
@@ -411,7 +411,7 @@ _logger.LogInformation(
 
 ## Related Features
 
-- [Authentication](../auth/authentication.md) - Admin role authorization
-- [Asociado Applications](../governance/asociado-applications.md) - Voting member application review
-- [Teams](../teams/teams.md) - Team management
+- [Authentication](../../../src/Sections/Humans.Auth/Docs/features/authentication.md) - Admin role authorization
+- [Asociado Applications](../../../src/Sections/Humans.Governance/Docs/features/asociado-applications.md) - Voting member application review
+- [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - Team management
 - [Background Jobs](../global/background-jobs.md) - Hangfire dashboard

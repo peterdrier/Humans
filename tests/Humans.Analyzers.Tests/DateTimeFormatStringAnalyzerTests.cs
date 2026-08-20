@@ -110,7 +110,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     {
         var source = """
             using System;
-            namespace Humans.Application.Extensions
+            namespace Humans.Base.Extensions
             {
                 public static class DateFormattingExtensions
                 {

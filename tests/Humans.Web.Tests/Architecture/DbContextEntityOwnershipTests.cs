@@ -1,7 +1,8 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Humans.Web.Extensions;
+using Humans.Web.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

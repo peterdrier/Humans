@@ -6,13 +6,13 @@
 // instead of raw entity inserts.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;

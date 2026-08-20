@@ -1,9 +1,9 @@
-using Humans.Application.Csv;
-using Humans.Application.Extensions;
+using Humans.Base.Csv;
+using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Humans.Events.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

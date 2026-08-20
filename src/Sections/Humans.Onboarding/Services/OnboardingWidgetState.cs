@@ -2,7 +2,7 @@ using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Services;

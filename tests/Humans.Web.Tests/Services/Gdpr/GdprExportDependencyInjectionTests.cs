@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
+using Humans.Web.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;

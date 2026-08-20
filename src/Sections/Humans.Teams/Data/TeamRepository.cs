@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Teams.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;

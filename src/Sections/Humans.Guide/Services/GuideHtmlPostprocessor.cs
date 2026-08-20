@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.Guide.Services;
 

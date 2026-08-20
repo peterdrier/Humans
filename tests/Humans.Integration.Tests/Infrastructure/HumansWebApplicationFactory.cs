@@ -17,7 +17,7 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Email.Contracts;
-using Humans.Mailer.Services;
+using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using Humans.Stripe.Contracts;
 using Humans.Stripe.Services;
@@ -60,7 +60,7 @@ public class HumansWebApplicationFactory(string connectionString)
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
     /// <summary>
-    /// In-memory MailerLite so the /Mailer/Admin pages render without reaching
+    /// In-memory MailerLite so the /MailerLite/Admin pages render without reaching
     /// connect.mailerlite.com. Same call as <see cref="StripeServiceStub"/>; hand-written
     /// rather than substituted because the interface yields an IAsyncEnumerable.
     /// </summary>
@@ -139,9 +139,9 @@ public class HumansWebApplicationFactory(string connectionString)
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);
 
-            // Replace IMailerLiteService with the in-memory stub so /Mailer/Admin renders
+            // Replace IMailerLiteService with the in-memory stub so /MailerLite/Admin renders
             // against a deterministic account instead of the live MailerLite API. The real
-            // client is a Singleton registered from Humans.Mailer's Section.Register.
+            // client is a Singleton registered from Humans.MailerLite's Section.Register.
             var mailerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMailerLiteService));
             if (mailerDescriptor != null) services.Remove(mailerDescriptor);
             services.AddSingleton<IMailerLiteService>(MailerLiteServiceStub);

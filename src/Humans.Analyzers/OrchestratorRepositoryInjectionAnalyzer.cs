@@ -7,7 +7,7 @@ namespace Humans.Analyzers;
 
 /// <summary>
 /// HUM0026 / HUM0027 — role-marker analyzer pair for
-/// <see cref="Humans.Application.Interfaces.IOrchestrator"/>.
+/// <see cref="Humans.Base.Interfaces.IOrchestrator"/>.
 /// <list type="bullet">
 /// <item><b>HUM0026</b> — an <c>IOrchestrator</c> implementer must not inject
 /// any <c>I*Repository</c>, an application DbContext, or
@@ -30,9 +30,9 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     public const string RepositoryInjectionDiagnosticId = "HUM0026";
     public const string RoleConflictDiagnosticId = "HUM0027";
 
-    private const string OrchestratorMarkerFullName = "Humans.Application.Interfaces.IOrchestrator";
-    private const string ApplicationServiceMarkerFullName = "Humans.Application.Interfaces.IApplicationService";
-    private const string RepositoryMarkerFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string OrchestratorMarkerFullName = "Humans.Base.Interfaces.IOrchestrator";
+    private const string ApplicationServiceMarkerFullName = "Humans.Base.Interfaces.IApplicationService";
+    private const string RepositoryMarkerFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string DbContextFactoryFullName = "Microsoft.EntityFrameworkCore.IDbContextFactory`1";
 
     private static readonly LocalizableString RepositoryInjectionTitle =

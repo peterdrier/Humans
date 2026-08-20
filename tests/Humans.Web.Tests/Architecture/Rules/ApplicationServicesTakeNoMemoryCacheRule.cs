@@ -60,9 +60,9 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // owning services (memory/code/viewcomponent-no-cache.md) — same inline
         // badge-count caching IssuesService/NotificationMeterProvider already do.
         // Each wraps a real repo/DB query and is evicted via the existing
-        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (The review
-        // count is NOT here — its read is already cache-served by CachingUserService,
-        // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
+        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (AdminDashboardService
+        // is NOT here — its reads are already cache-served by CachingUserService, so it
+        // stays cache-free; double-caching it would be §4b.)
         SectionType("Humans.Feedback.Services.FeedbackService"),  // CacheKeys.FeedbackBadgeCount
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
@@ -85,6 +85,11 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Humans.Web/Infrastructure, which the sweep covers neither before nor after. A move
         // can put code into a sweep as easily as out of one.
         SectionType("Humans.Development.Services.DevPersonaSeeder"),
+        // DevPersonaSeeder's reason again: one InvalidateUserAccess(userId) eviction after
+        // provisioning the shared gate-terminal account. Entered this sweep when the seeder
+        // moved from Humans.Web to Humans.Tickets with /Tickets/Admin/Gate
+        // (nobodies-collective/Humans#1091).
+        SectionType("Humans.Tickets.Services.GateTerminalAccountSeeder"),
         // CacheKeys.TicketEventSummary(eventId) — the vendor's capacity/sold/remaining counters,
         // held 15 minutes so the ticket dashboard does not call TicketTailor on every render.
         // It is the connector's own response cache, not an entity read, so §15's repository and

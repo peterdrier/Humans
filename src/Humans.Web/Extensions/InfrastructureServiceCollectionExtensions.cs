@@ -1,25 +1,11 @@
-using Humans.Agent.Contracts;
-using Humans.Agent.Jobs;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
-using Humans.Consent.Jobs;
-using Humans.Expenses.Jobs;
-using Humans.Gate.Jobs;
-using Humans.Governance.Jobs;
-using Humans.Holded.Jobs;
-using Humans.Mailer.Jobs;
-using Humans.Surveys.Jobs;
-using Humans.Tickets.Jobs;
-using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Services;
+using Humans.Base.Configuration;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
+using Humans.Base.Caching;
+using Humans.Base.Services;
 using Humans.Web.Services;
-using Humans.Issues.Jobs;
-using Humans.Notifications.Jobs;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
-using Humans.Web.Services.Dashboard;
 
 namespace Humans.Web.Extensions;
 
@@ -35,7 +21,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
         services.AddEmailInfrastructure(configuration, environment);
-        services.AddGoogleWorkspaceInfrastructure(configuration, environment);
+        services.AddGoogleWorkspaceInfrastructure(configuration);
         services.AddTicketVendorPort(configuration);
         // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
         // (nobodies-collective/Humans#866, G5 lane 4b-2a).
@@ -52,42 +38,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
         // (nobodies-collective/Humans#866).
         services.AddAdminSection();
-
-        // Recurring jobs for sections that have already moved out. The *registration* stays
-        // here because UseHumansRecurringJobs names each job by concrete type and there is no
-        // ISection-style discovery seam for jobs yet (design §15.6b) — but that never pinned
-        // the job *type* to Humans.Infrastructure, and G5 lane 5b-1 re-measured the "Hangfire
-        // serializes the declaring assembly" claim and found it false: AddOrUpdate<T>(id, …)
-        // rewrites the stored type string at every startup, so the job id is the stable key.
-        // Every job named below now lives in its own section's Jobs/ folder — G5 lane
-        // 5b-5 emptied src/Humans.Infrastructure/Jobs/ (nobodies-collective/Humans#866).
-        services.AddScoped<SendSurveyReminderJob>();
-        services.AddScoped<GateRetentionJob>();
-        services.AddScoped<GateVendorCheckInJob>();
-        services.AddScoped<TicketSyncJob>();
-        // TicketingBudgetSyncJob is registered by Humans.Budget's own Section.Register instead
-        // (Peter's ruling 43 made ITicketingBudgetService internal, so only that assembly can
-        // build the job's now-internal constructor).
-        services.AddScoped<CleanupIssuesJob>();
-        // Added at G5 lane 5b-1: "notifications-cleanup" is in UseHumansRecurringJobs' roll-call
-        // but CleanupNotificationsJob had no DI registration anywhere, so Hangfire's
-        // AspNetCoreJobActivator (GetRequiredService by concrete type) threw on every daily tick.
-        services.AddScoped<CleanupNotificationsJob>();
-        services.AddScoped<TermRenewalReminderJob>();
-        services.AddScoped<SyncLegalDocumentsJob>();
-        services.AddScoped<SendReConsentReminderJob>();
-        services.AddTransient<MailerAudienceSyncJob>();
-        // The two Holded-facing jobs are owned by different sections: HoldedSyncJob is Holded's
-        // shim over IHoldedNightlySync, the expense-outbox drain is Expenses'. The connector
-        // itself (client, options, call log) is registered by Humans.Holded's Section.cs since
-        // G5 lane 4b-2f.
-        services.AddScoped<HoldedSyncJob>();
-        services.AddScoped<HoldedExpenseOutboxJob>();
-        // Same miss as CleanupNotificationsJob above: the job was in the roll-call from the day
-        // it shipped but was never registered, so the nightly purge threw instead of running and
-        // no agent conversation has ever been deleted. A test now fails if a roll-call job has
-        // no registration (Humans.Integration.Tests DiResolutionSmokeTests).
-        services.AddScoped<AgentConversationRetentionJob>();
 
         // ActiveTeamsCacheInvalidator used to be registered here as a Base collaborator Teams'
         // section file registered on the way past. G5 lane 3a-1 re-measured that: its six
@@ -123,28 +73,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<GuideSettings>(configuration.GetSection(GuideSettings.SectionName));
         services.AddSingleton<IGuideContentSource, GitHubGuideContentSource>();
 
-        // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
-        // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload
-        // corpus from the shared help registries (Humans.UI's AccessMatrixDefinitions and
-        // SectionHelpContent); the section consumes it through the contracts leaf.
-        services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
-
         // AccountDeletionService, ExternalLoginService and UserParticipationBackfillService
         // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate
         // Users' own section and every outbound edge is another section's leaf, so they now
         // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
         // HumanLifecycleService.
 
-        // Dashboard's two aggregators. They were registered inside AddUsersSection and are
-        // not Users' — they read every section's services and own no table — so they moved
-        // here with the rest of the cluster at G5 lane 5c (Governance's rule: the section
-        // that owns the file is not always the section that owns the line).
-        services.AddScoped<IDashboardService, DashboardService>();
-        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        // The admin dashboard's aggregator moved back to Users' own Section.Register at
+        // nobodies-collective/Humans#1091 — Shell only hosts /Admin/*'s page bodies now, not
+        // the services behind them. The member dashboard's IDashboardService is gone
+        // entirely — its content is section-contributed chrome (also #1091).
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
-        // register themselves via ISection and are discovered, not named. The roll-call
-        // above loses a line per section as the migration proceeds.
+        // register themselves via ISection and are discovered, not named.
         services.AddDiscoveredSections(configuration);
 
         return services;

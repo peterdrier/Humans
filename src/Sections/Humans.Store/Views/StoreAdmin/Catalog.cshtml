@@ -1,3 +1,4 @@
+@using System.Globalization
 @using Microsoft.AspNetCore.Html
 @model CatalogAdminViewModel
 @{
@@ -61,6 +62,8 @@ else
                 .Column("Unit price", r => r.UnitPriceEur, c => c.Currency().End())
                 .Column("VAT %", r => r.VatRatePercent, c => c.Number().End())
                 .Column("Deposit", r => r.DepositAmountEur, c => c.Currency().End())
+                .Column("Revenue acct", r => r.HoldedRevenueAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "—")
+                .Column("Internal acct", r => r.InternalRechargeAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "—")
                 .Column("Orderable until", r => r.OrderableUntil.ToDate())
                 .Template("Status", catalogAdminStatusCell)
                 .Template("Actions", catalogAdminActionsCell, c => c.NoSort().End())

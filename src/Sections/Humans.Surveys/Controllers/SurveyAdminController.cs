@@ -1,12 +1,12 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Surveys.Domain;
-using Humans.UI.Authorization;
-using Humans.UI.Extensions;
+using Humans.Base.Authorization;
+using Humans.Base.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

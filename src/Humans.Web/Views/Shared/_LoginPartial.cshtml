@@ -56,12 +56,7 @@
                     <i class="fa-solid fa-scale-balanced fa-fw"></i> @Localizer["Nav_Legal"]
                 </a>
             </li>
-            <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Issues" asp-action="Index">
-                    <i class="fa-solid fa-circle-exclamation fa-fw"></i> @Localizer["Nav_Issues"]
-                    @await Component.InvokeAsync("NavBadges", new { queue = "issues" })
-                </a>
-            </li>
+            <vc:chrome-slot name="user-menu" />
             <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="About" asp-action="Index">
                     <i class="fa-solid fa-info-circle fa-fw"></i> @Localizer["Nav_About"]

@@ -2,9 +2,9 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Guide.Services;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.Guide.Tests.Services;
 
@@ -29,6 +29,9 @@ public class GuideContentServiceTests
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
     private sealed class StubRenderer : IGuideRenderer

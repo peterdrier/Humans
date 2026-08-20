@@ -191,4 +191,115 @@
   <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>No s'ha pogut inscriure.</value></data>
   <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>No s'ha pogut inscriure per a l'interval de dates.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Tria un torn</value></data>
+  <data name="Welcome_Title" xml:space="preserve">
+    <value>Benvinguda</value>
+  </data>
+  <data name="Welcome_Heading" xml:space="preserve">
+    <value>Ja hi ets.</value>
+  </data>
+  <data name="Welcome_Subtitle" xml:space="preserve">
+    <value>La teva entrada per a Elsewhere 2026 està confirmada.</value>
+  </data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve">
+    <value>Ara fem que això passi entre tots.</value>
+  </data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve">
+    <value>Elsewhere no és un festival on véns — és un que ajudes a construir. Cada human tria torns: muntatge abans, operació durant i desmuntatge després.</value>
+  </data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve">
+    <value>Per veure els torns i apuntar-t'hi, necessites un compte a Humans. Només porta un parell de minuts.</value>
+  </data>
+  <data name="Welcome_CTA" xml:space="preserve">
+    <value>Inicia sessió o crea un compte</value>
+  </data>
+  <data name="Welcome_Footer" xml:space="preserve">
+    <value>Ja tens compte? El mateix botó — inicia sessió i arribaràs directament als torns.</value>
+  </data>
+  <data name="Welcome_Contact" xml:space="preserve">
+    <value>Preguntes? Escriu-nos a</value>
+  </data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve">
+    <value>Encara que no tinguis perfil, pots gestionar el teu compte i les teves dades.</value>
+  </data>
+  <data name="Guest_AccountTitle" xml:space="preserve">
+    <value>Les teves coses</value>
+  </data>
+  <data name="Guest_BarriosDescription" xml:space="preserve">
+    <value>Els barris que la gent construeix i on viu durant l'event</value>
+  </data>
+  <data name="Guest_CommsDescription" xml:space="preserve">
+    <value>Tria quins emails i notificacions vols rebre</value>
+  </data>
+  <data name="Guest_CommsTitle" xml:space="preserve">
+    <value>Comunicacions</value>
+  </data>
+  <data name="Guest_CreateProfile" xml:space="preserve">
+    <value>Crear el meu perfil</value>
+  </data>
+  <data name="Guest_DataDescription" xml:space="preserve">
+    <value>Descarrega tot el que tenim sobre tu — és teu</value>
+  </data>
+  <data name="Guest_DataTitle" xml:space="preserve">
+    <value>Les teves dades</value>
+  </data>
+  <data name="Guest_DeleteDescription" xml:space="preserve">
+    <value>Sol·licita l'eliminació del teu compte — 30 dies per canviar d'opinió</value>
+  </data>
+  <data name="Guest_DeleteTitle" xml:space="preserve">
+    <value>Desaparèixer</value>
+  </data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve">
+    <value>He canviat d'opinió</value>
+  </data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve">
+    <value>Ho esborrarem tot després del {0} — esperant que acabi l'event.</value>
+  </data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve">
+    <value>Vas de sortida</value>
+  </data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve">
+    <value>Sol·licitat el {0}.</value>
+  </data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve">
+    <value>Tot desapareix el {0}. De debò.</value>
+  </data>
+  <data name="Guest_Explore" xml:space="preserve">
+    <value>Fes un cop d'ull</value>
+  </data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve">
+    <value>No cal perfil. Només curiositat.</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve">
+    <value>Pots unir-te a equips</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve">
+    <value>Pots agafar torns</value>
+  </data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve">
+    <value>La gent sap qui ets</value>
+  </data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve">
+    <value>Ara mateix existeixes… però ningú et veu. Crea el teu perfil i de sobte:</value>
+  </data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve">
+    <value>Són ~2 minuts.</value>
+  </data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve">
+    <value>Preparat/da per deixar de ser un fantasma?</value>
+  </data>
+  <data name="Guest_Greeting" xml:space="preserve">
+    <value>Hola, {0}.</value>
+  </data>
+  <data name="Guest_Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="Guest_LegalDescription" xml:space="preserve">
+    <value>Política de privacitat, termes, consentiments — l'avorrit però important</value>
+  </data>
+  <data name="Guest_Subtitle" xml:space="preserve">
+    <value>Benvingut/da a Humans — on Nobodies Collective gestiona tot per a Elsewhere.</value>
+  </data>
+  <data name="Guest_TeamsDescription" xml:space="preserve">
+    <value>Els equips que fan que tot funcioni — so, seguretat, construcció, tot</value>
+  </data>
 </root>

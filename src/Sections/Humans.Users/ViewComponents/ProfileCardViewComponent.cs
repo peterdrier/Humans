@@ -1,11 +1,10 @@
 using Humans.Users.Controllers;
 using Humans.Users.Models;
-using Humans.UI.Helpers;
+using Humans.Base.Helpers;
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Enums;
-using Humans.UI.ViewComponents;
+using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

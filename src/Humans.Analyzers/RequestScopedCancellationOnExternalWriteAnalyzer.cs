@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Humans.Analyzers.Internal;
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;

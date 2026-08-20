@@ -2,7 +2,7 @@ using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 
 namespace Humans.Users.Services;

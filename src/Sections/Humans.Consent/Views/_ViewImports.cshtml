@@ -7,18 +7,17 @@
    Two localizers by design (design §15 step 3b, Governance's variant): the section owns
    its 36 Consent_* / ConsentReview_* / ConsentIndex_* keys, and `Nav_Consents` stays in
    SharedResource because Humans.UI's login partial renders it too. *@
-@using Humans.Application.Extensions
+@using Humans.Base.Extensions
 @using Humans.Consent
 @using Humans.Consent.Contracts
 @using Humans.Consent.Controllers
 @using Humans.Consent.Models
-@using Humans.Domain.Enums
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
+@using Humans.Base.Enums
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<ConsentResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base

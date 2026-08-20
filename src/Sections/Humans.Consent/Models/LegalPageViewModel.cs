@@ -1,6 +1,6 @@
 using Humans.Consent.Contracts;
 
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Consent.Models;
 

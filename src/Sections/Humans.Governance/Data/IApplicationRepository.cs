@@ -1,5 +1,5 @@
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using NodaTime;

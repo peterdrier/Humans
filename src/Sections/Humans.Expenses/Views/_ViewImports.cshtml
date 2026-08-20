@@ -9,11 +9,10 @@
 @using Humans.Expenses.Services.Dtos
 @using Humans.Budget
 @using Humans.Finance.Contracts
-@using Humans.Application.Extensions
-@using Humans.Domain.Helpers
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models.Tables
+@using Humans.Base.Extensions
+@using Humans.Base.Helpers
+@using Humans.Base
+@using Humans.Base.Models.Tables
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @inject IStringLocalizer<ExpensesResource> Localizer
@@ -26,4 +25,4 @@
    (design §15.3b, "when the other owner has already moved, the key goes home"). *@
 @inject IStringLocalizer<BudgetResource> BudgetLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base

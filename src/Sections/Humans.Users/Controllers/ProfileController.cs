@@ -1,23 +1,23 @@
-using Humans.Application.Architecture;
-using Humans.UI.Models.Tables;
+using Humans.Base.Attributes;
+using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using AngleSharp.Dom;
 using Humans.Users.Authorization;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Configuration;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Gdpr.Contracts;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.UI.Extensions;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -31,8 +31,8 @@ using Humans.Tickets.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using Humans.UI;
-using Humans.UI.Authorization;
+using Humans.Base;
+using Humans.Base.Authorization;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618
@@ -77,13 +77,11 @@ internal sealed class ProfileController(
     IAccountDeletionService accountDeletionService,
     IMembershipCalculatorRead membershipCalculator,
     SignInManager<User> signInManager,
-    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions,
-    IAuditViewerService auditViewerService) : HumansControllerBase(userService)
+    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly ITicketServiceRead _ticketQueryService = ticketQueryService;
     private readonly IUserService _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
-    private readonly IAuditViewerService _auditViewerService = auditViewerService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -568,6 +566,83 @@ internal sealed class ProfileController(
         }
 
         return (true, result.Value.Data, result.Value.ContentType);
+    }
+
+    [HttpPost("Me/DeclareNotAttending")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeclareNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
+            {
+                return Redirect("/");
+            }
+
+            await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
+            SetSuccess("You've been marked as not attending this year.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return Redirect("/");
+    }
+
+    [HttpPost("Me/UndoNotAttending")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UndoNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
+            {
+                return Redirect("/");
+            }
+
+            var undone = await _userService.UndoNotAttendingAsync(user.Id, eventYear.Value);
+            SetUndoNotAttendingResult(undone);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return Redirect("/");
+    }
+
+    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        if (activeEvent is not null && activeEvent.Year > 0)
+        {
+            return activeEvent.Year;
+        }
+
+        SetError("No active event configured.");
+        return null;
+    }
+
+    private void SetUndoNotAttendingResult(bool undone)
+    {
+        if (undone)
+        {
+            SetSuccess("Your declaration has been removed.");
+            return;
+        }
+
+        SetError("Could not undo — your status may have been updated by ticket sync.");
     }
 
     [HttpGet("Me/Emails")]
@@ -1628,7 +1703,7 @@ internal sealed class ProfileController(
             // ShiftsController.ToggleDay by the dietary gate. After a
             // successful save we re-run the original signup and land them on
             // /Shifts with the appropriate flash. See
-            // docs/features/profiles/dietary-medical-nudge.md (US-35.6).
+            // src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6).
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
             return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);
@@ -1827,7 +1902,7 @@ internal sealed class ProfileController(
             || (await authorizationService.AuthorizeAsync(
                 User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
 
-        var sentMessagesContext = await BuildSentMessagesContextAsync(id, viewer.Id, isOwnProfile, ct);
+        var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile);
 
         var viewModel = new ProfileViewModel
         {
@@ -1842,8 +1917,7 @@ internal sealed class ProfileController(
                 ? await ResolveOnsiteSinceAsync(profileInfo)
                 : null,
             CanViewOnsiteChip = canViewOnsiteChip,
-            CanViewSentMessages = sentMessagesContext.CanView,
-            SentMessages = sentMessagesContext.Messages,
+            CanViewSentMessages = canViewSentMessages,
         };
 
         return View("Index", viewModel);
@@ -1907,32 +1981,20 @@ internal sealed class ProfileController(
     }
 
     /// <summary>
-    /// Loads in-platform messages sent to the profile user, gated on the viewer being a
-    /// coordinator or holding a privileged shift-management role. Uses the same coordinator
-    /// check as <see cref="BuildNoShowHistoryContextAsync"/> so the two panels appear
-    /// under consistent access rules.
-    /// Returns <c>(false, null)</c> for own-profile views and non-coordinators.
+    /// Whether the viewer may see the in-platform messages sent to the profile user: a
+    /// coordinator or a privileged shift-management role, never on one's own profile. Uses
+    /// the same coordinator check as <see cref="BuildNoShowHistoryContextAsync"/> so the two
+    /// panels appear under consistent access rules. The rows themselves come from
+    /// <c>&lt;vc:audit-log&gt;</c> in the view.
     /// </summary>
-    private async Task<(bool CanView, IReadOnlyList<AuditEvent>? Messages)>
-        BuildSentMessagesContextAsync(Guid profileUserId, Guid viewerId, bool isOwnProfile, CancellationToken ct)
+    private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile)
     {
         if (isOwnProfile)
-            return (false, null);
+            return false;
 
         var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)).Succeeded;
-        if (!viewerIsCoordinator && !isPrivilegedApprover)
-            return (false, null);
-
-        var messages = await _auditViewerService.GetFilteredAsync(
-            entityType: nameof(User),
-            entityId: profileUserId,
-            userId: null,
-            actions: [AuditAction.FacilitatedMessageSent],
-            limit: 50,
-            ct: ct);
-
-        return (true, messages);
+        return viewerIsCoordinator || isPrivilegedApprover;
     }
 
     [HttpGet("{id:guid}/Popover")]
@@ -2111,7 +2173,6 @@ internal sealed class ProfileController(
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
             .OrderByRelevance()
-            .Select(r => r.ToHumanSearchViewModel())
             .ToList();
 
         return View(viewModel);
@@ -2150,7 +2211,7 @@ internal sealed class ProfileController(
         var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
 
         bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
+            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext

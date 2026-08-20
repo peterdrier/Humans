@@ -1114,4 +1114,61 @@
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscripcions de muntatge estan tancades — ja som al lloc.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Els torns de muntatge ja estan tancats — contacta amb la teva coordinació si no pots venir.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
+    <value>Torns que necessiten humans ara</value>
+  </data>
+  <data name="GetInvolved_Title" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="GetInvolved_Intro" xml:space="preserve">
+    <value>L'event funciona amb energia humana. Tria torns que encaixin al teu horari — cada hora compta.</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
+    <value>Muntatge</value>
+  </data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
+    <value>Construeix el recinte abans d'obrir portes. Treball físic, horaris flexibles, ideal per conèixer l'equip.</value>
+  </data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve">
+    <value>Esdeveniment</value>
+  </data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
+    <value>Mantén-ho tot en marxa durant l'event. Barres, portes, seguretat, art — n'hi ha per a tothom.</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
+    <value>Desmuntatge</value>
+  </data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
+    <value>Desmunta-ho tot i no deixis rastre. Treball gratificant, normalment de menor durada.</value>
+  </data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
+    <value>Veure tots els torns</value>
+  </data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve">
+    <value>Els meus torns</value>
+  </data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve">
+    <value>plaça</value>
+  </data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve">
+    <value>places</value>
+  </data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve">
+    <value>Participa</value>
+  </data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
+    <value>Això no es munta sol.</value>
+  </data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
+    <value>Mira què cal fer i apunta't.</value>
+  </data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve">
+    <value>Troba la teva gent. O fes-te la gent d'algú.</value>
+  </data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve">
+    <value>Els barris que fan que Elsewhere sembli casa.</value>
+  </data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
 </root>

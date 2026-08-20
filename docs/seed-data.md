@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/*/Data/**
-  src/Humans.Interfaces/Constants/**
+  src/Humans.Base/Constants/**
   src/Sections/Humans.Development/**
   src/Sections/*/Data/Migrations/**
   src/Sections/**/Data/**
@@ -30,7 +30,7 @@
 
 **Migration SQL** — one-off backfills tied to schema changes, written directly into a migration's `Up()`. These don't survive as standalone examples: a section move or DbContext peel squashes its migration chain into one baseline (see `memory/architecture/migration-regen-after-rebase.md`), absorbing any prior one-off backfill along with everything else.
 
-**Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Domain.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
+**Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Base.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
 
 **Dev-only runtime seeders** — on-demand POST endpoints on `DevSeedController`, each behind `DevAuth:Enabled` + a non-production environment check + its own policy:
 

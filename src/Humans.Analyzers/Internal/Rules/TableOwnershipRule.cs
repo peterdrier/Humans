@@ -25,7 +25,7 @@ namespace Humans.Analyzers.Internal.Rules;
 /// <para>
 /// Mechanism: across the <c>Humans.Infrastructure</c> compilation, collect every
 /// reference (read or write) to an application DbContext's DbSet from inside a type
-/// implementing <see cref="Humans.Application.Interfaces.Repositories.IRepository"/>,
+/// implementing <see cref="Humans.Base.Interfaces.Repositories.IRepository"/>,
 /// then build <c>DbSet → {referencing repository types}</c>. A table referenced by
 /// N&gt;1 repositories produces a diagnostic at each access site. Phase 1 detects
 /// only direct references: <c>ctx.&lt;DbSet&gt;</c> property access (including DbSets
@@ -54,7 +54,7 @@ internal static class TableOwnershipRule
     public const string DiagnosticId = "HUM0025";
 
     private const string DbSetOpenTypeFullName = "Microsoft.EntityFrameworkCore.DbSet`1";
-    private const string RepositoryMarkerFullName = "Humans.Application.Interfaces.Repositories.IRepository";
+    private const string RepositoryMarkerFullName = "Humans.Base.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
         "A DbSet table must be referenced by exactly one repository";

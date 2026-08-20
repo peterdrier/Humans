@@ -1,10 +1,10 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Teams.Contracts;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Consent.Models;
 using Humans.Consent.Services;
 using Humans.Users.Contracts;

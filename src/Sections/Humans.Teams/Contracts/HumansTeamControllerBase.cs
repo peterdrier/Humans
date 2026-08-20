@@ -1,5 +1,5 @@
-using Humans.Domain.Enums;
-using Humans.UI.Controllers;
+using Humans.Base.Enums;
+using Humans.Base.Controllers;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

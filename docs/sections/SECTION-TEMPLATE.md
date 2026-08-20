@@ -75,7 +75,7 @@ to one or two sentences. Field-level detail belongs under `## Data Model` below.
 <!--
 Required if the section owns any tables. One subsection per entity / enum /
 value object this section OWNS. Field-level detail (types, defaults, indexes,
-constraints, serialization rules) lives here, NOT in `docs/architecture/data-model.md`.
+constraints, serialization rules) lives here.
 
 Rules:
 1. One section owns each entity. If another section needs to read it, it calls
@@ -83,13 +83,10 @@ Rules:
 2. Cross-section FKs are scalar only; the navigation property MUST NOT be
    declared on the entity. If legacy navs still exist, note them under
    Architecture → Migration status (they are technical debt, not data model).
-3. Enums owned by this section live here too. Enums used across many sections
-   (e.g. AuditAction) live in `docs/architecture/data-model.md` only if they
-   genuinely have no single owner.
+3. Enums owned by this section live here too; a cross-section enum is
+   documented by the section that hosts it (e.g. AuditLog for AuditAction).
 4. If the entity is append-only per design-rules §12, say so and name the
    enforcement (DB trigger, repository shape, architecture test).
-5. Do NOT duplicate fields into `docs/architecture/data-model.md` — that file
-   is an index and cross-cutting rule sheet, not a second source of truth.
 -->
 
 ## Routing
@@ -273,7 +270,7 @@ Rules that apply when writing or updating any section doc:
 5. **"Current violations" is the ONLY place to list violations.** Do not let them leak into Invariants (those are what IS true, not what IS broken). Status (A) sections have no "Current violations" block — full stop.
 6. **Terse wins.** Every bullet that could be shortened without losing meaning should be. Readers will stop reading a bloated doc; they will not stop reading at the point the bullet becomes terse.
 7. **No emojis, no narrative ("let's"), no commentary ("interestingly..."), no "as of today"** — anchor every date with a concrete reference ("2026-04-22", "PR #243").
-8. **Link to specs, do not duplicate.** Workflows belong in `docs/features/<section>/<feature>.md`; UI text choices belong in CLAUDE.md; entity field listings belong in `docs/architecture/data-model.md`. Section docs point to those files, they do not copy from them.
+8. **Link to specs, do not duplicate.** Workflows belong in the section's own `src/Sections/Humans.<Section>/Docs/features/<feature>.md`; UI text choices belong in CLAUDE.md. Section docs point to those files, they do not copy from them.
 
 ---
 
@@ -281,13 +278,13 @@ Rules that apply when writing or updating any section doc:
 
 Explicit out-of-scope list, to keep docs from drifting into other files' territory:
 
-- **No workflow diagrams.** State machines live under `docs/features/<section>/<feature>.md`. The section doc states "Status follows: Submitted → Approved/Rejected" and stops.
+- **No workflow diagrams.** State machines live under `src/Sections/Humans.<Section>/Docs/features/<feature>.md`. The section doc states "Status follows: Submitted → Approved/Rejected" and stops.
 - **No implementation walk-throughs.** If a PR needs one, it goes in the PR description, not the section doc.
 - **No open questions, TODOs, "thinking about..." notes.** Those are issues on GitHub.
 - **No deploy / infra notes.** CLAUDE.md owns deployment; section docs describe the section as it runs, not how it ships.
 - **No "before" state.** Section docs describe the current and target architectures only. The history is in git.
 
-Note: **entity field tables DO belong here** (under `## Data Model`). The central `docs/architecture/data-model.md` is an index + cross-cutting rule sheet only. A section that owns a table owns the field list for that table.
+Note: **entity field tables DO belong here** (under `## Data Model`). A section that owns a table owns the field list for that table.
 
 ---
 

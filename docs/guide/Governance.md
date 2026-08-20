@@ -9,9 +9,9 @@
   src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
   src/Sections/Humans.Governance/Domain/BoardVote.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
-  src/Humans.Interfaces/Constants/RoleNames.cs
-  src/Humans.Interfaces/Constants/RoleGroups.cs
-  src/Humans.Interfaces/Constants/SystemTeamIds.cs
+  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Base/Constants/RoleGroups.cs
+  src/Humans.Base/Constants/SystemTeamIds.cs
 -->
 <!-- freshness:flag-on-change
   Tier application workflow (Submitted/Approved/Rejected/Withdrawn), Board voting dashboard, finalization, term expiry, and role-assignment management. Review when governance views, services, entities, or role constants change.

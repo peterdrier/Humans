@@ -1,7 +1,6 @@
-@using Humans.UI.Authorization
+@using Humans.Base.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
-@inject IConfiguration Configuration
 @inject IAuthorizationService AuthService
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
@@ -38,7 +37,6 @@
         <nav class="navbar navbar-expand-lg navbar-dark mb-3">
             <div class="container">
                 @{
-                    var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded;
                     var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
                     string? buildHashTooltip = null;
                     if (isFullAdmin)
@@ -80,88 +78,30 @@
                         var hasProfile = RoleAssignmentClaimsTransformation.IsActive(User);
                     }
                     <ul class="navbar-nav flex-grow-1">
-                        @if (isAuthenticated)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Search" asp-action="Index"
-                                   aria-label="Search" title="Search">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                </a>
-                            </li>
-                        }
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Calendar" asp-action="Index">Calendar</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
-                        </li>
-                        @if (Configuration.GetValue<bool>("Features:Events"))
-                        {
-                            <li class="nav-item dropdown" authorize-policy="AppAccess">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="MySubmissions">My Submissions</a></li>
-                                    <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Schedule">My Schedule</a></li>
-                                    @if (isEventsAdminOrAdmin)
-                                    {
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsDashboard" asp-action="Index">Guide Dashboard</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsExport" asp-action="Index">Export Guide</a></li>
-                                    }
-                                    @if (isEventsAdminOrAdmin)
-                                    {
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Settings">Guide Settings</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Categories">Guide Categories</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventsAdmin" asp-action="Venues">Guide Venues</a></li>
-                                    }
-                                </ul>
-                            </li>
-                        }
+                        @* Links sections contribute through ISectionNav; renders nothing while none do.
+                           Search and Tour are real sections (Humans.Search, Humans.Tour) and contribute
+                           their own nav links here rather than being named by this file — see
+                           nobodies-collective/Humans#1090. *@
+                        <vc:section-nav />
                         @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
                             </li>
                         }
-                        @if (!isAuthenticated)
-                        {
-                            @* Anonymous-only: the signed-in top nav is too busy for a Tour slot —
-                               members get a dashboard tile instead (Home/Dashboard.cshtml). *@
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Tour" asp-action="Index">Tour</a>
-                            </li>
-                        }
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AppAccess">
-                            <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
-                        </li>
                         <li class="nav-item" authorize-policy="AnyAdminRole">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2 position-relative">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            @await Component.InvokeAsync("NotificationBell")
-                        }
+                        <vc:chrome-slot name="header-right" />
                         <partial name="_LanguageChooser" />
                         <partial name="_LoginPartial" />
                     </div>
                 </div>
             </div>
         </nav>
-        @await Component.InvokeAsync("OnboardingProgressBanner")
+        <vc:chrome-slot name="above-content" />
     </header>
     <environment exclude="Production">
         <div class="env-banner">
@@ -205,6 +145,6 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/client-metrics.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
-    @await Component.InvokeAsync("HelpWidget")
+    <vc:chrome-slot name="body-end" />
 </body>
 </html>

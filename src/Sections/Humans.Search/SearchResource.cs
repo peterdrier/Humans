@@ -16,8 +16,9 @@ namespace Humans.Search;
 /// <c>/Search</c> page's own copy. Five more keys share the <c>Search_</c> prefix and stayed
 /// in <c>SharedResource</c>, because their renderers are elsewhere:
 /// <c>Search_Title</c>/<c>Search_Placeholder</c> belong to Shell's <c>/Profile/Search</c>
-/// person-search page, <c>Search_NoResults</c>/<c>Search_MatchedIn</c> to the
-/// <c>Humans.Users</c> <c>_HumanSearchResults</c> partial four pages render, and
+/// person-search page, <c>Search_NoResults</c>/<c>Search_MatchedIn</c> to
+/// <c>Humans.Users</c> — that page's empty state and the section's
+/// <c>&lt;vc:user-search-result&gt;</c> — and
 /// <c>Search_MinChars</c> is read by <c>/Profile/Search</c> and by this section's own
 /// <c>Index.cshtml</c>. Carving that fifth key would split the person-search page's
 /// four-key message set to claim one string, so the section binds

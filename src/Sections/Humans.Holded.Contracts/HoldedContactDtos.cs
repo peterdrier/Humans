@@ -11,9 +11,18 @@ public sealed record HoldedContactInput
     /// have no `custom_id` field (it is read-only on GET). Kept on the DTO for now since nothing
     /// reads it back for lookup; no functional loss.</summary>
     public string? CustomId { get; init; }
-    /// <summary>Holded contact type. Creditors/suppliers get a 400000xx account.</summary>
+    /// <summary>Holded contact type — <c>creditor</c>/<c>supplier</c> get a 400000xx account,
+    /// <c>client</c>/<c>debtor</c> a 430000xx one. Store's factura counterparties are clients.</summary>
     public string Type { get; init; } = "creditor";
     public string? Iban { get; init; }
+    /// <summary>Tax identification number — v2 `code`. NIF/CIF for Spanish counterparties; a
+    /// home-country tax id or passport number for foreign camps (no NIF is required of them).</summary>
+    public string? TaxCode { get; init; }
+    public string? Email { get; init; }
+    /// <summary>Street address — sent as `bill_address.address`. Required on a full factura.</summary>
+    public string? Address { get; init; }
+    /// <summary>ISO 3166-1 alpha-2 — sent as `bill_address.country_code`.</summary>
+    public string? CountryCode { get; init; }
     /// <summary>When set, update this existing contact rather than create a new one.</summary>
     public string? ExistingContactId { get; init; }
 }

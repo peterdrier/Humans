@@ -23,7 +23,7 @@ namespace Humans.Store.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreInvoice", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -67,7 +67,7 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_invoices", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreOrder", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Order", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -129,7 +129,7 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_orders", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreOrderLine", b =>
+            modelBuilder.Entity("Humans.Store.Domain.OrderLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -168,7 +168,7 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_order_lines", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StorePayment", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Payment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -217,7 +217,7 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_payments", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreProduct", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -233,6 +233,9 @@ namespace Humans.Store.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("HoldedRevenueAccountNum")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -264,7 +267,7 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_products", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreTreasurySyncState", b =>
+            modelBuilder.Entity("Humans.Store.Domain.TreasurySyncState", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -287,24 +290,24 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_treasury_sync_state", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreInvoice", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Invoice", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.StoreOrder", null)
+                    b.HasOne("Humans.Store.Domain.Order", null)
                         .WithOne()
-                        .HasForeignKey("Humans.Domain.Entities.StoreInvoice", "OrderId")
+                        .HasForeignKey("Humans.Store.Domain.Invoice", "OrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreOrderLine", b =>
+            modelBuilder.Entity("Humans.Store.Domain.OrderLine", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.StoreOrder", "Order")
+                    b.HasOne("Humans.Store.Domain.Order", "Order")
                         .WithMany("Lines")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.StoreProduct", null)
+                    b.HasOne("Humans.Store.Domain.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -313,9 +316,9 @@ namespace Humans.Store.Data.Migrations
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StorePayment", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Payment", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.StoreOrder", "Order")
+                    b.HasOne("Humans.Store.Domain.Order", "Order")
                         .WithMany("Payments")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -324,7 +327,7 @@ namespace Humans.Store.Data.Migrations
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.StoreOrder", b =>
+            modelBuilder.Entity("Humans.Store.Domain.Order", b =>
                 {
                     b.Navigation("Lines");
 

@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Events.Models;

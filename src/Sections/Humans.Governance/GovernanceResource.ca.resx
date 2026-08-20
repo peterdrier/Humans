@@ -376,4 +376,13 @@
   <data name="BoardVoting_MeetingDateRequired" xml:space="preserve">
     <value>No es pot finalitzar: cal una data de reunió del consell.</value>
   </data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve">
+    <value>acord per revisar</value>
+  </data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve">
+    <value>acords per revisar</value>
+  </data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
+    <value>Assemblees, eleccions, i el seriós.</value>
+  </data>
 </root>

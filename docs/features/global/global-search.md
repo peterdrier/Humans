@@ -154,7 +154,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 | DTO | Returned by | Used by |
 |---|---|---|
-| `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View renders via `_HumanSearchResults` partial |
+| `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
 | `TeamSearchHit (Name, Slug)` | `ITeamServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `CampSearchHit (Slug, Name)` | `ICampServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
@@ -165,8 +165,8 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 `/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
 
-- **Humans** are rendered by the canonical `_HumanSearchResults` partial (see `memory/architecture/person-search.md`). The controller projects each `HumanSearchResult` to `HumanSearchResultViewModel` via the existing `ToHumanSearchViewModel` extension, matching `/Profile/Search` and `/Users/Admin`.
-- **Teams / Camps / Shifts / Events** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial. This is not a third person-search surface (the `_HumanSearchResults` rule applies only to person rendering); it's a generic list-row template for the simpler types.
+- **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Profile/Search` renders the same component (nobodies-collective/Humans#1062).
+- **Teams / Camps / Shifts / Events** are rendered by `_GlobalSearchSection` — a small, deliberately-minimal partial, still fed by orchestrator-projected `GlobalSearchResult` rows. This is not a third person-search surface (the person-search rule applies only to person rendering); it's a generic list-row template for the simpler types. Converting these four to per-section components needs an id and a score on each section's search-hit contract — see the "Needs new interface surface" note on nobodies-collective/Humans#1062.
 
 A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.
 

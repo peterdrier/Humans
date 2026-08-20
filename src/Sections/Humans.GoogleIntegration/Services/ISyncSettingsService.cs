@@ -1,6 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration.Services;
 

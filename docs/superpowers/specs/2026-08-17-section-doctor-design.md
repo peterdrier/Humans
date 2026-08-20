@@ -4,7 +4,28 @@ Spec for `/section-doctor`, the daily per-section review cycle. Designed in dial
 2026-08-17; decisions below are his calls. Amended 2026-08-18 for conflict-free concurrent runs
 (nobodies-collective/Humans#1069, decision 11).
 
-## Problem
+## Purpose
+
+**Every section converges, run over run, on the smallest and clearest form that still does
+everything it does today — and is correct.**
+
+Feature work deposits sediment: duplicated helpers, comments that outlived their decisions, docs
+describing a version that shipped two refactors ago, contracts wider than any caller, tests that
+assert the mock. Nothing else removes it — reviews look at diffs, and sediment is in no single
+diff. This is the only process that reads a section *as it now stands* rather than as it was last
+changed.
+
+Three tests of a run: did the section get smaller and clearer without losing anything (net across
+every section touched, since cross-section consolidation legitimately grows one to shrink
+another); was every file actually looked at; is the behaviour unchanged.
+
+Added 2026-08-18. The original framing below was written as a problem about *the skills* rather
+than about *the codebase*, and that inversion had consequences: the first two runs were judged on
+whether the lanes executed, so a run could skip twenty of a section's fifty-five files and record
+an unrun mutation lane as `n/a` without anything registering a failure. The purpose above is what
+those runs should have been measured against.
+
+## Problem (original framing, kept for the record)
 
 The per-section improvement skills (section-align, audit-surface, trim-tests, simplify,
 section-read-split, reuse-review, nav-audit, the refactor-swarm lane process) each cover one axis
@@ -100,16 +121,32 @@ Last assessed: <date> @ <commit>
 | Translations | missing-string count |
 | Arch conformance | smells, or "clean" |
 
-## Ideal shape
-<the magic-wand vision — a few sentences on what this section would be if rewritten from
-scratch today, and the gap between that and what exists>
+## Target
+<six parts, written in Phase 3c BEFORE any scan runs; regenerated every run and diffed
+against the previous copy>
+### What it does          ← behavior, no code nouns
+### The shapes            ← N names over M question-shapes, as a table. Load-bearing.
+### Structure             ← the layout those shapes imply, written fresh
+### Invariants            ← each stated so a violation is recognisable
+### Seams                 ← specified-but-unbuilt; reserved, not built, not ranked
+### Deliberately not done ← abstractions a reader would reach for and shouldn't, with why
+
+## Load-bearing weirdness
+<essential complexity and settled decisions, with why, so later runs stop re-litigating them>
+
+## Not covered this run
+<threads that did not run, and why — so the next run cannot read silence as coverage>
 
 ## Opportunities (ranked by value)
 1. <item — play — est. size>   ← unworked items carry to the next assessment
 
 ## History (last 3 assessments)
-| Date | Reforge | Tests | Outcome | PR |
+| Date | Reforge | Outcome | PR |
 ```
+
+No counts in the scorecard (`memory/process/no-derived-aggregates-in-docs.md`): write the
+qualitative state, never a method total, test count, route count or section rank. The dated
+reforge score in the history table stays — a measurement with a generator, not a typed aggregate.
 
 ### `docs/health/plan.md` (global, written only by replans)
 
@@ -138,6 +175,9 @@ Old files get purged manually after a while. Sections:
 Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 
 ## Assessment summary
+## File coverage          ← a disposition for every path in the 3a inventory; the list, not a summary
+## Threads                ← which ran; for each that did not, why
+## Size                   ← lines vs the anchor for every section touched, and the net
 ## Worked
 ## Skipped / queued        ← includes plan rows passed over as blocked (`<section> — open PR #N`)
 ## Retro
@@ -295,3 +335,33 @@ is the deep per-section complement.
 | Budget hit mid-list | Normal: commit what's done; `health.md` carries the remainder |
 | Push / PR fails | Worktree retained; fix manually |
 | Section has in-flight feature work discovered mid-run | Stop the strike phase, ship the assessment-only PR, note in the run file |
+
+## Amendment, 2026-08-18 — threads, coverage, and the target-before-scans rule
+
+Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His calls:
+
+12. **Assessment is a spine plus parallel threads, not a set of lanes.** The spine runs once and
+    serially — inventory every file, read the section's behaviour tool-free, write the target —
+    and only then do threads fan out over that same inventory. Threads: shape, behaviour/bugs,
+    freshness, conformance, tests, prose/surface, inbox.
+13. **The target is derived before any scan.** Absorbed from `/simplify` Pass 2, along with its
+    independence check. `/simplify`'s *method* moves in; the *skill* is not called from a run —
+    it is audit-gated (approval is a merged audit PR, then one item per PR), which cannot fit
+    one run and one PR. It stays invocable for repo-wide work.
+14. **Coverage is a success criterion.** Every file in the section is claimed by at least one
+    thread and gets a recorded disposition. A file no thread claims is a hole in the thread set,
+    not a file to skip. Only `*.Designer.cs` and `*DbContextModelSnapshot.cs` are exempt.
+15. **Size is measured and reported**, net across every section a run touched — growth caused by
+    cross-section consolidation is a win, and is stated as the trade it is.
+16. **Unrun threads are loud.** A thread that does not run says so and why. A thread earns removal
+    from the toolbox only after several runs record it as "ran, found nothing" — never because one
+    clean section did not get to it.
+17. **Per-section conformance rules live in `docs/architecture/section-conformance.yml`**, added
+    and removed only at Peter's direction, and hold only rules nothing else enforces. Each row's
+    exits are graduating to an analyzer or being declined. First rule, at Peter's direction:
+    section file layout. Explicitly declined: the section-name table prefix (#1012 tracks it;
+    renaming tables is churn with no functional gain).
+18. **The target is regenerated every run and diffed against the previous one.** The diff is
+    signal in both directions — the section moved, or the earlier target was wrong — and which one
+    goes in the retro.
+

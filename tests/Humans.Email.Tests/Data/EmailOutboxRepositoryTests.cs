@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Email.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

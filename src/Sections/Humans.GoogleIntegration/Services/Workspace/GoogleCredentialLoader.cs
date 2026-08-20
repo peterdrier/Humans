@@ -1,5 +1,5 @@
 using Google.Apis.Auth.OAuth2;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 

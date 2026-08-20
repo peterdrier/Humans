@@ -29,9 +29,6 @@ namespace Humans.Finance.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Instant?>("ArchivedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid>("BudgetCategoryId")
                         .HasColumnType("uuid");
 
@@ -185,10 +182,6 @@ namespace Humans.Finance.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
-
-                    b.Property<string>("RawPayload")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("numeric");

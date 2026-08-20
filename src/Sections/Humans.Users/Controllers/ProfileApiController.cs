@@ -1,10 +1,10 @@
+using Humans.Base.Controllers;
 using Humans.Users.Contracts;
-using Humans.UI.Extensions;
-using Humans.UI.Models;
+using Humans.Base.Extensions;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Humans.UI.Controllers;
 
 namespace Humans.Users.Controllers;
 

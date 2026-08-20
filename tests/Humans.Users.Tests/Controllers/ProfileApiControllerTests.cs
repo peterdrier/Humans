@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
 using NodaTime;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

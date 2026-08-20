@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Repositories;
 using Humans.Search.Services;
 
 namespace Humans.Search.Tests.Architecture;

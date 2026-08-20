@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -17,27 +19,28 @@ using NodaTime.Serialization.SystemTextJson;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Base.Configuration;
+using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Data;
+using Humans.Base.Hosting;
 using Humans.Web.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
-using Humans.CityPlanning.Contracts;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
-using Humans.Infrastructure.Logging;
-using Humans.UI.Extensions;
+using Humans.Base.Logging;
+using Humans.Base.Extensions;
 using Serilog;
 using Serilog.Events;
 using Humans.Web.Hosting;
 using Humans.Web.ModelBinders;
 using Humans.Web.Data;
 using Humans.Users.Contracts;
+using Humans.Web.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,11 +84,9 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 // Their non-Production gate moved with them into that section's Section.Register, which reads
 // HostDefaults.EnvironmentKey off the configuration passed to it and fails closed.
 
-// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
-// + the per-source-IP sign-in failure throttle for /Account/GateLogin. Both are Shell's:
-// the terminal's Identity account and the /Account/GateLogin page belong to Auth, not to
-// the Gate section (whose own PIN throttle and mirror ledger moved with it at G5).
-builder.Services.AddScoped<GateTerminalAccountSeeder>();
+// All environments: the per-source-IP sign-in failure throttle for /Account/GateLogin.
+// Shell's: the /Account/GateLogin page belongs to Auth. The gate-terminal account seeder
+// moved to Humans.Tickets with /Tickets/Admin/Gate (nobodies-collective/Humans#1091).
 builder.Services.AddSingleton<GateLoginThrottle>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -222,7 +223,7 @@ builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransfo
 // (e.g. HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor →
 // OutboxEmailService) throws InvalidOperationException, failing every integration
 // test. HumansWebApplicationFactory binds a substitute IBackgroundJobClient in
-// Testing — see docs/features/test-system-reliability.md (P0/#762).
+// Testing — see docs/testing/test-system-reliability.md (P0/#762).
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHangfire((sp, config) =>
@@ -272,19 +273,19 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
-// "external" marks third-party reachability checks. They surface on /health for diagnostics
-// but are excluded from /health/ready — a vendor outage must never fail the readiness probe
-// and block or roll back a deploy.
-string[] external = ["external"];
+// HealthCheckTags.External tags third-party reachability checks — sections apply it to their
+// own checks below. They surface on /health for diagnostics but are excluded from
+// /health/ready — a vendor outage must never fail the readiness probe and block or roll back
+// a deploy.
 var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
-    .AddCheck<ConfigurationHealthCheck>("configuration")
-    .AddCheck<SmtpHealthCheck>("smtp", tags: external)
-    .AddCheck<GitHubHealthCheck>("github", tags: external)
-    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: external)
-    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: external)
-    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
-    .AddCheck<TicketVendorHealthCheck>("ticket-vendor", tags: external);
+    .AddCheck<ConfigurationHealthCheck>("configuration");
+
+// Sections add their own checks; the names are monitoring keys, so they stay with the owner.
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionHealthChecks>())
+{
+    contributor.AddHealthChecks(healthChecks, builder.Configuration);
+}
 
 // Hangfire health check reads JobStorage.Current; only register it when
 // the rest of the Hangfire stack is wired (i.e. outside Testing).
@@ -470,7 +471,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         // MVC defaults to (which nothing here provides, so annotations rendered raw
         // English regardless of culture). A key with no SharedResource match just
         // falls back to the attribute's own text, so untouched view models are unaffected.
-        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.UI.SharedResource));
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.Base.SharedResource));
     });
 
 // A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
@@ -528,6 +529,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
         }
         return null;
     }));
+
+    // Wrap every provider (the preference-based one above, plus the default query
+    // string/cookie/Accept-Language providers) so the parsing culture is always "en"
+    // regardless of which one wins — see UiCultureOnlyRequestCultureProvider (#1067).
+    options.RequestCultureProviders = options.RequestCultureProviders
+        .Select(provider => (IRequestCultureProvider)new UiCultureOnlyRequestCultureProvider(provider))
+        .ToList();
 });
 
 var app = builder.Build();
@@ -545,7 +553,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 {
     using var scope = app.Services.CreateScope();
     var localizerFactory = scope.ServiceProvider.GetRequiredService<IStringLocalizerFactory>();
-    var resourceType = typeof(Humans.UI.SharedResource);
+    var resourceType = typeof(Humans.Base.SharedResource);
     var localizer = localizerFactory.Create(resourceType);
     var testKey = "Dashboard_Welcome";
     var result = localizer[testKey];
@@ -607,6 +615,31 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     {
         Log.Information("Localization OK: {Expected} embedded in {Assembly}",
             expected, resourceType.Assembly.GetName().Name);
+    }
+}
+
+// Authorization-policy diagnostic check (nobodies-collective/Humans#1076): every
+// PolicyNames constant must resolve to a policy actually registered — by Shell or by a
+// section's ISectionPolicies. A section that stops registering its policy (e.g. turned
+// off) must fail loud here, not 403 mysteriously wherever the policy is used.
+{
+    using var scope = app.Services.CreateScope();
+    var policyProvider = scope.ServiceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
+    var policyNames = typeof(Humans.Base.Authorization.PolicyNames)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+        .Select(f => (Name: f.Name, Value: (string)f.GetRawConstantValue()!));
+
+    foreach (var (name, value) in policyNames)
+    {
+        var policy = await policyProvider.GetPolicyAsync(value);
+        if (policy is null)
+        {
+            Log.Error(
+                "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
+                "owning section may be missing, or its Policies contribution failed to register.",
+                name);
+        }
     }
 }
 
@@ -694,7 +727,18 @@ app.UseMiddleware<UserActivityTrackingMiddleware>();
 // after the response is produced; only text/html responses are counted.
 app.UseMiddleware<ClientStatsMiddleware>();
 
+// Dev-loop guard, not a runtime safety net — never Production/Testing. See #1055.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    app.UseMiddleware<ViewComponentTagSurvivalMiddleware>();
+}
+
 app.UseAuthorization();
+
+// Before MVC runs: a malformed TempData cookie throws an unloggable-context
+// FormatException deep in CookieTempDataProvider — see #1038. Catch it here where
+// Path/UserAgent are still available, and strip the cookie so MVC never sees it.
+app.UseMiddleware<TempDataCookieValidationMiddleware>();
 
 app.UseSession();
 
@@ -707,7 +751,7 @@ app.Use(async (context, next) =>
     if (context.User.Identity?.IsAuthenticated == true
         && context.User.HasClaim(
             ClaimTypes.NameIdentifier,
-            Humans.Domain.Constants.SystemUserIds.GateTerminal.ToString()))
+            Humans.Base.Constants.SystemUserIds.GateTerminal.ToString()))
     {
         var path = context.Request.Path;
         var allowed =
@@ -739,8 +783,8 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     // Readiness check - confirms our own stack (DB, config, Hangfire) is available.
-    // Third-party reachability ("external") is diagnostic-only on /health.
-    Predicate = r => !r.Tags.Contains("external")
+    // Third-party reachability (HealthCheckTags.External) is diagnostic-only on /health.
+    Predicate = r => !r.Tags.Contains(HealthCheckTags.External)
 });
 
 app.MapPrometheusScrapingEndpoint("/metrics");
@@ -786,29 +830,93 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
-app.MapHub<CityPlanningHub>("/hubs/city-planning");
+
+// Sections map what routing cannot discover on its own — hubs and the like.
+foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
+{
+    contributor.MapEndpoints(app);
+}
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
-    app.Services.GetRequiredService<IGlobalConfiguration>();
-    app.UseHumansRecurringJobs();
-}
-
+// Widened to also cover the Hangfire block below (nobodies-collective/Humans#1060): a preview
+// env whose database doesn't exist yet fails here first — every recurring-job registration
+// throws the same connection error, but each is caught and logged as a WARNING by
+// UseHumansRecurringJobs (a legitimate concern there: a stale distributed lock must not stop
+// the app booting). That warning is loud but incidental; the real fatal cause is whichever of
+// this block or DatabaseMigrationHostedService.StartingAsync (run inside RunAsync) throws
+// first, and previously only the RunAsync half was caught here.
 try
 {
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
+        app.Services.GetRequiredService<IGlobalConfiguration>();
+        app.UseHumansRecurringJobs();
+    }
+
     await app.RunAsync();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Application terminated unexpectedly");
+    LogStartupFailure(ex, builder.Configuration);
     throw;
 }
 finally
 {
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// One clear FATAL line for a startup crash, naming the database when the cause is a
+/// Postgres connectivity failure (nobodies-collective/Humans#1060) — e.g. a PR preview
+/// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
+/// generic message for anything else, so a startup failure is never silently unlabeled.
+/// </summary>
+static void LogStartupFailure(Exception ex, IConfiguration configuration)
+{
+    var pgEx = FindException<NpgsqlException>(ex);
+    if (pgEx is null)
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly");
+        return;
+    }
+
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    var database = connectionString is not null
+        ? new NpgsqlConnectionStringBuilder(connectionString).Database
+        : null;
+
+    if (pgEx is PostgresException { SqlState: PostgresErrorCodes.InvalidCatalogName })
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
+    }
+    else
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
+    }
+}
+
+/// <summary>Walks <paramref name="ex"/>'s InnerException chain (and AggregateException branches) for the first match.</summary>
+static T? FindException<T>(Exception? ex) where T : Exception
+{
+    for (; ex is not null; ex = ex.InnerException)
+    {
+        if (ex is T match)
+            return match;
+
+        if (ex is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+            {
+                var found = FindException<T>(inner);
+                if (found is not null)
+                    return found;
+            }
+        }
+    }
+
+    return null;
 }
 
 static async Task WriteDetailedHealthResponse(HttpContext context, HealthReport report)

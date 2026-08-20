@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using Humans.Application.Extensions;
-using Humans.Application.Configuration;
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using Octokit;
 

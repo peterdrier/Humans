@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Architecture;
+using Humans.Base.Interfaces;
+using Humans.Base.Attributes;
 
 namespace Humans.GoogleIntegration.Contracts;
 

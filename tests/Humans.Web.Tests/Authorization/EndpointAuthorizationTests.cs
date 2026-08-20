@@ -102,7 +102,7 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "SetGitHubIssue", "AdminOnly" },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
-        { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
+        { SectionType("Humans.Tickets.Controllers.TicketsGateAdminController"), null, "TicketAdminOrAdmin" },
         { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, "ShiftDepartmentManager" },
         { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", "ShiftDashboardAccess" },
         { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", "ShiftDashboardAccess" },
@@ -314,8 +314,8 @@ public class EndpointAuthorizationTests
     {
         var allowlist = new HashSet<string>(StringComparer.Ordinal)
         {
-            "GuestController.CommunicationPreferences",
-            "GuestController.UpdatePreference",
+            "GuestAccountController.CommunicationPreferences",
+            "GuestAccountController.UpdatePreference",
             "TeamController.Index",
             "TeamController.Details",
             "DebugController.DbVersion",

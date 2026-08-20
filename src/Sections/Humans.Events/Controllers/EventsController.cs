@@ -1,10 +1,10 @@
 using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;

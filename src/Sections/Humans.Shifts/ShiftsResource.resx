@@ -363,4 +363,25 @@
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Set-up sign-ups are closed — we're already on site.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Set-up shifts are locked in — contact your coordinator if you can't make it.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Shifts that need humans now</value></data>
+  <data name="GetInvolved_Title" xml:space="preserve"><value>Get Involved</value></data>
+  <data name="GetInvolved_Intro" xml:space="preserve"><value>The event runs on human power. Pick shifts that fit your schedule — every hour helps.</value></data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve"><value>Set-up</value></data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve"><value>Build the site before gates open. Physical work, flexible hours, great for meeting the crew.</value></data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve"><value>Event</value></data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve"><value>Keep things running during the event. Bars, gates, safety, art — something for everyone.</value></data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve"><value>Strike</value></data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve"><value>Take it all down and leave no trace. Satisfying work, usually shorter commitment.</value></data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve"><value>Browse All Shifts</value></data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve"><value>My Shifts</value></data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve"><value>slot</value></data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve"><value>slots</value></data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Get involved</value></data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>This thing doesn't build itself.</value></data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>See what needs doing and sign up.</value></data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve"><value>Find your people. Or become someone else's people.</value></data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve"><value>The neighbourhoods that make Elsewhere feel like home.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
 </root>

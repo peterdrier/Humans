@@ -221,8 +221,8 @@
                                 data-holded-postings="@(a.HoldedHasPostings ? "1" : "0")">
                                 <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
                                 <td>@a.Name</td>
-                                <td class="text-end">@a.HoldedBalance.ToEuro()</td>
-                                <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.ToEuro())</td>
+                                <td class="text-end">@a.HoldedBalance.ToSignedEuro()</td>
+                                <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</td>
                                 <td class="text-end">@a.LocalLineCount</td>
                                 <td class="text-center">
                                     @if (a.Reconciled)
@@ -242,10 +242,11 @@
         </div>
         <div class="card-footer text-muted small">
             Archived accounts are hidden. Groups are the Spanish chart's own, named from the
-            account number's leading digit. <strong>Local</strong> is Σdebit − Σcredit over the
-            cached lines; a ✗ means the nightly reconciliation still sees drift after its targeted
-            re-pull. An account Holded has posted to stays listed even when the mirror has no line
-            for it — that gap is the point. Total cached lines:
+            account number's leading digit. <strong>Holded</strong>/<strong>Local</strong> read in
+            the association's own point of view (+ money in, − money out); a ✗ means the nightly
+            reconciliation still sees drift after its targeted re-pull, compared before that sign
+            is applied. An account Holded has posted to stays listed even when the mirror has no
+            line for it — that gap is the point. Total cached lines:
             @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
         </div>
     }

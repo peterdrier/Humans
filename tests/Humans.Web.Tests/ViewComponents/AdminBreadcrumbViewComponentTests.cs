@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -9,10 +10,28 @@ namespace Humans.Web.Tests.ViewComponents;
 
 public class AdminBreadcrumbViewComponentTests
 {
+    /// <summary>
+    /// A minimal stand-in for the real, section-contributed nav (nobodies-collective/Humans#1077):
+    /// one item per group this file's assertions need to resolve.
+    /// </summary>
+    private sealed class FakeNav : ISectionAdminNav
+    {
+        public IEnumerable<AdminNavGroup> Groups() =>
+        [
+            new("Tickets", [
+                new("Tickets", "Ticket", "Index", null, null, "icon", null)
+            ]),
+            new("Diagnostics", System: true, Items: [
+                new("Logs",     "Debug", "Logs",    null, null, "icon", null),
+                new("DB stats", "Debug", "DbStats", null, null, "icon", null)
+            ])
+        ];
+    }
+
     [HumansFact]
     public void Resolves_Group_And_Item_For_Known_Controller()
     {
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([new FakeNav()]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
@@ -33,7 +52,7 @@ public class AdminBreadcrumbViewComponentTests
         // Regression: DebugController has multiple sidebar items (Logs, DbStats,
         // CacheStats, Configuration, ClientStats). Matching by controller alone returned
         // the first one regardless of action. The breadcrumb must disambiguate by action.
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([new FakeNav()]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
@@ -51,7 +70,7 @@ public class AdminBreadcrumbViewComponentTests
     [HumansFact]
     public void Falls_Back_To_PageTitle_For_Unknown_Controller()
     {
-        var sut = new AdminBreadcrumbViewComponent();
+        var sut = new AdminBreadcrumbViewComponent([]);
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext

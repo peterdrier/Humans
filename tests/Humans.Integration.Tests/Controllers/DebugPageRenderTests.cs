@@ -71,8 +71,8 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // <page-header> is Base's tag helper (namespace Humans.UI, assembly
-            // Humans.Interfaces since G5 lane 4b-iii B). A helper the section's _ViewImports
+            // <page-header> is Base's tag helper (namespace Humans.Base.TagHelpers, assembly
+            // Humans.Base). A helper the section's _ViewImports
             // failed to bind survives into the body as its own element name — 200,
             // correct-looking source, nothing on screen. Four of these pages use it; the
             // positive marker it emits is asserted on /Debug/Translations below.

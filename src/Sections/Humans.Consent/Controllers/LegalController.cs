@@ -1,9 +1,9 @@
 using Humans.Consent.Contracts;
-using Humans.UI.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Consent.Models;
 
 namespace Humans.Consent.Controllers;

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Configuration;
+using Humans.Base.Configuration;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;

@@ -1,0 +1,28 @@
+using Humans.EarlyEntry.Contracts;
+using Humans.Tickets.Contracts;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Humans.Tickets.ViewComponents;
+
+public sealed class TicketHoldingsViewComponent(
+    ITicketServiceRead queryService,
+    IEarlyEntryService earlyEntryService) : ViewComponent
+{
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, bool showEmpty = false)
+    {
+        var holdings = await queryService.GetUserTicketHoldingsAsync(userId);
+
+        if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
+            return Content(string.Empty);
+
+        var earlyEntry = await earlyEntryService.GetForUserAsync(userId, HttpContext.RequestAborted);
+
+        var stubs = holdings.Tickets
+            .Select(t => TicketStubInfo.From(t, earlyEntry?.EarliestEntryDate))
+            .ToList();
+
+        return View(new TicketHoldingsViewModel(holdings.OrderCount, stubs));
+    }
+}
+
+internal sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);

@@ -24,8 +24,8 @@
     them (Budget's rule). Measured, not assumed: CallToAction/CallToActionStyle/SlotPriority
     were filed under Camps and Shifts in the #866 appendix and have no consumer outside Teams.
 
-    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, still in
-    namespace Humans.Application.Interfaces.Caching. Its six IMemoryCache-backed siblings went
+    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, in
+    namespace Humans.Teams.Contracts. Its six IMemoryCache-backed siblings went
     to Base, but this one's implementation injects ITeamService and had to land in the section,
     where HUM0034 makes it internal. Humans.Users injects the interface (AccountMergeService,
     NonCompliantMemberSuspension) and already referenced this leaf, so it costs zero csproj
@@ -53,7 +53,7 @@
     dependency this project does not have.
 
     G5 lane 5c added ISystemTeamSync and its SyncReport result shape, from
-    Humans.Application.Interfaces.GoogleIntegration. The interface names Google nowhere, every
+    Humans.Base.Interfaces.GoogleIntegration. The interface names Google nowhere, every
     write its implementation makes lands in Teams' tables, and six sections outside Teams
     inject it (Auth, Camps, Development, GoogleIntegration, Governance, Onboarding) — which is
     what a leaf is for. It had sat in the hub on the belief that Hangfire pinned its
@@ -62,7 +62,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 

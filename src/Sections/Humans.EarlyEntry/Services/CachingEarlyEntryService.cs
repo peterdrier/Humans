@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Caching;
 using Humans.EarlyEntry.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 

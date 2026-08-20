@@ -22,13 +22,13 @@ public class DbContextOwnershipRuleTests
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
 
-        namespace Humans.Application.Interfaces.Repositories
+        namespace Humans.Base.Interfaces.Repositories
         {
             public interface IRepository { }
             public interface IUserRepository : IRepository { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -113,7 +113,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Repositories.Users
             {
-                public sealed class UserRepository : Humans.Application.Interfaces.Repositories.IUserRepository
+                public sealed class UserRepository : Humans.Base.Interfaces.Repositories.IUserRepository
                 {
                     public UserRepository(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
@@ -158,7 +158,7 @@ public class DbContextOwnershipRuleTests
     {
         var source = Stubs + """
 
-            namespace Humans.Infrastructure.Hosting
+            namespace Humans.Base.Hosting
             {
                 public sealed class DatabaseMigrationHostedService :
                     Microsoft.Extensions.Hosting.IHostedLifecycleService
@@ -250,7 +250,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Jobs
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0009",
                     justification: "Pending migration to repository pattern.",
                     since: "2026-05-12",
@@ -281,7 +281,7 @@ public class DbContextOwnershipRuleTests
 
             namespace Humans.Infrastructure.Jobs
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0042",
                     justification: "Different rule.",
                     since: "2026-05-12",

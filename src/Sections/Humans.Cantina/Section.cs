@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Cantina.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +28,7 @@ public sealed class Section : ISection
     {
         // Read-only service that stitches the on-site cohort + dietary breakdown for the
         // /Cantina/Roster and /Cantina/Roster/Day pages (feature #36 —
-        // docs/features/cantina/daily-roster.md).
+        // src/Sections/Humans.Cantina/Docs/features/daily-roster.md).
         services.AddScoped<ICantinaRosterService, CantinaRosterService>();
     }
 }

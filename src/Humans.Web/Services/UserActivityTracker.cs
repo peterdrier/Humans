@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Web.Services;
 

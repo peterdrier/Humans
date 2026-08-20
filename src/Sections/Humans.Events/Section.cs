@@ -1,12 +1,12 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

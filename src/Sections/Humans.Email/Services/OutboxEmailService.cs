@@ -1,10 +1,10 @@
 using System.Text.Json;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Email.Services;

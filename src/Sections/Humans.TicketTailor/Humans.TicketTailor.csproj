@@ -29,7 +29,7 @@
       added. Nothing in Humans.Tickets, in Base or in any consumer changes — which is
       the entire reason the connector is not inside the section.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

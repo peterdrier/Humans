@@ -11,7 +11,7 @@ namespace Humans.Analyzers.Tests;
 public class ExpiresOnAnalyzerTests
 {
     private const string AttributeStub = """
-        namespace Humans.Domain.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.All)]
             public sealed class ExpiresOnAttribute : System.Attribute
@@ -33,7 +33,7 @@ public class ExpiresOnAnalyzerTests
 
         namespace Sample
         {
-            using Humans.Domain.Architecture;
+            using Humans.Base.Attributes;
 
             public class Container
             {
@@ -130,7 +130,7 @@ public class ExpiresOnAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Domain.Architecture;
+                using Humans.Base.Attributes;
 
                 public class Container
                 {
@@ -155,7 +155,7 @@ public class ExpiresOnAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Domain.Architecture;
+                using Humans.Base.Attributes;
 
                 [ExpiresOn("2026-05-26")]
                 public class LegacyService
@@ -211,7 +211,7 @@ public class ExpiresOnAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Domain.Architecture;
+                using Humans.Base.Attributes;
 
                 [ExpiresOn("2026-05-26")]
                 public class LegacyService
@@ -243,7 +243,7 @@ public class ExpiresOnAnalyzerTests
 
             namespace Sample
             {
-                using Humans.Domain.Architecture;
+                using Humans.Base.Attributes;
 
                 public class Container
                 {

@@ -1,10 +1,10 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
+using Humans.Base.Enums;
+using Humans.Base.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;

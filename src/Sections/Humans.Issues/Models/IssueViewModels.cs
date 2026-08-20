@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using NodaTime;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
-using Humans.UI.Models;
+using Humans.Base.Models;
 
 namespace Humans.Issues.Models;
 
@@ -141,7 +141,7 @@ internal sealed class IssueDetailViewModel
 
     /// <summary>
     /// Active humans the handler can assign this issue to. Empty for non-handlers.
-    /// Reuses <see cref="AssigneeOption"/> from <c>Humans.UI.Models</c> so the
+    /// Reuses <see cref="AssigneeOption"/> from <c>Humans.Base.Models</c> so the
     /// shape stays consistent across triage UIs.
     /// </summary>
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];

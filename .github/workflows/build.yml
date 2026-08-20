@@ -163,7 +163,7 @@ jobs:
               # (e.g. Teams maps SystemTeamType with HasConversion<string> and
               # seeds rows via HasData keyed on the member names), so a rename
               # is real model drift in any context -> maps to ALL pairs below.
-              - 'src/Humans.Interfaces/**'
+              - 'src/Humans.Base/**'
               # A G5 section owns its migrations, DbContext, EF configurations and
               # entities (nobodies-collective/Humans#866). Globbed, not listed per
               # section, so a section that moves is covered without a workflow edit —
@@ -190,13 +190,13 @@ jobs:
         run: |
           # Changed file -> owning project dir -> pair from SECTION_DB_CONTEXTS.
           # A .Contracts leaf maps to its owning section; the shared leaves
-          # (Humans.Domain, Humans.Interfaces) and this workflow can affect
+          # (Humans.Domain, Humans.Base) and this workflow can affect
           # any context -> all pairs.
           all=false
           declare -A hit
           for f in ${{ steps.filter.outputs.migrations_files }}; do
             case "$f" in
-              src/Humans.Domain/*|src/Humans.Interfaces/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
+              src/Humans.Domain/*|src/Humans.Base/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
               src/Sections/*) proj="$(echo "$f" | cut -d/ -f3)"; hit["src/Sections/${proj%.Contracts}"]=1 ;;
               src/Humans.Web/*) hit[src/Humans.Web]=1 ;;
             esac
@@ -276,10 +276,16 @@ jobs:
           echo "container=$PG_CONTAINER" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
-        run: dotnet restore Humans.slnx
+        run: dotnet restore src/Humans.Web
 
       - name: Build (Release)
-        run: dotnet build Humans.slnx --no-restore --configuration Release
+        # `dotnet ef database update --no-build` only needs the startup project
+        # and the migration projects built; Humans.Web's transitive closure
+        # covers every section project and skips the ~50 test projects.
+        # Analyzers off: the GitHub-hosted build job already enforces them on
+        # the same commit. -maxcpucount:4 caps MSBuild's node count so this
+        # job doesn't peg the dev box the runners live on.
+        run: dotnet build src/Humans.Web --no-restore --configuration Release -p:RunAnalyzersDuringBuild=false -maxcpucount:4
 
       - name: Install dotnet-ef
         run: |

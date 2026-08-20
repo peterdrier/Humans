@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.MailerLite\Humans.MailerLite.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The controller tests construct MailerLiteAdminController and assert on IActionResult /
+      TempData, so this project touches ASP.NET types and a plain Microsoft.NET.Sdk project
+      does not get the shared framework. It cannot arrive as a PackageReference either —
+      the AspNetCore packages ship with no PackageVersion and fail with NU1010 under
+      Central Package Management (G5-SECTION-TEMPLATE.md step 8). Scanner's shape.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!--
+    No EF Core package: MailerLite owns no tables, so there is no DbContext to fixture. That is
+    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
+    compile item — see the comment there. CapturingLogger is still linked in: the retry test
+    asserts on the client's 429 warning, and that helper has no EF dependency of its own.
+  -->
+
+</Project>

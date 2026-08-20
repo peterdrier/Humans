@@ -1,8 +1,8 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    Guarded by ShiftsPageRenderTests (step 12). *@
-@using Humans.Application.Extensions
-@using Humans.Domain.Enums
+@using Humans.Base.Extensions
+@using Humans.Base.Enums
 @using Humans.Shifts
 @using Humans.Shifts.Contracts
 @using Humans.Shifts.Controllers
@@ -12,12 +12,11 @@
 @using Humans.Shifts.Services
 @using Humans.Shifts.Services.Dtos
 @using Humans.Teams.Contracts
-@using Humans.UI
-@using Humans.UI.Authorization
-@using Humans.UI.Extensions
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
-@using Humans.UI.ViewComponents
+@using Humans.Base
+@using Humans.Base.Authorization
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Humans.Base.ViewComponents
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Localization
@@ -38,5 +37,5 @@
    section does not render it. (The audit-log component was listed here too, but no Shifts
    view has ever rendered it; it now lives in Humans.AuditLog, and
    AuditLogPageRenderTests scans for the tag literally — nobodies-collective/Humans#866.) *@
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base
 @addTagHelper *, Humans.Shifts

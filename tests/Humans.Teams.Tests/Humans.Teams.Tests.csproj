@@ -34,7 +34,7 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

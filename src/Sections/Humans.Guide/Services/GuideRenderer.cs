@@ -1,6 +1,6 @@
 using Markdig;
 using Microsoft.Extensions.Options;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 
 namespace Humans.Guide.Services;
 

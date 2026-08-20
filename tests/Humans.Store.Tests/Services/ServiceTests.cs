@@ -9,8 +9,10 @@ using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
+using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -27,6 +29,8 @@ public class ServiceTests
     private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
+    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
     public ServiceTests()
@@ -36,7 +40,7 @@ public class ServiceTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
     }
 
     // ==========================================================================
@@ -128,37 +132,6 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderPageDataAsync_surfaces_price_changes_since_order_started()
-    {
-        var productId = Guid.NewGuid();
-        var orderStart = Instant.FromUtc(2026, 3, 1, 0, 0);
-        var line = new OrderLineDto(Guid.NewGuid(), Guid.NewGuid(), productId, "Ice", 1,
-            2.34m, 21m, null, orderStart, 2.34m, 0.49m, 0m, 2.83m);
-        var order = new OrderDto(
-            Id: Guid.NewGuid(), CampSeasonId: Guid.NewGuid(), TeamId: null,
-            CounterpartyType: OrderCounterpartyType.Camp, CounterpartyDisplayName: "Camp",
-            Year: 2026, Label: null, State: OrderState.Open,
-            CounterpartyName: null, CounterpartyVatId: null, CounterpartyAddress: null,
-            CounterpartyCountryCode: null, CounterpartyEmail: null, IssuedInvoiceId: null,
-            Lines: [line], Payments: [], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
-            PaymentsTotalEur: 0m, BalanceEur: 2.83m, CreatedAt: orderStart);
-
-        _audit.GetFilteredEntriesAsync(AuditEntityTypes.Product, productId, null,
-                Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<AuditLogEntrySnapshot>
-            {
-                PriceChangeEntry(productId, orderStart.Minus(Duration.FromDays(5)), "before this order existed"),
-                PriceChangeEntry(productId, orderStart.Plus(Duration.FromDays(2)), "Price for Ice changed from 1.23 to 2.34"),
-            });
-
-        var pageData = await _service.GetOrderPageDataAsync(order, canEdit: false, canPayAuthorized: false, ct: TestContext.Current.CancellationToken);
-
-        // Only the change after the order started is shown.
-        pageData.PriceChanges.Should().ContainSingle()
-            .Which.Description.Should().Be("Price for Ice changed from 1.23 to 2.34");
-    }
-
-    [HumansFact]
     public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -237,8 +210,8 @@ public class ServiceTests
         };
         _repo.GetOrdersForCampSeasonAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns([order]);
-        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Product> { product });
 
         var result = await _service.GetOrdersForCampSeasonAsync(campSeasonId, TestContext.Current.CancellationToken);
 
@@ -277,8 +250,8 @@ public class ServiceTests
             }
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Product> { product });
 
         var result = await _service.GetOrderAsync(orderId, TestContext.Current.CancellationToken);
 
@@ -306,8 +279,8 @@ public class ServiceTests
             }
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Product> { product });
         var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
         repriced.Id = product.Id;
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -339,8 +312,8 @@ public class ServiceTests
             }
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Product> { product });
         var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
         repriced.Id = product.Id;
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -886,7 +859,8 @@ public class ServiceTests
                 VatRatePercent: 21m,
                 DepositAmountEur: 100m,
                 OrderableUntil: "2026-08-01",
-                IsActive: true),
+                IsActive: true,
+                HoldedRevenueAccountNum: null),
             actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
@@ -908,7 +882,8 @@ public class ServiceTests
                 VatRatePercent: 21m,
                 DepositAmountEur: null,
                 OrderableUntil: "not-a-date",
-                IsActive: true),
+                IsActive: true,
+                HoldedRevenueAccountNum: null),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -1373,10 +1348,6 @@ public class ServiceTests
     // ==========================================================================
     // Helpers
     // ==========================================================================
-
-    private static AuditLogEntrySnapshot PriceChangeEntry(Guid productId, Instant occurredAt, string description) =>
-        new(Guid.NewGuid(), AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, productId,
-            description, occurredAt, null, null, null, null, null, null, null, null, null);
 
     private static Product MakeProduct(
         string name = "Test product",

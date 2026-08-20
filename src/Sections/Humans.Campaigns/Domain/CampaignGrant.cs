@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Campaigns.Domain;

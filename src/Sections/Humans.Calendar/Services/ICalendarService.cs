@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Domain;
 using NodaTime;

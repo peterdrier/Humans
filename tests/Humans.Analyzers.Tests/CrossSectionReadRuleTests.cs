@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class CrossSectionReadRuleTests
 {
     private const string Stubs = """
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class)]
             public sealed class CrossSectionWriteAttribute : System.Attribute
@@ -15,7 +15,7 @@ public class CrossSectionReadRuleTests
             }
         }
 
-        namespace Humans.Application.Interfaces.Teams
+        namespace Humans.Base.Interfaces.Teams
         {
             public interface ITeamServiceRead { string GetTeam(); }
             public interface ITeamService : ITeamServiceRead { void Rename(string name); }
@@ -34,7 +34,7 @@ public class CrossSectionReadRuleTests
             {
                 public sealed class CampService
                 {
-                    public CampService(Humans.Application.Interfaces.Teams.ITeamService teams) { }
+                    public CampService(Humans.Base.Interfaces.Teams.ITeamService teams) { }
                 }
             }
             """;
@@ -54,10 +54,10 @@ public class CrossSectionReadRuleTests
 
             namespace Humans.Application.Services.Camps
             {
-                [Humans.Application.Architecture.CrossSectionWrite("renames the team on camp rename")]
+                [Humans.Base.Attributes.CrossSectionWrite("renames the team on camp rename")]
                 public sealed class CampService
                 {
-                    public CampService(Humans.Application.Interfaces.Teams.ITeamService teams) { }
+                    public CampService(Humans.Base.Interfaces.Teams.ITeamService teams) { }
                 }
             }
             """;
@@ -79,7 +79,7 @@ public class CrossSectionReadRuleTests
             {
                 public sealed class CampService
                 {
-                    public CampService(Humans.Application.Interfaces.Teams.ITeamServiceRead teams) { }
+                    public CampService(Humans.Base.Interfaces.Teams.ITeamServiceRead teams) { }
                 }
             }
             """;
@@ -101,7 +101,7 @@ public class CrossSectionReadRuleTests
             {
                 public sealed class TeamAdminService
                 {
-                    public TeamAdminService(Humans.Application.Interfaces.Teams.ITeamService teams) { }
+                    public TeamAdminService(Humans.Base.Interfaces.Teams.ITeamService teams) { }
                 }
             }
             """;
@@ -118,7 +118,7 @@ public class CrossSectionReadRuleTests
     public async Task Does_not_fire_on_an_interface_with_no_read_base()
     {
         var source = """
-            namespace Humans.Application.Interfaces.Teams
+            namespace Humans.Base.Interfaces.Teams
             {
                 public interface ITeamService { void Rename(string name); }
             }
@@ -127,7 +127,7 @@ public class CrossSectionReadRuleTests
             {
                 public sealed class CampService
                 {
-                    public CampService(Humans.Application.Interfaces.Teams.ITeamService teams) { }
+                    public CampService(Humans.Base.Interfaces.Teams.ITeamService teams) { }
                 }
             }
             """;

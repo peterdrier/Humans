@@ -2,7 +2,7 @@
 
 **Status:** Draft — awaiting Peter's sign-off
 **Date:** 2026-08-10
-**Supersedes:** the sync mechanics of `2026-06-15-holded-ledger-single-source-design.md` (its "daybook is the single source, cache it, derive everything" decision stands; the v1 `dailyledger` transport and creditor-range scoping do not).
+**Supersedes:** the sync mechanics of Finance's `2026-06-15-holded-ledger-single-source-design.md`, which has since been deleted (git history has it) — its "daybook is the single source, cache it, derive everything" decision stands and is restated here; the v1 `dailyledger` transport and creditor-range scoping do not.
 
 ## Context
 
@@ -30,7 +30,7 @@ Holded launched API v2 (June 2026): REST/JSON at `https://api.holded.com/api/v2`
 **`Humans.Holded` (new vertical section, G5-shaped like Finance):**
 - Owns tables (own `HoldedDbContext`, sentinel `holded_ledger_lines`, history `__EFMigrationsHistory_Holded`): `holded_ledger_lines` (moves from Finance), `holded_accounts`, `holded_api_calls`, `holded_sync_states` (kind-keyed: Ledger / Accounts / FullSync).
 - Owns the ledger/accounts sync + balance reconciliation, and the `/Holded` admin screen (its overview view models stay internal).
-- `Humans.Holded.Contracts` (references `Humans.Interfaces` only, like Finance.Contracts): `IHoldedService` — ledger-line reads by account, all-lines read for grouping, account names/balances, and the sync trigger (consumed by the nightly job in Base and by Finance).
+- `Humans.Holded.Contracts` (references `Humans.Base` only, like Finance.Contracts): `IHoldedService` — ledger-line reads by account, all-lines read for grouping, account names/balances, and the sync trigger (consumed by the nightly job in Base and by Finance).
 
 **`Humans.Finance` keeps the business meaning:** `holded_category_map`, `holded_expense_docs` (+ matching), `holded_creditor_contacts`, provisioning, actuals, creditor screens. Its ledger-line reads switch from its own repository to `IHoldedService`. Its purchase-doc sync keeps state in a new Finance-owned `holded_doc_sync_state` singleton row (the old shared `holded_sync_states` singleton moves to Holded re-keyed). The `/Finance/Creditors` **Resync button (#1241) relocates to `/Holded`**.
 

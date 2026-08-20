@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;

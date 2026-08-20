@@ -1,14 +1,15 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error — see design §1/§2.
    Guarded by DebugPageRenderTests (step 12). *@
-@using Humans.Application.Extensions
+@using Humans.Base.Extensions
 @using Humans.Debug
 @using Humans.Debug.Controllers
 @using Humans.Debug.Models
-@using Humans.Infrastructure.Logging
-@using Humans.UI
-@using Humans.UI.Models
-@using Humans.UI.Models.Tables
+@using Humans.Debug.Services
+@using Humans.Base.Logging
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @using Microsoft.Extensions.Localization
 @* Debug carries no resource set of its own — every string on these pages is English
@@ -17,6 +18,16 @@
    enumerates the whole shared set as a coverage gallery. DebugArchitectureTests pins that
    to SharedResource so a future page cannot quietly bind some third set. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* A section can only addTagHelper against Humans.UI — a Shell-resident component renders
-   as inert literal markup (step 6). <vc:human> is in Humans.UI already. *@
-@addTagHelper *, Humans.Interfaces
+@* A section can only addTagHelper against assemblies it references — a Shell-resident
+   component renders as inert literal markup (step 6). <vc:human> is in Humans.Base. *@
+@addTagHelper *, Humans.Base
+@* /WidgetGallery's fan-in (nobodies-collective/Humans#1091): the gallery renders other
+   sections' public view components as <vc:> tag helpers, so their assemblies are opened
+   here — _ViewImports rather than the view so AuditLogPageRenderTests' binding walk
+   sees the <vc:audit-log> call site as bound. *@
+@addTagHelper *, Humans.Camps
+@addTagHelper *, Humans.Users
+@addTagHelper *, Humans.Tickets
+@addTagHelper *, Humans.Shifts
+@addTagHelper *, Humans.Calendar
+@addTagHelper *, Humans.AuditLog

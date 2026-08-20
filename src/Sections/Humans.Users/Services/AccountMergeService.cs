@@ -1,14 +1,15 @@
 using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Teams.Contracts;
 
 namespace Humans.Users.Services;
 

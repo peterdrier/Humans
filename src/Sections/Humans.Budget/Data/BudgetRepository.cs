@@ -1,6 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
 using NodaTime;

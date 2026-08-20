@@ -1,5 +1,5 @@
-using Humans.Application.Architecture;
-using Humans.Application.Extensions;
+using Humans.Base.Attributes;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -10,7 +10,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services.Dtos;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Campaigns.Services;

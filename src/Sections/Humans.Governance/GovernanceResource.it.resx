@@ -376,4 +376,13 @@
   <data name="BoardVoting_MeetingDateRequired" xml:space="preserve">
     <value>Impossibile finalizzare: è richiesta una data della riunione del consiglio.</value>
   </data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve">
+    <value>accordo da rivedere</value>
+  </data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve">
+    <value>accordi da rivedere</value>
+  </data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve">
+    <value>Assemblee, elezioni, e le cose serie.</value>
+  </data>
 </root>

@@ -1,5 +1,5 @@
 using NodaTime;
-using Humans.Domain.Attributes;
+using Humans.Base.Attributes;
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Domain;
 

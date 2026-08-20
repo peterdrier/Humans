@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;
 using Humans.Agent.Models;

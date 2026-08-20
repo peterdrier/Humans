@@ -1,4 +1,4 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Internal;

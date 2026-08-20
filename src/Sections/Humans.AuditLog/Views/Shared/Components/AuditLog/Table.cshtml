@@ -1,0 +1,82 @@
+@using Humans.Base.Models.Tables
+@using Microsoft.AspNetCore.Html
+@model Humans.AuditLog.ViewComponents.AuditLogComponentViewModel
+
+@{
+    ITableModel? table = null;
+    if (Model.Events.Count > 0)
+    {
+        Func<AuditEvent, IHtmlContent> whenCell =
+            @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+        Func<AuditEvent, IHtmlContent> actorCell = @<text>
+            @if (!item.ActorUserId.HasValue)
+            {
+                <span class="badge bg-info">System</span>
+            }
+            else
+            {
+                <vc:human user-id="@item.ActorUserId.Value" />
+            }
+        </text>;
+        Func<AuditEvent, IHtmlContent> actionCell =
+            @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel()</span></text>;
+        Func<AuditEvent, IHtmlContent> subjectCell = @<text>
+            @if (item.SubjectUserId.HasValue)
+            {
+                <vc:human user-id="@item.SubjectUserId.Value" />
+            }
+        </text>;
+        Func<AuditEvent, IHtmlContent> targetCell = @<text>
+            @if (item.TargetTeamId.HasValue && !string.IsNullOrEmpty(item.TargetTeamName))
+            {
+                <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none">@item.TargetTeamName</a>
+            }
+        </text>;
+
+        var builder = TableModel.For(Model.Events);
+        foreach (var column in Model.Columns)
+        {
+            switch (column)
+            {
+                case "When": builder.Template(Model.Header("When"), whenCell); break;
+                case "Actor": builder.Template(Model.Header("Actor"), actorCell); break;
+                case "Action": builder.Template(Model.Header("Action"), actionCell); break;
+                case "Subject": builder.Template(Model.Header("Subject"), subjectCell); break;
+                case "Description": builder.Column(Model.Header("Description"), ev => ev.Description); break;
+                case "Target": builder.Template(Model.Header("Target"), targetCell); break;
+                @* Model.Columns only ever holds AuditLogViewComponent.TableColumns names. A new
+                   one added there without a case here would silently drop its column. *@
+                default: throw new InvalidOperationException($"No cell mapped for audit column '{column}'.");
+            }
+        }
+        table = builder.RowCss(ev => ev.Action.ToAuditEntryRowClass()).Build();
+    }
+}
+
+@if (Model.ShowCard)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Model.Title</div>
+        @if (table is not null)
+        {
+            <partial name="_Table" model="table" />
+        }
+        else
+        {
+            <div class="card-body text-muted">
+                @Model.EmptyText
+            </div>
+        }
+    </div>
+}
+else
+{
+    @if (table is not null)
+    {
+        <partial name="_Table" model="table" />
+    }
+    else
+    {
+        <p class="text-muted mb-0">@Model.EmptyText</p>
+    }
+}

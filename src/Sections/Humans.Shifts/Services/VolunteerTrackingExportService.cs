@@ -1,5 +1,5 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using NodaTime;

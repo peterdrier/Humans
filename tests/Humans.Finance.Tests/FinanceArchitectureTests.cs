@@ -33,6 +33,20 @@ public class FinanceArchitectureTests
     }
 
     [HumansFact]
+    public void ConnectorAdminReadModelStaysInternal()
+    {
+        // /Finance/Holded is this section's own screen, so its read model is section-internal —
+        // the cross-section surface stays IHoldedFinanceService on the contracts leaf. Same shape
+        // as the Holded section's IHoldedAdminService (nobodies-collective/Humans#1000).
+        typeof(Services.IHoldedFinanceAdminService).IsPublic
+            .Should().BeFalse(because: "a screen's own read model is not cross-section surface");
+
+        typeof(IHoldedFinanceService).Assembly.GetTypes()
+            .Should().NotContain(t => t.Name == "IHoldedFinanceAdminService",
+                because: "the contracts leaf carries only what other sections call");
+    }
+
+    [HumansFact]
     public void FinanceControllerRequiresFinanceAdminOrAdmin()
     {
         // Moved from Humans.Application.Tests' EndpointAuthorizationTests, which sweeps Shell's

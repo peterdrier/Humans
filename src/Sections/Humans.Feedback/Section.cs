@@ -1,10 +1,10 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Filters;
 using Humans.Feedback.Services;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;

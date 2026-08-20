@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
-using Humans.Application.Threading;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Interfaces;
+using Humans.Base.Threading;
+using Humans.Base.Configuration;
 
 namespace Humans.Guide.Services;
 

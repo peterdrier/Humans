@@ -1,8 +1,8 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

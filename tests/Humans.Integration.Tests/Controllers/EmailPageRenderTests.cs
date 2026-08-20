@@ -1,6 +1,6 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Integration.Tests.Infrastructure;

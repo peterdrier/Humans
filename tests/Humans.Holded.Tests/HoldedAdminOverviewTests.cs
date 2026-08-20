@@ -291,8 +291,10 @@ public sealed class HoldedAdminOverviewTests
         statement.Account.Name.Should().Be("acct 62900128");
         // Derived from the 6 in 62900128, not the "Gastos" the chart cache carries.
         statement.Account.Group.Should().Be("Purchases and expenses");
-        statement.Account.HoldedBalance.Should().Be(121_684.00m);
-        statement.Account.LocalBalance.Should().Be(121_784.00m);
+        // Group 6: association POV flips the raw Debit − Credit sign (expenses read negative when
+        // money went out). Reconciled still compares the raw, unflipped values (false either way).
+        statement.Account.HoldedBalance.Should().Be(-121_684.00m);
+        statement.Account.LocalBalance.Should().Be(-121_784.00m);
         statement.Account.LocalLineCount.Should().Be(3);
         statement.Account.Reconciled.Should().BeFalse();
         // Date first, then entry/line — the other account's line is not here at all.
@@ -315,6 +317,129 @@ public sealed class HoldedAdminOverviewTests
         statement.Account.LocalBalance.Should().Be(771_074.85m);
         statement.Account.Reconciled.Should().BeFalse();
         statement.Lines.Should().ContainSingle();
+    }
+
+    // ─── Association-POV signed Amount ───────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Signed_amount_matches_the_pages_people_actually_read()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedLinesAsync(ct,
+            // 57200001 (bank, group 5): raw sign carries straight through.
+            Line(1, 57200001, debit: 50_000m, line: 1),   // money arrives
+            Line(2, 57200001, credit: 62_000m, line: 1),  // paid to Red Cross
+                                                          // 75900001 (bus sales, group 7): raw sign flips.
+            Line(3, 75900001, credit: 5m, line: 1),       // ticket sold
+            Line(4, 75900001, debit: 5m, line: 1),        // ticket refunded
+                                                          // 62900200 (629x rental, group 6): raw sign flips.
+            Line(5, 62900200, debit: 123m, line: 1),      // truck rented
+            Line(6, 62900200, credit: 50m, line: 1));     // deposit returned
+
+        var bank = await _service.GetAccountStatementAsync(57200001, ct);
+        bank!.Lines.Select(l => l.Amount).Should().Equal(50_000m, -62_000m);
+
+        var busSales = await _service.GetAccountStatementAsync(75900001, ct);
+        busSales!.Lines.Select(l => l.Amount).Should().Equal(5m, -5m);
+
+        var rental = await _service.GetAccountStatementAsync(62900200, ct);
+        rental!.Lines.Select(l => l.Amount).Should().Equal(-123m, 50m);
+
+        // Σ Amount agrees with the header balance under the signed-amount convention.
+        bank.Lines.Sum(l => l.Amount).Should().Be(bank.Account.LocalBalance);
+        busSales.Lines.Sum(l => l.Amount).Should().Be(busSales.Account.LocalBalance);
+        rental.Lines.Sum(l => l.Amount).Should().Be(rental.Account.LocalBalance);
+    }
+
+    // ─── Counterparty resolution ─────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Counterparty_is_the_entrys_single_opposing_side_line()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync([Account(40000010, -50_000m)], FixedNow, ct);
+        await SeedLinesAsync(ct,
+            Line(1, 57200001, debit: 50_000m, line: 1),
+            Line(1, 40000010, credit: 50_000m, line: 2));
+
+        var statement = await _service.GetAccountStatementAsync(57200001, ct);
+
+        var counterparty = statement!.Lines.Should().ContainSingle().Subject.Counterparty;
+        counterparty.Should().NotBeNull();
+        counterparty!.AccountNum.Should().Be(40000010);
+        counterparty.AccountName.Should().Be("acct 40000010");
+        counterparty.TotalOpposingLines.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task Counterparty_with_several_opposing_legs_names_the_largest_and_counts_the_rest()
+    {
+        // A purchase invoice: one creditor credit against an expense + VAT debit split.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync(
+        [
+            Account(40000099, -121m),
+            Account(62900300, 100m),
+            Account(47200001, 21m),
+        ], FixedNow, ct);
+        await SeedLinesAsync(ct,
+            Line(7, 40000099, credit: 121m, line: 1),
+            Line(7, 62900300, debit: 100m, line: 2),
+            Line(7, 47200001, debit: 21m, line: 3));
+
+        var statement = await _service.GetAccountStatementAsync(40000099, ct);
+
+        var counterparty = statement!.Lines.Should().ContainSingle().Subject.Counterparty;
+        counterparty.Should().NotBeNull();
+        counterparty!.AccountNum.Should().Be(62900300);
+        counterparty.TotalOpposingLines.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task Counterparty_is_null_when_the_entry_has_no_opposing_side_line()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedLinesAsync(ct, Line(9, 57200001, debit: 100m, line: 1));
+
+        var statement = await _service.GetAccountStatementAsync(57200001, ct);
+
+        statement!.Lines.Should().ContainSingle().Which.Counterparty.Should().BeNull();
+    }
+
+    // ─── Entry page ───────────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetEntry_lists_every_leg_with_account_name_and_signed_amount()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync(
+        [
+            Account(57200001, 50_000m),
+            Account(40000010, -50_000m),
+        ], FixedNow, ct);
+        await SeedLinesAsync(ct,
+            Line(1852, 57200001, debit: 50_000m, line: 1),
+            Line(1852, 40000010, credit: 50_000m, line: 2));
+
+        var entry = await _service.GetEntryAsync(1852, ct);
+
+        entry.Should().NotBeNull();
+        entry!.EntryNumber.Should().Be(1852);
+        entry.Lines.Should().HaveCount(2);
+        entry.Lines[0].AccountNum.Should().Be(57200001);
+        entry.Lines[0].AccountName.Should().Be("acct 57200001");
+        entry.Lines[0].Amount.Should().Be(50_000m);
+        entry.Lines[1].AccountNum.Should().Be(40000010);
+        entry.Lines[1].Amount.Should().Be(-50_000m);
+    }
+
+    [HumansFact]
+    public async Task GetEntry_unknown_number_returns_null()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedLinesAsync(ct, Line(1, 57200001, debit: 100m));
+
+        (await _service.GetEntryAsync(9999, ct)).Should().BeNull();
     }
 
     [HumansFact]

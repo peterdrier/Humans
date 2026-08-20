@@ -1,4 +1,3 @@
-@using Microsoft.AspNetCore.Html
 @model Humans.Store.Models.OrderViewModel
 @{
     ViewData["Title"] = $"Store order — {Model.CounterpartyDisplayName}";
@@ -22,6 +21,16 @@
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
         <span class="badge bg-secondary fs-6">@order.State</span>
+        @if (Model.CanIssueInvoice)
+        {
+            <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-primary"
+                        data-confirm="Issue this order's factura in Holded? Prices freeze at today's catalog and the order can never be re-issued.">
+                    <i class="fa-solid fa-file-invoice me-1"></i> Issue invoice
+                </button>
+            </form>
+        }
         @if (Model.CanDelete)
         {
             <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
@@ -135,18 +144,14 @@ else
     <div class="alert alert-secondary">No lines on this order yet.</div>
 }
 
-@if (Model.PriceChanges.Any())
-{
-    <h2 class="h4 mb-3">Price changes since this order started</h2>
-    Func<Humans.AuditLog.Contracts.AuditLogEntrySnapshot, IHtmlContent> priceChangeBadgeCell =
-        @<text><span class="badge bg-warning text-dark">Price changed</span></text>;
-    var priceChangesTable = TableModel.For(Model.PriceChanges)
-        .Column("Date", r => r.OccurredAt.ToDateTimeUtc().ToInvariantTimestamp())
-        .Template("Event", priceChangeBadgeCell, c => c.NoSort())
-        .Column("Details", r => r.Description)
-        .Build();
-    <partial name="_Table" model="priceChangesTable" />
-}
+@* Price changes on this order's products since it was created (#816). The AuditLog section
+   owns the read: one predicate over every product id, not one panel per product. *@
+<vc:audit-log entity-type="@AuditEntityTypes.Product"
+              entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
+              actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
+              layout="table" columns="when,action,description"
+              title="Price changes since this order started"
+              empty-text="No price changes since this order started." />
 
 @if (Model.CanEdit)
 {

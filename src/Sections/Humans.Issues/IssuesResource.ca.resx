@@ -46,6 +46,9 @@
   <data name="Issue_PageTitle" xml:space="preserve">
     <value>Incidències</value>
   </data>
+  <data name="Issue_NavLabel" xml:space="preserve">
+    <value>Incidències</value>
+  </data>
   <data name="Issue_New" xml:space="preserve">
     <value>Nova incidència</value>
   </data>

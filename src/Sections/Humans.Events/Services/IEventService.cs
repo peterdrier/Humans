@@ -3,7 +3,7 @@ using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 namespace Humans.Events.Services;
 

@@ -9,10 +9,10 @@ This project uses a small number of hand-chosen GUID ranges for seed data. The r
 | Block | Purpose | Source |
 |------:|---------|--------|
 | `0000` | Nil/default sentinel GUIDs in migrations | Migration-generated usage only |
-| `0001` | System-managed teams | [SystemTeamIds.cs](../src/Humans.Interfaces/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs) |
+| `0001` | System-managed teams | [SystemTeamIds.cs](../src/Humans.Base/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs) |
 | `0002` | Sync service settings seeds | [SyncServiceSettingsConfiguration.cs](../src/Sections/Humans.GoogleIntegration/Data/Configurations/SyncServiceSettingsConfiguration.cs) |
 | `0003` | Shift tag seeds | [ShiftTagConfiguration.cs](../src/Sections/Humans.Shifts/Data/Configurations/ShiftTagConfiguration.cs) |
-| `0004` | System user accounts (gate terminal) | [SystemUserIds.cs](../src/Humans.Interfaces/Constants/SystemUserIds.cs) |
+| `0004` | System user accounts (gate terminal) | [SystemUserIds.cs](../src/Humans.Base/Constants/SystemUserIds.cs) |
 | `0010` | Camp settings seed | [CampSettingsConfiguration.cs](../src/Sections/Humans.Camps/Data/Configurations/CampSettingsConfiguration.cs) |
 | `0026` | Event category seeds | [EventCategoryConfiguration.cs](../src/Sections/Humans.Events/Data/Configurations/EventCategoryConfiguration.cs) |
 

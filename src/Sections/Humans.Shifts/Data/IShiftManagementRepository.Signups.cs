@@ -155,7 +155,7 @@ internal partial interface IShiftManagementRepository
 
     /// <summary>
     /// Returns user-ids with at least one Pending or Confirmed signup for the
-    /// given event. Read-only. Used by Mailer audience computations.
+    /// given event. Read-only. Used by MailerLite audience computations.
     /// </summary>
     Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
         Guid eventSettingsId, CancellationToken ct = default);

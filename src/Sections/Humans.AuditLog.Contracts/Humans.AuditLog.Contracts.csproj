@@ -30,13 +30,13 @@
     reach it to call IAuditLogService.
 
     References Humans.Interfaces (IApplicationService) and nothing else. GoogleSyncSource is
-    named in these signatures and is still Base vocabulary — it keeps the Humans.Domain.Enums
+    named in these signatures and is still Base vocabulary — it keeps the Humans.Base.Enums
     namespace but lives in the Humans.Interfaces assembly, so the old separate Humans.Domain
     reference went with that project when G5 lane 3b deleted it.
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>

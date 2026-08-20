@@ -1,9 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Services;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

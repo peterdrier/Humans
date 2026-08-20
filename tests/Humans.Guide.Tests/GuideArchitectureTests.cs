@@ -1,10 +1,10 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Guide.Controllers;
 using Humans.Guide.Services;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Guide.Tests;
@@ -39,7 +39,7 @@ public class GuideArchitectureTests
         // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
         // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
         typeof(IGuideContentSource).Assembly.GetName().Name
-            .Should().Be("Humans.Interfaces");
+            .Should().Be("Humans.Base");
 
         typeof(Section).Assembly.GetTypes()
             .Should().NotContain(t => t.Name == "IGuideContentSource");
@@ -79,6 +79,48 @@ public class GuideArchitectureTests
             .ToHashSet(StringComparer.Ordinal);
 
         GuideFiles.All.Should().BeEquivalentTo(onDisk);
+    }
+
+    [HumansFact]
+    public void EveryRoleHeadingParentheticalResolvesToAPrivilege()
+    {
+        // An unmapped parenthetical is silent: the block renders with data-guide-roles=""
+        // and reaches nobody it was written for. "(Camp Coordinator)" sat like that on
+        // Camps.md (nobodies-collective/Humans#1035) until someone read the map.
+        var unmapped = new List<string>();
+
+        foreach (var file in Directory.GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md"))
+        {
+            foreach (var raw in File.ReadLines(file))
+            {
+                var line = raw.TrimEnd('\r');
+                var match = GuideMarkdownPreprocessor.RoleHeading.Match(line);
+                if (!match.Success || !match.Groups["paren"].Success)
+                {
+                    continue;
+                }
+
+                // "## As a [Coordinator](Glossary.md#coordinator)" — the only parens are a
+                // markdown link destination, so the heading carries no role scope.
+                var open = match.Groups["paren"].Index - 1;
+                if (open >= 1 && line[open - 1] == ']')
+                {
+                    continue;
+                }
+
+                foreach (var token in match.Groups["paren"].Value
+                    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!GuideRolePrivilegeMap.TryResolve(token, out _))
+                    {
+                        unmapped.Add($"{Path.GetFileName(file)}: ({token})");
+                    }
+                }
+            }
+        }
+
+        unmapped.Should().BeEmpty(
+            because: "every guide heading parenthetical must name a key in GuideRolePrivilegeMap");
     }
 
     private static string LocateRepoRoot()

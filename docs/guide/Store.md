@@ -18,7 +18,7 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 - **Camp orders** (`/Store`) — browse this year's catalogue and manage your camp's orders
 - **Order detail** (`/Store/Order/{id}`) — an order's items, balance, and payment status; pay by card from here
 - **Catalogue** (`/Store/Admin/Catalog`) — create and manage products (Store Admin)
-- **Add / edit a product** (`/Store/Admin/Catalog/Edit`) — product form: name, description, price, VAT, optional deposit, ordering deadline (Store Admin)
+- **Add / edit a product** (`/Store/Admin/Catalog/Edit`) — product form: name, description, price, VAT, optional deposit, ordering deadline, Holded revenue account (Store Admin)
 - **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin)
 - **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin)
 
@@ -50,7 +50,7 @@ The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. 
 
 ### Manage the catalogue
 
-Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store/Admin/Catalog/Edit`. Each product has a name, description, unit price (EUR), VAT rate, an optional per-unit deposit, an ordering deadline, and an active/inactive switch. The product form shows both an ex-VAT and an incl-VAT price field — enter either and the other updates automatically. Switching a product off hides it from new orders without touching orders that already include it. Products belong to a year — the current event year decides which catalogue is live.
+Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store/Admin/Catalog/Edit`. Each product has a name, description, unit price (EUR), VAT rate, an optional per-unit deposit, an ordering deadline, and an active/inactive switch. The product form shows both an ex-VAT and an incl-VAT price field — enter either and the other updates automatically. Each product also carries the **Holded revenue account** — the account number your accountant issued for that item, so its sales land in their own line in the books and you can read per-item break-even straight off the ledger. An item without one can't be invoiced. The matching internal account for department use is worked out from it automatically and shown next to it in the catalogue list. Switching a product off hides it from new orders without touching orders that already include it. Products belong to a year — the current event year decides which catalogue is live.
 
 ### Summary report
 
@@ -60,7 +60,23 @@ Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store
 
 `/Store/Admin/Payments` reconciles card payments taken through Stripe against what's recorded on orders. Card payments normally record themselves automatically, but if that automatic step isn't set up (or a payment slips through), this page lists every Stripe checkout and flags any paid one that hasn't been recorded yet. One click records all the missing ones — pulling the amount straight from Stripe, never re-typing it — and it's safe to run again any time. Payments recorded here but no longer found in Stripe are listed separately for you to look into; nothing is ever removed automatically. Sessions that are recorded but still awaiting settlement (e.g. a SEPA debit mandate that has been captured but hasn't cleared yet) are shown as **Recorded / Pending** — they are not counted toward the order balance until Stripe confirms the transfer.
 
-> **Heads up:** the Finance order-review screen (entering manual payments by hand and issuing invoices) isn't switched on yet.
+### Issuing a camp's invoice
+
+Open the camp's order and use **Issue invoice**. It creates the document in Holded and approves
+it in one step, then freezes the order — the prices stop tracking the catalogue and the order can
+never be issued a second time.
+
+Which document you get depends on the billing details on the order. With a name, an address and a
+tax ID (a NIF, or a foreign camp's home-country tax number or passport number) you get a **full
+factura**. Without them you get a **simplified invoice** — but only up to the legal ceiling; above
+it you'll be asked to fill the details in first. Refundable deposits are shown as separate VAT-free
+lines, because a deposit is money held, not money earned.
+
+If an item is missing its Holded revenue account, or the deposit account hasn't been configured
+yet, nothing is sent to Holded and you're told exactly what to fix.
+
+> **Heads up:** the Finance order-review screen (entering manual payments by hand) isn't switched
+> on yet.
 
 ## Related sections
 

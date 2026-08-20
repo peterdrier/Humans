@@ -24,11 +24,11 @@
                             <th>Week</th>
                             <th class="text-end">Orders</th>
                             <th class="text-end">Tickets Sold</th>
-                            <th class="text-end">Gross Revenue</th>
-                            <th class="text-end">Donations</th>
-                            <th class="text-end">VIP Donations</th>
-                            <th class="text-end">VAT</th>
-                            <th class="text-end">Net</th>
+                            <th class="text-end">Gross Revenue (@Model.Currency)</th>
+                            <th class="text-end">Donations (@Model.Currency)</th>
+                            <th class="text-end">VIP Donations (@Model.Currency)</th>
+                            <th class="text-end">VAT (@Model.Currency)</th>
+                            <th class="text-end">Net (@Model.Currency)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,11 +39,11 @@
                                 <td>@week.WeekLabel</td>
                                 <td class="text-end">@week.OrderCount.ToString("N0")</td>
                                 <td class="text-end">@week.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@Model.Currency @week.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @week.Donations.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @week.VipDonations.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @week.VatAmount.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @net.ToString("N2")</td>
+                                <td class="text-end">@week.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end">@week.Donations.ToString("N2")</td>
+                                <td class="text-end">@week.VipDonations.ToString("N2")</td>
+                                <td class="text-end">@week.VatAmount.ToString("N2")</td>
+                                <td class="text-end">@net.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -59,11 +59,11 @@
                             <td>Total</td>
                             <td class="text-end">@Model.WeeklySales.Sum(w => w.OrderCount).ToString("N0")</td>
                             <td class="text-end">@Model.WeeklySales.Sum(w => w.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.Currency @weeklyTotalGross.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @weeklyTotalDonations.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @weeklyTotalVipDonations.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @weeklyTotalVat.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @weeklyTotalNet.ToString("N2")</td>
+                            <td class="text-end">@weeklyTotalGross.ToString("N2")</td>
+                            <td class="text-end">@weeklyTotalDonations.ToString("N2")</td>
+                            <td class="text-end">@weeklyTotalVipDonations.ToString("N2")</td>
+                            <td class="text-end">@weeklyTotalVat.ToString("N2")</td>
+                            <td class="text-end">@weeklyTotalNet.ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -88,11 +88,11 @@
                             <th>Quarter</th>
                             <th class="text-end">Orders</th>
                             <th class="text-end">Tickets Sold</th>
-                            <th class="text-end">Gross Revenue</th>
-                            <th class="text-end">Donations</th>
-                            <th class="text-end">VIP Donations</th>
-                            <th class="text-end">VAT</th>
-                            <th class="text-end">Net Revenue</th>
+                            <th class="text-end">Gross Revenue (@Model.Currency)</th>
+                            <th class="text-end">Donations (@Model.Currency)</th>
+                            <th class="text-end">VIP Donations (@Model.Currency)</th>
+                            <th class="text-end">VAT (@Model.Currency)</th>
+                            <th class="text-end">Net Revenue (@Model.Currency)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -103,11 +103,11 @@
                                 <td>@q.QuarterLabel</td>
                                 <td class="text-end">@q.OrderCount.ToString("N0")</td>
                                 <td class="text-end">@q.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@Model.Currency @q.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @q.Donations.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @q.VipDonations.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @q.VatAmount.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @net.ToString("N2")</td>
+                                <td class="text-end">@q.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end">@q.Donations.ToString("N2")</td>
+                                <td class="text-end">@q.VipDonations.ToString("N2")</td>
+                                <td class="text-end">@q.VatAmount.ToString("N2")</td>
+                                <td class="text-end">@net.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -123,11 +123,11 @@
                             <td>Total</td>
                             <td class="text-end">@Model.QuarterlySales.Sum(q => q.OrderCount).ToString("N0")</td>
                             <td class="text-end">@Model.QuarterlySales.Sum(q => q.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.Currency @totalGross.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @totalDonations.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @totalVipDonations.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @totalVat.ToString("N2")</td>
-                            <td class="text-end">@Model.Currency @totalNet.ToString("N2")</td>
+                            <td class="text-end">@totalGross.ToString("N2")</td>
+                            <td class="text-end">@totalDonations.ToString("N2")</td>
+                            <td class="text-end">@totalVipDonations.ToString("N2")</td>
+                            <td class="text-end">@totalVat.ToString("N2")</td>
+                            <td class="text-end">@totalNet.ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -158,9 +158,9 @@
                     <thead>
                         <tr>
                             <th>Ticket Type</th>
-                            <th class="text-end">Price</th>
+                            <th class="text-end">Price (@Model.Currency)</th>
                             <th class="text-end">Tickets</th>
-                            <th class="text-end">Face Value</th>
+                            <th class="text-end">Face Value (@Model.Currency)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -168,9 +168,9 @@
                         {
                             <tr>
                                 <td>@type.TicketTypeName</td>
-                                <td class="text-end">@Model.Currency @type.Price.ToString("N2")</td>
+                                <td class="text-end">@type.Price.ToString("N2")</td>
                                 <td class="text-end">@type.TicketsSold.ToString("N0")</td>
-                                <td class="text-end">@Model.Currency @type.FaceValue.ToString("N2")</td>
+                                <td class="text-end">@type.FaceValue.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -179,7 +179,7 @@
                             <td>Total</td>
                             <td></td>
                             <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.Currency @Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2")</td>
+                            <td class="text-end">@Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -188,12 +188,70 @@
                         <i class="fa-solid fa-circle-info"></i>
                         Face value is the listed ticket price — order-level discounts and donations are excluded,
                         so totals here won't match Gross Revenue in the tables above.
+                        Discounts applied are broken out below.
                     </small>
                 </div>
             }
             else
             {
                 <div class="text-muted text-center py-3">No paid orders yet.</div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-tags"></i> Discount Codes by Campaign
+        </div>
+        <div class="card-body p-0">
+            @if (Model.ByDiscountCampaign.Count > 0)
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Campaign</th>
+                            <th class="text-end">Codes Granted</th>
+                            <th class="text-end">Codes Used</th>
+                            <th class="text-end">Each (@Model.Currency)</th>
+                            <th class="text-end">Total (@Model.Currency)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var campaign in Model.ByDiscountCampaign)
+                        {
+                            <tr>
+                                <td>@campaign.CampaignTitle</td>
+                                <td class="text-end">@(campaign.CodesGranted?.ToString("N0") ?? "—")</td>
+                                <td class="text-end">@campaign.CodesUsed.ToString("N0")</td>
+                                <td class="text-end">@campaign.AverageDiscount.ToString("N2")</td>
+                                <td class="text-end">@campaign.TotalDiscount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesGranted ?? 0).ToString("N0")</td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesUsed).ToString("N0")</td>
+                            <td></td>
+                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.TotalDiscount).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="px-3 py-2">
+                    <small class="text-muted">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Codes granted comes from the campaign that issued them; the amounts come from the paid
+                        orders that redeemed them, so "Each" is the average discount per redeeming order.
+                        Every campaign that granted codes is listed, including ones with no paid redemptions yet.
+                        Codes redeemed on paid orders that match no campaign grant are grouped under
+                        "No campaign (vendor codes)", where nothing was granted.
+                    </small>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">No campaign codes granted or redeemed yet.</div>
             }
         </div>
     </div>

@@ -1,5 +1,5 @@
-using Humans.Application;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

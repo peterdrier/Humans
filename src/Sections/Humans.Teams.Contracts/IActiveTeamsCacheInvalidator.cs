@@ -1,6 +1,7 @@
-using Humans.Application.Architecture;
+using Humans.Base.Interfaces;
+using Humans.Base.Attributes;
 
-namespace Humans.Application.Interfaces.Caching;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// Cross-cutting invalidator for the <c>CacheKeys.ActiveTeams</c> in-memory

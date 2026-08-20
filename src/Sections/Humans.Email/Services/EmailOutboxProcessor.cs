@@ -1,13 +1,13 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using System.Text.Json;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Metering;
-using Humans.Application.Metering;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Metering;
+using Humans.Base.Metering;
 using Humans.Campaigns.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
-using Humans.Infrastructure.Configuration;
+using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using NodaTime;
 

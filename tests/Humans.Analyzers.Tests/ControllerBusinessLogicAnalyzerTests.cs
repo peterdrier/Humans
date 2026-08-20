@@ -7,7 +7,7 @@ public class ControllerBusinessLogicAnalyzerTests
 {
     // GrandfatheredAttribute (widened to AttributeTargets.Method so HUM0031 can
     // grandfather individual controller methods) lives in
-    // Humans.Application.Architecture. Stubs mirror the production shapes.
+    // Humans.Base.Attributes. Stubs mirror the production shapes.
     private const string Stubs = """
         namespace Microsoft.AspNetCore.Mvc
         {
@@ -15,7 +15,7 @@ public class ControllerBusinessLogicAnalyzerTests
             public abstract class Controller : ControllerBase { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             public sealed class GrandfatheredAttribute : System.Attribute
             {
@@ -154,7 +154,7 @@ public class ControllerBusinessLogicAnalyzerTests
             {
                 public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
                 {
-                    [Humans.Application.Architecture.Grandfathered(
+                    [Humans.Base.Attributes.Grandfathered(
                         "HUM0031", "Pre-existing offender.", "2026-06-09", "nobodies-collective/Humans#793")]
                     public int Index()
                     {

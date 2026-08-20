@@ -29,7 +29,7 @@
       ScannerController's IEventServiceRead comes from Humans.Events.Contracts, declared
       below — it arrived transitively through Humans.Application until G5 lane 5c.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />

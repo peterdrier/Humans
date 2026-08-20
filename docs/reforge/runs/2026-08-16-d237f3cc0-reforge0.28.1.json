@@ -25341,7 +25341,7 @@
           "rule": "cognitiveComplexity",
           "points": 23,
           "symbol": "ApplyAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 154,
           "detail": "ApplyAsync (CC 38)"
         },
@@ -25349,7 +25349,7 @@
           "rule": "longMethod",
           "points": 19,
           "symbol": "SyncAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
           "line": 97,
           "detail": "SyncAsync (131 LOC)"
         },
@@ -25357,7 +25357,7 @@
           "rule": "cognitiveComplexity",
           "points": 18,
           "symbol": "BuildAsync",
-          "file": "src/Sections/Humans.Mailer/Models/MailerAudienceDebugSnapshotBuilder.cs",
+          "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
           "line": 30,
           "detail": "BuildAsync (CC 33)"
         },
@@ -25365,7 +25365,7 @@
           "rule": "longMethod",
           "points": 18,
           "symbol": "BuildAsync",
-          "file": "src/Sections/Humans.Mailer/Models/MailerAudienceDebugSnapshotBuilder.cs",
+          "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
           "line": 30,
           "detail": "BuildAsync (124 LOC)"
         },
@@ -25373,7 +25373,7 @@
           "rule": "longMethod",
           "points": 16,
           "symbol": "ApplyAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 154,
           "detail": "ApplyAsync (106 LOC)"
         },
@@ -25381,7 +25381,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
           "line": 19,
           "detail": "MailerAdminController \u003C- ICommunicationPreferenceService"
         },
@@ -25389,7 +25389,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
           "line": 19,
           "detail": "MailerAdminController \u003C- IAuditLogService"
         },
@@ -25397,7 +25397,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerAudienceSyncService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
           "line": 15,
           "detail": "MailerAudienceSyncService \u003C- IUserEmailService"
         },
@@ -25405,7 +25405,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerAudienceSyncService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
           "line": 15,
           "detail": "MailerAudienceSyncService \u003C- IAuditLogService"
         },
@@ -25413,7 +25413,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 12,
           "detail": "MailerImportService \u003C- IUserEmailService"
         },
@@ -25421,7 +25421,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 12,
           "detail": "MailerImportService \u003C- IAccountProvisioningService"
         },
@@ -25429,7 +25429,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 12,
           "detail": "MailerImportService \u003C- ICommunicationPreferenceService"
         },
@@ -25437,7 +25437,7 @@
           "rule": "crossSectionFullService",
           "points": 8,
           "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 12,
           "detail": "MailerImportService \u003C- IAuditLogService"
         },
@@ -25445,7 +25445,7 @@
           "rule": "cognitiveComplexity",
           "points": 7,
           "symbol": "SyncAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
           "line": 97,
           "detail": "SyncAsync (CC 22)"
         },
@@ -25453,7 +25453,7 @@
           "rule": "cognitiveComplexity",
           "points": 4,
           "symbol": "SendAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerLite/MailerLiteClient.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteClient.cs",
           "line": 251,
           "detail": "SendAsync (CC 19)"
         },
@@ -25461,7 +25461,7 @@
           "rule": "cognitiveComplexity",
           "points": 2,
           "symbol": "Read",
-          "file": "src/Sections/Humans.Mailer/Services/MailerLite/MailerLiteSubscriberConverter.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteSubscriberConverter.cs",
           "line": 16,
           "detail": "Read (CC 17)"
         },
@@ -25469,7 +25469,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
           "line": 19,
           "detail": "MailerAdminController \u003C- IUserServiceRead"
         },
@@ -25477,7 +25477,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasShiftAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftAudience.cs",
           "line": 12,
           "detail": "HasShiftAudience \u003C- IUserServiceRead"
         },
@@ -25485,7 +25485,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasShiftEventAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftEventAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftEventAudience.cs",
           "line": 12,
           "detail": "HasShiftEventAudience \u003C- IUserServiceRead"
         },
@@ -25493,7 +25493,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasShiftInPeriodAudienceBase",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftInPeriodAudienceBase.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftInPeriodAudienceBase.cs",
           "line": 15,
           "detail": "HasShiftInPeriodAudienceBase \u003C- IUserServiceRead"
         },
@@ -25501,7 +25501,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasShiftSetupAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftSetupAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftSetupAudience.cs",
           "line": 12,
           "detail": "HasShiftSetupAudience \u003C- IUserServiceRead"
         },
@@ -25509,7 +25509,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasShiftStrikeAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftStrikeAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftStrikeAudience.cs",
           "line": 12,
           "detail": "HasShiftStrikeAudience \u003C- IUserServiceRead"
         },
@@ -25517,7 +25517,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasTicketAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasTicketAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasTicketAudience.cs",
           "line": 13,
           "detail": "HasTicketAudience \u003C- ITicketServiceRead"
         },
@@ -25525,7 +25525,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "HasTicketAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/HasTicketAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasTicketAudience.cs",
           "line": 13,
           "detail": "HasTicketAudience \u003C- IUserServiceRead"
         },
@@ -25533,7 +25533,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MailerAudienceBase",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/MailerAudienceBase.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerAudienceBase.cs",
           "line": 14,
           "detail": "MailerAudienceBase \u003C- IUserServiceRead"
         },
@@ -25541,7 +25541,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MarketingAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/MarketingAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MarketingAudience.cs",
           "line": 11,
           "detail": "MarketingAudience \u003C- IUserServiceRead"
         },
@@ -25549,7 +25549,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MarketingNoTicketAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/MarketingNoTicketAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MarketingNoTicketAudience.cs",
           "line": 14,
           "detail": "MarketingNoTicketAudience \u003C- IUserServiceRead"
         },
@@ -25557,7 +25557,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MarketingNoTicketAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/MarketingNoTicketAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MarketingNoTicketAudience.cs",
           "line": 14,
           "detail": "MarketingNoTicketAudience \u003C- ITicketServiceRead"
         },
@@ -25565,7 +25565,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "TicketNoShiftsAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/TicketNoShiftsAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/TicketNoShiftsAudience.cs",
           "line": 21,
           "detail": "TicketNoShiftsAudience \u003C- ITicketServiceRead"
         },
@@ -25573,7 +25573,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "TicketNoShiftsAudience",
-          "file": "src/Sections/Humans.Mailer/Services/Audiences/TicketNoShiftsAudience.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/TicketNoShiftsAudience.cs",
           "line": 21,
           "detail": "TicketNoShiftsAudience \u003C- IUserServiceRead"
         },
@@ -25581,7 +25581,7 @@
           "rule": "crossSectionReadInterface",
           "points": 2,
           "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 12,
           "detail": "MailerImportService \u003C- IUserServiceRead"
         },
@@ -25589,7 +25589,7 @@
           "rule": "longMethod",
           "points": 2,
           "symbol": "Debug",
-          "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
           "line": 92,
           "detail": "Debug (62 LOC)"
         },
@@ -25597,7 +25597,7 @@
           "rule": "longMethod",
           "points": 1,
           "symbol": "Index",
-          "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
           "line": 33,
           "detail": "Index (53 LOC)"
         },
@@ -25605,7 +25605,7 @@
           "rule": "longMethod",
           "points": 1,
           "symbol": "BuildPlanAsync",
-          "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
           "line": 40,
           "detail": "BuildPlanAsync (58 LOC)"
         }
@@ -28601,7 +28601,7 @@
     },
     {
       "symbol": "ApplyAsync",
-      "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
       "line": 154,
       "total": 39,
       "byRule": {
@@ -28664,7 +28664,7 @@
     },
     {
       "symbol": "BuildAsync",
-      "file": "src/Sections/Humans.Mailer/Models/MailerAudienceDebugSnapshotBuilder.cs",
+      "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
       "line": 30,
       "total": 36,
       "byRule": {
@@ -28726,7 +28726,7 @@
     },
     {
       "symbol": "MailerImportService",
-      "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
       "line": 12,
       "total": 34,
       "byRule": {
@@ -29093,7 +29093,7 @@
     },
     {
       "symbol": "SyncAsync",
-      "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
       "line": 97,
       "total": 26,
       "byRule": {
@@ -29718,7 +29718,7 @@
     },
     {
       "symbol": "MailerAdminController",
-      "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
       "line": 19,
       "total": 18,
       "byRule": {
@@ -29871,7 +29871,7 @@
     },
     {
       "symbol": "MailerAudienceSyncService",
-      "file": "src/Sections/Humans.Mailer/Services/MailerAudienceSyncService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
       "line": 15,
       "total": 16,
       "byRule": {
@@ -38146,7 +38146,7 @@
     },
     {
       "symbol": "HasTicketAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasTicketAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasTicketAudience.cs",
       "line": 13,
       "total": 4,
       "byRule": {
@@ -38191,7 +38191,7 @@
     },
     {
       "symbol": "MarketingNoTicketAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/MarketingNoTicketAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/MarketingNoTicketAudience.cs",
       "line": 14,
       "total": 4,
       "byRule": {
@@ -38291,7 +38291,7 @@
     },
     {
       "symbol": "SendAsync",
-      "file": "src/Sections/Humans.Mailer/Services/MailerLite/MailerLiteClient.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteClient.cs",
       "line": 251,
       "total": 4,
       "byRule": {
@@ -38400,7 +38400,7 @@
     },
     {
       "symbol": "TicketNoShiftsAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/TicketNoShiftsAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/TicketNoShiftsAudience.cs",
       "line": 21,
       "total": 4,
       "byRule": {
@@ -40063,7 +40063,7 @@
     },
     {
       "symbol": "Debug",
-      "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
       "line": 92,
       "total": 2,
       "byRule": {
@@ -40540,7 +40540,7 @@
     },
     {
       "symbol": "HasShiftAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftAudience.cs",
       "line": 12,
       "total": 2,
       "byRule": {
@@ -40549,7 +40549,7 @@
     },
     {
       "symbol": "HasShiftEventAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftEventAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftEventAudience.cs",
       "line": 12,
       "total": 2,
       "byRule": {
@@ -40558,7 +40558,7 @@
     },
     {
       "symbol": "HasShiftInPeriodAudienceBase",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftInPeriodAudienceBase.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftInPeriodAudienceBase.cs",
       "line": 15,
       "total": 2,
       "byRule": {
@@ -40567,7 +40567,7 @@
     },
     {
       "symbol": "HasShiftSetupAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftSetupAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftSetupAudience.cs",
       "line": 12,
       "total": 2,
       "byRule": {
@@ -40576,7 +40576,7 @@
     },
     {
       "symbol": "HasShiftStrikeAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/HasShiftStrikeAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/HasShiftStrikeAudience.cs",
       "line": 12,
       "total": 2,
       "byRule": {
@@ -41026,7 +41026,7 @@
     },
     {
       "symbol": "MailerAudienceBase",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/MailerAudienceBase.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerAudienceBase.cs",
       "line": 14,
       "total": 2,
       "byRule": {
@@ -41053,7 +41053,7 @@
     },
     {
       "symbol": "MarketingAudience",
-      "file": "src/Sections/Humans.Mailer/Services/Audiences/MarketingAudience.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/MarketingAudience.cs",
       "line": 11,
       "total": 2,
       "byRule": {
@@ -41386,7 +41386,7 @@
     },
     {
       "symbol": "Read",
-      "file": "src/Sections/Humans.Mailer/Services/MailerLite/MailerLiteSubscriberConverter.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteSubscriberConverter.cs",
       "line": 16,
       "total": 2,
       "byRule": {
@@ -43115,7 +43115,7 @@
     },
     {
       "symbol": "BuildPlanAsync",
-      "file": "src/Sections/Humans.Mailer/Services/MailerImportService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
       "line": 40,
       "total": 1,
       "byRule": {
@@ -46436,7 +46436,7 @@
     },
     {
       "symbol": "Index",
-      "file": "src/Sections/Humans.Mailer/Controllers/MailerAdminController.cs",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
       "line": 33,
       "total": 1,
       "byRule": {
@@ -58552,7 +58552,7 @@
       ]
     },
     {
-      "display": "Humans.Mailer.Models.MailerAudienceDebugSnapshotBuilder",
+      "display": "Humans.MailerLite.Models.MailerAudienceDebugSnapshotBuilder",
       "methods": [
         "BuildAsync",
         "PageExpected",
@@ -58561,33 +58561,33 @@
       ]
     },
     {
-      "display": "Humans.Mailer.Services.Dtos.AudienceSyncResult",
+      "display": "Humans.MailerLite.Services.Dtos.AudienceSyncResult",
       "methods": [
         "FormatSummary"
       ]
     },
     {
-      "display": "Humans.Mailer.Services.Dtos.ImportResult",
+      "display": "Humans.MailerLite.Services.Dtos.ImportResult",
       "methods": [
         "FormatSummary"
       ]
     },
     {
-      "display": "Humans.Mailer.Services.MailerLite.MailerLiteDateConverter",
+      "display": "Humans.MailerLite.Services.MailerLite.MailerLiteDateConverter",
       "methods": [
         "Read",
         "Write"
       ]
     },
     {
-      "display": "Humans.Mailer.Services.MailerLite.MailerLiteRequiredDateConverter",
+      "display": "Humans.MailerLite.Services.MailerLite.MailerLiteRequiredDateConverter",
       "methods": [
         "Read",
         "Write"
       ]
     },
     {
-      "display": "Humans.Mailer.Services.MailerLite.MailerLiteSubscriberConverter",
+      "display": "Humans.MailerLite.Services.MailerLite.MailerLiteSubscriberConverter",
       "methods": [
         "Read",
         "Write"

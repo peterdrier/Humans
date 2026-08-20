@@ -48,7 +48,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                 cur.BudgetCategoryId = d.BudgetCategoryId;
                 cur.MatchStatus = d.MatchStatus;
                 cur.MatchSource = d.MatchSource;
-                cur.RawPayload = d.RawPayload;
                 cur.LastSyncedAt = now;
                 cur.UpdatedAt = now;
             }
@@ -69,6 +68,12 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             // arch:db-sort-ok newest-first — unmatched review list, most recent docs surface first
             .OrderByDescending(d => d.Date)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedExpenseDocs.AsNoTracking().ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default)

@@ -98,6 +98,14 @@ public sealed class HumansTestDatabase : IAsyncLifetime
     private string ConnectionStringFor(string name) =>
         new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name }.ConnectionString;
 
+    /// <summary>
+    /// A connection string naming a database that is never created — the container is
+    /// reachable but the catalog isn't, the shape of a PR preview whose
+    /// <c>preview-db.yml</c> clone hasn't run yet (nobodies-collective/Humans#1060).
+    /// Never touches the server.
+    /// </summary>
+    public string ConnectionStringForMissingDatabase(string name) => ConnectionStringFor(name);
+
     private async Task ExecuteAdminAsync(string sql, CancellationToken ct)
     {
         await using var connection = new NpgsqlConnection(_adminConnectionString);

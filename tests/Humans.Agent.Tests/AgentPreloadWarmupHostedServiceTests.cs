@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,5 +76,8 @@ public class AgentPreloadWarmupHostedServiceTests
             ListCalls++;
             return Task.FromResult<IReadOnlyList<string>>([]);
         }
+
+        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 }

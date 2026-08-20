@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Tests.Architecture.Rules;
@@ -9,7 +9,7 @@ namespace Humans.Web.Tests.Architecture.Rules;
 /// takes <see cref="UsersDbContext"/> or
 /// <see cref="IDbContextFactory{TContext}"/> as a constructor parameter.
 ///
-/// Services reach the database exclusively through <see cref="Humans.Application.Interfaces.Repositories.IRepository"/>
+/// Services reach the database exclusively through <see cref="Humans.Base.Interfaces.Repositories.IRepository"/>
 /// implementations. A service that directly injects a DbContext bypasses the
 /// repository boundary, violating design-rules §3.
 ///

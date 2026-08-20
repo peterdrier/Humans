@@ -1,6 +1,6 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.Teams.Contracts;
 using NodaTime;

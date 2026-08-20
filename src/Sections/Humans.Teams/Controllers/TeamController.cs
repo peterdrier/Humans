@@ -1,21 +1,20 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Extensions;
-using Humans.UI.Controllers;
+using Humans.Base.Extensions;
+using Humans.Base.Controllers;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
-using Humans.Application.Configuration;
-using Humans.Domain.Enums;
+using Humans.Base.Configuration;
+using Humans.Base.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Models;
 using NodaTime;
 using Humans.Teams.Contracts;
-using Humans.UI;
-using Humans.UI.Authorization;
-using Humans.UI.Extensions;
+using Humans.Base;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;

@@ -1,11 +1,11 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
 using Humans.Gdpr.Contracts;
-using Humans.Infrastructure.Hosting;
+using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,5 +85,9 @@ public sealed class Section : ISection
         services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
         services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<AuthMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<AuthMetricsService>());
     }
 }

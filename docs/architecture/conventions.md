@@ -2,8 +2,8 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/ViewComponents/**
   src/Humans.Web/Views/**
-  src/Humans.Interfaces/ViewComponents/**
-  src/Humans.Interfaces/Views/**
+  src/Humans.Base/ViewComponents/**
+  src/Humans.Base/Views/**
   src/Sections/**
   Directory.Build.props
 -->
@@ -83,7 +83,7 @@ Do not rely on hidden buttons or view-only checks for anything important.
 
 ## Action Naming
 
-Controller action names should describe the operation in the controller's domain. The audit at [`controller-architecture-audit.md`](../controller-architecture-audit.md) flags actions that violate these heuristics.
+Controller action names should describe the operation in the controller's domain.
 
 - **`Index` is a listing of the controller's resource.** If the action does something else (a single dashboard, a settings page, a one-off form), pick a more specific name.
 - **Don't repeat the controller name in the action.** `TeamController.TeamDetail` reads as `Team/TeamDetail` — the `Team` prefix is redundant. Use `TeamController.Detail` (`Team/Detail`).
@@ -91,11 +91,11 @@ Controller action names should describe the operation in the controller's domain
 - **Avoid generic verbs.** `View`, `Show`, `Process`, `Handle` say nothing. Pick a verb that describes the operation: `Approve`, `Reject`, `Withdraw`, `Resync`, `Backfill`.
 - **Use the conventional form-handler pattern.** `Create` (GET form + POST submit), `Edit` (GET form + POST submit), `Delete` (POST), `Confirm`, `Cancel` are the established verbs across this codebase. Match them when the operation is the same shape.
 
-These are heuristics, not laws — a clearer name that violates one of them beats a literal-conformance one. The audit doc flags suspected violations; the rename is a judgment call.
+These are heuristics, not laws — a clearer name that violates one of them beats a literal-conformance one.
 
 ## Integration
 
-External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, Mailer and Email.
+External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, MailerLite and Email.
 
 Do not leak raw provider concerns through multiple layers.
 
@@ -126,7 +126,7 @@ For configuration:
 
 ## Date/Time Formatting
 
-Date/time format strings live in **one home**: `Humans.Application.Extensions.DateFormattingExtensions`. Render dates by calling a named method on the home — `ToDate` / `ToDateTime` / `ToWeekdayDayMonth` for culture display, `ToInvariantDate` / `ToInvariantTimestamp` / `ToIso8601` for machine output. For an `Instant` in a request/view, the ambient overloads in `Humans.UI.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
+Date/time format strings live in **one home**: `Humans.Base.Extensions.DateFormattingExtensions`. Render dates by calling a named method on the home — `ToDate` / `ToDateTime` / `ToWeekdayDayMonth` for culture display, `ToInvariantDate` / `ToInvariantTimestamp` / `ToIso8601` for machine output. For an `Instant` in a request/view, the ambient overloads in `Humans.Base.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
 
 Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, interpolation `{x:MMM d}`, NodaTime `*Pattern.Create("…")`). If no method fits, add one to the home rather than hand-rolling a literal. Enforced by analyzer **HUM0030** (build error in production assemblies). See [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md) and [`memory/code/datetime-display-formatting.md`](../../memory/code/datetime-display-formatting.md).
 
@@ -135,7 +135,7 @@ Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, 
 Server-rendered Razor is the default rendering approach for all pages.
 
 <!-- wheat: docs/plans/2026-06-11-q3-ui-refactoring-plan.md §Strategic call -->
-A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (the section-agnostic ones in `src/Humans.Interfaces/ViewComponents`, the rest in `src/Humans.Web/ViewComponents` or the owning section project; stable `<vc:>` call sites either way) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
+A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (the section-agnostic ones in `src/Humans.Base/ViewComponents`, the rest in `src/Humans.Web/ViewComponents` or the owning section project; stable `<vc:>` call sites either way) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
 
 Default rule:
 
@@ -168,7 +168,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 
 **Conventions:**
 
-- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.Interfaces` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
+- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.Base` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
 - Invocation: `<vc:{kebab-name} param="…">` tag helper or `@await Component.InvokeAsync("{Name}", new { param = value })`
@@ -195,9 +195,9 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 
 | File | Purpose | Exception type |
 |------|---------|----------------|
-| `Humans.Interfaces/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
-| `Sections/Humans.Users/Views/Shared/_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
-| `Humans.Interfaces/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
+| `Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
+| `Sections/Humans.Users/Views/Shared/Components/UserSearchResult/Default.cshtml` (`<vc:user-search-result>`) | Person search result row (page-style card) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
+| `Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `Humans.Teams/Views/TeamAdmin/Roles.cshtml` | Role-grid save without reload | Progressive enhancement |
 | `Humans.Shifts/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |

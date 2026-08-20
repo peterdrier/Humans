@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Humans.Infrastructure.Data;
+using Humans.Base.Data;
 
 namespace Humans.Budget.Data;
 

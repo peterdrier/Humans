@@ -3,12 +3,11 @@
    Guarded by the rendered-HTML diff in step 12. *@
 @using Humans.Surveys
 @using Humans.Surveys.Domain
-@using Humans.Domain.Enums
+@using Humans.Base.Enums
 @using Humans.Surveys.Models
 @using Humans.Surveys.Services
-@using Humans.Application.Extensions
-@using Humans.UI
-@using Humans.UI.Extensions
+@using Humans.Base.Extensions
+@using Humans.Base
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @using NodaTime.Text
@@ -16,4 +15,4 @@
    no Common_* key survives here, so there is deliberately no SharedLocalizer binding. *@
 @inject IStringLocalizer<SurveysResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base

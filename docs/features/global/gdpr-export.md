@@ -3,7 +3,7 @@
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr.Contracts/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/GuestController.cs
+  src/Sections/Humans.Onboarding/Controllers/GuestController.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Consent/Services/ConsentService.cs

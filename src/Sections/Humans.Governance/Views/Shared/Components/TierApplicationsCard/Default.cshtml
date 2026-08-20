@@ -1,0 +1,26 @@
+@model ApplicationAdminStats
+@{
+    var pending = Model.Total - Model.Approved - Model.Rejected;
+}
+<div class="card mb-4">
+    <div class="card-header">Tier applications</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-7">Total</dt>
+            <dd class="col-5 text-end mb-2">@Model.Total</dd>
+            <dt class="col-7">Approved</dt>
+            <dd class="col-5 text-end mb-2">@Model.Approved</dd>
+            <dt class="col-7">Rejected</dt>
+            <dd class="col-5 text-end mb-2">@Model.Rejected</dd>
+            <dt class="col-7">Pending</dt>
+            <dd class="col-5 text-end mb-2">@pending</dd>
+        </dl>
+        <hr class="my-2" />
+        <dl class="row mb-0">
+            <dt class="col-7">Colaborador</dt>
+            <dd class="col-5 text-end mb-2">@Model.ColaboradorApplied</dd>
+            <dt class="col-7">Asociado</dt>
+            <dd class="col-5 text-end mb-2">@Model.AsociadoApplied</dd>
+        </dl>
+    </div>
+</div>

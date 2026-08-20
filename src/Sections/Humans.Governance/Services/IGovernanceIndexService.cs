@@ -1,5 +1,5 @@
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 
 namespace Humans.Governance.Services;

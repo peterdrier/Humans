@@ -1,10 +1,10 @@
-using Humans.Application.Architecture;
-using Humans.Application.Extensions;
+using Humans.Base.Attributes;
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -21,7 +21,7 @@ internal sealed class AuditLogService(
     IAuditLogRepository repo,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<AuditLogService> logger) : IAuditLogService, IUserDataContributor
+    ILogger<AuditLogService> logger) : IAuditLogService, IAuditLogReader, IUserDataContributor
 {
     // ─── Writes (append-only) ───
 
@@ -267,13 +267,6 @@ internal sealed class AuditLogService(
 
         return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
-
-    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        Instant windowStart,
-        Instant windowEnd,
-        AuditAction action,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,

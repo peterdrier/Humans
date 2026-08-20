@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

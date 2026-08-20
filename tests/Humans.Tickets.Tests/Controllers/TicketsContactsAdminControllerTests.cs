@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Tickets.Services.Dtos;
-using Humans.UI.Constants;
+using Humans.Base.Constants;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Http;

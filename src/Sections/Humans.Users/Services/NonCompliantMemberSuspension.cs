@@ -1,9 +1,9 @@
-using Humans.Application.Architecture;
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Caching;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;

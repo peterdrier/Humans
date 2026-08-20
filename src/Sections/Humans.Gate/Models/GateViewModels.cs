@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;
 

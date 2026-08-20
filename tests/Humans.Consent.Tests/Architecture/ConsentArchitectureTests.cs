@@ -3,7 +3,7 @@ using Humans.Consent.Data;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
-using Humans.UI;
+using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;

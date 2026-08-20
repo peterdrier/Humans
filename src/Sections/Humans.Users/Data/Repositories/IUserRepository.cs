@@ -1,6 +1,6 @@
 using Humans.Users.Contracts;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Users.Data.Repositories;
 

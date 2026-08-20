@@ -1,5 +1,5 @@
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
+using Humans.Base.Attributes;
+using Humans.Base.Interfaces;
 
 namespace Humans.Consent.Services;
 

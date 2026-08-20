@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
 
 namespace Humans.Campaigns.Data;
 

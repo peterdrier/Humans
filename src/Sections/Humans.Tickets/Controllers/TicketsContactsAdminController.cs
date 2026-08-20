@@ -1,7 +1,7 @@
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

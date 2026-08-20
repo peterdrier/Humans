@@ -7,14 +7,13 @@
 @using Humans.Store.Models
 @using Humans.Store.Services
 @using Humans.Store.Services.Dtos
-@using Humans.Application.Extensions
-@using Humans.UI
-@using Humans.UI.Extensions
-@using Humans.UI.Models.Tables
+@using Humans.Base.Extensions
+@using Humans.Base
+@using Humans.Base.Models.Tables
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<StoreResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@addTagHelper *, Humans.Interfaces
+@addTagHelper *, Humans.Base
 @* <vc:audit-log> (StoreAdmin/CatalogEdit) is the AuditLog section's own component since
    G5 lane 4b-2h (nobodies-collective/Humans#866); it used to be Humans.UI's. *@
 @addTagHelper *, Humans.AuditLog

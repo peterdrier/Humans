@@ -9,8 +9,10 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Humans.Domain.Enums;
+using Humans.Base.Enums;
+using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -32,6 +34,8 @@ public class ServiceTeamOrdersTests
     private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
+    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
     public ServiceTeamOrdersTests()
@@ -41,7 +45,7 @@ public class ServiceTeamOrdersTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
     }
 
     // ==========================================================================
@@ -371,6 +375,28 @@ public class ServiceTeamOrdersTests
             }
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteOrderAsync_rejects_an_invoiced_order()
+    {
+        // A paid, issued order reads zero-balance, but its store_invoices row references it under a
+        // restrictive foreign key — the delete has to be refused here, not at the database.
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new Order
+            {
+                Id = orderId,
+                CampSeasonId = Guid.NewGuid(),
+                Year = 2026,
+                State = OrderState.InvoiceIssued,
+                IssuedInvoiceId = Guid.NewGuid(),
+            });
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));

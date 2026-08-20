@@ -8,7 +8,7 @@ using Humans.Campaigns.Data;
 using Humans.Feedback.Data;
 using Humans.Governance.Data;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
+using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

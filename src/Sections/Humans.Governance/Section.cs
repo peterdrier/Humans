@@ -1,11 +1,12 @@
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
+using Humans.Governance.Jobs;
 using Humans.Governance.Services;
-using Humans.Infrastructure.Hosting;
-using Humans.UI.Models.Tables;
+using Humans.Base.Hosting;
+using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
@@ -20,9 +21,8 @@ namespace Humans.Governance;
 /// </summary>
 /// <remarks>
 /// <c>TermRenewalReminderJob</c> moved into this project's <c>Contracts/</c> folder at G5
-/// lane 5b-4 (nobodies-collective/Humans#866) but is still <em>registered</em> from Shell's
-/// <c>InfrastructureServiceCollectionExtensions</c>: there is no <c>ISection</c>-style
-/// discovery seam for jobs (design §15 step 6b).
+/// lane 5b-4 (nobodies-collective/Humans#866); its registration followed at #1074's jobs
+/// seam, whose schedule is contributed via <c>SectionJobs.cs</c>.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -63,5 +63,11 @@ public sealed class Section : ISection
             [VoteChoice.No] = "bg-danger",
             [VoteChoice.Abstain] = "bg-secondary",
         });
+
+        services.AddScoped<TermRenewalReminderJob>();
+
+        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
+        services.AddSingleton<GovernanceMetricsService>();
+        services.AddHostedService(sp => sp.GetRequiredService<GovernanceMetricsService>());
     }
 }

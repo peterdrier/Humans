@@ -88,6 +88,9 @@ namespace Humans.Expenses.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("Receipt");
 
+                    b.Property<Guid?>("ParentLineId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -96,6 +99,8 @@ namespace Humans.Expenses.Data.Migrations
                     b.HasIndex("AttachmentId");
 
                     b.HasIndex("ExpenseReportId");
+
+                    b.HasIndex("ParentLineId");
 
                     b.ToTable("expense_lines", (string)null);
                 });
@@ -251,6 +256,11 @@ namespace Humans.Expenses.Data.Migrations
                         .HasForeignKey("ExpenseReportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Humans.Expenses.Domain.ExpenseLine", null)
+                        .WithMany()
+                        .HasForeignKey("ParentLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Attachment");
                 });

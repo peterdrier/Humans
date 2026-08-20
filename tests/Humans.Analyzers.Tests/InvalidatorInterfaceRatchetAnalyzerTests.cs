@@ -5,17 +5,17 @@ namespace Humans.Analyzers.Tests;
 
 public class InvalidatorInterfaceRatchetAnalyzerTests
 {
-    // IInvalidator lives in Humans.Application.Interfaces; GrandfatheredAttribute
+    // IInvalidator lives in Humans.Base.Interfaces; GrandfatheredAttribute
     // (widened to AttributeTargets.Class | Interface so HUM0028 can grandfather
-    // interface declarations) in Humans.Application.Architecture. Stubs mirror
+    // interface declarations) in Humans.Base.Attributes. Stubs mirror
     // the production shapes so the analyzer can resolve them.
     private const string Stubs = """
-        namespace Humans.Application.Interfaces
+        namespace Humans.Base.Interfaces
         {
             public interface IInvalidator { }
         }
 
-        namespace Humans.Application.Architecture
+        namespace Humans.Base.Attributes
         {
             [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface, AllowMultiple = true, Inherited = false)]
             public sealed class GrandfatheredAttribute : System.Attribute
@@ -33,9 +33,9 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Demo
+            namespace Humans.Base.Interfaces.Demo
             {
-                public interface INewSomethingInvalidator : Humans.Application.Interfaces.IInvalidator
+                public interface INewSomethingInvalidator : Humans.Base.Interfaces.IInvalidator
                 {
                     void Invalidate();
                 }
@@ -57,14 +57,14 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Demo
+            namespace Humans.Base.Interfaces.Demo
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0028",
                     justification: "Pre-existing invalidator awaiting absorption into caching decorator.",
                     since: "2026-05-27",
                     issueRef: "nobodies-collective/Humans#805")]
-                public interface IExistingInvalidator : Humans.Application.Interfaces.IInvalidator
+                public interface IExistingInvalidator : Humans.Base.Interfaces.IInvalidator
                 {
                     void Invalidate();
                 }
@@ -86,14 +86,14 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Demo
+            namespace Humans.Base.Interfaces.Demo
             {
-                [Humans.Application.Architecture.Grandfathered(
+                [Humans.Base.Attributes.Grandfathered(
                     ruleId: "HUM0042",
                     justification: "Different rule.",
                     since: "2026-05-27",
                     issueRef: "nobodies-collective/Humans#0")]
-                public interface IWrongRuleInvalidator : Humans.Application.Interfaces.IInvalidator
+                public interface IWrongRuleInvalidator : Humans.Base.Interfaces.IInvalidator
                 {
                     void Invalidate();
                 }
@@ -127,7 +127,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Demo
+            namespace Humans.Base.Interfaces.Demo
             {
                 public interface IPlainService
                 {

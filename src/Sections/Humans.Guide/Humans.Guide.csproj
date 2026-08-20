@@ -27,10 +27,11 @@
       call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
       GuideSettings binds Guide:* and is read by GitHubGuideContentSource, which stays in Base
       as a shared GitHub-markdown connector (three of its four consumers are not Guide's), so
-      the settings type stays in Humans.Interfaces/Configuration with it.
+      the settings type stays in Humans.Base/Configuration with it.
     -->
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,8 +41,11 @@
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
       Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
       already adds. No EF Core either — the section owns no tables.
+      Octokit is here for GitHubHealthCheck (nobodies-collective/Humans#1075), which moved in
+      with the "github" monitoring key — the same client Base's GitHubGuideContentSource uses.
     -->
     <PackageReference Include="Markdig" />
+    <PackageReference Include="Octokit" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,7 +3,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Shifts.Data;
 

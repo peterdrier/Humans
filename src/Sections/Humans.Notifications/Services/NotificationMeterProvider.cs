@@ -1,13 +1,13 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application;
+using Humans.Base.Caching;
 using System.Security.Claims;
 using Humans.Notifications.Services.Dtos;
 using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
-using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
+using Humans.Base.Interfaces;
+using Humans.Base.Constants;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Users.Contracts;

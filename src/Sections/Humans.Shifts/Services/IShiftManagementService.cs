@@ -3,7 +3,7 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 
 using Humans.Shifts.Models;
 

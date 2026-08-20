@@ -1,5 +1,5 @@
 using Hangfire;
-using Humans.Application.Interfaces;
+using Humans.Base.Interfaces;
 using Humans.Gate.Contracts;
 using Microsoft.Extensions.Configuration;
 using NodaTime;

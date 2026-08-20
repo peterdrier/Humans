@@ -1,6 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
+using Humans.Base.Data;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -22,11 +25,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// </description></item>
 /// <item><description>
 /// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. The Humans
-/// bucket renders through <c>_HumanSearchResults</c>, which lives in <c>Humans.Users</c> since
-/// G5 lane 4b-i (nobodies-collective/Humans#866) — its model, <c>HumanSearchResultViewModel</c>,
-/// stayed in <c>Humans.UI</c> so this section can still name it. The partial resolves by *name*
-/// across application parts, and its <c>&lt;vc:human&gt;</c> binds against
-/// <c>Humans.Users</c>' own <c>Views/Shared/_ViewImports</c>, not this section's.
+/// bucket renders one <c>&lt;vc:user-search-result&gt;</c> per hit — Users' own component,
+/// keyed by user id (nobodies-collective/Humans#1062) — and that element binds only through
+/// this section's <c>@addTagHelper *, Humans.Users</c>. Drop that line and every row ships as
+/// inert literal markup on a green 200.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved 12 of the 17 <c>Search_*</c> keys into <c>SearchResource</c> and left
@@ -91,9 +93,9 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task A_matching_query_renders_the_chips_and_the_humans_bucket()
     {
-        // _HumanSearchResults lives in Humans.Users/Views/Shared. A partial the view engine cannot
-        // find throws rather than degrading, so reaching a 200 with the persona's name on it is
-        // what proves both the lookup and the <vc:human> inside it.
+        // The rows are Users' <vc:user-search-result>, bound through this section's
+        // @addTagHelper. An unbound one is a 200 with the element as literal markup, so the
+        // persona's name and the component's own match badge are what prove it ran.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -102,9 +104,58 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("Dev Admin", because: "the Humans bucket must render its rows");
+        html.Should().Contain("Matched in",
+            because: "Search_MatchedIn is written by <vc:user-search-result>'s own markup and by "
+                   + "nothing else on this page");
         html.Should().Contain(">Humans<", because: "the per-type filter chips must render");
         html.Should().Contain("Camps", because: "Search_FilterCamps must resolve");
         html.Should().Contain("Shifts", because: "Search_FilterShifts must resolve");
+    }
+
+    /// <summary>
+    /// The Humans bucket renders one component instance per hit
+    /// (nobodies-collective/Humans#1062), so the shape to prove absent is a query per row.
+    /// </summary>
+    /// <remarks>
+    /// Every read on the path — <c>SearchUsersAsync</c> and the two <c>&lt;vc:human&gt;</c>
+    /// lookups inside each row — goes through <c>CachingUserService</c>'s <c>UserInfo</c>
+    /// dictionary, so a warm cache costs nothing per row and the count is flat in the number
+    /// of results. A future row that reaches past the cache turns this red.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_humans_bucket_costs_no_query_per_row()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        using (var warmScope = Factory.Services.CreateScope())
+        {
+            await warmScope.ServiceProvider
+                .GetRequiredService<IUserServiceRead>()
+                .GetAllUserInfosAsync(ct);
+        }
+
+        // Pay the one-time auth/culture/claims costs before measuring the reload itself.
+        (await Client.GetAsync("/Search?q=Dev", ct)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var queryStats = scope.ServiceProvider.GetRequiredService<QueryStatistics>();
+        queryStats.Reset();
+
+        var response = await Client.GetAsync("/Search?q=Dev", ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("Dev Admin", because: "an empty bucket would make the count vacuous");
+
+        var personReads = queryStats.GetSnapshot()
+            .Where(e => string.Equals(e.Operation, "SELECT", StringComparison.Ordinal)
+                     && e.Table is "users" or "profiles" or "user_emails" or "contact_fields")
+            .Sum(e => e.Count);
+
+        personReads.Should().Be(0,
+            because: "one <vc:user-search-result> per row must not mean one query per row — "
+                   + "every read is a UserInfo cache hit");
     }
 
     [HumansFact(Timeout = 120000)]

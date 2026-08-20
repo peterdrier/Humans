@@ -1,7 +1,8 @@
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
-using Humans.UI.Authorization;
-using Humans.UI.Controllers;
+using Humans.Finance.Services;
+using Humans.Base.Authorization;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
@@ -15,19 +16,26 @@ namespace Humans.Finance.Controllers;
 /// </summary>
 /// <remarks>
 /// The other 23 actions that used to share this class are Budget CRUD — years, groups,
-/// categories, line items, cash flow, audit log — and stayed in Shell as
-/// <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c> prefix so no URL
-/// moved. Dragging them in here would have put Budget's whole admin surface inside the Finance
-/// section and forced two of Budget's view models down into Base to reach it
-/// (nobodies-collective/Humans#866, G5).
+/// categories, line items, cash flow, audit log — and are now
+/// <c>Humans.Budget</c>'s <c>BudgetAdminController</c>, keeping the same <c>[Route("Finance")]</c>
+/// prefix so no URL moved. Dragging them in here would have put Budget's whole admin surface
+/// inside the Finance section (nobodies-collective/Humans#866, G5).
 /// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class FinanceController(
     IUserServiceRead userService,
     IHoldedFinanceService holdedFinance,
+    IHoldedFinanceAdminService holdedConnector,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    /// <summary>The connector index: what Finance's half of the Holded integration is doing, and a
+    /// way into every screen that already covers a piece of it. Cache reads only — see
+    /// <see cref="IHoldedFinanceAdminService.GetConnectorOverviewAsync"/>.</summary>
+    [HttpGet("Holded")]
+    public async Task<IActionResult> Holded(CancellationToken ct)
+        => View(await holdedConnector.GetConnectorOverviewAsync(ct));
+
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
@@ -74,8 +82,8 @@ internal sealed class FinanceController(
         // Only the display flips: the contract row keeps Holded's Σdebit − Σcredit.
         var vms = rows
             .Select(r => new CreditorAccountRowVm(
-                r.SupplierAccountNum, r.Name, r.Balance is { } b ? -b : null,
-                r.Bindings.Select(b => new CreditorAccountBindingVm(
+                r.SupplierAccountNum, r.Name, r.Balance is { } bal ? -bal : null,
+                r.Bindings.Select(b => new CreditorBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList()))
@@ -86,7 +94,7 @@ internal sealed class FinanceController(
         var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
         var unresolvedVm = unresolved
-            .Select(b => new UnresolvedCreditorBindingVm(
+            .Select(b => new CreditorBindingVm(
                 b.UserId,
                 names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                 b.Source.ToString()))

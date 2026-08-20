@@ -22,7 +22,7 @@
     <!--
       The section's own layers, global because the move renamed every one of them at once:
       the entities left Humans.Domain.Entities, the enums and read models left
-      Humans.Domain.Enums / Humans.Application.Interfaces.Camps, and the view models left
+      Humans.Base.Enums / Humans.Base.Interfaces.Camps, and the view models left
       Humans.Web.Models. Declaring them here is what keeps the ~40 moved files' using blocks
       byte-identical to their originals.
     -->
@@ -31,17 +31,17 @@
     <Using Include="Humans.Camps.Services" />
     <Using Include="Humans.Camps.Models" />
     <Using Include="Humans.Camps.Data" />
-    <Using Include="Humans.Application.Interfaces" />
-    <Using Include="Humans.Application.Interfaces.Repositories" />
-    <Using Include="Humans.Application" />
-    <Using Include="Humans.Application.Extensions" />
-    <Using Include="Humans.Application.Helpers" />
-    <Using Include="Humans.Infrastructure.Data" />
-    <Using Include="Humans.UI.Controllers" />
+    <Using Include="Humans.Base.Interfaces" />
+    <Using Include="Humans.Base.Interfaces.Repositories" />
+    <Using Include="Humans.Base.Caching" />
+    <Using Include="Humans.Base.Extensions" />
+    <Using Include="Humans.Base.Helpers" />
+    <Using Include="Humans.Base.Data" />
+    <Using Include="Humans.Base.Controllers" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />

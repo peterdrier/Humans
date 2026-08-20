@@ -1,13 +1,13 @@
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
 using Humans.Feedback.Services.Dtos;
-using Humans.UI.Models;
+using Humans.Base.Models;
 using Humans.Teams.Contracts;
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Controllers;

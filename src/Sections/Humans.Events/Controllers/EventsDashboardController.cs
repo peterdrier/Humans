@@ -1,7 +1,7 @@
-using Humans.Application.Extensions;
+using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.UI.Controllers;
+using Humans.Base.Controllers;
 using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 
-using Humans.UI.Authorization;
+using Humans.Base.Authorization;
 using Humans.Events.Contracts;
 using Humans.Users.Contracts;
 
