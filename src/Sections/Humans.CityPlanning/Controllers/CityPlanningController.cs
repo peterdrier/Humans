@@ -338,8 +338,7 @@ internal sealed class CityPlanningController(
         Id = c.Id,
         Name = c.Name,
         Description = c.Description,
-        ImageUrl = c.ImageStoragePath,
-        ImageFileName = c.ImageFileName,
+        Images = c.Images,
     };
 
     private static ContainerPlacementViewModel? ToPlacementViewModel(ContainerPlacementDto? p) =>

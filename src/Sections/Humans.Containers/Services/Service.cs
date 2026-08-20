@@ -24,29 +24,37 @@ internal sealed class Service(
     private static readonly HashSet<string> AllowedImageExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const long MaxImageBytes = 10 * 1024 * 1024;
+    private const int MaxImagesPerContainer = 5;
 
     public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
         var containers = await repo.GetByCampAsync(campId, ct);
-        return containers.Select(ToDto).ToList();
+        return await ToDtosAsync(containers, ct);
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default)
     {
         var containers = await repo.GetAllAsync(ct);
-        return containers.Select(ToDto).ToList();
+        return await ToDtosAsync(containers, ct);
     }
 
     public async Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var container = await repo.GetByIdAsync(id, ct);
-        return container is null ? null : ToDto(container);
+        if (container is null) return null;
+        return ToDto(container, await repo.GetImagesAsync([id], ct));
     }
 
     public async Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateName(data.Name);
-        ValidateImage(data.MainImage);
+
+        var uploads = data.NewImages ?? [];
+        foreach (var upload in uploads)
+        {
+            ValidateImage(upload);
+        }
+        ValidateImageCount(uploads.Count);
 
         var now = clock.GetCurrentInstant();
         var id = Guid.NewGuid();
@@ -60,51 +68,60 @@ internal sealed class Service(
             UpdatedAt = now
         };
 
-        if (data.MainImage is not null)
-        {
-            container.ImageStoragePath = await SaveImageAsync(id, data.MainImage, ct);
-            container.ImageContentType = data.MainImage.ContentType;
-            container.ImageFileName = data.MainImage.FileName;
-        }
-
         var created = await repo.AddAsync(container, ct);
+        await AddImagesAsync(id, uploads, firstSortOrder: 0, now, ct);
+
         await auditLog.LogAsync(
             AuditAction.ContainerCreated, AuditEntityTypes.Container, created.Id,
             $"Created container '{created.Name}'",
             actorUserId,
             relatedEntityId: created.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        return ToDto(created);
+        return ToDto(created, await repo.GetImagesAsync([id], ct));
     }
 
     public async Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateName(data.Name);
-        ValidateImage(data.MainImage);
+
+        var uploads = data.NewImages ?? [];
+        foreach (var upload in uploads)
+        {
+            ValidateImage(upload);
+        }
 
         var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
+        var now = clock.GetCurrentInstant();
         container.Name = data.Name;
         container.Description = data.Description;
-        container.UpdatedAt = clock.GetCurrentInstant();
+        container.UpdatedAt = now;
 
-        if (data.RemoveMainImage && container.ImageStoragePath is not null)
+        var removeIds = data.RemoveImageIds ?? [];
+        var existing = await repo.GetImagesAsync([id], ct);
+        var removed = existing.Where(i => removeIds.Contains(i.Id)).ToList();
+        var removeLegacy = container.ImageStoragePath is not null && removeIds.Contains(Guid.Empty);
+
+        var keptCount = existing.Count - removed.Count
+            + (container.ImageStoragePath is not null && !removeLegacy ? 1 : 0);
+        ValidateImageCount(keptCount + uploads.Count);
+
+        if (removeLegacy)
         {
-            await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
+            await fileStorage.DeleteAsync(container.ImageStoragePath!, ct);
             container.ImageStoragePath = null;
             container.ImageContentType = null;
             container.ImageFileName = null;
         }
-        else if (data.MainImage is not null)
+
+        foreach (var image in removed)
         {
-            if (container.ImageStoragePath is not null)
-            {
-                await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
-            }
-            container.ImageStoragePath = await SaveImageAsync(id, data.MainImage, ct);
-            container.ImageContentType = data.MainImage.ContentType;
-            container.ImageFileName = data.MainImage.FileName;
+            await fileStorage.DeleteAsync(image.StoragePath, ct);
         }
+        await repo.DeleteImagesAsync(id, removed.Select(i => i.Id).ToList(), ct);
+
+        var nextSortOrder = existing.Except(removed).Select(i => i.SortOrder + 1).DefaultIfEmpty(0).Max();
+        await AddImagesAsync(id, uploads, nextSortOrder, now, ct);
 
         var updated = await repo.UpdateAsync(container, ct);
         await auditLog.LogAsync(
@@ -112,7 +129,7 @@ internal sealed class Service(
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        return ToDto(updated);
+        return ToDto(updated, await repo.GetImagesAsync([id], ct));
     }
 
     public async Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
@@ -123,6 +140,10 @@ internal sealed class Service(
         if (container.ImageStoragePath is not null)
         {
             await fileStorage.DeleteAsync(container.ImageStoragePath, ct);
+        }
+        foreach (var image in await repo.GetImagesAsync([id], ct))
+        {
+            await fileStorage.DeleteAsync(image.StoragePath, ct);
         }
 
         // Orphaned placement-image files tolerated at this scale; see Docs/Containers.md.
@@ -235,11 +256,12 @@ internal sealed class Service(
         var allContainers = await repo.GetAllAsync(ct);
         var placements = await repo.GetPlacementsByYearAsync(year, ct);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
+        var imagesByContainerId = await LoadImagesAsync(allContainers, ct);
 
         var camps = await campService.GetCampsForYearAsync(year, ct);
 
         ContainerWithPlacement Compose(Container c) => new(
-            ToDto(c),
+            ToDto(c, imagesByContainerId.GetValueOrDefault(c.Id, [])),
             placementByContainerId.TryGetValue(c.Id, out var p) ? ToPlacementDto(p) : null);
 
         var byCampId = allContainers
@@ -264,6 +286,15 @@ internal sealed class Service(
         if (name.IndexOfAny(InvalidNameChars) >= 0)
         {
             throw new InvalidOperationException("Container name must not contain <, > or $.");
+        }
+    }
+
+    private static void ValidateImageCount(int total)
+    {
+        if (total > MaxImagesPerContainer)
+        {
+            throw new InvalidOperationException(
+                $"A container can have at most {MaxImagesPerContainer} images.");
         }
     }
 
@@ -295,16 +326,66 @@ internal sealed class Service(
         return key;
     }
 
-    private static ContainerDto ToDto(Container c) => new(
-        c.Id,
-        c.CampId,
-        c.Name,
-        c.Description,
-        c.ImageStoragePath is not null ? $"/{c.ImageStoragePath}" : null,
-        c.ImageContentType,
-        c.ImageFileName,
-        c.CreatedAt,
-        c.UpdatedAt);
+    private async Task AddImagesAsync(
+        Guid containerId,
+        IReadOnlyList<ContainerImageUpload> uploads,
+        int firstSortOrder,
+        Instant now,
+        CancellationToken ct)
+    {
+        if (uploads.Count == 0) return;
+
+        var rows = new List<ContainerImage>(uploads.Count);
+        for (var i = 0; i < uploads.Count; i++)
+        {
+            var upload = uploads[i];
+            rows.Add(new ContainerImage
+            {
+                Id = Guid.NewGuid(),
+                ContainerId = containerId,
+                StoragePath = await SaveImageAsync(containerId, upload, ct),
+                ContentType = upload.ContentType,
+                FileName = upload.FileName,
+                SortOrder = firstSortOrder + i,
+                CreatedAt = now,
+            });
+        }
+        await repo.AddImagesAsync(rows, ct);
+    }
+
+    private async Task<IReadOnlyList<ContainerDto>> ToDtosAsync(
+        IReadOnlyList<Container> containers, CancellationToken ct)
+    {
+        var imagesByContainerId = await LoadImagesAsync(containers, ct);
+        return containers
+            .Select(c => ToDto(c, imagesByContainerId.GetValueOrDefault(c.Id, [])))
+            .ToList();
+    }
+
+    private async Task<Dictionary<Guid, List<ContainerImage>>> LoadImagesAsync(
+        IReadOnlyList<Container> containers, CancellationToken ct)
+    {
+        var images = await repo.GetImagesAsync(containers.Select(c => c.Id).ToList(), ct);
+        return images
+            .GroupBy(i => i.ContainerId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(i => i.SortOrder).ToList());
+    }
+
+    private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
+    {
+        var gallery = new List<ContainerImageDto>(images.Count + 1);
+        // Pre-#797 containers still hold their single image in the containers columns;
+        // Guid.Empty addresses it so callers see one uniform, removable gallery.
+        if (c.ImageStoragePath is not null)
+        {
+            gallery.Add(new ContainerImageDto(Guid.Empty, $"/{c.ImageStoragePath}", c.ImageFileName));
+        }
+        gallery.AddRange(images
+            .OrderBy(i => i.SortOrder)
+            .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName)));
+
+        return new ContainerDto(c.Id, c.CampId, c.Name, c.Description, gallery, c.CreatedAt, c.UpdatedAt);
+    }
 
     private static ContainerPlacementDto ToPlacementDto(ContainerPlacement p) => new(
         p.ContainerId,

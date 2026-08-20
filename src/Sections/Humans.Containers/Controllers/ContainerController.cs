@@ -87,8 +87,7 @@ internal sealed class ContainerController(
         Id = c.Id,
         Name = c.Name,
         Description = c.Description,
-        ImageUrl = c.ImageStoragePath,
-        ImageFileName = c.ImageFileName,
+        Images = c.Images,
     };
 
     [HttpPost("Create")]
