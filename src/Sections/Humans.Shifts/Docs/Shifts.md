@@ -302,7 +302,7 @@ still serve by inheriting the leaf):
 | Leaf interface | What it carries |
 |---|---|
 | `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never the `EventSettings` entity. |
-| `IShiftManagementServiceRead` | The twelve pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search. |
+| `IShiftManagementServiceRead` | The thirteen pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
 | `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes — hence not a `…Read` name). |
 | `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
 | `IShiftView` + `IShiftViewInvalidator` | The cached per-user / per-rota projections (issue #720). |
@@ -317,6 +317,7 @@ section and is not on the leaf.
 
 ### Outbound
 
+- **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftManagementServiceRead.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. Search passes the id and no display fields (nobodies-collective/Humans#1062); `RotaSearchHit` is `(RotaId, Name, Score)` — the team-name stitch it used to carry is gone. `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
 - **Teams:** `ITeamService` — rotas belong to a department or sub-team. Used for `GetByIdsWithParentsAsync`, `GetTeamNamesByIdsAsync`, `GetCoordinatorUserIdsAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserServiceRead` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentService` (lazy-resolved) — role checks for `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` from `HasActiveRoleAsync`.

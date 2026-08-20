@@ -243,6 +243,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Cross-Section Dependencies
 
+- **Search (downstream consumer):** the global `/Search` page renders every camp hit through this section's own public `<vc:camps-search-result slug>`, which resolves the public-year season name itself off `ICampServiceRead`. Search passes the slug and no display fields (nobodies-collective/Humans#1062); `CampSearchHit` carries the section's own `Score`. Camps does not depend on Search.
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — lead and assignee display names (stitched in memory; `CampRoleAssignment.AssignedByUserId` is scalar-only).
 - **Admin:** Camp settings management is restricted to CampAdmin and Admin (resource-based auth handler).
 - **City Planning:** CampSeason is the anchor for `camp_polygons`; City Planning reads camp data via `ICampService` but writes its own tables only.
