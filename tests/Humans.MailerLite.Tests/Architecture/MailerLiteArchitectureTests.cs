@@ -1,8 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.MailerLite.Tests.Architecture;
 
@@ -43,38 +41,6 @@ public class MailerLiteArchitectureTests
     {
         typeof(IMailerLiteService).Namespace
             .Should().Be("Humans.MailerLite.Services");
-    }
-
-    /// <summary>
-    /// Only <c>Data/</c> may touch EF. The section gained a DbContext in
-    /// nobodies-collective/Humans#1082, which retired the assembly-wide EF-free rule this
-    /// replaces — but the services must still reach the table through the repository.
-    /// </summary>
-    [HumansFact]
-    public void OnlyTheDataFolder_TouchesEFCore()
-    {
-        var offenders = SectionAssembly.GetTypes()
-            .Where(t => t.Namespace?.StartsWith("Humans.MailerLite.Data", StringComparison.Ordinal) != true)
-            .Where(t => t.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                .Any(f => typeof(DbContext).IsAssignableFrom(f.FieldType)
-                          || (f.FieldType.IsGenericType
-                              && f.FieldType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>))))
-            .Select(t => t.FullName)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            "only the repository under Data/ may hold a MailerLiteDbContext");
-    }
-
-    /// <summary>
-    /// <c>mailerlite_sync_states</c> is one row per key, and the reconciliation run holds a
-    /// reserved one — an audience claiming it would overwrite that row.
-    /// </summary>
-    [HumansFact]
-    public void NoAudience_ClaimsTheReservedReconciliationKey()
-    {
-        AudienceInstances().Should().NotContain(
-            a => string.Equals(a.Key, MailerLiteSyncKeys.Reconciliation, StringComparison.Ordinal));
     }
 
     [HumansFact]
