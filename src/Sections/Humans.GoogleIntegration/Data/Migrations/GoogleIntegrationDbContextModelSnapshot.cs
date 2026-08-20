@@ -197,8 +197,8 @@ namespace Humans.GoogleIntegration.Data.Migrations
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -227,8 +227,8 @@ namespace Humans.GoogleIntegration.Data.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("Success")
                         .HasColumnType("boolean");

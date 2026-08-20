@@ -15,7 +15,7 @@ internal sealed class GoogleSyncLogEntryConfiguration : IEntityTypeConfiguration
 
         builder.Property(e => e.Action)
             .HasConversion<string>()
-            .HasMaxLength(100)
+            .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(e => e.ResourceId)
@@ -31,7 +31,7 @@ internal sealed class GoogleSyncLogEntryConfiguration : IEntityTypeConfiguration
 
         builder.Property(e => e.Source)
             .HasConversion<string>()
-            .HasMaxLength(100)
+            .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(e => e.Success)

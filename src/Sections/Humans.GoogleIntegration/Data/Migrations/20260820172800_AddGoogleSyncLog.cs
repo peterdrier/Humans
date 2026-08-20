@@ -17,12 +17,12 @@ namespace Humans.GoogleIntegration.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Action = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Action = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     ResourceId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: true),
                     UserEmail = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     Role = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Source = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Success = table.Column<bool>(type: "boolean", nullable: false),
                     ErrorMessage = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                     Description = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
