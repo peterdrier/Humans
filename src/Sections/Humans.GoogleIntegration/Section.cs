@@ -71,6 +71,9 @@ public sealed class Section : ISection
         services.AddScoped<IGoogleSyncLogViewer>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         // google_sync_log holds per-user rows → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GoogleSyncLogService>());
+        // Temporary: backs /Google/Admin/SyncHistoryMigration, and comes out with the six
+        // Google columns on audit_log (nobodies-collective/Humans#1083).
+        services.AddScoped<IGoogleSyncHistoryMigrationService, GoogleSyncHistoryMigrationService>();
         services.AddScoped<ISyncSettingsService, SyncSettingsService>();
         services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
         services.AddScoped<IGoogleSyncOutboxService, GoogleSyncOutboxService>();

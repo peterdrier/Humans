@@ -3,7 +3,10 @@ using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>GoogleIntegration's admin sidebar contribution — the "Google" group (nobodies-collective/Humans#1077).</summary>
+/// <summary>
+/// GoogleIntegration's admin sidebar contribution — the "Google" group
+/// (nobodies-collective/Humans#1077) and one "Temp" entry.
+/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
@@ -19,6 +22,10 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             new("Group settings",        "Google", "GroupSettingsResults", null, null, "fa-solid fa-gears",     PolicyNames.AdminOnly),
             new("Email renames",         "Google", "EmailRenames", null, null, "fa-solid fa-right-left",        PolicyNames.AdminOnly),
             new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly)
-        ], Weight: 110)
+        ], Weight: 110),
+        new("Temp", System: true, Items: [
+            new("Sync history migration", "GoogleSyncHistoryMigrationAdmin", "Index", null, null,
+                "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly, Weight: 30)
+        ], Weight: 170)
     ];
 }

@@ -11,6 +11,15 @@ internal interface IGoogleSyncLogRepository : IRepository
 {
     Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default);
 
+    /// <summary>
+    /// Appends a batch in one save. Used by the one-time history migration, which
+    /// carries the source audit row's id onto the entry so a re-run is a no-op.
+    /// </summary>
+    Task AddRangeAsync(IReadOnlyCollection<GoogleSyncLogEntry> entries, CancellationToken ct = default);
+
+    /// <summary>Which of <paramref name="ids"/> are already rows here.</summary>
+    Task<IReadOnlySet<Guid>> GetExistingIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
     /// <summary>Most recent entries for one Google resource.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default);
 

@@ -21,7 +21,8 @@ internal sealed class AuditLogService(
     IAuditLogRepository repo,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<AuditLogService> logger) : IAuditLogService, IAuditLogReader, IUserDataContributor
+    ILogger<AuditLogService> logger)
+    : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader
 {
     // ─── Writes (append-only) ───
 
@@ -209,4 +210,27 @@ internal sealed class AuditLogService(
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default) =>
         repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
+
+    // ─── ILegacyGoogleSyncAuditReader (goes with the six Google columns) ───
+
+    public async Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(
+        CancellationToken ct = default)
+    {
+        var entries = await repo.GetLegacyGoogleSyncEntriesAsync(ct);
+        return entries
+            .Select(e => new LegacyGoogleSyncAuditRow(
+                e.Id,
+                e.Action,
+                e.OccurredAt,
+                e.Description,
+                e.ResourceId!.Value,
+                e.RelatedEntityId,
+                e.RelatedEntityType,
+                e.UserEmail,
+                e.Role,
+                e.SyncSource,
+                e.Success,
+                e.ErrorMessage))
+            .ToList();
+    }
 }

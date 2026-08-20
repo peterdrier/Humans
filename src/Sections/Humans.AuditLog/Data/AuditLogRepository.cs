@@ -182,4 +182,15 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             .ToListAsync(ct);
         return new HashSet<Guid>(ids);
     }
+
+    public async Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.AuditLogEntries
+            .AsNoTracking()
+            .Where(e => e.ResourceId != null)
+            // arch:db-sort-ok one-time migration reads the whole set in order
+            .OrderBy(e => e.OccurredAt)
+            .ToListAsync(ct);
+    }
 }

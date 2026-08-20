@@ -20,6 +20,31 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task AddRangeAsync(IReadOnlyCollection<GoogleSyncLogEntry> entries, CancellationToken ct = default)
+    {
+        if (entries.Count == 0)
+            return;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.GoogleSyncLog.AddRange(entries);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetExistingIdsAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0)
+            return new HashSet<Guid>();
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var found = await ctx.GoogleSyncLog
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => e.Id)
+            .ToListAsync(ct);
+        return new HashSet<Guid>(found);
+    }
+
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(
         Guid resourceId, CancellationToken ct = default)
     {

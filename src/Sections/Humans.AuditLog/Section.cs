@@ -42,6 +42,9 @@ public sealed class Section : ISection
         services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
         // Audit rows carry an actor id → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        // Temporary: feeds GoogleIntegration's one-time history migration screen. Comes out
+        // with the six Google columns (nobodies-collective/Humans#1083).
+        services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
 
         // Read+render owner: wraps the raw entry queries with actor/subject/team name
         // resolution. No DB, no cache — see AuditViewerService.

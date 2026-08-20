@@ -110,4 +110,12 @@ internal interface IAuditLogRepository : IRepository
         string entityType,
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Every row carrying a Google resource id — the history the retired
+    /// <c>LogGoogleSyncAsync</c> path left behind — oldest first, uncapped.
+    /// Backs <see cref="Contracts.ILegacyGoogleSyncAuditReader"/> and goes
+    /// with the columns.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default);
 }
