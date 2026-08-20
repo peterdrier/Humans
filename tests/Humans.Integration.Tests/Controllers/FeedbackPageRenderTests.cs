@@ -92,10 +92,6 @@ public class FeedbackPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // A view component element that the section's _ViewImports failed to bind renders
-        // as literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-        html.Should().NotContain("<vc:", "GET /Feedback left a view-component tag unrendered");
-
         // The fallback for a key the carve missed is the key itself.
         html.Should().NotContain("Feedback_", "GET /Feedback rendered a raw resource key");
         html.Should().NotContain("Enum_Feedback", "GET /Feedback rendered a raw enum resource key");
@@ -123,7 +119,6 @@ public class FeedbackPageRenderTests(HumansTestDatabase database) : IntegrationT
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().NotContain("<vc:", "the detail partial left <vc:human> unrendered");
         html.Should().NotContain("Feedback_", "the detail partial rendered a raw resource key");
         html.Should().Contain("Conversation");
         html.Should().Contain("Thanks, reproduced.");

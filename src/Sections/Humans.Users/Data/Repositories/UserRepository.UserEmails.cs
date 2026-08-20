@@ -89,25 +89,6 @@ internal sealed partial class UserRepository
                      EF.Functions.ILike(e.Email, alternateEmail)), ct);
     }
 
-    public async Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
-        GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.UserId == userId)
-            .Select(e => new UserEmailLegacyBackfillSnapshot(
-                e.Id,
-                e.UserId,
-                e.Email,
-                e.IsVerified,
-                e.Provider,
-                e.ProviderKey,
-                e.IsGoogle,
-                EF.Property<bool>(e, "IsOAuth")))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -455,7 +436,6 @@ internal sealed partial class UserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Attach(email);
         ctx.Entry(email).State = EntityState.Modified;
-        ExcludeLegacyShadowsFromUpdate(ctx.Entry(email));
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -466,19 +446,8 @@ internal sealed partial class UserRepository
         {
             ctx.Attach(email);
             ctx.Entry(email).State = EntityState.Modified;
-            ExcludeLegacyShadowsFromUpdate(ctx.Entry(email));
         }
         await ctx.SaveChangesAsync(ct);
-    }
-
-    // The legacy IsOAuth column is mapped as an EF shadow property; detached
-    // UpdateUserEmailAsync would write the CLR default (false) and silently
-    // erase legacy values that the provider backfill still depends on. Drop the
-    // column from the UPDATE until that backfill is retired.
-    private static void ExcludeLegacyShadowsFromUpdate(
-        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<UserEmail> entry)
-    {
-        entry.Property("IsOAuth").IsModified = false;
     }
 
     public async Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(
@@ -530,7 +499,6 @@ internal sealed partial class UserRepository
         {
             ctx.Attach(rowToUpdate);
             ctx.Entry(rowToUpdate).State = EntityState.Modified;
-            ExcludeLegacyShadowsFromUpdate(ctx.Entry(rowToUpdate));
         }
 
         if (rowToInsert is not null)

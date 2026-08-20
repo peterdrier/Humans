@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
 using Humans.Surveys.Domain;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -34,8 +35,8 @@ public class SurveyServiceTests
     private readonly ISurveyInviteTokenProvider _tokenProvider = Substitute.For<ISurveyInviteTokenProvider>();
     private readonly IGoogleTranslationService _translation = Substitute.For<IGoogleTranslationService>();
 
-    private SurveyService CreateService() => new(
-        _repo, _audit, _clock, NullLogger<SurveyService>.Instance,
+    private SurveyService CreateService(ILogger<SurveyService>? logger = null) => new(
+        _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation);
 
@@ -263,6 +264,23 @@ public class SurveyServiceTests
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
         count.Should().Be(3);
+    }
+
+    // ── issue #1065: an unhandled audience type resolves to nobody, warned not silent ──
+
+    [HumansFact]
+    public async Task PreviewAudienceCountAsync_unknown_audience_type_warns_and_resolves_to_nobody()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, (SurveyAudienceType)99, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var logger = new CapturingLogger<SurveyService>();
+
+        var count = await CreateService(logger).PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        count.Should().Be(0);
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Message.Should().Contain(nameof(SurveyAudienceType)).And.Contain("99");
     }
 
     [HumansFact]

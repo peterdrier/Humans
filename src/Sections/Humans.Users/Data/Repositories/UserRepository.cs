@@ -76,25 +76,9 @@ internal sealed partial class UserRepository : IUserRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Users
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .Select(u => new { u.Id, GoogleEmail = EF.Property<string?>(u, "GoogleEmail") })
-            .Where(x => x.GoogleEmail != null)
-            .ToListAsync(ct);
-
-        return rows.ToDictionary(x => x.Id, x => x.GoogleEmail!);
-    }
-
     // Writes — User
 
+    /// <summary>Keeps the legacy fallback column synced to BurnerName so merge/purge/GDPR labels stay accurate if the Profile is later gone.</summary>
     public async Task<bool> UpdateDisplayNameAsync(
         Guid userId, string displayName, CancellationToken ct = default)
     {

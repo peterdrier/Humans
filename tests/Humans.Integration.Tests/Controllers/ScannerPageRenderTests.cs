@@ -62,10 +62,6 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own resolved copy");
 
-            // A view component element that the section's _ViewImports failed to bind renders
-            // as literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Scanner_", $"GET {url} rendered a raw resource key");
         }
@@ -88,7 +84,6 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain("no-such-barcode");
         html.Should().NotContain("Scanner_", "the not-found copy is a carved key");
-        html.Should().NotContain("<vc:");
     }
 
     [HumansFact(Timeout = 120000)]

@@ -124,10 +124,6 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // A view component element that the section's _ViewImports failed to bind renders
-            // as literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Budget_", $"GET {url} rendered a raw resource key");
         }

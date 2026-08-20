@@ -1033,6 +1033,9 @@ internal sealed class SurveyService(
                 }
 
             default:
+                // Unknown audience type resolves to nobody, silently — the send would look like
+                // it worked while inviting no one. See issue #1065.
+                logger.SwitchDefaultWarn(type);
                 return new HashSet<Guid>();
         }
     }

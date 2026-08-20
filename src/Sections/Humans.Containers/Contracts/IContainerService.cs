@@ -54,14 +54,19 @@ public record ContainerWithPlacement(ContainerDto Container, ContainerPlacementD
 
 public record ContainerImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
+/// <summary>
+/// One image in a container's gallery, in display order. <see cref="Id"/> is
+/// <see cref="Guid.Empty"/> for the pre-#797 single image still held in the
+/// <c>containers</c> image columns; every other id is a <c>container_images</c> row.
+/// </summary>
+public record ContainerImageDto(Guid Id, string Url, string? FileName);
+
 public record ContainerDto(
     Guid Id,
     Guid CampId,
     string Name,
     string? Description,
-    string? ImageStoragePath,
-    string? ImageContentType,
-    string? ImageFileName,
+    IReadOnlyList<ContainerImageDto> Images,
     Instant CreatedAt,
     Instant UpdatedAt
 );
@@ -82,6 +87,6 @@ public record ContainerData(
     Guid CampId,
     string Name,
     string? Description,
-    ContainerImageUpload? MainImage = null,
-    bool RemoveMainImage = false
+    IReadOnlyList<ContainerImageUpload>? NewImages = null,
+    IReadOnlyList<Guid>? RemoveImageIds = null
 );

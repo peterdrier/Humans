@@ -6,8 +6,8 @@ namespace Humans.Containers.Data;
 
 /// <summary>
 /// Per-section database context for the Containers section
-/// (nobodies-collective/Humans#858): maps only <c>containers</c> and
-/// <c>container_placements</c>, with its own
+/// (nobodies-collective/Humans#858): maps only <c>containers</c>,
+/// <c>container_images</c> and <c>container_placements</c>, with its own
 /// <c>__EFMigrationsHistory_Containers</c> table and migrations under
 /// <c>Migrations/Containers/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
@@ -21,6 +21,7 @@ internal sealed class ContainersDbContext(DbContextOptions<ContainersDbContext> 
     : DbContext(options)
 {
     public DbSet<Container> Containers => Set<Container>();
+    public DbSet<ContainerImage> ContainerImages => Set<ContainerImage>();
     public DbSet<ContainerPlacement> ContainerPlacements => Set<ContainerPlacement>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -28,6 +29,7 @@ internal sealed class ContainersDbContext(DbContextOptions<ContainersDbContext> 
         base.OnModelCreating(builder);
 
         builder.ApplyConfiguration(new ContainerConfiguration());
+        builder.ApplyConfiguration(new ContainerImageConfiguration());
         builder.ApplyConfiguration(new ContainerPlacementConfiguration());
     }
 }

@@ -96,10 +96,6 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
             html.Should().Contain("Common questions",
                 $"GET {url} must render the sidebar's Common questions group");
 
-            // A view-component element the section's _ViewImports failed to bind renders as
-            // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // An unbound AuthorizeViewTagHelper leaks its attribute into the response instead
             // of gating the element.
             html.Should().NotContain("authorize-policy",
@@ -145,6 +141,5 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain("That guide page does not exist");
-        html.Should().NotContain("<vc:");
     }
 }

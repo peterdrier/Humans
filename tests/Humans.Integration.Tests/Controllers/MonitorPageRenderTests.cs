@@ -20,7 +20,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>DependencyContext</c>, so a missing <c>ProjectReference</c> in
 /// <c>Humans.Web.csproj</c> means <c>Section.Register</c> never runs, the controller is
 /// never discovered, and every route below 404s — while the solution builds and the whole
-/// suite passes (G5-SECTION-TEMPLATE.md step 1, Guide's case).
+/// suite passes (G5-SECTION-TEMPLATE.md step 1, Guide's case). Note the `-view-component`
+/// assertion below is deliberate and survives nobodies-collective/Humans#1434's sweep of the
+/// `NotContain("&lt;vc:")` probes: the static scanner keys on the literal `&lt;vc:` substring,
+/// so it cannot see a ReSharper rename that rewrites the tag out of the source.
 /// </para>
 /// <para>
 /// The three actions moved here from <c>AuditLogController</c> because two of them inject
@@ -28,7 +31,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// forbids a horizontal from referencing a vertical section. The third came with them
 /// because all three render the same <c>GoogleSync</c> view. So this asserts an internal
 /// controller in a new assembly, routed by <c>SectionControllerFeatureProvider</c>, over
-/// Base's <c>IAuditViewerService</c>, with its policy still in Shell's
+/// GoogleIntegration's <c>IGoogleSyncLogViewer</c>, with its policy still in Shell's
 /// <c>AuthorizationPolicyExtensions</c> (step 6's asymmetry).
 /// </para>
 /// </remarks>
@@ -53,7 +56,6 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         // tag (step 12, Debug's case). This is what a missing @addTagHelper in the section's
         // own _ViewImports looks like.
         html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
-        html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
         html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
     }
 
@@ -99,7 +101,6 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().Contain(marker,
             $"GET {url}: the seeded sync row must reach the page — an unbound <vc:google-sync-log> renders nothing");
         html.Should().Contain("reader", $"GET {url} must render the sync log's Role column");
-        html.Should().NotContain("<vc:google-sync-log", $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     [HumansFact(Timeout = 120000)]

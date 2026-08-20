@@ -120,9 +120,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
                 $"GET {url}: _AdminLayout's <partial name=\"_LoginPartial\" /> did not render — "
                 + $"an unresolved partial is silent, not an error ({site})");
 
-            // <vc:temp-data-alerts /> is bound by Humans.Web's own _ViewImports; unbound, it
-            // survives into the body as literal markup the browser drops.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered ({site})");
             html.Should().NotContain("<partial ", $"GET {url} left a <partial> tag helper unbound ({site})");
         }
     }

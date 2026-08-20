@@ -58,14 +58,6 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
             .HasSentinel(GoogleEmailStatus.Unknown)
             .IsRequired();
 
-        // The IsOAuth column survives on disk as an EF shadow property: the C#
-        // surface on UserEmail is gone, but UserEmailProviderBackfillService
-        // still reads it via EF.Property<T>, so the column stays until that
-        // backfill is retired (nobodies-collective/Humans#507).
-        builder.Property<bool>("IsOAuth")
-            .HasColumnName("IsOAuth")
-            .IsRequired();
-
         builder.HasOne<User>()
             .WithMany(u => u.UserEmails)
             .HasForeignKey(e => e.UserId)

@@ -338,8 +338,7 @@ internal sealed class CityPlanningController(
         Id = c.Id,
         Name = c.Name,
         Description = c.Description,
-        ImageUrl = c.ImageStoragePath,
-        ImageFileName = c.ImageFileName,
+        Images = c.Images,
     };
 
     private static ContainerPlacementViewModel? ToPlacementViewModel(ContainerPlacementDto? p) =>
@@ -361,6 +360,7 @@ internal sealed class CityPlanningController(
 
     [HttpPost("BarrioMap/Admin/Containers/Barrios/{campId}/Create")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> CreateBarrioContainer(Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
@@ -397,6 +397,7 @@ internal sealed class CityPlanningController(
 
     [HttpPost("BarrioMap/Admin/Containers/{id}/Edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> EditContainer(Guid id, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);

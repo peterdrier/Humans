@@ -116,12 +116,17 @@ two replans ever do overlap, the cost is one hand-resolved conflict, not corrupt
 
 1. `dotnet build Humans.slnx -v quiet` first — an unbuilt solution silently under-reports
    Reforge scores — then `reforge surface-score --format compact` for size + deltas. (The build
-   also serves Phase 3/4.)
+   also serves Phase 3/4.) Each group's line carries `loc=`, `cogP95=` and `cogMax=` alongside
+   the score (reforge ≥0.29; an older reforge omits them — fall back to score-only ordering
+   below).
 2. Order **every** `src/Sections/` project into one full-cycle table (~42 rows ≈ 2–3 weeks at
-   2 runs/day): never-assessed first (score descending; seed last-served from merged run files
-   under `docs/health/runs/`), then last-assessed ascending — stalest first, so a section merged
-   yesterday sits at the end of the queue and comes around again next cycle. Tiebreak: score
-   growth since last assessment (+10% outranks +3%), then open issues per section,
+   2 runs/day): never-assessed first — score descending, but a section in the **top quartile of
+   `loc` or `cogP95`/`cogMax`** from the same call is promoted ahead of any same-scoring-bracket
+   peer that isn't: large-and-complex must not wait behind a small section that merely scores
+   higher (seed last-served from merged run files under `docs/health/runs/`), then last-assessed
+   ascending — stalest first, so a section merged yesterday sits at the end of the queue and
+   comes around again next cycle. Tiebreak: score growth since last assessment (+10% outranks
+   +3%), then LOC/complexity growth, then open issues per section,
    `docs/architecture/debt-ledger.yml` items, churn under the section's paths.
 3. **Include blocked sections** — their PRs merge mid-cycle, and their recent assessment dates
    put them at the end of the queue anyway. Exclude only sections with in-flight or
@@ -229,7 +234,9 @@ fragile part (two runs running, every dispatched lane missed the window):
 
 - **Tool threads run as background commands** — Stryker, InspectCode, reforge, conformance
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
-  main thread reads.
+  main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
+  scoped to the section being doctored — its `loc=`/`cogP95=`/`cogMax=` fields are the source
+  for Phase 5's `## Size` snapshot, on every run, not only a replan's solution-wide call.
 - **Judgment threads run on the main thread** — shape, behavior, prose. They are the expensive
   reading this whole run exists to do.
 - **Subagents only when a thread must read more than one context can hold**, and then with an
@@ -243,7 +250,9 @@ fragile part (two runs running, every dispatched lane missed the window):
 | **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
 | **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
 | **Tests** | Mutation score (Stryker, section-scoped); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
-| **Prose & surface** | InspectCode Tier 1/2; comments against `comments-stay-short`; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
+| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
+| **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | main |
+| **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | main |
 | **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them; off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
 
 **Every thread that does not run says so in the run file, with why.** A silent skip is how the
@@ -331,7 +340,9 @@ surfaces mid-run → stop striking, ship the assessment-only PR, note it in the 
     failed run, not a quiet one.
   - **`## Size`** — line count against the run's anchor for every section touched, and the net.
     Growth is reported with its reason, and consolidation that grows this section while shrinking
-    another is stated as the trade it is.
+    another is stated as the trade it is. Include the section's reforge metrics snapshot (`loc`,
+    `cogP95`, `cogMax`) from 3d's reforge tool thread, so the run file states size/complexity at
+    assessment time, not just the git-diff delta.
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
   list the same file carries ("15 contract methods" above the table of them, "52 paths" above

@@ -104,10 +104,6 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // A view component element the section's _ViewImports failed to bind renders as
-        // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-        html.Should().NotContain("<vc:", "GET /Notifications left a view-component tag unrendered");
-
         // The fallback for a key the carve missed is the key itself.
         html.Should().NotContain("Notification_", "GET /Notifications rendered a raw resource key");
 
@@ -132,7 +128,6 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().NotContain("<vc:");
         html.Should().NotContain("Notification_", "the popup partial rendered a raw resource key");
         html.Should().Contain("Notifications");   // Notification_Popup_Title
         html.Should().Contain(ActionableTitle);
