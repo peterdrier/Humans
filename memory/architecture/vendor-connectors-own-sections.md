@@ -1,11 +1,11 @@
 ---
 name: Vendor connectors stay their own sections — never merged with app code
-description: HARD RULE. External-vendor connector sections (Holded, Mailer/MailerLite, GoogleIntegration) are never merged into the app sections that consume them — vendors can be swapped. (Peter, 2026-08-03 inventory freeze.)
+description: HARD RULE. External-vendor connector sections (Holded, MailerLite, GoogleIntegration) are never merged into the app sections that consume them — vendors can be swapped. (Peter, 2026-08-03 inventory freeze.)
 ---
 
-A section that wraps an **external vendor** (Holded accounting, MailerLite via Mailer, Google Workspace via GoogleIntegration) stays its **own section**, even when a single app section is its only consumer. Vendor connectors are never merged with application code.
+A section that wraps an **external vendor** (Holded accounting, MailerLite, Google Workspace via GoogleIntegration) stays its **own section**, even when a single app section is its only consumer. Vendor connectors are never merged with application code.
 
-**Why:** Vendors can change. Finance is likely Holded's only user, but folding the Holded connector into Finance would weld a replaceable vendor surface into domain code. Peter, at the 2026-08-03 inventory freeze: "that's an external vendor which could change … vendors don't get merged with app code ever." Same ruling for Mailer (MailerLite) vs Email.
+**Why:** Vendors can change. Finance is likely Holded's only user, but folding the Holded connector into Finance would weld a replaceable vendor surface into domain code. Peter, at the 2026-08-03 inventory freeze: "that's an external vendor which could change … vendors don't get merged with app code ever." Same ruling for MailerLite vs Email.
 
 **The target shape** (Peter, 2026-08-09): a connector section owns its typed client, **proxies what
 the app needs, and caches vendor responses as necessary** — GoogleIntegration is the reference. Not

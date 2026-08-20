@@ -43,7 +43,7 @@
     "Infrastructure",
     "Interfaces",
     "Issues",
-    "Mailer",
+    "MailerLite",
     "Monitor",
     "Notifications",
     "Onboarding",
@@ -15920,8 +15920,8 @@
         {
           "rule": "backgroundJob",
           "points": 12,
-          "symbol": "MailerAudienceSyncJob",
-          "file": "src/Humans.Infrastructure/Jobs/MailerAudienceSyncJob.cs",
+          "symbol": "MailerLiteAudienceSyncJob",
+          "file": "src/Humans.Infrastructure/Jobs/MailerLiteAudienceSyncJob.cs",
           "line": 12
         },
         {
@@ -25326,7 +25326,7 @@
       ]
     },
     {
-      "name": "Mailer",
+      "name": "MailerLite",
       "surfaceTotal": 94,
       "internalComplexityTotal": 111,
       "total": 205,
@@ -25341,7 +25341,7 @@
           "rule": "cognitiveComplexity",
           "points": 23,
           "symbol": "ApplyAsync",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 154,
           "detail": "ApplyAsync (CC 38)"
         },
@@ -25349,7 +25349,7 @@
           "rule": "longMethod",
           "points": 19,
           "symbol": "SyncAsync",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
           "line": 97,
           "detail": "SyncAsync (131 LOC)"
         },
@@ -25357,7 +25357,7 @@
           "rule": "cognitiveComplexity",
           "points": 18,
           "symbol": "BuildAsync",
-          "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
+          "file": "src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugSnapshotBuilder.cs",
           "line": 30,
           "detail": "BuildAsync (CC 33)"
         },
@@ -25365,7 +25365,7 @@
           "rule": "longMethod",
           "points": 18,
           "symbol": "BuildAsync",
-          "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
+          "file": "src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugSnapshotBuilder.cs",
           "line": 30,
           "detail": "BuildAsync (124 LOC)"
         },
@@ -25373,79 +25373,79 @@
           "rule": "longMethod",
           "points": 16,
           "symbol": "ApplyAsync",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 154,
           "detail": "ApplyAsync (106 LOC)"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+          "symbol": "MailerLiteAdminController",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
           "line": 19,
-          "detail": "MailerAdminController \u003C- ICommunicationPreferenceService"
+          "detail": "MailerLiteAdminController \u003C- ICommunicationPreferenceService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+          "symbol": "MailerLiteAdminController",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
           "line": 19,
-          "detail": "MailerAdminController \u003C- IAuditLogService"
+          "detail": "MailerLiteAdminController \u003C- IAuditLogService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerAudienceSyncService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+          "symbol": "MailerLiteAudienceSyncService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
           "line": 15,
-          "detail": "MailerAudienceSyncService \u003C- IUserEmailService"
+          "detail": "MailerLiteAudienceSyncService \u003C- IUserEmailService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerAudienceSyncService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+          "symbol": "MailerLiteAudienceSyncService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
           "line": 15,
-          "detail": "MailerAudienceSyncService \u003C- IAuditLogService"
+          "detail": "MailerLiteAudienceSyncService \u003C- IAuditLogService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "symbol": "MailerLiteImportService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 12,
-          "detail": "MailerImportService \u003C- IUserEmailService"
+          "detail": "MailerLiteImportService \u003C- IUserEmailService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "symbol": "MailerLiteImportService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 12,
-          "detail": "MailerImportService \u003C- IAccountProvisioningService"
+          "detail": "MailerLiteImportService \u003C- IAccountProvisioningService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "symbol": "MailerLiteImportService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 12,
-          "detail": "MailerImportService \u003C- ICommunicationPreferenceService"
+          "detail": "MailerLiteImportService \u003C- ICommunicationPreferenceService"
         },
         {
           "rule": "crossSectionFullService",
           "points": 8,
-          "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "symbol": "MailerLiteImportService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 12,
-          "detail": "MailerImportService \u003C- IAuditLogService"
+          "detail": "MailerLiteImportService \u003C- IAuditLogService"
         },
         {
           "rule": "cognitiveComplexity",
           "points": 7,
           "symbol": "SyncAsync",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
           "line": 97,
           "detail": "SyncAsync (CC 22)"
         },
@@ -25468,10 +25468,10 @@
         {
           "rule": "crossSectionReadInterface",
           "points": 2,
-          "symbol": "MailerAdminController",
-          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+          "symbol": "MailerLiteAdminController",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
           "line": 19,
-          "detail": "MailerAdminController \u003C- IUserServiceRead"
+          "detail": "MailerLiteAdminController \u003C- IUserServiceRead"
         },
         {
           "rule": "crossSectionReadInterface",
@@ -25532,10 +25532,10 @@
         {
           "rule": "crossSectionReadInterface",
           "points": 2,
-          "symbol": "MailerAudienceBase",
-          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerAudienceBase.cs",
+          "symbol": "MailerLiteAudienceBase",
+          "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerLiteAudienceBase.cs",
           "line": 14,
-          "detail": "MailerAudienceBase \u003C- IUserServiceRead"
+          "detail": "MailerLiteAudienceBase \u003C- IUserServiceRead"
         },
         {
           "rule": "crossSectionReadInterface",
@@ -25580,16 +25580,16 @@
         {
           "rule": "crossSectionReadInterface",
           "points": 2,
-          "symbol": "MailerImportService",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "symbol": "MailerLiteImportService",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 12,
-          "detail": "MailerImportService \u003C- IUserServiceRead"
+          "detail": "MailerLiteImportService \u003C- IUserServiceRead"
         },
         {
           "rule": "longMethod",
           "points": 2,
           "symbol": "Debug",
-          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
           "line": 92,
           "detail": "Debug (62 LOC)"
         },
@@ -25597,7 +25597,7 @@
           "rule": "longMethod",
           "points": 1,
           "symbol": "Index",
-          "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+          "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
           "line": 33,
           "detail": "Index (53 LOC)"
         },
@@ -25605,7 +25605,7 @@
           "rule": "longMethod",
           "points": 1,
           "symbol": "BuildPlanAsync",
-          "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+          "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
           "line": 40,
           "detail": "BuildPlanAsync (58 LOC)"
         }
@@ -28601,7 +28601,7 @@
     },
     {
       "symbol": "ApplyAsync",
-      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
       "line": 154,
       "total": 39,
       "byRule": {
@@ -28664,7 +28664,7 @@
     },
     {
       "symbol": "BuildAsync",
-      "file": "src/Sections/Humans.MailerLite/Models/MailerAudienceDebugSnapshotBuilder.cs",
+      "file": "src/Sections/Humans.MailerLite/Models/MailerLiteAudienceDebugSnapshotBuilder.cs",
       "line": 30,
       "total": 36,
       "byRule": {
@@ -28725,8 +28725,8 @@
       }
     },
     {
-      "symbol": "MailerImportService",
-      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+      "symbol": "MailerLiteImportService",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
       "line": 12,
       "total": 34,
       "byRule": {
@@ -29093,7 +29093,7 @@
     },
     {
       "symbol": "SyncAsync",
-      "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
       "line": 97,
       "total": 26,
       "byRule": {
@@ -29717,8 +29717,8 @@
       }
     },
     {
-      "symbol": "MailerAdminController",
-      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+      "symbol": "MailerLiteAdminController",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
       "line": 19,
       "total": 18,
       "byRule": {
@@ -29870,8 +29870,8 @@
       }
     },
     {
-      "symbol": "MailerAudienceSyncService",
-      "file": "src/Sections/Humans.MailerLite/Services/MailerAudienceSyncService.cs",
+      "symbol": "MailerLiteAudienceSyncService",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLiteAudienceSyncService.cs",
       "line": 15,
       "total": 16,
       "byRule": {
@@ -30534,8 +30534,8 @@
       }
     },
     {
-      "symbol": "MailerAudienceSyncJob",
-      "file": "src/Humans.Infrastructure/Jobs/MailerAudienceSyncJob.cs",
+      "symbol": "MailerLiteAudienceSyncJob",
+      "file": "src/Humans.Infrastructure/Jobs/MailerLiteAudienceSyncJob.cs",
       "line": 12,
       "total": 12,
       "byRule": {
@@ -40063,7 +40063,7 @@
     },
     {
       "symbol": "Debug",
-      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
       "line": 92,
       "total": 2,
       "byRule": {
@@ -41025,8 +41025,8 @@
       }
     },
     {
-      "symbol": "MailerAudienceBase",
-      "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerAudienceBase.cs",
+      "symbol": "MailerLiteAudienceBase",
+      "file": "src/Sections/Humans.MailerLite/Services/Audiences/MailerLiteAudienceBase.cs",
       "line": 14,
       "total": 2,
       "byRule": {
@@ -43115,7 +43115,7 @@
     },
     {
       "symbol": "BuildPlanAsync",
-      "file": "src/Sections/Humans.MailerLite/Services/MailerImportService.cs",
+      "file": "src/Sections/Humans.MailerLite/Services/MailerLiteImportService.cs",
       "line": 40,
       "total": 1,
       "byRule": {
@@ -46436,7 +46436,7 @@
     },
     {
       "symbol": "Index",
-      "file": "src/Sections/Humans.MailerLite/Controllers/MailerAdminController.cs",
+      "file": "src/Sections/Humans.MailerLite/Controllers/MailerLiteAdminController.cs",
       "line": 33,
       "total": 1,
       "byRule": {
@@ -51940,7 +51940,7 @@
     {
       "level": "warning",
       "code": "unknown-config-section",
-      "message": "Config section policy has no matching assembly and is ignored: Admin, Dashboard, Platform. Sections are assembly-derived; known sections are: Agent, Analyzers, Application, AuditLog, Auth, Budget, Calendar, Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, EarlyEntry, Email, Events, Expenses, Feedback, Finance, Gate, Gdpr, GoogleIntegration, Governance, Guide, Holded, Infrastructure, Interfaces, Issues, Mailer, Monitor, Notifications, Onboarding, Scanner, Search, Shifts, Store, Stripe, Surveys, SystemSettings, Teams, TicketTailor, Tickets, Tour, UI, Users, Web."
+      "message": "Config section policy has no matching assembly and is ignored: Admin, Dashboard, Platform. Sections are assembly-derived; known sections are: Agent, Analyzers, Application, AuditLog, Auth, Budget, Calendar, Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, EarlyEntry, Email, Events, Expenses, Feedback, Finance, Gate, Gdpr, GoogleIntegration, Governance, Guide, Holded, Infrastructure, Interfaces, Issues, MailerLite, Monitor, Notifications, Onboarding, Scanner, Search, Shifts, Store, Stripe, Surveys, SystemSettings, Teams, TicketTailor, Tickets, Tour, UI, Users, Web."
     },
     {
       "level": "warning",
@@ -56572,7 +56572,7 @@
       ]
     },
     {
-      "display": "Humans.Infrastructure.Jobs.MailerAudienceSyncJob",
+      "display": "Humans.Infrastructure.Jobs.MailerLiteAudienceSyncJob",
       "methods": [
         "ExecuteAsync"
       ]
@@ -58552,7 +58552,7 @@
       ]
     },
     {
-      "display": "Humans.MailerLite.Models.MailerAudienceDebugSnapshotBuilder",
+      "display": "Humans.MailerLite.Models.MailerLiteAudienceDebugSnapshotBuilder",
       "methods": [
         "BuildAsync",
         "PageExpected",

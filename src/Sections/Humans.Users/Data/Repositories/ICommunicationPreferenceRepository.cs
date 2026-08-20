@@ -83,7 +83,7 @@ internal interface ICommunicationPreferenceRepository : IRepository
     /// Deletes the single <c>communication_preferences</c> row for a user+category,
     /// returning the category to its "no row recorded" (null) state — distinct
     /// from an explicit opt-out. Returns true if a row was deleted, false if none
-    /// existed. Used by the Mailer import GDPR remediation.
+    /// existed. Used by the MailerLite import GDPR remediation.
     /// </summary>
     Task<bool> DeleteByUserAndCategoryAsync(
         Guid userId, MessageCategory category, CancellationToken ct = default);

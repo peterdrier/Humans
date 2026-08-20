@@ -3,7 +3,7 @@
 **Date:** 2026-06-03
 **Status:** Decisions resolved (2026-06-04 design dialogue) — v1 scope locked (§15). Implementation plan to be produced and reviewed by Peter **before** any code is written; build is one chunk / one branch / one PR (no incremental sub-releases).
 **Owner:** Peter Drier
-**Context:** Captured from a design dialogue (this repo has no GitHub Issues tracker, so the spec lands here in `docs/superpowers/specs/` to be picked up later). Grounded in a codebase audit of the Email outbox, Campaigns, Mailer audiences, Hangfire jobs, i18n, anonymous-token flows, and the section/authorization patterns.
+**Context:** Captured from a design dialogue (this repo has no GitHub Issues tracker, so the spec lands here in `docs/superpowers/specs/` to be picked up later). Grounded in a codebase audit of the Email outbox, Campaigns, MailerLite audiences, Hangfire jobs, i18n, anonymous-token flows, and the section/authorization patterns.
 
 ## 1. Problem / goal
 
@@ -28,7 +28,7 @@ This is a new **vertical section** (`Survey`), born compliant with current archi
 | Where this spec lives | This repo has **no Issues tracker** → committed as a dated design doc under `docs/superpowers/specs/`. Not a GitHub issue. |
 | Section shape | New top-level **Survey** section. URL `/Survey` (+ `/Survey/Admin`), namespace `Humans.Application.Survey`, owned tables `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers`. |
 | **Anonymity** | **Author opt-in flag per survey.** If the author allows anonymous responses, the wizard's first step offers the respondent **three choices** (see §4). If the author does **not** allow it, responses are always **Identified** and the survey is invite-only (no public/anonymous path). |
-| **Audience / targeting** | **Reuse, extend Campaigns/Mailer.** Recipient set is resolved through the existing **`IMailerAudience`** audience framework (all-users / ticket-holders / team / role already exist there); per-recipient invite tracking mirrors **`CampaignGrant`** (token + send-status + completion). |
+| **Audience / targeting** | **Reuse, extend Campaigns/MailerLite.** Recipient set is resolved through the existing **`IMailerLiteAudience`** audience framework (all-users / ticket-holders / team / role already exist there); per-recipient invite tracking mirrors **`CampaignGrant`** (token + send-status + completion). |
 | **Delivery** | **Reuse the Email outbox** (`IEmailService` → `email_outbox_messages`). New `IEmailMessageFactory` templates `SurveyInvitation` + `SurveyReminder`, localised in the recipient's `PreferredLanguage`. No new transport. |
 | **Reminders** | Hangfire recurring job (daily tick) enqueues a reminder for invitations that are **un-completed**, **sent ≥ 7 days ago**, and **not yet reminded**. One reminder per invitation. |
 | **Question types** | Single-choice, multi-choice, free text (short/long), rating/scale — **plus conditional branching** (skip logic). |
@@ -54,7 +54,7 @@ All cross-domain references are **bare `Guid` FK columns** — **no navigation p
 | `Status` | enum `SurveyStatus` | `Draft` / `Open` / `Closed` |
 | `OpensAt` | Instant? | Optional scheduled open |
 | `ClosesAt` | Instant? | Optional auto-close; after this, the wizard rejects new responses |
-| `AudienceKey` | string? | Key of the reused `IMailerAudience` (null = manual/none) |
+| `AudienceKey` | string? | Key of the reused `IMailerLiteAudience` (null = manual/none) |
 | `PublicSlug` | string? (max 80) | Set when a shareable public link is enabled (requires `AllowAnonymous`); null = invite-only. Unique, filtered non-null. Reserved words (`Admin`, `Answer`) rejected at save to avoid route collisions. |
 | `PublicStartedCount` | int | Count of public (slug) visitors who began the questionnaire — the slug-path "started" funnel number. Anonymous visitors have no per-person anchor, so this is a plain counter (inflated by reloads; rough by design). Default 0. |
 | `CreatedByUserId` | Guid | Creator user id — **bare `Guid` column**, no nav, no cross-section FK constraint; resolve via `IUserServiceRead` |
@@ -207,11 +207,11 @@ Free-text answers (`ShortText` / `LongText`) come back in whatever language the 
 - **Cost** is the same trivial NMT rate; a few hundred short answers is well inside the monthly free tier.
 - **Egress note:** translating answers sends member-authored text to Google. Acceptable under the same posture as §6.1, but it's a third-party data flow over potentially sensitive free-text — see the consent/egress open question (§15).
 
-## 7. Distribution & reminders (reuse Campaigns/Mailer + Email outbox)
+## 7. Distribution & reminders (reuse Campaigns/MailerLite + Email outbox)
 
-**Audience resolution** reuses the Mailer **`IMailerAudience`** framework — the existing `ComputeMemberUserIdsAsync` implementations already cover *all-users*, *ticket-holders* (`HasTicketAudience`), team/shift cohorts, etc. The Survey author picks an `AudienceKey`; the send flow resolves it to a user-id set the same way audience sync does today.
+**Audience resolution** reuses the MailerLite **`IMailerLiteAudience`** framework — the existing `ComputeMemberUserIdsAsync` implementations already cover *all-users*, *ticket-holders* (`HasTicketAudience`), team/shift cohorts, etc. The Survey author picks an `AudienceKey`; the send flow resolves it to a user-id set the same way audience sync does today.
 
-> **Reuse boundary flagged for Peter (Open Q):** `IMailerAudience` lives in the Mailer section and is coupled to MailerLite group names. Cross-section reuse should go through a **read interface** (e.g. an `IAudienceResolver` / `IMailerServiceRead.ResolveAudienceAsync(key)`) rather than Survey importing Mailer internals — exact surface to be settled at implementation, consistent with the hard-rules cross-section pattern. Fallback if that proves heavy: Survey resolves cohorts directly via the same cross-section reads the audiences use (`ITicketServiceRead`, `ITeamService`, `IUserServiceRead`).
+> **Reuse boundary flagged for Peter (Open Q):** `IMailerLiteAudience` lives in the MailerLite section and is coupled to MailerLite group names. Cross-section reuse should go through a **read interface** (e.g. an `IAudienceResolver` / `IMailerLiteServiceRead.ResolveAudienceAsync(key)`) rather than Survey importing MailerLite internals — exact surface to be settled at implementation, consistent with the hard-rules cross-section pattern. Fallback if that proves heavy: Survey resolves cohorts directly via the same cross-section reads the audiences use (`ITicketServiceRead`, `ITeamService`, `IUserServiceRead`).
 
 **Send model — idempotent per-recipient ledger (the load-bearing business rule).** A survey is not a one-shot blast; it accumulates **invitations**, one per person. Each "send" is a **top-up**: resolve a target set, **diff it against the existing invitations**, and create + email only the net-new recipients.
 
@@ -242,7 +242,7 @@ Optional hardening (cheap, recommended): give the token a **lifetime** tied to t
 - Selects invitations where `Survey.Status == Open`, `Completed == false`, `SentAt <= now - 7d`, `ReminderSentAt is null`.
 - Enqueues one `SurveyReminder` email; stamps `ReminderSentAt`. One reminder per invitee, ever.
 
-Both honour the existing outbox pause flag. Survey invites are **operational, never marketing** (sent as `MessageCategory.System`, always-send), so they are **not** gated by the marketing opt-out or any Mailer audience exclusion — they go directly to the targeted ticket-holders or members (§15.2).
+Both honour the existing outbox pause flag. Survey invites are **operational, never marketing** (sent as `MessageCategory.System`, always-send), so they are **not** gated by the marketing opt-out or any MailerLite audience exclusion — they go directly to the targeted ticket-holders or members (§15.2).
 
 ## 8. Wizard (the answering flow)
 
@@ -275,7 +275,7 @@ Both honour the existing outbox pause flag. Survey invites are **operational, ne
 
 | Dependency | Used for |
 |------------|----------|
-| `IMailerServiceRead` / `IMailerAudience` (read surface — §7 Open Q) | Resolve `AudienceKey` → recipient user-id set |
+| `IMailerLiteServiceRead` / `IMailerLiteAudience` (read surface — §7 Open Q) | Resolve `AudienceKey` → recipient user-id set |
 | `IUserServiceRead.GetUserInfosAsync` | Recipient names + `PreferredLanguage` for invite/reminder emails and results display |
 | `IEmailService` + new `IEmailMessageFactory.SurveyInvitation/SurveyReminder` | Invite + reminder delivery through the outbox |
 | `IGoogleTranslationService` (GoogleIntegration, new) | Pre-fill authored `LocalizedText` translations (§6.1) |
@@ -283,7 +283,7 @@ Both honour the existing outbox pause flag. Survey invites are **operational, ne
 | `IDataProtectionProvider` | Tokenised invite/edit links (purpose `"survey-invitation"`) |
 | `IUserDataContributor` (implemented by `SurveyService`) | GDPR export of a user's **Identified** responses (`GdprExportSections.Survey`, new) |
 
-`Survey` sits **above** Users / Profiles / Tickets / Teams / Mailer / Email / GoogleIntegration — it calls into them, never the reverse.
+`Survey` sits **above** Users / Profiles / Tickets / Teams / MailerLite / Email / GoogleIntegration — it calls into them, never the reverse.
 
 ## 11. GDPR
 
@@ -366,7 +366,7 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 The §15 open questions are now settled. Each resolution below is binding for v1.
 
 1. **`LocalizedText` scope** → **Survey-owned** value object. Reuse-first/YAGNI: don't build a shared Domain primitive before a second consumer (Events/Camps) exists; promotion is a clean later refactor. (§6)
-2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **Predicates (decided 2026-06-04):** v1 ships **Team** first (a team's members), then the easy cohorts — **all active members**, **ticket-holders**, **shift participants**. (These mirror cohorts the Mailer audiences already express.) **Marketing opt-out (decided 2026-06-04):** surveys are **never marketing** — recipients are ticket-holders or members, and an invite is operational comms — so invites **do not** honour the marketing opt-out. They are sent as `MessageCategory.System` (always-send), bypassing the marketing exclusion entirely. **Deferred (tech impl):** where predicates are computed / whether a cross-section read interface is introduced — not decided now.
+2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **Predicates (decided 2026-06-04):** v1 ships **Team** first (a team's members), then the easy cohorts — **all active members**, **ticket-holders**, **shift participants**. (These mirror cohorts the MailerLite audiences already express.) **Marketing opt-out (decided 2026-06-04):** surveys are **never marketing** — recipients are ticket-holders or members, and an invite is operational comms — so invites **do not** honour the marketing opt-out. They are sent as `MessageCategory.System` (always-send), bypassing the marketing exclusion entirely. **Deferred (tech impl):** where predicates are computed / whether a cross-section read interface is introduced — not decided now.
 3. **Fully-anonymous reminder trade-off** → **accept** the documented behaviour (a fully-anon invitee may receive the one reminder). The alternative — a privacy-leaking "answered" bit — is rejected; never-leak wins. Disclosed to the respondent on the choice step. (§4)
 4. **Public slug** → **public-link answering path is IN v1** (decided 2026-06-04). A survey with a `PublicSlug` set (requires `AllowAnonymous`) can be answered at `/Survey/{slug}` with no invitation; such responses are always **Anonymous**, `InputMethod = Slug`. Public starts are counted by a per-survey integer counter (`Survey.PublicStartedCount`) — anonymous visitors have no per-person anchor; finishes are the submitted `Slug` responses. (§4, §8)
 5. **Branch sources** → **choice-question predicates only** in v1; rating/text branch sources are not built. (§5)
