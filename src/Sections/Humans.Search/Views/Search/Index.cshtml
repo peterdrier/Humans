@@ -111,25 +111,25 @@ else
         @if (ShowSection(SearchResultType.Team, Model.TeamCount))
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-users me-2"></i>@Localizer["Search_FilterTeams"]</h3>
-            <partial name="_GlobalSearchSection" model="Model.TeamResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-users" } })" />
+            <partial name="_GlobalSearchSection" model="Model.TeamResults" />
         }
 
         @if (ShowSection(SearchResultType.Camp, Model.CampCount))
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-campground me-2"></i>@Localizer["Search_FilterCamps"]</h3>
-            <partial name="_GlobalSearchSection" model="Model.CampResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-campground" } })" />
+            <partial name="_GlobalSearchSection" model="Model.CampResults" />
         }
 
         @if (ShowSection(SearchResultType.Shift, Model.ShiftCount))
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>@Localizer["Search_FilterShifts"]</h3>
-            <partial name="_GlobalSearchSection" model="Model.ShiftResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-clock" } })" />
+            <partial name="_GlobalSearchSection" model="Model.ShiftResults" />
         }
 
         @if (eventsEnabled && ShowSection(SearchResultType.Event, Model.EventCount))
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-calendar-day me-2"></i>@Localizer["Search_FilterEvents"]</h3>
-            <partial name="_GlobalSearchSection" model="Model.EventResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-calendar-day" } })" />
+            <partial name="_GlobalSearchSection" model="Model.EventResults" />
         }
     }
 }

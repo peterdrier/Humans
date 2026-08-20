@@ -1,0 +1,17 @@
+@* One team-search result row (<vc:teams-search-result>). Teams owns how a team renders;
+   callers pass the slug their own search produced and no display fields
+   (nobodies-collective/Humans#1062). *@
+@model Humans.Teams.ViewComponents.TeamsSearchResultViewModel
+
+<a href="/Teams/@Model.Slug" class="list-group-item list-group-item-action">
+    <div class="d-flex align-items-start gap-3">
+        <div class="d-flex align-items-center justify-content-center rounded bg-light"
+             style="width: 40px; height: 40px; flex-shrink: 0;">
+            <i class="fa-solid fa-users text-muted"></i>
+        </div>
+        <div class="flex-grow-1">
+            <strong>@Model.Name</strong>
+            <div class="small text-muted">@Model.Slug</div>
+        </div>
+    </div>
+</a>

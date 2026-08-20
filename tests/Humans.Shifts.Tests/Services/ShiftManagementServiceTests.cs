@@ -7,6 +7,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -811,9 +812,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             rota.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
 
         var hit = results.Should().ContainSingle().Subject;
+        hit.RotaId.Should().Be(rota.Id);
         hit.Name.Should().Be("Test Rota");
-        hit.TeamId.Should().Be(rota.TeamId);
-        hit.TeamName.Should().Be("Test Department");
+        hit.Score.Should().Be(StringSearchExtensions.ExactNameScore);
     }
 
     [HumansFact]

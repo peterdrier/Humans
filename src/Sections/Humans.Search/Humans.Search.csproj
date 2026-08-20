@@ -31,21 +31,24 @@
       Scanner's, Cantina's, MailerLite's and Onboarding's shape.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <!-- The Events bucket. The leaf only — never the Humans.Events section project. -->
     <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      The Humans bucket renders Users' own <vc:user-search-result>
+      Every result row is its owning section's own view component
       (nobodies-collective/Humans#1062), and @addTagHelper only binds against an assembly the
-      section references. An orchestrator referencing what it orchestrates is expected; only
-      cycles are forbidden. Only Contracts-folder public surface and the view components the
-      framework needs public are reachable through it (HUM0034) — Debug's widget-gallery
-      fan-in has the same shape.
+      section references — so the five publishers are referenced whole, not just their leaves.
+      An orchestrator referencing what it orchestrates is expected; only cycles are forbidden.
+      Only Contracts-folder public surface and the view components the framework needs public
+      are reachable through them (HUM0034) — Debug's widget-gallery fan-in has the same shape.
     -->
     <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
+    <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
+    <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
+    <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
   </ItemGroup>
 
   <ItemGroup>

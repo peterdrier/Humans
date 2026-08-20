@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Caching;
+using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Users.Contracts;
 
@@ -132,7 +133,11 @@ internal sealed class CachingCampService(
             if (camp is null)
                 return [];
             var byIdSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            return [new CampSearchHit(camp.Slug, byIdSeason?.Name ?? camp.Slug)];
+            return
+            [
+                new CampSearchHit(
+                    camp.Slug, byIdSeason?.Name ?? camp.Slug, StringSearchExtensions.ExactNameScore)
+            ];
         }
 
         // Name match against the public-year season name, public statuses only (what the DB
@@ -147,7 +152,7 @@ internal sealed class CachingCampService(
                 && PublicCampSeasonStatuses.Contains(s.Status)
                 && s.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
             if (season is not null)
-                hits.Add(new CampSearchHit(camp.Slug, season.Name));
+                hits.Add(new CampSearchHit(camp.Slug, season.Name, season.Name.NameMatchScore(trimmed)));
         }
 
         return hits.Take(max).ToList();

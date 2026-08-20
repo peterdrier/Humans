@@ -1,0 +1,21 @@
+@* One event-search result row (<vc:events-search-result>). Events owns how an event renders;
+   callers pass the event id their own search produced and no display fields
+   (nobodies-collective/Humans#1062). The link is the Browse page filtered to the title, as
+   before — there is no single-event detail page. *@
+@model Humans.Events.ViewComponents.EventsSearchResultViewModel
+
+<a href="/Events/Browse?q=@Uri.EscapeDataString(Model.Title)" class="list-group-item list-group-item-action">
+    <div class="d-flex align-items-start gap-3">
+        <div class="d-flex align-items-center justify-content-center rounded bg-light"
+             style="width: 40px; height: 40px; flex-shrink: 0;">
+            <i class="fa-solid fa-calendar-day text-muted"></i>
+        </div>
+        <div class="flex-grow-1">
+            <strong>@Model.Title</strong>
+            @if (!string.IsNullOrEmpty(Model.CategoryName))
+            {
+                <div class="small text-muted">@Model.CategoryName</div>
+            }
+        </div>
+    </div>
+</a>
