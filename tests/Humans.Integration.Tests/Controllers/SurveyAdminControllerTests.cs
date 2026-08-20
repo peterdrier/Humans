@@ -128,6 +128,95 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             .Should().ContainInOrder("morning", "afternoon");
     }
 
+    [HumansFact(Timeout = 60000)]
+    public async Task Save_adds_grid_with_client_generated_ids_to_existing_survey()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var createResp = await Client.GetAsync("/Survey/Admin/Create", ct);
+        var createToken = ExtractAntiForgeryToken(await createResp.Content.ReadAsStringAsync(ct));
+        var initialSaveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", createToken!),
+            ("Title[en]", $"Grid update integration survey {Guid.NewGuid():N}")), ct);
+        var surveyId = ExtractSurveyId(initialSaveResp);
+
+        var editResp = await Client.GetAsync($"/Survey/Admin/Edit/{surveyId}", ct);
+        var editToken = ExtractAntiForgeryToken(await editResp.Content.ReadAsStringAsync(ct));
+        var questionId = Guid.NewGuid();
+        var columnId = Guid.NewGuid();
+
+        var updateResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", editToken!),
+            ("Id", surveyId.ToString()),
+            ("Title[en]", $"Updated grid integration survey {Guid.NewGuid():N}"),
+            ("Questions.Index", "grid"),
+            ("Questions[grid].Id", questionId.ToString()),
+            ("Questions[grid].PageNumber", "1"),
+            ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].Prompt[en]", "When can you attend?"),
+            ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Single)),
+            ("Questions[grid].Options.Index", "column"),
+            ("Questions[grid].Options[column].Id", columnId.ToString()),
+            ("Questions[grid].Options[column].Value", "column-1"),
+            ("Questions[grid].Options[column].Label[en]", "Available"),
+            ("Questions[grid].GridRows.Index", "row"),
+            ("Questions[grid].GridRows[row].Value", "row-1"),
+            ("Questions[grid].GridRows[row].Label[en]", "Monday")), ct);
+
+        ((int)updateResp.StatusCode).Should().BeOneOf(
+            [(int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect]);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
+        var question = (await db.Surveys.AsNoTracking()
+                .Include(survey => survey.Questions)
+                .ThenInclude(q => q.Options)
+                .SingleAsync(survey => survey.Id == surveyId, ct))
+            .Questions.Should().ContainSingle().Subject;
+
+        question.Id.Should().Be(questionId);
+        question.Options.Should().ContainSingle(option => option.Id == columnId);
+        question.GridRows.Should().ContainSingle(row => row.Value == "row-1");
+
+        var secondEditResp = await Client.GetAsync($"/Survey/Admin/Edit/{surveyId}", ct);
+        var secondEditToken = ExtractAntiForgeryToken(await secondEditResp.Content.ReadAsStringAsync(ct));
+        var secondColumnId = Guid.NewGuid();
+        var addColumnResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", secondEditToken!),
+            ("Id", surveyId.ToString()),
+            ("Title[en]", "Updated grid integration survey"),
+            ("Questions.Index", "grid"),
+            ("Questions[grid].Id", questionId.ToString()),
+            ("Questions[grid].PageNumber", "1"),
+            ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].Prompt[en]", "When can you attend?"),
+            ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Single)),
+            ("Questions[grid].Options.Index", "first-column"),
+            ("Questions[grid].Options[first-column].Id", columnId.ToString()),
+            ("Questions[grid].Options[first-column].Value", "column-1"),
+            ("Questions[grid].Options[first-column].Label[en]", "Available"),
+            ("Questions[grid].Options.Index", "second-column"),
+            ("Questions[grid].Options[second-column].Id", secondColumnId.ToString()),
+            ("Questions[grid].Options[second-column].Value", "column-2"),
+            ("Questions[grid].Options[second-column].Label[en]", "Preferred"),
+            ("Questions[grid].GridRows.Index", "row"),
+            ("Questions[grid].GridRows[row].Value", "row-1"),
+            ("Questions[grid].GridRows[row].Label[en]", "Monday")), ct);
+
+        ((int)addColumnResp.StatusCode).Should().BeOneOf(
+            [(int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect]);
+
+        db.ChangeTracker.Clear();
+        var updatedQuestion = (await db.Surveys.AsNoTracking()
+                .Include(survey => survey.Questions)
+                .ThenInclude(q => q.Options)
+                .SingleAsync(survey => survey.Id == surveyId, ct))
+            .Questions.Should().ContainSingle().Subject;
+        updatedQuestion.Options.Select(option => option.Id)
+            .Should().BeEquivalentTo([columnId, secondColumnId]);
+    }
+
     private static string? ExtractAntiForgeryToken(string html)
     {
         var match = Regex.Match(
@@ -142,5 +231,18 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
     {
         return new FormUrlEncodedContent(fields.Select(f =>
             new KeyValuePair<string, string>(f.Key, f.Value)));
+    }
+
+    private static Guid ExtractSurveyId(HttpResponseMessage response)
+    {
+        ((int)response.StatusCode).Should().BeOneOf(
+            (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
+        var match = Regex.Match(
+            response.Headers.Location!.ToString(),
+            "/Survey/Admin/Edit/(?<id>[0-9a-fA-F-]{36})",
+            RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2));
+        match.Success.Should().BeTrue();
+        return Guid.Parse(match.Groups["id"].Value);
     }
 }
