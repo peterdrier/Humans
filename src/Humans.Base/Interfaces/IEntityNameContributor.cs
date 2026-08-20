@@ -7,17 +7,8 @@ namespace Humans.Base.Interfaces;
 /// <c>IEnumerable&lt;IEntityNameContributor&gt;</c> and asks all of them.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Peter's ruling on nobodies-collective/Humans#1059: a system-wide
-/// Guid-resolution fan-out, so anything holding bare Guids — AuditLog, Search —
-/// gets names without linking to the sections that own them. The arrow inverts:
-/// sections reference this contract, and the consumer references no section.
-/// </para>
-/// <para>
-/// It lives in Base rather than in one consumer's section because two consumers
-/// would otherwise have to reference each other. Base names no section type, so
-/// the graph stays acyclic.
-/// </para>
+/// In Base, not a consumer's contracts leaf, because consumers must not reference
+/// each other (nobodies-collective/Humans#1059).
 /// </remarks>
 public interface IEntityNameContributor : IFanout
 {
