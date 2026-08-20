@@ -667,6 +667,42 @@ public sealed class GoogleGroupSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_Revoke_ResolvesTheExtraMembersUserIdFromTheirEmail()
+    {
+        var departed = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old"));
+
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Is<IReadOnlyCollection<string>>(e => e.Contains("old@nobodies.team")),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("old@nobodies.team", departed, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // A human who left the team is only reachable from the address Google still holds.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "old@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: departed,
+            ct: Arg.Any<CancellationToken>());
+    }
+
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
         sources,
         _membershipClient,

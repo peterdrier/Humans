@@ -340,14 +340,38 @@ internal sealed class GoogleGroupSyncService(
 
         var serviceAccountEmail = await teamResourceClient.GetServiceAccountEmailAsync(ct);
         var expectedEmailSet = expectedMembers.Keys.ToHashSet(NormalizingEmailComparer.Instance);
-        foreach (var email in currentByEmail.Keys.Where(email =>
-                     !expectedEmailSet.Contains(email) &&
-                     !string.Equals(email, serviceAccountEmail, StringComparison.OrdinalIgnoreCase)))
+        var extraEmails = currentByEmail.Keys.Where(email =>
+                !expectedEmailSet.Contains(email) &&
+                !string.Equals(email, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // An extra member is a human who left the team, so their id is only reachable
+        // from the address Google still holds — without it the revocation row is
+        // invisible to /Monitor/Human/{id} and to their GDPR export.
+        var extraUserIdByEmail = await ResolveExtraMemberUserIdsAsync(extraEmails, ct);
+
+        foreach (var email in extraEmails)
         {
-            members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, []));
+            members.Add(new MemberSyncStatus(
+                email, email, MemberSyncState.Extra, [],
+                UserId: extraUserIdByEmail.TryGetValue(email, out var userId) ? userId : null));
         }
 
         return new GroupMembershipPlan(members, currentByEmail);
+    }
+
+    /// <summary>Extra-member email → human, for addresses a user row still claims.</summary>
+    private async Task<Dictionary<string, Guid>> ResolveExtraMemberUserIdsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken ct)
+    {
+        var result = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
+        if (emails.Count == 0)
+            return result;
+
+        foreach (var match in await userEmailService.MatchByEmailsAsync(emails, ct))
+            result.TryAdd(match.Email, match.UserId);
+
+        return result;
     }
 
     private async Task<ResourceSyncDiff?> ApplyGroupMembershipChangesAsync(
