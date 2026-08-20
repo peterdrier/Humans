@@ -127,6 +127,10 @@ jobs:
             if [ "$(jq -r '.build.degraded' "$out")" != "false" ]; then
               echo "::error::reforge reported a degraded workspace for $dir — restore-only scoring is no longer sufficient."
               jq '.build' "$out"
+              # Delete the degraded output: the cache post-step saves
+              # reforge-base.json even on job failure, and a cached degraded
+              # base would be silently reused by every subsequent push.
+              rm -f "$out"
               exit 1
             fi
           }
