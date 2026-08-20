@@ -63,7 +63,6 @@ internal sealed class SearchController(
             // (exact/prefix/contains, then name), others by Score desc + Title asc.
             HumanResults = results.Humans
                 .OrderByRelevance()
-                .Select(r => r.ToHumanSearchViewModel())
                 .ToList(),
             TeamResults = SortByScore(results.Teams),
             CampResults = SortByScore(results.Camps),

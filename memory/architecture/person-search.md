@@ -1,9 +1,9 @@
 ---
 name: Person search uses one bit-flag service method and two canonical UI patterns
-description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `_HumanSearchResults` (page-style). Admin-bit fields require admin auth at the controller. Emergency-contact data is never searchable. Shift volunteer search is exempt.
+description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `<vc:user-search-result>` (page-style row). Admin-bit fields require admin auth at the controller. Emergency-contact data is never searchable. Shift volunteer search is exempt.
 ---
 
-Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI partials. Don't fork.
+Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI components. Don't fork.
 
 **Service API — single method, bit-flag input:**
 
@@ -38,7 +38,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 | Pattern | Component | When |
 |---|---|---|
 | Inline picker / autocomplete | `<vc:human-search>` (`HumanSearchViewComponent`) | Pick a single person inside a form. Sets a hidden `userId` field on selection. Backed by `/api/profiles/search`. Typed params: `field-name`, `instance-key`, `placeholder`, `scope`, `exclude-user-ids`, `selected-user-id` (optional prefill), `allow-email`. |
-| Page-style search results | `_HumanSearchResults` | Browse / find-then-act. Renders a list of cards. Used by `/Profile/Search` (public, `PublicAll`) and `/Profile/Admin` (`AdminAll`). |
+| Page-style search results | `<vc:user-search-result>` (`UserSearchResultViewComponent`) | Browse / find-then-act. Owned by `Humans.Users`, keyed by user id — the caller holds ids, wraps the rows in a `.list-group` and owns its own empty state. Typed params: `user-id`, `match-field`, `match-snippet`, `matched-email`. Used by `/Profile/Search` (`PublicAll`) and `/Search`'s Humans bucket. `/Users/Admin` is a paged admin directory, not a search result, and renders its own rows (nobodies-collective/Humans#1062). |
 
 Don't roll a third. If you need a new search surface, route it through one of these.
 

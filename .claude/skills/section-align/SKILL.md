@@ -290,7 +290,7 @@ The user-display family — always check first, since it is where redundancy bit
 | Full profile / baseball card | `<vc:profile-card>` / `ProfileCardViewComponent` / `_ProfileCard` |
 | Role pill / authorization indicator | `_RoleBadge.cshtml` / `_AuthorizationPill.cshtml` |
 | Nobodies email badge | `<vc:nobodies-email-badge>` |
-| User search box + results | `<vc:human-search>` / `_HumanSearchResults.cshtml` |
+| User search box + results | `<vc:human-search>` / `<vc:user-search-result>` |
 | User dropdown / signed-in menu | `_LoginPartial.cshtml` / `_AdminTopbarUserMenu.cshtml` |
 
 (Refresh this table from the actual `ViewComponents/` and `Views/Shared/` listing each run — components get added.)
@@ -314,7 +314,7 @@ For each hit, decide:
 |---------|------------|
 | Section renders user (avatar/name/link) inline with its own markup | **Phase 3 fix**: replace with `<vc:human user-id="..." />` or `@await Html.PartialAsync("_HumanPopover", ...)`. |
 | Section has its own role/auth badge markup | **Phase 3 fix**: replace with `_RoleBadge` / `_AuthorizationPill`. |
-| Section has its own user-search input + results panel | **Phase 3 fix**: replace with `<vc:human-search>` / `_HumanSearchResults`. |
+| Section has its own user-search input + results panel | **Phase 3 fix**: replace with `<vc:human-search>` / `<vc:user-search-result>`. |
 | Shared component is *almost* right but missing one parameter the section needs (e.g. compact mode, hide-link) | **Phase 2 fix on the shared component** (add the parameter), then Phase 3 callsite swap. Note: this means the shared component owner — typically the platform/admin shell — is the producer; flag as a follow-up if the parameter add is non-trivial. |
 | Section's renderer is genuinely different in domain meaning (not a near-duplicate, just happens to also show a user) | Keep; record the distinction in the plan so future runs don't re-flag it. |
 

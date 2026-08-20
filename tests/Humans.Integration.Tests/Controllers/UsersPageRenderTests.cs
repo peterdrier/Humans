@@ -123,6 +123,50 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         }
     }
 
+    /// <summary>
+    /// The two person-search surfaces after nobodies-collective/Humans#1062 replaced the
+    /// shared <c>_HumanSearchResults</c> partial: <c>/Profile/Search</c> renders one
+    /// <c>&lt;vc:user-search-result&gt;</c> per hit, <c>/Users/Admin</c> renders its own
+    /// admin-directory rows.
+    /// </summary>
+    /// <remarks>
+    /// Both assertions are on content only the row itself can have produced. A
+    /// <c>NotContain("&lt;vc:")</c> check passes vacuously on an empty-state page, so the
+    /// seeded persona's own name and the match badge are what prove the element bound —
+    /// delete <c>@addTagHelper *, Humans.Users</c> from the page's <c>_ViewImports</c> and
+    /// the row ships as inert literal markup on a green 200.
+    /// </remarks>
+    [HumansFact(Timeout = 120000)]
+    public async Task Both_person_search_surfaces_render_their_result_rows()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var publicSearch = await Client.GetAsync("/Profile/Search?q=Dev", ct);
+        publicSearch.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicHtml = await publicSearch.Content.ReadAsStringAsync(ct);
+
+        publicHtml.Should().Contain("Dev Admin",
+            because: "<vc:user-search-result> must resolve the hit and render the human");
+        publicHtml.Should().Contain("Matched in",
+            because: "Search_MatchedIn is written by the component's own markup and nothing else "
+                   + "on this page emits it");
+        AssertRenderedCleanly(publicHtml, "GET /Profile/Search?q=Dev");
+
+        var adminList = await Client.GetAsync("/Users/Admin", ct);
+        adminList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adminHtml = await adminList.Content.ReadAsStringAsync(ct);
+
+        adminHtml.Should().Contain("Dev Admin",
+            because: "the admin directory rows must render their humans");
+        adminHtml.Should().Contain("Joined",
+            because: "Admin_Joined is on the row's meta line, which only the row markup writes");
+        adminHtml.Should().Contain($"/Users/Admin/{userId}",
+            because: "the detail link used to come from a Func the controller passed the builder; "
+                   + "it is now asp-action=\"AdminDetail\" and must resolve to the same route");
+        AssertRenderedCleanly(adminHtml, "GET /Users/Admin");
+    }
+
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_another_humans_admin_email_page()
     {

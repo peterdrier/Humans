@@ -6,17 +6,17 @@
    Search_MinChars, which Shell's /Profile/Search page renders too — carving one key out of
    that page's four-key message set to claim it would split the set.
 
-   No <vc:> element in either view: the Humans bucket renders through the _HumanSearchResults
-   partial, which lives in Humans.Users since G5 lane 4b-i (nobodies-collective/Humans#866),
-   so its <vc:human> resolves against that section's Views/Shared/_ViewImports rather than
-   this one. Its model, HumanSearchResultViewModel, stays in Humans.UI so this section can
-   still name it. Guarded by SearchPageRenderTests (step 12). *@
+   The Humans bucket renders one <vc:user-search-result> per row — Users' own component,
+   keyed by user id (nobodies-collective/Humans#1062). The orchestrator passes ids and match
+   context and names no Users display field, but the element only binds because of the
+   @addTagHelper below: drop that line and every row ships as inert literal markup on a green
+   200. Guarded by SearchPageRenderTests (step 12). *@
 @using Humans.Search
 @using Humans.Search.Models
 @using Humans.Search.Services.Dtos
 @using Humans.Base
 @using Humans.Base.Extensions
-@using Humans.Base.Models
+@using Humans.Users.Contracts
 @using Microsoft.AspNetCore.Mvc.ViewFeatures
 @* Index.cshtml @injects IConfiguration for the Features:Events flag; Sdk.Razor's implicit
    usings are a subset of Sdk.Web's and do not carry it. *@
@@ -26,3 +26,5 @@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
+@* <vc:user-search-result> is the Users section's own component. *@
+@addTagHelper *, Humans.Users

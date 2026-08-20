@@ -29,8 +29,20 @@
     {
         <div class="alert alert-info">@Localizer["Search_MinChars"]</div>
     }
+    else if (Model.Results.Count == 0)
+    {
+        <div class="alert alert-info">@Localizer["Search_NoResults"]</div>
+    }
     else
     {
-        @await Html.PartialAsync("_HumanSearchResults", Model.Results)
+        <div class="list-group">
+            @foreach (var human in Model.Results)
+            {
+                <vc:user-search-result user-id="@human.UserId"
+                                       match-field="@human.MatchField"
+                                       match-snippet="@human.MatchSnippet"
+                                       matched-email="@human.MatchedEmail" />
+            }
+        </div>
     }
 }

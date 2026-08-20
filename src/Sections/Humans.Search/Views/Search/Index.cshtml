@@ -97,7 +97,15 @@ else
         @if (ShowSection(SearchResultType.Human, Model.HumanCount))
         {
             <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-user me-2"></i>@Localizer["Search_FilterHumans"]</h3>
-            @await Html.PartialAsync("_HumanSearchResults", Model.HumanResults)
+            <div class="list-group">
+                @foreach (var human in Model.HumanResults)
+                {
+                    <vc:user-search-result user-id="@human.UserId"
+                                           match-field="@human.MatchField"
+                                           match-snippet="@human.MatchSnippet"
+                                           matched-email="@human.MatchedEmail" />
+                }
+            </div>
         }
 
         @if (ShowSection(SearchResultType.Team, Model.TeamCount))

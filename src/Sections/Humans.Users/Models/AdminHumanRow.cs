@@ -5,7 +5,11 @@ internal sealed record AdminHumanRow(
     Guid UserId,
     string Email,
     string DisplayName,
-    string? ProfilePictureUrl,
     DateTime CreatedAt,
     DateTime? LastLoginAt,
-    UserState State);
+    UserState State)
+{
+    /// <summary>Status-column label. Read by the sort comparer and by <c>AdminList</c>'s rows.</summary>
+    public string StatusLabel =>
+        State == UserState.DeletePending ? "Delete Pending" : State.ToString();
+}

@@ -49,6 +49,8 @@
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
+    <!-- <vc:user-search-result> (nobodies-collective/Humans#1062). -->
+    <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>

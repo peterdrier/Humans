@@ -22,7 +22,7 @@ anything of Search's, so there is no two-way pair to break with a leaf.
 The things outside the section that mention "Search" are none of them references to this
 project. `_Layout.cshtml` reaches `/Search` through `asp-controller="Search"`, i.e. by
 controller *name* through the route table. `HumanSearchViewComponent` / `<vc:human-search>`,
-`HumanSearchResultViewModel`, `PersonSearchMatcher` and `PersonSearchFields` share the word
+`<vc:user-search-result>`, `PersonSearchMatcher` and `PersonSearchFields` share the word
 and belong to Users/Profiles — `Docs/Search.md` records that naming trap at length.
 
 A folder rather than a `Humans.Search.Contracts` project: folder vs. project is decided by
