@@ -1574,7 +1574,10 @@ Git Bash.)
     (proven: Events kept `EventGuideDbContext` and `event_*` tables).
 11. [ ] Enforcement: **nothing to do in `reforge.surface-score.json`** — sections are
     assembly-derived, so the move re-files the section by renaming its assembly and the config
-    carries no section paths to collapse. Never add a `sections` block:
+    carries no section paths to collapse. Never re-add section **structure** — paths, symbol
+    prefixes, or the interfaces a section owns; a `sections` entry carrying only **policy**
+    (`primaryInfoDto`, a `requires*` override, `grandfatheredDependencies`) is legitimate if the
+    section needs one:
     [`memory/process/reforge-config-carries-policy-only.md`](../../memory/process/reforge-config-carries-policy-only.md).
     Delete the section's `*ArchitectureTests.cs` assertions the assembly boundary now subsumes.
     - **A `[Grandfathered]` attribute *moves with its type*; deleting it is the same mistake as
