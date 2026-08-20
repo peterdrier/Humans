@@ -81,10 +81,6 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // A view component element the section's _ViewImports failed to bind renders as
-            // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
             // element for a type reference; that also renders as inert markup.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
@@ -133,7 +129,6 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().Contain("Back");                                 // Common_Back, from SharedResource
         html.Should().NotContain("TicketTransfer_", "a carved key rendered as its own name");
         html.Should().NotContain("Common_", "a shared key rendered as its own name");
-        html.Should().NotContain("<vc:");
     }
 
     [HumansFact(Timeout = 120000)]
@@ -210,7 +205,6 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().NotContain("<vc:ticket-stub", "Shell must import the Tickets tag helper, not just the namespace");
         html.Should().Contain("Sample Human", "the stub card renders its attendee name");
     }
 

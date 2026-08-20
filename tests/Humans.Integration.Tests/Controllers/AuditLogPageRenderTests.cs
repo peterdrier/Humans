@@ -59,10 +59,6 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
             // because it ships no resource set to assert raw keys against.
             html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
 
-            // A view component element the section's _ViewImports failed to bind renders as
-            // literal <vc:…> markup, which the browser silently drops.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
             // element for a type reference; that also renders as inert markup.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
@@ -133,8 +129,6 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(marker,
                 $"GET {url}: the seeded audit row must reach the page — an unbound <vc:audit-log> renders nothing");
-            html.Should().NotContain("<vc:audit-log",
-                $"GET {url}: the audit history widget must bind, not ship as literal markup");
             html.Should().NotContain("audit-log-view-component",
                 $"GET {url}: a ReSharper-rewritten vc tag is inert markup too");
         }
@@ -176,8 +170,6 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain(marker,
             $"GET {url}: the seeded audit row must reach the panel — an unbound <vc:audit-log> renders nothing");
-        html.Should().NotContain("<vc:audit-log",
-            $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     /// <summary>

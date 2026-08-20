@@ -63,18 +63,18 @@ public class ViewComponentTagHelperBindingTests
 
         var failures = new List<string>();
 
-        foreach (var (path, tag) in callSites)
+        foreach (var (path, tag, line) in callSites)
         {
             if (!components.TryGetValue(tag, out var component))
             {
-                failures.Add($"{path}: <vc:{tag}> does not name any known view component — it can never resolve");
+                failures.Add($"{path}:{line}: <vc:{tag}> does not name any known view component — it can never resolve");
                 continue;
             }
 
             if (!component.IsPublic)
             {
                 failures.Add(
-                    $"{path}: <vc:{tag}> names {component.TypeName}, which is not public — Razor "
+                    $"{path}:{line}: <vc:{tag}> names {component.TypeName}, which is not public — Razor "
                     + "never generates a tag helper call for it, so it ships as inert literal markup");
                 continue;
             }
@@ -82,7 +82,7 @@ public class ViewComponentTagHelperBindingTests
             if (!ImportsAssembly(path, src, component.AssemblyName))
             {
                 failures.Add(
-                    $"{path}: <vc:{tag}> is not covered by an @addTagHelper *, {component.AssemblyName} "
+                    $"{path}:{line}: <vc:{tag}> is not covered by an @addTagHelper *, {component.AssemblyName} "
                     + "directive in its folder chain — it ships as inert literal markup");
             }
         }
@@ -169,14 +169,14 @@ public class ViewComponentTagHelperBindingTests
         @"@\*.*?\*@", RegexOptions.Singleline | RegexOptions.Compiled, TimeSpan.FromSeconds(5));
 
     /// <summary>
-    /// Every distinct <c>&lt;vc:name</c> call site in one view, tag name only. Razor comments
-    /// are stripped first — <c>_ViewImports.cshtml</c> files routinely document a component's
-    /// binding inside a <c>@* ... *@</c> block (e.g. "invoked by name, not a tag helper"), and
-    /// that documentation is not a real call site.
+    /// Every distinct <c>&lt;vc:name</c> call site in one view, tag name plus its 1-based line
+    /// number. Razor comments are stripped first — <c>_ViewImports.cshtml</c> files routinely
+    /// document a component's binding inside a <c>@* ... *@</c> block (e.g. "invoked by name,
+    /// not a tag helper"), and that documentation is not a real call site.
     /// </summary>
-    private static IEnumerable<(string Path, string Tag)> CallSites(string path)
+    private static IEnumerable<(string Path, string Tag, int Line)> CallSites(string path)
     {
-        var text = RazorComment.Replace(File.ReadAllText(path), string.Empty);
+        var text = StripComments(File.ReadAllText(path));
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var index = text.IndexOf(CallSiteMarker, StringComparison.Ordinal);
 
@@ -189,11 +189,22 @@ public class ViewComponentTagHelperBindingTests
 
             var tag = text[start..end];
             if (tag.Length > 0 && seen.Add(tag))
-                yield return (path, tag);
+                yield return (path, tag, LineNumber(text, index));
 
             index = text.IndexOf(CallSiteMarker, end, StringComparison.Ordinal);
         }
     }
+
+    /// <summary>The 1-based line number of <paramref name="index"/> within <paramref name="text"/>.</summary>
+    private static int LineNumber(string text, int index) =>
+        1 + text.AsSpan(0, index).Count('\n');
+
+    /// <summary>
+    /// Strips <c>@* ... *@</c> comments, keeping every newline the comment contained so line
+    /// numbers computed on the result still match the original file.
+    /// </summary>
+    private static string StripComments(string text) =>
+        RazorComment.Replace(text, m => new string('\n', m.Value.Count(c => c == '\n')));
 
     // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
     // Comments are stripped first for the same reason call sites are: several _ViewImports
@@ -215,7 +226,7 @@ public class ViewComponentTagHelperBindingTests
     }
 
     private static string ActiveDirectives(string importsPath) =>
-        RazorComment.Replace(File.ReadAllText(importsPath), string.Empty);
+        StripComments(File.ReadAllText(importsPath));
 
     private static IEnumerable<string> RazorFiles(string srcRoot) =>
         Directory
