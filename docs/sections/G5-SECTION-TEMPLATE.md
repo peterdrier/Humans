@@ -1572,12 +1572,11 @@ Git Bash.)
     `<Section>DbContext` name, which `SectionMigrationsHistory.TableFor` turns into a live
     history-table name — move on schedule unchanged; record the mismatch on #1012 and carry on
     (proven: Events kept `EventGuideDbContext` and `event_*` tables).
-11. [ ] Enforcement: collapse the section's `reforge.surface-score.json` paths to
-    `src/Sections/Humans.<Section>/**` — **if the section has no bucket of its own, retarget the
-    stale path where it sits rather than inventing one**; Scanner's controller was one line in
-    the `Platform` catch-all, and adding a `Scanner` bucket would have been a scoring change on
-    top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
-    the assembly boundary now subsumes.
+11. [ ] Enforcement: **nothing to do in `reforge.surface-score.json`** — sections are
+    assembly-derived, so the move re-files the section by renaming its assembly and the config
+    carries no section paths to collapse. Never add a `sections` block:
+    [`memory/process/reforge-config-carries-policy-only.md`](../../memory/process/reforge-config-carries-policy-only.md).
+    Delete the section's `*ArchitectureTests.cs` assertions the assembly boundary now subsumes.
     - **A `[Grandfathered]` attribute *moves with its type*; deleting it is the same mistake as
       deleting a baseline row.** The template used to say to delete them (⚠️ UNPROVEN — no
       moved section had any until Consent, which has two: `IConsentCacheInvalidator` and
