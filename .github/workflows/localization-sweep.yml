@@ -38,6 +38,15 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Same key as build.yml, so this run reads the cache build.yml maintains
+      # on main rather than keeping one of its own.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - name: Run localization sweep
         env:
           RUN_LOCALIZATION_SWEEP: '1'

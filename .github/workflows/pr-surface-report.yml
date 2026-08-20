@@ -81,11 +81,12 @@ jobs:
           path: reforge-base.json
           key: reforge-base-v1-${{ env.SURFACE_BASE_SHA }}-${{ env.REFORGE_VERSION }}-${{ env.CONFIG_HASH }}
 
+      # Same key as build.yml, so all workflows share one cache entry.
       - name: Cache NuGet packages
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Generate Reforge score delta inputs
