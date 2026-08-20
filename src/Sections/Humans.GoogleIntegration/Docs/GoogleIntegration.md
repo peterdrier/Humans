@@ -41,6 +41,8 @@ One row per permission grant or revocation the sync path applies: `Action` (`Acc
 
 This wing lived in `audit_log` until nobodies-collective/Humans#1083. It was never audit's concern — the columns were nullable on every non-Google row and the render path forced AuditLog to reach into Teams and GoogleIntegration for names. The section that produces the rows now owns them.
 
+`UserId` is nullable because a sync can act on an address no human row claims — an "extra" member being revoked, or a Drive permission on an outside address. Both writers pass it wherever the reconciler knows it, which is what makes `/Monitor/Human/{id}` and the GDPR slice non-empty; the old `audit_log` wing never populated its equivalent, so those views were dead.
+
 ### Google resource entities
 
 `GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.

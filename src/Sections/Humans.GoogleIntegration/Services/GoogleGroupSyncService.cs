@@ -405,6 +405,7 @@ internal sealed class GoogleGroupSyncService(
                     members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
+                    member.UserId,
                     ct);
             }
 
@@ -419,6 +420,7 @@ internal sealed class GoogleGroupSyncService(
                     "MEMBER",
                     GoogleSyncSource.ScheduledSync,
                     success: true,
+                    userId: member.UserId,
                     ct: ct);
             }
         }
@@ -451,6 +453,7 @@ internal sealed class GoogleGroupSyncService(
                     plan.Members,
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
+                    member.UserId,
                     ct);
             }
 
@@ -465,6 +468,7 @@ internal sealed class GoogleGroupSyncService(
                     "MEMBER",
                     GoogleSyncSource.ScheduledSync,
                     success: true,
+                    userId: member.UserId,
                     ct: ct);
             }
 
@@ -483,6 +487,7 @@ internal sealed class GoogleGroupSyncService(
         List<MemberSyncStatus> members,
         bool scheduleRetryOnFailure,
         int nextRetryAttempt,
+        Guid? userId,
         CancellationToken ct)
     {
         logger.LogWarning(
@@ -503,6 +508,7 @@ internal sealed class GoogleGroupSyncService(
                 GoogleSyncSource.ScheduledSync,
                 success: false,
                 errorMessage: error,
+                userId: userId,
                 ct: ct);
         }
 

@@ -101,12 +101,15 @@ Repository: `IGoogleSyncLogRepository`.
 |-------|-----|
 | GoogleSyncLog | R/W |
 
-Implements the internal write side (`IGoogleSyncLogService`) and the public
-read side (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`. Writes are
-best-effort — a repository failure is logged at Error and swallowed so a sync
-never fails on its own bookkeeping. Cross-section calls: `ITeamResourceService`
-(resource display names) and `IUserServiceRead.GetMergedSourceIdsAsync`
-(chain-follow merge tombstones on per-user reads). No cache.
+Implements the internal write side (`IGoogleSyncLogService`), the public read
+side (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
+`IUserDataContributor` for the GDPR export (design-rules §8a — the table holds
+`UserId`/`UserEmail`). Writes are best-effort — a repository failure is logged
+at Error and swallowed so a sync never fails on its own bookkeeping. The
+contributor read is uncapped, unlike the 200-row display reads. Cross-section
+calls: `ITeamResourceService` (resource display names) and
+`IUserServiceRead.GetMergedSourceIdsAsync` (chain-follow merge tombstones on
+per-user reads). No cache.
 
 ### TeamResourceService (Scoped)
 

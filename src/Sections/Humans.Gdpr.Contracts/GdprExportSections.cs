@@ -51,4 +51,5 @@ public static class GdprExportSections
     public const string TeamEarlyEntry = "TeamEarlyEntry";
     public const string SurveyResponses = "SurveyResponses";
     public const string GateScans = "GateScans";
+    public const string GoogleSyncLog = "GoogleSyncLog";
 }

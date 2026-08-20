@@ -17,4 +17,8 @@ internal interface IGoogleSyncLogRepository : IRepository
     /// <summary>Most recent entries attributed to any of <paramref name="userIds"/>.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>Every entry for the GDPR export — uncapped, unlike the display reads.</summary>
+    Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }

@@ -46,4 +46,18 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .Take(MaxRows)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return [];
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleSyncLog
+            .AsNoTracking()
+            .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))
+            .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok export ordering
+            .ToListAsync(ct);
+    }
 }

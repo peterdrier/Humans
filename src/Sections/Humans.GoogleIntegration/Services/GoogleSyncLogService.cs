@@ -1,4 +1,5 @@
 using Humans.Base.Enums;
+using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Domain;
@@ -7,13 +8,14 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>Write and read sides of <c>google_sync_log</c>; one class, two interfaces.</summary>
+/// <summary>Write and read sides of <c>google_sync_log</c>; one class, three interfaces.</summary>
 internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
     ITeamResourceService teamResourceService,
     IUserServiceRead userService,
     IClock clock,
-    ILogger<GoogleSyncLogService> logger) : IGoogleSyncLogService, IGoogleSyncLogViewer
+    ILogger<GoogleSyncLogService> logger)
+    : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
 {
     public async Task LogAsync(
         GoogleSyncLogAction action,
@@ -70,13 +72,25 @@ internal sealed class GoogleSyncLogService(
     public async Task<IReadOnlyList<GoogleSyncLogView>> GetForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Chain-follow merge tombstones so a merged human keeps their trail.
+        var entries = await repo.GetByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
+        return await ToViewsAsync(entries, ct);
+    }
+
+    /// <summary>GDPR Article 15 slice — every sync row attributed to this human, uncapped.</summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var entries = await repo.GetAllByUserIdsContributorAsync(
+            await UserIdsWithMergedSourcesAsync(userId, ct), ct);
+        return [new UserDataSlice(GdprExportSections.GoogleSyncLog, await ToViewsAsync(entries, ct))];
+    }
+
+    /// <summary>Chain-follows merge tombstones so a merged human keeps their trail.</summary>
+    private async Task<List<Guid>> UserIdsWithMergedSourcesAsync(Guid userId, CancellationToken ct)
+    {
         var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
         var ids = new List<Guid>(sourceIds.Count + 1) { userId };
         ids.AddRange(sourceIds);
-
-        var entries = await repo.GetByUserIdsAsync(ids, ct);
-        return await ToViewsAsync(entries, ct);
+        return ids;
     }
 
     private async Task<IReadOnlyList<GoogleSyncLogView>> ToViewsAsync(

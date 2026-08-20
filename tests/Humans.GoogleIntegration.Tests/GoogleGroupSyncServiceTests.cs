@@ -638,6 +638,35 @@ public sealed class GoogleGroupSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_Grant_RecordsTheMembersUserIdInTheSyncLog()
+    {
+        var bob = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", bob));
+        StubUsers((bob, "Bob", "bob@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1");
+
+        _membershipClient.CreateMembershipAsync("group-1", "bob@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // Without the id the row is invisible to /Monitor/Human/{id} and to the GDPR export.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "bob@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: bob,
+            ct: Arg.Any<CancellationToken>());
+    }
+
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
         sources,
         _membershipClient,
