@@ -276,10 +276,16 @@ jobs:
           echo "container=$PG_CONTAINER" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
-        run: dotnet restore Humans.slnx
+        run: dotnet restore src/Humans.Web
 
       - name: Build (Release)
-        run: dotnet build Humans.slnx --no-restore --configuration Release
+        # `dotnet ef database update --no-build` only needs the startup project
+        # and the migration projects built; Humans.Web's transitive closure
+        # covers every section project and skips the ~50 test projects.
+        # Analyzers off: the GitHub-hosted build job already enforces them on
+        # the same commit. -maxcpucount:4 caps MSBuild's node count so this
+        # job doesn't peg the dev box the runners live on.
+        run: dotnet build src/Humans.Web --no-restore --configuration Release -p:RunAnalyzersDuringBuild=false -maxcpucount:4
 
       - name: Install dotnet-ef
         run: |
