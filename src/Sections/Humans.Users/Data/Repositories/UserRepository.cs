@@ -78,6 +78,7 @@ internal sealed partial class UserRepository : IUserRepository
 
     // Writes — User
 
+    /// <summary>Keeps the legacy fallback column synced to BurnerName so merge/purge/GDPR labels stay accurate if the Profile is later gone.</summary>
     public async Task<bool> UpdateDisplayNameAsync(
         Guid userId, string displayName, CancellationToken ct = default)
     {

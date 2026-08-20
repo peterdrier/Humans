@@ -53,8 +53,8 @@
   <data name="Container_FieldDescription" xml:space="preserve">
     <value>Descrizione</value>
   </data>
-  <data name="Container_FieldMainImage" xml:space="preserve">
-    <value>Immagine principale (JPEG, PNG o WebP — max 10 MB)</value>
+  <data name="Container_FieldImages" xml:space="preserve">
+    <value>Immagini — fino a 5 (JPEG, PNG o WebP — max 10 MB ciascuna)</value>
   </data>
   <data name="Container_FieldName" xml:space="preserve">
     <value>Nome</value>
@@ -80,8 +80,8 @@
   <data name="Container_PlacementNotes_Title" xml:space="preserve">
     <value>Note di posizionamento</value>
   </data>
-  <data name="Container_RemoveMainImage_Label" xml:space="preserve">
-    <value>Rimuovi immagine principale</value>
+  <data name="Container_RemoveImage_Label" xml:space="preserve">
+    <value>Rimuovi</value>
   </data>
   <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
     <value>Rimuovi immagine di posizionamento</value>

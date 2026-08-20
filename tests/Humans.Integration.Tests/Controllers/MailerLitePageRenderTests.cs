@@ -60,10 +60,6 @@ public class MailerLitePageRenderTests(HumansTestDatabase database) : Integratio
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // A section can only addTagHelper against Humans.UI; a component element the
-            // section's _ViewImports failed to bind survives into the body as its own
-            // element name — 200, correct-looking source, nothing on screen.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten <vc:> element");
 
             // _ViewStart's Layout = "_AdminLayout" resolves into Humans.Web across

@@ -230,6 +230,67 @@ def metrics_by_name(score: dict) -> dict[str, int]:
     return {label: metric_at(score, path) for label, path in METRIC_ROWS}
 
 
+SECTION_METRIC_ROWS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("LOC", ("locProd",)),
+    ("files", ("files",)),
+    ("classes", ("classes",)),
+    ("cognitive p95", ("cognitive", "p95")),
+)
+
+
+def group_metrics_by_name(score: dict) -> dict[str, dict[str, int]]:
+    return {
+        str(group["name"]): {label: metric_at(group, path) for label, path in SECTION_METRIC_ROWS}
+        for group in score.get("groups", [])
+        if isinstance(group.get("metrics"), dict)
+    }
+
+
+def section_metrics_delta_markdown(base_score: dict, head_score: dict) -> list[str]:
+    """Per-section LOC/complexity deltas. Degrades to a note when either side's reforge JSON has
+    no per-group `metrics` block (a reforge older than the one that added it)."""
+    base_by_section = group_metrics_by_name(base_score)
+    head_by_section = group_metrics_by_name(head_score)
+    heading = "#### Section Size & Complexity Deltas"
+    if not base_by_section or not head_by_section:
+        return [heading, "", "Not available - reforge JSON has no per-section `metrics` block.", ""]
+
+    labels = [label for label, _ in SECTION_METRIC_ROWS]
+    rows: list[tuple[str, list[int]]] = []
+    for name in sorted(set(base_by_section) | set(head_by_section)):
+        base_metrics = base_by_section.get(name, {})
+        head_metrics = head_by_section.get(name, {})
+        deltas = [int(head_metrics.get(label) or 0) - int(base_metrics.get(label) or 0) for label in labels]
+        if any(deltas):
+            rows.append((name, deltas))
+
+    if not rows:
+        return [heading, "", "No section size/complexity changes.", ""]
+
+    lines = [
+        heading,
+        "",
+        "| section | " + " | ".join(f"{label} delta" for label in labels) + " |",
+        "|---|" + "---:|" * len(labels),
+    ]
+    lines.extend(
+        f"| `{md_safe(name)}` | " + " | ".join(format_delta(d) for d in deltas) + " |"
+        for name, deltas in rows
+    )
+    # The corpus-wide rollup, not a sum of the rows above: some code may not attribute to any
+    # group, and a p95 doesn't compose across sections by addition. Labeled accordingly.
+    corpus_deltas = [metric_at(head_score, path) - metric_at(base_score, path) for _, path in SECTION_METRIC_ROWS]
+    lines.append("| **Corpus** | " + " | ".join(format_delta(d) for d in corpus_deltas) + " |")
+    lines.append("")
+    lines.append(
+        "_`Corpus` is the solution-wide rollup (same source as Corpus Size & Complexity below), "
+        "not a sum of the section rows above - `cognitive p95` in particular doesn't compose "
+        "across sections._"
+    )
+    lines.append("")
+    return lines
+
+
 def write_surface_by_section(score: dict) -> dict[str, set[str]]:
     by_section = (score.get("publicWriteSurface") or {}).get("bySection") or {}
     return {str(name): set(map(str, ifaces)) for name, ifaces in by_section.items()}
@@ -358,6 +419,8 @@ def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> 
         sections.append("")
     else:
         sections.extend(["#### Section Deltas", "", "No section score changes.", ""])
+
+    sections.extend(section_metrics_delta_markdown(base_score, head_score))
 
     rule_rows = compare_number_maps(base_score.get("byRule", {}), head_score.get("byRule", {}))
     if rule_rows:

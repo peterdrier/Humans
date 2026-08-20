@@ -65,7 +65,53 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
             ctx.ContainerPlacements.RemoveRange(placements);
         }
 
+        // container_images cascades at the DB layer; remove explicitly so the
+        // in-memory provider behaves the same.
+        var images = await ctx.ContainerImages
+            .Where(i => i.ContainerId == id)
+            .ToListAsync(ct);
+        if (images.Count > 0)
+        {
+            ctx.ContainerImages.RemoveRange(images);
+        }
+
         ctx.Containers.Remove(container);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ContainerImage>> GetImagesAsync(
+        IReadOnlyCollection<Guid> containerIds, CancellationToken ct = default)
+    {
+        if (containerIds.Count == 0) return [];
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.ContainerImages
+            .AsNoTracking()
+            .Where(i => containerIds.Contains(i.ContainerId))
+            .ToListAsync(ct);
+    }
+
+    public async Task AddImagesAsync(IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default)
+    {
+        if (images.Count == 0) return;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.ContainerImages.AddRange(images);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteImagesAsync(
+        Guid containerId, IReadOnlyCollection<Guid> imageIds, CancellationToken ct = default)
+    {
+        if (imageIds.Count == 0) return;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var images = await ctx.ContainerImages
+            .Where(i => i.ContainerId == containerId && imageIds.Contains(i.Id))
+            .ToListAsync(ct);
+        if (images.Count == 0) return;
+
+        ctx.ContainerImages.RemoveRange(images);
         await ctx.SaveChangesAsync(ct);
     }
 

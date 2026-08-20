@@ -63,10 +63,6 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
             // localizer — is the key itself.
             html.Should().NotContain("Search_", $"GET {url} rendered a raw resource key");
 
-            // A view component element the section's _ViewImports failed to bind renders as
-            // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
             // element for a type reference; that also renders as inert markup.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");

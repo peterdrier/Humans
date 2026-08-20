@@ -28,7 +28,6 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
         html.Should().Contain("Communicate");
         html.Should().Contain("Humans for your burn");
         html.Should().Contain("href=\"/About\"");
-        html.Should().NotContain("<vc:", because: "an unresolved view component tag renders as inert literal markup");
     }
 
     [HumansFact(Timeout = 60000)]

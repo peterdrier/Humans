@@ -20,8 +20,9 @@ public class ContainerViewModel
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? ImageUrl { get; set; }
-    public string? ImageFileName { get; set; }
+
+    /// <summary>Gallery in display order; carries <see cref="ContainerImageDto"/> straight through.</summary>
+    public IReadOnlyList<ContainerImageDto> Images { get; set; } = [];
 }
 
 public class ContainerPlacementViewModel
@@ -54,15 +55,18 @@ public class ContainerFormModel
     [StringLength(2000)]
     public string? Description { get; set; }
 
-    public IFormFile? MainImage { get; set; }
-    public bool RemoveMainImage { get; set; }
+    public List<IFormFile> Images { get; set; } = [];
+
+    /// <summary>Ids of gallery images to delete; <see cref="Guid.Empty"/> is the legacy single image.</summary>
+    public List<Guid> RemoveImageIds { get; set; } = [];
 
     public ContainerData ToContainerData(Guid campId) => new(
         CampId: campId,
         Name: Name,
         Description: Description,
-        MainImage: MainImage is { Length: > 0 }
-            ? new ContainerImageUpload(MainImage.OpenReadStream(), MainImage.ContentType, MainImage.FileName, MainImage.Length)
-            : null,
-        RemoveMainImage: RemoveMainImage);
+        NewImages: Images
+            .Where(f => f.Length > 0)
+            .Select(f => new ContainerImageUpload(f.OpenReadStream(), f.ContentType, f.FileName, f.Length))
+            .ToList(),
+        RemoveImageIds: RemoveImageIds);
 }
