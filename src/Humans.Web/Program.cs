@@ -736,6 +736,12 @@ app.UseMiddleware<UserActivityTrackingMiddleware>();
 // after the response is produced; only text/html responses are counted.
 app.UseMiddleware<ClientStatsMiddleware>();
 
+// Dev-loop guard, not a runtime safety net — never Production/Testing. See #1055.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    app.UseMiddleware<ViewComponentTagSurvivalMiddleware>();
+}
+
 app.UseAuthorization();
 
 // Before MVC runs: a malformed TempData cookie throws an unloggable-context
