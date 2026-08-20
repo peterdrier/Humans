@@ -1,8 +1,8 @@
 using AwesomeAssertions;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
-namespace Humans.Mailer.Tests.Services;
+namespace Humans.MailerLite.Tests.Services;
 
 public class ImportResultTests
 {

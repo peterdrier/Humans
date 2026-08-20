@@ -1,7 +1,7 @@
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// Base for the per-period "Has Shift" audiences. Membership is every human

@@ -1,8 +1,8 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Mailer.Services;
+using Humans.MailerLite.Services;
 
-namespace Humans.Mailer.Tests.Architecture;
+namespace Humans.MailerLite.Tests.Architecture;
 
 public class MailerArchitectureTests
 {
@@ -40,7 +40,7 @@ public class MailerArchitectureTests
     public void IMailerLiteService_LivesInMailerNamespace()
     {
         typeof(IMailerLiteService).Namespace
-            .Should().Be("Humans.Mailer.Services");
+            .Should().Be("Humans.MailerLite.Services");
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public class MailerArchitectureTests
     [HumansFact]
     public void MailerAudienceSyncService_LivesInSectionServicesNamespace()
     {
-        typeof(MailerAudienceSyncService).Namespace.Should().Be("Humans.Mailer.Services");
+        typeof(MailerAudienceSyncService).Namespace.Should().Be("Humans.MailerLite.Services");
     }
 
     private static IReadOnlyList<IMailerAudience> AudienceInstances()

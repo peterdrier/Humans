@@ -1,7 +1,7 @@
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// "Humans - Has Shift - Setup" — humans with at least one Pending/Confirmed

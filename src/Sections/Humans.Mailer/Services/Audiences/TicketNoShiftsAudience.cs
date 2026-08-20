@@ -2,7 +2,7 @@ using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// "Humans - Ticket no Shifts" — humans with a Valid/CheckedIn matched

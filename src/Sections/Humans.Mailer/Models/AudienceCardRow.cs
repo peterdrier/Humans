@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Mailer.Models;
+namespace Humans.MailerLite.Models;
 
 internal sealed record AudienceCardRow(
     string Key,

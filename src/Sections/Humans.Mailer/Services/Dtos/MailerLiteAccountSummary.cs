@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 /// <summary>
 /// Global per-status totals. Derived by fan-out: one

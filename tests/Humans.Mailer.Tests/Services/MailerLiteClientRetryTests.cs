@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using AwesomeAssertions;
-using Humans.Mailer.Services.MailerLite;
+using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Humans.Mailer.Tests.Services;
+namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteClientRetryTests
 {

@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Contracts;
+namespace Humans.MailerLite.Contracts;
 
 /// <summary>
 /// The audience push <c>MailerAudienceSyncJob</c> drives. Everything the sync needs — the

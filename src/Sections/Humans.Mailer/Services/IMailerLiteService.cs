@@ -1,9 +1,9 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// MailerLite client surface. Reads cover account summary, groups, and

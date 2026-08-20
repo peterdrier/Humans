@@ -923,7 +923,7 @@ Git Bash.)
        reference `Humans.Infrastructure`, because that is where the file was.
        `MailerLiteClient` is a `Humans.Infrastructure/Services` file whose every dependency is
        either the ASP.NET shared framework (`IHttpClientFactory`) or `Humans.Application`
-       (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
+       (`Extensions`, `Threading`), so `Humans.MailerLite` took **no `Humans.Infrastructure`
        reference at all** — Scanner's table-less shape, reached by a section that had code in
        Base's service folder on the way in (proven: Mailer).
      - **…and a third disposition, when the connector is *replaceable*: give it its own

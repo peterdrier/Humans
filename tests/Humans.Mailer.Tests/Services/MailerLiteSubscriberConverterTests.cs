@@ -1,10 +1,10 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Mailer.Services.Dtos;
-using Humans.Mailer.Services.MailerLite;
+using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Services.MailerLite;
 using NodaTime;
 
-namespace Humans.Mailer.Tests.Services;
+namespace Humans.MailerLite.Tests.Services;
 
 /// <summary>
 /// Pins <see cref="MailerLiteSubscriberConverter"/> against a verbatim

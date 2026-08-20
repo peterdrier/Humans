@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 /// <summary>
 /// Read-only projection of a MailerLite subscriber row. Excludes engagement

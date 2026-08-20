@@ -1,5 +1,5 @@
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Integration.Tests.Infrastructure;

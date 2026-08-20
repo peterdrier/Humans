@@ -1,9 +1,9 @@
 using Humans.Base.Interfaces;
-using Humans.Mailer.Jobs;
+using Humans.MailerLite.Jobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Humans.Mailer;
+namespace Humans.MailerLite;
 
 /// <summary>Mailer's recurring jobs. Discovered by Shell — nothing names it, so it needs no section prefix.</summary>
 internal sealed class SectionJobs : ISectionJobs

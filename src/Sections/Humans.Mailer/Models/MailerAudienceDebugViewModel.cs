@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Mailer.Models;
+namespace Humans.MailerLite.Models;
 
 /// <summary>
 /// Per-audience debug snapshot — five tables comparing Humans-side audience

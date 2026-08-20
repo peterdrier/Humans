@@ -1,9 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
-namespace Humans.Mailer.Services.MailerLite;
+namespace Humans.MailerLite.Services.MailerLite;
 
 /// <summary>
 /// Maps a v2 MailerLite subscriber JSON object onto our positional record.

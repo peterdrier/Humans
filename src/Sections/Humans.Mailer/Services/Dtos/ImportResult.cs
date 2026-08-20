@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 internal sealed record ImportResult(
     int TotalPulled,

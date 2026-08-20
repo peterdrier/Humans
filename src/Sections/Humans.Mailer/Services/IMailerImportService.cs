@@ -1,8 +1,8 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Splits import into a plan-build step and an apply step. Future

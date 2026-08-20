@@ -1,6 +1,7 @@
+using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// Base for all code-defined audiences. A subclass computes its raw member set via

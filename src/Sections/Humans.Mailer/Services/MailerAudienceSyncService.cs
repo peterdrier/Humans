@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
-using Humans.Mailer.Contracts;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Orchestrates audience computation, ML state diffing, and the apply step.

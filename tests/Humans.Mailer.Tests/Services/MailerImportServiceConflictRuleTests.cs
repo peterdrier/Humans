@@ -1,13 +1,13 @@
 using Humans.AuditLog.Contracts;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.Mailer.Services;
+using Humans.MailerLite.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-namespace Humans.Mailer.Tests.Services;
+namespace Humans.MailerLite.Tests.Services;
 
 public class MailerImportServiceConflictRuleTests
 {

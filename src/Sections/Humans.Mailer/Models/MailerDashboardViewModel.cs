@@ -1,7 +1,7 @@
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using NodaTime;
 
-namespace Humans.Mailer.Models;
+namespace Humans.MailerLite.Models;
 
 internal sealed record MailerDashboardViewModel(
     MailerLiteAccountSummary? MlSummary,

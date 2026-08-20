@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// A code-defined mailing list. Each implementation computes a set of Humans

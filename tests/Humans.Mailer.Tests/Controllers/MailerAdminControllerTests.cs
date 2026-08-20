@@ -2,11 +2,12 @@ using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.Mailer.Controllers;
-using Humans.Mailer.Models;
+using Humans.MailerLite.Controllers;
+using Humans.MailerLite.Models;
+using Humans.MailerLite.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -16,7 +17,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
 
-namespace Humans.Mailer.Tests.Controllers;
+namespace Humans.MailerLite.Tests.Controllers;
 
 /// <summary>
 /// Verifies the <see cref="MailerAdminController.Commit"/> action:

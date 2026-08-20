@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
-using Humans.Mailer.Services.MailerLite;
+using Humans.MailerLite.Services.MailerLite;
 
-namespace Humans.Mailer.Tests.Services;
+namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteClientCacheTests
 {

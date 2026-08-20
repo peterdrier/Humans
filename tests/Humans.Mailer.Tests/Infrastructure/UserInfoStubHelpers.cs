@@ -1,7 +1,7 @@
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Tests.Infrastructure;
+namespace Humans.MailerLite.Tests.Infrastructure;
 
 /// <summary>
 /// The two pure <see cref="UserInfo"/> projections the audience tests use, copied out of

@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Mailer/**
+  src/Sections/Humans.MailerLite/**
 -->
 
 # Mailer Audience Debug Screen
@@ -65,5 +65,5 @@ Bottom-right of the page; JS `confirm()` with the two counts. POSTs to the exist
 
 ## Related
 
-- [`src/Sections/Humans.Mailer/Docs/Mailer.md`](../Mailer.md) — section invariants, including the new route.
+- [`src/Sections/Humans.MailerLite/Docs/Mailer.md`](../Mailer.md) — section invariants, including the new route.
 - Issue [nobodies-collective/Humans#773](https://github.com/nobodies-collective/Humans/issues/773) — original spec.

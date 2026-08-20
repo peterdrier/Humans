@@ -6,7 +6,7 @@ namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
 /// Renders every Mailer page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Mailer</c>
+/// check for the section's move into <c>src/Sections/Humans.MailerLite</c>
 /// (nobodies-collective/Humans#866, G5).
 /// </summary>
 /// <remarks>

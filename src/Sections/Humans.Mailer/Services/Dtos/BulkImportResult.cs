@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 /// <summary>
 /// Aggregated outcome of a bulk import call (or chain of chunked calls) that

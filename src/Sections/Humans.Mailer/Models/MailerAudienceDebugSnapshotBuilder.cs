@@ -1,9 +1,9 @@
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
-using NodaTime;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
+using NodaTime;
 
-namespace Humans.Mailer.Models;
+namespace Humans.MailerLite.Models;
 
 /// <summary>
 /// Builds the unpaged debug snapshot for a single audience by combining:

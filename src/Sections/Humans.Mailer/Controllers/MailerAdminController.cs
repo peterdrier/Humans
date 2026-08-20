@@ -1,16 +1,17 @@
-using Humans.Base.Controllers;
 using System.Net;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
-using Humans.Users.Contracts;
 using Humans.Base.Authorization;
-using Humans.Mailer.Models;
+using Humans.Base.Controllers;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Models;
+using Humans.MailerLite.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Mailer.Controllers;
+namespace Humans.MailerLite.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Mailer/Admin")]

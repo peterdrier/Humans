@@ -1,6 +1,6 @@
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// "Humans - Marketing" — humans who have explicitly opted in to the Marketing

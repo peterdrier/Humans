@@ -1,9 +1,10 @@
 using Humans.AuditLog.Contracts;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using NodaTime;
 
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 internal sealed class MailerImportService(
     IMailerLiteService ml,

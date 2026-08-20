@@ -1,7 +1,7 @@
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Services.Audiences;
+namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
 /// "Humans - Has Ticket" — humans with a Valid/CheckedIn matched ticket

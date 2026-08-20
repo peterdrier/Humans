@@ -1,14 +1,14 @@
 using AwesomeAssertions;
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Dtos;
-using Humans.Mailer.Models;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Tests.Models;
+namespace Humans.MailerLite.Tests.Models;
 
 /// <summary>
 /// Acceptance criteria #5 / #7: §5 pairing surfaces non-primary subscribers

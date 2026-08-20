@@ -1,8 +1,8 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Orchestrates pulling audience definitions, diffing against ML state, and

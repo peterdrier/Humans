@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 /// <summary>
 /// The classification of one ML subscriber after the matching ladder and the

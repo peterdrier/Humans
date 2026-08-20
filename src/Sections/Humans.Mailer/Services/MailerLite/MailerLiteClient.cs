@@ -5,11 +5,11 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
-using Humans.Mailer.Services.Dtos;
+using Humans.MailerLite.Services.Dtos;
 using Humans.Base.Threading;
 using NodaTime;
 
-namespace Humans.Mailer.Services.MailerLite;
+namespace Humans.MailerLite.Services.MailerLite;
 
 /// <summary>
 /// Caching MailerLite client (Singleton). Writes are restricted to groups whose

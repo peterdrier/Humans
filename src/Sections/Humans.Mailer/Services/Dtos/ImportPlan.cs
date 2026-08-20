@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services.Dtos;
+namespace Humans.MailerLite.Services.Dtos;
 
 internal sealed record ImportPlan(
     IReadOnlyList<SubscriberDecision> Decisions,

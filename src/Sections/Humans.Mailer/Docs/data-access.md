@@ -2,7 +2,7 @@
 
 ## Mailer
 
-Folder: `src/Sections/Humans.Mailer/Services/`. No owned DB tables —
+Folder: `src/Sections/Humans.MailerLite/Services/`. No owned DB tables —
 MailerLite is the external system; classifier writes through other
 sections' services.
 

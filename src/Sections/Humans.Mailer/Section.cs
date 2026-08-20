@@ -1,15 +1,16 @@
 using System.Net.Http.Headers;
 using Humans.Base.Interfaces;
-using Humans.Mailer.Contracts;
-using Humans.Mailer.Jobs;
-using Humans.Mailer.Services;
-using Humans.Mailer.Services.Audiences;
-using Humans.Mailer.Services.MailerLite;
+using Humans.MailerLite.Jobs;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.MailerLite;
+using Humans.MailerLite.Contracts;
+using Humans.MailerLite.Services;
+using Humans.MailerLite.Services.Audiences;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace Humans.Mailer;
+namespace Humans.MailerLite;
 
 /// <summary>
 /// Mailer's DI entry point, at the project root by convention. Discovered by Shell —

@@ -1,8 +1,8 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Mailer.Contracts;
+using Humans.MailerLite.Contracts;
 
-namespace Humans.Mailer.Jobs;
+namespace Humans.MailerLite.Jobs;
 
 /// <summary>
 /// Hangfire recurring job that runs <see cref="IMailerAudienceSync.SyncAllAudiencesAsync"/>

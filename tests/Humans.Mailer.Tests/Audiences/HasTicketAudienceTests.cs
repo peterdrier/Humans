@@ -1,11 +1,11 @@
 using AwesomeAssertions;
+using Humans.MailerLite.Services.Audiences;
 using Humans.Tickets.Contracts;
-using Humans.Mailer.Services.Audiences;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Mailer.Tests.Audiences;
+namespace Humans.MailerLite.Tests.Audiences;
 
 public class HasTicketAudienceTests
 {

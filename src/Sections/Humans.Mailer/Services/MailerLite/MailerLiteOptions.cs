@@ -1,4 +1,4 @@
-namespace Humans.Mailer.Services;
+namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// MailerLite client configuration. Bound from <c>MailerLite:*</c> in

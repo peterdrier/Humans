@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
 using NodaTime;
 
-namespace Humans.Mailer.Services.MailerLite;
+namespace Humans.MailerLite.Services.MailerLite;
 
 /// <summary>
 /// JSON converter for MailerLite timestamp fields. Format is
