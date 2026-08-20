@@ -107,6 +107,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`nsubstitute-no-nested-substitute-factories`](code/nsubstitute-no-nested-substitute-factories.md) — a helper that creates and configures an NSubstitute mock must not be called inline as the argument of another `.Returns(...)` — capture to a local first
 - [`profiles-section-plural`](code/profiles-section-plural.md) — `Humans.*.Services.Profiles` (plural); singular collides with the `Profile` entity
 - [`razor-script-src-at-escape`](code/razor-script-src-at-escape.md) — in `<script src>` URLs, use `&#64;` for npm scopes (`@turf` etc.); `@@` gets mangled because `NonceTagHelper` claims every `<script>`
+- [`resource-key-prefix-matches-section`](code/resource-key-prefix-matches-section.md) — a new resource key is prefixed with its section's name (`Users_`, `Tickets_`); existing keys are not backfilled, and `/section-doctor` carries the cleanup
 - [`sanitized-markdown-rendering`](code/sanitized-markdown-rendering.md) — `@Html.SanitizedMarkdown(...)`; no inline `HtmlSanitizer`/`Markdig.Markdown.ToHtml`
 - [`search-endpoint-response-shape`](code/search-endpoint-response-shape.md) — search/autocomplete endpoints return typed DTOs/records, not anonymous objects
 - [`service-test-harness`](code/service-test-harness.md) — service tests in `Humans.Application.Tests` inherit `ServiceTestHarness` (Db, DbFactory, Clock, Cache, NewDbBackedUserService, common Seed helpers); drop hand-rolled per-class scaffolding

@@ -310,6 +310,13 @@ Git Bash.)
    every string in the set degrades to its key at runtime. The boot diagnostic needs no
    per-section edit, **but only if `<Section>Resource` is `public`** — discovery reads
    `GetExportedTypes()` and skips an `internal` marker in silence.
+   - **A key you *write* is prefixed with the section name; a key you *move* keeps its name.**
+     New keys are `<Section>_…` — `Users_`, `Tickets_`, `CityPlanning_`
+     (`memory/code/resource-key-prefix-matches-section.md`). A carve is a move, not a rename:
+     renaming in flight touches six language files and every call site, and a missed one renders
+     raw with no error. Carry the old prefixes over and let the backlog show up in
+     `/section-doctor`'s conformance thread (`resource-key-prefix`), which reports it per section
+     and never backfills as a side effect.
    - **Carve the `.resx` block-aware, not line-by-line.** `SharedResource.resx` writes each entry
      on one line; the five translations do **not** — theirs are three lines
      (`<data …>` / `<value>…</value>` / `</data>`). A line-based filter that matches the opening
