@@ -76,13 +76,13 @@ jobs:
           echo "CONFIG_HASH=$CONFIG_HASH" >> "$GITHUB_ENV"
 
       - name: Restore cached base score
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: reforge-base.json
           key: reforge-base-v1-${{ env.SURFACE_BASE_SHA }}-${{ env.REFORGE_VERSION }}-${{ env.CONFIG_HASH }}
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
