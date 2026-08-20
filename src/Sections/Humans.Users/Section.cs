@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Admin;
 using Humans.Base.Interfaces.Caching;
 using Humans.Application.Services.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
@@ -30,12 +29,12 @@ namespace Humans.Users;
 /// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
 /// </para>
 /// <para>
-/// <c>IDashboardService</c> is gone entirely — the member dashboard's content is
-/// section-contributed chrome now (nobodies-collective/Humans#1091). <c>IAdminDashboardService</c>
-/// sat in Shell's <c>InfrastructureServiceCollectionExtensions</c> for the same "aggregates every
-/// section, owns no table" reason <c>IDashboardService</c> did, but #1091's Shell-thinning pass
-/// moved its implementation back here — the interface itself sits on
-/// <c>Humans.Base.Interfaces.Admin</c>, following <c>IAdminDatabaseDiagnosticsService</c>'s shape.
+/// <c>IDashboardService</c> and <c>IAdminDashboardService</c> are both gone entirely — the
+/// member dashboard's content and the admin dashboard's tiles are section-contributed chrome
+/// now (nobodies-collective/Humans#1091). The admin-dashboard aggregator's pieces scattered to
+/// their owning sections: the tier-applications card to Governance, the preferred-language
+/// card and audience-segmentation diagnostic stayed here (<c>IUsersAudienceService</c>), and
+/// the Venn/UpSet set-membership card to Debug.
 /// </para>
 /// <para>
 /// The <c>CachingUserService</c> block is copied as-is and is deliberately not tidied: one
@@ -163,9 +162,8 @@ public sealed class Section : ISection
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
 
-        // Admin dashboard aggregator — reads every section's own services and owns no
-        // table, but the interface (Humans.Base.Interfaces.Admin) needed a concrete home;
-        // it landed here rather than staying in Shell (nobodies-collective/Humans#1091).
-        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        // Audience-segmentation diagnostic for UsersAdminController.Audience — split off the
+        // deleted admin-dashboard aggregator at nobodies-collective/Humans#1091.
+        services.AddScoped<IUsersAudienceService, UsersAudienceService>();
     }
 }

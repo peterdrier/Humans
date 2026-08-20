@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Base.Interfaces.Admin;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;
@@ -36,7 +35,7 @@ internal sealed class UsersAdminController(
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IAuditLogService auditLogService,
-    IAdminDashboardService adminDashboardService,
+    IUsersAudienceService audienceService,
     IAccountDeletionService accountDeletionService,
     IWebHostEnvironment environment,
     IClock clock,
@@ -368,7 +367,7 @@ internal sealed class UsersAdminController(
     {
         try
         {
-            var segmentation = await adminDashboardService.GetAudienceSegmentationAsync(year, ct);
+            var segmentation = await audienceService.GetAudienceSegmentationAsync(year, ct);
 
             var model = new AudienceSegmentationViewModel
             {

@@ -1,0 +1,25 @@
+@model IReadOnlyList<PreferredLanguageCount>
+@{
+    var totalActive = Model.Sum(l => l.Count);
+    var barColors = new[] { "bg-primary", "bg-success", "bg-info", "bg-warning", "bg-secondary" };
+}
+<div class="card mb-4">
+    <div class="card-header">Preferred language</div>
+    <div class="card-body">
+        @for (var i = 0; i < Model.Count; i++)
+        {
+            var lang = Model[i];
+            var percentage = totalActive > 0 ? (int)(100.0 * lang.Count / totalActive) : 0;
+            var label = lang.Language.ToDisplayLanguageName();
+            var color = barColors[i % barColors.Length];
+            <div class="d-flex align-items-center mb-2">
+                <span class="me-2" style="min-width: 70px;">@label</span>
+                <div class="flex-grow-1">
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar @color" style="width: @percentage%;">@lang.Count</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

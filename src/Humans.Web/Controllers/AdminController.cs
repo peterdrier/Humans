@@ -1,7 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
-using Humans.Base.Interfaces.Admin;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
@@ -15,24 +13,5 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
     // aggregate counts safe across roles, and the tiles that aren't carry their own policy.
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
-    public async Task<IActionResult> Index(
-        [FromServices] IAdminDashboardService adminDashboardService,
-        CancellationToken ct)
-    {
-        var dashboardData = await adminDashboardService.GetAdminDashboardAsync(ct);
-        var appStats = new DashboardApplicationStats(
-            Total: dashboardData.TotalApplications,
-            Approved: dashboardData.ApprovedApplications,
-            Rejected: dashboardData.RejectedApplications,
-            Colaborador: dashboardData.ColaboradorApplied,
-            Asociado: dashboardData.AsociadoApplied);
-        var languages = dashboardData.LanguageDistribution
-            .Select(l => new DashboardLanguageCount(l.Language, l.Count))
-            .ToArray();
-
-        return View(new AdminDashboardViewModel(
-            AppStats: appStats,
-            LanguageDistribution: languages,
-            SetMembership: dashboardData.SetMembership));
-    }
+    public IActionResult Index() => View();
 }
