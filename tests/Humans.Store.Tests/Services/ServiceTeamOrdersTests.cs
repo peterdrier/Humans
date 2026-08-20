@@ -383,6 +383,28 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
+    public async Task DeleteOrderAsync_rejects_an_invoiced_order()
+    {
+        // A paid, issued order reads zero-balance, but its store_invoices row references it under a
+        // restrictive foreign key — the delete has to be refused here, not at the database.
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new Order
+            {
+                Id = orderId,
+                CampSeasonId = Guid.NewGuid(),
+                Year = 2026,
+                State = OrderState.InvoiceIssued,
+                IssuedInvoiceId = Guid.NewGuid(),
+            });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DeleteOrderAsync_throws_when_order_not_found()
     {
         var orderId = Guid.NewGuid();

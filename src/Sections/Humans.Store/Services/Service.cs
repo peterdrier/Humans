@@ -365,6 +365,12 @@ internal sealed class Service(
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
+        // An issued order is referenced by its store_invoices row under a restrictive foreign key,
+        // and a paid one reads zero-balance — without this the delete would reach EF and blow up.
+        if (order.State != OrderState.Open)
+            throw new InvalidOperationException(
+                $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
+
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
@@ -1146,26 +1152,31 @@ internal sealed class Service(
 
     /// <summary>
     /// The sales document a previous attempt already created for this order, or null. Both kinds
-    /// are searched: the counterparty details decide the kind and can be filled in between two
-    /// attempts, so the earlier document may be of the other kind — and adopting it is still right,
-    /// because what must not happen is a second approved document.
+    /// are searched in full: the counterparty details decide the kind and can be filled in between
+    /// two attempts, so the earlier document may be of the other kind — and adopting it is still
+    /// right, because what must not happen is a second approved document. When several match, an
+    /// already-approved one wins over a draft: approving the draft beside it would book the revenue
+    /// twice and hand out a second legal number.
     /// </summary>
     private async Task<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)?>
         FindAlreadyIssuedDocumentAsync(string tag, CancellationToken ct)
     {
+        var found = new List<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)>();
         foreach (var kind in new[] { HoldedSalesDocumentKind.Invoice, HoldedSalesDocumentKind.SalesReceipt })
         {
-            var ids = await holdedClient.FindSalesDocumentIdsByTagAsync(kind, tag, ct);
-            if (ids.Count == 0) continue;
-            if (ids.Count > 1)
-                // The duplicate this guard exists to prevent has already happened — only a factura
-                // rectificativa clears it. Adopting the first still stops a third being issued.
-                logger.LogWarning(
-                    "Holded holds {Count} {Kind} documents tagged {Tag}: {Ids}. Adopting the first.",
-                    ids.Count, kind, tag, string.Join(", ", ids));
-            return (kind, await holdedClient.GetSalesDocumentAsync(kind, ids[0], ct));
+            foreach (var id in await holdedClient.FindSalesDocumentIdsByTagAsync(kind, tag, ct))
+                found.Add((kind, await holdedClient.GetSalesDocumentAsync(kind, id, ct)));
         }
-        return null;
+        if (found.Count == 0) return null;
+        if (found.Count > 1)
+            // The duplicate this guard exists to prevent has already happened — only a factura
+            // rectificativa clears it. Adopting one still stops a third being issued.
+            logger.LogWarning(
+                "Holded holds {Count} documents tagged {Tag}: {Ids}. Adopting an approved one if there is any.",
+                found.Count, tag, string.Join(", ", found.Select(f => $"{f.Kind}:{f.Document.Id}")));
+
+        var approved = found.FirstOrDefault(f => f.Document.IsDraft != true);
+        return approved.Document is not null ? approved : found[0];
     }
 
     /// <summary>Writes the <c>store_invoices</c> row and the frozen order in one save, then audits.
