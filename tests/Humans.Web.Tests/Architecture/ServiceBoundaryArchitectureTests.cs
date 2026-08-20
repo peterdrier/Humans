@@ -66,6 +66,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Holded.Data.IHoldedMirrorRepository")] = "Holded",
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
+            [SectionRepository("Humans.MailerLite.Data.IMailerLiteRepository")] = "MailerLite",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
             [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
