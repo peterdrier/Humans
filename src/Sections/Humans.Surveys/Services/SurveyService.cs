@@ -639,6 +639,22 @@ internal sealed class SurveyService(
             };
         }
 
+        // A survey may be edited while a respondent has a wizard session open. Re-normalize every
+        // stored Grid answer against the current schema before autosave, validation, navigation, or
+        // submission so removed cells cannot survive and newly required rows cannot be bypassed.
+        foreach (var question in editable.Questions.Where(q => q.Type == SurveyQuestionType.Grid && q.Id is not null))
+        {
+            if (!state.Answers.TryGetValue(question.Id!.Value.ToString(), out var answer)) continue;
+            answer.GridSelections = NormalizeGridSelections(
+                question.GridRows,
+                question.Options,
+                question.GridSelectionMode,
+                answer.GridSelections.ToDictionary(
+                    pair => pair.Key,
+                    pair => (IReadOnlyList<string>)pair.Value,
+                    StringComparer.Ordinal));
+        }
+
         // First advance past the intro fires the path-specific Started funnel side effect (idempotent via state.Started).
         if (!state.Started)
         {
@@ -685,6 +701,21 @@ internal sealed class SurveyService(
         {
             state.CurrentPage = nextPage.Value;
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Navigated, []);
+        }
+
+        // The current page has passed validation, but an author may have changed an earlier page
+        // while this session was in progress. Revalidate every currently visible required question
+        // immediately before final submission and return to the first page that needs attention.
+        var allVisible = SurveyWizardFlow.OrderedPages(editable.Questions)
+            .SelectMany(visiblePage => SurveyWizardFlow.VisibleQuestionsOnPage(
+                editable.Questions, visiblePage, answerStates))
+            .ToList();
+        var missingBeforeSubmit = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
+        if (missingBeforeSubmit.Count > 0)
+        {
+            var firstMissing = missingBeforeSubmit.ToHashSet();
+            state.CurrentPage = allVisible.First(q => q.Id is { } id && firstMissing.Contains(id)).PageNumber;
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.ValidationFailed, missingBeforeSubmit);
         }
 
         // No further visible page ⇒ submit. Identity columns are written only for Identified (see SubmitResponseAsync).
@@ -1225,7 +1256,8 @@ internal sealed class SurveyService(
         {
             if (question.Type != SurveyQuestionType.Grid) continue;
 
-            if (question.GridSelectionMode is null)
+            if (question.GridSelectionMode is null
+                || !Enum.IsDefined(question.GridSelectionMode.Value))
             {
                 throw new InvalidOperationException($"Grid question {question.Id} must choose a selection mode.");
             }

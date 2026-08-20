@@ -152,6 +152,18 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_rejects_a_grid_with_an_undefined_selection_mode()
+    {
+        var act = async () => await CreateService().CreateAsync(
+            Input(GridInput(mode: (GridSelectionMode)2)),
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must choose a selection mode*");
+    }
+
+    [HumansFact]
     public async Task CreateAsync_rejects_a_grid_with_a_blank_row_value()
     {
         var act = async () => await CreateService().CreateAsync(
@@ -1447,6 +1459,56 @@ public class SurveyServiceTests
         captured.Keys.Should().BeEquivalentTo("monday", "tuesday");
         captured["monday"].Should().ContainSingle().Which.Should().Be("morning");
         captured["tuesday"].Should().ContainSingle().Which.Should().Be("afternoon");
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_revalidates_an_earlier_required_grid_after_its_schema_changes()
+    {
+        var gridId = Guid.NewGuid();
+        var finalId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var grid = GridQuestion(gridId, survey.Id, GridSelectionMode.Single);
+        grid.PageNumber = 1;
+        grid.IsRequired = true;
+        survey.Questions =
+        [
+            grid,
+            new SurveyQuestion
+            {
+                Id = finalId,
+                SurveyId = survey.Id,
+                PageNumber = 2,
+                Order = 1,
+                Type = SurveyQuestionType.ShortText,
+                Prompt = L("Final"),
+            },
+        ];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var state = WizardState(survey.Id);
+        state.CurrentPage = 2;
+        state.Started = true;
+        state.Answers[gridId.ToString()] = new SurveyWizardAnswer
+        {
+            GridSelections = new Dictionary<string, List<string>>(StringComparer.Ordinal)
+            {
+                ["monday"] = ["morning"],
+                ["removed-row"] = ["morning"],
+            },
+        };
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 2,
+            back: false,
+            [TextAns(finalId, "Done")],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().ContainSingle().Which.Should().Be(gridId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[gridId.ToString()].GridSelections.Keys.Should().ContainSingle().Which.Should().Be("monday");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
