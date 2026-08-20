@@ -1756,18 +1756,21 @@ internal sealed class GoogleWorkspaceSyncService(
         if (emailList.Count == 0)
             return new Dictionary<string, (string, Guid, string?)>(NormalizingEmailComparer.Instance);
 
-        var matches = await userEmailService.MatchByEmailsAsync(emailList, cancellationToken);
-        var userIds = matches.Select(m => m.UserId).Distinct().ToList();
+        // One winner per address — an unverified duplicate must not outrank the real owner,
+        // since this id is what the sync log attributes the row to.
+        var owners = UserEmailMatchOwner.ByEmail(
+            await userEmailService.MatchByEmailsAsync(emailList, cancellationToken));
+        var userIds = owners.Values.Select(m => m.UserId).Distinct().ToList();
         var usersById = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
             NormalizingEmailComparer.Instance);
 
-        foreach (var match in matches)
+        foreach (var (email, match) in owners)
         {
             if (usersById.TryGetValue(match.UserId, out var user))
             {
-                result.TryAdd(match.Email, (user.BurnerName, match.UserId, user.ProfilePictureUrl));
+                result.TryAdd(email, (user.BurnerName, match.UserId, user.ProfilePictureUrl));
             }
         }
 

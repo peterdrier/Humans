@@ -703,6 +703,44 @@ public sealed class GoogleGroupSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_Revoke_PrefersTheVerifiedOwnerOverAnUnverifiedDuplicate()
+    {
+        var unverifiedSquatter = Guid.NewGuid();
+        var verifiedOwner = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old"));
+
+        // MatchByEmailsAsync has no ordering; the unverified row comes back first here.
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("old@nobodies.team", unverifiedSquatter, false, false, _clock.GetCurrentInstant()),
+                new("old@nobodies.team", verifiedOwner, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // Attributing the row to the squatter would leak it into the wrong GDPR export.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "old@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: verifiedOwner,
+            ct: Arg.Any<CancellationToken>());
+    }
+
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
         sources,
         _membershipClient,

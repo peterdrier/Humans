@@ -364,14 +364,11 @@ internal sealed class GoogleGroupSyncService(
     private async Task<Dictionary<string, Guid>> ResolveExtraMemberUserIdsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct)
     {
-        var result = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
         if (emails.Count == 0)
-            return result;
+            return new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
 
-        foreach (var match in await userEmailService.MatchByEmailsAsync(emails, ct))
-            result.TryAdd(match.Email, match.UserId);
-
-        return result;
+        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(emails, ct));
+        return owners.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.UserId, NormalizingEmailComparer.Instance);
     }
 
     private async Task<ResourceSyncDiff?> ApplyGroupMembershipChangesAsync(
