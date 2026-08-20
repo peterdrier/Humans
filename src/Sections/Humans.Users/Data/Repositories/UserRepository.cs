@@ -199,27 +199,19 @@ internal sealed partial class UserRepository : IUserRepository
     }
 
     public async Task<bool> SetSuspensionAsync(
-        Guid userId,
-        bool suspended,
-        bool adminSuspension,
-        string? adminNotes,
-        Instant now,
-        CancellationToken ct = default)
+        Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
 
-        // The suspension and the note explaining it are one atomic write (design-rules §7a):
-        // both tables mutate in this context and land in a single SaveChanges.
-        var profile = await ctx.Profiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (suspended && profile is not null)
-        {
-            profile.AdminNotes = adminNotes;
-            profile.UpdatedAt = now;
-        }
-
+        // Read-only: the classifier needs the profile's name fields and RejectedAt. The suspension
+        // reason is NOT written here — it lives in the audit log and the notification, and profiles
+        // is never mutated by this path.
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
         user.State = UserStateEvaluator.Classify(
             user, profile,
             isSuspended: suspended && !adminSuspension,

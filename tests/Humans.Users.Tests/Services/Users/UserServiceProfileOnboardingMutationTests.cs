@@ -305,10 +305,14 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedState()
+    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedStateWithoutTouchingAdminNotes()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
+        var seeded = await Db.Profiles.FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
+        seeded.AdminNotes = "Prefers email contact";
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Db.ChangeTracker.Clear();
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
@@ -321,7 +325,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Suspended);
-        profile.AdminNotes.Should().Be("Disruptive");
+        // The reason goes to the audit log and the notification, never onto the profile row.
+        profile.AdminNotes.Should().Be("Prefers email contact");
     }
 
     [HumansFact]

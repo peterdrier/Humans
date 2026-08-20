@@ -382,8 +382,8 @@ internal sealed class UserService(
                 break;
 
             case UserProfileOnboardingMutation.SetSuspension:
-                // Handled entirely by SetSuspensionAsync below — the users.State flip and the
-                // profile note that explains it must be one write (design-rules §7a).
+                // Nothing on the profile: suspension is users.State alone. command.Notes goes to
+                // the audit log and the notification via HumanLifecycleService, not onto the row.
                 break;
 
             case UserProfileOnboardingMutation.SetConsentCheckPending:
@@ -397,7 +397,7 @@ internal sealed class UserService(
 
         if (command.Mutation == UserProfileOnboardingMutation.SetSuspension)
             await repo.SetSuspensionAsync(
-                userId, command.Suspended!.Value, command.AdminSuspension, command.Notes, now, ct);
+                userId, command.Suspended!.Value, command.AdminSuspension, ct);
         else
             await repo.UpdateAsync(profile, ct);
 

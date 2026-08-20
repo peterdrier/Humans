@@ -236,16 +236,20 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetSuspensionAsync_WritesStateAndAdminNotesInOneSave()
+    public async Task SetSuspensionAsync_WritesOnlyUserStateAndLeavesAdminNotesAlone()
     {
+        // AdminNotes is a general-purpose field admins own. The suspension reason lives in the
+        // audit log and the notification, so suspending must not overwrite what is there.
         var user = await SeedUserAsync(UserState.Active);
-        _dbContext.Profiles.Add(NewProfile(user.Id, "Burner", "First", "Last"));
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        profile.AdminNotes = "Prefers email contact";
+        _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
-        var now = _clock.GetCurrentInstant();
+        var profileUpdatedAt = profile.UpdatedAt;
 
         await _repo.SetSuspensionAsync(
-            user.Id, suspended: true, adminSuspension: true, "Disruptive", now,
+            user.Id, suspended: true, adminSuspension: true,
             Xunit.TestContext.Current.CancellationToken);
 
         var persistedUser = await _dbContext.Users
@@ -255,8 +259,8 @@ public sealed class UserRepositoryProfileTests : IDisposable
             .AsNoTracking()
             .FirstAsync(p => p.UserId == user.Id, Xunit.TestContext.Current.CancellationToken);
         persistedUser.State.Should().Be(UserState.AdminSuspended);
-        persistedProfile.AdminNotes.Should().Be("Disruptive");
-        persistedProfile.UpdatedAt.Should().Be(now);
+        persistedProfile.AdminNotes.Should().Be("Prefers email contact");
+        persistedProfile.UpdatedAt.Should().Be(profileUpdatedAt);
     }
 
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
