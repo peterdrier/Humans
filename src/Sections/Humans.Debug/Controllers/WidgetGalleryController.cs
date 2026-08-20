@@ -119,8 +119,8 @@ internal sealed class WidgetGalleryController(
             : [];
 
         return new SearchRowKeys(
-            TeamSlug: teams.Values.FirstOrDefault()?.Slug,
-            CampSlug: camps.FirstOrDefault()?.Slug,
+            TeamId: teams.Values.FirstOrDefault()?.Id,
+            CampId: camps.FirstOrDefault()?.Id,
             RotaId: browsable.FirstOrDefault()?.Rota.Id,
             EventId: events.FirstOrDefault()?.Id);
     }
@@ -192,8 +192,8 @@ internal sealed class WidgetGalleryViewModel
 /// such row — the humans row always resolves, so it keys off the signed-in admin instead.
 /// </summary>
 internal sealed record SearchRowKeys(
-    string? TeamSlug,
-    string? CampSlug,
+    Guid? TeamId,
+    Guid? CampId,
     Guid? RotaId,
     Guid? EventId);
 

@@ -45,8 +45,8 @@ public sealed class SearchServiceTests
     public SearchServiceTests()
     {
         StubHumans(MakeHuman("Kitchen Sink"));
-        StubTeams(new TeamSearchHit("Kitchen", "kitchen", ScoreExact));
-        StubCamps(new CampSearchHit("kitchen-camp", "Kitchen", ScoreExact));
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
+        StubCamps(new CampSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
         StubRotas(new RotaSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
         StubEvents(MakeEvent("Kitchen Takeover", "Food"));
     }
@@ -171,7 +171,7 @@ public sealed class SearchServiceTests
     {
         // Teams/Camps/Shifts score their own hits (nobodies-collective/Humans#1062). A score
         // that contradicts the name proves this service takes the section's word for it.
-        StubTeams(new TeamSearchHit("Nothing Like The Query", "unrelated", ScorePrefix));
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
 
         var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
@@ -181,9 +181,11 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_PassesEachSectionsKey_AndTheNameOnlyAsASortKey()
     {
+        var teamId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
         var rotaId = Guid.NewGuid();
-        StubTeams(new TeamSearchHit("Kitchen Crew", "kitchen-crew", ScorePrefix));
-        StubCamps(new CampSearchHit("garden-of-joy", "Garden of Joy", ScorePrefix));
+        StubTeams(new TeamSearchHit(teamId, "Kitchen Crew", ScorePrefix));
+        StubCamps(new CampSearchHit(campId, "Garden of Joy", ScorePrefix));
         StubRotas(new RotaSearchHit(rotaId, "Garden", ScoreExact));
         var eventHit = MakeEvent("Fire & Ice", "Performance");
         StubEvents(eventHit);
@@ -191,19 +193,19 @@ public sealed class SearchServiceTests
         var results = await Build().SearchAsync("Garden", ct: TestContext.Current.CancellationToken);
 
         var team = results.Teams.Should().ContainSingle().Subject;
-        team.Key.Should().Be("kitchen-crew");
+        team.Key.Should().Be(teamId);
         team.SortKey.Should().Be("Kitchen Crew");
 
         var camp = results.Camps.Should().ContainSingle().Subject;
-        camp.Key.Should().Be("garden-of-joy");
+        camp.Key.Should().Be(campId);
         camp.SortKey.Should().Be("Garden of Joy");
 
         var rota = results.Shifts.Should().ContainSingle().Subject;
-        rota.Key.Should().Be(rotaId.ToString());
+        rota.Key.Should().Be(rotaId);
         rota.SortKey.Should().Be("Garden");
 
         var ev = results.Events.Should().ContainSingle().Subject;
-        ev.Key.Should().Be(eventHit.Id.ToString());
+        ev.Key.Should().Be(eventHit.Id);
         ev.SortKey.Should().Be("Fire & Ice");
     }
 
@@ -219,8 +221,8 @@ public sealed class SearchServiceTests
         // whether they may open it. Each section owns that branch and scores it exact; this
         // service passes the hits through unchanged, for admin and non-admin alike.
         var id = Guid.NewGuid();
-        StubTeams(new TeamSearchHit("Hidden Ops", "hidden-ops", ScoreExact));
-        StubCamps(new CampSearchHit("pending-camp", "Pending Camp", ScoreExact));
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Hidden Ops", ScoreExact));
+        StubCamps(new CampSearchHit(Guid.NewGuid(), "Pending Camp", ScoreExact));
         StubRotas(new RotaSearchHit(Guid.NewGuid(), "Admin Only Rota", ScoreExact));
 
         var results = await Build().SearchAsync(id.ToString(), ct: TestContext.Current.CancellationToken);

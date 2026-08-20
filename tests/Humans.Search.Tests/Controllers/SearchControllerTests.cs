@@ -175,7 +175,7 @@ public sealed class SearchControllerTests
     }
 
     private static GlobalSearchResult Hit(SearchResultType type, string sortKey, int score) =>
-        new(type, $"{sortKey}-key", sortKey, score);
+        new(type, Guid.NewGuid(), sortKey, score);
 
     private static IReadOnlyList<GlobalSearchResult> Retype(
         IReadOnlyList<GlobalSearchResult> hits, SearchResultType type) =>

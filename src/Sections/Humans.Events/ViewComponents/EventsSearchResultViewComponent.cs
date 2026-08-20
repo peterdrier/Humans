@@ -21,13 +21,8 @@ public sealed class EventsSearchResultViewComponent(IEventServiceRead events) : 
     /// <param name="eventId">The matched approved event.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid eventId)
     {
-        // Cache-served, so a bucket of rows costs no query — but it is a scan per row.
-        // CachingEventService.GetApprovedEventByIdAsync is the O(1) read; it is not on
-        // IEventServiceRead, and a public view component cannot take the internal
-        // IEventService (CS0051), so reaching it needs new public surface.
-        var approved = await events.GetApprovedEventsAsync(
-            campId: null, venueId: null, categoryId: null, q: null, excludedSlugs: []);
-        var match = approved.FirstOrDefault(e => e.Id == eventId);
+        // O(1) on the approved-only cache: no query, and no per-row scan either.
+        var match = await events.GetApprovedEventByIdAsync(eventId);
         return match is null
             ? Content(string.Empty)
             : View(new EventsSearchResultViewModel(match.Title, match.CategoryName));

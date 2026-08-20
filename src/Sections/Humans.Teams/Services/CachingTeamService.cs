@@ -153,7 +153,7 @@ internal sealed class CachingTeamService(
         if (Guid.TryParse(query, out var id))
         {
             return teamsById.TryGetValue(id, out var byId)
-                ? [new TeamSearchHit(byId.Name, byId.Slug, StringSearchExtensions.ExactNameScore)]
+                ? [new TeamSearchHit(byId.Id, byId.Name, StringSearchExtensions.ExactNameScore)]
                 : [];
         }
 
@@ -164,7 +164,7 @@ internal sealed class CachingTeamService(
                 && t.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Take(max)
-            .Select(t => new TeamSearchHit(t.Name, t.Slug, t.Name.NameMatchScore(trimmed)))
+            .Select(t => new TeamSearchHit(t.Id, t.Name, t.Name.NameMatchScore(trimmed)))
             .ToList();
     }
 

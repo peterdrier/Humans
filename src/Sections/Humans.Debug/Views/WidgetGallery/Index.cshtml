@@ -959,15 +959,15 @@
                         </div>
                         <span class="wg-card-path">src/Sections/Humans.Teams/ViewComponents/TeamsSearchResultViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">One team-search result row (<code>&lt;vc:teams-search-result&gt;</code>), keyed by slug. Rendered by <code>/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Teams owns how a team renders, so no caller builds a display model. Renders nothing when the slug does not resolve.</div>
+                    <div class="wg-card-note">One team-search result row (<code>&lt;vc:teams-search-result&gt;</code>), keyed by team id. Rendered by <code>/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Teams owns how a team renders — including the slug the row links to — so no caller builds a display model. Renders nothing when the id does not resolve.</div>
                     @ParamsBlock(
-                        ("slug", "<code>string</code> — the matched team's URL slug")
+                        ("team-id", "<code>Guid</code> — the matched team")
                     )
                     <div class="wg-card-example">
-                        @if (Model.SearchRowKeys.TeamSlug is { } teamSlug)
+                        @if (Model.SearchRowKeys.TeamId is { } teamId)
                         {
                             <div class="list-group">
-                                <vc:teams-search-result slug="@teamSlug" />
+                                <vc:teams-search-result team-id="@teamId" />
                             </div>
                         }
                         else
@@ -985,15 +985,15 @@
                         </div>
                         <span class="wg-card-path">src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">One camp-search result row (<code>&lt;vc:camps-search-result&gt;</code>), keyed by slug. Camps resolves the public-year season name itself and falls back to the slug when the camp has no season that year. Renders nothing when the slug does not resolve.</div>
+                    <div class="wg-card-note">One camp-search result row (<code>&lt;vc:camps-search-result&gt;</code>), keyed by camp id. Camps resolves the public-year season name itself and falls back to the slug when the camp has no season that year. Renders nothing when the id does not resolve.</div>
                     @ParamsBlock(
-                        ("slug", "<code>string</code> — the matched camp's URL slug")
+                        ("camp-id", "<code>Guid</code> — the matched camp")
                     )
                     <div class="wg-card-example">
-                        @if (Model.SearchRowKeys.CampSlug is { } campSlug)
+                        @if (Model.SearchRowKeys.CampId is { } campId)
                         {
                             <div class="list-group">
-                                <vc:camps-search-result slug="@campSlug" />
+                                <vc:camps-search-result camp-id="@campId" />
                             </div>
                         }
                         else

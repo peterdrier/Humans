@@ -10,8 +10,8 @@
    orchestrator holds (nobodies-collective/Humans#1062) — <vc:user-search-result>,
    <vc:teams-search-result>, <vc:camps-search-result>, <vc:shifts-search-result>,
    <vc:events-search-result>. Each binds only through its @addTagHelper below: drop one and
-   that bucket ships as inert literal markup on a green 200. Guarded by
-   SearchPageRenderTests and GlobalSearchSectionRenderTests. *@
+   that bucket ships as inert literal markup on a green 200. Guarded statically by
+   ViewComponentTagHelperBindingTests, and on a real page by GlobalSearchSectionRenderTests. *@
 @using Humans.Search
 @using Humans.Search.Models
 @using Humans.Search.Services.Dtos

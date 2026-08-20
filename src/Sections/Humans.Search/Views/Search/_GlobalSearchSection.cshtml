@@ -11,16 +11,16 @@
         switch (result.Type)
         {
             case SearchResultType.Team:
-                <vc:teams-search-result slug="@result.Key" />
+                <vc:teams-search-result team-id="@result.Key" />
                 break;
             case SearchResultType.Camp:
-                <vc:camps-search-result slug="@result.Key" />
+                <vc:camps-search-result camp-id="@result.Key" />
                 break;
             case SearchResultType.Shift:
-                <vc:shifts-search-result rota-id="@Guid.Parse(result.Key)" />
+                <vc:shifts-search-result rota-id="@result.Key" />
                 break;
             case SearchResultType.Event:
-                <vc:events-search-result event-id="@Guid.Parse(result.Key)" />
+                <vc:events-search-result event-id="@result.Key" />
                 break;
         }
     }

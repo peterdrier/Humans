@@ -9,8 +9,8 @@ namespace Humans.Events.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="EventsSearchResultViewComponent"/>: the global-search row for an event.
-/// Callers pass an event id and nothing else (nobodies-collective/Humans#1062), so picking
-/// that event out of the cache-served approved list is the behaviour.
+/// Callers pass an event id and nothing else (nobodies-collective/Humans#1062), so the
+/// cache-served by-id fetch and the empty-content fallback are the whole behaviour.
 /// </summary>
 public class EventsSearchResultViewComponentTests
 {
@@ -20,7 +20,7 @@ public class EventsSearchResultViewComponentTests
     public async Task Renders_the_matching_approved_event()
     {
         var wanted = Approved("Sunrise Yoga");
-        StubApproved(Approved("Something Else"), wanted);
+        _events.GetApprovedEventByIdAsync(wanted.Id, Arg.Any<CancellationToken>()).Returns(wanted);
 
         var result = await new EventsSearchResultViewComponent(_events).InvokeAsync(wanted.Id);
 
@@ -33,18 +33,14 @@ public class EventsSearchResultViewComponentTests
     [HumansFact]
     public async Task Renders_nothing_when_the_id_is_not_approved()
     {
-        // Unapproved, deleted, or feature-gated away — all reach here as "not in the list".
-        StubApproved(Approved("Something Else"));
+        // Unapproved, deleted, or feature-gated away — all reach here as a cache miss.
+        _events.GetApprovedEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((ApprovedEventView?)null);
 
         var result = await new EventsSearchResultViewComponent(_events).InvokeAsync(Guid.NewGuid());
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
-
-    private void StubApproved(params ApprovedEventView[] events) =>
-        _events.GetApprovedEventsAsync(null, null, null, null,
-                Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(events);
 
     private static ApprovedEventView Approved(string title) => new(
         Id: Guid.NewGuid(), CampId: Guid.NewGuid(), GuideSharedVenueId: null, SubmitterUserId: Guid.NewGuid(),

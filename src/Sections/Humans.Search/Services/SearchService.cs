@@ -80,7 +80,7 @@ internal sealed class SearchService(
         return hits
             .Select(t => new GlobalSearchResult(
                 Type: SearchResultType.Team,
-                Key: t.Slug,
+                Key: t.TeamId,
                 SortKey: t.Name,
                 Score: t.Score))
             .ToList();
@@ -93,7 +93,7 @@ internal sealed class SearchService(
         return hits
             .Select(c => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
-                Key: c.Slug,
+                Key: c.CampId,
                 SortKey: c.Name,
                 Score: c.Score))
             .ToList();
@@ -107,7 +107,7 @@ internal sealed class SearchService(
         return hits
             .Select(r => new GlobalSearchResult(
                 Type: SearchResultType.Shift,
-                Key: r.RotaId.ToString(),
+                Key: r.RotaId,
                 SortKey: r.Name,
                 Score: r.Score))
             .ToList();
@@ -130,7 +130,7 @@ internal sealed class SearchService(
                 var titleScore = e.Title.NameMatchScore(query);
                 return new GlobalSearchResult(
                     Type: SearchResultType.Event,
-                    Key: e.Id.ToString(),
+                    Key: e.Id,
                     SortKey: e.Title,
                     Score: titleScore > 0 ? titleScore : StringSearchExtensions.ContainsNameScore);
             })

@@ -159,10 +159,10 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | DTO | Returned by | Used by |
 |---|---|---|
 | `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
-| `TeamSearchHit (Name, Slug, Score)` | `ITeamServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `CampSearchHit (Slug, Name, Score)` | `ICampServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `TeamSearchHit (TeamId, Name, Score)` | `ITeamServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `CampSearchHit (CampId, Name, Score)` | `ICampServiceRead.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | View passes `Key` to the owning section's `<vc:…-search-result>` |
+| `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
 
 ## UI
@@ -170,7 +170,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 `/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
 
 - **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Profile/Search` renders the same component (nobodies-collective/Humans#1062).
-- **Teams / Camps / Shifts / Events** are rendered the same way: `_GlobalSearchSection` switches on the row's `Type` and emits that section's own component — `<vc:teams-search-result slug>`, `<vc:camps-search-result slug>`, `<vc:shifts-search-result rota-id>`, `<vc:events-search-result event-id>`. Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062). Teams and Camps are keyed by slug rather than id because their hit contracts carry no id and the slug is already the canonical URL key.
+- **Teams / Camps / Shifts / Events** are rendered the same way: `_GlobalSearchSection` switches on the row's `Type` and emits that section's own component — `<vc:teams-search-result team-id>`, `<vc:camps-search-result camp-id>`, `<vc:shifts-search-result rota-id>`, `<vc:events-search-result event-id>`. Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062). Every bucket keys by the entity's `Guid`; a component that needs a slug for its link fetches it from the entity it just loaded.
 
 A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.
 

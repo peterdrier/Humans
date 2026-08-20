@@ -98,8 +98,8 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
-    // GetApprovedEventsAsync is declared on IEventServiceRead (cross-section read surface).
-    Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
+    // GetApprovedEventsAsync and GetApprovedEventByIdAsync are declared on IEventServiceRead
+    // (cross-section read surface).
 
     // ── Favourites ────────────────────────────────────────────────────────
     // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).

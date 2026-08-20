@@ -38,6 +38,16 @@ internal sealed class CachingCampService(
         return cached ?? await WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
     }
 
+    public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        // The dict is keyed by camp id, so this is a straight lookup. Cold camps (a year
+        // warmup never covered) fall back to the inner service.
+        await EnsureWarmedAsync(cancellationToken);
+        return TryGet(campId, out var cached)
+            ? cached
+            : await WithInner(inner => inner.GetCampByIdAsync(campId, cancellationToken));
+    }
+
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
@@ -136,7 +146,7 @@ internal sealed class CachingCampService(
             return
             [
                 new CampSearchHit(
-                    camp.Slug, byIdSeason?.Name ?? camp.Slug, StringSearchExtensions.ExactNameScore)
+                    camp.Id, byIdSeason?.Name ?? camp.Slug, StringSearchExtensions.ExactNameScore)
             ];
         }
 
@@ -152,7 +162,7 @@ internal sealed class CachingCampService(
                 && PublicCampSeasonStatuses.Contains(s.Status)
                 && s.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
             if (season is not null)
-                hits.Add(new CampSearchHit(camp.Slug, season.Name, season.Name.NameMatchScore(trimmed)));
+                hits.Add(new CampSearchHit(camp.Id, season.Name, season.Name.NameMatchScore(trimmed)));
         }
 
         return hits.Take(max).ToList();

@@ -24,9 +24,8 @@ internal enum SearchResultType
 /// <see cref="HumanSearchResult"/> on the same terms.
 /// </summary>
 /// <param name="Type">Whether this is a Team, Camp, Shift, or Event hit.</param>
-/// <param name="Key">The owning section's key for the row — a slug for
-/// teams/camps, a GUID string for shifts/events — interpolated straight into the
-/// view component's tag attribute.</param>
+/// <param name="Key">The owning section's entity id for the row, passed straight
+/// to the view component's tag attribute. Every bucket keys by Guid.</param>
 /// <param name="SortKey">Alphabetical tiebreak for the controller's secondary
 /// sort. Never rendered; naming another section's display field here would put
 /// its vocabulary back in this section.</param>
@@ -35,7 +34,7 @@ internal enum SearchResultType
 /// descending Score then ascending SortKey.</param>
 internal sealed record GlobalSearchResult(
     SearchResultType Type,
-    string Key,
+    Guid Key,
     string SortKey,
     int Score);
 

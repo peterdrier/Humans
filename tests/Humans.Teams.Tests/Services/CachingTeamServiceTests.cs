@@ -499,6 +499,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             hidden.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
 
         var hit = results.Should().ContainSingle().Subject;
+        hit.TeamId.Should().Be(hidden.Id);
         hit.Name.Should().Be("Kitchenette");
         hit.Score.Should().Be(StringSearchExtensions.ExactNameScore,
             because: "an id paste is as exact as a match gets");

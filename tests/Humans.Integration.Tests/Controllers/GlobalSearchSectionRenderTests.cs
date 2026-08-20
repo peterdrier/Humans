@@ -31,7 +31,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// The four non-human buckets of the global <c>/Search</c> page now render their owning
 /// section's own view component — <c>&lt;vc:teams-search-result&gt;</c>,
 /// <c>&lt;vc:camps-search-result&gt;</c>, <c>&lt;vc:shifts-search-result&gt;</c>,
-/// <c>&lt;vc:events-search-result&gt;</c> — invoked with a key and nothing else
+/// <c>&lt;vc:events-search-result&gt;</c> — invoked with the entity's Guid and nothing else
 /// (nobodies-collective/Humans#1062).
 /// </summary>
 /// <remarks>
@@ -40,13 +40,14 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>Views/_ViewImports.cshtml</c>. A missing line is silent: the row ships as literal
 /// <c>&lt;vc:…&gt;</c> markup on a green build and a 200. So this seeds one real row per
 /// bucket behind a single unique token and asserts on markers only the component writes —
-/// the name it fetched itself, and the link it built. A bare
-/// <c>NotContain("&lt;vc:")</c> would pass vacuously on an empty page, so it is the last
-/// assertion here, not the only one.
+/// the name it fetched itself, and the link it built. That a tag <i>can</i> bind at all is
+/// checked statically and page-wide by <c>ViewComponentTagHelperBindingTests</c>
+/// (nobodies-collective/Humans#1434); what is left for a rendered page is whether the row
+/// the component produced is the right one.
 /// </para>
 /// <para>
-/// Negative probe (run by hand, 2026-08-20): deleting any one of the four
-/// <c>@addTagHelper</c> lines turns this test red on that bucket's marker.
+/// Negative probe (2026-08-20): deleting any one of the four <c>@addTagHelper</c> lines
+/// turns this test red on that bucket's marker, and the static check red on the call site.
 /// </para>
 /// <para>
 /// The second test measures the other half of the acceptance bar: one component
@@ -72,8 +73,9 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain($"{token} Team", because: "Teams' component fetched the name off the slug");
-        html.Should().Contain($"href=\"/Teams/{seeded.TeamSlug}\"", because: "Teams' component built the link");
+        html.Should().Contain($"{token} Team", because: "Teams' component fetched the name off the id");
+        html.Should().Contain($"href=\"/Teams/{seeded.TeamSlug}\"",
+            because: "Teams' component fetched the slug too — the orchestrator only passed an id");
 
         html.Should().Contain($"{token} Camp", because: "Camps' component resolved the public-year season name");
         html.Should().Contain($"href=\"/Camps/{seeded.CampSlug}\"", because: "Camps' component built the link");
@@ -83,9 +85,6 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
         html.Should().Contain($"{token} Event", because: "Events' component fetched the event by id");
         html.Should().Contain("/Events/Browse?q=", because: "Events' component built the Browse link");
-
-        html.Should().NotContain("<vc:", because: "an unbound element renders as literal markup on a green 200");
-        html.Should().NotContain("-view-component", because: "a ReSharper-rewritten vc tag is inert too");
     }
 
     /// <summary>
@@ -120,9 +119,6 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
         html.Should().Contain($"{token} Rota", because: "the seeded rota is the only one, so Shifts' card must show it");
         html.Should().Contain($"{token} Event", because: "the seeded event is the only one, so Events' card must show it");
-
-        html.Should().NotContain("<vc:", because: "an unbound element renders as literal markup on a green 200");
-        html.Should().NotContain("-view-component", because: "a ReSharper-rewritten vc tag is inert too");
     }
 
     /// <summary>
@@ -159,8 +155,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await SeedOneRowPerBucketAsync(token, 2, counted.Services, ct);
         var threeRowsPerBucket = await MeasureSearchAsync(counter, client, token, ct);
 
-        // Measured 2026-08-20: two commands for the whole page either way — per-request
-        // auth reads, nothing from the result rows.
+        // Measured 2026-08-20, before and after the Guid re-key: two commands for the whole
+        // page either way — per-request auth reads, nothing from the result rows.
         threeRowsPerBucket.Should().Be(oneRowPerBucket,
             because: "every row is served from its section's cache, so row count must not reach the database");
     }
