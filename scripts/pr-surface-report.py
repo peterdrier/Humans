@@ -277,8 +277,16 @@ def section_metrics_delta_markdown(base_score: dict, head_score: dict) -> list[s
         f"| `{md_safe(name)}` | " + " | ".join(format_delta(d) for d in deltas) + " |"
         for name, deltas in rows
     )
-    total_deltas = [metric_at(head_score, path) - metric_at(base_score, path) for _, path in SECTION_METRIC_ROWS]
-    lines.append("| **Total** | " + " | ".join(format_delta(d) for d in total_deltas) + " |")
+    # The corpus-wide rollup, not a sum of the rows above: some code may not attribute to any
+    # group, and a p95 doesn't compose across sections by addition. Labeled accordingly.
+    corpus_deltas = [metric_at(head_score, path) - metric_at(base_score, path) for _, path in SECTION_METRIC_ROWS]
+    lines.append("| **Corpus** | " + " | ".join(format_delta(d) for d in corpus_deltas) + " |")
+    lines.append("")
+    lines.append(
+        "_`Corpus` is the solution-wide rollup (same source as Corpus Size & Complexity below), "
+        "not a sum of the section rows above - `cognitive p95` in particular doesn't compose "
+        "across sections._"
+    )
     lines.append("")
     return lines
 

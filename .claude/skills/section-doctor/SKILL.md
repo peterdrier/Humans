@@ -234,7 +234,9 @@ fragile part (two runs running, every dispatched lane missed the window):
 
 - **Tool threads run as background commands** — Stryker, InspectCode, reforge, conformance
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
-  main thread reads.
+  main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
+  scoped to the section being doctored — its `loc=`/`cogP95=`/`cogMax=` fields are the source
+  for Phase 5's `## Size` snapshot, on every run, not only a replan's solution-wide call.
 - **Judgment threads run on the main thread** — shape, behavior, prose. They are the expensive
   reading this whole run exists to do.
 - **Subagents only when a thread must read more than one context can hold**, and then with an
@@ -339,7 +341,7 @@ surfaces mid-run → stop striking, ship the assessment-only PR, note it in the 
   - **`## Size`** — line count against the run's anchor for every section touched, and the net.
     Growth is reported with its reason, and consolidation that grows this section while shrinking
     another is stated as the trade it is. Include the section's reforge metrics snapshot (`loc`,
-    `cogP95`, `cogMax`) from Phase 2's compact call, so the run file states size/complexity at
+    `cogP95`, `cogMax`) from 3d's reforge tool thread, so the run file states size/complexity at
     assessment time, not just the git-diff delta.
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
