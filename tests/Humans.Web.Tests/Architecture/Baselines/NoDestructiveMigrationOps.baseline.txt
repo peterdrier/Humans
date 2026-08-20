@@ -39,3 +39,20 @@ src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHo
 # rollback of this dead, never-read column would re-add it by hand instead.
 src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload,table=holded_expense_docs)#1
 src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt,table=holded_category_map)#1
+
+# Dead user_emails.IsOAuth column (2026-08-20, nobodies-collective/Humans#507). Removed:
+# user_emails.IsOAuth (bool, the pre-decoupling "is this row the Identity user's OAuth email"
+# flag). Evidence: the C# property was already deleted from UserEmail by the email-identity-
+# decoupling spec (PR 3, commit 5442a86aa) — the column survived only as an EF shadow property.
+# Pickaxe over full history (`git log -S 'IsOAuth = ' --pickaxe-regex -- '*.cs'`) shows real
+# writers existed pre-decoupling, all removed by the decoupling PR chain (#356/#361/#369); the
+# replacement (UserEmail.Provider/ProviderKey/IsGoogle) has shipped and carries the traffic. The
+# sole remaining reader was the one-shot, operator-triggered UserEmailProviderBackfillService
+# (its own doc comment named this issue, #507, as the PR that retires it once the backfill has
+# run in QA and production) — it had zero production callers (no controller/job/hosted-service
+# invocation, DI registration only) and is deleted in this same PR along with its only readers/
+# writers (GetUserEmailLegacyBackfillSnapshotsByUserIdAsync, the IsOAuth shadow-write exclusion
+# in UserRepository.UserEmails.cs).
+# Approval: Peter, 2026-08-20 — explicit per-instance approval for this drop (sprint dispatch for
+# nobodies-collective/Humans#507).
+src/Sections/Humans.Users/Data/Migrations/20260820170426_DropUserEmailIsOAuth.cs:DropColumn(name=IsOAuth,table=user_emails)#1

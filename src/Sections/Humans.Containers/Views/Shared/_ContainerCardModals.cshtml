@@ -3,8 +3,9 @@
     var c = Model.Container;
     var p = Model.Placement;
 }
-@if (c.ImageUrl is not null)
+@if (c.Images.Count > 0)
 {
+    var carouselId = $"containerCarousel-{c.Id}";
     <div class="modal fade" id="lightboxModal-@c.Id" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -13,7 +14,38 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0 text-center">
-                    <img src="@c.ImageUrl" alt="@c.Name" class="img-fluid" />
+                    @if (c.Images.Count == 1)
+                    {
+                        <img src="@c.Images[0].Url" alt="@c.Name" class="img-fluid" />
+                    }
+                    else
+                    {
+                        <div id="@carouselId" class="carousel slide">
+                            <div class="carousel-indicators">
+                                @for (var i = 0; i < c.Images.Count; i++)
+                                {
+                                    <button type="button" data-bs-target="#@carouselId" data-bs-slide-to="@i"
+                                            class="@(i == 0 ? "active" : "")" aria-label="@($"{c.Name} {i + 1}")"></button>
+                                }
+                            </div>
+                            <div class="carousel-inner">
+                                @for (var i = 0; i < c.Images.Count; i++)
+                                {
+                                    <div class="carousel-item @(i == 0 ? "active" : "")">
+                                        <img src="@c.Images[i].Url" alt="@(c.Images[i].FileName ?? c.Name)" class="d-block w-100" />
+                                    </div>
+                                }
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#@carouselId" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#@carouselId" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
         </div>

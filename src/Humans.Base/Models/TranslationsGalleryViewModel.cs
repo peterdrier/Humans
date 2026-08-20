@@ -47,7 +47,11 @@ public sealed record TranslationRow(
 
 public static class TranslationsGalleryModelBuilder
 {
-    public static TranslationsGalleryViewModel Build(IStringLocalizer<SharedResource> localizer)
+    /// <summary>
+    /// Untyped <see cref="IStringLocalizer"/> so this builds the gallery for any resource
+    /// set, not just <see cref="SharedResource"/> (nobodies-collective/Humans#1095).
+    /// </summary>
+    public static TranslationsGalleryViewModel Build(IStringLocalizer localizer)
     {
         var languages = CultureCatalog.SupportedCultureCodes
             .Where(c => !string.Equals(c, CultureCatalog.DefaultCultureCode, StringComparison.Ordinal))

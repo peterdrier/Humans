@@ -229,7 +229,7 @@ Inbound (other sections → Users) — the typical direction:
 
 ## Architecture
 
-**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService`, `UserEmailProviderBackfillService` (one-shot backfill utility for Provider/IsGoogle fields on `UserEmail` rows, reads `user_emails` via `IUserEmailRepository`), `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector, moved from Profiles in the account-merge consolidation; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder lifted out of `AccountController` per HUM0031/#857; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
+**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector, moved from Profiles in the account-merge consolidation; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder lifted out of `AccountController` per HUM0031/#857; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
 **Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`, `account_merge_requests`.
 **Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21). Account merge fold support added 2026-05-01 (User.MergedToUserId / MergedAt; Reassign + AnonymizeForMerge methods).
 
@@ -422,7 +422,7 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 
 **Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.
 
-**Shadow properties (column-only, no C# surface):** `IsOAuth` (bool) remains on disk — `UserEmailProviderBackfillService` still reads it via `EF.Property<T>`, so the column stays until that backfill is retired (nobodies-collective/Humans#507). The companion `DisplayOrder` (int) column was dropped (nobodies-collective/Humans#1217); display sorting is alphabetical on `Email`. `UserEmailConfiguration.cs:57–62`.
+**Shadow properties (column-only, no C# surface):** `IsOAuth` (bool) was dropped (nobodies-collective/Humans#507), alongside the retirement of the one-shot `UserEmailProviderBackfillService` that was its sole reader. The companion `DisplayOrder` (int) column was dropped (nobodies-collective/Humans#1217); display sorting is alphabetical on `Email`.
 
 ### CommunicationPreference
 

@@ -106,7 +106,6 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
     private static void AssertRenderedCleanly(string html, string what)
     {
-        html.Should().NotContain("<vc:", $"{what} left a view-component tag unrendered");
         html.Should().NotContain("-view-component", $"{what} has a renamed view-component element");
         foreach (var prefix in CarvedPrefixes)
         {

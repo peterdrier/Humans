@@ -228,18 +228,6 @@ validation. Also injects `IUserServiceRead` to resolve the user's
 `CachingUserService` TrackedCache — no extra DB round-trip on hit).
 No cache on the service itself.
 
-### UserEmailProviderBackfillService (Scoped)
-
-Repository: `IUserRepository`.
-
-| Table | R/W |
-|-------|-----|
-| Users | R |
-| UserEmails | R/W |
-
-One-shot backfill — populates `EmailProvider` on legacy `UserEmails`
-rows. Uses `UserManager<User>` and `IAuditLogService`. No cache.
-
 ### UserParticipationBackfillService (Scoped)
 
 No repository. Fan-out over `IUserService` and `IShiftManagementService`

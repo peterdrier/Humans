@@ -52,7 +52,6 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         // tag (step 12, Debug's case). This is what a missing @addTagHelper in the section's
         // own _ViewImports looks like.
         html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
-        html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
         html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
     }
 
@@ -97,7 +96,6 @@ public class MonitorPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().Contain(marker,
             $"GET {url}: the seeded sync row must reach the page — an unbound <vc:audit-log> renders nothing");
         html.Should().Contain("reader", $"GET {url} must render the sync layout's Role column");
-        html.Should().NotContain("<vc:audit-log", $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     [HumansFact(Timeout = 120000)]

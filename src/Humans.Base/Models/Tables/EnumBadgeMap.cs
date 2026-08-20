@@ -2,6 +2,9 @@ using System.Collections.Concurrent;
 
 using Humans.Base.Enums;
 
+using Serilog;
+using ILogger = Serilog.ILogger;
+
 namespace Humans.Base.Models.Tables;
 
 /// <summary>
@@ -31,6 +34,12 @@ public static class EnumBadgeMap
         [EmailOutboxStatus.Sent] = "bg-success",
         [EmailOutboxStatus.Failed] = "bg-danger",
     };
+
+    // Static class, no DI (issue #1065): Log.ForContext reaches the app's already-configured
+    // Serilog pipeline instead of inventing a static-logger seam. Test-settable only.
+    private static ILogger Logger = Log.ForContext(typeof(EnumBadgeMap));
+
+    internal static void SetLoggerForTests(ILogger value) => Logger = value;
 
     /// <summary>
     /// Adds a moved section's badge rows. Called from <c>ISection.Register</c>, so every write
@@ -67,5 +76,14 @@ public static class EnumBadgeMap
         }
     }
 
-    public static string For(Enum value) => Map.GetValueOrDefault(value, "bg-secondary");
+    public static string For(Enum value)
+    {
+        if (Map.TryGetValue(value, out var cssClass))
+            return cssClass;
+
+        Logger.Warning(
+            "EnumBadgeMap.For fell through to default for unhandled {EnumType} value '{Value}'",
+            [value.GetType().Name, value]);
+        return "bg-secondary";
+    }
 }

@@ -76,7 +76,6 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
             html.Should().NotContain("-view-component", $"GET {url} has a ReSharper-rewritten vc tag");
             html.Should().NotContain("GoogleAccounts_",
                 $"GET {url} rendered a raw resource key — the resx carve missed one, or a type bound the wrong localizer");

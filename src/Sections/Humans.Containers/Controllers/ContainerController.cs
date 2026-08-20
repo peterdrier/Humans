@@ -87,12 +87,12 @@ internal sealed class ContainerController(
         Id = c.Id,
         Name = c.Name,
         Description = c.Description,
-        ImageUrl = c.ImageStoragePath,
-        ImageFileName = c.ImageFileName,
+        Images = c.Images,
     };
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> Create(string slug, ContainerFormModel model, CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
@@ -118,6 +118,7 @@ internal sealed class ContainerController(
 
     [HttpPost("{id}/Edit")]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> Edit(string slug, Guid id, ContainerFormModel model, CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();

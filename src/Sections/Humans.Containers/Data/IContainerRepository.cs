@@ -14,6 +14,13 @@ internal interface IContainerRepository : IRepository
     Task<Container> UpdateAsync(Container container, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
+    // Images
+    Task<IReadOnlyList<ContainerImage>> GetImagesAsync(
+        IReadOnlyCollection<Guid> containerIds, CancellationToken ct = default);
+    Task AddImagesAsync(IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default);
+    Task DeleteImagesAsync(
+        Guid containerId, IReadOnlyCollection<Guid> imageIds, CancellationToken ct = default);
+
     // Placement
     Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerPlacement>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);

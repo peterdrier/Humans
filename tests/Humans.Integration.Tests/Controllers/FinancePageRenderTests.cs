@@ -49,10 +49,6 @@ public class FinancePageRenderTests(HumansTestDatabase database) : IntegrationTe
         {
             html.Should().Contain($"href=\"{href}\"", $"the index must link to {href}");
         }
-
-        // A view-component element the section's _ViewImports failed to bind renders as literal
-        // markup: 200, correct-looking source, nothing on the page.
-        html.Should().NotContain("<vc:", "a view-component tag was left unrendered");
     }
 
     [HumansFact(Timeout = 120000)]

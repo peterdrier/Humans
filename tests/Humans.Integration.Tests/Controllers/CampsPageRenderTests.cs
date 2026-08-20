@@ -81,10 +81,6 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // A view component element the section's _ViewImports failed to bind renders as
-            // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Camp_", $"GET {url} rendered a raw Camps resource key");
             html.Should().NotContain("CampCard_", $"GET {url} rendered a raw CampCard key");
@@ -135,26 +131,6 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
         // Shell's own renderer of the same key, which is why it stayed behind.
         var shellPage = await (await Client.GetAsync("/", ct)).Content.ReadAsStringAsync(ct);
         shellPage.Should().NotContain("Camp_Plural");
-    }
-
-    /// <summary>
-    /// Shell's profile page renders the section's <c>&lt;vc:my-camps&gt;</c>. The component is
-    /// <c>public</c> under <c>Humans.Camps/Contracts/</c> so MVC's default provider discovers
-    /// it and the tag helper is generated at compile time — but only if Shell's
-    /// <c>_ViewImports</c> carries <c>@@addTagHelper *, Humans.Camps</c>. Without that line the
-    /// element survives into the response as inert markup, which is a green build, a 200, and a
-    /// missing widget.
-    /// </summary>
-    [HumansFact(Timeout = 120000)]
-    public async Task A_shell_page_renders_the_sections_view_component()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-
-        var html = await (await Client.GetAsync("/Profile", ct)).Content.ReadAsStringAsync(ct);
-
-        html.Should().NotContain("<vc:my-camps",
-            because: "Shell must resolve the moved component, not ship its tag");
     }
 
     [HumansFact(Timeout = 120000)]

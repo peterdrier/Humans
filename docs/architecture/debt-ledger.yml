@@ -120,25 +120,31 @@ themes:
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
-    last_swept: 2026-06-13
-    remaining: 20
+    last_swept: 2026-08-20
+    remaining: 19
     notes: >-
-      ACTIONABLE = 0 (audited every site, sweep 2026-06-13). All 20 sites that
-      fire HUM_USER_DISPLAYNAME are legitimate consumers per the obsolete
-      message: creation-time writes (AccountController.CreateExternalLoginUser,
-      AccountProvisioningService ×2), BurnerName-fallback derivation
-      (UserInfo.cs, CachingUserService.WithUserFields/RehydrateUser),
-      write-side sync (UserInfoSaveChangesInterceptor), repository
-      merge/purge/delete labels (UserRepository ×6), GDPR export
-      (UserService GdprExport shape), GDPR-anonymized sentinel state
-      (UserStateClassifier), and debug/dev seeders (DevPersonaSeeder ×2,
-      DevelopmentDashboardSeeder, GateTerminalAccountSeeder). Rendering-caller
-      debt was already migrated (#691). DETECT OVERCOUNTS: build:HUM_USER_DISPLAYNAME
-      counts all 20 firing sites, but legit consumers cannot be silenced
-      without a forbidden pragma, so the count floors at ~20 and can never
-      reach 0. remaining bumped 12->20 to match the detect; treat it as the
-      irreducible legit floor, not a backlog. PARKED — re-check only if a new
-      rendering caller of User.DisplayName appears (the analyzer will flag it).
+      ACTIONABLE = 0 (re-audited every site against a full clean rebuild,
+      #1053, 2026-08-20 — the section's G5 move into its own project gave the
+      analyzer a compilation unit to fire against on every clean build, which
+      is what surfaced the count for a full-rebuild audience). All 19 sites
+      that fire HUM_USER_DISPLAYNAME are still legitimate consumers per the
+      obsolete message: creation-time writes (ExternalLoginService.CreateUserAsync,
+      AccountProvisioningService ×2, dev/system seeders ×4), BurnerName-fallback
+      derivation (UserInfo.cs, CachingUserService.WithUserFields), write-side
+      sync (UserInfoSaveChangesInterceptor ×2, UserRepository.UpdateDisplayNameAsync),
+      repository merge/purge/delete labels (UserRepository ×5 more), GDPR
+      export (UserService.ContributeForUserAsync), and GDPR-anonymized
+      sentinel state (UserStateEvaluator). Full site table in
+      peterdrier/Humans PR for #1053. Count dropped 20->19 since the
+      2026-06-13 sweep because CachingUserService.RehydrateUser (one of the
+      two BurnerName-derivation sites back then) no longer exists — folded
+      into WithUserFields at some point since, not because a site was
+      silenced. Rendering-caller debt was already migrated (#691). DETECT
+      OVERCOUNTS: build:HUM_USER_DISPLAYNAME counts all 19 firing sites, but
+      legit consumers cannot be silenced without a forbidden pragma, so the
+      count floors at ~19 and can never reach 0. Treat it as the irreducible
+      legit floor, not a backlog. PARKED — re-check only if a new rendering
+      caller of User.DisplayName appears (the analyzer will flag it).
       Peter 2026-06-13: LEAVE parked in the ledger; the [Obsolete] warning
       independently guards against new misuse.
   - id: cs0618-pragma-nav-reads

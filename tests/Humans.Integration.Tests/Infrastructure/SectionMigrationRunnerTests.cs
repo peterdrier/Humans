@@ -27,6 +27,8 @@ using Humans.Holded.Data;
 using Humans.Store.Data;
 using Humans.SystemSettings.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
@@ -51,9 +53,11 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// boot in the wild: the historical root chain that used to build this fixture
 /// was deleted at peel 15, and every other section's mark-applied path was
 /// proven against the real chain in its own peel PR while the chain existed.
-/// The fixture is the model's create script — equivalent to the chain-built
-/// shape for Users because its baseline carries no raw-SQL blocks (peel-15
-/// audit: all chain raw SQL against Users tables was data-only).</item>
+/// The fixture is generated for the baseline migration ONLY (via
+/// <see cref="IMigrator.GenerateScript"/>) — equivalent to the chain-built shape
+/// for Users because its baseline carries no raw-SQL blocks (peel-15 audit: all
+/// chain raw SQL against Users tables was data-only) — so any migration after
+/// the baseline still has real DDL to execute against it.</item>
 /// <item><b>Schema equivalence</b> (Users): both paths yield the same physical
 /// shape (columns, types, nullability, defaults, indexes, and constraints),
 /// ignoring ordinal position, which legitimately differs between a table
@@ -279,9 +283,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     {
         // Tables present, history empty — what QA/prod look like on the first boot
         // after peel 15 deploys (their Users tables are chain-built; the Users
-        // history table does not exist yet).
+        // history table does not exist yet). Baseline-only fixture, not the full
+        // current model: any migration after the baseline must still execute for
+        // real against this database (nobodies-collective/Humans#507 is the first).
         var connectionString = await CreateDatabaseAsync("existing_users");
-        await CreateUsersSchemaWithoutHistoryAsync(connectionString);
+        await CreateUsersSchemaFromBaselineOnlyAsync(connectionString);
 
         // The runner must record the baseline without executing it (a real execute
         // would fail on CREATE TABLE). Two passes prove idempotency — the second
@@ -311,7 +317,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
         // reading a history table that doesn't exist yet (nobodies-collective/Humans#1022);
         // CollectPendingFrontierAsync must fall back to the full migration set instead.
         var connectionString = await CreateDatabaseAsync("frontier_no_history");
-        await CreateUsersSchemaWithoutHistoryAsync(connectionString);
+        await CreateUsersSchemaFromBaselineOnlyAsync(connectionString);
 
         // EF.LogTo captures every command EF sends, including ones that fail — a regression
         // back to calling GetPendingMigrationsAsync unconditionally would still send a SELECT
@@ -416,13 +422,44 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
     /// <summary>
     /// Users tables and seeds from the model's create script, with no migration
-    /// history — the shape QA/prod present on the first boot after peel 15.
+    /// history. Reflects the CURRENT model (every migration's cumulative effect) —
+    /// only valid as a stand-in for "chain-built" while the baseline is the section's
+    /// only migration; used solely by <see cref="BothPaths_ProduceEquivalentUsersSchema"/>
+    /// to compare against a from-scratch real migrate, which also lands on the current
+    /// model. For the "tables exist, history empty" mark-applied scenario, use
+    /// <see cref="CreateUsersSchemaFromBaselineOnlyAsync"/> instead — it isolates the
+    /// baseline so post-baseline migrations still have something to execute for real.
     /// </summary>
     private static async Task CreateUsersSchemaWithoutHistoryAsync(string connectionString)
     {
         await using var db = CreateSectionContext<UsersDbContext>(connectionString);
         var script = db.Database.GenerateCreateScript();
         await db.Database.ExecuteSqlRawAsync(script, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Users tables and seeds as of the baseline migration ONLY, with no migration
+    /// history table — the shape QA/prod present on the first boot after peel 15,
+    /// before any post-baseline Users migration existed. Unlike
+    /// <see cref="CreateUsersSchemaWithoutHistoryAsync"/> (which reflects the current,
+    /// cumulative model), this generates SQL for just the baseline's own operations via
+    /// <see cref="IMigrationsSqlGenerator"/> — schema DDL only, no history-table
+    /// bookkeeping (unlike <see cref="IMigrator.GenerateScript"/>, which would create and
+    /// populate the history table itself) — so tests exercising the "tables exist but
+    /// history is empty" mark-applied branch still find it genuinely empty, with real
+    /// post-baseline migrations left to apply.
+    /// </summary>
+    private static async Task CreateUsersSchemaFromBaselineOnlyAsync(string connectionString)
+    {
+        await using var db = CreateSectionContext<UsersDbContext>(connectionString);
+        var migrationsAssembly = db.GetService<IMigrationsAssembly>();
+        var baselineId = db.Database.GetMigrations().First();
+        var baseline = migrationsAssembly.CreateMigration(
+            migrationsAssembly.Migrations[baselineId], db.Database.ProviderName!);
+        var sqlGenerator = db.GetService<IMigrationsSqlGenerator>();
+        var commands = sqlGenerator.Generate(baseline.UpOperations, baseline.TargetModel);
+        foreach (var command in commands)
+            await db.Database.ExecuteSqlRawAsync(command.CommandText, TestContext.Current.CancellationToken);
     }
 
     private static Task<long> HistoryCountAsync(string connectionString, string sectionName) =>

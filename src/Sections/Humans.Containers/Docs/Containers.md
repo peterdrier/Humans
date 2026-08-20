@@ -13,6 +13,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 - A **Container** is a physical asset owned by a `Camp` (`CampId` non-null). Containers persist year-over-year — they are NOT scoped to a season. Every container belongs to a real camp; there is no system-managed or virtual camp.
 - **Org-level containers** (not tied to any barrio) are owned by an ordinary, production-created camp like any other; admin-only access falls out naturally because that camp has no assigned leads. (Rejected alternative: a virtual `SystemCampIds.Organization` sentinel camp — implemented and removed pre-merge 2026-05-14 because it forced special-case branches in the auth handlers.)
+- A **ContainerImage** is one photo in a container's gallery. A container holds **at most 5** images (nobodies-collective/Humans#797); they are year-agnostic like the container itself.
 - A **ContainerPlacement** is a per-year placement of a container on the city map. Composite primary key on `(ContainerId, Year)`. Placement-only metadata (notes, placement image) lives here, since it varies year over year.
 - **Container placement** is the act of positioning a container on the City Planning map for a specific year by upserting a `ContainerPlacement` row with a GeoJSON Feature in `LocationGeoJson`. Placement is gated by `CityPlanningSettings.IsContainerPlacementOpen` for non-admins.
 - **Container placement phase** is the toggle (`IsContainerPlacementOpen` on `CityPlanningSettings`) that controls whether barrio leads can place containers. Map Admins (CampAdmin role or city-planning team) are never gated.
@@ -29,13 +30,29 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 | CampId | Guid | **Non-null**. Bare FK (no nav) — Camp lives in a different section (no-cross-section-ef-joins). |
 | Name | string | max 256; required; must not contain `<`, `>` or `$` (names travel into JS/HTML on the map pages — enforced in `Service.ValidateName` + form model) |
 | Description | string? | max 2000 |
-| ImageStoragePath | string? | max 512; relative path from `wwwroot/` |
-| ImageContentType | string? | max 64 |
-| ImageFileName | string? | max 256 |
+| ImageStoragePath | string? | **Legacy**, max 512; relative path from `wwwroot/`. The pre-#797 single image. Write path is gone — the columns are read-only and drain as images are removed. |
+| ImageContentType | string? | **Legacy**, max 64 |
+| ImageFileName | string? | **Legacy**, max 256 |
 | CreatedAt | Instant | Set on create |
 | UpdatedAt | Instant | Updated on every write |
 
 **Indexes:** `IX_containers_CampId`
+
+### ContainerImage
+
+**Table:** `container_images`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK. `Guid.Empty` is reserved: `ContainerImageDto` uses it to address the legacy column-backed image, so it is never a real row id. |
+| ContainerId | Guid | Real FK to `containers.Id`, `ON DELETE CASCADE` — same section, so a constraint rather than a bare Guid |
+| StoragePath | string | max 512; relative path from `wwwroot/` |
+| ContentType | string | max 64 |
+| FileName | string | max 256 |
+| SortOrder | int | Display order within the container; new uploads append |
+| CreatedAt | Instant | |
+
+**Indexes:** `IX_container_images_ContainerId`
 
 ### ContainerPlacement
 
@@ -55,7 +72,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 **Indexes:** `IX_container_placements_Year`
 
-**Cross-section FKs:** none with EF navs. `Container.CampId` and `ContainerPlacement.ContainerId` are bare Guids per `memory/architecture/no-cross-section-ef-joins.md`. There is no DB FK on `ContainerPlacement.ContainerId` — `Service.DeleteAsync` cascades placement deletion explicitly via `Repository.DeleteAsync`.
+**Cross-section FKs:** none with EF navs. `Container.CampId` and `ContainerPlacement.ContainerId` are bare Guids per `memory/architecture/no-cross-section-ef-joins.md`. There is no DB FK on `ContainerPlacement.ContainerId` — `Service.DeleteAsync` cascades placement deletion explicitly via `Repository.DeleteAsync`. `container_images.ContainerId` is the exception: same-section owner, so it carries a real cascading FK (declared from the image side, no nav on either entity).
 
 ## Actors & Roles
 
@@ -72,7 +89,10 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - Placement writes (place / clear / annotate) for barrio leads are gated by `CityPlanningSettings.IsContainerPlacementOpen`; container CRUD is not phase-gated (`ContainerOperation.Manage` vs `.Place`). Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.
 - `ContainerPlacement.LocationGeoJson` stores a GeoJSON Feature whose Polygon is the container footprint (20 ft container: 6 m × 2.4 m body plus a door triangle whose tip marks the door bearing — a 7-vertex ring built client-side with Turf.js, tip at vertex index 4) and whose `properties` must carry `center_lng`, `center_lat`, `rotation_degrees` (presence enforced server-side by `CityPlanningApiController` on placement PUT). Rotation deliberately lives inside the Feature — there is no separate rotation column — so the client rebuilds the drag/rotate handle state without re-deriving orientation from vertex geometry.
-- Image storage uses the shared `IFileStorage`; both main and placement images are saved by the same `SaveImageAsync` helper under `wwwroot/uploads/containers/{containerId}/{guid}.{ext}` — the two kinds are distinguished by which entity field holds the key (`Container.ImageStoragePath` vs `ContainerPlacement.PlacementImageStoragePath`), not by a filename prefix. Uploading a new image of a given kind deletes the prior file of that kind only.
+- A container holds **at most 5 images**, counting the legacy column-backed one. `Service.ValidateImageCount` rejects anything over that on create and on update (removals in the same request free room first).
+- Every container create/edit POST carries `[RequestSizeLimit(55 MB)]` — 5 × 10 MB plus multipart overhead. Without it Kestrel's 30,000,000-byte default 413s a legitimate three-image upload before model binding, so the friendly per-image validation never runs. All four actions need it: both in `ContainerController` and both container actions in `CityPlanningController`.
+- Image storage uses the shared `IFileStorage`; gallery and placement images are saved by the same `SaveImageAsync` helper under `wwwroot/uploads/containers/{containerId}/{guid}.{ext}` — the kinds are distinguished by which row holds the key (`container_images.StoragePath`, the legacy `containers.ImageStoragePath`, or `ContainerPlacement.PlacementImageStoragePath`), not by a filename prefix.
+- **The gallery is one uniform list.** `ContainerDto.Images` is the legacy image (if any, as `Guid.Empty`) followed by `container_images` rows in `SortOrder`. Callers add, remove and render one list; nothing outside `Service.ToDto` and `Service.UpdateAsync` knows the legacy columns exist. Retiring them is an admin migration screen plus a column-drop PR, not a data migration.
 - Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampServiceRead.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the settings year).
 - Deleting a container deletes all its `ContainerPlacement` rows in the same transaction.
 - Documented limitation: when a container is deleted, placement-image files on disk for years other than the deleted-row scan window may be orphaned. At ~500-user scale this is acceptable; a periodic disk sweep can reclaim space.
@@ -87,9 +107,9 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Triggers
 
-- When a Main image is uploaded during Create/Edit, the previous Main file is deleted from disk before writing the new one.
-- When a Main image is removed via the "Remove image" checkbox, the file is deleted from disk and the corresponding three fields are set to null.
-- When a container is deleted, the Main image (if any) is removed from disk; all `ContainerPlacement` rows for that container are removed in the same transaction.
+- Images uploaded during Create/Edit append to the gallery; nothing is replaced. Exceeding 5 rejects the whole write.
+- Ticking an image's "Remove" checkbox deletes its file from disk and its `container_images` row — or, for `Guid.Empty`, nulls the three legacy columns on `containers`.
+- When a container is deleted, every gallery file and the legacy image (if any) are removed from disk; `container_images` cascades and all `ContainerPlacement` rows for that container are removed in the same transaction.
 - Placement save (`SavePlacementAsync(containerId, year, geoJson)`) upserts a `ContainerPlacement` row, preserving any existing notes/image.
 - Placement clear (`ClearPlacementAsync(containerId, year)`): if notes/image are absent, the row is deleted; otherwise `LocationGeoJson` is set to null and the row is preserved.
 
@@ -101,12 +121,12 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Architecture
 
 **Owning services:** `Service` (`Humans.Containers.Services`)
-**Owned tables:** `containers`, `container_placements`
+**Owned tables:** `containers`, `container_images`, `container_placements`
 **Status:** (A) Migrated — introduced in (A) shape from day one per PR peterdrier/Humans#389 (2026-04-26), reshaped pre-merge to the `Container` + `ContainerPlacement` split (2026-05-10) and stripped of the virtual-org-camp sentinel pre-merge (2026-05-14). New sections must be (A) per design-rules §15h(1). **G5 (own project, `src/Sections/Humans.Containers`) — 2026-08-09.**
 
 - `Service` (`Humans.Containers.Services`) never imports `Microsoft.EntityFrameworkCore`.
-- `IContainerRepository` / `Repository` (`Humans.Containers.Data`, `IDbContextFactory<ContainersDbContext>`) is the only code path that touches `containers` and `container_placements` via `DbContext`.
-- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as every other section context — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: both tables match the section name.
+- `IContainerRepository` / `Repository` (`Humans.Containers.Data`, `IDbContextFactory<ContainersDbContext>`) is the only code path that touches `containers`, `container_images` and `container_placements` via `DbContext`.
+- **DbContext** — `ContainersDbContext` (`Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers`, `container_images` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Data/Migrations/`. Same database and connection as every other section context — the split partitions the EF model, not the database. The `holded_*`-style name mismatch does not arise here: every table matches the section name.
 - Images are written through the shared `IFileStorage` under the `uploads/containers/` key prefix (`memory/architecture/one-ifilestorage`). There is no container-specific storage interface.
 - **Decorator decision — no caching decorator.** Small dataset, admin/lead facing, low write frequency.
 - DI: `Section.Register` (project root, discovered by Shell) registers `IContainerRepository` (Singleton), `IContainerService` (Scoped) and `ContainerAuthorizationHandler`. Nothing is added to Shell.
