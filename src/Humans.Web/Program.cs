@@ -842,25 +842,84 @@ foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<I
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
-    app.Services.GetRequiredService<IGlobalConfiguration>();
-    app.UseHumansRecurringJobs();
-}
-
+// Widened to also cover the Hangfire block below (nobodies-collective/Humans#1060): a preview
+// env whose database doesn't exist yet fails here first — every recurring-job registration
+// throws the same connection error, but each is caught and logged as a WARNING by
+// UseHumansRecurringJobs (a legitimate concern there: a stale distributed lock must not stop
+// the app booting). That warning is loud but incidental; the real fatal cause is whichever of
+// this block or DatabaseMigrationHostedService.StartingAsync (run inside RunAsync) throws
+// first, and previously only the RunAsync half was caught here.
 try
 {
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
+        app.Services.GetRequiredService<IGlobalConfiguration>();
+        app.UseHumansRecurringJobs();
+    }
+
     await app.RunAsync();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Application terminated unexpectedly");
+    LogStartupFailure(ex, builder.Configuration);
     throw;
 }
 finally
 {
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// One clear FATAL line for a startup crash, naming the database when the cause is a
+/// Postgres connectivity failure (nobodies-collective/Humans#1060) — e.g. a PR preview
+/// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
+/// generic message for anything else, so a startup failure is never silently unlabeled.
+/// </summary>
+static void LogStartupFailure(Exception ex, IConfiguration configuration)
+{
+    var pgEx = FindException<NpgsqlException>(ex);
+    if (pgEx is null)
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly");
+        return;
+    }
+
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    var database = connectionString is not null
+        ? new NpgsqlConnectionStringBuilder(connectionString).Database
+        : null;
+
+    if (pgEx is PostgresException { SqlState: PostgresErrorCodes.InvalidCatalogName })
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
+    }
+    else
+    {
+        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
+    }
+}
+
+/// <summary>Walks <paramref name="ex"/>'s InnerException chain (and AggregateException branches) for the first match.</summary>
+static T? FindException<T>(Exception? ex) where T : Exception
+{
+    for (; ex is not null; ex = ex.InnerException)
+    {
+        if (ex is T match)
+            return match;
+
+        if (ex is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+            {
+                var found = FindException<T>(inner);
+                if (found is not null)
+                    return found;
+            }
+        }
+    }
+
+    return null;
 }
 
 static async Task WriteDetailedHealthResponse(HttpContext context, HealthReport report)

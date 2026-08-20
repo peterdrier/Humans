@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Preview environment not ready</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1.5rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  code { background: #f0f0f0; padding: 0.1rem 0.35rem; border-radius: 3px; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<h1>This preview environment isn't up yet</h1>
+<p>
+  No app container answered this hostname. That's expected right after a PR is opened or
+  pushed to, and usually one of these:
+</p>
+<ul>
+  <li>
+    <strong>Database not cloned yet.</strong> Every PR preview needs its own database
+    (<code>humans_pr_&lt;N&gt;</code>), cloned by the <code>preview-db</code> GitHub Actions
+    workflow on the self-hosted runner. If that job is still queued or running, the app
+    container starts, fails fast, and exits until the database exists.
+    Check the PR's <strong>Actions</strong> tab for the <code>preview-db</code> run.
+  </li>
+  <li>
+    <strong>PR not deployed, or the URL is wrong.</strong> If Coolify has never deployed an
+    app for this PR, there's nothing to boot at all. Check the PR number in the URL
+    (<code>https://&lt;pr_id&gt;.n.burn.camp</code>) and that the PR is actually open.
+  </li>
+  <li>
+    <strong>PR closed.</strong> Its preview environment is torn down when the PR closes —
+    this hostname will never resolve to a running app again.
+  </li>
+  <li>
+    <strong>Something else crashed on boot.</strong> Check the container logs for a
+    <code>FATAL</code> line — startup failures always log one, naming what went wrong.
+  </li>
+</ul>
+<p>
+  See <a href="https://github.com/nobodies-collective/Humans/issues/1060">nobodies-collective/Humans#1060</a>
+  for the background on this page.
+</p>
+</body>
+</html>
