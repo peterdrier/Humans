@@ -1,29 +1,27 @@
-@* One type-grouped section (teams/camps/shifts/events) of global search. Humans render through
-   Users' own <vc:user-search-result>; these four types are still projected here until their
-   owners publish components of their own (nobodies-collective/Humans#1062). ViewData["Icon"] = FA class. *@
+@* One type-grouped section (teams/camps/shifts/events) of global search. Every row is the
+   owning section's own view component, invoked with the key this orchestrator holds — no
+   Title/Subtitle/Url is projected here any more (nobodies-collective/Humans#1062). Each
+   element binds only through Search's _ViewImports @addTagHelper lines; drop one and that
+   bucket ships as inert literal markup on a green 200. *@
 @model IReadOnlyList<GlobalSearchResult>
-
-@{
-    var icon = ViewData["Icon"] as string ?? "fa-solid fa-circle";
-}
 
 <div class="list-group">
     @foreach (var result in Model)
     {
-        <a href="@result.Url" class="list-group-item list-group-item-action">
-            <div class="d-flex align-items-start gap-3">
-                <div class="d-flex align-items-center justify-content-center rounded bg-light"
-                     style="width: 40px; height: 40px; flex-shrink: 0;">
-                    <i class="@icon text-muted"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <strong>@result.Title</strong>
-                    @if (!string.IsNullOrEmpty(result.Subtitle))
-                    {
-                        <div class="small text-muted">@result.Subtitle</div>
-                    }
-                </div>
-            </div>
-        </a>
+        switch (result.Type)
+        {
+            case SearchResultType.Team:
+                <vc:teams-search-result team-id="@result.Key" />
+                break;
+            case SearchResultType.Camp:
+                <vc:camps-search-result camp-id="@result.Key" />
+                break;
+            case SearchResultType.Shift:
+                <vc:shifts-search-result rota-id="@result.Key" />
+                break;
+            case SearchResultType.Event:
+                <vc:events-search-result event-id="@result.Key" />
+                break;
+        }
     }
 </div>

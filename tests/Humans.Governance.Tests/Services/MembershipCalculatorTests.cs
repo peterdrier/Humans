@@ -22,7 +22,8 @@ public class MembershipCalculatorTests
     private readonly ILegalDocumentSyncServiceRead _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncServiceRead>();
 
     // Seed backing state — section service substitutes read from these maps.
-    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
+    private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
+    private readonly Dictionary<Guid, UserState> _statesByUserId = new();
     private readonly Dictionary<Guid, List<SeedMembership>> _teamMembershipsByUserId = new();
     private readonly Dictionary<Guid, SeedTeamRow> _teamsById = new();
     private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
@@ -49,7 +50,7 @@ public class MembershipCalculatorTests
             {
                 var userId = ci.Arg<Guid>();
                 var profile = _profilesByUserId.GetValueOrDefault(userId);
-                return profile is null ? null : WrapInUserInfo(profile);
+                return profile is null ? null : WrapInUserInfo(userId, profile, StateOf(userId));
             });
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -58,7 +59,7 @@ public class MembershipCalculatorTests
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 var map = ids
                     .Where(_profilesByUserId.ContainsKey)
-                    .ToDictionary(id => id, id => WrapInUserInfo(_profilesByUserId[id]));
+                    .ToDictionary(id => id, id => WrapInUserInfo(id, _profilesByUserId[id], StateOf(id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map);
             });
 
@@ -757,18 +758,13 @@ public class MembershipCalculatorTests
 
     private void SeedProfile(Guid userId, bool isApproved, bool isSuspended)
     {
-        _profilesByUserId[userId] = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Tester",
-            FirstName = "Test",
-            LastName = "User",
-            IsApproved = isApproved,
-            State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
+        _profilesByUserId[userId] = UserFixtures.Profile(
+            burnerName: "Tester",
+            firstName: "Test",
+            lastName: "User",
+            isApproved: isApproved,
+            createdAt: _clock.GetCurrentInstant());
+        _statesByUserId[userId] = isSuspended ? UserState.Suspended : UserState.Active;
     }
 
     private void SeedActiveRole(Guid userId)
@@ -817,20 +813,23 @@ public class MembershipCalculatorTests
         list.Add(version);
     }
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+    private UserState StateOf(Guid userId) =>
+        _statesByUserId.TryGetValue(userId, out var state)
+            ? state
+            : UserFixtures.StateFor(_profilesByUserId.GetValueOrDefault(userId));
+
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, UserState state) => UserInfo.Create(
         user: new User
         {
-            Id = profile.UserId,
+            Id = userId,
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
+            State = state,
         },
         userEmails: [],
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 }

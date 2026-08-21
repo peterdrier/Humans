@@ -15,6 +15,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Services;
 
 using Humans.Teams.Contracts;
 namespace Humans.Shifts.Tests.Infrastructure;
@@ -197,7 +198,7 @@ public abstract class ShiftsTestHarness : IDisposable
     }
 
     private static UserInfo ToUserInfo(User user) =>
-        UserInfo.Create(user, [], [], [], null, [], [], [], []);
+        UserInfoFactory.Create(user, [], [], [], null, [], [], [], []);
 
     // ----- Common entity seeders ------------------------------------------------
     // Add to the context but do not SaveChanges — callers stage multiple seeds, then

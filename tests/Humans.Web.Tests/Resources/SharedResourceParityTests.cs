@@ -71,8 +71,10 @@ public class SharedResourceParityTests
         // cannot find yields zero keys, zero gaps, and a green test. Program.cs's own startup
         // diagnostic probes Dashboard_Welcome for the same reason.
         gallery.TotalKeys.Should().BeGreaterThan(500,
-            "the shared resx carries well over a thousand keys — a low count means the localizer "
-            + "resolved a different (or no) resource set, which is how this test passes vacuously");
+            "the shared resx carries 554 keys after the Users carve (nobodies-collective/Humans#1050) "
+            + "— a low count means the localizer resolved a different (or no) resource set, which is "
+            + "how this test passes vacuously. A future carve that drops it below the floor should "
+            + "lower the floor deliberately, not silently");
         localizer["Dashboard_Welcome"].ResourceNotFound.Should().BeFalse(
             "the key Program.cs logs LOCALIZATION BROKEN for must resolve");
 

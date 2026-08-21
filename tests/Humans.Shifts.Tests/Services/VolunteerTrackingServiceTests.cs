@@ -7,6 +7,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -733,7 +734,7 @@ public class VolunteerTrackingServiceTests
             {
                 var users = (participations ?? [])
                     .GroupBy(p => p.UserId)
-                    .Select(g => UserInfo.Create(
+                    .Select(g => UserInfoFactory.Create(
                         new User
                         {
                             Id = g.Key,

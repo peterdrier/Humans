@@ -332,18 +332,8 @@ public class CampControllerTests
             [],
             [],
             [],
-            new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = "Lead Human",
-                CreatedAt = SystemClock.Instance.GetCurrentInstant(),
-                UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-                State = ProfileState.Active,
-                IsApproved = true
-            },
-            [],
-            [],
-            [],
+            UserFixtures.Profile(
+                burnerName: "Lead Human",
+                isApproved: true),
             []);
 }

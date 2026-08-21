@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data.Configurations;
+using Humans.GoogleIntegration.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.GoogleIntegration.Data;
@@ -7,7 +8,8 @@ namespace Humans.GoogleIntegration.Data;
 /// <summary>
 /// Per-section database context for the GoogleIntegration section
 /// (nobodies-collective/Humans#858): maps only <c>google_resources</c>,
-/// <c>google_sync_outbox</c> and <c>sync_service_settings</c>, with its own
+/// <c>google_sync_outbox</c>, <c>sync_service_settings</c> and
+/// <c>google_sync_log</c>, with its own
 /// <c>__EFMigrationsHistory_GoogleIntegration</c> table and migrations under
 /// <c>Migrations/GoogleIntegration/</c>. Same database, same connection — the
 /// split is a code-side partition of the EF model.
@@ -27,6 +29,7 @@ internal sealed class GoogleIntegrationDbContext(DbContextOptions<GoogleIntegrat
     public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
     public DbSet<GoogleSyncOutboxEvent> GoogleSyncOutboxEvents => Set<GoogleSyncOutboxEvent>();
     public DbSet<SyncServiceSettings> SyncServiceSettings => Set<SyncServiceSettings>();
+    public DbSet<GoogleSyncLogEntry> GoogleSyncLog => Set<GoogleSyncLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,5 +38,6 @@ internal sealed class GoogleIntegrationDbContext(DbContextOptions<GoogleIntegrat
         builder.ApplyConfiguration(new GoogleResourceConfiguration());
         builder.ApplyConfiguration(new GoogleSyncOutboxEventConfiguration());
         builder.ApplyConfiguration(new SyncServiceSettingsConfiguration());
+        builder.ApplyConfiguration(new GoogleSyncLogEntryConfiguration());
     }
 }

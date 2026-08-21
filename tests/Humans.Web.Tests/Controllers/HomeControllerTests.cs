@@ -46,7 +46,7 @@ public class HomeControllerTests
         var user = new User { Id = userId, DisplayName = "Test" };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user, [], [], [], profile: null, [], [], [], [])));
+                user, [], [], [], profile: null, [])));
     }
 
     [HumansFact]

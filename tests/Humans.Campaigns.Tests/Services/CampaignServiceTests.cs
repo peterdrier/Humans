@@ -690,9 +690,6 @@ public sealed class CampaignServiceTests
             eventParticipations: [],
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []);
         _people[userId] = info;
         return info;

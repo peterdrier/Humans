@@ -18,12 +18,12 @@ namespace Humans.Containers.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.Container", b =>
+            modelBuilder.Entity("Humans.Containers.Domain.Container", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -66,7 +66,44 @@ namespace Humans.Containers.Data.Migrations
                     b.ToTable("containers", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.ContainerPlacement", b =>
+            modelBuilder.Entity("Humans.Containers.Domain.ContainerImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ContainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContainerId");
+
+                    b.ToTable("container_images", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Containers.Domain.ContainerPlacement", b =>
                 {
                     b.Property<Guid>("ContainerId")
                         .HasColumnType("uuid");
@@ -104,6 +141,15 @@ namespace Humans.Containers.Data.Migrations
                     b.HasIndex("Year");
 
                     b.ToTable("container_placements", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Containers.Domain.ContainerImage", b =>
+                {
+                    b.HasOne("Humans.Containers.Domain.Container", null)
+                        .WithMany()
+                        .HasForeignKey("ContainerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

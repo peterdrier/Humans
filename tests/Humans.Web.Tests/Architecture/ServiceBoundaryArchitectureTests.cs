@@ -61,10 +61,12 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Gate.Data.IGateRepository")] = "Gate",
             [SectionRepository("Humans.GoogleIntegration.Data.IGoogleResourceRepository")] = "GoogleIntegration",
             [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncOutboxRepository")] = "GoogleIntegration",
+            [SectionRepository("Humans.GoogleIntegration.Data.IGoogleSyncLogRepository")] = "GoogleIntegration",
             [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
             [SectionRepository("Humans.Holded.Data.IHoldedMirrorRepository")] = "Holded",
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
+            [SectionRepository("Humans.MailerLite.Data.IMailerLiteRepository")] = "MailerLite",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
             [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
@@ -177,25 +179,20 @@ public class ServiceBoundaryArchitectureTests
     /// <remarks>
     /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by Base (<c>Humans.Interfaces</c>; the namers
     /// arrived there from <c>Humans.UI</c> in G5 lanes 4b-iii A and B) and by ~48 files
-    /// across Shell and twenty test projects, and Base cannot reference a section, so the nine
-    /// Users/Profiles entities are public on <c>Humans.Users.Contracts</c>
-    /// (nobodies-collective/Humans#866, G5 lane 2). Without this list the two
-    /// <c>Humans.Domain.Entities.User</c> rows in the baseline read as *fixed* on byte-identical
-    /// code — the silent shrink design §10 warns about, arriving through a third keying (not a
-    /// path, not an assembly: the namespace convention that says "entities live in .Domain").
-    /// The list empties when the entities are internalised; see the lane 2 handoff.
+    /// across Shell and twenty test projects, and Base cannot reference a section, so it stays
+    /// public on <c>Humans.Users.Contracts</c> (nobodies-collective/Humans#866, G5 lane 2) and
+    /// drags <c>UserEmail</c> and <c>EventParticipation</c> with it through its navigations.
+    /// Without this list the two <c>Humans.Domain.Entities.User</c> rows in the baseline read as
+    /// *fixed* on byte-identical code — the silent shrink design §10 warns about, arriving
+    /// through a third keying (not a path, not an assembly: the namespace convention that says
+    /// "entities live in .Domain"). The six Profile-side entities left this list when they moved
+    /// to <c>Humans.Users.Domain</c> as internal types (nobodies-collective/Humans#1051).
     /// </remarks>
     private static readonly Type[] LeafResidentEntities =
     [
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
         typeof(Users.Contracts.EventParticipation),
-        typeof(Users.Contracts.Profile),
-        typeof(Users.Contracts.ContactField),
-        typeof(Users.Contracts.ProfileLanguage),
-        typeof(Users.Contracts.VolunteerHistoryEntry),
-        typeof(Users.Contracts.CommunicationPreference),
-        typeof(Users.Contracts.AccountMergeRequest),
         // GoogleIntegration's three entities, same shape and same reason
         // (nobodies-collective/Humans#866, G5 lane 4b-2j): GoogleResource and
         // GoogleSyncOutboxEvent are public members of IGoogleSyncService /

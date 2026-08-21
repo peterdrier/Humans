@@ -89,6 +89,8 @@ public sealed class Section : ISection
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserServiceRead>(sp => sp.GetRequiredService<CachingUserService>());
+        // Guid → display-name fan-out (nobodies-collective/Humans#1059).
+        services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());
 
         // Same Singleton instance must back invalidator + merge so external "user changed" signals hit the cache owner.
         services.AddSingleton<IUserInfoInvalidator>(sp =>
@@ -128,7 +130,6 @@ public sealed class Section : ISection
         services.AddScoped<IEmailProblemsService, EmailProblemsService>();
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
-        services.AddScoped<IUserEmailProviderBackfillService, UserEmailProviderBackfillService>();
 
         // Resource-based authorization handler for UserEmail operations. The *policy* stays in
         // Shell's AuthorizationPolicyExtensions; the handler moves in with the section

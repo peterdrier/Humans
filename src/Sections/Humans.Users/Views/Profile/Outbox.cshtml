@@ -41,8 +41,8 @@
                         <thead>
                             <tr>
                                 <th>@Localizer["Outbox_Subject"]</th>
-                                <th>@Localizer["Common_Status"]</th>
-                                <th>@Localizer["Common_Date"]</th>
+                                <th>@SharedLocalizer["Common_Status"]</th>
+                                <th>@SharedLocalizer["Common_Date"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -59,7 +59,7 @@
                                 var collapseId = $"msg-body-{i}";
                                 <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
                                     <td>@msg.Subject</td>
-                                    <td><span class="badge @statusClass">@Localizer.EnumDisplay(msg.Status)</span></td>
+                                    <td><span class="badge @statusClass">@SharedLocalizer.EnumDisplay(msg.Status)@* Enum_EmailOutboxStatus_* is Humans.Email's set, left in SharedResource *@</span></td>
                                     <td>@msg.CreatedAt.ToDateTimeUtc().ToDateTime()</td>
                                 </tr>
                                 <tr class="collapse" id="@collapseId">

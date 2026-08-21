@@ -45,15 +45,6 @@ internal partial interface IUserRepository : IRepository
     Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the legacy <c>GoogleEmail</c> shadow-column value for the given
-    /// users (only entries where the column is non-null are present in the
-    /// result). The CLR property is gone — this is the only way to observe the
-    /// legacy column for the deferred backfill admin button. Read-only.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================
@@ -105,12 +96,14 @@ internal partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Temporary backfill hook: lazily seeds <see cref="Domain.Entities.User.State"/> for a legacy
-    /// row whose State is null. Idempotent (State IS NULL guard); no UpdatedAt/audit side effects.
+    /// Applies a suspension transition directly to <see cref="Domain.Entities.User.State"/>.
+    /// Unsuspending re-classifies from the remaining fields (rejected/deletion/name/merge).
+    /// Writes <c>users.State</c> only — the suspension reason belongs to the audit log and the
+    /// notification, not to a second copy on the profile.
     /// </summary>
-    /// <returns>true if a row was updated; false if the row was missing or already non-null.</returns>
-    Task<bool> WriteBackUserStateIfNullAsync(
-        Guid userId, UserState state, CancellationToken ct = default);
+    /// <returns>true if a row was updated; false if the user does not exist.</returns>
+    Task<bool> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default);
 
     /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,

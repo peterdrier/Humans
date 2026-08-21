@@ -23,14 +23,13 @@
 
   <ItemGroup>
     <!--
-      No Humans.Infrastructure reference: MailerLite owns no tables, so there is no DbContext,
-      no repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the
-      Data-and-DbContext steps are skipped wholesale). MailerLiteClient came out of
+      No Humans.Infrastructure reference: the section's one table is reached through
+      Base's AddSectionDbContext seam. MailerLiteClient came out of
       Humans.Infrastructure/Services and still needs nothing from it — IHttpClientFactory
       arrives through the ASP.NET Core shared framework, and its two helpers are
       Base's (the Humans.Base.Extensions / .Threading namespaces). Every Humans-side
-      read and write routes through another section's service interface, all of them
-      contracts-leaf types registered by their owners.
+      read and write of another section's data routes through that section's service
+      interface, all of them contracts-leaf types registered by their owners.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
@@ -43,13 +42,16 @@
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
       the build with NU1010 under Central Package Management. Everything the controller and
       the MailerLite client need arrives through the framework reference Sdk.Razor already
-      adds (design §15 step 1). No EF Core either — the section owns no tables.
+      adds (design §15 step 1).
     -->
     <!-- Contracts/MailerLiteAudienceSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob,
          since G5 lane 5b-5. Package, not project, so no cycle is possible; it was already
          arriving transitively. -->
     <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
   </ItemGroup>
 
   <ItemGroup>

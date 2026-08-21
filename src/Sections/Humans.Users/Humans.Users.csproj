@@ -19,24 +19,6 @@
     <InternalsVisibleTo Include="Humans.Camps.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
-    <!--
-      TEMPORARY, and down to a single blocker: every Users controller, view model and view
-      component now lives here, so the only Humans.Web file left naming an internal Users type
-      is Controllers/WidgetGalleryController.cs — its WidgetGalleryViewModel holds
-      SampleProfileSummary (ProfileSummaryViewModel) and SampleHumanSearchResults
-      (HumanSearchResultViewModel, still Humans.UI's — only the _HumanSearchResults *partial*
-      moved here at G5 lane 4b-i, nobodies-collective/Humans#866) to render the _ProfileCard /
-      _HumanPopover / _HumanSearchResults sample cards in the Shell-owned widget catalogue.
-
-      Removing the grant therefore needs a decision, not a move: either the catalogue's
-      Users cards are fed by the section (a "section contributes gallery samples" seam) or
-      those three cards leave the Shell gallery. Whichever lands, delete this line in that
-      commit — and in the same commit collapse the folder-level Views/*/_ViewImports.cshtml
-      into one Views/_ViewImports.cshtml, which cannot exist while this grant does (a root
-      _ViewImports in both assemblies generates the same internal Views__ViewImports type and
-      Humans.Web fails with CS0436).
-    -->
-    <InternalsVisibleTo Include="Humans.Web" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,6 +29,12 @@
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
+    <!--
+      The six Profile-side entities are internal here rather than public on the leaf
+      (nobodies-collective/Humans#1051); forty files across the section name one. Global, as in
+      Humans.Camps — the precedent this section's entity layout follows.
+    -->
+    <Using Include="Humans.Users.Domain" />
   </ItemGroup>
 
   <ItemGroup>
@@ -126,10 +114,15 @@
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <!--
-      Views/Profile/Edit.cshtml injects IStringLocalizer<ShiftsResource> for the two
-      shift-preference strings on the profile edit page; ShiftsResource lives in
-      Humans.Shifts, not its Contracts leaf. Acyclic — Humans.Shifts names nothing in
-      Humans.Users. Drops out when the Users resx carve gives these keys a Users home.
+      The section project, not its Contracts leaf, because Views/Profile/Index.cshtml and
+      Views/UsersAdmin/AdminDetail.cshtml render <vc:shift-signups>: the tag helper binds at
+      Razor compile time off @addTagHelper *, Humans.Shifts, and ShiftSignupsViewComponent +
+      ShiftSignupsViewMode live in the section's Contracts/ *folder*, not in
+      Humans.Shifts.Contracts. Views/Profile/Edit.cshtml's IStringLocalizer<ShiftsResource> for
+      the two shift-preference strings rides along on the same reference — the Users resx carve
+      (nobodies-collective/Humans#1050) left them in Shifts rather than duplicate the copy.
+      Acyclic — Humans.Shifts names nothing in Humans.Users. Drops out only when the view
+      component moves to the leaf.
     -->
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />

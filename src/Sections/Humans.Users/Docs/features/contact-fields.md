@@ -245,7 +245,7 @@ UserEmail
 └── UpdatedAt: Instant
 ```
 
-Note: `IsOAuth` is no longer a live C# property — it's a shadow-only column kept on disk for a one-shot backfill service. Provider-linked (OAuth) rows are identified by `Provider`/`ProviderKey` instead.
+Note: `IsOAuth` was dropped (nobodies-collective/Humans#507). Provider-linked (OAuth) rows are identified by `Provider`/`ProviderKey` instead.
 
 ### Constraints
 - Unique index on `Email` where `IsVerified = true` (prevents email squatting)

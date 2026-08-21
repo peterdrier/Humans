@@ -162,7 +162,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     // UsersDbContext a section test project cannot see. Only the no-argument shape was
     // ever used here, and it is two lines.
     private static UserInfo MinimalUserInfo(User user) =>
-        UserInfo.Create(user, [], [], [], profile: null, [], [], [], []);
+        UserInfo.Create(user, [], [], [], profile: null, []);
 
     private static HoldedExpenseOutboxEvent MakeEvent(
         Guid reportId, HoldedExpenseOutboxEventType eventType) => new()

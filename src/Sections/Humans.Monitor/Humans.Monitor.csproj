@@ -40,10 +40,10 @@
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
-    <!-- SyncAudit.cshtml emits <vc:audit-log>, so the section's tag helpers must be
-         referenced for @addTagHelper *, Humans.AuditLog to bind. Monitor no longer reads
-         audit itself. -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <!-- SyncAudit.cshtml emits <vc:google-sync-log>, so that section's tag helpers must be
+         referenced for @addTagHelper *, Humans.GoogleIntegration to bind. Monitor reads
+         neither the audit log nor the sync log itself. -->
+    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
   </ItemGroup>
 

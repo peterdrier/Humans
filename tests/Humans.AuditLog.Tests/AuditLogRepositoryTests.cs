@@ -70,6 +70,39 @@ public class AuditLogRepositoryTests
             because: "GetRecentAsync returns the most recent entries first");
     }
 
+    [HumansFact]
+    public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsOnlyResourceRows_Oldest_First()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 12, 10, 0);
+
+        await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid()), ct);
+        var newer = MakeGoogleSyncEntry(now);
+        var older = MakeGoogleSyncEntry(now - Duration.FromHours(3));
+        await _sut.AddAsync(newer, ct);
+        await _sut.AddAsync(older, ct);
+
+        var result = await _sut.GetLegacyGoogleSyncEntriesAsync(ct);
+
+        // Chronological, and the non-Google row is absent — the one-time migration reads the whole set.
+        result.Select(e => e.Id).Should().Equal([older.Id, newer.Id]);
+    }
+
+    private static AuditLogEntry MakeGoogleSyncEntry(Instant occurredAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        Action = AuditAction.GoogleResourceAccessGranted,
+        EntityType = "GoogleResource",
+        EntityId = Guid.NewGuid(),
+        Description = "GoogleWorkspaceSyncService: Granted Drive access",
+        OccurredAt = occurredAt,
+        ResourceId = Guid.NewGuid(),
+        Success = true,
+        Role = "writer",
+        SyncSource = Humans.Base.Enums.GoogleSyncSource.ManualSync,
+        UserEmail = "a@b.org"
+    };
+
     private static AuditLogEntry MakeEntry(
         AuditAction action, string entityType, Guid entityId,
         Instant? occurredAt = null) => new()

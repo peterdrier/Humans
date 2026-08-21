@@ -58,14 +58,7 @@ internal sealed class SurveyService(
         var input = new SurveyEditInput(
             s.Title, s.Intro, s.ThankYou, s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
             s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
-            s.Questions
-                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-                .Select(q => new QuestionInput(
-                    q.Id, q.PageNumber, q.Order, q.Type, q.Prompt, q.HelpText, q.IsRequired,
-                    q.RatingMin, q.RatingMax, q.RatingMinLabel, q.RatingMaxLabel, q.ShowIf,
-                    q.Options.OrderBy(o => o.Order)
-                        .Select(o => new OptionInput(o.Id, o.Order, o.Value, o.Label)).ToList()))
-                .ToList());
+            ToQuestionInputs(s));
 
         return new SurveyDetail(s.Id, s.Status, input);
     }
@@ -77,6 +70,7 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
         var questions = MapQuestions(surveyId, input);
+        ValidateQuestionConfiguration(questions);
         ValidateBranching(questions);
 
         var survey = new Survey
@@ -113,6 +107,7 @@ internal sealed class SurveyService(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         var now = clock.GetCurrentInstant();
         var questions = MapQuestions(surveyId, input);
+        ValidateQuestionConfiguration(questions);
         ValidateBranching(questions);
 
         var survey = new Survey
@@ -157,6 +152,7 @@ internal sealed class SurveyService(
             MinLabel = Copy(q.RatingMinLabel),
             MaxLabel = Copy(q.RatingMaxLabel),
             Options = q.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList(),
+            GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
         }).ToList();
 
         var allTexts = new List<Dictionary<string, string>> { title, intro, thankYou };
@@ -164,6 +160,7 @@ internal sealed class SurveyService(
         {
             allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
             allTexts.AddRange(q.Options.Select(o => o.Label));
+            allTexts.AddRange(q.GridRows.Select(row => row.Label));
         }
 
         // One batched call per target culture; only fills blanks — never overwrites authored text.
@@ -196,6 +193,7 @@ internal sealed class SurveyService(
                 RatingMinLabel = new LocalizedText(q.MinLabel),
                 RatingMaxLabel = new LocalizedText(q.MaxLabel),
                 Options = q.Options.Select(o => o.Option with { Label = new LocalizedText(o.Label) }).ToList(),
+                GridRows = q.GridRows.Select(row => row.Row with { Label = new LocalizedText(row.Label) }).ToList(),
             }).ToList());
 
         await UpdateAsync(surveyId, input, actorUserId, ct);
@@ -234,11 +232,15 @@ internal sealed class SurveyService(
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey?.AudienceType is null) return 0;
-        if (AudienceConfigurationError(
-                survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true) is not null)
+        var audienceType = survey.AudienceType.Value;
+        if (Enum.IsDefined(audienceType) &&
+            AudienceConfigurationError(
+                audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true) is not null)
             return 0;
 
-        var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
+        var recipients = await ResolveRecipientIdsAsync(
+            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
+        if (recipients.Count == 0) return 0;
         var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
         return recipients.Except(alreadyInvited).Count();
     }
@@ -416,7 +418,15 @@ internal sealed class SurveyService(
         var draftAnswers = draft is null
             ? (IReadOnlyList<SurveyDraftAnswer>)[]
             : draft.Answers
-                .Select(a => new SurveyDraftAnswer(a.QuestionId, a.SelectedOptionValues, a.TextValue, a.RatingValue))
+                .Select(a => new SurveyDraftAnswer(
+                    a.QuestionId,
+                    a.SelectedOptionValues,
+                    a.TextValue,
+                    a.RatingValue,
+                    a.GridSelections?.ToDictionary(
+                        kv => kv.Key,
+                        kv => (IReadOnlyList<string>)kv.Value,
+                        StringComparer.Ordinal)))
                 .ToList();
 
         return new SurveyAnswerContext(
@@ -482,7 +492,20 @@ internal sealed class SurveyService(
 
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
-        // Load the definition so branching can be re-evaluated authoritatively at submit time.
+        var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.MissingRequired.Count > 0)
+        {
+            throw new InvalidOperationException("Required survey questions are unanswered.");
+        }
+
+        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
+    }
+
+    private async Task<SubmissionPreparation> PrepareSubmissionAsync(
+        SurveySubmission submission, CancellationToken ct)
+    {
+        // Load one authoritative definition for branching, normalization, required validation, and
+        // persistence preparation. The caller must persist the returned answers without reloading it.
         var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
 
@@ -505,7 +528,27 @@ internal sealed class SurveyService(
 
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
         var visibleAnswers = VisibleAnswers(survey, submission.Answers);
+        var questions = ToQuestionInputs(survey);
+        var answerStates = visibleAnswers.ToDictionary(
+            answer => answer.QuestionId,
+            answer => new AnswerState(
+                answer.SelectedOptionValues,
+                answer.TextValue,
+                answer.RatingValue,
+                answer.GridSelections));
+        var allVisible = SurveyWizardFlow.OrderedPages(questions)
+            .SelectMany(page => SurveyWizardFlow.VisibleQuestionsOnPage(questions, page, answerStates))
+            .ToList();
+        var missingRequired = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
 
+        return new SubmissionPreparation(visibleAnswers, questions, missingRequired);
+    }
+
+    private async Task PersistResponseAsync(
+        SurveySubmission submission,
+        IReadOnlyList<SurveyAnswerInput> visibleAnswers,
+        CancellationToken ct)
+    {
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:
@@ -625,9 +668,30 @@ internal sealed class SurveyService(
             state.Answers[id.ToString()] = new SurveyWizardAnswer
             {
                 SelectedOptionValues = answer.SelectedOptionValues.Where(v => !string.IsNullOrEmpty(v)).ToList(),
+                GridSelections = NormalizeGridSelections(
+                    question.GridRows,
+                    question.Options,
+                    question.GridSelectionMode,
+                    answer.GridSelections),
                 TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
                 RatingValue = answer.RatingValue,
             };
+        }
+
+        // A survey may be edited while a respondent has a wizard session open. Re-normalize every
+        // stored Grid answer against the current schema before autosave, validation, navigation, or
+        // submission so removed cells cannot survive and newly required rows cannot be bypassed.
+        foreach (var question in editable.Questions.Where(q => q.Type == SurveyQuestionType.Grid && q.Id is not null))
+        {
+            if (!state.Answers.TryGetValue(question.Id!.Value.ToString(), out var answer)) continue;
+            answer.GridSelections = NormalizeGridSelections(
+                question.GridRows,
+                question.Options,
+                question.GridSelectionMode,
+                answer.GridSelections.ToDictionary(
+                    pair => pair.Key,
+                    pair => (IReadOnlyList<string>)pair.Value,
+                    StringComparer.Ordinal));
         }
 
         // First advance past the intro fires the path-specific Started funnel side effect (idempotent via state.Started).
@@ -678,8 +742,25 @@ internal sealed class SurveyService(
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Navigated, []);
         }
 
-        // No further visible page ⇒ submit. Identity columns are written only for Identified (see SubmitResponseAsync).
-        await SubmitResponseAsync(new SurveySubmission(
+        // The current page has passed validation, but an author may have changed an earlier page
+        // while this session was in progress. Revalidate every currently visible required question
+        // immediately before final submission and return to the first page that needs attention.
+        var allVisible = SurveyWizardFlow.OrderedPages(editable.Questions)
+            .SelectMany(visiblePage => SurveyWizardFlow.VisibleQuestionsOnPage(
+                editable.Questions, visiblePage, answerStates))
+            .ToList();
+        var missingBeforeSubmit = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
+        if (missingBeforeSubmit.Count > 0)
+        {
+            var firstMissing = missingBeforeSubmit.ToHashSet();
+            state.CurrentPage = allVisible.First(q => q.Id is { } id && firstMissing.Contains(id)).PageNumber;
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.ValidationFailed, missingBeforeSubmit);
+        }
+
+        // Reload once at the submission boundary, then validate and persist against that same
+        // authoritative definition. If the schema changed after the wizard validation above,
+        // return the respondent to the first newly incomplete required question.
+        var submission = new SurveySubmission(
             state.SurveyId,
             state.InvitationId,
             state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
@@ -687,7 +768,22 @@ internal sealed class SurveyService(
             state.Anonymity,
             state.InputMethod,
             state.Culture,
-            SurveyWizardFlow.ToAnswerInputs(state.Answers)), ct);
+            SurveyWizardFlow.ToAnswerInputs(state.Answers));
+        var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.MissingRequired.Count > 0)
+        {
+            ReplaceWizardAnswers(state, prepared.VisibleAnswers);
+            var missingIds = prepared.MissingRequired.ToHashSet();
+            state.CurrentPage = prepared.Questions
+                .Where(question => question.Id is { } id && missingIds.Contains(id))
+                .Min(question => question.PageNumber);
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                prepared.MissingRequired);
+        }
+
+        // No further visible page ⇒ submit. Identity columns are written only for Identified.
+        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
 
         return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
@@ -749,9 +845,14 @@ internal sealed class SurveyService(
                 q.Type,
                 q.Options.OrderBy(o => o.Order)
                     .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))
-                    .ToList()))
+                    .ToList(),
+                q.GridSelectionMode,
+                q.GridRows?.Select(row => new SurveyExportGridRow(
+                    row.Value,
+                    row.Label.Resolve(culture, culture))).ToList()))
             .ToList();
 
+        var questionsById = survey.Questions.ToDictionary(q => q.Id);
         var optionLabels = survey.Questions.ToDictionary(
             q => q.Id,
             q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
@@ -784,7 +885,11 @@ internal sealed class SurveyService(
                         a.SelectedOptionValues,
                         ResolveSelectedLabels(a, optionLabels),
                         a.TextValue,
-                        a.RatingValue))
+                        a.RatingValue,
+                        CopyGridSelections(a),
+                        questionsById.TryGetValue(a.QuestionId, out var question)
+                            ? ResolveGridSelections(a, question, culture)
+                            : []))
                     .ToList();
 
                 return new SurveyExportRow(
@@ -831,6 +936,8 @@ internal sealed class SurveyService(
                     : survey.Questions.ToDictionary(
                         q => q.Id,
                         q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+                var questionsById = survey?.Questions.ToDictionary(q => q.Id)
+                    ?? new Dictionary<Guid, SurveyQuestion>();
 
                 return new
                 {
@@ -841,6 +948,10 @@ internal sealed class SurveyService(
                     {
                         Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
                         SelectedLabels = ResolveSelectedLabels(a, optionLabels),
+                        GridSelections = CopyGridSelections(a),
+                        GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
+                            ? ResolveGridSelections(a, question, culture)
+                            : [],
                         a.TextValue,
                         a.RatingValue,
                     }).ToList(),
@@ -896,6 +1007,43 @@ internal sealed class SurveyService(
                     return new QuestionAggregate(question.Id, prompt, question.Type, [], distribution, average, []);
                 }
 
+            case SurveyQuestionType.Grid:
+                {
+                    var columns = question.Options
+                        .OrderBy(option => option.Order)
+                        .Select(option => new SurveyExportOption(
+                            option.Value,
+                            option.Label.Resolve(culture, culture)))
+                        .ToList();
+                    var rows = (question.GridRows ?? [])
+                        .Select(row =>
+                        {
+                            var answeredCount = answers.Count(answer =>
+                                answer.GridSelections?.TryGetValue(row.Value, out var selected) == true
+                                && selected.Count > 0);
+                            var cells = columns.Select(column =>
+                            {
+                                var count = answers.Count(answer =>
+                                    answer.GridSelections?.TryGetValue(row.Value, out var selected) == true
+                                    && selected.Contains(column.Value, StringComparer.Ordinal));
+                                var percent = answeredCount == 0
+                                    ? 0d
+                                    : (double)count / answeredCount * 100d;
+                                return new GridCellCount(column.Value, column.Label, count, percent);
+                            }).ToList();
+                            return new GridAggregateRow(
+                                row.Value,
+                                row.Label.Resolve(culture, culture),
+                                cells);
+                        })
+                        .ToList();
+                    var grid = new GridAggregate(
+                        question.GridSelectionMode ?? GridSelectionMode.Single,
+                        columns,
+                        rows);
+                    return new QuestionAggregate(question.Id, prompt, question.Type, [], [], null, [], grid);
+                }
+
             case SurveyQuestionType.ShortText:
             case SurveyQuestionType.LongText:
             default:
@@ -925,6 +1073,7 @@ internal sealed class SurveyService(
             q => q.Id,
             q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
         var prompts = survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
+        var questionsById = survey.Questions.ToDictionary(q => q.Id);
 
         return identified
             .Select(r =>
@@ -937,7 +1086,10 @@ internal sealed class SurveyService(
                         prompts.GetValueOrDefault(a.QuestionId, string.Empty),
                         ResolveSelectedLabels(a, optionLabels),
                         a.TextValue,
-                        a.RatingValue))
+                        a.RatingValue,
+                        questionsById.TryGetValue(a.QuestionId, out var question)
+                            ? ResolveGridSelections(a, question, culture)
+                            : []))
                     .ToList();
                 return new RespondentDetail(userId, name, r.SubmittedAt, answers);
             })
@@ -955,6 +1107,89 @@ internal sealed class SurveyService(
             .ToList();
     }
 
+    private static IReadOnlyList<ResolvedGridSelection> ResolveGridSelections(
+        SurveyAnswer answer, SurveyQuestion question, string culture)
+    {
+        if (answer.GridSelections is null) return [];
+
+        var rows = (question.GridRows ?? []).ToDictionary(
+            row => row.Value,
+            row => row.Label.Resolve(culture, culture),
+            StringComparer.Ordinal);
+        var columns = question.Options.ToDictionary(
+            option => option.Value,
+            option => option.Label.Resolve(culture, culture),
+            StringComparer.Ordinal);
+        return answer.GridSelections
+            .Where(selection => selection.Value.Count > 0)
+            .Select(selection => new ResolvedGridSelection(
+                selection.Key,
+                rows.GetValueOrDefault(selection.Key, selection.Key),
+                selection.Value.ToList(),
+                selection.Value
+                    .Select(value => columns.GetValueOrDefault(value, value))
+                    .ToList()))
+            .ToList();
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? CopyGridSelections(SurveyAnswer answer)
+        => answer.GridSelections?.ToDictionary(
+            selection => selection.Key,
+            selection => (IReadOnlyList<string>)selection.Value.ToList(),
+            StringComparer.Ordinal);
+
+    private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
+        => survey.Questions
+            .OrderBy(question => question.PageNumber)
+            .ThenBy(question => question.Order)
+            .Select(question => new QuestionInput(
+                question.Id,
+                question.PageNumber,
+                question.Order,
+                question.Type,
+                question.Prompt,
+                question.HelpText,
+                question.IsRequired,
+                question.RatingMin,
+                question.RatingMax,
+                question.RatingMinLabel,
+                question.RatingMaxLabel,
+                question.ShowIf,
+                question.Options
+                    .OrderBy(option => option.Order)
+                    .Select(option => new OptionInput(
+                        option.Id,
+                        option.Order,
+                        option.Value,
+                        option.Label))
+                    .ToList(),
+                question.GridSelectionMode,
+                question.GridRows?
+                    .Select(row => new GridRowInput(row.Value, row.Label))
+                    .ToList()))
+            .ToList();
+
+    private static void ReplaceWizardAnswers(
+        SurveyWizardState state,
+        IReadOnlyList<SurveyAnswerInput> answers)
+    {
+        state.Answers.Clear();
+        foreach (var answer in answers)
+        {
+            state.Answers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                GridSelections = answer.GridSelections?.ToDictionary(
+                        pair => pair.Key,
+                        pair => pair.Value.ToList(),
+                        StringComparer.Ordinal)
+                    ?? new Dictionary<string, List<string>>(StringComparer.Ordinal),
+                TextValue = answer.TextValue,
+                RatingValue = answer.RatingValue,
+            };
+        }
+    }
+
     /// <summary>
     /// Keeps only the answers to questions visible under full cascading branching: an answer on a
     /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
@@ -963,7 +1198,7 @@ internal sealed class SurveyService(
     {
         var states = answers.ToDictionary(
             a => a.QuestionId,
-            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue));
+            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue, a.GridSelections));
 
         var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(
             survey.Questions
@@ -971,8 +1206,40 @@ internal sealed class SurveyService(
                 .Select(q => (q.Id, q.ShowIf)),
             states);
 
-        return answers.Where(a => effective.ContainsKey(a.QuestionId)).ToList();
+        var questions = survey.Questions.ToDictionary(q => q.Id);
+        return answers
+            .Where(a => effective.ContainsKey(a.QuestionId))
+            .Where(a => questions.ContainsKey(a.QuestionId))
+            .Select(a =>
+            {
+                var question = questions[a.QuestionId];
+                var normalizedGridSelections = question.Type == SurveyQuestionType.Grid
+                    ? NormalizeGridSelections(
+                        question.GridRows?.Select(row => new GridRowInput(row.Value, row.Label)).ToList(),
+                        question.Options
+                            .OrderBy(option => option.Order)
+                            .Select(option => new OptionInput(option.Id, option.Order, option.Value, option.Label))
+                            .ToList(),
+                        question.GridSelectionMode,
+                        a.GridSelections)
+                    : null;
+                return a with
+                {
+                    GridSelections = normalizedGridSelections?.Count > 0
+                        ? normalizedGridSelections.ToDictionary(
+                                kv => kv.Key,
+                                kv => (IReadOnlyList<string>)kv.Value,
+                                StringComparer.Ordinal)
+                        : null,
+                };
+            })
+            .ToList();
     }
+
+    private sealed record SubmissionPreparation(
+        IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
+        IReadOnlyList<QuestionInput> Questions,
+        IReadOnlyList<Guid> MissingRequired);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer
@@ -981,6 +1248,10 @@ internal sealed class SurveyService(
             ResponseId = responseId,
             QuestionId = a.QuestionId,
             SelectedOptionValues = a.SelectedOptionValues.ToList(),
+            GridSelections = a.GridSelections?.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.ToList(),
+                StringComparer.Ordinal),
             TextValue = a.TextValue,
             RatingValue = a.RatingValue,
         }).ToList();
@@ -1044,6 +1315,9 @@ internal sealed class SurveyService(
                 }
 
             default:
+                // Unknown audience type resolves to nobody, silently — the send would look like
+                // it worked while inviting no one. See issue #1065.
+                logger.SwitchDefaultWarn(type);
                 return new HashSet<Guid>();
         }
     }
@@ -1098,6 +1372,10 @@ internal sealed class SurveyService(
                 RatingMax = q.RatingMax,
                 RatingMinLabel = q.RatingMinLabel,
                 RatingMaxLabel = q.RatingMaxLabel,
+                GridSelectionMode = q.Type == SurveyQuestionType.Grid ? q.GridSelectionMode : null,
+                GridRows = q.Type == SurveyQuestionType.Grid
+                    ? (q.GridRows ?? []).Select(row => new SurveyGridRow(row.Value, row.Label)).ToList()
+                    : null,
                 ShowIf = q.ShowIf,
                 Options = q.Options.Select(o => new SurveyQuestionOption
                 {
@@ -1109,6 +1387,52 @@ internal sealed class SurveyService(
                 }).ToList(),
             };
         }).ToList();
+
+    private static void ValidateQuestionConfiguration(IReadOnlyList<SurveyQuestion> questions)
+    {
+        foreach (var question in questions)
+        {
+            if (question.Type != SurveyQuestionType.Grid) continue;
+
+            if (question.GridSelectionMode is null
+                || !Enum.IsDefined(question.GridSelectionMode.Value))
+            {
+                throw new InvalidOperationException($"Grid question {question.Id} must choose a selection mode.");
+            }
+
+            var rows = question.GridRows ?? [];
+            if (rows.Count == 0)
+            {
+                throw new InvalidOperationException($"Grid question {question.Id} must have at least one row.");
+            }
+
+            if (question.Options.Count == 0 || question.Options.Count > 5)
+            {
+                throw new InvalidOperationException($"Grid question {question.Id} must have between one and five columns.");
+            }
+
+            ValidateStableValues(
+                rows.Select(row => row.Value),
+                $"Grid question {question.Id} row");
+            ValidateStableValues(
+                question.Options.Select(option => option.Value),
+                $"Grid question {question.Id} column");
+        }
+
+        static void ValidateStableValues(IEnumerable<string> values, string description)
+        {
+            var materialized = values.ToList();
+            if (materialized.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidOperationException($"{description} values must not be blank.");
+            }
+
+            if (materialized.Distinct(StringComparer.Ordinal).Count() != materialized.Count)
+            {
+                throw new InvalidOperationException($"{description} values must be unique.");
+            }
+        }
+    }
 
     private static void ValidateBranching(IReadOnlyList<SurveyQuestion> questions)
     {
@@ -1125,6 +1449,51 @@ internal sealed class SurveyService(
             throw new InvalidOperationException(
                 $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.");
         }
+
+        var types = questions.ToDictionary(question => question.Id, question => question.Type);
+        var gridSources = questions
+            .Where(question => question.ShowIf?.Clauses.Any(clause =>
+                types.GetValueOrDefault(clause.QuestionId) == SurveyQuestionType.Grid) == true)
+            .Select(question => question.Id)
+            .ToList();
+        if (gridSources.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Grid questions cannot be branching sources. Offending question ids: {string.Join(", ", gridSources)}.");
+        }
+    }
+
+    private static Dictionary<string, List<string>> NormalizeGridSelections(
+        IReadOnlyList<GridRowInput>? rows,
+        IReadOnlyList<OptionInput> columns,
+        GridSelectionMode? mode,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? selections)
+    {
+        if (rows is null || mode is null || selections is null)
+        {
+            return new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        }
+
+        var rowValues = rows.Select(row => row.Value).ToHashSet(StringComparer.Ordinal);
+        var columnValues = columns.Select(column => column.Value).ToHashSet(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var (rowValue, selectedColumns) in selections)
+        {
+            if (!rowValues.Contains(rowValue)) continue;
+            var valid = selectedColumns
+                .Where(columnValues.Contains)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (mode == GridSelectionMode.Single && valid.Count > 1)
+            {
+                valid = valid.Take(1).ToList();
+            }
+
+            if (valid.Count > 0) result[rowValue] = valid;
+        }
+
+        return result;
     }
 
     /// <summary>

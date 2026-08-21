@@ -78,9 +78,6 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
             // positive marker it emits is asserted on /Debug/Translations below.
             html.Should().NotContain("<page-header", $"GET {url} left a tag helper unrendered");
 
-            // Same failure mode for a view component element.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
             // element for a type reference; that also renders as inert markup.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");

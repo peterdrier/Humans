@@ -8,7 +8,7 @@
         <span>@Localizer["Profile_Information"]</span>
         @if (Model.IsOwnProfile)
         {
-            <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+            <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@SharedLocalizer["Common_Edit"]</a>
         }
     </div>
     <div class="card-body">
@@ -64,7 +64,7 @@
 
         <hr />
         <dl class="row mb-0">
-            <dt class="col-3">@Localizer["Profile_Location"]</dt>
+            <dt class="col-3">@SharedLocalizer["Profile_Location"]</dt>
             <dd class="col-9">
                 @if (!string.IsNullOrEmpty(Model.City) || !string.IsNullOrEmpty(Model.CountryCode))
                 {
@@ -77,7 +77,7 @@
                 }
                 else
                 {
-                    <text>@Localizer["Common_NotProvided"]</text>
+                    <text>@SharedLocalizer["Common_NotProvided"]</text>
                 }
             </dd>
 
@@ -204,7 +204,7 @@
             </span>
             @if (Model.IsOwnProfile)
             {
-                <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@SharedLocalizer["Common_Edit"]</a>
             }
         </div>
         <div class="card-body">
@@ -219,7 +219,7 @@
                     }
                     else
                     {
-                        <text>@Localizer["Common_NotProvided"]</text>
+                        <text>@SharedLocalizer["Common_NotProvided"]</text>
                     }
                 </dd>
 

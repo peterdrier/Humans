@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -265,11 +266,11 @@ internal sealed class ClassifierHarness
                 if (MergedToTargets.TryGetValue(userId, out var targetId))
                     return new ValueTask<UserInfo?>(UserInfo.Create(
                         new User { Id = userId, MergedToUserId = targetId },
-                        [], [], [], null, [], [], [], []));
+                        [], [], [], null, []));
                 // Live user — no tombstone.
                 return new ValueTask<UserInfo?>(UserInfo.Create(
                     new User { Id = userId, MergedToUserId = null },
-                    [], [], [], null, [], [], [], []));
+                    [], [], [], null, []));
             });
 
         // Default: no pref row for any user. SetMarketingPref overrides per-user.
@@ -292,6 +293,7 @@ internal sealed class ClassifierHarness
             Substitute.For<IAccountProvisioningService>(),
             _prefs,
             Substitute.For<IAuditLogService>(),
+            InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }

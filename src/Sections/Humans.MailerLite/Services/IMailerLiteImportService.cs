@@ -11,6 +11,13 @@ namespace Humans.MailerLite.Services;
 /// </summary>
 internal interface IMailerLiteImportService : IApplicationService
 {
+    /// <summary>
+    /// When reconciliation last ran and what it did, or null before the first run.
+    /// Read from the section's own table — the dashboard used to scan <c>audit_log</c> for this
+    /// (nobodies-collective/Humans#1082).
+    /// </summary>
+    Task<MailerLiteSyncSnapshot?> GetLastReconciliationAsync(CancellationToken ct = default);
+
     Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default);
 
     /// <summary>

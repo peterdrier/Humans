@@ -663,7 +663,7 @@ internal sealed class ExpenseReportService(
             var isClearing = normalized is null;
             await auditLogService.LogAsync(
                 isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
-                nameof(Profile),
+                AuditEntityTypes.Profile,
                 submitterUserId,
                 isClearing ? "IBAN removed" : "IBAN set",
                 submitterUserId);

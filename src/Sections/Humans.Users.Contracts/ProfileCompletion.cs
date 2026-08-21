@@ -9,17 +9,12 @@ namespace Humans.Users.Contracts;
 /// Total weight = 20 points. Each check below contributes its listed weight
 /// when satisfied; the result is rounded to a percentage.
 ///
-/// Caller is responsible for loading the data: <see cref="Profile.VolunteerHistory"/>
-/// and <see cref="Profile.Languages"/> must be Include()'d on the entity, and
-/// shift-tag preferences live on a separate table so they're passed as a
-/// <see cref="ComputePercent(Profile?, bool)"/> argument.
+/// Shift-tag preferences live on a separate table, so they are passed in
+/// rather than read off <see cref="ProfileInfo"/>.
 /// </summary>
 public static class ProfileCompletion
 {
-    public static int ComputePercent(Profile? profile) =>
-        ComputePercent(profile, hasShiftTagPreferences: false);
-
-    public static int ComputePercent(Profile? profile, bool hasShiftTagPreferences)
+    public static int ComputePercent(ProfileInfo? profile, bool hasShiftTagPreferences)
     {
         if (profile is null) return 0;
 
@@ -33,13 +28,13 @@ public static class ProfileCompletion
 
             // Profile picture is the single biggest visible enrichment, so it
             // gets the heaviest single weight (~25 % of the bar).
-            (profile.HasCustomProfilePicture, 5),
+            (profile.HasCustomPicture, 5),
 
             // Optional identity & narrative
             (!string.IsNullOrWhiteSpace(profile.Pronouns), 1),
             (!string.IsNullOrWhiteSpace(profile.Bio), 2),
             (!string.IsNullOrWhiteSpace(profile.City) && !string.IsNullOrWhiteSpace(profile.CountryCode), 1),
-            (profile.DateOfBirth.HasValue, 1),
+            (profile.BirthdayDay.HasValue && profile.BirthdayMonth.HasValue, 1),
 
             // How they want to contribute / what they're up for
             (!string.IsNullOrWhiteSpace(profile.ContributionInterests), 2),
@@ -50,7 +45,7 @@ public static class ProfileCompletion
                 || !string.IsNullOrWhiteSpace(profile.EmergencyContactPhone)
                 || !string.IsNullOrWhiteSpace(profile.EmergencyContactRelationship), 1),
 
-            // Languages spoken (any) — requires .Include(p => p.Languages).
+            // Languages spoken (any).
             (profile.Languages.Count > 0, 1),
 
             // Burner CV — either at least one history entry, OR the explicit
@@ -58,34 +53,6 @@ public static class ProfileCompletion
             (profile.VolunteerHistory.Count > 0 || profile.NoPriorBurnExperience, 2),
 
             // Shift tag preferences (separate table; caller passes a bool).
-            (hasShiftTagPreferences, 1),
-        };
-
-        var earned = checks.Where(c => c.Filled).Sum(c => c.Weight);
-        var total = checks.Sum(c => c.Weight);
-        return (int)Math.Round(100.0 * earned / total);
-    }
-
-    public static int ComputePercent(ProfileInfo? profile, bool hasShiftTagPreferences)
-    {
-        if (profile is null) return 0;
-
-        var checks = new (bool Filled, int Weight)[]
-        {
-            (!string.IsNullOrWhiteSpace(profile.BurnerName), 1),
-            (!string.IsNullOrWhiteSpace(profile.FirstName), 1),
-            (!string.IsNullOrWhiteSpace(profile.LastName), 1),
-            (profile.HasCustomPicture, 5),
-            (!string.IsNullOrWhiteSpace(profile.Pronouns), 1),
-            (!string.IsNullOrWhiteSpace(profile.Bio), 2),
-            (!string.IsNullOrWhiteSpace(profile.City) && !string.IsNullOrWhiteSpace(profile.CountryCode), 1),
-            (profile.BirthdayDay.HasValue && profile.BirthdayMonth.HasValue, 1),
-            (!string.IsNullOrWhiteSpace(profile.ContributionInterests), 2),
-            (!string.IsNullOrWhiteSpace(profile.EmergencyContactName)
-                || !string.IsNullOrWhiteSpace(profile.EmergencyContactPhone)
-                || !string.IsNullOrWhiteSpace(profile.EmergencyContactRelationship), 1),
-            (profile.Languages.Count > 0, 1),
-            (profile.VolunteerHistory.Count > 0 || profile.NoPriorBurnExperience, 2),
             (hasShiftTagPreferences, 1),
         };
 

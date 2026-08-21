@@ -98,119 +98,6 @@ public class AuditLogServiceTests : IDisposable
         _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
     }
 
-    [HumansFact]
-    public async Task LogGoogleSyncAsync_PersistsEntryWithSyncFields()
-    {
-        var resourceId = Guid.NewGuid();
-        var relatedId = Guid.NewGuid();
-
-        await _service.LogGoogleSyncAsync(
-            AuditAction.GoogleResourceAccessGranted,
-            resourceId,
-            "Granted access to folder",
-            "SystemTeamSyncJob",
-            "user@example.com",
-            "writer",
-            GoogleSyncSource.SystemTeamSync,
-            success: true,
-            relatedEntityId: relatedId,
-            relatedEntityType: "User");
-
-        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
-        entry.ResourceId.Should().Be(resourceId);
-        entry.Role.Should().Be("writer");
-        entry.SyncSource.Should().Be(GoogleSyncSource.SystemTeamSync);
-        entry.Success.Should().Be(true);
-        entry.UserEmail.Should().Be("user@example.com");
-        entry.EntityType.Should().Be("GoogleResource");
-        entry.RelatedEntityId.Should().Be(relatedId);
-        entry.RelatedEntityType.Should().Be("User");
-    }
-
-    // ===== GetByResourceAsync =====
-
-    [HumansFact]
-    public async Task GetByResourceAsync_ReturnsEntriesForResource_OrderedByOccurredAtDesc()
-    {
-        var resourceId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
-        var older = SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
-            now - Duration.FromHours(2), resourceId: resourceId);
-        var newer = SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(),
-            now - Duration.FromHours(1), resourceId: resourceId);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetByResourceAsync(resourceId);
-
-        result.Should().HaveCount(2);
-        result[0].Id.Should().Be(newer.Id);
-        result[1].Id.Should().Be(older.Id);
-    }
-
-    [HumansFact]
-    public async Task GetByResourceAsync_LimitsTo200()
-    {
-        var resourceId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
-        for (var i = 0; i < 201; i++)
-        {
-            SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
-                now - Duration.FromMinutes(i), resourceId: resourceId);
-        }
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetByResourceAsync(resourceId);
-
-        result.Should().HaveCount(200);
-    }
-
-    [HumansFact]
-    public async Task GetByResourceAsync_ReturnsEmptyForNonExistentResource()
-    {
-        var result = await _service.GetByResourceAsync(Guid.NewGuid());
-
-        result.Should().BeEmpty();
-    }
-
-    // ===== GetGoogleSyncByUserAsync =====
-
-    [HumansFact]
-    public async Task GetGoogleSyncByUserAsync_ReturnsEntriesWithResourceId()
-    {
-        var userId = Guid.NewGuid();
-        var resourceId = Guid.NewGuid();
-        SeedAuditLogEntry(AuditAction.GoogleResourceAccessGranted, "GoogleResource", resourceId,
-            _clock.GetCurrentInstant(), resourceId: resourceId, relatedEntityId: userId);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetGoogleSyncByUserAsync(userId);
-
-        result.Should().HaveCount(1);
-        result[0].ResourceId.Should().Be(resourceId);
-        result[0].RelatedEntityId.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task GetGoogleSyncByUserAsync_ExcludesEntriesWithoutResourceId()
-    {
-        var userId = Guid.NewGuid();
-        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
-            _clock.GetCurrentInstant(), resourceId: null, relatedEntityId: userId);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetGoogleSyncByUserAsync(userId);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetGoogleSyncByUserAsync_ReturnsEmptyWhenNoSyncEntries()
-    {
-        var result = await _service.GetGoogleSyncByUserAsync(Guid.NewGuid());
-
-        result.Should().BeEmpty();
-    }
-
     // ===== GetRecentAsync =====
 
     [HumansFact]
@@ -465,7 +352,7 @@ public class AuditLogServiceTests : IDisposable
 
     private AuditLogEntry SeedAuditLogEntry(
         AuditAction action, string entityType, Guid entityId, Instant occurredAt,
-        Guid? resourceId = null, Guid? relatedEntityId = null)
+        Guid? relatedEntityId = null)
     {
         var entry = new AuditLogEntry
         {
@@ -475,7 +362,6 @@ public class AuditLogServiceTests : IDisposable
             EntityId = entityId,
             Description = $"Test {action}",
             OccurredAt = occurredAt,
-            ResourceId = resourceId,
             RelatedEntityId = relatedEntityId
         };
         _dbContext.AuditLogEntries.Add(entry);

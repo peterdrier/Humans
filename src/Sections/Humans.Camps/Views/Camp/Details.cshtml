@@ -365,6 +365,16 @@
                             }
                             else
                             {
+                                @* Full is informational only — it tells visitors the camp looks full, it
+                                   does not block a request. Humans doesn't yet know everyone actually in
+                                   the camp, so people still need to be able to request/join. *@
+                                @if (Model.CurrentSeason is { Status: CampSeasonStatus.Full } && Model.CurrentSeason.Year == Model.PublicYear)
+                                {
+                                    <div class="alert alert-secondary py-2 mb-2">
+                                        <i class="fa-solid fa-circle-info me-1"></i>
+                                        This camp says it's full for @Model.Membership.OpenSeasonYear — you can still request to join.
+                                    </div>
+                                }
                                 <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-outline-primary w-100">
@@ -435,6 +445,15 @@
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Are you sure you want to withdraw from this season?">
                                     <i class="fa-solid fa-right-from-bracket me-1"></i> Withdraw Season
+                                </button>
+                            </form>
+                        }
+                        @if ((Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin) && s.Status == CampSeasonStatus.Active)
+                        {
+                            <form asp-controller="Camp" asp-action="MarkFull" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Mark this season full? This just tells visitors you look full — people can still request to join.">
+                                    <i class="fa-solid fa-ban me-1"></i> Mark Season Full
                                 </button>
                             </form>
                         }

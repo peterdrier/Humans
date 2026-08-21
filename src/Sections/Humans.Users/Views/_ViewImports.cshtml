@@ -1,0 +1,45 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by UsersPageRenderTests. *@
+@using Humans.Base.Extensions
+@using Humans.Base.Enums
+@using Humans.Shifts
+@using Humans.Shifts.Contracts
+@using Humans.Users
+@using Humans.Users.Contracts
+@using Humans.Users.Controllers
+@using Humans.Users.Extensions
+@using Humans.Users.Models
+@using Humans.Users.Services
+@using Humans.Base
+@using Humans.Base.Authorization
+@using Humans.Base.Helpers
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Humans.Base.ViewComponents
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Html
+@using Microsoft.Extensions.Localization
+@using NodaTime
+@* Users' 441 keys live in UsersResource since nobodies-collective/Humans#1050.
+   SharedLocalizer is for the prefixes the carve deliberately left behind — Common_, Nav_,
+   Dashboard_, Admin_, Validation_, Application*_, Teams_/MyTeams_/TeamDetail_, Privacy_,
+   Search_ and Enum_EmailOutboxStatus_ — each rendered by someone outside this section too.
+   See UsersResource.cs for the per-key reasons. *@
+@inject IStringLocalizer<UsersResource> Localizer
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* <vc:human> and the other shared components are Base's. *@
+@addTagHelper *, Humans.Base
+@addTagHelper *, Humans.Users
+@* <vc:shift-signups> (AdminDetail) is Humans.Shifts'. *@
+@addTagHelper *, Humans.Shifts
+@* <vc:my-camps> (Profile/Index) is Humans.Camps'. *@
+@addTagHelper *, Humans.Camps
+@* <vc:audit-log> (Profile/Index sent messages, AdminDetail) is Humans.AuditLog's. *@
+@addTagHelper *, Humans.AuditLog
+@* <vc:events-card> (Profile/Index) is Humans.Events' (nobodies-collective/Humans#1090). *@
+@addTagHelper *, Humans.Events
+@* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. A <vc:>
+   element for an unimported assembly renders as inert markup with a green build and no
+   runtime error, so never add one without its @addTagHelper. *@

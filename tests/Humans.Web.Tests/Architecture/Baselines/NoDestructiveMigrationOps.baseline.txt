@@ -39,3 +39,39 @@ src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHo
 # rollback of this dead, never-read column would re-add it by hand instead.
 src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=RawPayload,table=holded_expense_docs)#1
 src/Sections/Humans.Finance/Data/Migrations/20260818210635_DropDeadHoldedColumns.cs:DropColumn(name=ArchivedAt,table=holded_category_map)#1
+
+# Dead user_emails.IsOAuth column (2026-08-20, nobodies-collective/Humans#507). Removed:
+# user_emails.IsOAuth (bool, the pre-decoupling "is this row the Identity user's OAuth email"
+# flag). Evidence: the C# property was already deleted from UserEmail by the email-identity-
+# decoupling spec (PR 3, commit 5442a86aa) — the column survived only as an EF shadow property.
+# Pickaxe over full history (`git log -S 'IsOAuth = ' --pickaxe-regex -- '*.cs'`) shows real
+# writers existed pre-decoupling, all removed by the decoupling PR chain (#356/#361/#369); the
+# replacement (UserEmail.Provider/ProviderKey/IsGoogle) has shipped and carries the traffic. The
+# sole remaining reader was the one-shot, operator-triggered UserEmailProviderBackfillService
+# (its own doc comment named this issue, #507, as the PR that retires it once the backfill has
+# run in QA and production) — it had zero production callers (no controller/job/hosted-service
+# invocation, DI registration only) and is deleted in this same PR along with its only readers/
+# writers (GetUserEmailLegacyBackfillSnapshotsByUserIdAsync, the IsOAuth shadow-write exclusion
+# in UserRepository.UserEmails.cs).
+# Approval: Peter, 2026-08-20 — explicit per-instance approval for this drop (sprint dispatch for
+# nobodies-collective/Humans#507).
+src/Sections/Humans.Users/Data/Migrations/20260820170426_DropUserEmailIsOAuth.cs:DropColumn(name=IsOAuth,table=user_emails)#1
+
+# Dead profiles.State column (2026-08-21, nobodies-collective/Humans#844). Removed: the State
+# column on table profiles (character varying(50), the ProfileState enum persisted as a string).
+# Evidence: pickaxe over full history across every path Profile has lived at
+# (src/Humans.Domain/Entities/Profile.cs, src/Profiles.Domain/Entities/Profile.cs,
+# src/Sections/Humans.Users.Contracts/Profile.cs, src/Sections/Humans.Users/Domain/Profile.cs) plus
+# `git log -S 'State = ProfileState' --pickaxe-regex -- src/`. The column was introduced nullable by
+# #405 (2026-05-04, issue-635 §15i) and only ever carried Stub/Active/Suspended/AdminSuspended. Its
+# writers were: profile save (Stub↔Active promotion), stub-profile creation at the User-creation call
+# sites, the SetSuspension mutation, the bulk consent suspension in SuspendManyAsync, and the lazy
+# seed WriteBackStateIfNullAsync (ExecuteUpdate guarded on State IS NULL). Every one of them was
+# deleted by #1436 (merged 617394d80), which moved suspension and the Bare/Active/Rejected
+# classification onto users.State and promoted that column to NOT NULL. No migration and no raw SQL
+# ever wrote profiles.State — `git log -S 'UPDATE profiles'` returns only ConsentCheckStatus/
+# MembershipTier backfills. Since #1436 the column has been an EF shadow property with no reader and
+# no writer, and the ProfileState enum is [Obsolete] (HUM_PROFILE_STATE) with zero references.
+# Approval: Peter, 2026-08-20 — "drop the column, but be careful since we already have 2 migrations
+# in user section today."
+src/Sections/Humans.Users/Data/Migrations/20260820215726_DropProfileState.cs:DropColumn(name=State,table=profiles)#1

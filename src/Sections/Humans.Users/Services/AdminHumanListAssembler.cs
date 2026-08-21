@@ -37,23 +37,21 @@ internal static class AdminHumanListAssembler
                 u.BurnerName,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),
-                StateOf(u));
+                u.State);
         }).ToList();
     }
-
-    private static UserState StateOf(UserInfo u) => u.State ?? UserState.Bare;
 
     private static Func<UserInfo, bool>? FilterPredicate(string? statusFilter) =>
         statusFilter?.ToLowerInvariant() switch
         {
-            "bare" => u => StateOf(u) == UserState.Bare,
-            "active" => u => StateOf(u) == UserState.Active,
-            "suspended" => u => StateOf(u) is UserState.Suspended or UserState.AdminSuspended,
-            "adminsuspended" => u => StateOf(u) == UserState.AdminSuspended,
-            "rejected" => u => StateOf(u) == UserState.Rejected,
-            "deleting" or "deletepending" => u => StateOf(u) == UserState.DeletePending,
-            "merged" => u => StateOf(u) == UserState.Merged,
-            "deleted" => u => StateOf(u) == UserState.Deleted,
+            "bare" => u => u.State == UserState.Bare,
+            "active" => u => u.State == UserState.Active,
+            "suspended" => u => u.State is UserState.Suspended or UserState.AdminSuspended,
+            "adminsuspended" => u => u.State == UserState.AdminSuspended,
+            "rejected" => u => u.State == UserState.Rejected,
+            "deleting" or "deletepending" => u => u.State == UserState.DeletePending,
+            "merged" => u => u.State == UserState.Merged,
+            "deleted" => u => u.State == UserState.Deleted,
             // nobodies-collective/Humans#847: filter humans whose Google email was rejected
             // by the sync outbox processor (GoogleEmailStatus cached on UserInfo).
             "googlerejected" => u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected,

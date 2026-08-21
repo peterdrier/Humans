@@ -84,7 +84,7 @@
                 <hr />
 
                 <dl class="row mb-0">
-                    <dt class="col-sm-3">@Localizer["AdminHuman_MembershipTier"]</dt>
+                    <dt class="col-sm-3">@SharedLocalizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-9">@Model.MembershipTier</dd>
 
                     <dt class="col-sm-3">Language</dt>
@@ -127,10 +127,10 @@
                     <dt class="col-sm-3">@Localizer["AdminHuman_UserId"]</dt>
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
 
-                    <dt class="col-sm-3">@Localizer["Admin_Joined"]</dt>
+                    <dt class="col-sm-3">@SharedLocalizer["Admin_Joined"]</dt>
                     <dd class="col-sm-9">@Model.CreatedAt.ToDateTime()</dd>
 
-                    <dt class="col-sm-3">@Localizer["Admin_LastLogin"]</dt>
+                    <dt class="col-sm-3">@SharedLocalizer["Admin_LastLogin"]</dt>
                     <dd class="col-sm-9">
                         @if (Model.LastLoginAt.HasValue)
                         {
@@ -138,7 +138,7 @@
                         }
                         else
                         {
-                            <span class="text-muted">@Localizer["Admin_Never"]</span>
+                            <span class="text-muted">@SharedLocalizer["Admin_Never"]</span>
                         }
                     </dd>
                 </dl>
@@ -187,7 +187,7 @@
                                 <strong>@role.RoleName</strong>
                                 @if (role.IsActive)
                                 {
-                                    <span class="badge bg-success ms-2">@Localizer["AdminHuman_Active"]</span>
+                                    <span class="badge bg-success ms-2">@SharedLocalizer["AdminHuman_Active"]</span>
                                 }
                                 else
                                 {
@@ -448,7 +448,7 @@
         </div>
 
         <div class="card">
-            <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
+            <div class="card-header">@SharedLocalizer["TeamDetail_Actions"]</div>
             <div class="card-body">
                 @if (Model.State is UserState.Suspended or UserState.AdminSuspended)
                 {

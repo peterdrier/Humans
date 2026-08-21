@@ -229,6 +229,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 
 ## Cross-Section Dependencies
 
+- **Search (downstream consumer):** the global `/Search` page renders every team hit through this section's own public `<vc:teams-search-result team-id>`, which fetches its display fields — including the slug it links to — from `ITeamServiceRead.GetTeamAsync`. Search passes the team id and no display fields (nobodies-collective/Humans#1062); `TeamSearchHit` is `(TeamId, Name, Score)`, carrying the section's own `Score`. Teams does not depend on Search.
 - **Google Integration:** Each team can have linked Google resources (Drive folders, Groups). Membership changes call `IGoogleSyncService.AddUserToTeamResourcesAsync` / `RemoveUserFromTeamResourcesAsync` inline (per-user removals are no-ops, handled by the daily reconciliation job); failed Google API calls land in the sync outbox.
 - **Shifts:** Rotas belong to a department or sub-team. Coordinator/manager status determines shift management access (scoped to their team).
 - **Budget:** Budget categories can be linked to a department. Coordinator status determines budget line item editing access.

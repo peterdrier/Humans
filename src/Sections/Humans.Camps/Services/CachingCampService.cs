@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Caching;
+using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Users.Contracts;
 
@@ -35,6 +36,16 @@ internal sealed class CachingCampService(
         var cached = Values.FirstOrDefault(camp =>
             string.Equals(camp.Slug, normalizedSlug, StringComparison.Ordinal));
         return cached ?? await WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
+    }
+
+    public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        // The dict is keyed by camp id, so this is a straight lookup. Cold camps (a year
+        // warmup never covered) fall back to the inner service.
+        await EnsureWarmedAsync(cancellationToken);
+        return TryGet(campId, out var cached)
+            ? cached
+            : await WithInner(inner => inner.GetCampByIdAsync(campId, cancellationToken));
     }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
@@ -132,7 +143,11 @@ internal sealed class CachingCampService(
             if (camp is null)
                 return [];
             var byIdSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            return [new CampSearchHit(camp.Slug, byIdSeason?.Name ?? camp.Slug)];
+            return
+            [
+                new CampSearchHit(
+                    camp.Id, byIdSeason?.Name ?? camp.Slug, StringSearchExtensions.ExactNameScore)
+            ];
         }
 
         // Name match against the public-year season name, public statuses only (what the DB
@@ -147,7 +162,7 @@ internal sealed class CachingCampService(
                 && PublicCampSeasonStatuses.Contains(s.Status)
                 && s.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
             if (season is not null)
-                hits.Add(new CampSearchHit(camp.Slug, season.Name));
+                hits.Add(new CampSearchHit(camp.Id, season.Name, season.Name.NameMatchScore(trimmed)));
         }
 
         return hits.Take(max).ToList();
@@ -242,6 +257,13 @@ internal sealed class CachingCampService(
     public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.ReactivateSeasonAsync(seasonId, cancellationToken));
+        await InvalidateBySeasonAsync(seasonId, cancellationToken);
+    }
+
+    public async Task SetSeasonStatusAsync(
+        Guid scopedCampId, Guid seasonId, CampSeasonStatus status, CancellationToken cancellationToken = default)
+    {
+        await WithInner(inner => inner.SetSeasonStatusAsync(scopedCampId, seasonId, status, cancellationToken));
         await InvalidateBySeasonAsync(seasonId, cancellationToken);
     }
 

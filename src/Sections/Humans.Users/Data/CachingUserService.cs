@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Onboarding.Contracts;
 using Humans.Base.Caching;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Helpers;
@@ -39,7 +40,7 @@ namespace Humans.Users.Data;
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserService, IUserInfoInvalidator, IUserInfoSliceRefresher
+    IUserService, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -107,6 +108,34 @@ internal sealed class CachingUserService(
             }
         }
 
+        return result;
+    }
+
+    /// <summary>
+    /// <see cref="IEntityNameContributor"/>: the human ids in a caller's Guid set,
+    /// named from the warmed snapshot. Deliberately cache-only — a fan-out hands
+    /// every contributor every id, so a foreign id must not cost a row load.
+    /// BurnerName is the display name (memory/architecture/burnername-is-the-display-name.md);
+    /// humans without one are absent.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<Guid, EntityName>> ResolveNamesAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0)
+            return new Dictionary<Guid, EntityName>();
+
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+
+        var cached = AsReadOnlyDictionary;
+        var result = new Dictionary<Guid, EntityName>();
+        foreach (var id in ids)
+        {
+            if (cached.TryGetValue(id, out var info)
+                && !string.IsNullOrWhiteSpace(info.Profile?.BurnerName))
+            {
+                result[id] = new EntityName("User", info.Profile.BurnerName);
+            }
+        }
         return result;
     }
 
@@ -247,9 +276,6 @@ internal sealed class CachingUserService(
             user.EventParticipations.ToList(),
             externalLogins: [],
             profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
             communicationPreferences: []));
     }
 
@@ -582,7 +608,7 @@ internal sealed class CachingUserService(
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
-        IReadOnlyList<ProfileLanguage> languages,
+        IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>
@@ -601,11 +627,10 @@ internal sealed class CachingUserService(
 
     public async Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
-        Instant now,
         CancellationToken ct = default)
     {
         var mutated = await WithInnerAsync(inner =>
-            inner.SuspendProfilesForMissingConsentAsync(userIds, now, ct));
+            inner.SuspendProfilesForMissingConsentAsync(userIds, ct));
         foreach (var userId in mutated)
             await RefreshEntryAsync(userId, ct);
         return mutated;

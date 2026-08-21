@@ -10,6 +10,12 @@ public interface ICampServiceRead
 {
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One camp by its id. The cache is keyed by camp id, so this is an O(1) hit for any
+    /// warm year — the key <c>&lt;vc:camps-search-result&gt;</c> is invoked with.
+    /// </summary>
+    Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default);
     Task<CampSeasonInfo?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSearchHit>> SearchAsync(string query, int max, CancellationToken cancellationToken = default);

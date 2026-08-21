@@ -47,7 +47,7 @@
 
     Still NOT here, and staying internal to the section: IAccountMergeService,
     IDuplicateAccountService, IUnsubscribeService, IUnsubscribeTokenProvider,
-    IUserEmailProviderBackfillService, IEmailProblemsService, IProfilePictureService and
+    IEmailProblemsService, IProfilePictureService and
     the six repository interfaces.
 
     UserInfo.Create stays here: it takes the eight EF entities, six of which are now

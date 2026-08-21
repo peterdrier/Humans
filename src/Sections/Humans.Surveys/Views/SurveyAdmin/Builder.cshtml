@@ -247,9 +247,19 @@
                 const type = card.querySelector('.question-type')?.value;
                 const ratings = card.querySelector('.rating-section');
                 const options = card.querySelector('.options-section');
+                const grid = card.querySelector('.grid-section');
                 const isChoice = type === 'SingleChoice' || type === 'MultiChoice';
-                if (options) options.style.display = isChoice ? '' : 'none';
+                const isGrid = type === 'Grid';
+                if (options) {
+                    options.style.display = isChoice || isGrid ? '' : 'none';
+                    const label = options.querySelector('.options-label');
+                    if (label) label.textContent = isGrid ? 'Columns' : 'Options';
+                    const help = options.querySelector('.grid-column-help');
+                    if (help) help.style.display = isGrid ? '' : 'none';
+                }
+                if (grid) grid.style.display = isGrid ? '' : 'none';
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
+                updateGridColumnLimit(card);
             }
 
             function ensureQuestionId(card) {
@@ -260,9 +270,53 @@
             function addOption(card) {
                 const tpl = card.querySelector('.option-template');
                 if (!tpl) return;
+                if (card.querySelector('.question-type')?.value === 'Grid'
+                    && card.querySelectorAll('.options-container .option-row').length >= 5) return;
                 const html = tpl.innerHTML.replaceAll('__OKEY__', freshKey('o'));
                 card.querySelector('.options-container').insertAdjacentHTML('beforeend', html);
                 applyCulture(card.querySelector('.options-container').lastElementChild);
+                updateGridColumnLimit(card);
+                updateMoveButtons(card.querySelector('.options-container'), '.option-row', 'option');
+            }
+
+            function updateGridColumnLimit(card) {
+                const button = card.querySelector('.add-option');
+                if (!button) return;
+                const isGrid = card.querySelector('.question-type')?.value === 'Grid';
+                const count = card.querySelectorAll('.options-container .option-row').length;
+                button.disabled = isGrid && count >= 5;
+            }
+
+            function addGridRow(card) {
+                const tpl = card.querySelector('.grid-row-template');
+                if (!tpl) return;
+                const html = tpl.innerHTML.replaceAll('__RKEY__', freshKey('r'));
+                card.querySelector('.grid-rows-container').insertAdjacentHTML('beforeend', html);
+                applyCulture(card.querySelector('.grid-rows-container').lastElementChild);
+                updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
+            }
+
+            function updateMoveButtons(list, itemSelector, classPrefix) {
+                const items = Array.from(list.querySelectorAll(':scope > ' + itemSelector));
+                items.forEach((item, index) => {
+                    const up = item.querySelector('.move-' + classPrefix + '-up');
+                    const down = item.querySelector('.move-' + classPrefix + '-down');
+                    if (up) up.disabled = index === 0;
+                    if (down) down.disabled = index === items.length - 1;
+                });
+            }
+
+            function moveCollectionItem(button, direction, itemSelector, listSelector, classPrefix) {
+                const item = button.closest(itemSelector);
+                const list = item.closest(listSelector);
+                const sibling = direction < 0 ? item.previousElementSibling : item.nextElementSibling;
+                if (!sibling) return;
+                if (direction < 0) {
+                    list.insertBefore(item, sibling);
+                } else {
+                    list.insertBefore(sibling, item);
+                }
+                updateMoveButtons(list, itemSelector, classPrefix);
             }
 
             // ── show-if clause editor ────────────────────────────────────────
@@ -282,6 +336,7 @@
                 select.add(new Option('— choose a question —', ''));
                 questionCards().forEach((card, i) => {
                     if (card === ownCard) return;
+                    if (card.querySelector('.question-type')?.value === 'Grid') return;
                     const id = card.querySelector('.question-id')?.value;
                     if (id) select.add(new Option(questionLabel(card, i), id));
                 });
@@ -344,6 +399,8 @@
                     populateQuestionSelect(row.querySelector('.clause-question'));
                     populateOptionValues(row);
                 });
+                updateMoveButtons(card.querySelector('.options-container'), '.option-row', 'option');
+                updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
             }
 
             // ── events ───────────────────────────────────────────────────────
@@ -364,7 +421,24 @@
                 } else if (e.target.classList.contains('add-option')) {
                     addOption(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-option')) {
+                    const card = e.target.closest('.question-card');
                     e.target.closest('.option-row').remove();
+                    updateGridColumnLimit(card);
+                    updateMoveButtons(card.querySelector('.options-container'), '.option-row', 'option');
+                } else if (e.target.closest('.move-option-up')) {
+                    moveCollectionItem(e.target, -1, '.option-row', '.options-container', 'option');
+                } else if (e.target.closest('.move-option-down')) {
+                    moveCollectionItem(e.target, 1, '.option-row', '.options-container', 'option');
+                } else if (e.target.classList.contains('add-grid-row')) {
+                    addGridRow(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('remove-grid-row')) {
+                    const card = e.target.closest('.question-card');
+                    e.target.closest('.grid-row').remove();
+                    updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
+                } else if (e.target.closest('.move-grid-row-up')) {
+                    moveCollectionItem(e.target, -1, '.grid-row', '.grid-rows-container', 'grid-row');
+                } else if (e.target.closest('.move-grid-row-down')) {
+                    moveCollectionItem(e.target, 1, '.grid-row', '.grid-rows-container', 'grid-row');
                 } else if (e.target.classList.contains('add-clause')) {
                     addClause(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-clause')) {

@@ -16,6 +16,8 @@ internal static class SurveyJson
 {
     public static readonly JsonSerializerOptions Options = new();
 
+    private sealed record GridRowDocument(string Value, Dictionary<string, string> Label);
+
     /// <summary>Maps a <see cref="LocalizedText"/> property to a jsonb column (culture→text dictionary).</summary>
     public static void LocalizedText<TEntity>(
         EntityTypeBuilder<TEntity> b,
@@ -31,4 +33,27 @@ internal static class SurveyJson
                     (a, c) => a == null ? c == null : a.Equals(c),
                     v => v.GetHashCode(),
                     v => v));
+
+    /// <summary>
+    /// Serializes Grid rows through a persistence-only shape because <see cref="LocalizedText"/>
+    /// deliberately exposes a read-only dictionary and is not directly deserializable by
+    /// <see cref="JsonSerializer"/>.
+    /// </summary>
+    public static string? SerializeGridRows(List<SurveyGridRow>? rows)
+        => rows is null
+            ? null
+            : JsonSerializer.Serialize(
+                rows.Select(row => new GridRowDocument(
+                    row.Value,
+                    new Dictionary<string, string>(row.Label.Values, StringComparer.OrdinalIgnoreCase))),
+                Options);
+
+    public static List<SurveyGridRow>? DeserializeGridRows(string? value)
+        => value is null
+            ? null
+            : JsonSerializer.Deserialize<List<GridRowDocument>>(value, Options)?
+                .Select(row => new SurveyGridRow(
+                    row.Value,
+                    new LocalizedText(row.Label)))
+                .ToList();
 }

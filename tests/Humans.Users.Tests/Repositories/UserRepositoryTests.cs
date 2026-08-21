@@ -52,8 +52,11 @@ public sealed class UserRepositoryTests : IDisposable
 
     private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
     {
-        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], Xunit.TestContext.Current.CancellationToken);
-        return lookup.TryGetValue(userId, out var v) ? v : null;
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => EF.Property<string?>(u, "GoogleEmail"))
+            .FirstOrDefaultAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     // ==========================================================================

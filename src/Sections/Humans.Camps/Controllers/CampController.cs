@@ -473,7 +473,9 @@ internal sealed class CampController(
                 .OrderBy(MemberName, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        // Full is informational only (Peter, 2026-08-20) — it must not disable camp
+        // management, so role management stays available on a Full season too.
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         viewModel.RolesPanel = openSeason is null
             ? null
             : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
@@ -642,6 +644,31 @@ internal sealed class CampController(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/MarkFull/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkFull(string slug, Guid seasonId)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        try
+        {
+            await _campService.SetSeasonStatusAsync(camp.Id, seasonId, CampSeasonStatus.Full);
+            SetSuccess("Season marked as full.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Marking camp season full failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -1020,7 +1047,7 @@ internal sealed class CampController(
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         var outcome = openSeason is null
             ? AssignCampRoleOutcome.SeasonNotFound
             : await campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);

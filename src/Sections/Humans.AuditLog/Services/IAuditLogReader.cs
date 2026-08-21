@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Enums;
 
 namespace Humans.AuditLog.Services;
 
@@ -11,16 +10,6 @@ namespace Humans.AuditLog.Services;
 /// </summary>
 internal interface IAuditLogReader : IApplicationService
 {
-    /// <summary>
-    /// Gets audit entries for a specific Google resource.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId);
-
-    /// <summary>
-    /// Gets Google sync audit entries for a specific user.
-    /// </summary>
-    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId);
-
     /// <summary>
     /// Gets the most recent audit log entries.
     /// </summary>

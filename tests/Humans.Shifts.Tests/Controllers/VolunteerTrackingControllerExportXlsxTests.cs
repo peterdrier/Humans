@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -130,7 +132,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
         userService.GetUserInfoAsync(currentUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+            .Returns(new ValueTask<UserInfo?>(UserInfoFactory.Create(
                 user: currentUser,
                 userEmails: [],
                 eventParticipations: [],

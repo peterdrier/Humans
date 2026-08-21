@@ -15,11 +15,33 @@ All changes go through QA before reaching production. **Do not open PRs directly
 
 ### How to Submit a Change
 
-1. **Fork** `peterdrier/Humans` (not the upstream repo)
-2. **Create a feature branch** from `main`
+There are two paths, and which one you take depends on whether you have **push access** to `peterdrier/Humans`. Check before you start — the wrong path silently costs you the preview environment:
+
+```bash
+gh api repos/peterdrier/Humans --jq .permissions.push   # true = collaborator, false = outside contributor
+```
+
+**Collaborators (push access):**
+
+1. **Clone** `peterdrier/Humans` directly — do not fork
+2. **Create a feature branch** from `main` and push it to `peterdrier/Humans`
 3. **Open a PR** against `main` on `peterdrier/Humans`
 4. Your PR gets a **preview environment** at `https://{pr_number}.n.burn.camp`
-5. After review and QA, we promote tested changes to production via a separate upstream PR
+
+**Outside contributors (read access):**
+
+1. **Fork** `peterdrier/Humans` (not the upstream repo)
+2. **Create a feature branch** from `main` on your fork
+3. **Open a PR** against `main` on `peterdrier/Humans`
+4. **No preview environment** — see below. A maintainer can deploy one by hand if the change needs QA
+
+Either way, after review and QA we promote tested changes to production via a separate upstream PR.
+
+### Why Fork PRs Get No Preview Environment
+
+Preview environments are provisioned by Coolify off the `pull_request` webhook, and it refuses PRs whose head branch lives outside `peterdrier/Humans`. Fork code is untrusted, and the preview runs on our hardware against a database cloned from QA. Coolify's trust check (`author_association`) is never reached for a fork PR, so **collaborator status alone does not restore the preview — the branch has to live in `peterdrier/Humans`.**
+
+To get a preview on a fork PR, a maintainer deploys it manually: Coolify → Humans → **Previews** → Load PRs → Deploy. That is per-push, not automatic.
 
 ### Why Not PR Directly to Production?
 

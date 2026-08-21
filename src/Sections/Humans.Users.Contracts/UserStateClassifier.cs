@@ -3,9 +3,9 @@ namespace Humans.Users.Contracts;
 
 /// <summary>
 /// The single precedence definition for <see cref="UserState"/>. Every write-site mutates the
-/// underlying fields (name, suspend, reject, deletion, merge) and then sets
-/// <see cref="User.State"/> from this classifier, and the first-touch seed for legacy rows calls
-/// it too, so no site can hard-code a state that drifts from the underlying data.
+/// underlying fields (name, reject, deletion, merge) or supplies the new suspension, then sets
+/// <see cref="User.State"/> from this classifier, so no site can hard-code a state that drifts
+/// from the underlying data.
 ///
 /// <para>Precedence (most-final wins): Merged &gt; Deleted &gt; Rejected &gt;
 /// AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active. Note GDPR deletion reuses the merge tombstone columns, so a
@@ -36,24 +36,5 @@ public static class UserStateClassifier
         if (isDeletionPending) return UserState.DeletePending;
         if (!hasRequiredNameFields) return UserState.Bare;
         return UserState.Active;
-    }
-
-    /// <summary>Classify from entities, used by transition write-sites after they mutate fields.</summary>
-    public static UserState Classify(User user, Profile? profile)
-    {
-        var hasName = profile is not null
-            && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            && !string.IsNullOrWhiteSpace(profile.FirstName)
-            && !string.IsNullOrWhiteSpace(profile.LastName);
-        var isGdprDeleted = string.Equals(
-            user.DisplayName, GdprAnonymizedDisplayName, StringComparison.Ordinal);
-        return Classify(
-            hasRequiredNameFields: hasName,
-            isSuspended: profile?.State == ProfileState.Suspended,
-            isAdminSuspended: profile?.State == ProfileState.AdminSuspended,
-            isRejected: profile?.RejectedAt is not null,
-            isDeletionPending: user.DeletionRequestedAt.HasValue,
-            isMerged: user.MergedAt is not null && !isGdprDeleted,
-            isGdprDeleted: isGdprDeleted);
     }
 }

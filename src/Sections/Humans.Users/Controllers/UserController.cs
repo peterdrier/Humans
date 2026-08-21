@@ -19,7 +19,7 @@ namespace Humans.Users.Controllers;
 internal sealed class UserController(
     IUserServiceRead userService,
     IAccountDeletionService accountDeletionService,
-    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<UsersResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("Status")]
     public async Task<IActionResult> Status()

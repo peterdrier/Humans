@@ -131,19 +131,9 @@ public class GateControllerClaimTests
             [],
             [],
             [],
-            profile: new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                BurnerName = displayName,
-                CreatedAt = SystemClock.Instance.GetCurrentInstant(),
-                UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-                State = ProfileState.Active,
-                IsApproved = true,
-            },
-            [],
-            [],
-            [],
+            profile: UserFixtures.Profile(
+                burnerName: displayName,
+                isApproved: true),
             []);
 
     private sealed class TestSession : ISession

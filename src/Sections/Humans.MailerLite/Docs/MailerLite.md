@@ -20,7 +20,18 @@ Orchestrates Humans ↔ MailerLite synchronisation. Inbound import + outbound au
 
 ## Data Model
 
-MailerLite owns no tables. MailerLite is the system of record for subscriber state; Humans reads via the API. Classifier writes route through other sections' services (`UserEmailService`, `AccountProvisioningService`, `CommunicationPreferenceService`, `UserService`).
+MailerLite (the vendor) stays the system of record for subscriber state; Humans reads it via the API, and classifier writes route through other sections' services (`UserEmailService`, `AccountProvisioningService`, `CommunicationPreferenceService`, `UserService`).
+
+The section owns one table, `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-collective/Humans#1082): **current** sync state, one row per key, overwritten on every run — never history.
+
+| Column | Meaning |
+|--------|---------|
+| `Id` | Row identity; the `entityId` the run's audit entry points at, stable across runs. |
+| `Key` | The `IMailerLiteAudience.Key`, or `import-reconciliation` for the import run. |
+| `LastSyncAt`, `Summary` | When it last ran and the prose the dashboard renders. |
+| `GroupId`, `GroupName`, and the seven counts | The audience push's outcome. Left at their defaults on the reconciliation row, which carries its numbers in `Summary`. |
+
+Before #1082 this state was `JsonSerializer.Serialize`d into an `audit_log` `Description` with `entityId: Guid.Empty` and parsed back out on read. Those historical rows stay where they are; the table starts empty and fills on the next sync.
 
 ## Routing
 
@@ -47,7 +58,10 @@ All routes are `AdminOnly`.
 - Every outbound write targets an ML group whose `Name` starts with `"Humans - "`. `MailerLiteClient` runtime-rejects writes against non-`"Humans - "` groups with `InvalidOperationException`. Pinned by `MailerLiteClientWriteGuardTests`.
 - All `IMailerLiteAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerLiteArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
 - Every audience excludes humans who have **explicitly opted out** of Marketing (`UserInfo.MarketingOptedOut == true`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter `== false` filter. Pinned by `MailerLiteAudienceBaseTests`.
-- `MailerLiteImportService` and `MailerLiteAudienceSyncService` live in `Humans.Application` and never reference `Microsoft.EntityFrameworkCore`. Pinned by architecture tests.
+- `MailerLiteImportService` and `MailerLiteAudienceSyncService` reach `mailerlite_sync_states` only through `IMailerLiteRepository`; nothing outside `Data/` holds a `MailerLiteDbContext`.
+- Neither service reads `audit_log`. Sync state is read from the section's own table; audit descriptions are prose, never serialized JSON.
+- No `IMailerLiteAudience` may claim the reserved `import-reconciliation` key.
+- `mailerlite_sync_states` holds exactly one row per key. The repository's check-and-insert runs under a striped `TrackedLock` keyed on the sync key (the daily job and an admin's "Sync Audience" click can land together); there is no DB unique index. `ComputeAllStatsAsync` groups by key and takes the most recent rather than assuming uniqueness, so a duplicate would show a stale number instead of 500ing the dashboard.
 - The import (`MailerLiteImportService`) ingests **only** the MailerLite group named `Website` (resolved by name; throws if the group is absent) — never the whole account. The reset pass excludes anyone in that group of any status, since the import already owns their pref (active → opt-in, unsubscribed/bounced → opt-out). Pinned by `MailerLiteImportServiceWebsiteScopeTests`.
 - Every write to `CommunicationPreference[Marketing]` goes through `CommunicationPreferenceService` — `UpdatePreferenceAsync` for opt state, `ResetPreferenceAsync` to delete the row (→ null) — and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
@@ -84,12 +98,12 @@ All routes are `AdminOnly`.
 ## Architecture
 
 **Owning services:** `MailerLiteImportService`, `MailerLiteAudienceSyncService`, `MailerLiteClient`
-**Owned tables:** _(none — MailerLite is read-write for groups owned by Humans; in-Humans writes route through other sections' services)_
+**Owned tables:** `mailerlite_sync_states` (`MailerLiteDbContext` / `IMailerLiteRepository`)
 **Status:** (G5) Own project — `src/Sections/Humans.MailerLite`, moved 2026-08-11 (nobodies-collective/Humans#866); the `Humans.MailerLite.Contracts` leaf later folded into the project's `Contracts/` folder. Born §15-compliant on 2026-05-12; outbound + audience framework added 2026-05-14.
 
-- Everything lives in `src/Sections/Humans.MailerLite/`: `Services/` (the two orchestrators, the four interfaces and the internal DTOs), `Services/Audiences/`, `Services/MailerLite/` (the client, its two JSON converters and `MailerLiteOptions`), `Controllers/`, `Models/` and `Views/`. The section takes **no `Humans.Infrastructure` reference** — it owns no tables, and the client needs only `IHttpClientFactory` from the ASP.NET shared framework — so `MailerLiteArchitectureTests.SectionAssembly_DoesNotReferenceEFCore` now covers the whole assembly rather than two named services.
+- Everything lives in `src/Sections/Humans.MailerLite/`: `Services/` (the two orchestrators, the four interfaces and the internal DTOs), `Services/Audiences/`, `Services/MailerLite/` (the client, its two JSON converters and `MailerLiteOptions`), `Domain/`, `Data/` (context, design-time factory, configuration, repository, migrations), `Controllers/`, `Models/` and `Views/`. The section still takes **no `Humans.Infrastructure` reference** — the context registers through Base's `AddSectionDbContext` seam, and the client needs only `IHttpClientFactory` from the ASP.NET shared framework.
 - **Cross-section surface** — `IMailerLiteAudienceSync` (`Contracts/`), one method returning `int`. `MailerLiteAudienceSyncJob` — its only consumer — moved into this project's `Jobs/` folder at G5 lane 5b-5 (public, since Shell names the concrete type at registration and HUM0034 makes every other public type in a section an error), leaving only its DI registration and roll-call entry in Shell (no `ISection` seam for jobs yet, design §15 step 6b). With no Base consumer left, the `Humans.MailerLite.Contracts` leaf was no longer forced and folded into this project's `Contracts/` folder beside the interface. Nothing else — the dashboard stats, the import plan/apply pair and the whole `IMailerLiteService` surface are internal.
 - **No resource set** — the two admin pages are English operator copy with no `Localizer[…]` call. `MailerLiteArchitectureTests.SectionTypesTakeNoStringLocalizer` is what makes adding copy fail the build rather than silently resolving against a `SharedResource` the RCL cannot see.
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at 500 users. `MailerLiteClient` is a Singleton holding its own subscriber/group snapshot, refreshed only on demand.
 - **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketServiceRead`, `IShiftView`, `IAuditLogService`.
-- **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, no EF reference on the section assembly, no `IStringLocalizer<T>` anywhere in the section, allowed-write surface on `IMailerLiteService`, and audience group-name prefix + uniqueness. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`) pins that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.
+- **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, no `IStringLocalizer<T>` anywhere in the section, allowed-write surface on `IMailerLiteService`, and audience group-name prefix + uniqueness. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`) pins that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.

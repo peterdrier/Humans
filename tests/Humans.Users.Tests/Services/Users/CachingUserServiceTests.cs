@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,7 +40,7 @@ public class CachingUserServiceTests
         Guid userId,
         string displayName = "Alice",
         IReadOnlyList<EventParticipation>? eventParticipations = null) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: eventParticipations ?? [],
@@ -57,7 +58,6 @@ public class CachingUserServiceTests
         BurnerName = burnerName,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        State = ProfileState.Active,
         IsApproved = true,
     };
 
@@ -332,7 +332,7 @@ public class CachingUserServiceTests
                 ("Google", "ext-key-1"),
             };
 
-        var fullInfo = UserInfo.Create(
+        var fullInfo = UserInfoFactory.Create(
             user, [userEmail], [participation],
             externalLogins,
             profile, [contactField],
@@ -579,6 +579,10 @@ public class CachingUserServiceTests
             Id = userId,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = isRejected ? UserState.Rejected
+                : isSuspended ? UserState.Suspended
+                : string.IsNullOrWhiteSpace(burnerName) ? UserState.Bare
+                : UserState.Active,
         };
 
         var userEmails = (emails ?? [])
@@ -606,7 +610,6 @@ public class CachingUserServiceTests
             IsApproved = isApproved,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = isSuspended ? ProfileState.Suspended : (isApproved ? ProfileState.Active : ProfileState.Stub),
             RejectedAt = isRejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
@@ -633,7 +636,7 @@ public class CachingUserServiceTests
             })
             .ToList();
 
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user, userEmails,
             eventParticipations: [],
             externalLogins: [],
@@ -896,7 +899,7 @@ public class CachingUserServiceTests
     // _inner.GetUserInfoAsync, so StubRefreshEntry overrides that return.
 
     private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: [],
@@ -908,7 +911,7 @@ public class CachingUserServiceTests
             communicationPreferences: []);
 
     private static UserInfo UserInfoWithEmail(Guid userId, string email) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
             userEmails:
             [
@@ -957,7 +960,6 @@ public class CachingUserServiceTests
             FirstName = "New",
             LastName = "Human",
             ProfilePictureContentType = "image/png",
-            State = ProfileState.Active,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         });
@@ -1082,7 +1084,6 @@ public class CachingUserServiceTests
             FirstName = "Alice",
             LastName = "Example",
             IsApproved = true,
-            State = ProfileState.Active,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         });
@@ -1097,7 +1098,6 @@ public class CachingUserServiceTests
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.IsApproved.Should().BeTrue();
-        refreshed.Profile.State.Should().Be(ProfileState.Active);
     }
 
     [HumansFact]
@@ -1110,7 +1110,7 @@ public class CachingUserServiceTests
 
         _inner.SaveProfileLanguagesAsync(
                 profileId,
-                Arg.Any<IReadOnlyList<ProfileLanguage>>(),
+                Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new UserProfileLanguagesSaveResult(true, userId));
 
@@ -1134,12 +1134,7 @@ public class CachingUserServiceTests
         var result = await sut.SaveProfileLanguagesAsync(
             profileId,
             [
-                new ProfileLanguage
-                {
-                    ProfileId = profileId,
-                    LanguageCode = "es",
-                    Proficiency = LanguageProficiency.Native,
-                },
+                new ProfileLanguageInfo(Guid.NewGuid(), "es", LanguageProficiency.Native),
             ], Xunit.TestContext.Current.CancellationToken);
 
         result.Saved.Should().BeTrue();

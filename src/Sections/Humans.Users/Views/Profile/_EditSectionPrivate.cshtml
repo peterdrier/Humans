@@ -33,7 +33,7 @@
             </div>
             <div class="col-md-4">
                 <label asp-for="EmergencyContactPhone" class="form-label">@Localizer["Profile_EmergencyContactPhone"]</label>
-                <input asp-for="EmergencyContactPhone" class="form-control" type="tel" pattern="\+.+" placeholder="@Localizer["Validation_PhonePlaceholder"].Value" title="@Localizer["Validation_PhoneHint"].Value" />
+                <input asp-for="EmergencyContactPhone" class="form-control" type="tel" pattern="\+.+" placeholder="@SharedLocalizer["Validation_PhonePlaceholder"].Value" title="@SharedLocalizer["Validation_PhoneHint"].Value" />
                 <span asp-validation-for="EmergencyContactPhone" class="text-danger"></span>
             </div>
             <div class="col-md-4">

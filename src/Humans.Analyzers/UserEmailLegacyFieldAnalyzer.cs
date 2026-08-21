@@ -18,8 +18,8 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
         "Member '{0}.{1}' was deleted by the email-identity-decoupling spec (PR 3). " +
         "Auth-side reads must use 'UserEmail.Provider != null'; " +
         "Google-Workspace-side reads must use the IsGoogle-flagged 'UserEmail' row. " +
-        "The DB columns survive as EF shadow properties for the one-shot " +
-        "UserEmailProviderBackfillService only, via EF.Property<T>(...)";
+        "'UserEmail.IsOAuth' and 'UserEmail.DisplayOrder' columns are dropped; " +
+        "'User.GoogleEmail' survives on disk as an EF shadow property only, via EF.Property<T>(...)";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

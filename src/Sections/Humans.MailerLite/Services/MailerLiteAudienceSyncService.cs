@@ -1,19 +1,24 @@
-using System.Text.Json;
 using Humans.AuditLog.Contracts;
+using Humans.MailerLite.Data;
+using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
 using Humans.MailerLite.Contracts;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Orchestrates audience computation, ML state diffing, and the apply step.
-/// Lives in the Application layer; no DbContext.
+/// Lives in the Application layer; the section's sync state goes through
+/// <see cref="IMailerLiteRepository"/>.
 /// </summary>
 internal sealed class MailerLiteAudienceSyncService(
     IMailerLiteService ml,
     IUserEmailService emails,
     IAuditLogService audit,
+    IMailerLiteRepository repository,
+    IClock clock,
     IEnumerable<IMailerLiteAudience> audiences,
     ILogger<MailerLiteAudienceSyncService> logger) : IMailerLiteAudienceSyncService, IMailerLiteAudienceSync
 {
@@ -63,29 +68,22 @@ internal sealed class MailerLiteAudienceSyncService(
     {
         var snapshot = await BuildSnapshotAsync(ct);
 
-        // Single audit-log read covering every audience; map by audience_key in memory.
-        var auditEntries = await audit.GetFilteredEntriesAsync(
-            actions: [AuditAction.MailerLiteAudienceSyncCompleted],
-            limit: 200,
-            ct: ct);
-
-        var lastByKey = new Dictionary<string, AuditLogEntrySnapshot>(StringComparer.Ordinal);
-        foreach (var e in auditEntries)
-        {
-            var key = TryExtractAudienceKey(e.Description);
-            if (key is null) continue;
-            if (!lastByKey.ContainsKey(key)) lastByKey[key] = e; // entries arrive newest-first
-        }
+        // Single read of the section's own sync-state table; map by key in memory. Grouped
+        // rather than ToDictionary'd: the upsert lock keeps it one row per key, and a stale
+        // number beats a dashboard that 500s if a duplicate ever slips past anyway.
+        var lastByKey = (await repository.GetSyncStatesAsync(ct))
+            .GroupBy(s => s.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.MaxBy(s => s.LastSyncAt)!, StringComparer.Ordinal);
 
         var rows = new List<AudienceStats>();
         foreach (var audience in audiences)
         {
             var stats = await BuildStatsForAudienceAsync(audience, snapshot, ct);
-            if (lastByKey.TryGetValue(audience.Key, out var entry))
+            if (lastByKey.TryGetValue(audience.Key, out var state))
                 stats = stats with
                 {
-                    LastSyncAt = entry.OccurredAt,
-                    LastSyncSummary = entry.Description,
+                    LastSyncAt = state.LastSyncAt,
+                    LastSyncSummary = state.Summary,
                 };
             rows.Add(stats);
         }
@@ -203,26 +201,31 @@ internal sealed class MailerLiteAudienceSyncService(
             Unassigned: unassigned,
             Errors: errors);
 
-        var metadata = new Dictionary<string, object?>(StringComparer.Ordinal)
+        // The section's own state first, so the audit entry can point at a row that exists.
+        var state = await repository.UpsertSyncStateAsync(new MailerLiteSyncState
         {
-            ["audience_key"] = result.Key,
-            ["group_id"] = result.GroupId,
-            ["group_name"] = result.GroupName,
-            ["candidates"] = result.Candidates,
-            ["excluded_unsubscribed"] = result.ExcludedUnsubscribed,
-            ["created"] = result.Created,
-            ["assigned"] = result.Assigned,
-            ["already_assigned"] = result.AlreadyAssigned,
-            ["unassigned"] = result.Unassigned,
-            ["errors"] = result.Errors,
-        };
-        var description = JsonSerializer.Serialize(metadata);
+            Key = result.Key,
+            LastSyncAt = clock.GetCurrentInstant(),
+            Summary = result.FormatSummary(),
+            GroupId = result.GroupId,
+            GroupName = result.GroupName,
+            Candidates = result.Candidates,
+            ExcludedUnsubscribed = result.ExcludedUnsubscribed,
+            Created = result.Created,
+            Assigned = result.Assigned,
+            AlreadyAssigned = result.AlreadyAssigned,
+            Unassigned = result.Unassigned,
+            Errors = result.Errors,
+        }, ct);
+
+        var description = $"Audience '{audience.DisplayName}' synced to " +
+                          $"'{result.GroupName}': {result.FormatSummary()}";
 
         if (actorUserId is Guid actor)
         {
             await audit.LogAsync(
                 AuditAction.MailerLiteAudienceSyncCompleted,
-                entityType: "MailerLiteAudience", entityId: Guid.Empty,
+                entityType: "MailerLiteAudience", entityId: state.Id,
                 description: description,
                 actorUserId: actor);
         }
@@ -230,7 +233,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             await audit.LogAsync(
                 AuditAction.MailerLiteAudienceSyncCompleted,
-                entityType: "MailerLiteAudience", entityId: Guid.Empty,
+                entityType: "MailerLiteAudience", entityId: state.Id,
                 description: description,
                 jobName: JobName);
         }
@@ -273,22 +276,6 @@ internal sealed class MailerLiteAudienceSyncService(
             CurrentlyInGroup: inGroup,
             LastSyncAt: null,
             LastSyncSummary: null);
-    }
-
-    private static string? TryExtractAudienceKey(string? description)
-    {
-        if (string.IsNullOrEmpty(description)) return null;
-        try
-        {
-            using var doc = JsonDocument.Parse(description);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
-            if (!doc.RootElement.TryGetProperty("audience_key", out var keyEl)) return null;
-            return keyEl.ValueKind == JsonValueKind.String ? keyEl.GetString() : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     private static string NormalizeEmail(string email) =>

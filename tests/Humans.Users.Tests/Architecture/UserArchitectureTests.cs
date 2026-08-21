@@ -4,7 +4,9 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Data;
+using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Users.Services.UserService;
@@ -168,5 +170,28 @@ public class UserArchitectureTests
             .GetMethod("GetEffectiveEmail", BindingFlags.Public | BindingFlags.Instance)
             .Should().BeNull(
                 because: "User.Email owns the effective-email computation");
+    }
+
+    [HumansFact]
+    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    {
+        // The section's 441 keys moved to UsersResource at nobodies-collective/Humans#1050.
+        // SharedResource stays allowed: the Common_/Validation_/Admin_/Todo_/Application*_
+        // prefixes the carve deliberately left behind are rendered by other sections too.
+        // Any third set resolves to nothing and shows the key name instead of the text.
+        var allowed = new[] { typeof(UsersResource), typeof(SharedResource) };
+        var offenders = typeof(Section).Assembly.GetTypes()
+            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
+                .Where(p => p.ParameterType.IsGenericType
+                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
+                         && !allowed.Contains(p.ParameterType.GetGenericArguments()[0]))
+                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "Users copy lives in UsersResource and the left-behind shared prefixes in "
+                   + "SharedResource; resolving a key through any third set renders the key "
+                   + "itself and no error");
     }
 }

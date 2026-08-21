@@ -14,6 +14,15 @@ fi
 
 if [ -n "$PR_ID" ] && [ -n "$DB_PASSWORD" ]; then
   export ConnectionStrings__DefaultConnection="Host=humans-db;Database=humans_pr_${PR_ID};Username=humans;Password=${DB_PASSWORD}"
+
+  # Preview deploys get the Admin dev-login persona; QA (same Staging environment name, real
+  # integration credentials) does not. Tied to the switch above, not to PR_ID: without the
+  # override the container is still on the inherited QA connection, and anonymous Admin over
+  # QA data is the escalation nobodies-collective/Humans#1332 closed. Only defaulted, so a
+  # deploy can override it.
+  if [ -z "$DevAuth__AllowAdmin" ]; then
+    export DevAuth__AllowAdmin=true
+  fi
 fi
 
 exec dotnet Humans.Web.dll

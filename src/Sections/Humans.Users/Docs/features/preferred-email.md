@@ -122,7 +122,6 @@ UserEmail
 ├── UserId: Guid (FK → User)
 ├── Email: string (256)
 ├── IsVerified: bool
-├── IsOAuth: EF shadow property only (DB column retained; C# property removed — deferred drop)
 ├── IsGoogle: bool (user-controlled; Google sync target)
 ├── GoogleEmailStatus: GoogleEmailStatus (per-address sync status; default Unknown)
 ├── IsPrimary: bool (exactly one per user; DB column name IsNotificationTarget — C# renamed PR 4)

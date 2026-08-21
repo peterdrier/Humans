@@ -32,12 +32,13 @@ internal sealed class DevLoginController(
     internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     /// <summary>
-    /// The personas offered in <paramref name="environment"/>. Admin is dropped outside a dev
-    /// host — see <see cref="AdminSignInAllowed"/>. Used by the panel so the buttons and the
-    /// route agree on one predicate.
+    /// The personas offered on this host. Admin is dropped unless the host allows it — see
+    /// <see cref="AdminSignInAllowed"/>. Used by the panel so the buttons and the route agree
+    /// on one predicate.
     /// </summary>
-    internal static IEnumerable<DevPersonaInfo> PersonasFor(IWebHostEnvironment environment) =>
-        AdminSignInAllowed(environment)
+    internal static IEnumerable<DevPersonaInfo> PersonasFor(
+        IWebHostEnvironment environment, IConfiguration configuration) =>
+        AdminSignInAllowed(environment, configuration)
             ? AllPersonas
             : AllPersonas.Where(p => !IsAdminPersona(p));
 
@@ -56,7 +57,7 @@ internal sealed class DevLoginController(
 
         // Before any seeding: an Admin session must never be minted off an anonymous URL
         // outside a dev host.
-        if (IsAdminPersona(info) && !AdminSignInAllowed(env))
+        if (IsAdminPersona(info) && !AdminSignInAllowed(env, config))
             return NotFound();
 
         // Guest: fresh profileless user per click so parallel testers don't collide.
@@ -137,7 +138,7 @@ internal sealed class DevLoginController(
             return NotFound();
 
         // Impersonating a real Admin is the same hole as the Admin persona.
-        if (!AdminSignInAllowed(env) && await roleAssignmentService.IsUserAdminAsync(id))
+        if (!AdminSignInAllowed(env, config) && await roleAssignmentService.IsUserAdminAsync(id))
             return NotFound();
 
         await signInManager.SignInAsync(user, isPersistent: true);
@@ -181,13 +182,18 @@ internal sealed class DevLoginController(
     // --- Static helpers ---
 
     /// <summary>
-    /// Whether this host may hand out an Admin session through dev login. Deployed hosts run
-    /// Staging (QA, previews) or Production with real Google Workspace data, and QA keeps
-    /// <c>DevAuth:Enabled</c> on — so anonymous Admin there is a live privilege escalation.
-    /// "Testing" is the in-process integration host, the same discriminator Program.cs uses.
+    /// Whether this host may hand out an Admin session through dev login. QA runs Staging with
+    /// <c>DevAuth:Enabled</c> on and real Google Workspace data, so anonymous Admin there is a
+    /// live privilege escalation. "Testing" is the in-process integration host, the same
+    /// discriminator Program.cs uses. <c>DevAuth:AllowAdmin</c> opts a host back in: per-PR
+    /// previews set it from <c>docker-entrypoint.sh</c>, which is the only place that can tell
+    /// a preview container from QA — both run Staging, but a preview holds a throwaway cloned
+    /// database and no integration credentials worth escalating to.
     /// </summary>
-    private static bool AdminSignInAllowed(IWebHostEnvironment environment) =>
-        environment.IsDevelopment() || environment.IsEnvironment("Testing");
+    private static bool AdminSignInAllowed(IWebHostEnvironment environment, IConfiguration configuration) =>
+        environment.IsDevelopment()
+        || environment.IsEnvironment("Testing")
+        || configuration.GetValue("DevAuth:AllowAdmin", false);
 
     /// <summary>The persona whose seeded governance role is <see cref="RoleNames.Admin"/>.</summary>
     private static bool IsAdminPersona(DevPersonaInfo persona) =>

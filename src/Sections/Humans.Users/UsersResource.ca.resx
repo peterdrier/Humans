@@ -1,0 +1,1213 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- ======================== -->
+  <!-- Profile (view + edit)    -->
+  <!-- ======================== -->
+  <data name="Profile_Title" xml:space="preserve">
+    <value>El meu perfil</value>
+  </data>
+  <data name="Profile_ActionRequired" xml:space="preserve">
+    <value>Acció requerida:</value>
+  </data>
+  <data name="Profile_PendingConsents" xml:space="preserve">
+    <value>Tens {0} consentiment(s) pendent(s) per revisar.</value>
+    <comment>{0} = pending count</comment>
+  </data>
+  <data name="Profile_ReviewNow" xml:space="preserve">
+    <value>Revisar ara</value>
+  </data>
+  <data name="Profile_PendingApproval" xml:space="preserve">
+    <value>Pendent d'aprovació:</value>
+  </data>
+  <data name="Profile_PendingApprovalDescription" xml:space="preserve">
+    <value>El teu compte està pendent d'aprovació per part de la Junta Directiva. Rebràs una notificació quan s'hagi processat.</value>
+  </data>
+  <data name="Profile_TierApplicationStatus" xml:space="preserve">
+    <value>La teva sol·licitud de {0}:</value>
+    <comment>{0} = tier name (Colaborador/Asociado)</comment>
+  </data>
+  <data name="Profile_TierApplicationDetails" xml:space="preserve">
+    <value>Veure detalls</value>
+  </data>
+  <data name="Profile_Information" xml:space="preserve">
+    <value>Informació del perfil</value>
+  </data>
+  <data name="Profile_LegalName" xml:space="preserve">
+    <value>Nom legal</value>
+  </data>
+  <data name="Profile_OnlyVisibleToYouAndBoard" xml:space="preserve">
+    <value>només visible per a tu i la junta</value>
+  </data>
+  <data name="Profile_Phone" xml:space="preserve">
+    <value>Telèfon</value>
+  </data>
+  <data name="Profile_Bio" xml:space="preserve">
+    <value>Biografia</value>
+  </data>
+  <data name="Profile_ChooseVisibility" xml:space="preserve">
+    <value>-- Tria la visibilitat --</value>
+  </data>
+  <data name="Profile_ContactInformation" xml:space="preserve">
+    <value>Informació de contacte</value>
+  </data>
+  <data name="Profile_NoContactInfo" xml:space="preserve">
+    <value>Encara no s'ha afegit cap informació de contacte.</value>
+  </data>
+  <data name="Profile_AddSome" xml:space="preserve">
+    <value>Afegeix informació</value>
+  </data>
+  <data name="Profile_NotificationTarget" xml:space="preserve">
+    <value>Les notificacions del sistema s'envien a aquesta adreça</value>
+  </data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve">
+    <value>Notificacions</value>
+  </data>
+  <data name="Profile_Teams" xml:space="preserve">
+    <value>Equips</value>
+  </data>
+  <data name="Profile_Motivation" xml:space="preserve">
+    <value>Motivació</value>
+  </data>
+  <data name="Profile_AdditionalInfo" xml:space="preserve">
+    <value>Informació addicional (opcional)</value>
+  </data>
+  <data name="Profile_BurnerCV" xml:space="preserve">
+    <value>Burner CV</value>
+  </data>
+  <data name="Profile_NoCVEntries" xml:space="preserve">
+    <value>Encara no hi ha entrades.</value>
+  </data>
+  <data name="Profile_AddFirstEntry" xml:space="preserve">
+    <value>Afegeix la teva primera entrada</value>
+  </data>
+  <data name="Profile_QuickActions" xml:space="preserve">
+    <value>Accions ràpides</value>
+  </data>
+  <data name="Profile_Languages" xml:space="preserve">
+    <value>Idiomes parlats</value>
+  </data>
+  <data name="Profile_Pronouns" xml:space="preserve">
+    <value>Pronoms</value>
+  </data>
+  <data name="Profile_EnterEmail" xml:space="preserve">
+    <value>Si us plau, introdueix una adreça de correu electrònic.</value>
+  </data>
+  <data name="Profile_AlreadySignInEmail" xml:space="preserve">
+    <value>Aquesta ja és la teva adreça d'inici de sessió. No cal establir-la com a preferida.</value>
+  </data>
+  <data name="Profile_VerificationCooldown" xml:space="preserve">
+    <value>Si us plau, espera {0} minut(s) abans de sol·licitar un altre correu de verificació.</value>
+    <comment>{0} = minutes remaining</comment>
+  </data>
+  <data name="Profile_EmailInUse" xml:space="preserve">
+    <value>Aquesta adreça de correu ja està en ús per un altre compte.</value>
+  </data>
+  <data name="Profile_VerificationSent" xml:space="preserve">
+    <value>Correu de verificació enviat a {0}. Si us plau, revisa la teva safata d'entrada.</value>
+    <comment>{0} = email address</comment>
+  </data>
+  <data name="Profile_InvalidVerificationLink" xml:space="preserve">
+    <value>Enllaç de verificació no vàlid.</value>
+  </data>
+  <data name="Profile_NoEmailPending" xml:space="preserve">
+    <value>No hi ha cap correu pendent de verificació.</value>
+  </data>
+  <data name="Profile_VerificationExpired" xml:space="preserve">
+    <value>L'enllaç de verificació no és vàlid o ha expirat.</value>
+  </data>
+  <data name="Profile_EmailClaimed" xml:space="preserve">
+    <value>Aquesta adreça de correu ha estat reclamada per un altre compte.</value>
+  </data>
+  <data name="Profile_EmailVerified" xml:space="preserve">
+    <value>L'adreça de correu {0} ha estat verificada.</value>
+    <comment>{0} = email address</comment>
+  </data>
+  <data name="Profile_PreferredEmailCleared" xml:space="preserve">
+    <value>El correu preferit s'ha eliminat. Els correus del sistema s'enviaran a la teva adreça d'inici de sessió.</value>
+  </data>
+  <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
+    <value>Ja existeix una sol·licitud d'eliminació pendent.</value>
+  </data>
+  <data name="Profile_DeletionRequested" xml:space="preserve">
+    <value>S'ha sol·licitat l'eliminació del compte. El teu compte serà eliminat el {0} tret que cancel·lis la sol·licitud.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Profile_NoDeletionPending" xml:space="preserve">
+    <value>No hi ha cap sol·licitud d'eliminació pendent.</value>
+  </data>
+  <data name="Profile_DeletionCancelled" xml:space="preserve">
+    <value>L'eliminació del compte s'ha cancel·lat.</value>
+  </data>
+  <data name="Profile_ProfilePicture" xml:space="preserve">
+    <value>Foto de perfil</value>
+  </data>
+  <data name="Profile_DateOfBirth" xml:space="preserve">
+    <value>Aniversari</value>
+  </data>
+  <data name="Profile_PictureTooLarge" xml:space="preserve">
+    <value>La foto de perfil ha de ser inferior a 20MB.</value>
+  </data>
+  <data name="Profile_PictureInvalidFormat" xml:space="preserve">
+    <value>La foto de perfil ha d'estar en format JPEG, PNG, WebP o HEIC.</value>
+  </data>
+  <data name="Profile_Month" xml:space="preserve">
+    <value>Mes</value>
+  </data>
+  <data name="Profile_Day" xml:space="preserve">
+    <value>Dia</value>
+  </data>
+  <data name="Profile_EmergencyContact" xml:space="preserve">
+    <value>Contacte d'emergència</value>
+  </data>
+  <data name="Profile_EmergencyContactName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="Profile_EmergencyContactPhone" xml:space="preserve">
+    <value>Telèfon</value>
+  </data>
+  <data name="Profile_EmergencyContactRelationship" xml:space="preserve">
+    <value>Relació</value>
+  </data>
+  <data name="Profile_EmergencyContactBoardOnly" xml:space="preserve">
+    <value>Només visible per a tu i la junta directiva.</value>
+  </data>
+  <data name="Profile_NoPriorBurnExperience" xml:space="preserve">
+    <value>No tinc experiència prèvia en burns</value>
+  </data>
+  <data name="Profile_BurnerCVRequired" xml:space="preserve">
+    <value>Si us plau, afegeix almenys una entrada de Burner CV o marca la casella de 'sense experiència prèvia en burns'.</value>
+  </data>
+  <data name="Profile_LegalFirstNames" xml:space="preserve">
+    <value>Nom(s) legal(s)</value>
+  </data>
+  <data name="Profile_LegalLastNames" xml:space="preserve">
+    <value>Cognom(s) legal(s)</value>
+  </data>
+  <data name="Profile_ContributionInterests" xml:space="preserve">
+    <value>Com m'agradaria contribuir</value>
+  </data>
+  <data name="Profile_BoardNotes" xml:space="preserve">
+    <value>Notes per a la Junta</value>
+  </data>
+  <data name="Profile_BoardInformation" xml:space="preserve">
+    <value>Informació privada i de la Junta</value>
+  </data>
+  <data name="Profile_WhatsApp" xml:space="preserve">
+    <value>WhatsApp</value>
+  </data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>La teva foto de Google s'ha importat com a foto de perfil.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>No podem importar una foto de Google: el teu compte no està vinculat a Google o no es va capturar cap avatar en iniciar sessió.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Acaba de configurar el teu perfil primer i després podràs importar la teva foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ja tens una foto de perfil personalitzada. Elimina-la primer per importar la teva foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No hem pogut obtenir la teva foto de Google. Prova-ho més tard o puja'n una directament.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No s'ha pogut processar la teva foto de Google: format no admès o resposta incorrecta.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No hem pogut importar la teva foto de Google: la URL de l'avatar emmagatzemat no sembla una adreça de Google. Puja'n una directament.</value></data>
+  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarian</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
+  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescatarian</value></data>
+  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergies</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Other allergy — please describe</value></data>
+  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Other intolerance — please describe</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
+  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
+  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
+  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
+  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
+  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
+  <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+  <data name="Profile_Assigned" xml:space="preserve"><value>Assignat</value></data>
+  <data name="Profile_Campaign" xml:space="preserve"><value>Campanya</value></data>
+  <data name="Profile_Code" xml:space="preserve"><value>Codi</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Lactis</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Ou</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Cacauet</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sèsam</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Marisc</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soja</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Fruits secs</value></data>
+  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Blat/Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamina</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>
+  <data name="Profile_MarkedAt" xml:space="preserve"><value>Marcat el</value></data>
+  <data name="Profile_MarkedBy" xml:space="preserve"><value>Marcat per</value></data>
+  <data name="Profile_MyCodes" xml:space="preserve"><value>Els meus codis</value></data>
+  <data name="Profile_MyEmails" xml:space="preserve"><value>Els meus correus</value></data>
+  <data name="Profile_NoSentMessages" xml:space="preserve"><value>No hi ha cap missatge dins la plataforma registrat.</value></data>
+  <data name="Profile_NoShowHistory" xml:space="preserve"><value>Historial d'absències ({0})</value></data>
+  <data name="Profile_OnsiteSince" xml:space="preserve"><value>Al recinte des de {0}</value></data>
+  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in fet a la porta</value></data>
+  <data name="Profile_Redeemed" xml:space="preserve"><value>Bescanviat</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Missatges enviats</value></data>
+  <data name="Profile_ShiftInfo" xml:space="preserve"><value>Informació del torn</value></data>
+
+  <!-- ======================== -->
+  <!-- Profile Edit form        -->
+  <!-- ======================== -->
+  <data name="ProfileEdit_Title" xml:space="preserve">
+    <value>Edita el perfil</value>
+  </data>
+  <data name="ProfileEdit_TierVolunteerDesc" xml:space="preserve">
+    <value>Vols venir a l'esdeveniment, contribuir amb la teva energia, treballar un torn o unir-te a un equip. Sense compromís formal amb la governança de l'associació. La majoria de la gent és aquí i és completament vàlid.</value>
+  </data>
+  <data name="ProfileEdit_TierChangeNote" xml:space="preserve">
+    <value>Nota: Sempre pots sol·licitar canviar això més endavant.</value>
+  </data>
+  <data name="ProfileEdit_TierLocked" xml:space="preserve">
+    <value>El teu nivell està bloquejat perquè tens una sol·licitud activa o pendent.</value>
+  </data>
+  <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
+    <value>Sol·licitud</value>
+  </data>
+  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve">
+    <value>Explica'ns la teva motivació.</value>
+  </data>
+  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve">
+    <value>Per què vols ser Col·laborador/Associat? Què esperes aportar?</value>
+  </data>
+  <data name="ProfileEdit_MotivationHelp" xml:space="preserve">
+    <value>Mínim 50 caràcters. Això ajuda la Junta a entendre els teus objectius.</value>
+  </data>
+  <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
+    <value>El nom pel qual et coneixen</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve">
+    <value>Aquest és el teu nom públic, visible per a tothom.</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
+    <value>El teu burner name sembla coincidir amb el teu nom legal. Considera fer servir un nom diferent per protegir la teva privacitat — aquest nom és visible per a tots els humans.</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Hi ha 1 human més amb el nom '{1}' — assegura't que puguem distingir quin ets tu!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Hi ha {0} humans més amb el nom '{1}' — assegura't que puguem distingir quin ets tu!</value>
+  </data>
+  <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
+    <value>Necessari per a documents oficials i signatures.</value>
+  </data>
+  <data name="ProfileEdit_Select" xml:space="preserve">
+    <value>Selecciona</value>
+  </data>
+  <data name="ProfileEdit_City" xml:space="preserve">
+    <value>Ciutat</value>
+  </data>
+  <data name="ProfileEdit_CityHelp" xml:space="preserve">
+    <value>Cerca la teva ciutat per establir la teva ubicació.</value>
+  </data>
+  <data name="ProfileEdit_CurrentLocation" xml:space="preserve">
+    <value>Ubicació actual:</value>
+  </data>
+  <data name="ProfileEdit_BioHelp" xml:space="preserve">
+    <value>Explica'ns una mica sobre tu.</value>
+  </data>
+  <data name="ProfileEdit_LanguagesHelp" xml:space="preserve">
+    <value>Quins idiomes parles? Això ajuda a coordinar la nostra comunitat multilingüe.</value>
+  </data>
+  <data name="ProfileEdit_AddLanguage" xml:space="preserve">
+    <value>Afegir idioma</value>
+  </data>
+  <data name="ProfileEdit_PronounsPlaceholder" xml:space="preserve">
+    <value>p. ex., elli, ella, ell</value>
+  </data>
+  <data name="ProfileEdit_ContactInfoHelp" xml:space="preserve">
+    <value>Afegeix formes de contacte perquè altres humans puguin comunicar-se amb tu. Controla qui pot veure cada dada.</value>
+  </data>
+  <data name="ProfileEdit_AddContactField" xml:space="preserve">
+    <value>Afegeix camp de contacte</value>
+  </data>
+  <data name="ProfileEdit_BurnerCVHelp" xml:space="preserve">
+    <value>Documenta la teva participació en esdeveniments, rols i campaments. Les entrades s'ordenen per data (més recents primer).</value>
+  </data>
+  <data name="ProfileEdit_AddEntry" xml:space="preserve">
+    <value>Afegeix entrada</value>
+  </data>
+  <data name="ProfileEdit_ManageEmails" xml:space="preserve">
+    <value>Adreces de correu</value>
+  </data>
+  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve">
+    <value>Afegeix adreces de correu, estableix preferències de notificació i controla la visibilitat del perfil.</value>
+  </data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve">
+    <value>Puja una imatge JPEG, PNG, WebP o HEIC (màx. 20MB). Les imatges grans es redimensionen automàticament.</value>
+  </data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve">
+    <value>Elimina foto personalitzada</value>
+  </data>
+  <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve">
+    <value>Només visible per a tu i la junta directiva. S'utilitza per al calendari d'aniversaris.</value>
+  </data>
+  <data name="ProfileEdit_EmergencyContactHelp" xml:space="preserve">
+    <value>Proporciona una persona de contacte per a emergències en esdeveniments.</value>
+  </data>
+  <data name="ProfileEdit_SectionGeneral" xml:space="preserve">
+    <value>Informació general</value>
+  </data>
+  <data name="ProfileEdit_SectionContributor" xml:space="preserve">
+    <value>Informació de contribució</value>
+  </data>
+  <data name="ProfileEdit_ContributorNote" xml:space="preserve">
+    <value>Pot ser considerada per a sol·licituds de Col·laborador o Associat.</value>
+  </data>
+  <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve">
+    <value>Comparteix les teves habilitats, interessos i com t'agradaria participar. Visible per a tots els humans.</value>
+  </data>
+  <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve">
+    <value>Notes privades per a la Junta.</value>
+  </data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importa la meva foto de Google</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copia la foto del teu compte de Google com a foto de perfil. Podràs reemplaçar-la més endavant pujant-ne una de nova.</value></data>
+  <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Comença a escriure la teva ciutat…</value></data>
+  <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Tipus</value></data>
+  <data name="ProfileEdit_ContactValue" xml:space="preserve"><value>Valor</value></data>
+  <data name="ProfileEdit_ContactValuePlaceholder" xml:space="preserve"><value>Introdueix la informació de contacte</value></data>
+  <data name="ProfileEdit_ContactVisibility" xml:space="preserve"><value>Visibilitat</value></data>
+  <data name="ProfileEdit_CustomLabelPlaceholder" xml:space="preserve"><value>p. ex., Discord</value></data>
+  <data name="ProfileEdit_Description" xml:space="preserve"><value>Descripció</value></data>
+  <data name="ProfileEdit_DescriptionPlaceholder" xml:space="preserve"><value>p. ex., Líder de la porta</value></data>
+  <data name="ProfileEdit_EventName" xml:space="preserve"><value>Nom de l'esdeveniment</value></data>
+  <data name="ProfileEdit_EventNamePlaceholder" xml:space="preserve"><value>p. ex., Burning Man 2024</value></data>
+  <data name="ProfileEdit_LanguageLabel" xml:space="preserve"><value>Idioma</value></data>
+  <data name="ProfileEdit_ProficiencyLabel" xml:space="preserve"><value>Nivell</value></data>
+  <data name="ProfileEdit_RelationshipPlaceholder" xml:space="preserve"><value>p. ex., Parella, Pare/Mare</value></data>
+  <data name="ProfileEdit_RemoveContactField" xml:space="preserve"><value>Treu aquest camp de contacte</value></data>
+  <data name="ProfileEdit_RemoveEntry" xml:space="preserve"><value>Treu aquesta entrada</value></data>
+  <data name="ProfileEdit_RemoveLanguage" xml:space="preserve"><value>Treu aquest idioma</value></data>
+  <data name="ProfileEdit_SelectLanguage" xml:space="preserve"><value>— Selecciona un idioma —</value></data>
+
+  <!-- ======================== -->
+  <!-- Profile card component   -->
+  <!-- ======================== -->
+  <data name="ProfileCard_Suspended" xml:space="preserve">
+    <value>Suspès</value>
+  </data>
+  <data name="ProfileCard_PendingBadge" xml:space="preserve">
+    <value>Pendent</value>
+  </data>
+  <data name="ProfileCard_Teams" xml:space="preserve">
+    <value>Equips:</value>
+  </data>
+  <data name="ProfileCard_Joined" xml:space="preserve">
+    <value>Unit/da el {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+  <data name="ProfileCard_LastLogin" xml:space="preserve">
+    <value>Últim accés {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Privacy / My Data        -->
+  <!-- ======================== -->
+  <data name="ProfilePrivacy_Title" xml:space="preserve">
+    <value>Les meves dades</value>
+  </data>
+  <data name="ProfilePrivacy_Lead" xml:space="preserve">
+    <value>Gestiona les teves dades personals i configuració de privacitat.</value>
+  </data>
+  <data name="ProfilePrivacy_ExportTitle" xml:space="preserve">
+    <value>Exporta les teves dades</value>
+  </data>
+  <data name="ProfilePrivacy_ExportDescription" xml:space="preserve">
+    <value>Descarrega una còpia de totes les teves dades personals en format JSON. Això inclou:</value>
+  </data>
+  <data name="ProfilePrivacy_ExportAccountInfo" xml:space="preserve">
+    <value>Informació del compte</value>
+  </data>
+  <data name="ProfilePrivacy_ExportProfileDetails" xml:space="preserve">
+    <value>Dades del perfil</value>
+  </data>
+  <data name="ProfilePrivacy_ExportContactFields" xml:space="preserve">
+    <value>Camps de contacte</value>
+  </data>
+  <data name="ProfilePrivacy_ExportApplications" xml:space="preserve">
+    <value>Sol·licituds de membres</value>
+  </data>
+  <data name="ProfilePrivacy_ExportConsents" xml:space="preserve">
+    <value>Registres de consentiment</value>
+  </data>
+  <data name="ProfilePrivacy_ExportTeams" xml:space="preserve">
+    <value>Pertinences a equips</value>
+  </data>
+  <data name="ProfilePrivacy_ExportRoles" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="ProfilePrivacy_DownloadMyData" xml:space="preserve">
+    <value>Descarrega les meves dades</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteTitle" xml:space="preserve">
+    <value>Eliminar el teu compte</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteDescription" xml:space="preserve">
+    <value>Sol·licita l'eliminació del teu compte i dades personals.</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteImmediateRevocation" xml:space="preserve">
+    <value>Les teves pertinences a equips, assignacions de rols i accés a recursos compartits (Google Drive, Groups) seran revocats immediatament</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteGracePeriod" xml:space="preserve">
+    <value>Un període de gràcia de 30 dies et permet cancel·lar la sol·licitud</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteAnonymized" xml:space="preserve">
+    <value>Després de 30 dies, la teva informació personal serà anonimitzada i l'accés bloquejat permanentment</value>
+  </data>
+  <data name="ProfilePrivacy_DeleteRetained" xml:space="preserve">
+    <value>Els registres anonimitzats es conserven per compliment legal i auditoria, però no poden vincular-se a la teva identitat</value>
+  </data>
+  <data name="ProfilePrivacy_RequestDeletion" xml:space="preserve">
+    <value>Sol·licitar eliminació de compte</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionPending" xml:space="preserve">
+    <value>Eliminació pendent</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionScheduledFor" xml:space="preserve">
+    <value>El teu compte està programat per ser eliminat el {0}.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="ProfilePrivacy_DeletionCancelInfo" xml:space="preserve">
+    <value>Pots cancel·lar aquesta sol·licitud abans de la data d'eliminació si canvies d'opinió.</value>
+  </data>
+  <data name="ProfilePrivacy_CancelDeletion" xml:space="preserve">
+    <value>Cancel·la la sol·licitud d'eliminació</value>
+  </data>
+  <data name="ProfilePrivacy_DPOContact" xml:space="preserve">
+    <value>Si tens preguntes sobre les teves dades o drets de privacitat, contacta amb el nostre Delegat de Protecció de Dades:</value>
+  </data>
+  <data name="ProfilePrivacy_Email" xml:space="preserve">
+    <value>Correu electrònic:</value>
+  </data>
+  <data name="ProfilePrivacy_ViewFullPolicy" xml:space="preserve">
+    <value>Veure política de privacitat completa</value>
+  </data>
+  <data name="ProfilePrivacy_ConfirmDeletion" xml:space="preserve">
+    <value>Confirmar eliminació de compte</value>
+  </data>
+  <data name="ProfilePrivacy_ConfirmDeletionQuestion" xml:space="preserve">
+    <value>Segur que vols sol·licitar l'eliminació del teu compte?</value>
+  </data>
+  <data name="ProfilePrivacy_YesDeleteMyAccount" xml:space="preserve">
+    <value>Sí, eliminar el meu compte</value>
+  </data>
+  <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve">
+    <value>Les teves pertinences a equips i assignacions de rols han estat revocades.</value>
+  </data>
+  <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve">
+    <value>Cancel·lar no restaurarà les teves pertinences a equips anteriors. Hauràs de tornar a unir-te als equips.</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Communication prefs      -->
+  <!-- ======================== -->
+  <data name="CommPrefs_Title" xml:space="preserve">
+    <value>Preferències de comunicació</value>
+  </data>
+  <data name="CommPrefs_Description" xml:space="preserve">
+    <value>Tria quines comunicacions reps i com.</value>
+  </data>
+  <data name="CommPrefs_Category" xml:space="preserve">
+    <value>Categoria</value>
+  </data>
+  <data name="CommPrefs_Email" xml:space="preserve">
+    <value>Correu</value>
+  </data>
+  <data name="CommPrefs_Alert" xml:space="preserve">
+    <value>Alerta</value>
+  </data>
+  <data name="CommPrefs_BackToProfile" xml:space="preserve">
+    <value>Tornar al perfil</value>
+  </data>
+  <data name="CommPrefs_BackToDashboard" xml:space="preserve">
+    <value>Tornar al tauler</value>
+  </data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve">
+    <value>Has fet clic en un enllaç per donar-te de baixa dels correus de {0}.</value>
+  </data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve">
+    <value>Dóna't de baixa amb un sol clic, o ajusta els detalls a la matriu de sota.</value>
+  </data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve">
+    <value>Donar-se de baixa de {0}</value>
+  </data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve">
+    <value>T'has donat de baixa. Pots tornar a activar qualsevol categoria a sota.</value>
+  </data>
+  <data name="CommPrefs_UpdateSource" xml:space="preserve">
+    <value>Font d'actualització</value>
+  </data>
+  <data name="CommPrefs_UpdatedAt" xml:space="preserve">
+    <value>Actualitzat el</value>
+  </data>
+  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Sempre actiu</value></data>
+
+  <!-- ======================== -->
+  <!-- Email addresses page     -->
+  <!-- ======================== -->
+  <data name="Emails_Title" xml:space="preserve">
+    <value>Adreces de correu</value>
+  </data>
+  <data name="Emails_Description" xml:space="preserve">
+    <value>Gestiona les teves adreces de correu electrònic. El teu correu d’inici de sessió sempre hi és inclòs. Afegeix correus addicionals, tria quin rep notificacions i controla la visibilitat del perfil.</value>
+  </data>
+  <data name="Emails_YourEmails" xml:space="preserve">
+    <value>Les teves adreces de correu</value>
+  </data>
+  <data name="Emails_AddNew" xml:space="preserve">
+    <value>Afegeix adreça de correu</value>
+  </data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve">
+    <value>Fusionar comptes?</value>
+  </data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve">
+    <value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. Per transferir una entrada a un altre humà, utilitza la funció de transferència d'entrades a /Tickets/Transfers.</value>
+  </data>
+  <data name="Emails_VerificationWillBeSent" xml:space="preserve">
+    <value>S’enviarà un correu de verificació a aquesta adreça.</value>
+  </data>
+  <data name="Emails_SendVerification" xml:space="preserve">
+    <value>Envia correu de verificació</value>
+  </data>
+  <data name="Emails_ResendCooldown" xml:space="preserve">
+    <value>Pots sol·licitar un correu de verificació nou d’aquí a {0} minut(s).</value>
+  </data>
+  <data name="Emails_BackToEdit" xml:space="preserve">
+    <value>Torna a editar el perfil</value>
+  </data>
+  <data name="Emails_ManageEmails" xml:space="preserve">
+    <value>Adreces de correu</value>
+  </data>
+  <data name="Emails_ManageEmailsHelp" xml:space="preserve">
+    <value>Afegeix adreces de correu addicionals, controla notificacions i estableix la visibilitat del perfil.</value>
+  </data>
+  <data name="Emails_ManageLater" xml:space="preserve">
+    <value>Pots afegir i gestionar adreces de correu addicionals des del teu perfil després de completar la configuració.</value>
+  </data>
+  <data name="Emails_Header_Email" xml:space="preserve">
+    <value>Correu</value>
+  </data>
+  <data name="Emails_Header_Status" xml:space="preserve">
+    <value>Estat</value>
+  </data>
+  <data name="Emails_Header_Notifications" xml:space="preserve">
+    <value>Notificacions</value>
+  </data>
+  <data name="Emails_Header_Visibility" xml:space="preserve">
+    <value>Visibilitat del perfil</value>
+  </data>
+  <data name="Emails_MergePending" xml:space="preserve">
+    <value>Fusió pendent</value>
+  </data>
+  <data name="Emails_Verified" xml:space="preserve">
+    <value>Verificat</value>
+  </data>
+  <data name="Emails_StatusPending" xml:space="preserve">
+    <value>Pendent</value>
+  </data>
+  <data name="Emails_Unverified" xml:space="preserve">
+    <value>No verificat</value>
+  </data>
+  <data name="Emails_NotifActive" xml:space="preserve">
+    <value>Actiu</value>
+  </data>
+  <data name="Emails_SetAsTarget" xml:space="preserve">
+    <value>Establir com a destinatari</value>
+  </data>
+  <data name="Emails_VerifyFirst" xml:space="preserve">
+    <value>Verifica primer</value>
+  </data>
+  <data name="Emails_Visibility_Hidden" xml:space="preserve">
+    <value>Ocult</value>
+  </data>
+  <data name="Emails_Visibility_AllHumans" xml:space="preserve">
+    <value>Tots els humans</value>
+  </data>
+  <data name="Emails_Visibility_MyTeams" xml:space="preserve">
+    <value>Els meus equips</value>
+  </data>
+  <data name="Emails_Visibility_CoordinatorsBoard" xml:space="preserve">
+    <value>Coordinadors + Junta</value>
+  </data>
+  <data name="Emails_Visibility_BoardOnly" xml:space="preserve">
+    <value>Només junta</value>
+  </data>
+  <data name="Emails_ConfirmRemove" xml:space="preserve">
+    <value>Segur que vols eliminar aquest correu?</value>
+  </data>
+  <data name="Emails_GoogleTitle" xml:space="preserve">
+    <value>Correu de serveis de Google</value>
+  </data>
+  <data name="Emails_GoogleDescription" xml:space="preserve">
+    <value>Aquest correu s'utilitza per a Grups de Google i unitats compartides.</value>
+  </data>
+  <data name="Emails_GoogleAutoNobodies" xml:space="preserve">
+    <value>El teu correu @nobodies.team s'utilitza automàticament.</value>
+  </data>
+  <data name="Emails_GoogleRejected" xml:space="preserve">
+    <value>La sincronització de Google ha fallat. El correu actual ha estat rebutjat per Google. Selecciona un altre correu.</value>
+  </data>
+  <data name="Emails_GoogleValid" xml:space="preserve">
+    <value>La sincronització de Google funciona amb el correu actual.</value>
+  </data>
+  <data name="Emails_AutoSelected" xml:space="preserve">
+    <value>Seleccionat automàticament</value>
+  </data>
+  <data name="Emails_GoogleRejectedBadge" xml:space="preserve">
+    <value>Rebutjat</value>
+  </data>
+  <data name="Emails_UseThis" xml:space="preserve">
+    <value>Usar aquest</value>
+  </data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve">
+    <value>un altre usuari</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Email grid               -->
+  <!-- ======================== -->
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve">
+    <value>Gestionant correus d'un altre usuari</value>
+  </data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve">
+    <value>Gestionant correus de {0}</value>
+    <comment>{0} = target user display name</comment>
+  </data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve">
+    <value>un altre usuari</value>
+  </data>
+  <data name="EmailGrid_Email" xml:space="preserve">
+    <value>Correu</value>
+  </data>
+  <data name="EmailGrid_Status" xml:space="preserve">
+    <value>Estat</value>
+  </data>
+  <data name="EmailGrid_Primary" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="EmailGrid_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
+    <value>Correu usat per a la sincronització amb Google Workspace.</value>
+  </data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
+    <value>Problema de sincronització amb Google</value>
+  </data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve">
+    <value>Google correcte</value>
+  </data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
+    <value>Torna-ho a provar</value>
+  </data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
+    <value>Principal i Google els gestiona Google Workspace mentre la teva adreça @nobodies.team hi sigui present.</value>
+  </data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve">
+    <value>Verificació de correu pendent</value>
+  </data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
+    <value>Revisa la teva safata d’entrada i fes clic a l’enllaç del correu de verificació per confirmar la teva adreça.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
+    <value>Sincronització de Google pausada per a aquesta adreça.</value>
+  </data>
+  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
+    <value>Google ha rebutjat el correu de Google seleccionat en intentar concedir accés a Drive o afegir-te a un grup — normalment perquè l’adreça no està vinculada a un compte de Google. Els nous intents de sincronització es suprimeixen fins que un administrador ho resolgui. Selecciona un altre correu vinculat a un compte de Google i demana a un administrador que esborri l’estat rebutjat.</value>
+  </data>
+  <data name="EmailGrid_Visibility" xml:space="preserve">
+    <value>Visibilitat</value>
+  </data>
+  <data name="EmailGrid_Actions" xml:space="preserve">
+    <value>Accions</value>
+  </data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve">
+    <value>Fusió pendent</value>
+  </data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve">
+    <value>Verificat</value>
+  </data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve">
+    <value>Pendent</value>
+  </data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve">
+    <value>Vincular compte de Google</value>
+  </data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve">
+    <value>Inicia sessió amb Google per vincular un compte de Google addicional al teu perfil.</value>
+  </data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve">
+    <value>Torna al detall de l'usuari</value>
+  </data>
+  <data name="EmailGrid_Unlink" xml:space="preserve">
+    <value>Desvincular</value>
+  </data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve">
+    <value>Desvincular aquest compte de Google?</value>
+  </data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve">
+    <value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value>
+  </data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve">
+    <value>No s'ha pogut desvincular: fila desconeguda o sense proveïdor d'inici de sessió.</value>
+  </data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve">
+    <value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value>
+  </data>
+  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve">
+    <value>Indicador d'identitat de Google esborrat d'aquesta fila.</value>
+  </data>
+  <data name="EmailGrid_SetPrimary" xml:space="preserve">
+    <value>Establir com a principal</value>
+  </data>
+  <data name="EmailGrid_SetGoogle" xml:space="preserve">
+    <value>Establir per a Google</value>
+  </data>
+  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve">
+    <value>No s'ha pogut esborrar l'indicador de Google — la fila és desconeguda o no està marcada actualment.</value>
+  </data>
+  <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve">
+    <value>Indicador principal esborrat d'aquesta fila.</value>
+  </data>
+  <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve">
+    <value>No s'ha pogut esborrar l'indicador principal — la fila és desconeguda o no està marcada actualment.</value>
+  </data>
+  <data name="EmailGrid_Clear" xml:space="preserve">
+    <value>Esborrar</value>
+  </data>
+  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve">
+    <value>Esborrar l'indicador d'identitat de Google d'aquesta fila de correu?</value>
+  </data>
+  <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve">
+    <value>Esborrar l'indicador principal d'aquesta fila de correu?</value>
+  </data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve">
+    <value>Proveïdor d'inici de sessió desvinculat.</value>
+  </data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve">
+    <value>Aquest correu està vinculat a un proveïdor d'inici de sessió. Fes servir Desvincula en lloc seu.</value>
+  </data>
+  <data name="EmailGrid_DeletePrimaryBlocked" xml:space="preserve">
+    <value>Correu principal: estableix-ne un altre com a principal abans d'eliminar aquest.</value>
+  </data>
+  <data name="EmailGrid_DeleteTicketLinkedBlocked" xml:space="preserve">
+    <value>Vinculat a la teva entrada de l'esdeveniment: no es pot eliminar.</value>
+  </data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve">
+    <value>Correu de verificació enviat a l'usuari.</value>
+  </data>
+  <data name="EmailGrid_AdminVerify" xml:space="preserve">
+    <value>Verificar</value>
+  </data>
+  <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve">
+    <value>Marcar manualment aquest correu com a verificat sense que l’usuari faci clic a l’enllaç?</value>
+  </data>
+  <data name="EmailGrid_AdminVerifySuccess" xml:space="preserve">
+    <value>Correu verificat manualment.</value>
+  </data>
+  <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
+    <value>Aquesta adreça ja està verificada en un altre compte. S’ha creat una sol·licitud de fusió en lloc de verificar-la.</value>
+  </data>
+  <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Etiquetat amb {0} però sense cap fila AspNetUserLogins coincident — s'autorepara en el proper inici de sessió OAuth.</value></data>
+  <data name="EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Bloquejat per la fila del correu de Workspace</value></data>
+
+  <!-- ======================== -->
+  <!-- Sent messages            -->
+  <!-- ======================== -->
+  <data name="Outbox_AdminTitle" xml:space="preserve"><value>Correus</value></data>
+  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Torna a Administració</value></data>
+  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Torna al perfil</value></data>
+  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>Correus que el sistema ha enviat a aquest human.</value></data>
+  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>Correus que el sistema t'ha enviat (en els últims 150 dies).</value></data>
+  <data name="Outbox_Empty" xml:space="preserve"><value>No hi ha cap correu registrat.</value></data>
+  <data name="Outbox_Subject" xml:space="preserve"><value>Assumpte</value></data>
+
+  <!-- ======================== -->
+  <!-- Facilitated message      -->
+  <!-- ======================== -->
+  <data name="SendMessage_Title" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="SendMessage_Heading" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="SendMessage_MessageLabel" xml:space="preserve">
+    <value>Missatge</value>
+  </data>
+  <data name="SendMessage_PlainTextOnly" xml:space="preserve">
+    <value>Només text. Màxim 2000 caràcters.</value>
+  </data>
+  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclou la meva informació de contacte</value>
+  </data>
+  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>El teu nom i correu electrònic s’inclouran perquè et puguin respondre directament.</value>
+  </data>
+  <data name="SendMessage_Send" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="SendMessage_Success" xml:space="preserve">
+    <value>El teu missatge s’ha enviat a {0}.</value>
+  </data>
+  <data name="SendMessage_Button" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Email verification       -->
+  <!-- ======================== -->
+  <data name="VerifyEmail_Title" xml:space="preserve">
+    <value>Verificació del correu electrònic</value>
+  </data>
+  <data name="VerifyEmail_GoToSettings" xml:space="preserve">
+    <value>Ves a la configuració de correu preferit</value>
+  </data>
+  <data name="VerifyEmail_GoHome" xml:space="preserve">
+    <value>Ves a la pàgina d'inici</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Linked accounts          -->
+  <!-- ======================== -->
+  <data name="LinkedAccounts_Account" xml:space="preserve"><value>Compte</value></data>
+  <data name="LinkedAccounts_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="LinkedAccounts_ConfirmUnlink" xml:space="preserve"><value>Vols desvincular aquest compte? Ja no podràs iniciar sessió amb ell.</value></data>
+  <data name="LinkedAccounts_Description" xml:space="preserve"><value>Proveïdors OAuth vinculats actualment al teu compte. Pots fer servir qualsevol d'ells per iniciar sessió.</value></data>
+  <data name="LinkedAccounts_Empty" xml:space="preserve"><value>No hi ha comptes OAuth vinculats.</value></data>
+  <data name="LinkedAccounts_LastSignInMethod" xml:space="preserve"><value>Únic mètode d'inici de sessió — no es pot desvincular.</value></data>
+  <data name="LinkedAccounts_LinkedOn" xml:space="preserve"><value>Vinculat el</value></data>
+  <data name="LinkedAccounts_Provider" xml:space="preserve"><value>Proveïdor</value></data>
+  <data name="LinkedAccounts_Title" xml:space="preserve"><value>Comptes vinculats</value></data>
+  <data name="LinkedAccounts_UnlinkBlockedLastSignInMethod" xml:space="preserve"><value>No es pot desvincular — aquest és el teu únic mètode d'inici de sessió restant.</value></data>
+
+  <!-- ======================== -->
+  <!-- Unsubscribe              -->
+  <!-- ======================== -->
+  <data name="Unsub_Title" xml:space="preserve">
+    <value>Donar-se de baixa dels correus</value>
+  </data>
+  <data name="Unsub_Heading" xml:space="preserve">
+    <value>Donar-se de baixa dels correus {0}?</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_Greeting" xml:space="preserve">
+    <value>Hola {0},</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Unsub_ConfirmMessage" xml:space="preserve">
+    <value>Si confirmes, deixaràs de rebre correus de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_ConfirmButton" xml:space="preserve">
+    <value>Confirmar baixa</value>
+  </data>
+  <data name="Unsub_DoneTitle" xml:space="preserve">
+    <value>T'has donat de baixa</value>
+  </data>
+  <data name="Unsub_DoneMessage" xml:space="preserve">
+    <value>Ja no rebràs correus de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Unsub_DoneManage" xml:space="preserve">
+    <value>Pots gestionar les teves preferències de comunicació des de les teves</value>
+  </data>
+  <data name="Unsub_DoneManageLink" xml:space="preserve">
+    <value>preferències de comunicació</value>
+  </data>
+  <data name="Unsub_BackHome" xml:space="preserve">
+    <value>Tornar a l'inici</value>
+  </data>
+  <data name="Unsub_ExpiredTitle" xml:space="preserve">
+    <value>Enllaç de baixa caducat</value>
+  </data>
+  <data name="Unsub_ExpiredHeading" xml:space="preserve">
+    <value>Aquest enllaç de baixa ha caducat</value>
+  </data>
+  <data name="Unsub_ExpiredMessage" xml:space="preserve">
+    <value>Fes servir l'enllaç d'un correu més recent, o</value>
+  </data>
+  <data name="Unsub_ExpiredSignIn" xml:space="preserve">
+    <value>inicia sessió per gestionar les teves preferències de comunicació</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Account status page      -->
+  <!-- ======================== -->
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Estat del compte</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>El teu compte ha estat suspès</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>El teu compte ha estat rebutjat</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>El teu compte ha estat eliminat</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>El teu compte ha estat fusionat</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>El teu compte no està disponible</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta amb un administrador per a més informació:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motiu:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referència:</value></data>
+  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>El teu accés està suspès fins que completis els consentiments legals requerits.</value></data>
+  <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Un administrador ha suspès el teu compte</value></data>
+  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Revisa els consentiments requerits</value></data>
+
+  <!-- ======================== -->
+  <!-- Account deletion         -->
+  <!-- ======================== -->
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminació de compte pendent</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>El teu compte està programat per a l'eliminació</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>S'eliminarà permanentment el {0} tret que el cancel·lis.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>S'eliminarà permanentment tret que el cancel·lis.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancel·la la sol·licitud d'eliminació</value></data>
+
+  <!-- ======================== -->
+  <!-- Admin: member list       -->
+  <!-- ======================== -->
+  <data name="AdminHumans_Title" xml:space="preserve">
+    <value>Membres</value>
+  </data>
+  <data name="AdminHumans_AllStatuses" xml:space="preserve">
+    <value>Tots</value>
+  </data>
+  <data name="AdminHumans_Active" xml:space="preserve">
+    <value>Actius</value>
+  </data>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
+  </data>
+  <data name="AdminHumans_Suspended" xml:space="preserve">
+    <value>Suspesos</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="AdminHumans_Deleting" xml:space="preserve">
+    <value>Pendent d'eliminació</value>
+  </data>
+  <data name="AdminHumans_Merged" xml:space="preserve">
+    <value>Fusionat</value>
+  </data>
+  <data name="AdminHumans_Deleted" xml:space="preserve">
+    <value>Eliminat</value>
+  </data>
+  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentiments pendents</value></data>
+  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registre incomplet</value></data>
+
+  <!-- ======================== -->
+  <!-- Admin: member detail     -->
+  <!-- ======================== -->
+  <data name="AdminHuman_Information" xml:space="preserve">
+    <value>Informació del membre</value>
+  </data>
+  <data name="AdminHuman_Suspended" xml:space="preserve">
+    <value>Suspès</value>
+  </data>
+  <data name="AdminHuman_PendingApproval" xml:space="preserve">
+    <value>Pendent d'aprovació</value>
+  </data>
+  <data name="AdminHuman_ConsentCheck" xml:space="preserve">
+    <value>Verificació de consentiment</value>
+  </data>
+  <data name="AdminHuman_NotStarted" xml:space="preserve">
+    <value>No iniciat</value>
+  </data>
+  <data name="AdminHuman_UserId" xml:space="preserve">
+    <value>ID d'usuari</value>
+  </data>
+  <data name="AdminHuman_FullName" xml:space="preserve">
+    <value>Nom complet</value>
+  </data>
+  <data name="AdminHuman_AdminNotes" xml:space="preserve">
+    <value>Notes de la junta</value>
+  </data>
+  <data name="AdminHuman_AdminNotesGdprHint" xml:space="preserve">
+    <value>Aquest membre pot sol·licitar veure aquestes notes segons el RGPD.</value>
+  </data>
+  <data name="AdminHuman_RecentApplications" xml:space="preserve">
+    <value>Sol·licituds recents</value>
+  </data>
+  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="AdminHuman_AddRole" xml:space="preserve">
+    <value>Afegir rol</value>
+  </data>
+  <data name="AdminHuman_Ended" xml:space="preserve">
+    <value>Finalitzat</value>
+  </data>
+  <data name="AdminHuman_From" xml:space="preserve">
+    <value>Des de</value>
+  </data>
+  <data name="AdminHuman_To" xml:space="preserve">
+    <value>fins a</value>
+  </data>
+  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
+    <value>Finalitzar aquesta assignació de rol?</value>
+  </data>
+  <data name="AdminHuman_End" xml:space="preserve">
+    <value>Finalitzar</value>
+  </data>
+  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
+    <value>Sense assignacions de rols.</value>
+  </data>
+  <data name="AdminHuman_AuditHistory" xml:space="preserve">
+    <value>Historial d'auditoria</value>
+  </data>
+  <data name="AdminHuman_NoAuditHistory" xml:space="preserve">
+    <value>Sense historial d'auditoria.</value>
+  </data>
+  <data name="AdminHuman_Statistics" xml:space="preserve">
+    <value>Estadístiques</value>
+  </data>
+  <data name="AdminHuman_ApplicationCount" xml:space="preserve">
+    <value>Sol·licituds</value>
+  </data>
+  <data name="AdminHuman_ConsentCount" xml:space="preserve">
+    <value>Acords</value>
+  </data>
+  <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
+    <value>Aixecar la suspensió del human</value>
+  </data>
+  <data name="AdminHuman_SuspendConfirm" xml:space="preserve">
+    <value>Segur que vols suspendre aquest human?</value>
+  </data>
+  <data name="AdminHuman_SuspendReasonPlaceholder" xml:space="preserve">
+    <value>Motiu de la suspensió (opcional)</value>
+  </data>
+  <data name="AdminHuman_SuspendMember" xml:space="preserve">
+    <value>Suspèn human</value>
+  </data>
+  <data name="AdminHumanDetail_Title" xml:space="preserve">
+    <value>Membre: {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve">
+    <value>Gestiona correus</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Admin: roles             -->
+  <!-- ======================== -->
+  <data name="AdminRoles_Title" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="AdminRoles_All" xml:space="preserve">
+    <value>Tots</value>
+  </data>
+  <data name="AdminRoles_HideInactive" xml:space="preserve">
+    <value>Amaga inactius</value>
+  </data>
+  <data name="AdminRoles_ShowInactive" xml:space="preserve">
+    <value>Mostra inactius</value>
+  </data>
+  <data name="AdminRoles_User" xml:space="preserve">
+    <value>Usuari</value>
+  </data>
+  <data name="AdminRoles_ValidFrom" xml:space="preserve">
+    <value>Vàlid des de</value>
+  </data>
+  <data name="AdminRoles_ValidTo" xml:space="preserve">
+    <value>Vàlid fins a</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Admin: add role          -->
+  <!-- ======================== -->
+  <data name="AdminAddRole_Title" xml:space="preserve">
+    <value>Afegir rol</value>
+  </data>
+  <data name="AdminAddRole_Heading" xml:space="preserve">
+    <value>Afegir rol a {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="AdminAddRole_SelectRole" xml:space="preserve">
+    <value>Selecciona un rol...</value>
+  </data>
+  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
+    <value>Accés complet al sistema</value>
+  </data>
+  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
+    <value>Permisos de membre de la junta</value>
+  </data>
+  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
+    <value>Gestionar tots els equips i pertinences</value>
+  </data>
+  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
+    <value>Verificacions de seguretat durant la incorporació</value>
+  </data>
+  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
+    <value>Gestionar el mapa del camp i les fases de col·locació</value>
+  </data>
+  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
+    <value>Facilitació de la incorporació, gestió de torns global</value>
+  </data>
+  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
+    <value>Aprovar inscripcions en torns, veure dades mèdiques de voluntaris</value>
+  </data>
+  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
+    <value>Notes (opcional)</value>
+  </data>
+  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
+    <value>Motiu de la assignació</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Enum display names       -->
+  <!-- ======================== -->
+  <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
+  <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Altres</value></data>
+  <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Telèfon</value></data>
+  <data name="Enum_ContactFieldType_Signal" xml:space="preserve"><value>Signal</value></data>
+  <data name="Enum_ContactFieldType_Telegram" xml:space="preserve"><value>Telegram</value></data>
+  <data name="Enum_ContactFieldType_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Tots els humans actius</value></data>
+  <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Només la junta</value></data>
+  <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Coordinadors + Junta</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Els meus equips (+ coordinadors i junta)</value></data>
+  <data name="Enum_LanguageProficiency_Basic" xml:space="preserve"><value>Bàsic</value></data>
+  <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversacional</value></data>
+  <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluid</value></data>
+  <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Nadiu</value></data>
+</root>

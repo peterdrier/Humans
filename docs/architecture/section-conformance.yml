@@ -67,6 +67,53 @@ rules:
       TicketTailor. Jobs/ and ViewComponents/ are in the allowed set above but missing from
       the template's own list — the template is the home of this rule and needs that fix.
 
+  - id: resource-key-prefix
+    title: >-
+      A resource key in a section's <Section>Resource.resx is prefixed with the section
+      name plus an underscore — Users_, Tickets_, CityPlanning_.
+    home: memory/code/resource-key-prefix-matches-section.md
+    added: 2026-08-20 (Peter)
+    scope: all
+    detect:
+      # 1. THE RULE — keys this branch ADDS that do not carry their section's prefix.
+      #    This is the half that is enforced; a hit here is a finding to fix in the run.
+      - kind: shell
+        what: newly added keys whose prefix is not the section name
+        run: |
+          base=$(git merge-base HEAD origin/main)
+          for f in $(git diff --name-only "$base" -- 'src/Sections/*/*Resource.resx'); do
+            sec=$(basename "$(dirname "$f")" | sed 's/^Humans\.//')
+            git diff "$base" -- "$f" \
+              | grep '^+' | grep -o '<data name="[^"]*"' | sed 's/.*"\(.*\)"/\1/' \
+              | grep -v "^${sec}_" | grep -v '^Enum_' \
+              | sed "s|^|$f: |"
+          done
+      # 2. THE BACKLOG — the standing count per section, so a run can report the size of
+      #    the section's debt without being asked to fix it. Existing keys are NOT
+      #    backfilled as a side effect of other work (see `home`); a backfill is its own
+      #    deliberate change, one section at a time, and it touches six language files
+      #    plus every call site.
+      - kind: shell
+        what: standing non-conforming key count per section
+        run: |
+          for f in src/Sections/*/[A-Za-z]*Resource.resx; do
+            sec=$(basename "$(dirname "$f")" | sed 's/^Humans\.//')
+            tot=$(grep -c '<data name=' "$f")
+            bad=$(grep -o '<data name="[^"]*"' "$f" | sed 's/.*"\(.*\)"/\1/' \
+                  | grep -v "^${sec}_" | grep -vc '^Enum_')
+            [ "$bad" -gt 0 ] && echo "$sec: $bad of $tot keys not prefixed ${sec}_"
+          done
+          true
+    notes: >-
+      Baseline at seeding (2026-08-20): detector 2 reports 1,323 non-conforming keys of
+      1,960 across 14 sections. Clean: Budget, Calendar, Cantina, CityPlanning, Email,
+      Events, Expenses, Feedback, Scanner, Search, Store. Largest backlogs: Users 427 of
+      441 (carved at nobodies-collective/Humans#1050 under the pre-rule prefixes),
+      Shifts 247 of 349, Teams 172 of 193, Camps 102 of 112. Singular section-name variants
+      are excluded by both detectors: they are resolved by reflection through
+      Localizer.EnumDisplay off the type name, so the prefix is not free to change.
+      SharedResource is out of scope — it is not a section.
+
 # Rules deliberately NOT tracked here, so runs stop re-proposing them.
 declined:
   - id: section-table-prefix

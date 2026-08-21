@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -107,7 +108,7 @@ public class ProfileApiControllerTests
         new() { Id = id, Email = $"viewer-{id:N}@example.com", DisplayName = "Viewer" };
 
     private static UserInfo MakeViewerUserInfo(User user) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: user,
             userEmails: [],
             eventParticipations: [],
@@ -143,7 +144,7 @@ public class ProfileApiControllerTests
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        return UserInfo.Create(
+        return UserInfoFactory.Create(
             user: user,
             userEmails: [],
             eventParticipations: [],

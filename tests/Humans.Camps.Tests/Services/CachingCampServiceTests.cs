@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -423,8 +424,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var results = await _service.SearchAsync("test camp", int.MaxValue, TestContext.Current.CancellationToken);
 
         var hit = results.Should().ContainSingle().Subject;
-        hit.Slug.Should().Be(camp.Slug);
+        hit.CampId.Should().Be(camp.Id);
         hit.Name.Should().Be("Test Camp");
+        // Scoring belongs to the section, not the global-search orchestrator
+        // (nobodies-collective/Humans#1062).
+        hit.Score.Should().Be(StringSearchExtensions.ExactNameScore);
 
         // Search must never reach the inner service's SearchAsync (the DB ILike path is gone).
         await _innerSubstitute.DidNotReceive().SearchAsync(
@@ -465,7 +469,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var results = await _service.SearchAsync(
             camp.Id.ToString(), int.MaxValue, TestContext.Current.CancellationToken);
 
-        results.Should().ContainSingle().Which.Slug.Should().Be(camp.Slug);
+        var hit = results.Should().ContainSingle().Subject;
+        hit.CampId.Should().Be(camp.Id);
+        hit.Score.Should().Be(StringSearchExtensions.ExactNameScore,
+            because: "an id paste is as exact as a match gets");
     }
 
     private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(

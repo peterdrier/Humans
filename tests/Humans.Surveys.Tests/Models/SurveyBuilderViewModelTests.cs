@@ -67,4 +67,45 @@ public sealed class SurveyBuilderViewModelTests
         var roundTripped = vm.ToInput(0).ShowIf;
         roundTripped!.Clauses.Single().QuestionId.Should().Be(gate);
     }
+
+    [HumansFact]
+    public void Grid_configuration_round_trips_through_the_builder()
+    {
+        var input = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Grid,
+            L("Which dates work?"), LocalizedText.Empty, true, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null,
+            [
+                new OptionInput(Guid.NewGuid(), 0, "morning", L("Morning")),
+                new OptionInput(Guid.NewGuid(), 1, "afternoon", L("Afternoon")),
+            ],
+            GridSelectionMode.Multiple,
+            [
+                new GridRowInput("monday", L("Monday")),
+                new GridRowInput("tuesday", L("Tuesday")),
+            ]);
+
+        var vm = SurveyQuestionBuilderViewModel.FromInput(input);
+        var roundTripped = vm.ToInput(0);
+
+        vm.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
+        vm.GridRows.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
+        roundTripped.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
+        roundTripped.GridRows!.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
+        roundTripped.Options.Select(option => option.Value).Should().ContainInOrder("morning", "afternoon");
+    }
+
+    [HumansFact]
+    public void Grid_configuration_does_not_invent_an_omitted_selection_mode()
+    {
+        var vm = new SurveyQuestionBuilderViewModel
+        {
+            Type = SurveyQuestionType.Grid,
+        };
+
+        vm.ToInput(0).GridSelectionMode.Should().BeNull();
+    }
+
+    private static LocalizedText L(string value)
+        => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
 }

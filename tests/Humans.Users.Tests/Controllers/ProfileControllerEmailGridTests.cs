@@ -70,8 +70,11 @@ public class ProfileControllerEmailGridTests
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+
+        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileController(
             _userService,
@@ -95,6 +98,7 @@ public class ProfileControllerEmailGridTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
+            sharedLocalizer,
             Substitute.For<ITicketServiceRead>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),

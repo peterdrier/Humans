@@ -18,6 +18,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -162,13 +164,14 @@ public class ShiftsControllerSummaryTests
     }
 
     private static UserInfo MakeUserInfo(Guid userId) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,
                 DisplayName = "Coordinator",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                State = UserState.Active,
             },
             userEmails: [],
             eventParticipations: [],
@@ -179,7 +182,6 @@ public class ShiftsControllerSummaryTests
                 BurnerName = "Coordinator",
                 FirstName = "Co",
                 LastName = "Ordinator",
-                State = ProfileState.Active,
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

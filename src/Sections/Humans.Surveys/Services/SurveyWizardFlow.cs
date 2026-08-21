@@ -5,16 +5,23 @@ namespace Humans.Surveys.Services;
 
 /// <summary>
 /// One question's captured answer in the wizard, carrying enough to derive both branch visibility
-/// (from <paramref name="Options"/>) and answered-ness (any of options/text/rating present).
+/// (from <paramref name="Options"/>) and answered-ness across every supported answer shape.
 /// </summary>
-internal sealed record AnswerState(IReadOnlyList<string> Options, string? Text, int? Rating)
+internal sealed record AnswerState(
+    IReadOnlyList<string> Options,
+    string? Text,
+    int? Rating,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? Grid = null)
 {
-    /// <summary>An empty/unanswered state — no option, text, or rating.</summary>
+    /// <summary>An empty/unanswered state.</summary>
     public static AnswerState None { get; } = new([], null, null);
 
-    /// <summary>True when at least one of option/text/rating is present.</summary>
+    /// <summary>True when at least one option, text, rating, or Grid cell is present.</summary>
     public bool IsAnswered =>
-        Options.Any(s => !string.IsNullOrEmpty(s)) || !string.IsNullOrWhiteSpace(Text) || Rating is not null;
+        Options.Any(s => !string.IsNullOrEmpty(s))
+        || !string.IsNullOrWhiteSpace(Text)
+        || Rating is not null
+        || Grid?.Values.Any(values => values.Count > 0) == true;
 }
 
 /// <summary>
@@ -70,14 +77,27 @@ internal static class SurveyWizardFlow
 
     /// <summary>
     /// Ids of the supplied (already visibility-filtered) questions that are required but unanswered,
-    /// in the order given. A question is answered when it has any selected option, text, or rating.
+    /// in the order given. Grid questions additionally require a valid answer for every row.
     /// </summary>
     public static IReadOnlyList<Guid> RequiredUnanswered(
         IReadOnlyList<QuestionInput> visibleQuestions, IReadOnlyDictionary<Guid, AnswerState> answers)
         => visibleQuestions
-            .Where(q => q.Id is { } id && q.IsRequired && !(answers.TryGetValue(id, out var a) && a.IsAnswered))
+            .Where(q => q.Id is { } id && q.IsRequired
+                && !(answers.TryGetValue(id, out var a) && IsAnswered(q, a)))
             .Select(q => q.Id!.Value)
             .ToList();
+
+    private static bool IsAnswered(QuestionInput question, AnswerState answer)
+    {
+        if (question.Type != SurveyQuestionType.Grid) return answer.IsAnswered;
+
+        var rows = question.GridRows ?? [];
+        if (rows.Count == 0 || answer.Grid is null) return false;
+        return rows.All(row =>
+            answer.Grid.TryGetValue(row.Value, out var selected)
+            && selected.Count > 0
+            && (question.GridSelectionMode != GridSelectionMode.Single || selected.Count == 1));
+    }
 
     /// <summary>The nearest page strictly before <paramref name="page"/> that has a visible question, or null at the start.</summary>
     public static int? PreviousVisiblePage(
@@ -108,7 +128,14 @@ internal static class SurveyWizardFlow
         {
             if (Guid.TryParse(key, out var id))
             {
-                result[id] = new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue);
+                result[id] = new AnswerState(
+                    a.SelectedOptionValues,
+                    a.TextValue,
+                    a.RatingValue,
+                    a.GridSelections.ToDictionary(
+                        kv => kv.Key,
+                        kv => (IReadOnlyList<string>)kv.Value,
+                        StringComparer.Ordinal));
             }
         }
 
@@ -123,6 +150,12 @@ internal static class SurveyWizardFlow
                 Guid.Parse(kv.Key),
                 kv.Value.SelectedOptionValues,
                 kv.Value.TextValue,
-                kv.Value.RatingValue))
+                kv.Value.RatingValue,
+                kv.Value.GridSelections.Count == 0
+                    ? null
+                    : kv.Value.GridSelections.ToDictionary(
+                        pair => pair.Key,
+                        pair => (IReadOnlyList<string>)pair.Value,
+                        StringComparer.Ordinal)))
             .ToList();
 }

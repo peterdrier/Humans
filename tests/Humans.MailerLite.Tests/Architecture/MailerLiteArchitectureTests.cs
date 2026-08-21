@@ -43,20 +43,6 @@ public class MailerLiteArchitectureTests
             .Should().Be("Humans.MailerLite.Services");
     }
 
-    /// <summary>
-    /// MailerLite owns no tables, so the whole section assembly is EF-free — not just the two
-    /// orchestrators the pre-G5 version of this test named while they sat in
-    /// <c>Humans.Application</c>. Restated on the section assembly rather than deleted:
-    /// Calendar's rule is to keep the invariant and re-aim it, and here the wider form is
-    /// the honest one because there is no repository to legitimise a reference.
-    /// </summary>
-    [HumansFact]
-    public void SectionAssembly_DoesNotReferenceEFCore()
-    {
-        SectionAssembly.GetReferencedAssemblies()
-            .Should().NotContain(a => string.Equals(a.Name, "Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
-    }
-
     [HumansFact]
     public void AllAudiences_UseHumansPrefix()
     {

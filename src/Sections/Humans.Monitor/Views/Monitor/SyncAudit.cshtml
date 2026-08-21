@@ -10,6 +10,5 @@
     }
 </page-header>
 
-<vc:audit-log resource-id="@Model.ResourceId" user-id="@Model.UserId"
-              google-sync-only="@(Model.UserId.HasValue)" layout="sync"
-              title="Sync entries" empty-text="No sync audit entries found." />
+<vc:google-sync-log resource-id="@Model.ResourceId" user-id="@Model.UserId"
+                    title="Sync entries" empty-text="No sync log entries found." />

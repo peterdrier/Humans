@@ -124,51 +124,6 @@ public class AuditEventTests
     }
 
     [HumansFact]
-    public void GoogleSyncEvent_RendersStructuredFields()
-    {
-        var ev = MakeEvent(
-            action: AuditAction.GoogleResourceAccessGranted,
-            actorId: null,
-            actorName: null,
-            entityType: "GoogleResource",
-            entityId: Guid.NewGuid(),
-            description: "Granted reader",
-            role: "reader",
-            userEmail: "peter@nobodies.example",
-            success: true,
-            syncSource: GoogleSyncSource.ManualSync,
-            resourceName: "Build Drive");
-
-        var line = ev.RenderPlainText();
-
-        line.Should().Contain("GoogleResourceAccessGranted reader");
-        line.Should().Contain("for peter@nobodies.example");
-        line.Should().Contain("on Build Drive");
-        line.Should().Contain("(ManualSync)");
-    }
-
-    [HumansFact]
-    public void GoogleSyncFailure_AppendsErrorMessage()
-    {
-        var ev = MakeEvent(
-            action: AuditAction.GoogleResourceAccessGranted,
-            actorId: null,
-            actorName: null,
-            entityType: "GoogleResource",
-            entityId: Guid.NewGuid(),
-            role: "writer",
-            userEmail: "p@x",
-            success: false,
-            errorMessage: "API quota exceeded",
-            syncSource: GoogleSyncSource.SystemTeamSync,
-            resourceName: "Drive A");
-
-        var line = ev.RenderPlainText();
-
-        line.Should().Contain("failed: API quota exceeded");
-    }
-
-    [HumansFact]
     public void RenderStructured_ReturnsVerbAndTrimmedVerb()
     {
         var ev = MakeEvent(
@@ -232,14 +187,7 @@ public class AuditEventTests
         string? targetTeamSlug = null,
         Guid? relatedEntityId = null,
         string? relatedEntityType = null,
-        string description = "",
-        string? role = null,
-        string? userEmail = null,
-        bool? success = null,
-        string? errorMessage = null,
-        GoogleSyncSource? syncSource = null,
-        Guid? resourceId = null,
-        string? resourceName = null)
+        string description = "")
     {
         return new AuditEvent(
             Id: Guid.NewGuid(),
@@ -256,13 +204,6 @@ public class AuditEventTests
             TargetTeamSlug: targetTeamSlug,
             RelatedEntityId: relatedEntityId,
             RelatedEntityType: relatedEntityType,
-            Description: description,
-            Role: role,
-            UserEmail: userEmail,
-            Success: success,
-            ErrorMessage: errorMessage,
-            SyncSource: syncSource,
-            ResourceId: resourceId,
-            ResourceName: resourceName);
+            Description: description);
     }
 }

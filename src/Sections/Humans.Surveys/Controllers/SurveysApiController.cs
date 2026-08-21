@@ -76,6 +76,9 @@ internal sealed class SurveysApiController(ISurveyService surveyService, IUserSe
                     ratingMin = q.RatingMin,
                     ratingMax = q.RatingMax,
                     showIf = q.ShowIf,   // structural BranchCondition; option values are the join keys
+                    gridSelectionMode = q.GridSelectionMode?.ToString(),
+                    gridRows = (q.GridRows ?? [])
+                        .Select(row => new { value = row.Value, label = row.Label.Resolve(culture, culture) }),
                     options = q.Options
                         .OrderBy(o => o.Order)
                         .Select(o => new { value = o.Value, label = o.Label.Resolve(culture, culture) }),
@@ -162,6 +165,25 @@ internal sealed class SurveysApiController(ISurveyService surveyService, IUserSe
                 prompt = q.Prompt,
                 type = q.Type.ToString(),
                 optionCounts = q.OptionCounts.Select(o => new { value = o.Value, label = o.Label, count = o.Count, percent = o.Percent }),
+                grid = q.Grid is null
+                    ? null
+                    : new
+                    {
+                        mode = q.Grid.Mode.ToString(),
+                        columns = q.Grid.Columns.Select(column => new { value = column.Value, label = column.Label }),
+                        rows = q.Grid.Rows.Select(row => new
+                        {
+                            value = row.Value,
+                            label = row.Label,
+                            cells = row.Cells.Select(cell => new
+                            {
+                                columnValue = cell.ColumnValue,
+                                columnLabel = cell.ColumnLabel,
+                                count = cell.Count,
+                                percent = cell.Percent,
+                            }),
+                        }),
+                    },
                 ratingDistribution = q.RatingDistribution.Select(b => new { value = b.Value, count = b.Count }),
                 ratingAverage = q.RatingAverage,
                 freeTextAnswers = q.FreeTextAnswers,
@@ -191,6 +213,14 @@ internal sealed class SurveysApiController(ISurveyService surveyService, IUserSe
                         questionId = q.QuestionId,
                         selectedValues = a.SelectedValues,
                         selectedLabels = a.SelectedLabels,
+                        gridSelections = a.GridSelections,
+                        gridSelectionLabels = a.GridSelectionLabels?.Select(selection => new
+                        {
+                            rowValue = selection.RowValue,
+                            rowLabel = selection.RowLabel,
+                            columnValues = selection.ColumnValues,
+                            columnLabels = selection.ColumnLabels,
+                        }),
                         textValue = a.TextValue,
                         ratingValue = a.RatingValue,
                     };

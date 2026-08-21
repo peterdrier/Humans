@@ -23,18 +23,6 @@ file sealed class StubAuditLog : IAuditLogService
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
 
-    public Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
-        string description, string jobName,
-        string userEmail, string role, GoogleSyncSource source, bool success,
-        string? errorMessage = null,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
@@ -94,10 +82,6 @@ public class AccountProvisioningServiceTests
 
             return Task.FromResult<User?>(null);
         }
-
-        public Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
 
         public Task<bool> SetContactSourceIfNullAsync(
             Guid userId, ContactSource source, CancellationToken ct = default)
@@ -236,7 +220,7 @@ public class AccountProvisioningServiceTests
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
-            IReadOnlyCollection<Guid> userIds, Instant now, CancellationToken ct = default) =>
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeTierForExpiredAsync(
             MembershipTier currentTier,
@@ -251,11 +235,8 @@ public class AccountProvisioningServiceTests
         public Task ReconcileCVEntriesAsync(
             Guid profileId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> WriteBackStateIfNullAsync(
-            Guid userId, ProfileState state, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<bool> WriteBackUserStateIfNullAsync(
-            Guid userId, UserState state, CancellationToken ct = default) =>
+        public Task<bool> SetSuspensionAsync(
+            Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>
@@ -279,10 +260,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<int> ReassignUserEmailsToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
-            GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
-                Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();

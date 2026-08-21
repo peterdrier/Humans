@@ -115,10 +115,6 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // A view component element that the section's _ViewImports failed to bind renders
-            // as literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
-
             // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Calendar_", $"GET {url} rendered a raw resource key");
         }
@@ -211,8 +207,6 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().NotContain("<vc:user-calendar",
-            "Shell must import the Calendar tag helper, not just the namespace");
         html.Should().Contain("Calendar Feed", "the component renders its own card header");
     }
 

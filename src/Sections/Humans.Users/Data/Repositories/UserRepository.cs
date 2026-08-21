@@ -76,25 +76,9 @@ internal sealed partial class UserRepository : IUserRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Users
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .Select(u => new { u.Id, GoogleEmail = EF.Property<string?>(u, "GoogleEmail") })
-            .Where(x => x.GoogleEmail != null)
-            .ToListAsync(ct);
-
-        return rows.ToDictionary(x => x.Id, x => x.GoogleEmail!);
-    }
-
     // Writes — User
 
+    /// <summary>Keeps the legacy fallback column synced to BurnerName so merge/purge/GDPR labels stay accurate if the Profile is later gone.</summary>
     public async Task<bool> UpdateDisplayNameAsync(
         Guid userId, string displayName, CancellationToken ct = default)
     {
@@ -214,20 +198,24 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> WriteBackUserStateIfNullAsync(
-        Guid userId, UserState state, CancellationToken ct = default)
+    public async Task<bool> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Load-mutate-save rather than ExecuteUpdateAsync so unit tests on the EF InMemory
-        // provider still see the update (EmailOutboxRepository does the same). The State IS NULL
-        // guard stays in code: already-seeded rows are left untouched, so the seed is idempotent.
-        // User is an IdentityUser with no UpdatedAt, so there is nothing to bump; at ~500-user
-        // single-server scale the first-touch race is immaterial (no concurrency tokens).
         var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null || user.State is not null)
+        if (user is null)
             return false;
 
-        user.State = state;
+        // Read-only: the classifier needs the profile's name fields and RejectedAt. The suspension
+        // reason is NOT written here — it lives in the audit log and the notification, and profiles
+        // is never mutated by this path.
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        user.State = UserStateEvaluator.Classify(
+            user, profile,
+            isSuspended: suspended && !adminSuspension,
+            isAdminSuspended: suspended && adminSuspension);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -240,7 +228,7 @@ internal sealed partial class UserRepository : IUserRepository
         var profile = await ctx.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
-        user.State = UserStateClassifier.Classify(user, profile);
+        user.State = UserStateEvaluator.Classify(user, profile);
     }
 
     public async Task<bool> AnonymizeForMergeAsync(

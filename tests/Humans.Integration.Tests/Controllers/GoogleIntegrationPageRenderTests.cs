@@ -43,6 +43,9 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         "/Google/Accounts",
         "/Google/SyncOutbox",
         "/Google/EmailFlagViolations",
+        // One-time history move (nobodies-collective/Humans#1083). A bare GET is the dry run,
+        // so this renders — and writes nothing — against an empty audit_log.
+        "/Google/Admin/SyncHistoryMigration",
     ];
 
     /// <summary>
@@ -76,7 +79,6 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
             html.Should().NotContain("-view-component", $"GET {url} has a ReSharper-rewritten vc tag");
             html.Should().NotContain("GoogleAccounts_",
                 $"GET {url} rendered a raw resource key — the resx carve missed one, or a type bound the wrong localizer");

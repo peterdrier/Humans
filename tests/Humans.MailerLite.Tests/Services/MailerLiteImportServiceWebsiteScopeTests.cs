@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -194,18 +195,14 @@ public class MailerLiteImportServiceWebsiteScopeTests
     private static UserInfo Human(
         Guid id, string email, bool optedOut, string source, Instant? subscribedAt)
     {
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = id,
-            Category = MessageCategory.Marketing,
-            OptedOut = optedOut,
-            UpdatedAt = Instant.FromUtc(2026, 5, 19, 12, 0),
-            UpdateSource = source,
-            SubscribedAt = subscribedAt,
-        };
+        var pref = UserFixtures.Preference(
+            category: MessageCategory.Marketing,
+            optedOut: optedOut,
+            updatedAt: Instant.FromUtc(2026, 5, 19, 12, 0),
+            updateSource: source,
+            subscribedAt: subscribedAt);
         var ue = new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true };
-        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, [], [], [], [pref]);
+        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, [pref]);
     }
 }
 
@@ -244,6 +241,7 @@ internal sealed class WebsiteScopeHarness
             Substitute.For<IAccountProvisioningService>(),
             Prefs,
             Substitute.For<IAuditLogService>(),
+            InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }

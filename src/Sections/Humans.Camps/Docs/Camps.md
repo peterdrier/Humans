@@ -149,7 +149,7 @@ Four controllers serve this section. The MVC URL surface is dual-routed under `/
 | `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads (links through to Members for role/membership management) |
 | `/Camps/{slug}/Edit/Members` | `CampController.Members` | Lead-only members + roles management (pending requests, active members, role assignments) |
 | `/Camps/Register` | `CampController` | New camp registration |
-| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}` | `CampController` | Per-season participation toggles |
+| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}`, `.../MarkFull/{seasonId}` | `CampController` | Per-season participation toggles |
 | `/Camps/{slug}/Members/*` | `CampController` | Member request/approve/reject/remove/leave |
 | `/Camps/{slug}/Roles/*` | `CampController` | Per-camp role assignment/unassignment |
 | `/Camps/{slug}/Images/*` | `CampController` | Image upload/delete/reorder |
@@ -174,7 +174,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 |-------|--------------|
 | Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
-| Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. |
+| Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. Mark their camp's Active season Full — an informational label only, shown to visitors, that does not block join requests. |
 | CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
 | Team/sub-team coordinator | View the read-only role-staffing compliance matrix at `/Camps/Admin/Compliance` (via `CampComplianceAccess`) — no camp-management authority. |
 | Admin | Delete camps |
@@ -182,7 +182,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 ## Invariants
 
 - Each camp has a unique slug used for URL routing.
-- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season.
+- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season. A camp lead or CampAdmin can set an Active season's status to Full (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation); only CampAdmin can reactivate a Full (or Withdrawn) season back to Active/Pending.
+- **`Full` is informational only — it does not gate join requests.** It tells visitors the camp currently looks full; `RequestCampMembershipAsync` still matches `Active` **or** `Full` for the public year, because Humans doesn't yet know everyone who is actually in the camp (Peter, 2026-08-20). Don't reintroduce a block here — that reading of the issue was explicitly overridden.
 - Only camp leads or CampAdmin can edit a camp.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
@@ -243,6 +244,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Cross-Section Dependencies
 
+- **Search (downstream consumer):** the global `/Search` page renders every camp hit through this section's own public `<vc:camps-search-result camp-id>`, which resolves the public-year season name and the slug it links to itself off `ICampServiceRead.GetCampByIdAsync`. Search passes the camp id and no display fields (nobodies-collective/Humans#1062); `CampSearchHit` is `(CampId, Name, Score)`, carrying the section's own `Score`. Camps does not depend on Search.
 - **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — lead and assignee display names (stitched in memory; `CampRoleAssignment.AssignedByUserId` is scalar-only).
 - **Admin:** Camp settings management is restricted to CampAdmin and Admin (resource-based auth handler).
 - **City Planning:** CampSeason is the anchor for `camp_polygons`; City Planning reads camp data via `ICampService` but writes its own tables only.
@@ -276,7 +278,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
 - `CampRoleService` lives in `Humans.Camps.Services.CampRoleService` and goes through `ICampRepository` (`Humans.Camps.Data`) for all data access. The role-heavy methods are grouped in `CampRepository.Roles.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables. Display-name stitching for `AssignedByUserId` routes through `IUserServiceRead.GetUserInfosAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
 - **Architecture test** — `tests/Humans.Camps.Tests/Architecture/CampsArchitectureTests.cs`.
-- **Read/write interface split.** `ICampServiceRead` (6 methods: GetCampsForYearAsync, GetCampBySlugAsync, GetCampSeasonByIdAsync, GetSettingsAsync, SearchAsync, GetCampUserInfoAsync) is the cross-section read surface — returns only CampInfo-family projections (CampInfo with computed `Active`, CampSeasonInfo, CampUserInfo), CampSettingsInfo, CampSearchHit; no EF entities. `GetCampUserInfoAsync(userId)` resolves a user's active-`PublicYear` camp membership (the attached `CampSeasonInfo` plus the named camp roles they hold, ordered by role sort order) from the cached projection — no DB hit; returns `CampUserInfo.None` when the user is not an Active member of any camp this year. It feeds the admin human card and the Shifts coordinator view; `CachingCampService` serves it from the warm projection (PublicYear is always warm). `ICampService : ICampServiceRead` adds writes, cache invalidation, per-user/lead/membership reads, and Camps-internal reads. External sections inject `ICampServiceRead`. CampLookup/CampSeasonLookup were folded into CampInfo/CampSeasonInfo. See `memory/architecture/section-read-write-split.md`.
+- **Read/write interface split.** `ICampServiceRead` (7 methods: GetCampsForYearAsync, GetCampBySlugAsync, GetCampByIdAsync, GetCampSeasonByIdAsync, GetSettingsAsync, SearchAsync, GetCampUserInfoAsync) is the cross-section read surface — returns only CampInfo-family projections (CampInfo with computed `Active`, CampSeasonInfo, CampUserInfo), CampSettingsInfo, CampSearchHit; no EF entities. `GetCampUserInfoAsync(userId)` resolves a user's active-`PublicYear` camp membership (the attached `CampSeasonInfo` plus the named camp roles they hold, ordered by role sort order) from the cached projection — no DB hit; returns `CampUserInfo.None` when the user is not an Active member of any camp this year. It feeds the admin human card and the Shifts coordinator view; `CachingCampService` serves it from the warm projection (PublicYear is always warm). `ICampService : ICampServiceRead` adds writes, cache invalidation, per-user/lead/membership reads, and Camps-internal reads. External sections inject `ICampServiceRead`. CampLookup/CampSeasonLookup were folded into CampInfo/CampSeasonInfo. See `memory/architecture/section-read-write-split.md`.
 
 ### Touch-and-clean guidance
 

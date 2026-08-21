@@ -8,12 +8,13 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 @docs/architecture/peters-hard-rules.md
 
-Sections progressively move into their own project at `src/Sections/Humans.<Section>/` (+ optional `.Contracts`), per nobodies-collective/Humans#866 (G5) — each owning its own `DbContext`, migrations, and tables end-to-end (`Services/`, `Data/`), registered via `Section.cs : ISection`. Everything not yet moved still lives in the 4-layer Clean Architecture below (strict dependency direction inward):
+**Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), per nobodies-collective/Humans#866 (G5), all 42 of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext` — deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
 
-- **Domain** — entities, enums, value objects. No external dependencies.
-- **Application** — service interfaces and implementations, repository/store interfaces, DTOs. No EF types.
-- **Infrastructure** — **gone.** `src/Humans.Infrastructure` was deleted at G5 lane 5b-6 (nobodies-collective/Humans#866). Every repository, DbContext and migration folder now belongs to its section project; the platform context (`SystemDbContext` → `DataProtectionKeys`), the operational/tracking services and `Migrations/System/` live in `Humans.Web`. There is no shared `HumansDbContext` either — deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
-- **Web** — controllers, views, view models, API endpoints, DI wiring.
+The old four-layer hub projects are gone: `src/Humans.Domain`, `src/Humans.Application`, `src/Humans.Infrastructure` and `src/Humans.UI` were all deleted over the course of G5. **The layers are roles now, not projects,** and three kinds of project are left:
+
+- **`src/Humans.Base`** — the bottom of the graph and the only project every section may reference. Role markers (`IApplicationService`, `IRepository`, `ISection`, …), the architecture attributes, `TrackedCache` and the cross-cutting invalidators, the `AddSectionDbContext` seam, and the shared view layer (`SharedResource`, the shared tag helpers and `Views/Shared` partials, `HumansControllerBase`). Formerly `Humans.Interfaces`; its namespaces are `Humans.Base.<folder>`.
+- **`src/Sections/Humans.<Section>[.Contracts]`** — the sections. A section may reference the base and other sections' `.Contracts` leaves, and nothing else.
+- **`src/Humans.Web`** — the Shell. Chrome (`_Layout`, `_AdminLayout`, `_LoginPartial`), composition of section-contributed pages, the platform context (`SystemDbContext` → `DataProtectionKeys`) and `Migrations/System/`. Nothing may reference the Shell.
 
 See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) — the **regulations**: the implementing detail behind the hard rules (layer responsibilities, table ownership map, caching pattern §15, authorization, cross-domain rules). Open a single section on demand; read cover-to-cover only when onboarding. On any conflict with the hard rules, the hard rules win.
 
@@ -76,7 +77,7 @@ dotnet run --project src/Humans.Web
 - **`origin`** = `peterdrier/Humans` (fork — QA auto-deploys from `main` via Coolify)
 - **`upstream`** = `nobodies-collective/Humans` (production)
 
-All changes go on a **feature branch in a worktree** (`.worktrees/<name>`) → PR to `origin/main` (squash if multiple commits). Promote to prod by batching on `origin/main` → PR to `upstream/main` (rebase merge) — use `/pr-prod`. Per-PR preview deploys at `https://{pr_id}.n.burn.camp` (DB `humans_pr_{N}` cloned from QA, dropped on close; dev login enabled). Version check: `GET /api/version`.
+All changes go on a **feature branch in a worktree** (`.worktrees/<name>`) → PR to `origin/main` (squash if multiple commits). Promote to prod by batching on `origin/main` → PR to `upstream/main` (rebase merge) — use `/pr-prod`. Per-PR preview deploys at `https://{pr_id}.n.burn.camp` (DB `humans_pr_{N}` cloned from QA, dropped on close; dev login enabled, Admin persona included). Version check: `GET /api/version`.
 
 Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-refs-qualified`](memory/process/issue-refs-qualified.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md) · [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md).
 

@@ -109,6 +109,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _userEmailService,
             _googleGroupSync,
             _auditLogService,
+            Substitute.For<IGoogleSyncLogService>(),
             _syncSettingsService,
             _removalNotifications,
             options,
@@ -676,5 +677,5 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 DisplayName = "Alice Test",
                 Email = email
             },
-            [], [], [], null, [], [], [], []);
+            [], [], [], null, []);
 }

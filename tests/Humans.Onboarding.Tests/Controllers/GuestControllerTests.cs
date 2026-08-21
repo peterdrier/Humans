@@ -34,9 +34,6 @@ public class GuestControllerTests
                 [],
                 [],
                 profile: null,
-                [],
-                [],
-                [],
                 [])));
 
         var ctrl = new GuestController(

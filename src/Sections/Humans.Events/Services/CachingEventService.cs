@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Humans.Events.Services.Dtos;
 using Humans.Base.Caching;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Shifts.Contracts;
 using Humans.Base.Threading;
@@ -326,6 +327,49 @@ internal sealed class CachingEventService(
     private static bool MatchesQuery(ApprovedEventView view, string q) =>
         view.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
         view.Description.Contains(q, StringComparison.OrdinalIgnoreCase);
+
+    // Served entirely from the cached approved-event snapshot — search must never hit the DB
+    // (mirrors CachingTeamService.SearchAsync / CachingCampService.SearchAsync).
+    public async Task<IReadOnlyList<EventSearchHit>> SearchAsync(
+        string query, int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return [];
+
+        await EnsureLoadedAsync(ct);
+
+        var trimmed = query.Trim();
+
+        // GUID paste → jump straight to that event, mirroring the by-id path
+        // (nobodies-collective/Humans#1062, matching Teams/Camps/Shifts).
+        if (Guid.TryParse(trimmed, out var id))
+        {
+            return _eventCache.TryGet(id, out var byId)
+                ? [new EventSearchHit(byId.Id, byId.Title, StringSearchExtensions.ExactNameScore)]
+                : [];
+        }
+
+        return _eventCache.Values
+            .Where(e => MatchesQuery(e, trimmed))
+            // Deterministic Take(max) for global search; controller re-ranks by score before
+            // display (mirrors ShiftRepository.SearchVolunteerVisibleRotasAsync).
+            .OrderBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(max)
+            .Select(e => new EventSearchHit(e.Id, e.Title, ScoreEventMatch(e, trimmed)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Title match scores via the shared exact/prefix/contains tiers (100/80/60).
+    /// A Description-only match uses the same three tiers halved (50/40/30), so it
+    /// always ranks below every Title match while description-only rows still order
+    /// sensibly against each other instead of tying (nobodies-collective/Humans#1062).
+    /// </summary>
+    private static int ScoreEventMatch(ApprovedEventView view, string query)
+    {
+        var titleScore = view.Title.NameMatchScore(query);
+        return titleScore > 0 ? titleScore : view.Description.NameMatchScore(query) / 2;
+    }
 
     // ==========================================================================
     // Favourites — per-user, pass-through (not in projection scope)

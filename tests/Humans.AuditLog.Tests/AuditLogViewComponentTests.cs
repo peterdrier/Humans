@@ -43,9 +43,7 @@ public class AuditLogViewComponentTests
         Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: AuditAction.StoreProductPriceChanged,
         ActorUserId: null, ActorDisplayName: null, EntityType: "StoreProduct", EntityId: Guid.NewGuid(),
         SubjectUserId: null, SubjectDisplayName: null, TargetTeamId: null, TargetTeamName: null,
-        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description,
-        Role: null, UserEmail: null, Success: null, ErrorMessage: null, SyncSource: null,
-        ResourceId: null, ResourceName: null);
+        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description);
 
     private static (string? ViewName, AuditLogComponentViewModel Model) Unwrap(IViewComponentResult result)
     {
@@ -101,38 +99,10 @@ public class AuditLogViewComponentTests
             Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ResourceId_routes_to_the_resource_predicate()
-    {
-        var resourceId = Guid.NewGuid();
-        _viewer.GetForResourceAsync(resourceId, Arg.Any<CancellationToken>())
-            .Returns([Event(Noon, "resource row")]);
-
-        var (viewName, model) = Unwrap(await BuildSut().InvokeAsync(resourceId: resourceId, layout: "sync"));
-
-        viewName.Should().Be("Sync");
-        model.Events.Should().ContainSingle().Which.Description.Should().Be("resource row");
-        await _viewer.DidNotReceive().GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GoogleSyncOnly_routes_the_user_predicate_to_the_sync_query()
-    {
-        var userId = Guid.NewGuid();
-        _viewer.GetGoogleSyncForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([Event(Noon, "sync row")]);
-
-        var (_, model) = Unwrap(await BuildSut().InvokeAsync(userId: userId, googleSyncOnly: true));
-
-        model.Events.Should().ContainSingle().Which.Description.Should().Be("sync row");
-    }
-
     [HumansTheory]
     [InlineData(null, "Default")]
     [InlineData("line", "Default")]
     [InlineData("table", "Table")]
-    [InlineData("sync", "Sync")]
     [InlineData("nonsense", "Default")]
     public async Task Layout_selects_the_view(string? layout, string expected)
     {

@@ -315,7 +315,7 @@ public class HumanLifecycleServiceTests
     }
 
     private static UserInfo MakeUserInfo(Guid id, UserState state) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = id,

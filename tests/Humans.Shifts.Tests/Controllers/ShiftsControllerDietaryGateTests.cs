@@ -19,6 +19,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -98,7 +100,7 @@ public class ShiftsControllerDietaryGateTests
     // passes) with the given DietaryPreference (the dietary gate's input).
     private void SetDietary(string? dietary) =>
         _userService.GetUserInfoAsync(_user.Id, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(
+            .Returns(UserInfoFactory.Create(
                 user: _user,
                 userEmails: [],
                 eventParticipations: [],

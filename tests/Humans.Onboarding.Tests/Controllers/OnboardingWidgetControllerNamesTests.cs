@@ -222,27 +222,19 @@ public class OnboardingWidgetControllerNamesTests
                 DisplayName = burner,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
+                    ? UserState.Bare
+                    : UserState.Active,
             },
             userEmails: [],
             eventParticipations: [],
             externalLogins: [],
-            profile: new Profile
-            {
-                UserId = userId,
-                BurnerName = burner,
-                FirstName = first,
-                LastName = last,
-                City = city,
-                Bio = bio,
-                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
-                    ? ProfileState.Stub
-                    : ProfileState.Active,
-                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            },
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
+            profile: UserFixtures.Profile(
+                burnerName: burner,
+                firstName: first,
+                lastName: last,
+                city: city,
+                bio: bio),
             communicationPreferences: []);
 
     [HumansFact]

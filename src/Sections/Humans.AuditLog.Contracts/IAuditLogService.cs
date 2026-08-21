@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.AuditLog.Contracts;
@@ -32,15 +31,6 @@ public interface IAuditLogService : IApplicationService
     /// </summary>
     Task LogAsync(AuditAction action, string entityType, Guid entityId,
         string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null);
-
-    /// <summary>
-    /// Logs a Google sync action with structured detail fields.
-    /// </summary>
-    Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
-        string description, string jobName,
-        string userEmail, string role, GoogleSyncSource source, bool success,
-        string? errorMessage = null,
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
     /// <summary>
@@ -81,10 +71,4 @@ public sealed record AuditLogEntrySnapshot(
     Instant OccurredAt,
     Guid? ActorUserId,
     Guid? RelatedEntityId,
-    string? RelatedEntityType,
-    Guid? ResourceId,
-    bool? Success,
-    string? ErrorMessage,
-    string? Role,
-    GoogleSyncSource? SyncSource,
-    string? UserEmail);
+    string? RelatedEntityType);

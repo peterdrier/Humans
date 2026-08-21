@@ -1,9 +1,12 @@
+using Humans.Camps.Contracts;
+using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using NodaTime;
 
 using Humans.Base.Authorization;
@@ -20,7 +23,14 @@ namespace Humans.Debug.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
-internal sealed class WidgetGalleryController(IUserServiceRead userService) : HumansControllerBase(userService)
+internal sealed class WidgetGalleryController(
+    IUserServiceRead userService,
+    ITeamServiceRead teamService,
+    ICampServiceRead campService,
+    IShiftManagementServiceRead shiftService,
+    IBurnSettingsService burnSettings,
+    IEventServiceRead eventService,
+    IConfiguration configuration) : HumansControllerBase(userService)
 {
     private static readonly Guid SampleTeamId = Guid.NewGuid();
     private const string SampleTeamSlug = "fire-conclave";
@@ -37,8 +47,11 @@ internal sealed class WidgetGalleryController(IUserServiceRead userService) : Hu
             ? "Current user"
             : currentUser.BurnerName;
 
+        var searchRowKeys = await ResolveSearchRowKeysAsync(HttpContext.RequestAborted);
+
         var model = new WidgetGalleryViewModel
         {
+            SearchRowKeys = searchRowKeys,
             CurrentUserId = currentUser.Id,
             CurrentUserDisplayName = displayName,
             SampleTeamId = SampleTeamId,
@@ -75,6 +88,41 @@ internal sealed class WidgetGalleryController(IUserServiceRead userService) : Hu
         };
 
         return View(model);
+    }
+
+    /// <summary>
+    /// One real key per search-result row card. Those four components fetch by key and render
+    /// nothing when it does not resolve, so a fabricated sample would show a blank card —
+    /// indistinguishable from the unbound-tag failure the gallery is meant to expose
+    /// (nobodies-collective/Humans#1062). Every read here is cache-served. A key is null in an
+    /// environment holding no such row, and the card says so instead of rendering empty.
+    /// </summary>
+    private async Task<SearchRowKeys> ResolveSearchRowKeysAsync(CancellationToken ct)
+    {
+        var teams = await teamService.GetTeamsAsync(ct);
+
+        var campSettings = await campService.GetSettingsAsync(ct);
+        var camps = await campService.GetCampsForYearAsync(campSettings.PublicYear, ct);
+
+        // Browse rather than urgency-ranked: the gallery wants any rota, and the urgent list
+        // is filtered to what still needs volunteers, so it empties out after the burn.
+        var burn = await burnSettings.GetActiveAsync(ct);
+        var browsable = burn is null
+            ? []
+            : await shiftService.GetBrowseShiftsAsync(new ShiftBrowseQuery(burn.Id));
+
+        // Skipped when the feature is off, so the gallery never becomes a second producer
+        // of event ids behind the flag's back.
+        var events = configuration.GetValue<bool>("Features:Events")
+            ? await eventService.GetApprovedEventsAsync(
+                campId: null, venueId: null, categoryId: null, q: null, excludedSlugs: [], ct)
+            : [];
+
+        return new SearchRowKeys(
+            TeamId: teams.Values.FirstOrDefault()?.Id,
+            CampId: camps.FirstOrDefault()?.Id,
+            RotaId: browsable.FirstOrDefault()?.Rota.Id,
+            EventId: events.FirstOrDefault()?.Id);
     }
 
     private static ShiftVolunteerProfileInfo BuildSampleVolunteerProfile(Guid userId) => new(
@@ -135,8 +183,19 @@ internal sealed class WidgetGalleryViewModel
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
     public required PagerViewModel SamplePager { get; init; }
+    public required SearchRowKeys SearchRowKeys { get; init; }
     public List<TableDemoRow> SampleTableRows { get; set; } = [];
 }
+
+/// <summary>
+/// Live keys for the five search-result row cards. Null where this environment holds no
+/// such row — the humans row always resolves, so it keys off the signed-in admin instead.
+/// </summary>
+internal sealed record SearchRowKeys(
+    Guid? TeamId,
+    Guid? CampId,
+    Guid? RotaId,
+    Guid? EventId);
 
 internal sealed class TableDemoRow
 {

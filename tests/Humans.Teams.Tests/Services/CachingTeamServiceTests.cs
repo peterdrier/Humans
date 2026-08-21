@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -497,7 +498,31 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var results = await _service.SearchAsync(
             hidden.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
 
-        results.Should().ContainSingle().Which.Name.Should().Be("Kitchenette");
+        var hit = results.Should().ContainSingle().Subject;
+        hit.TeamId.Should().Be(hidden.Id);
+        hit.Name.Should().Be("Kitchenette");
+        hit.Score.Should().Be(StringSearchExtensions.ExactNameScore,
+            because: "an id paste is as exact as a match gets");
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_ScoresItsOwnHits_ExactThenPrefixThenContains()
+    {
+        // Scoring belongs to the section, not the global-search orchestrator
+        // (nobodies-collective/Humans#1062).
+        SeedTeam("Kitchen");
+        SeedTeam("Kitchen Crew");
+        SeedTeam("Main Kitchen");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync("Kitchen", int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEquivalentTo(new[]
+        {
+            new { Name = "Kitchen", Score = StringSearchExtensions.ExactNameScore },
+            new { Name = "Kitchen Crew", Score = StringSearchExtensions.PrefixNameScore },
+            new { Name = "Main Kitchen", Score = StringSearchExtensions.ContainsNameScore },
+        });
     }
 
     [HumansFact]

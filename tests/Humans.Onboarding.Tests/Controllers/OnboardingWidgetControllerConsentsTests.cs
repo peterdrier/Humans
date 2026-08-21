@@ -85,43 +85,30 @@ public class OnboardingWidgetControllerConsentsTests
         return ctrl;
     }
 
-    private static UserInfo NonStubUserInfo(Guid userId) => WrapInUserInfo(userId, new Profile
-    {
-        UserId = userId,
-        BurnerName = "Burner",
-        FirstName = "First",
-        LastName = "Last",
-        State = ProfileState.Active,
-        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    });
+    private static UserInfo NonStubUserInfo(Guid userId) => WrapInUserInfo(
+        userId,
+        UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "First",
+            lastName: "Last"));
 
-    private static UserInfo StubUserInfo(Guid userId) => WrapInUserInfo(userId, new Profile
-    {
-        UserId = userId,
-        BurnerName = "",
-        FirstName = "",
-        LastName = "",
-        State = ProfileState.Stub,
-        CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-    });
+    private static UserInfo StubUserInfo(Guid userId) => WrapInUserInfo(
+        userId,
+        UserFixtures.Profile());
 
-    private static UserInfo WrapInUserInfo(Guid userId, Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
             Id = userId,
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     [HumansFact]

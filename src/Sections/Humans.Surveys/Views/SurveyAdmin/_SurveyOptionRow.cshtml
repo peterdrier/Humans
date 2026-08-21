@@ -17,6 +17,16 @@
             </div>
             <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Label", Model.Option.Label))" />
         </div>
-        <button type="button" class="btn btn-outline-danger btn-sm remove-option" title="Remove option">&times;</button>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Option actions">
+            <button type="button" class="btn btn-outline-secondary move-option-up" title="Move option up">
+                <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                <span class="visually-hidden">Move option up</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary move-option-down" title="Move option down">
+                <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                <span class="visually-hidden">Move option down</span>
+            </button>
+            <button type="button" class="btn btn-outline-danger remove-option" title="Remove option">&times;</button>
+        </div>
     </div>
 </div>

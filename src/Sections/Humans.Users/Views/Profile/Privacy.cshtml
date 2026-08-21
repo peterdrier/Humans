@@ -5,7 +5,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_MyProfile"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["ProfilePrivacy_Title"]</li>
     </ol>
 </nav>
@@ -81,7 +81,7 @@
 
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0">@Localizer["Privacy_Title"]</h5>
+        <h5 class="mb-0">@SharedLocalizer["Privacy_Title"]</h5>
     </div>
     <div class="card-body">
         <p>@Localizer["ProfilePrivacy_DPOContact"]</p>
@@ -111,7 +111,7 @@
                     </ul>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
                     <form asp-action="RequestDeletion" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-danger">@Localizer["ProfilePrivacy_YesDeleteMyAccount"]</button>

@@ -83,17 +83,13 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         // a Stub-state (or missing) profile override this for the specific
         // userId.
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => WrapInUserInfo(new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = callInfo.ArgAt<Guid>(0),
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
-                State = ProfileState.Active,
-                CreatedAt = Clock.GetCurrentInstant(),
-                UpdatedAt = Clock.GetCurrentInstant()
-            }));
+            .Returns(callInfo => WrapInUserInfo(
+                callInfo.ArgAt<Guid>(0),
+                UserFixtures.Profile(
+                    burnerName: "Burner",
+                    firstName: "First",
+                    lastName: "Last",
+                    createdAt: Clock.GetCurrentInstant())));
 
         _service = new ConsentService(
             consentRepository,
@@ -107,21 +103,19 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             NullLogger<ConsentService>.Instance);
     }
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
-            Id = profile.UserId,
+            Id = userId,
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
+            State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     [HumansFact]
@@ -302,19 +296,10 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         // Stub profile = required identity fields blank.
-        var stubProfile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "",
-            FirstName = "",
-            LastName = "",
-            State = ProfileState.Stub,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
+        var stubProfile = UserFixtures.Profile(
+            createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(stubProfile));
+            .Returns(WrapInUserInfo(userId, stubProfile));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
 
@@ -330,19 +315,13 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
-        var activeProfile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Burner",
-            FirstName = "First",
-            LastName = "Last",
-            State = ProfileState.Active,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
+        var activeProfile = UserFixtures.Profile(
+            burnerName: "Burner",
+            firstName: "First",
+            lastName: "Last",
+            createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(activeProfile));
+            .Returns(WrapInUserInfo(userId, activeProfile));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
 
@@ -545,17 +524,12 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(userId, versionId);
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Jane",
-            LastName = "Doe",
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
+        var profile = UserFixtures.Profile(
+            burnerName: "Test",
+            firstName: "Jane",
+            lastName: "Doe",
+            createdAt: Clock.GetCurrentInstant());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, Xunit.TestContext.Current.CancellationToken);
@@ -572,17 +546,12 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Jane",
-            LastName = "Doe",
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
+        var profile = UserFixtures.Profile(
+            burnerName: "Test",
+            firstName: "Jane",
+            lastName: "Doe",
+            createdAt: Clock.GetCurrentInstant());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, Xunit.TestContext.Current.CancellationToken);

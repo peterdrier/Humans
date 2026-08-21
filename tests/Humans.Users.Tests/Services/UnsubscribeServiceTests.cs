@@ -41,7 +41,7 @@ public class UnsubscribeServiceTests
     }
 
     private static UserInfo CreateUserInfo(User user) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user,
             [],
             [],

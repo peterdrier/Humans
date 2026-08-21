@@ -7,7 +7,6 @@ using Humans.Users.Contracts;
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
-using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -17,22 +16,24 @@ namespace Humans.Search.Tests.Services;
 /// Orchestration tests for <see cref="SearchService"/> against substitutes for the five
 /// section read interfaces it fans out to. Two things are pinned here that no other test
 /// can see: the field mask the human bucket asks for (<see cref="PersonSearchFields.PublicAll"/>
-/// — the only search-time privacy filter this service owns), and the GUID short-circuit that
-/// scores an id paste as an exact match.
+/// — the only search-time privacy filter this service owns), and the key/sort-key mapping
+/// that is all this section keeps of another section's row
+/// (nobodies-collective/Humans#1062). Name-match scoring belongs to each section (including
+/// Events, since #1062's Events follow-up) and is pinned where it lives.
 ///
 /// <para>
 /// Per the 2026-08-07 ruling on nobodies-collective/Humans#985, search is not an
 /// authorization boundary: a hit is a routing convenience and the destination page enforces
 /// visibility. The per-section text-query filters that this service depends on are pinned
 /// where they live — <c>CachingTeamServiceTests</c>, <c>CachingCampServiceTests</c>,
-/// <c>ShiftManagementServiceTests</c> and <c>ShiftRepositoryRotaSearchVisibilityTests</c>.
+/// <c>CachingEventServiceTests</c>, <c>ShiftManagementServiceTests</c> and
+/// <c>ShiftRepositoryRotaSearchVisibilityTests</c>.
 /// </para>
 /// </summary>
 public sealed class SearchServiceTests
 {
     private const int ScoreExact = 100;
     private const int ScorePrefix = 80;
-    private const int ScoreContains = 60;
 
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
@@ -43,10 +44,10 @@ public sealed class SearchServiceTests
     public SearchServiceTests()
     {
         StubHumans(MakeHuman("Kitchen Sink"));
-        StubTeams(new TeamSearchHit("Kitchen", "kitchen"));
-        StubCamps(new CampSearchHit("kitchen-camp", "Kitchen"));
-        StubRotas(new RotaSearchHit("Kitchen", Guid.NewGuid(), "Cantina"));
-        StubEvents(MakeEvent("Kitchen Takeover", "Food"));
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
+        StubCamps(new CampSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
+        StubRotas(new RotaSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
+        StubEvents(new EventSearchHit(Guid.NewGuid(), "Kitchen Takeover", ScoreExact));
     }
 
     // ==========================================================================
@@ -143,9 +144,8 @@ public sealed class SearchServiceTests
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _shifts.Received(onlyType == SearchResultType.Shift ? 1 : 0).SearchAsync(
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _events.Received(onlyType == SearchResultType.Event ? 1 : 0).GetApprovedEventsAsync(
-            Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
-            Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        await _events.Received(onlyType == SearchResultType.Event ? 1 : 0).SearchAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -161,69 +161,52 @@ public sealed class SearchServiceTests
     }
 
     // ==========================================================================
-    // Score tiers and their boundaries
+    // Keys and ordering fields — this section carries them, it no longer projects display
     // ==========================================================================
 
     [HumansFact]
-    public async Task SearchAsync_ScoresTeamNames_ExactThenPrefixThenContains_AndDropsNonMatches()
+    public async Task SearchAsync_CarriesEachSectionsOwnScore_WithoutRescoring()
     {
-        StubTeams(
-            new TeamSearchHit("Kitchen", "kitchen"),
-            new TeamSearchHit("Kitchen Crew", "kitchen-crew"),
-            new TeamSearchHit("Main Kitchen", "main-kitchen"),
-            new TeamSearchHit("Gate", "gate"));
+        // Teams/Camps/Shifts/Events score their own hits (nobodies-collective/Humans#1062). A
+        // score that contradicts the name proves this service takes the section's word for it.
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
+        StubEvents(new EventSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
 
         var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
-        results.Teams.Should().SatisfyRespectively(
-            exact => exact.Score.Should().Be(ScoreExact),
-            prefix => prefix.Score.Should().Be(ScorePrefix),
-            contains => contains.Score.Should().Be(ScoreContains));
-        results.Teams.Should().NotContain(r => r.Title == "Gate");
+        results.Teams.Should().ContainSingle().Which.Score.Should().Be(ScorePrefix);
+        results.Events.Should().ContainSingle().Which.Score.Should().Be(ScorePrefix);
     }
 
     [HumansFact]
-    public async Task SearchAsync_ScoringIsCaseInsensitive_SoCasingNeverDemotesAnExactMatch()
-    {
-        StubTeams(new TeamSearchHit("KITCHEN", "kitchen"));
-
-        var results = await Build().SearchAsync("kitchen", ct: TestContext.Current.CancellationToken);
-
-        results.Teams.Should().ContainSingle().Which.Score.Should().Be(ScoreExact);
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_EmptyName_ScoresZero_AndIsDropped()
-    {
-        StubTeams(new TeamSearchHit(string.Empty, "nameless"));
-
-        var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
-
-        results.Teams.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_ScoresAndBuildsUrls_ForCampAndRotaBucketsToo()
+    public async Task SearchAsync_PassesEachSectionsKey_AndTheNameOnlyAsASortKey()
     {
         var teamId = Guid.NewGuid();
-        StubCamps(
-            new CampSearchHit("garden-of-joy", "Garden of Joy"),
-            new CampSearchHit("gate-camp", "Gate"));
-        StubRotas(
-            new RotaSearchHit("Garden", teamId, "Gardening"),
-            new RotaSearchHit("Perimeter", teamId, "Gate"));
+        var campId = Guid.NewGuid();
+        var rotaId = Guid.NewGuid();
+        StubTeams(new TeamSearchHit(teamId, "Kitchen Crew", ScorePrefix));
+        StubCamps(new CampSearchHit(campId, "Garden of Joy", ScorePrefix));
+        StubRotas(new RotaSearchHit(rotaId, "Garden", ScoreExact));
+        var eventId = Guid.NewGuid();
+        StubEvents(new EventSearchHit(eventId, "Fire & Ice", ScorePrefix));
 
         var results = await Build().SearchAsync("Garden", ct: TestContext.Current.CancellationToken);
 
+        var team = results.Teams.Should().ContainSingle().Subject;
+        team.Key.Should().Be(teamId);
+        team.SortKey.Should().Be("Kitchen Crew");
+
         var camp = results.Camps.Should().ContainSingle().Subject;
-        camp.Score.Should().Be(ScorePrefix);
-        camp.Url.Should().Be("/Camps/garden-of-joy");
-        camp.Subtitle.Should().Be("garden-of-joy");
+        camp.Key.Should().Be(campId);
+        camp.SortKey.Should().Be("Garden of Joy");
 
         var rota = results.Shifts.Should().ContainSingle().Subject;
-        rota.Score.Should().Be(ScoreExact);
-        rota.Url.Should().Be($"/Shifts?departmentId={teamId}");
-        rota.Subtitle.Should().Be("Gardening");
+        rota.Key.Should().Be(rotaId);
+        rota.SortKey.Should().Be("Garden");
+
+        var ev = results.Events.Should().ContainSingle().Subject;
+        ev.Key.Should().Be(eventId);
+        ev.SortKey.Should().Be("Fire & Ice");
     }
 
     // ==========================================================================
@@ -231,17 +214,16 @@ public sealed class SearchServiceTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task SearchAsync_GuidQuery_ReturnsTheTeamCampAndRotaHits_EvenThoughTheNameCannotMatch()
+    public async Task SearchAsync_GuidQuery_ReturnsWhateverEachSectionResolved()
     {
         // Ruling (nobodies-collective/Humans#985, 2026-08-07): by-GUID lookups skip the
         // visibility filter. The caller already holds the id; the destination page decides
-        // whether they may open it. Nothing here depends on the viewer's role — the service
-        // takes no viewer at all, so the hit comes back for admin and non-admin alike.
+        // whether they may open it. Each section owns that branch and scores it exact; this
+        // service passes the hits through unchanged, for admin and non-admin alike.
         var id = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
-        StubTeams(new TeamSearchHit("Hidden Ops", "hidden-ops"));
-        StubCamps(new CampSearchHit("pending-camp", "Pending Camp"));
-        StubRotas(new RotaSearchHit("Admin Only Rota", teamId, "Gate"));
+        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Hidden Ops", ScoreExact));
+        StubCamps(new CampSearchHit(Guid.NewGuid(), "Pending Camp", ScoreExact));
+        StubRotas(new RotaSearchHit(Guid.NewGuid(), "Admin Only Rota", ScoreExact));
 
         var results = await Build().SearchAsync(id.ToString(), ct: TestContext.Current.CancellationToken);
 
@@ -325,45 +307,8 @@ public sealed class SearchServiceTests
             .SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
         results.Events.Should().BeEmpty();
-        await _events.DidNotReceive().GetApprovedEventsAsync(
-            Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
-            Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_EventTitleMisses_FallsBackToTheContainsTier_SoDescriptionMatchesStillSurface()
-    {
-        // The Events bucket is filtered server-side on title OR description; a row that only
-        // matched the description scores 0 on Title and must not be dropped like a team would be.
-        StubEvents(
-            MakeEvent("Sunset Yoga", "Yoga"),
-            MakeEvent("Meditation Circle", "Wellbeing"));
-
-        var results = await Build().SearchAsync("Meditation", ct: TestContext.Current.CancellationToken);
-
-        results.Events.Should().SatisfyRespectively(
-            titleMatch =>
-            {
-                titleMatch.Title.Should().Be("Meditation Circle");
-                titleMatch.Score.Should().Be(ScorePrefix);
-            },
-            descriptionOnly =>
-            {
-                descriptionOnly.Title.Should().Be("Sunset Yoga");
-                descriptionOnly.Score.Should().Be(ScoreContains);
-            });
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_EventBucket_BuildsABrowseUrlEscapedForTheTitle()
-    {
-        StubEvents(MakeEvent("Fire & Ice", "Performance"));
-
-        var results = await Build().SearchAsync("Fire", ct: TestContext.Current.CancellationToken);
-
-        var hit = results.Events.Should().ContainSingle().Subject;
-        hit.Url.Should().Be("/Events/Browse?q=Fire%20%26%20Ice");
-        hit.Subtitle.Should().Be("Performance");
+        await _events.DidNotReceive().SearchAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -396,35 +341,10 @@ public sealed class SearchServiceTests
         _shifts.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<RotaSearchHit>>(hits));
 
-    private void StubEvents(params ApprovedEventView[] hits) =>
-        _events.GetApprovedEventsAsync(
-                Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
-                Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<ApprovedEventView>>(hits));
+    private void StubEvents(params EventSearchHit[] hits) =>
+        _events.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<EventSearchHit>>(hits));
 
     private static HumanSearchResult MakeHuman(string burnerName) =>
         new(Guid.NewGuid(), Guid.NewGuid(), burnerName, null, "Name", null, null, ScoreExact);
-
-    private static ApprovedEventView MakeEvent(string title, string categoryName) =>
-        new(
-            Guid.NewGuid(),
-            CampId: null,
-            GuideSharedVenueId: null,
-            SubmitterUserId: Guid.NewGuid(),
-            CategoryId: Guid.NewGuid(),
-            CategorySlug: categoryName.ToLowerInvariant(),
-            categoryName,
-            CategoryIsSensitive: false,
-            VenueName: null,
-            title,
-            Description: "Anything at all",
-            LocationNote: null,
-            Host: null,
-            StartAt: Instant.FromUtc(2026, 7, 4, 18, 0),
-            DurationMinutes: 60,
-            IsRecurring: false,
-            RecurrenceDays: null,
-            PriorityRank: 0,
-            SubmittedAt: Instant.FromUtc(2026, 6, 1, 12, 0),
-            LastUpdatedAt: Instant.FromUtc(2026, 6, 1, 12, 0));
 }

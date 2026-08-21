@@ -62,10 +62,10 @@ public class ExpenseReportServiceGdprTests
             Options.Create(new TravelReimbursementConfig()));
     }
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
         user: new User
         {
-            Id = profile.UserId,
+            Id = userId,
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
@@ -74,9 +74,6 @@ public class ExpenseReportServiceGdprTests
         eventParticipations: [],
         externalLogins: [],
         profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
         communicationPreferences: []);
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -119,7 +116,7 @@ public class ExpenseReportServiceGdprTests
             .Returns([report]);
 
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = UserId, Iban = "ES1234567890123456789012" }));
+            .Returns(WrapInUserInfo(UserId, UserFixtures.Profile(iban: "ES1234567890123456789012")));
 
         var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -182,13 +179,7 @@ public class ExpenseReportServiceGdprTests
             FakeNow,
             ActorUserId: null,
             RelatedEntityId: null,
-            RelatedEntityType: null,
-            ResourceId: null,
-            Success: null,
-            ErrorMessage: null,
-            Role: null,
-            SyncSource: null,
-            UserEmail: null);
+            RelatedEntityType: null);
 
         _auditLogService.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string>(),

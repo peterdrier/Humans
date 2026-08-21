@@ -17,6 +17,8 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
@@ -75,13 +77,16 @@ public class ShiftsControllerNameGateTests
     }
 
     private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             user: new User
             {
                 Id = userId,
                 DisplayName = burner,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
+                    ? UserState.Bare
+                    : UserState.Active,
             },
             userEmails: [],
             eventParticipations: [],
@@ -92,9 +97,6 @@ public class ShiftsControllerNameGateTests
                 BurnerName = burner,
                 FirstName = first,
                 LastName = last,
-                State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
-                    ? ProfileState.Stub
-                    : ProfileState.Active,
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

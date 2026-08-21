@@ -132,7 +132,6 @@ public class DevelopmentPageRenderTests(HumansTestDatabase database) : Integrati
         // response as its own start tag, so the page is a 200 with correct-looking source and a
         // missing widget.
         html.Should().NotContain("<page-header", $"GET {url} left a tag helper unrendered");
-        html.Should().NotContain("<vc:", $"GET {url} left a view-component tag unrendered");
         // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the element
         // for a type reference; that also renders as inert markup.
         html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");

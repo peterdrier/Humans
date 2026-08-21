@@ -565,6 +565,18 @@ internal sealed class EventService(
         return ev is null ? null : ToApprovedEventView(ev);
     }
 
+    // Event search is served from the cached approved-event snapshot in
+    // CachingEventService — it must never hit the DB. Reaching the inner service
+    // means a DI registration mistake. Mirrors CachingTeamService.SearchAsync /
+    // CachingCampService.SearchAsync (search is cache-only; there is no repository search).
+    public Task<IReadOnlyList<EventSearchHit>> SearchAsync(
+        string query, int max, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "Event search runs against the cached approved-event snapshot in " +
+            "CachingEventService. If this is being called on the inner Service it " +
+            "indicates a DI registration mistake — IEventServiceRead must resolve to " +
+            "the caching decorator.");
+
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => repo.GetFavouriteEventIdsAsync(userId, ct);
 

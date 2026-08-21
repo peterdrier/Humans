@@ -100,7 +100,6 @@ public sealed record ProfileInfo(
     string? ContributionInterests,
     string? BoardNotes,
     string? Iban,
-    ProfileState? State,
     bool IsApproved,
     MembershipTier MembershipTier,
     ConsentCheckStatus? ConsentCheckStatus,
@@ -159,11 +158,9 @@ public sealed record UserInfo(
 {
     /// <summary>
     /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
-    /// for access; <see cref="UserState.Active"/> is the only state with full app access. Null only
-    /// for legacy rows not yet seeded; <c>UserService.GetUserInfoAsync</c> resolves and persists it
-    /// on first read, so callers observe a non-null value.
+    /// for access; <see cref="UserState.Active"/> is the only state with full app access.
     /// </summary>
-    public UserState? State { get; init; }
+    public UserState State { get; init; }
 
     /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
@@ -299,9 +296,8 @@ public sealed record UserInfo(
         .Select(p => p.CheckedInAt)
         .FirstOrDefault();
 
-    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row,
-    /// stub-state profile, or blank required names. Callers writing consents must block on this.
-    /// Derives from the stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
+    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row
+    /// or blank required names. Callers writing consents must block on this.</summary>
     public bool IsStub => State == UserState.Bare;
 
     /// <summary>Has a profile and is not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/>
@@ -310,7 +306,7 @@ public sealed record UserInfo(
         Profile is not null && State != UserState.Rejected;
 
     /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
-    /// stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
+    /// stored <see cref="State"/>, which is where suspension itself lives.</summary>
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
@@ -346,17 +342,22 @@ public sealed record UserInfo(
         && Profile.RejectedAt is null
         && !IsTombstone;
 
-    /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
+    /// <summary>
+    /// Builds <see cref="UserInfo"/> from the projections of the 8 contributing tables;
+    /// snapshotting + ordering happen here so the cached payload is immutable. The six
+    /// Profile-side entities are internal to <c>Humans.Users</c>, so the entity-taking factory is
+    /// <c>Humans.Users.Services.UserInfoFactory</c> and this overload names none of them — it
+    /// stays public because thirty section test projects build a <see cref="UserInfo"/> through
+    /// it and internalising it would trade six <c>InternalsVisibleTo</c> grants for thirty
+    /// (nobodies-collective/Humans#1051).
+    /// </summary>
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
         IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
-        Profile? profile,
-        IReadOnlyList<ContactField> contactFields,
-        IReadOnlyList<ProfileLanguage> profileLanguages,
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
-        IReadOnlyList<CommunicationPreference> communicationPreferences)
+        ProfileInfo? profile,
+        IReadOnlyList<CommunicationPreferenceInfo> communicationPreferences)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -377,83 +378,13 @@ public sealed record UserInfo(
             .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
             .ToList();
 
-        ProfileInfo? profileInfo = null;
-        if (profile is not null)
-        {
-            var contactFieldInfos = contactFields
-                .OrderBy(c => c.DisplayOrder)
-                .Select(c => new ContactFieldInfo(
-                    c.Id, c.FieldType, c.CustomLabel, c.Value, c.Visibility, c.DisplayOrder))
-                .ToList();
-
-            var languageInfos = profileLanguages
-                .OrderByDescending(l => l.Proficiency)
-                .ThenBy(l => l.LanguageCode, StringComparer.OrdinalIgnoreCase)
-                .Select(l => new ProfileLanguageInfo(l.Id, l.LanguageCode, l.Proficiency))
-                .ToList();
-
-            var volunteerHistoryInfos = volunteerHistory
-                .OrderByDescending(v => v.Date)
-                .Select(v => new VolunteerHistoryInfo(v.Id, v.Date, v.EventName, v.Description))
-                .ToList();
-
-            profileInfo = new ProfileInfo(
-                Id: profile.Id,
-                BurnerName: profile.BurnerName,
-                FirstName: profile.FirstName,
-                LastName: profile.LastName,
-                City: profile.City,
-                CountryCode: profile.CountryCode,
-                Latitude: profile.Latitude,
-                Longitude: profile.Longitude,
-                PlaceId: profile.PlaceId,
-                Bio: profile.Bio,
-                Pronouns: profile.Pronouns,
-                BirthdayDay: profile.DateOfBirth?.Day,
-                BirthdayMonth: profile.DateOfBirth?.Month,
-                EmergencyContactName: profile.EmergencyContactName,
-                EmergencyContactPhone: profile.EmergencyContactPhone,
-                EmergencyContactRelationship: profile.EmergencyContactRelationship,
-                DietaryPreference: profile.DietaryPreference,
-                Allergies: profile.Allergies,
-                AllergyOtherText: profile.AllergyOtherText,
-                Intolerances: profile.Intolerances,
-                IntoleranceOtherText: profile.IntoleranceOtherText,
-                MedicalConditions: profile.MedicalConditions,
-                HasCustomPicture: profile.ProfilePictureContentType is not null,
-                ProfilePictureContentType: profile.ProfilePictureContentType,
-                CreatedAt: profile.CreatedAt,
-                UpdatedAt: profile.UpdatedAt,
-                AdminNotes: profile.AdminNotes,
-                ContributionInterests: profile.ContributionInterests,
-                BoardNotes: profile.BoardNotes,
-                Iban: profile.Iban,
-                State: profile.State,
-                IsApproved: profile.IsApproved,
-                MembershipTier: profile.MembershipTier,
-                ConsentCheckStatus: profile.ConsentCheckStatus,
-                ConsentCheckAt: profile.ConsentCheckAt,
-                ConsentCheckedByUserId: profile.ConsentCheckedByUserId,
-                ConsentCheckNotes: profile.ConsentCheckNotes,
-                RejectionReason: profile.RejectionReason,
-                RejectedAt: profile.RejectedAt,
-                RejectedByUserId: profile.RejectedByUserId,
-                NoPriorBurnExperience: profile.NoPriorBurnExperience,
-                ContactFields: contactFieldInfos,
-                Languages: languageInfos,
-                VolunteerHistory: volunteerHistoryInfos);
-        }
-
         var communicationPreferenceInfos = communicationPreferences
             .OrderBy(c => c.Category)
-            .Select(c => new CommunicationPreferenceInfo(
-                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
-                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
             .ToList();
 
         var legacyDisplayName = user.DisplayName;
-        var burnerName = profileInfo is not null && !string.IsNullOrWhiteSpace(profileInfo.BurnerName)
-            ? profileInfo.BurnerName
+        var burnerName = profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
+            ? profile.BurnerName
             : legacyDisplayName;
         var isGdprAnonymized = string.Equals(
             legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
@@ -482,29 +413,12 @@ public sealed record UserInfo(
             UserEmails: userEmailInfos,
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
-            Profile: profileInfo,
+            Profile: profile,
             CommunicationPreferences: communicationPreferenceInfos)
         {
             State = user.State,
         };
 
-        // The stored users.State column is the access source, but legacy rows hold null until the
-        // first-touch seed persists them (UserService.GetUserInfoAsync). Classify on the fly here so
-        // every UserInfo carries a correct, non-null State in EVERY read path — including the
-        // batch/all-users path, which never seeds. State-derived predicates below stay reliable.
-        return info.State is null
-            ? info with
-            {
-                State = UserStateClassifier.Classify(
-                    hasRequiredNameFields: info.HasRequiredNameFields,
-                    isSuspended: info.Profile?.State == ProfileState.Suspended,
-                    isAdminSuspended: info.Profile?.State == ProfileState.AdminSuspended,
-                    isRejected: info.Profile?.RejectedAt is not null,
-                    isDeletionPending: info.IsDeletionPending,
-                    isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
-                    isGdprDeleted: info.IsGdprAnonymized
-                        || (info.IsTombstone && info.MergedAt is null))
-            }
-            : info;
+        return info;
     }
 }

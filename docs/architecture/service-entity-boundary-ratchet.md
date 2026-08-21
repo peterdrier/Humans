@@ -50,20 +50,25 @@ so naming one from another assembly does not compile.
 ## Audit Command
 
 Baseline generated 2026-05-10 from branch `techdebt/2026-05-10-service-entity-boundary-ratchet`.
+It scanned `src\Humans.Domain\Entities` and `src\Humans.Application\Interfaces`; both
+projects were deleted at G5 (nobodies-collective/Humans#866), so the command below is the
+same audit repointed at the section layout — entities in each section's `Domain\`, service
+interfaces in its `Contracts\` (project folder and `.Contracts` leaf alike).
 
 ```powershell
-$entities = Get-ChildItem src\Humans.Domain\Entities -Filter *.cs |
+$entities = Get-ChildItem src\Sections\*\Domain -Recurse -Filter *.cs |
     ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Name) } |
+    Sort-Object -Unique |
     Sort-Object { $_.Length } -Descending
 $pattern = '\b(' + (($entities | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')\b'
-Get-ChildItem src\Humans.Application\Interfaces -Recurse -Filter *.cs |
+Get-ChildItem src\Sections\*\Contracts, src\Sections\*.Contracts -Recurse -Filter I*.cs |
     Where-Object { $_.FullName -notmatch '\\Repositories\\' } |
     ForEach-Object {
         $path=$_.FullName.Substring((Get-Location).Path.Length+1)
         Select-String -Path $_.FullName -Pattern $pattern |
             Where-Object {
                 $_.Line -match 'Task<|ValueTask<|IReadOnly|List<|Dictionary<|record |\\)\\s*$' -and
-                $_.Line -notmatch '^\s*///|<see cref|using Humans.Domain.Entities'
+                $_.Line -notmatch '^\s*///|<see cref|^\s*using '
             } |
             ForEach-Object { '{0}:{1}: {2}' -f $path,$_.LineNumber,$_.Line.Trim() }
     }

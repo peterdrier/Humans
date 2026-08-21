@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["AdminHumans_Title"]</h1>
     <div class="d-flex align-items-center gap-3">
-        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
     </div>
 </div>
 
@@ -19,14 +19,14 @@
     <input type="hidden" name="filter" value="@Model.StatusFilter" />
     <div class="input-group" style="max-width: 600px;">
         <input type="text" name="search" class="form-control"
-               placeholder="@Localizer["Admin_SearchPlaceholder"]"
+               placeholder="@SharedLocalizer["Admin_SearchPlaceholder"]"
                value="@Model.SearchTerm" autofocus />
         <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-search"></i>
         </button>
         @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || Model.SortBy != "name" || Model.SortDir != "asc")
         {
-            <a asp-action="AdminList" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+            <a asp-action="AdminList" class="btn btn-outline-secondary">@SharedLocalizer["Admin_Clear"]</a>
         }
     </div>
 </form>
@@ -75,27 +75,27 @@
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-3 small">
-    <span class="text-muted">@Localizer["Admin_SortBy"]:</span>
+    <span class="text-muted">@SharedLocalizer["Admin_SortBy"]:</span>
     <a asp-action="AdminList" asp-route-sort="name" asp-route-dir="@ToggleDir("name")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
-        @Localizer["Teams_Member"]@(Model.SortBy == "name" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+        @SharedLocalizer["Teams_Member"]@(Model.SortBy == "name" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
     </a>
     <span class="text-muted">|</span>
     <a asp-action="AdminList" asp-route-sort="joined" asp-route-dir="@ToggleDir("joined")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
-        @Localizer["Admin_Joined"]@(Model.SortBy == "joined" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+        @SharedLocalizer["Admin_Joined"]@(Model.SortBy == "joined" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
     </a>
     <span class="text-muted">|</span>
     <a asp-action="AdminList" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
-        @Localizer["Admin_LastLogin"]@(Model.SortBy == "login" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+        @SharedLocalizer["Admin_LastLogin"]@(Model.SortBy == "login" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
     </a>
     <span class="text-muted">|</span>
     <a asp-action="AdminList" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
-        @Localizer["Common_Status"]@(Model.SortBy == "status" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+        @SharedLocalizer["Common_Status"]@(Model.SortBy == "status" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
     </a>
 </div>
 
 @if (Model.Humans.Count == 0)
 {
-    <div class="alert alert-info">@Localizer["Admin_NoMembersFound"]</div>
+    <div class="alert alert-info">@SharedLocalizer["Admin_NoMembersFound"]</div>
 }
 else
 {
@@ -121,15 +121,15 @@ else
                             @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = human.UserId, mode = "status" })
                         </div>
                         <div class="small text-muted mt-1">
-                            <span>@Localizer["Admin_Joined"] @human.CreatedAt.ToDate()</span>
+                            <span>@SharedLocalizer["Admin_Joined"] @human.CreatedAt.ToDate()</span>
                             @if (human.LastLoginAt.HasValue)
                             {
-                                <span class="ms-2">@Localizer["Admin_LastLogin"] @human.LastLoginAt.Value.ToDate()</span>
+                                <span class="ms-2">@SharedLocalizer["Admin_LastLogin"] @human.LastLoginAt.Value.ToDate()</span>
                             }
                         </div>
                     </div>
                     <a asp-action="AdminDetail" asp-route-id="@human.UserId" class="btn btn-sm btn-outline-primary">
-                        @Localizer["MyTeams_View"]
+                        @SharedLocalizer["MyTeams_View"]
                     </a>
                 </div>
             </div>

@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
+using Humans.MailerLite.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -170,6 +171,7 @@ internal sealed class ThrottleHarness
         Service = new MailerLiteImportService(
             _ml, _userEmails, Substitute.For<IUserService>(),
             _provisioning, _prefs, _audit,
+            InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }

@@ -310,7 +310,13 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             var keptQuestion = existing.Questions.FirstOrDefault(q => q.Id == incomingQuestion.Id);
             if (keptQuestion is null)
             {
-                existing.Questions.Add(incomingQuestion);
+                // Builder questions carry client-generated ids so newly authored questions can
+                // participate in branching before their first save. With a non-default key, adding
+                // through a tracked collection makes EF assume the entity already exists and issue
+                // an UPDATE, which then fails optimistic concurrency because there is no row yet.
+                // The id comparison above is the source of truth for persistence, so explicitly
+                // classify an unmatched question (and its option graph) as new.
+                ctx.SurveyQuestions.Add(incomingQuestion);
                 continue;
             }
 
@@ -324,6 +330,8 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             keptQuestion.RatingMax = incomingQuestion.RatingMax;
             keptQuestion.RatingMinLabel = incomingQuestion.RatingMinLabel;
             keptQuestion.RatingMaxLabel = incomingQuestion.RatingMaxLabel;
+            keptQuestion.GridSelectionMode = incomingQuestion.GridSelectionMode;
+            keptQuestion.GridRows = incomingQuestion.GridRows;
             keptQuestion.ShowIf = incomingQuestion.ShowIf;
 
             ReconcileOptions(ctx, keptQuestion, incomingQuestion);
@@ -344,7 +352,9 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             var keptOption = existing.Options.FirstOrDefault(o => o.Id == incomingOption.Id);
             if (keptOption is null)
             {
-                existing.Options.Add(incomingOption);
+                // Options also receive client-generated ids in the builder. An unmatched id is a
+                // new row even though its key is already populated.
+                ctx.SurveyQuestionOptions.Add(incomingOption);
                 continue;
             }
 

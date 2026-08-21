@@ -11,7 +11,7 @@ public class AdminHumanListAssemblerTests
     private static readonly IReadOnlyDictionary<Guid, string> NoEmails = new Dictionary<Guid, string>();
 
     private static UserInfo Build(
-        UserState? state = UserState.Active,
+        UserState state = UserState.Active,
         string displayName = "Burner",
         string email = "user@example.com")
     {
@@ -33,10 +33,9 @@ public class AdminHumanListAssemblerTests
             FirstName = "First",
             LastName = "Last",
             IsApproved = true,
-            State = ProfileState.Active,
         };
 
-        return UserInfo.Create(user, [], [], [], profile, [], [], [], []);
+        return UserInfoFactory.Create(user, [], [], [], profile, [], [], [], []);
     }
 
     private static UserState StateOf(UserInfo u) =>

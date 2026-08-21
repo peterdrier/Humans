@@ -105,7 +105,7 @@ public class NotificationEmitterTests : IDisposable
         var suppressed = Guid.NewGuid();
         var allowed = Guid.NewGuid();
 
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = suppressed,
             Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
@@ -131,13 +131,13 @@ public class NotificationEmitterTests : IDisposable
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
 
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = u1,
             Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
             InboxEnabled = false,
         });
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = u2,
             Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
@@ -160,7 +160,7 @@ public class NotificationEmitterTests : IDisposable
     {
         var suppressed = Guid.NewGuid();
 
-        _dbContext.CommunicationPreferences.Add(new CommunicationPreference
+        _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = suppressed,
             Category = NotificationSource.ApplicationSubmitted.ToMessageCategory(),

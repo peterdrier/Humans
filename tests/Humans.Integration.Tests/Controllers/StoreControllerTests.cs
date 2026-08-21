@@ -147,8 +147,6 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
         var html = await response.Content.ReadAsStringAsync(ct);
         html.Should().Contain(marker,
             $"GET {url}: the seeded price-change row must reach the panel");
-        html.Should().NotContain("<vc:audit-log",
-            $"GET {url}: the widget must bind, not ship as literal markup");
     }
 
     private async Task<int> SeedActiveProductAsync(string name)

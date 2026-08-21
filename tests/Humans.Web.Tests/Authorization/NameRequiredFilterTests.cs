@@ -156,28 +156,21 @@ public class NameRequiredFilterTests
     private static IUserServiceRead StubUserInfo(string burnerName)
     {
         var users = Substitute.For<IUserServiceRead>();
-        var profile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = UserId,
-            BurnerName = burnerName,
-            FirstName = string.IsNullOrWhiteSpace(burnerName) ? "" : "Jane",
-            LastName = string.IsNullOrWhiteSpace(burnerName) ? "" : "Doe",
-            State = string.IsNullOrWhiteSpace(burnerName) ? ProfileState.Stub : ProfileState.Active,
-            CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-        };
+        var profile = UserFixtures.Profile(
+            burnerName: burnerName,
+            firstName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Jane",
+            lastName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Doe");
         users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(profile)));
         return users;
     }
 
-    private static UserInfo MakeUserInfo(Profile? profile) =>
+    private static UserInfo MakeUserInfo(ProfileInfo? profile) =>
         UserInfo.Create(
-            new User { Id = UserId, PreferredLanguage = "en" },
+            new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
             [], [], [],
             profile: profile,
-            [], [], [], []);
+            []);
 
     private static ActionExecutingContext BuildContext(
         string controllerName, string actionName, bool authenticated)

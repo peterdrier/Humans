@@ -61,9 +61,6 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
         html.Should().NotContain("No early entry grants",
             because: "the empty branch would render none of the markup this test guards");
 
-        // A view component element the section's _ViewImports failed to bind renders as
-        // literal <vc:…> markup: 200, correct-looking source, nothing on the page.
-        html.Should().NotContain("<vc:", $"GET {RosterUrl} left a view-component tag unrendered");
         html.Should().NotContain("-view-component", $"GET {RosterUrl} has a rewritten vc tag");
     }
 

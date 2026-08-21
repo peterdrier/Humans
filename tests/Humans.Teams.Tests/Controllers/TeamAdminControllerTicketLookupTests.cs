@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Teams.Controllers;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Users.Services;
 using NodaTime;
 
 namespace Humans.Teams.Tests.Controllers;
@@ -86,7 +88,7 @@ public class TeamAdminControllerTicketLookupTests
     }
 
     private static UserInfo ActiveHuman(Guid id, string burnerName) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = id, PreferredLanguage = "en" },
             userEmails: [],
             eventParticipations: [],
@@ -96,7 +98,6 @@ public class TeamAdminControllerTicketLookupTests
                 Id = Guid.NewGuid(),
                 UserId = id,
                 BurnerName = burnerName,
-                State = ProfileState.Active,
                 IsApproved = true,
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
@@ -108,7 +109,7 @@ public class TeamAdminControllerTicketLookupTests
 
     // No profile => UserInfo.IsActive == false (deleted/rejected/stub).
     private static UserInfo InactiveHuman(Guid id) =>
-        UserInfo.Create(
+        UserInfoFactory.Create(
             new User { Id = id, PreferredLanguage = "en" },
             [], [], [], profile: null, [], [], [], []);
 

@@ -24,9 +24,10 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
+    private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
     private readonly RecordingGoogleGroupSyncScheduler _syncScheduler = new();
     private readonly RecordingLogger<GoogleGroupSyncService> _logger = new();
@@ -610,7 +611,7 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
-    public async Task ReconcileOneAsync_RemoveFailure_AuditsRevokedFailure()
+    public async Task ReconcileOneAsync_RemoveFailure_RecordsRevokedFailureInTheSyncLog()
     {
         var service = CreateService(new StaticSource("team@nobodies.team"));
         StageResource("team@nobodies.team");
@@ -623,8 +624,8 @@ public sealed class GoogleGroupSyncServiceTests
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("backend error");
-        await _auditLogService.Received(1).LogGoogleSyncAsync(
-            AuditAction.GoogleResourceAccessRevoked,
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
             Arg.Any<Guid>(),
             Arg.Any<string>(),
             nameof(GoogleGroupSyncService),
@@ -633,8 +634,111 @@ public sealed class GoogleGroupSyncServiceTests
             GoogleSyncSource.ScheduledSync,
             success: false,
             errorMessage: Arg.Is<string>(s => s.Contains("backend error")),
-            relatedEntityId: null,
-            relatedEntityType: null);
+            userId: null,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_Grant_RecordsTheMembersUserIdInTheSyncLog()
+    {
+        var bob = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", bob));
+        StubUsers((bob, "Bob", "bob@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1");
+
+        _membershipClient.CreateMembershipAsync("group-1", "bob@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // Without the id the row is invisible to /Monitor/Human/{id} and to the GDPR export.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "bob@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: bob,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_Revoke_ResolvesTheExtraMembersUserIdFromTheirEmail()
+    {
+        var departed = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old"));
+
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Is<IReadOnlyCollection<string>>(e => e.Contains("old@nobodies.team")),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("old@nobodies.team", departed, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // A human who left the team is only reachable from the address Google still holds.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "old@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: departed,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_Revoke_PrefersTheVerifiedOwnerOverAnUnverifiedDuplicate()
+    {
+        var unverifiedSquatter = Guid.NewGuid();
+        var verifiedOwner = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old"));
+
+        // MatchByEmailsAsync has no ordering; the unverified row comes back first here.
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("old@nobodies.team", unverifiedSquatter, false, false, _clock.GetCurrentInstant()),
+                new("old@nobodies.team", verifiedOwner, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        // Attributing the row to the squatter would leak it into the wrong GDPR export.
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "old@nobodies.team",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: verifiedOwner,
+            ct: Arg.Any<CancellationToken>());
     }
 
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
@@ -648,6 +752,7 @@ public sealed class GoogleGroupSyncServiceTests
         _userEmailService,
         _syncSettingsService,
         _auditLogService,
+        _googleSyncLog,
         _removalNotifications,
         _syncScheduler,
         Options.Create(new GoogleWorkspaceOptions()),
@@ -704,14 +809,8 @@ public sealed class GoogleGroupSyncServiceTests
 
         foreach (var u in users)
         {
-            _profilesByUserId[u.UserId] = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = u.UserId,
-                State = ProfileState.Active,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            };
+            _profilesByUserId[u.UserId] = UserFixtures.Profile(
+                createdAt: _clock.GetCurrentInstant());
         }
     }
 
@@ -719,15 +818,9 @@ public sealed class GoogleGroupSyncServiceTests
     {
         foreach (var p in profiles)
         {
-            _profilesByUserId[p.UserId] = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = p.UserId,
-                BurnerName = p.BurnerName ?? string.Empty,
-                State = ProfileState.Active,
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            };
+            _profilesByUserId[p.UserId] = UserFixtures.Profile(
+                burnerName: p.BurnerName ?? string.Empty,
+                createdAt: _clock.GetCurrentInstant());
         }
     }
 

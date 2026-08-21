@@ -43,7 +43,7 @@ Because those roles now share one assembly, the old project graph no longer enfo
 
 **The shared view layer lives in the base.** `Humans.UI` was extracted from `Humans.Web` for the section-project split and then folded into `Humans.Base` at G5 lane 4b-iii, which is why that project builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc`. It holds `SharedResource` and its satellite resx files, the tag helpers (`AuthorizeView`, `MarkdownEditor`, `Nonce`, `PageHeader`), the shared `Views/Shared` partials (`_Table`, `_Pager`, `_ValidationScriptsPartial`, …; the chrome — `_Layout`, `_AdminLayout`, `_LoginPartial`, `_LanguageChooser`, `_AuthorizationPill`, `_VersionInfo` — is the Shell's, per G5 lane 4b-ii), the generic table + pager view models, `PolicyNames`, `TempDataKeys`, `HumansControllerBase`, the display extensions, and the section-agnostic view components (`AccessMatrix`, `Human`, `HumanSearch`, `TempDataAlerts`). Its types now live under `Humans.Base.*` — notably `Humans.Base.Authorization.PolicyNames` and `Humans.Base.Extensions.DateTimeDisplayExtensions` — and the assembly Razor binds by name is `Humans.Base`, which is what `@addTagHelper *, Humans.Base` names.
 
-**A section project is internal by default.** Each lives under `src/Sections/Humans.<Section>/` and declares `Section : ISection` at its project root — that type, not any list, is what makes the assembly a section, and the section's *name* is the assembly name minus `Humans.` (so `Humans.Store.Contracts` is still section Store). There are **42** of them: Agent, AuditLog, Auth, Budget, Calendar, Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, EarlyEntry, Email, Events, Expenses, Feedback, Finance, Gate, Gdpr, GoogleIntegration, Governance, Guide, Holded, Issues, MailerLite, Monitor, Notifications, Onboarding, Scanner, Search, Shifts, Store, Stripe, Surveys, SystemSettings, Teams, TicketTailor, Tickets, Tour, Users. `Humans.TicketTailor` is the vendor adapter behind Tickets' `ITicketVendorService` port and `Humans.Stripe` the payment connector — neither is a UI section, but both are sections by the same test and carry the same internal-by-default rule. **22** of them publish a cross-section surface from a paired `Humans.<Section>.Contracts` project; **28** own tables and therefore a `<Section>DbContext`. A section's only public surface is its `ISection` entry point, its `<Section>Resource` localization marker, EF Core migrations, types the framework requires to be public in order to function, types declared under a `Contracts/` folder, and Hangfire jobs declared under a `Jobs/` folder — everything else must be `internal`. This was convention-only across the first sections that moved; analyzer `HUM0034` (`SectionRulesAnalyzer`, nobodies-collective/Humans#1013) now fails the build on any other public type in a section assembly. Within a section, `Contracts/` is the public folder and `Interfaces/` the internal one.
+**A section project is internal by default.** Each lives under `src/Sections/Humans.<Section>/` and declares `Section : ISection` at its project root — that type, not any list, is what makes the assembly a section, and the section's *name* is the assembly name minus `Humans.` (so `Humans.Store.Contracts` is still section Store). There are **42** of them: Agent, AuditLog, Auth, Budget, Calendar, Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, EarlyEntry, Email, Events, Expenses, Feedback, Finance, Gate, Gdpr, GoogleIntegration, Governance, Guide, Holded, Issues, MailerLite, Monitor, Notifications, Onboarding, Scanner, Search, Shifts, Store, Stripe, Surveys, SystemSettings, Teams, TicketTailor, Tickets, Tour, Users. `Humans.TicketTailor` is the vendor adapter behind Tickets' `ITicketVendorService` port and `Humans.Stripe` the payment connector — neither is a UI section, but both are sections by the same test and carry the same internal-by-default rule. **22** of them publish a cross-section surface from a paired `Humans.<Section>.Contracts` project; **29** own tables and therefore a `<Section>DbContext`. A section's only public surface is its `ISection` entry point, its `<Section>Resource` localization marker, EF Core migrations, types the framework requires to be public in order to function, types declared under a `Contracts/` folder, and Hangfire jobs declared under a `Jobs/` folder — everything else must be `internal`. This was convention-only across the first sections that moved; analyzer `HUM0034` (`SectionRulesAnalyzer`, nobodies-collective/Humans#1013) now fails the build on any other public type in a section assembly. Within a section, `Contracts/` is the public folder and `Interfaces/` the internal one.
 
 **Those are two different kinds of exception.** `Contracts/`, `Jobs/`, the `ISection` entry point and the `<Section>Resource` marker are a *deliberate surface* — someone chose to let other assemblies depend on them. `Jobs/` is narrower than `Contracts/`: it admits only `IRecurringJob` implementors and `*Job`-named Hangfire jobs, whose audience is the Shell scheduler naming the concrete type — not other sections. The framework carve-out is not a choice: the type is public because it stops working otherwise. **The membership test is whether making it `internal` fails loudly or silently renders nothing** — silent means it belongs in the exception. Razor/MVC discovery passes that run at *compile time* filter on public accessibility and skip what they cannot see, emitting no error, warning or diagnostic; runtime resolution throws instead, so it does not qualify. **Current membership is view components and tag helpers, and that is the whole set** — controllers look like a candidate and are not, since `SectionControllerFeatureProvider` routes internal ones and a missing controller 404s loudly. The cost of getting this wrong is not theoretical: an `internal` `ProfileCardViewComponent` made `<vc:profile-card>` ship as inert literal markup and silently emptied the Profile page, with a green build and 5,475 passing tests (nobodies-collective/Humans#866 lane 2).
 
@@ -129,7 +129,7 @@ Every cached domain has a **store** — a dedicated class that owns an in-memory
 2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Application>`). Secondary indexes are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
 3. **Single writer.** Only the owning service writes to the store, and only as part of a successful DB write. The store interface exposes `Upsert(entity)` and `Remove(id)`; the owning service calls these immediately after its repository write returns successfully.
 4. **Startup warmup.** Each store loads its full domain on startup via `GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
-5. **Stores are Infrastructure.** The interface lives in `Humans.Application/Interfaces/Stores/`, the implementation lives in `Humans.Infrastructure/Stores/`.
+5. **Stores were Infrastructure.** The interface lived in `Humans.Application/Interfaces/Stores/` and the implementation in `Humans.Infrastructure/Stores/` — both projects were deleted at G5 (nobodies-collective/Humans#866). Under §15 a section's cache lives in its own `Data/`.
 
 ### 4b. Why a Store, Not Inline `IMemoryCache.GetOrCreateAsync`
 
@@ -246,17 +246,16 @@ Consequences:
 ```csharp
 public async Task SuspendAsync(Guid userId, Guid actorId, string reason, CancellationToken ct)
 {
-    var profile = await _repo.GetByUserIdAsync(userId, ct);
-    if (profile is null) return;
+    var user = await _repo.GetByIdAsync(userId, ct);
+    if (user is null) return;
 
-    var previousState = profile.State;
-    profile.State = ProfileState.Suspended;
-    await _repo.UpdateAsync(profile, ct);   // business save first
-    _store.Upsert(profile);
+    var previousState = user.State;
+    await _repo.SetSuspensionAsync(userId, suspended: true, adminSuspension: true, ct);
+    _store.Upsert(userId);
 
     await _auditLog.LogAsync(               // then audit (self-persisting)
         AuditAction.ProfileSuspended, nameof(User), userId,
-        $"Suspended (was={previousState}): {reason}",
+        $"Suspended (was={previousState}): {reason}",   // the reason lives here, not on the row
         actorId);
 }
 ```
@@ -271,7 +270,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 Ownership is now physical as well as conventional: the map below is **per DbContext**, not per single model, and every table belongs to exactly one section context. Users/Identity and Profiles merged into `UsersDbContext` at peel 15, which also deleted the root `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See the methodology block of [`service-data-access-map.md`](service-data-access-map.md) for the context-to-table listing.
 
-The 28 table-owning sections are listed below. The other 14 section projects own no tables and so have no row: Cantina, Debug, Development, EarlyEntry, Gdpr, Guide, MailerLite, Monitor, Onboarding, Scanner, Search, Stripe, TicketTailor, Tour — several appear anyway, with an explicit *(no owned tables)* note, because a reader looking for them expects to find them here.
+The 29 table-owning sections are listed below. The other 13 section projects own no tables and so have no row: Cantina, Debug, Development, EarlyEntry, Gdpr, Guide, Monitor, Onboarding, Scanner, Search, Stripe, TicketTailor, Tour — several appear anyway, with an explicit *(no owned tables)* note, because a reader looking for them expects to find them here.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
@@ -297,10 +296,10 @@ The 28 table-owning sections are listed below. The other 14 section projects own
 | **Scanner** | none (G5 project `Humans.Scanner`; no business logic and no `Services/` folder — its controller reads via `ITicketServiceRead`) | none |
 | **Gate** | `GateService` (G5 project `Humans.Gate`) | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleWorkspaceSyncService` (the production `IGoogleSyncService`; `StubGoogleSyncService` stands in when no credentials are configured), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `TeamResourceService` (the Teams↔Drive linking surface — lives in `Humans.GoogleIntegration.Services`, not Teams) — G5 project `Humans.GoogleIntegration`, published via `Humans.GoogleIntegration.Contracts` | `sync_service_settings`, `google_sync_outbox`, `google_resources` |
+| **Google Integration** | `GoogleWorkspaceSyncService` (the production `IGoogleSyncService`; `StubGoogleSyncService` stands in when no credentials are configured), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleSyncLogService`, `TeamResourceService` (the Teams↔Drive linking surface — lives in `Humans.GoogleIntegration.Services`, not Teams) — G5 project `Humans.GoogleIntegration`, published via `Humans.GoogleIntegration.Contracts` | `sync_service_settings`, `google_sync_outbox`, `google_sync_log`, `google_resources` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService` (the `IEmailService` implementation, published via `Humans.Email.Contracts`) | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
 | **System Settings** | `ISystemSettingsService` (G5 project `Humans.SystemSettings`; implemented by the section-internal `Service`) | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
-| **MailerLite** | `MailerLiteImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |
+| **MailerLite** | `MailerLiteImportService`, `MailerLiteAudienceSyncService`, `MailerLiteClient` | `mailerlite_sync_states` (current per-audience + reconciliation sync state, nobodies-collective/Humans#1082; subscriber state itself stays in MailerLite and classifier writes go through other sections' services) |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Issues** | `IssuesService` | `issues`, `issue_comments` |
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
@@ -351,13 +350,16 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 §8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. **The original reason for iterating sequentially is obsolete** — it was "the contributors share the scoped `HumansDbContext`, which is not thread-safe", but since the per-section split (nobodies-collective/Humans#858) contributors such as `ExpenseReportService`, `SurveyService`, `AgentService`, `EventService` and Finance's `Service` read through their own `IDbContextFactory<TContext>` against separate contexts, and independent factory-created contexts are safe to use concurrently (EF's restriction is on concurrent operations against the *same* instance). Sequential iteration is now a consistency and simplicity choice, not a correctness requirement.
 
-Three fanouts exist today:
+Four fanouts exist today:
 
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
 | `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
 | `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
+| any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
+
+`IEntityNameContributor` is the one that lives in Base rather than in a consumer's contracts leaf, because it has more than one consumer and they must not reference each other (nobodies-collective/Humans#1059). It inverts the arrow that used to make AuditLog reference Teams and GoogleIntegration just to print names: sections point at the Base contract, and the consumer names no section. Wide-fan-in sections that must not gain outbound links — Audit, Auth, Search — are exactly its intended callers.
 
 Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
 
@@ -457,7 +459,7 @@ Some services are used across all sections. They own their own tables but are in
 | Service | Purpose | Owned Tables |
 |---------|---------|--------------|
 | `RoleAssignmentService` | Temporal role memberships (Auth section) — the gateway for all role queries | `role_assignments` |
-| `AuditLogService` | Append-only audit trail for user actions and sync operations | `audit_log` |
+| `AuditLogService` | Append-only audit trail for user actions | `audit_log` |
 | `EmailOutboxService` | Queue and track transactional emails | `email_outbox_messages` |
 | `NotificationService` | In-app notifications (G5 project `Humans.Notifications`) | `notifications`, `notification_recipients` |
 
