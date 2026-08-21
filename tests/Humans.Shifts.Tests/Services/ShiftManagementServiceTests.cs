@@ -11,6 +11,7 @@ using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -61,7 +62,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .With(_roleAssignmentService)
             .Build();
 
-        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
 
         _service = new ShiftManagementService(
             repo,

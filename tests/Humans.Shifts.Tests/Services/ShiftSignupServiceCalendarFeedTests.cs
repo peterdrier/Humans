@@ -31,7 +31,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             .With(_teamService)
             .Build();
 
-        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
         var shiftMgmt = new ShiftManagementService(
             repo,
             AuditLog,

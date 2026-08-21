@@ -6,6 +6,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -27,7 +28,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
-        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
 
         // IShiftView source-of-truth path uses GetRotaAsync only — the inner
         // ShiftViewService also takes signup/availability/tracking repos for

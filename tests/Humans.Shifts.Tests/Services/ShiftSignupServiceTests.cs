@@ -42,7 +42,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -53,7 +53,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             Clock);
 
-        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),

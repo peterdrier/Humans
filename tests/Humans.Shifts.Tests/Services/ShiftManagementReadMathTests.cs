@@ -7,6 +7,7 @@ using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Shifts.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -51,7 +52,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             .Build();
 
         _service = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance),
             AuditLog,
             AdminAuthorization,
             serviceProvider,

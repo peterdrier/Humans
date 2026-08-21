@@ -43,7 +43,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -54,7 +54,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             Substitute.For<IShiftViewInvalidator>(),
             Clock);
 
-        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),

@@ -2,8 +2,11 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Repositories;
@@ -27,7 +30,7 @@ public class ShiftRepositorySignupTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
-        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow));
+        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow), NullLogger<ShiftRepository>.Instance);
     }
 
     public void Dispose()
@@ -127,6 +130,61 @@ public class ShiftRepositorySignupTests : IDisposable
         var pendingOrConfirmed = await _repo.GetUserIdsForDayAsync(
             esId, -3, ShiftDayUserStatusScope.PendingOrConfirmed, Xunit.TestContext.Current.CancellationToken);
         pendingOrConfirmed.Should().BeEquivalentTo([user1, user2, pendingUser]);
+    }
+
+    /// <summary>
+    /// Regression for nobodies-collective/Humans#896: a Confirmed all-day build-week
+    /// signup whose rota is wired to a non-active EventSettings must not silently
+    /// vanish from the day query — it stays excluded (the roster is genuinely scoped
+    /// to the active event) but the drop is now logged at Warning so it is
+    /// diagnosable instead of invisible.
+    /// </summary>
+    [HumansFact]
+    public async Task GetUserIdsForDayAsync_LogsWarning_WhenConfirmedSignupExcludedByEventScoping()
+    {
+        var activeEs = Guid.NewGuid();
+        var staleEs = Guid.NewGuid();
+
+        // Same build-week DayOffset (-8) on both events, matching the #896 repro:
+        // the rota is bound to a duplicate/stale EventSettings, not the active one.
+        var shiftOnActiveEvent = SeedShiftWithRota(activeEs, dayOffset: -8);
+        var shiftOnStaleEvent = SeedShiftWithRota(staleEs, dayOffset: -8);
+
+        var onSiteUser = Guid.NewGuid();
+        var droppedUser = Guid.NewGuid();
+
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(onSiteUser, shiftOnActiveEvent, SignupStatus.Confirmed));
+        var droppedSignup = MakeSignup(droppedUser, shiftOnStaleEvent, SignupStatus.Confirmed);
+        _shiftsDbContext.ShiftSignups.Add(droppedSignup);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // GetUserIdsForDayAsync queries the scoped context directly (not the
+        // factory), so a throwaway factory is fine here — only the logger and the
+        // seeded _shiftsDbContext matter for this assertion.
+        var logger = Substitute.For<ILogger<ShiftRepository>>();
+        var throwawayFactoryOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var repo = new ShiftRepository(
+            new TestDbContextFactory<ShiftsDbContext>(throwawayFactoryOptions),
+            _shiftsDbContext,
+            new FakeClock(TestNow),
+            logger);
+
+        var result = await repo.GetUserIdsForDayAsync(
+            activeEs, -8, ShiftDayUserStatusScope.ConfirmedOnly, Xunit.TestContext.Current.CancellationToken);
+
+        // Still scoped to the active event — the roster does not silently mix in a
+        // different event's data.
+        result.Should().BeEquivalentTo([onSiteUser]);
+
+        // But the exclusion is now a loud, diagnosable signal instead of silent.
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Is<Exception?>(e => e == null),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

@@ -81,7 +81,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With<IUserServiceRead>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance),
             AuditLog,
             AdminAuthorization,
             serviceProvider,

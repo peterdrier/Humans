@@ -2,6 +2,7 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 
@@ -37,7 +38,7 @@ public class ShiftRepositorySummaryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
-        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow));
+        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow), NullLogger<ShiftRepository>.Instance);
     }
 
     public void Dispose()

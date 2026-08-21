@@ -1,6 +1,7 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Data;
@@ -23,15 +24,18 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     private readonly IDbContextFactory<ShiftsDbContext> _factory;
     private readonly ShiftsDbContext _dbContext;
     private readonly IClock _clock;
+    private readonly ILogger<ShiftRepository> _logger;
 
     public ShiftRepository(
         IDbContextFactory<ShiftsDbContext> factory,
         ShiftsDbContext dbContext,
-        IClock clock)
+        IClock clock,
+        ILogger<ShiftRepository> logger)
     {
         _factory = factory;
         _dbContext = dbContext;
         _clock = clock;
+        _logger = logger;
     }
 
     // ==========================================================================

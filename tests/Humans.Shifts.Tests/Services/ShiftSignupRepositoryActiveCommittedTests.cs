@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 
 using Humans.Shifts.Contracts;
@@ -22,7 +23,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ShiftsTestHarness
     public ShiftRepositoryActiveCommittedTests()
         : base(TestNow)
     {
-        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
     }
 
     [HumansFact]

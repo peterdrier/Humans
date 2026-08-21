@@ -9,6 +9,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -127,7 +128,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             .With(_campService)
             .Build();
 
-        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance);
 
         _service = new ShiftManagementService(
             repo,

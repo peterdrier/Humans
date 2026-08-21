@@ -10,6 +10,7 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -59,7 +60,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .Build();
 
         _service = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock, NullLogger<ShiftRepository>.Instance),
             AuditLog,
             AdminAuthorization,
             serviceProvider,

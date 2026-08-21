@@ -105,23 +105,43 @@ internal sealed partial class ShiftRepository
         ShiftDayUserStatusScope statusScope,
         CancellationToken ct = default)
     {
-        var query = _dbContext.ShiftSignups
+        // Day + status match first, event-scoping applied in memory below — so a
+        // signup dropped purely by event-scoping (rota wired to a non-active
+        // EventSettings, #896) is observable instead of silently vanishing.
+        var dayQuery = _dbContext.ShiftSignups
             .AsNoTracking()
-            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
-                && s.Shift.DayOffset == dayOffset);
+            .Where(s => s.Shift.DayOffset == dayOffset);
 
-        query = statusScope switch
+        dayQuery = statusScope switch
         {
-            ShiftDayUserStatusScope.ConfirmedOnly => query.Where(s => s.Status == SignupStatus.Confirmed),
-            ShiftDayUserStatusScope.PendingOrConfirmed => query.Where(s =>
+            ShiftDayUserStatusScope.ConfirmedOnly => dayQuery.Where(s => s.Status == SignupStatus.Confirmed),
+            ShiftDayUserStatusScope.PendingOrConfirmed => dayQuery.Where(s =>
                 s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
-            _ => query.Where(_ => false)
+            _ => dayQuery.Where(_ => false)
         };
 
-        return await query
-            .Select(s => s.UserId)
-            .Distinct()
+        var rows = await dayQuery
+            .Select(s => new { s.Id, s.UserId, RotaEventSettingsId = s.Shift.Rota.EventSettingsId })
             .ToListAsync(ct);
+
+        var userIds = new List<Guid>(rows.Count);
+        foreach (var row in rows)
+        {
+            if (row.RotaEventSettingsId == eventSettingsId)
+            {
+                userIds.Add(row.UserId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "ShiftSignup {SignupId} for user {UserId} matches day offset {DayOffset} " +
+                    "({StatusScope}) but its rota is scoped to EventSettings {RotaEventSettingsId}, " +
+                    "not the requested event {EventSettingsId} — excluded from the day roster.",
+                    row.Id, row.UserId, dayOffset, statusScope, row.RotaEventSettingsId, eventSettingsId);
+            }
+        }
+
+        return userIds.Distinct().ToList();
     }
 
     // ============================================================
