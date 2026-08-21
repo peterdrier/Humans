@@ -74,6 +74,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleRemovalNotificationService _removalNotifications =
         Substitute.For<IGoogleRemovalNotificationService>();
 
+    private readonly IGoogleSyncLogService _googleSyncLog =
+        Substitute.For<IGoogleSyncLogService>();
+
     private readonly GoogleWorkspaceSyncService _syncService;
 
     // ── Fixed test data ────────────────────────────────────────────────────────
@@ -109,7 +112,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _userEmailService,
             _googleGroupSync,
             _auditLogService,
-            Substitute.For<IGoogleSyncLogService>(),
+            _googleSyncLog,
             _syncSettingsService,
             _removalNotifications,
             options,
@@ -305,6 +308,75 @@ public sealed class GoogleWorkspaceSyncServiceTests
             TestUserId,
             GoogleEmailStatus.Rejected,
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AddUserToDriveAsync_WhenCreateFails_RecordsFailedSyncLogEntry()
+    {
+        // Issue nobodies-collective/Humans#1099 — a failed Drive grant must
+        // still append a google_sync_log row (success: false) carrying the
+        // API error, matching GoogleGroupSyncService's failure rows, so the
+        // failure surfaces on the monitor pages and in the GDPR export.
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+
+        var user = MakeUser(TestUserId, TestUserEmail);
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.GetByEmailOrAlternateAsync(TestUserEmail, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(TestUserId, TestUserEmail));
+
+        _userEmailService
+            .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailRowSnapshot(
+                    Guid.NewGuid(),
+                    TestUserId,
+                    TestUserEmail,
+                    IsVerified: true,
+                    Provider: null,
+                    ProviderKey: null,
+                    IsGoogle: true,
+                    IsPrimary: false,
+                    Visibility: null,
+                    VerificationSentAt: null,
+                    CreatedAt: default,
+                    UpdatedAt: default)
+            ]);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+
+        _drivePermissions
+            .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(
+                DrivePermissionCreateOutcome.Failed,
+                new GoogleClientError(500, "Internal error")));
+
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted,
+            TestDriveFolderResourceId,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            TestUserEmail,
+            Arg.Any<string>(),
+            Arg.Any<GoogleSyncSource>(),
+            success: false,
+            errorMessage: Arg.Any<string?>(),
+            userId: TestUserId,
+            ct: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -533,6 +605,40 @@ public sealed class GoogleWorkspaceSyncServiceTests
             TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task RemoveUserFromDriveAsync_WhenDeleteFails_RecordsFailedSyncLogEntry()
+    {
+        // Issue nobodies-collective/Humans#1099 — a failed Drive revocation
+        // must still append a google_sync_log row (success: false) carrying
+        // the API error, matching GoogleGroupSyncService's failure rows.
+        const string extraEmail = "extra@example.com";
+        const string extraPermissionId = "perm-001";
+
+        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId, hasInheritedComponent: false);
+
+        _drivePermissions
+            .DeletePermissionAsync(TestGoogleFolderId, extraPermissionId, Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(
+                DrivePermissionDeleteOutcome.Failed,
+                new GoogleClientError(500, "Internal error")));
+
+        await _syncService.SyncSingleResourceAsync(
+            TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            TestDriveFolderResourceId,
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            extraEmail,
+            Arg.Any<string>(),
+            Arg.Any<GoogleSyncSource>(),
+            success: false,
+            errorMessage: Arg.Any<string?>(),
+            userId: Arg.Any<Guid?>(),
+            ct: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
