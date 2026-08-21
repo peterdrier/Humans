@@ -105,7 +105,7 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasKey("Key");
 
-                    b.ToTable("settings", (string)null);
+                    b.ToTable("system_settings", (string)null);
 
                     b.HasData(
                         new
