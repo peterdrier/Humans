@@ -68,9 +68,12 @@ internal sealed class MailerLiteAudienceSyncService(
     {
         var snapshot = await BuildSnapshotAsync(ct);
 
-        // Single read of the section's own sync-state table; map by key in memory.
+        // Single read of the section's own sync-state table; map by key in memory. Grouped
+        // rather than ToDictionary'd: the upsert lock keeps it one row per key, and a stale
+        // number beats a dashboard that 500s if a duplicate ever slips past anyway.
         var lastByKey = (await repository.GetSyncStatesAsync(ct))
-            .ToDictionary(s => s.Key, s => s, StringComparer.Ordinal);
+            .GroupBy(s => s.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.MaxBy(s => s.LastSyncAt)!, StringComparer.Ordinal);
 
         var rows = new List<AudienceStats>();
         foreach (var audience in audiences)

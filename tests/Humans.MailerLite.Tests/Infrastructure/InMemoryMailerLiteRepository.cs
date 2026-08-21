@@ -1,5 +1,6 @@
 using Humans.MailerLite.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.MailerLite.Tests.Infrastructure;
 
@@ -7,8 +8,10 @@ namespace Humans.MailerLite.Tests.Infrastructure;
 internal static class InMemoryMailerLiteRepository
 {
     public static IMailerLiteRepository New() =>
-        new Repository(new TestDbContextFactory<MailerLiteDbContext>(
-            new DbContextOptionsBuilder<MailerLiteDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options));
+        new Repository(
+            new TestDbContextFactory<MailerLiteDbContext>(
+                new DbContextOptionsBuilder<MailerLiteDbContext>()
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                    .Options),
+            NullLogger<Repository>.Instance);
 }
