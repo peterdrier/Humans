@@ -12,6 +12,16 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(256)
             .IsRequired();
 
+        // #1097 — names move from Profile onto User; nullable until the admin backfill runs.
+        builder.Property(u => u.BurnerName)
+            .HasMaxLength(256);
+
+        builder.Property(u => u.FirstName)
+            .HasMaxLength(256);
+
+        builder.Property(u => u.LastName)
+            .HasMaxLength(256);
+
         builder.Property(u => u.PreferredLanguage)
             .HasMaxLength(10)
             .HasDefaultValue("en");

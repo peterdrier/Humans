@@ -121,8 +121,34 @@ internal sealed partial class UserRepository
         UsersDbContext ctx, Profile profile, CancellationToken ct)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
+        if (user is null)
+            return;
+
+        // #1097 dual-write: the names belong to the human, not the membership profile.
+        // Every Profile write funnels through AddAsync/UpdateAsync, so this is the one seam.
+        CopyNamesToUser(user, profile);
+        user.State = UserStateEvaluator.Classify(user, profile);
+    }
+
+    /// <summary>#1097 — mirrors the Profile's names onto the User row inside the same save.</summary>
+    private static void CopyNamesToUser(User user, Profile profile)
+    {
+        user.BurnerName = profile.BurnerName;
+        user.FirstName = profile.FirstName;
+        user.LastName = profile.LastName;
+    }
+
+    /// <summary>
+    /// #1097 — loads the owning User into <paramref name="ctx"/> and mirrors the profile's
+    /// current names onto it. For the ctx-direct anonymize/merge paths, which do not route
+    /// through <see cref="UpdateAsync"/>.
+    /// </summary>
+    private static async Task MirrorProfileNamesToUserAsync(
+        UsersDbContext ctx, Profile profile, CancellationToken ct)
+    {
+        var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)
-            user.State = UserStateEvaluator.Classify(user, profile);
+            CopyNamesToUser(user, profile);
     }
 
     public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -294,6 +320,9 @@ internal sealed partial class UserRepository
         // Canonical display label lives on BurnerName — set it so the tombstone shows
         // "Merged User" via the profile, not via the legacy User.DisplayName fallback.
         sourceProfile.BurnerName = "Merged User";
+        // #1097 dual-write: clear the tombstone's User-side names in the same save, or the
+        // resolver (User.BurnerName first) would keep rendering the merged human's real name.
+        await MirrorProfileNamesToUserAsync(ctx, sourceProfile, ct);
         sourceProfile.Bio = null;
         sourceProfile.City = null;
         sourceProfile.CountryCode = null;
@@ -334,6 +363,8 @@ internal sealed partial class UserRepository
         profile.FirstName = firstName;
         profile.LastName = lastName;
         profile.BurnerName = string.Empty;
+        // #1097 dual-write — see MirrorProfileNamesToUserAsync.
+        await MirrorProfileNamesToUserAsync(ctx, profile, ct);
         profile.Bio = null;
         profile.City = null;
         profile.CountryCode = null;

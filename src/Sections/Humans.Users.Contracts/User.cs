@@ -13,6 +13,21 @@ public class User : IdentityUser<Guid>
     [Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> per memory/architecture/burnername-is-the-display-name.md. Legitimate consumers: creation-time BurnerName fallback, repository merge/purge/delete labels, GDPR export, debug screens.", DiagnosticId = "HUM_USER_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")]
     public string DisplayName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The name we render for this human. Dual-written from Profile (#1097); null until backfilled.
+    /// Resolution order is BurnerName → Profile.BurnerName → DisplayName.
+    /// </summary>
+    [PersonalData]
+    public string? BurnerName { get; set; }
+
+    /// <summary>Legal given name. Dual-written from Profile (#1097); null until backfilled.</summary>
+    [PersonalData]
+    public string? FirstName { get; set; }
+
+    /// <summary>Legal family name. Dual-written from Profile (#1097); null until backfilled.</summary>
+    [PersonalData]
+    public string? LastName { get; set; }
+
     /// <summary>Preferred language code (e.g., "en", "es"). Defaults to English.</summary>
     [PersonalData]
     public string PreferredLanguage { get; set; } = "en";
