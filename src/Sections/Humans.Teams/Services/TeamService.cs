@@ -2095,7 +2095,10 @@ internal sealed class TeamService(
         await RevokeAllMembershipsAsync(userId, ct);
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
-        InvalidateActiveTeamsCache();
+
+        // No cache call here: this type is the inner service, where the invalidation
+        // methods are empty bodies — the real ones live on CachingTeamService. The
+        // deletion orchestrator drops both team caches through the decorator instead.
     }
 
     // ==========================================================================

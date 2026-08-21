@@ -52,6 +52,9 @@ public class GdprErasureCoverageTests
     /// </summary>
     private static IReadOnlyList<IUserDataContributor> DiscoverContributors()
     {
+        // SectionAssemblies(), not ActiveSectionAssemblies(): deliberately the stricter
+        // sweep. A section switched off still ships its tables, so its erasure has to be
+        // declared — turning a section off must not turn its Article 17 account off too.
         var hostAssembly = typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly;
 
         return Extensions.SectionDiscoveryExtensions.SectionAssemblies()

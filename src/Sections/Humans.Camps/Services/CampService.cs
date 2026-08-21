@@ -26,6 +26,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     // Lazy: CityPlanningService injects ICampServiceRead, closing the cycle.
     private readonly Lazy<ICityPlanningService> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
+    private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserServiceRead _userServiceRead;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
@@ -45,6 +46,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         Lazy<ICampRoleService> campRoleService,
         Lazy<ICityPlanningService> cityPlanningService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
+        ICampInfoInvalidator campInfoInvalidator,
         IUserServiceRead userServiceRead,
         IClock clock,
         ILogger<CampService> logger)
@@ -58,6 +60,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
         _earlyEntryInvalidator = earlyEntryInvalidator;
+        _campInfoInvalidator = campInfoInvalidator;
         _userServiceRead = userServiceRead;
         _clock = clock;
         _logger = logger;
@@ -1438,6 +1441,12 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     {
         await _repo.DeleteCampFootprintForUserAsync(userId, ct);
         _earlyEntryInvalidator.InvalidateUser(userId);
+
+        // The cached CampInfo projection carries the rosters this just emptied, and the
+        // contributor is the inner service, so nothing else drops them. InvalidateAll
+        // rather than per-camp: the user's camps span an unbounded set and the repo
+        // delete does not hand back their ids.
+        await _campInfoInvalidator.InvalidateAllAsync(ct);
     }
 
     public async Task SetEeStartDateAsync(

@@ -328,6 +328,26 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
             ctx.Entry(row).Property(nameof(ApplicationStateHistory.Notes)).CurrentValue = null;
         }
 
+        // Notes the user wrote as a reviewer on somebody else's application are
+        // their words too — same reason as the Board votes below.
+        var reviewed = await ctx.Applications
+            .Where(a => a.ReviewedByUserId == userId && a.UserId != userId)
+            .ToListAsync(ct);
+        foreach (var application in reviewed)
+        {
+            application.DecisionNote = null;
+            ctx.Entry(application).Property(nameof(MemberApplication.ReviewNotes)).CurrentValue = null;
+            application.UpdatedAt = updatedAt;
+        }
+
+        var authoredHistory = await ctx.ApplicationStateHistories
+            .Where(h => h.ChangedByUserId == userId)
+            .ToListAsync(ct);
+        foreach (var row in authoredHistory)
+        {
+            ctx.Entry(row).Property(nameof(ApplicationStateHistory.Notes)).CurrentValue = null;
+        }
+
         // Notes the user wrote as a voting Board member are their words too.
         var votes = await ctx.BoardVotes
             .Where(v => v.BoardMemberUserId == userId)

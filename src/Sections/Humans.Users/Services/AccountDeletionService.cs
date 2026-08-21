@@ -183,6 +183,7 @@ internal sealed class AccountDeletionService(
         // and admin search would keep matching the erased human by their real name.
         await userInfoInvalidator.InvalidateAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
+        teamService.InvalidateActiveTeamsCache();
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);

@@ -1240,7 +1240,8 @@ internal sealed class ShiftSignupService(
                 "Partially retained: the signup row (shift, status, timestamps, keyed to the user " +
                 "id the Users section tombstones) is the association's record of who covered " +
                 "which volunteer shift — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every " +
-                "still-active signup is cancelled immediately.",
+                "still-active signup is cancelled immediately, and the free-text status reason " +
+                "a coordinator wrote on any signup is cleared.",
             [GdprExportSections.VolunteerEventProfiles] = null,
             [GdprExportSections.GeneralAvailability] = null,
             [GdprExportSections.ShiftTagPreferences] = null
@@ -1255,6 +1256,11 @@ internal sealed class ShiftSignupService(
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        // Before cancelling, so the "Account deletion" reason the cancel writes survives:
+        // the retained signup row is shift/status/timestamps, not whatever a coordinator
+        // typed about this person when they bailed or no-showed.
+        await repo.ClearSignupStatusReasonsForUserAsync(userId, ct);
+
         var cancelled = await CancelActiveSignupsForUserAsync(userId, "Account deletion", ct);
         foreach (var (signupId, shiftId) in cancelled)
         {

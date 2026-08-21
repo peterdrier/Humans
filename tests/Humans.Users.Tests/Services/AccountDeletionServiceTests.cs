@@ -298,7 +298,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndDisplayName()
+    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndWithoutThePurgedName()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -307,10 +307,12 @@ public class AccountDeletionServiceTests
 
         await _service.PurgeAsync(userId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        // GDPR right-of-access depends on this audit row surviving the purge.
+        // GDPR right-of-access depends on this audit row surviving the purge — which is
+        // exactly why it must not quote the identity the purge just collapsed. The user
+        // id is the subject; the name would outlive the erasure in a retained table.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AccountPurged, nameof(User), userId,
-            Arg.Is<string>(s => s.Contains("Test Human")),
+            Arg.Is<string>(s => !s.Contains("Test Human")),
             actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

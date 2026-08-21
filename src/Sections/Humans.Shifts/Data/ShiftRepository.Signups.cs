@@ -155,6 +155,20 @@ internal sealed partial class ShiftRepository
         return preferences.Count;
     }
 
+    public async Task<int> ClearSignupStatusReasonsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var signups = await _dbContext.ShiftSignups
+            .Where(ss => ss.UserId == userId && ss.StatusReason != null)
+            .ToListAsync(ct);
+        if (signups.Count == 0) return 0;
+
+        foreach (var signup in signups)
+            signup.StatusReason = null;
+
+        await _dbContext.SaveChangesAsync(ct);
+        return signups.Count;
+    }
+
     public void AddRange(IEnumerable<ShiftSignup> signups) => _dbContext.ShiftSignups.AddRange(signups);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _dbContext.SaveChangesAsync(ct);

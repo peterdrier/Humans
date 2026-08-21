@@ -87,9 +87,11 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(
             userId, Arg.Any<CancellationToken>());
 
+        // The audit log is retained through erasure, so its description must NOT
+        // quote the name the cascade just removed — that would re-seed the identity.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AccountAnonymized, nameof(User), userId,
-            Arg.Is<string>(s => s.Contains("Test User")),
+            Arg.Is<string>(s => !s.Contains("Test User")),
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
