@@ -6,13 +6,12 @@ using NodaTime;
 namespace Humans.Settings.Services;
 
 /// <summary>
-/// The section's service. Implements the cross-section contract
-/// <see cref="ISettingsService"/> and adds the event-settings write, which is
-/// section-internal on purpose: only <c>SettingsAdminController</c> and
-/// <c>EventSettingsCarryService</c> call it, and both live here. In-section
-/// callers inject this class; everyone else takes the interface.
+/// The section's service. Outside sections resolve it as
+/// <see cref="ISettingsService"/>; the section's own screens resolve it as
+/// <see cref="ISettingsWriteService"/>, which adds the event-settings write.
+/// One instance either way.
 /// </summary>
-internal sealed class Service(ISettingsRepository repository, IClock clock) : ISettingsService
+internal sealed class Service(ISettingsRepository repository, IClock clock) : ISettingsWriteService
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
         repository.GetValueAsync(key, cancellationToken);
@@ -31,11 +30,6 @@ internal sealed class Service(ISettingsRepository repository, IClock clock) : IS
         Guid id, CancellationToken cancellationToken = default) =>
         ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
 
-    /// <summary>
-    /// Inserts or updates the row identified by <see cref="EventSettingsInfo.Id"/>.
-    /// Idempotent: saving the same values twice leaves the row unchanged.
-    /// Not on <see cref="ISettingsService"/> — see the class summary.
-    /// </summary>
     public Task SaveEventSettingsAsync(
         EventSettingsInfo settings, CancellationToken cancellationToken = default) =>
         repository.UpsertEventSettingsAsync(

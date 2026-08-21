@@ -224,23 +224,24 @@ Every table is owned by exactly one repository; there are no HUM0025
    Google provider-key -> `UserInfo` index from
    `IUserServiceRead.GetAllUserInfosAsync`. It has no repository; the
    last-run marker
-   (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is read/written
-   through `ISystemSettingsService` — a §15-compliant cross-section service
+   (`SettingKeys.DriveActivityMonitorLastRunAt`) is read/written
+   through `ISettingsService` — a §15-compliant cross-section service
    call, not a foreign repository read.
 
-7. **SystemSettings is owned by a single section/repository.**
-   The `SystemSetting` key/value table is owned by the SystemSettings
-   section's `SystemSettingsRepository`; consuming sections route through
-   `ISystemSettingsService` rather than touching the table from their own
-   repository:
+7. **Settings' tables are owned by a single section/repository.**
+   `system_settings` (key/value) and `settings_event` (the app-wide event
+   values) are both owned by the Settings section's `Repository`; consuming
+   sections route through `ISettingsService` rather than touching the tables
+   from their own repository:
 
    | Key | Consuming section | Routed via |
    |-----|-------------------|------------|
-   | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISystemSettingsService` |
-   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISystemSettingsService` |
+   | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
+   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISettingsService` |
 
-   New keys should be added to `SystemSettingKeys` and accessed through
-   `ISystemSettingsService`.
+   New keys should be added to `SettingKeys` and accessed through
+   `ISettingsService`. Both of those keys move to their own sections' settings
+   later; the shared key/value store is not where new per-section state belongs.
 
 8. **Cached read-models cover almost all per-key `IMemoryCache`
    entries.** Singleton decorators inheriting `TrackedCache<TKey, TValue>`
