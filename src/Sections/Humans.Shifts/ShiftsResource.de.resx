@@ -98,6 +98,12 @@
   <data name="Shifts_AllDepartments" xml:space="preserve">
     <value>Alle Abteilungen</value>
   </data>
+  <data name="Shifts_DayFilter_Label" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Shifts_DayFilter_AllDays" xml:space="preserve">
+    <value>Alle Tage</value>
+  </data>
   <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
     <value>Abdeckung pro Abteilung — klicken zum Filtern</value>
   </data>

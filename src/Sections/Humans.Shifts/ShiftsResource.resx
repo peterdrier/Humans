@@ -54,6 +54,8 @@
   <data name="Shifts_BrowseTitle" xml:space="preserve"><value>Browse Volunteer Options</value></data>
   <data name="Shifts_Department" xml:space="preserve"><value>Department</value></data>
   <data name="Shifts_AllDepartments" xml:space="preserve"><value>All Departments</value></data>
+  <data name="Shifts_DayFilter_Label" xml:space="preserve"><value>Day</value></data>
+  <data name="Shifts_DayFilter_AllDays" xml:space="preserve"><value>All Days</value></data>
   <data name="Shifts_PieCoverage_RowAria" xml:space="preserve"><value>Department coverage pies — click a pie to filter the page</value></data>
   <data name="Shifts_PieCoverage_Aria" xml:space="preserve"><value>{0}: {1}% covered, {2} of {3} hours</value></data>
   <data name="Shifts_PieCoverage_Title" xml:space="preserve"><value>{0} — {1} h / {2} h ({3}%)</value></data>
