@@ -26,7 +26,7 @@ run startup warmup, no DB access — fan out over the readers /
 `AgentRetentionRunStore`, `AgentSettingsStore` are in-memory stores backing
 the rate-limit / retention / settings caches — no DB access of their own.
 `AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
-`IBurnSettingsService` for its tool surface.
+`ISettingsServiceRead` for its tool surface.
 
 ### AgentService (Scoped, `Humans.Agent.Services`)
 
@@ -73,7 +73,7 @@ backed in-memory by `AgentSettingsStore`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamServiceRead`,
 `IUserServiceRead`, `IRoleAssignmentService`, `IConsentServiceRead`,
 `IFeedbackServiceRead`, `ITicketServiceRead`, `IShiftView`,
-`IBurnSettingsService`, `IAuditViewerService`, etc.) for the agent's
+`ISettingsServiceRead`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 
 ### AnthropicClient (`Services/Anthropic/`)

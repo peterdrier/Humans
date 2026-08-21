@@ -1,7 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Domain;
 
 namespace Humans.Shifts.Services;
 
@@ -59,30 +58,10 @@ internal sealed class AppEventSettingsMoveService(
             if (await settings.GetEventSettingsByIdAsync(src.Id, ct) is not null)
                 continue;
 
-            await settings.SaveEventSettingsAsync(ToInfo(src), ct);
+            await settings.SaveEventSettingsAsync(src, ct);
             carried++;
         }
 
         return carried;
     }
-
-    private static EventSettingsInfo ToInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null
-            : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose,
-        IsActive: src.IsActive);
 }

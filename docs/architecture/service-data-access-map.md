@@ -42,7 +42,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `IssuesDbContext` | `Issues`, `IssueComments` (own project, `src/Sections/Humans.Issues/`) |
 > | `SurveysDbContext` | `Surveys`, `SurveyQuestions`, `SurveyQuestionOptions`, `SurveyInvitations`, `SurveyResponses`, `SurveyAnswers` (own project, `src/Sections/Humans.Surveys/`) |
 > | `AgentDbContext` | `AgentConversations`, `AgentMessages`, `AgentSettings` (own project, `src/Sections/Humans.Agent/`) |
-> | `SystemSettingsDbContext` | `SystemSetting` (own project, `src/Sections/Humans.SystemSettings/`) |
+> | `SettingsDbContext` | `Setting`, `EventSettings` — tables `system_settings` and `app_event_settings` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
@@ -151,9 +151,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 | Table | Owning Section | Routed via |
 |-------|----------------|--------|
 | **GoogleSyncOutboxEvents** | Google Integration | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
-| **EventSettings** | Shifts | `ShiftRepository`. |
+| **EventSettings** (`event_settings`) | Shifts | `ShiftRepository`. Holds Shifts' own knobs; the app-wide values it still carries are duplicated in Settings' `app_event_settings` and retire in the follow-up to nobodies-collective/Humans#1104. |
 | **ShiftSignups** | Shifts | `ShiftRepository`. |
-| **SystemSettings** (`SystemSetting`) | SystemSettings | Single owner `SystemSettingsRepository`; consumers route through `ISystemSettingsService`. |
+| **Settings** (`system_settings`, `app_event_settings`) | Settings | Single owner `Repository`; consumers route through `ISettingsServiceRead` (writes via `ISettingsService`). |
 
 ### Notable Cross-Section Patterns
 
@@ -216,7 +216,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    Integration section owns the table end-to-end (write surface
    `GoogleSyncOutboxService`, read/process via `IGoogleSyncOutboxRepository`).
 
-6. **DriveActivityMonitor user fallback uses UserInfo; state via SystemSettings
+6. **DriveActivityMonitor user fallback uses UserInfo; state via the Settings
    service.** `DriveActivityMonitorService` — the
    [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md)
    section's own — resolves Google
@@ -224,23 +224,26 @@ Every table is owned by exactly one repository; there are no HUM0025
    Google provider-key -> `UserInfo` index from
    `IUserServiceRead.GetAllUserInfosAsync`. It has no repository; the
    last-run marker
-   (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is read/written
-   through `ISystemSettingsService` — a §15-compliant cross-section service
+   (`SettingKeys.DriveActivityMonitorLastRunAt`) is read/written
+   through `ISettingsService` — a §15-compliant cross-section service
    call, not a foreign repository read.
 
-7. **SystemSettings is owned by a single section/repository.**
-   The `SystemSetting` key/value table is owned by the SystemSettings
-   section's `SystemSettingsRepository`; consuming sections route through
-   `ISystemSettingsService` rather than touching the table from their own
+7. **Settings is owned by a single section/repository.**
+   The `system_settings` key/value table and `app_event_settings` are owned by the
+   Settings section's `Repository`; consuming sections route through
+   `ISettingsServiceRead` (writes via `ISettingsService`, declared with
+   `[CrossSectionWrite]`) rather than touching the tables from their own
    repository:
 
    | Key | Consuming section | Routed via |
    |-----|-------------------|------------|
-   | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISystemSettingsService` |
-   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISystemSettingsService` |
+   | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
+   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISettingsService` |
 
-   New keys should be added to `SystemSettingKeys` and accessed through
-   `ISystemSettingsService`.
+   New keys should be added to `SettingKeys` and accessed through
+   `ISettingsServiceRead` / `ISettingsService`. The app-wide event values are
+   read as `EventSettingsInfo` from `ISettingsServiceRead`; the entity never
+   leaves the section.
 
 8. **Cached read-models cover almost all per-key `IMemoryCache`
    entries.** Singleton decorators inheriting `TrackedCache<TKey, TValue>`

@@ -66,6 +66,20 @@ public class ShiftsControllerUserActiveSignupsTests
         _appSettings.GetEventSettingsByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
         _appSettings.GetEventSettingsByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
+        // Browsing-open is Shifts' own knob, read off the section's row rather than
+        // the app-wide DTO since nobodies-collective/Humans#1104 — without it the
+        // controller short-circuits to "BrowsingClosed" before building the model.
+        _shiftMgmt.GetActiveAsync().Returns(new EventSettings
+        {
+            Id = ActiveBurnId,
+            EventName = "Nowhere 2026",
+            Year = 2026,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 9),
+            IsShiftBrowsingOpen = true,
+            IsActive = true,
+        });
+
         _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId).Returns([]);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns([]);
         _shiftMgmt.GetTagsAsync().Returns([]);

@@ -5,8 +5,9 @@ using NodaTime;
 namespace Humans.Settings.Data;
 
 /// <summary>
-/// The one repository over the Settings section's two tables — <c>settings</c>
-/// (key/value) and <c>app_event_settings</c> (typed app-wide event settings).
+/// The one repository over the Settings section's two tables —
+/// <c>system_settings</c> (key/value) and <c>app_event_settings</c> (typed
+/// app-wide event settings).
 /// The interface stays and keeps its prefix (design §6a): <c>RepositoryTests</c>
 /// substitutes it.
 /// </summary>

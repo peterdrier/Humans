@@ -68,7 +68,7 @@ internal interface IShiftManagementService
     /// carries the app-wide values over to Settings reads this (#1104); it goes
     /// away with the old columns.
     /// </summary>
-    Task<IReadOnlyList<EventSettings>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventSettingsInfo>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Creates a new EventSettings. Validates only one IsActive=true.

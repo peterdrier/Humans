@@ -88,7 +88,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "Settings",
             "system_settings",
             CreateSectionContext<SettingsDbContext>,
-            """SELECT count(*) FROM settings WHERE "Key" = 'IsEmailSendingPaused'"""),
+            """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'"""),
         new(
             "Containers",
             "containers",
