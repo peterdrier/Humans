@@ -199,16 +199,13 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
             CreatedAt = e.CreatedAt,
             UpdatedAt = e.UpdatedAt,
             ClosedAt = e.ClosedAt,
+            // Unordered on purpose: display ordering belongs to the read model and the views,
+            // not here (memory/architecture/display-sort-in-controllers.md).
             Payments = e.Payments
-                .OrderBy(p => p.PaidOn)
-                .ThenBy(p => p.CreatedAt)
                 .Select(p => new VendorCommitmentPaymentDto(
                     p.Id, p.Amount, p.PaidOn, p.Reference, p.RecordedByUserId, p.CreatedAt))
                 .ToList(),
-            MatchCandidates = e.MatchCandidates
-                .OrderBy(c => c.DetectedAt)
-                .Select(ToDto)
-                .ToList(),
+            MatchCandidates = e.MatchCandidates.Select(ToDto).ToList(),
         };
 
     private static VendorCommitmentMatchCandidateDto ToDto(VendorCommitmentMatchCandidate c) =>

@@ -52,15 +52,21 @@ internal sealed class VendorCommitmentService(
         return all
             .Where(c => c.IsPaidAwaitingInvoice)
             .OrderByDescending(c => LiabilityWeight(c, now))
+            .ThenByDescending(c => c.TotalPaid)
             .ToList();
     }
 
-    /// <summary>Age in days × euros outstanding — the sort the liability list is defined by.</summary>
+    /// <summary>
+    /// Age × euros outstanding — the sort the liability list is defined by. Age counts from the
+    /// first payment out, since that is when the association started being owed an invoice. Days
+    /// are offset by one so the amount still discriminates on the day a payment is made; a bare
+    /// multiply would score every same-day liability zero, tiny and six-figure alike.
+    /// </summary>
     private static decimal LiabilityWeight(VendorCommitmentDto c, Instant now)
     {
         var oldestPayment = c.Payments.Count == 0 ? c.CreatedAt : c.Payments.Min(p => p.CreatedAt);
         var days = (decimal)Math.Max(0d, (now - oldestPayment).TotalDays);
-        return days * c.TotalPaid;
+        return (days + 1m) * c.TotalPaid;
     }
 
     public async Task<(ExpenseMutationResult Result, Guid? CommitmentId)> CreateAsync(

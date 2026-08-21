@@ -60,8 +60,13 @@ internal sealed record VendorCommitmentDto
     public bool IsPaidAwaitingInvoice =>
         TotalPaid > 0m && MatchedHoldedDocId is null && Status != VendorCommitmentStatus.Closed;
 
+    /// <summary>Unresolved review rows, oldest first — the order they are worked in.</summary>
     public IReadOnlyList<VendorCommitmentMatchCandidateDto> PendingCandidates =>
-        MatchCandidates.Where(c => c.ResolvedAt is null).ToList();
+        MatchCandidates.Where(c => c.ResolvedAt is null).OrderBy(c => c.DetectedAt).ToList();
+
+    /// <summary>Payments in the order they left the account.</summary>
+    public IReadOnlyList<VendorCommitmentPaymentDto> PaymentsByDate =>
+        Payments.OrderBy(p => p.PaidOn).ThenBy(p => p.CreatedAt).ToList();
 }
 
 /// <summary>What one matcher run did, for the operator's confirmation message.</summary>

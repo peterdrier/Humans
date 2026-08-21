@@ -1,0 +1,73 @@
+@model Humans.Expenses.Models.CommitmentAwaitingInvoiceViewModel
+@{
+    ViewData["Title"] = "Paid, Awaiting Invoice";
+    Layout = "_AdminLayout";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Vendor Commitments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Paid, Awaiting Invoice</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">Paid, Awaiting Invoice</h1>
+
+<p class="text-muted">
+    Money has left against these commitments and no purchase document backs it yet. Worst first:
+    ordered by age × amount, so an old large hole outranks a fresh small one.
+</p>
+
+@if (Model.Commitments.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="fa-solid fa-check me-2"></i>Every payment made has an invoice booked against it.
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <strong>@Model.TotalOutstanding.ToEuro()</strong> paid out across
+        <strong>@Model.Commitments.Count</strong>
+        @(Model.Commitments.Count == 1 ? "commitment" : "commitments") with no invoice on file.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Vendor</th>
+                    <th>Purpose</th>
+                    <th>Budget line</th>
+                    <th class="text-end">Committed</th>
+                    <th class="text-end">Paid</th>
+                    <th>Oldest payment</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Commitments)
+                {
+                    <tr>
+                        <td><a asp-action="Detail" asp-route-id="@c.Id">@c.VendorName</a></td>
+                        <td>@(c.Purpose is { Length: > 60 } p ? p[..60] + "…" : c.Purpose)</td>
+                        <td>
+                            @(c.BudgetCategoryId is { } cid && Model.CategoryNames.TryGetValue(cid, out var cat)
+                                ? cat
+                                : "")
+                        </td>
+                        <td class="text-end">@c.ExpectedAmount.ToEuro()</td>
+                        <td class="text-end fw-semibold">@c.TotalPaid.ToEuro()</td>
+                        <td>
+                            @if (c.Payments.Count > 0)
+                            {
+                                @c.Payments.Min(p => p.PaidOn).ToString("yyyy-MM-dd", null)
+                            }
+                        </td>
+                        <td><span class="badge @c.Status.GetBadgeClass()">@c.Status</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

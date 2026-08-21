@@ -1,0 +1,220 @@
+@model Humans.Expenses.Models.CommitmentDetailViewModel
+@{
+    var c = Model.Commitment;
+    ViewData["Title"] = $"Commitment — {c.VendorName}";
+    Layout = "_AdminLayout";
+    var pending = c.PendingCandidates;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Vendor Commitments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@c.VendorName</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@c.VendorName</h1>
+    <span class="badge @c.Status.GetBadgeClass() fs-6">@c.Status</span>
+</div>
+
+@if (pending.Count > 0)
+{
+    <div class="alert @(pending.Any(p => p.Kind == VendorCommitmentMatchKind.Duplicate) ? "alert-danger" : "alert-warning")">
+        <h5 class="alert-heading">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>@pending.Count waiting on your decision
+        </h5>
+        <p class="mb-3">
+            @* Nothing here was linked automatically — that is the point. A duplicate row means this
+               commitment is already invoiced and a second document matches it. *@
+            The matcher refused to choose. Link the right document or dismiss the row.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 bg-white">
+                <thead>
+                    <tr>
+                        <th>Why</th>
+                        <th>Document</th>
+                        <th>Holded contact</th>
+                        <th>Date</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end">Decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var candidate in pending)
+                    {
+                        <tr>
+                            <td>
+                                <span class="badge @(candidate.Kind == VendorCommitmentMatchKind.Duplicate ? "bg-danger" : "bg-warning text-dark")">
+                                    @(candidate.Kind == VendorCommitmentMatchKind.Duplicate ? "Possible duplicate" : "Ambiguous")
+                                </span>
+                            </td>
+                            <td>@candidate.HoldedDocNumber</td>
+                            <td>@candidate.ContactName</td>
+                            <td>@candidate.DocDate.ToString("yyyy-MM-dd", null)</td>
+                            <td class="text-end">@candidate.DocTotal.ToEuro()</td>
+                            <td class="text-end">
+                                <form asp-action="ResolveCandidate" asp-route-candidateId="@candidate.Id"
+                                      method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="commitmentId" value="@c.Id" />
+                                    <button type="submit" name="accepted" value="true"
+                                            class="btn btn-sm btn-outline-success">Link</button>
+                                    <button type="submit" name="accepted" value="false"
+                                            class="btn btn-sm btn-outline-secondary">Dismiss</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-header">Commitment</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Purpose</dt>
+                    <dd class="col-7">@c.Purpose</dd>
+
+                    <dt class="col-5">Budget line</dt>
+                    <dd class="col-7">@(Model.CategoryDisplayName ?? "—")</dd>
+
+                    <dt class="col-5">Committed</dt>
+                    <dd class="col-7">@c.ExpectedAmount.ToEuro()</dd>
+
+                    <dt class="col-5">Paid</dt>
+                    <dd class="col-7">@c.TotalPaid.ToEuro()</dd>
+
+                    <dt class="col-5">Outstanding</dt>
+                    <dd class="col-7 @(Model.Outstanding > 0 ? "fw-semibold" : "")">
+                        @Model.Outstanding.ToEuro()
+                    </dd>
+
+                    <dt class="col-5">Invoice</dt>
+                    <dd class="col-7">
+                        @if (c.MatchedHoldedDocNumber is { } docNumber)
+                        {
+                            <span class="text-success"><i class="fa-solid fa-check me-1"></i>@docNumber</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not yet matched</span>
+                        }
+                    </dd>
+
+                    <dt class="col-5">Quote</dt>
+                    <dd class="col-7">
+                        @if (c.QuoteFileName is { } quoteName)
+                        {
+                            <a asp-action="DownloadQuote" asp-route-id="@c.Id">@quoteName</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">None attached</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+            @if (Model.CanClose)
+            {
+                <div class="card-footer">
+                    <form asp-action="Close" asp-route-id="@c.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-dark">Close commitment</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        @if (c.QuoteFileName is null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">Attach the quote</div>
+                <div class="card-body">
+                    <form asp-action="UploadQuote" asp-route-id="@c.Id" method="post"
+                          enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <input type="file" name="quote" class="form-control"
+                                   accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                            <div class="form-text">PDF, JPEG, PNG or HEIC, up to 20 MB.</div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Upload</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Payments out</div>
+            <div class="card-body">
+                @if (c.Payments.Count == 0)
+                {
+                    <p class="text-muted mb-0">No payments recorded yet.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Paid on</th>
+                                    <th>Reference</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var payment in c.PaymentsByDate)
+                                {
+                                    <tr>
+                                        <td>@payment.PaidOn.ToString("yyyy-MM-dd", null)</td>
+                                        <td>@payment.Reference</td>
+                                        <td class="text-end">@payment.Amount.ToEuro()</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-semibold">
+                                    <td colspan="2">Total</td>
+                                    <td class="text-end">@c.TotalPaid.ToEuro()</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+            </div>
+            @if (Model.CanRecordPayment)
+            {
+                <div class="card-footer">
+                    <form asp-action="RecordPayment" asp-route-id="@c.Id" method="post" class="row g-2">
+                        @Html.AntiForgeryToken()
+                        <div class="col-sm-3">
+                            <label for="Amount" class="form-label">Amount</label>
+                            <input id="Amount" name="Amount" class="form-control" type="number"
+                                   step="0.01" min="0.01" required />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="PaidOn" class="form-label">Paid on</label>
+                            <input id="PaidOn" name="PaidOn" class="form-control" type="date" required />
+                        </div>
+                        <div class="col-sm-5">
+                            <label for="Reference" class="form-label">Reference</label>
+                            <input id="Reference" name="Reference" class="form-control" autocomplete="off" />
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-primary">Record payment</button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>

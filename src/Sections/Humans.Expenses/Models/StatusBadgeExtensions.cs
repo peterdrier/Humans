@@ -1,4 +1,5 @@
 using Humans.Expenses.Contracts;
+using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Models;
 
@@ -20,6 +21,15 @@ internal static class StatusBadgeExtensions
         ExpenseReportStatus.Submitted => "bg-primary",
         ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
         ExpenseReportStatus.Approved => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    internal static string GetBadgeClass(this VendorCommitmentStatus status) => status switch
+    {
+        VendorCommitmentStatus.PartiallyPaid => "bg-warning text-dark",
+        VendorCommitmentStatus.Paid => "bg-primary",
+        VendorCommitmentStatus.Invoiced => "bg-success",
+        VendorCommitmentStatus.Closed => "bg-dark",
         _ => "bg-secondary"
     };
 }
