@@ -83,9 +83,12 @@ public class ProcessAccountDeletionsJob(
                     }
 
                     // Audit AFTER the business save has succeeded, per design-rules §7a.
+                    // The description must not name the human: the audit log is retained
+                    // through erasure, so writing their display name here would re-seed
+                    // the identity the cascade just removed. The user id is the subject.
                     await auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), userId,
-                        $"Account anonymized (was {summary.OriginalDisplayName})",
+                        "Account anonymized",
                         nameof(ProcessAccountDeletionsJob));
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))

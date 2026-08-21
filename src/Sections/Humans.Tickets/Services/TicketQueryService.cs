@@ -28,6 +28,7 @@ internal sealed class TicketQueryService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IBurnSettingsService burnSettings,
+    ITicketCacheInvalidator cacheInvalidator,
     IClock clock) : ITicketService, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
@@ -929,6 +930,11 @@ internal sealed class TicketQueryService(
     {
         await ticketRepository.EraseUserPiiAsync(userId, ct);
         await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
+
+        // The order projection is a warmed singleton with no TTL and carries the
+        // buyer/attendee names and emails just tombstoned — without this the erased
+        // identity keeps being served from memory until the process restarts.
+        cacheInvalidator.InvalidateAll();
     }
 
     private static bool HasSearchTerm(

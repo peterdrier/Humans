@@ -42,6 +42,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<IBurnSettingsService>(),
+            Substitute.For<ITicketCacheInvalidator>(),
             SystemClock.Instance);
 
         // Default: no orders, no visible attendees

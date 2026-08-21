@@ -149,6 +149,10 @@ internal sealed partial class UserRepository
             profile.ConsentCheckNotes = null;
             profile.RejectionReason = null;
 
+            // Bank details. Deletion-only for the same reason as above — the merge
+            // fold keeps the source IBAN so the surviving account can still be paid.
+            profile.Iban = null;
+
             var languages = await ctx.ProfileLanguages
                 .Where(pl => pl.ProfileId == profile.Id)
                 .ToListAsync(ct);

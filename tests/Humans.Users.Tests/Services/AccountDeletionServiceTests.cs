@@ -34,6 +34,7 @@ public class AccountDeletionServiceTests
     private readonly IUserDataContributor _identityContributor = Substitute.For<IUserDataContributor>();
     private readonly IUserDataContributor _sectionContributor = Substitute.For<IUserDataContributor>();
     private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
+    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
@@ -73,6 +74,7 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             [_identityContributor, _sectionContributor],
             _ticketQueryService,
+            _userInfoInvalidator,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
             _shiftViewInvalidator,

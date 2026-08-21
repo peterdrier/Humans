@@ -118,6 +118,12 @@ internal sealed class GoogleSyncLogService(
                 logger.LogError(
                     "GDPR erasure could not suspend the Workspace account {Email} for user {UserId}: {Error}",
                     workspaceEmail, userId, result.ErrorMessage);
+
+                // Abort rather than continue: the Users contributor runs last and drops
+                // the address, so a swallowed failure here is unretryable — the mailbox
+                // stays live at the processor with nothing left to resolve it from.
+                throw new InvalidOperationException(
+                    $"GDPR erasure could not suspend Workspace account {workspaceEmail}: {result.ErrorMessage}");
             }
         }
 

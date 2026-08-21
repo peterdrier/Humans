@@ -213,7 +213,10 @@ internal sealed class AuditLogService(
             [GdprExportSections.AuditLog] =
                 "Retained: append-only record of processing activity (GDPR Art. 30) and the " +
                 "evidence trail for the erasure itself (Art. 17(3)(b), Art. 5(1)(f)). Rows key " +
-                "off a user id and carry no identity fields."
+                "off a user id; the free-text description of an action may still quote an " +
+                "identifier captured when that action happened (an email an admin verified, a " +
+                "name on a merge), and is kept under the same basis — redacting it would " +
+                "destroy the evidence value the retention exists for."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

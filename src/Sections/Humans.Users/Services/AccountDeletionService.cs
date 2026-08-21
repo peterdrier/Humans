@@ -23,6 +23,7 @@ internal sealed class AccountDeletionService(
     IRoleAssignmentService roleAssignmentService,
     IEnumerable<IUserDataContributor> erasureContributors,
     ITicketServiceRead ticketQueryService,
+    IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
@@ -140,8 +141,10 @@ internal sealed class AccountDeletionService(
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
-        // GDPR audit — right-of-access reads from the audit log.
-        var description = $"Admin-initiated purge: identity collapsed (was \"{displayName}\")";
+        // GDPR audit — right-of-access reads from the audit log. Like the scheduled
+        // path, the description must not name the human: the audit log survives
+        // erasure, so quoting the purged identity here would put it straight back.
+        const string description = "Admin-initiated purge: identity collapsed";
         if (actorId is Guid actor)
         {
             await auditLogService.LogAsync(
@@ -175,6 +178,10 @@ internal sealed class AccountDeletionService(
         await EraseEverySectionAsync(userId, ct);
 
         // Cross-section cache invalidations (each contributor drops its own; these are the shared ones).
+        // The UserInfo entry first: contributors are registered against the inner
+        // UserService, so nothing behind the caching decorator has seen these writes
+        // and admin search would keep matching the erased human by their real name.
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);

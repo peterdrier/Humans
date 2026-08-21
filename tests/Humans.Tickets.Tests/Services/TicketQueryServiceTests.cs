@@ -25,6 +25,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IBurnSettingsService _shiftManagementService = Substitute.For<IBurnSettingsService>();
+    private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -43,6 +44,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _userEmailService,
             _teamService,
             _shiftManagementService,
+            _cacheInvalidator,
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
