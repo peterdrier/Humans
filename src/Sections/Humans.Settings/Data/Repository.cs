@@ -1,5 +1,6 @@
 using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Settings.Data;
 
@@ -33,6 +34,57 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
         else
         {
             setting.Value = value;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.IsActive, ct);
+    }
+
+    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+    }
+
+    public async Task UpsertEventSettingsAsync(
+        EventSettings settings, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == settings.Id, ct);
+
+        if (existing is null)
+        {
+            settings.CreatedAt = now;
+            settings.UpdatedAt = now;
+            ctx.EventSettings.Add(settings);
+        }
+        else
+        {
+            existing.EventName = settings.EventName;
+            existing.Year = settings.Year;
+            existing.TimeZoneId = settings.TimeZoneId;
+            existing.GateOpeningDate = settings.GateOpeningDate;
+            existing.BuildStartOffset = settings.BuildStartOffset;
+            existing.EventEndOffset = settings.EventEndOffset;
+            existing.StrikeEndOffset = settings.StrikeEndOffset;
+            existing.FirstCrewStartOffset = settings.FirstCrewStartOffset;
+            existing.SetupWeekStartOffset = settings.SetupWeekStartOffset;
+            existing.PreEventWeekStartOffset = settings.PreEventWeekStartOffset;
+            existing.FinishingWeekendStartOffset = settings.FinishingWeekendStartOffset;
+            existing.EarlyEntryCapacity = settings.EarlyEntryCapacity;
+            existing.BarriosEarlyEntryAllocation = settings.BarriosEarlyEntryAllocation;
+            existing.EarlyEntryClose = settings.EarlyEntryClose;
+            existing.IsActive = settings.IsActive;
+            existing.UpdatedAt = now;
         }
 
         await ctx.SaveChangesAsync(ct);

@@ -3,6 +3,7 @@ using System;
 using Humans.Settings.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Settings.Data.Migrations
 {
     [DbContext(typeof(SettingsDbContext))]
-    partial class SettingsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260821105136_RenameSystemSettingsTableToSettings")]
+    partial class RenameSystemSettingsTableToSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

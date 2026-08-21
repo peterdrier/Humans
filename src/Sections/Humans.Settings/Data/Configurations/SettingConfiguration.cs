@@ -8,7 +8,7 @@ internal sealed class SettingConfiguration : IEntityTypeConfiguration<Setting>
 {
     public void Configure(EntityTypeBuilder<Setting> builder)
     {
-        builder.ToTable("system_settings");
+        builder.ToTable("settings");
 
         builder.HasKey(e => e.Key);
 

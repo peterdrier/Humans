@@ -28,8 +28,11 @@ public sealed class Section : ISection
         // every method opens its own short-lived DbContext.
         services.AddSingleton<ISettingsRepository, Repository>();
 
-        // ISettingsService is the section's Contracts/ surface — Email and
-        // GoogleIntegration both call it — so unlike Store the interface stays (§6a).
+        // Both interfaces resolve the same implementation: outside sections take
+        // ISettingsServiceRead, the ones that genuinely write take ISettingsService
+        // and declare it with [CrossSectionWrite]
+        // (memory/architecture/section-read-write-split.md).
         services.AddScoped<ISettingsService, Service>();
+        services.AddScoped<ISettingsServiceRead>(sp => sp.GetRequiredService<ISettingsService>());
     }
 }

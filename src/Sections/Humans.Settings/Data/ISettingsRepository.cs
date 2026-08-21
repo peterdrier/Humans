@@ -1,14 +1,28 @@
 using Humans.Base.Interfaces.Repositories;
+using Humans.Settings.Domain;
+using NodaTime;
 
 namespace Humans.Settings.Data;
 
 /// <summary>
-/// Repository for the <c>settings</c> table. The interface stays and keeps
-/// its prefix (design §6a): <c>RepositoryTests</c> substitutes it.
+/// The one repository over the Settings section's two tables — <c>settings</c>
+/// (key/value) and <c>app_event_settings</c> (typed app-wide event settings).
+/// The interface stays and keeps its prefix (design §6a): <c>RepositoryTests</c>
+/// substitutes it.
 /// </summary>
 internal interface ISettingsRepository : IRepository
 {
     Task<string?> GetValueAsync(string key, CancellationToken ct = default);
 
     Task SetValueAsync(string key, string value, CancellationToken ct = default);
+
+    Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default);
+
+    Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Inserts the row when its id is unknown, otherwise updates it in place.
+    /// <paramref name="now"/> stamps <c>UpdatedAt</c>, and <c>CreatedAt</c> on insert.
+    /// </summary>
+    Task UpsertEventSettingsAsync(EventSettings settings, Instant now, CancellationToken ct = default);
 }

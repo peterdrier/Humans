@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Monitor.Contracts;
 using NodaTime;
@@ -11,6 +12,7 @@ namespace Humans.Monitor.Services;
 /// <summary>
 /// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
 /// </summary>
+[CrossSectionWrite("Monitor stamps its own last-run marker into the Settings key/value store.")]
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceService teamResourceService,

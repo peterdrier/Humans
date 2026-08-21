@@ -1,5 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Email.Data;
+using Humans.Base.Attributes;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using Humans.Settings.Contracts;
@@ -18,6 +19,7 @@ namespace Humans.Email.Services;
 /// retention cutoff <c>CleanupEmailOutboxJob</c> drives through
 /// <see cref="IEmailOutboxRetention"/>.
 /// </summary>
+[CrossSectionWrite("Email owns the IsEmailSendingPaused flag; the Settings key/value store is where it is kept.")]
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,

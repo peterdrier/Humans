@@ -6,8 +6,9 @@ namespace Humans.Settings.Data;
 
 /// <summary>
 /// Per-section database context for the Settings section
-/// (nobodies-collective/Humans#858): maps only <c>settings</c>, with its
-/// own <c>__EFMigrationsHistory_Settings</c> table and migrations under
+/// (nobodies-collective/Humans#858): maps <c>settings</c> (the app-wide key/value
+/// store) and <c>app_event_settings</c> (the typed app-wide event settings), with
+/// its own <c>__EFMigrationsHistory_Settings</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
 /// </summary>
@@ -21,10 +22,13 @@ internal sealed class SettingsDbContext(DbContextOptions<SettingsDbContext> opti
 {
     public DbSet<Setting> Settings => Set<Setting>();
 
+    public DbSet<EventSettings> EventSettings => Set<EventSettings>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         builder.ApplyConfiguration(new SettingConfiguration());
+        builder.ApplyConfiguration(new EventSettingsConfiguration());
     }
 }
