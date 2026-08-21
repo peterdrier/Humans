@@ -95,6 +95,17 @@ public sealed class SurveyBuilderViewModelTests
         roundTripped.Options.Select(option => option.Value).Should().ContainInOrder("morning", "afternoon");
     }
 
+    [HumansFact]
+    public void Grid_configuration_does_not_invent_an_omitted_selection_mode()
+    {
+        var vm = new SurveyQuestionBuilderViewModel
+        {
+            Type = SurveyQuestionType.Grid,
+        };
+
+        vm.ToInput(0).GridSelectionMode.Should().BeNull();
+    }
+
     private static LocalizedText L(string value)
         => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
 }

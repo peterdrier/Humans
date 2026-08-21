@@ -58,16 +58,7 @@ internal sealed class SurveyService(
         var input = new SurveyEditInput(
             s.Title, s.Intro, s.ThankYou, s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
             s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
-            s.Questions
-                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-                .Select(q => new QuestionInput(
-                    q.Id, q.PageNumber, q.Order, q.Type, q.Prompt, q.HelpText, q.IsRequired,
-                    q.RatingMin, q.RatingMax, q.RatingMinLabel, q.RatingMaxLabel, q.ShowIf,
-                    q.Options.OrderBy(o => o.Order)
-                        .Select(o => new OptionInput(o.Id, o.Order, o.Value, o.Label)).ToList(),
-                    q.GridSelectionMode,
-                    q.GridRows?.Select(row => new GridRowInput(row.Value, row.Label)).ToList()))
-                .ToList());
+            ToQuestionInputs(s));
 
         return new SurveyDetail(s.Id, s.Status, input);
     }
@@ -486,7 +477,20 @@ internal sealed class SurveyService(
 
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
-        // Load the definition so branching can be re-evaluated authoritatively at submit time.
+        var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.MissingRequired.Count > 0)
+        {
+            throw new InvalidOperationException("Required survey questions are unanswered.");
+        }
+
+        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
+    }
+
+    private async Task<SubmissionPreparation> PrepareSubmissionAsync(
+        SurveySubmission submission, CancellationToken ct)
+    {
+        // Load one authoritative definition for branching, normalization, required validation, and
+        // persistence preparation. The caller must persist the returned answers without reloading it.
         var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
 
@@ -509,7 +513,27 @@ internal sealed class SurveyService(
 
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
         var visibleAnswers = VisibleAnswers(survey, submission.Answers);
+        var questions = ToQuestionInputs(survey);
+        var answerStates = visibleAnswers.ToDictionary(
+            answer => answer.QuestionId,
+            answer => new AnswerState(
+                answer.SelectedOptionValues,
+                answer.TextValue,
+                answer.RatingValue,
+                answer.GridSelections));
+        var allVisible = SurveyWizardFlow.OrderedPages(questions)
+            .SelectMany(page => SurveyWizardFlow.VisibleQuestionsOnPage(questions, page, answerStates))
+            .ToList();
+        var missingRequired = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
 
+        return new SubmissionPreparation(visibleAnswers, questions, missingRequired);
+    }
+
+    private async Task PersistResponseAsync(
+        SurveySubmission submission,
+        IReadOnlyList<SurveyAnswerInput> visibleAnswers,
+        CancellationToken ct)
+    {
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:
@@ -718,8 +742,10 @@ internal sealed class SurveyService(
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.ValidationFailed, missingBeforeSubmit);
         }
 
-        // No further visible page ⇒ submit. Identity columns are written only for Identified (see SubmitResponseAsync).
-        await SubmitResponseAsync(new SurveySubmission(
+        // Reload once at the submission boundary, then validate and persist against that same
+        // authoritative definition. If the schema changed after the wizard validation above,
+        // return the respondent to the first newly incomplete required question.
+        var submission = new SurveySubmission(
             state.SurveyId,
             state.InvitationId,
             state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
@@ -727,7 +753,22 @@ internal sealed class SurveyService(
             state.Anonymity,
             state.InputMethod,
             state.Culture,
-            SurveyWizardFlow.ToAnswerInputs(state.Answers)), ct);
+            SurveyWizardFlow.ToAnswerInputs(state.Answers));
+        var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.MissingRequired.Count > 0)
+        {
+            ReplaceWizardAnswers(state, prepared.VisibleAnswers);
+            var missingIds = prepared.MissingRequired.ToHashSet();
+            state.CurrentPage = prepared.Questions
+                .Where(question => question.Id is { } id && missingIds.Contains(id))
+                .Min(question => question.PageNumber);
+            return new SurveyWizardAdvanceResult(
+                SurveyWizardOutcome.ValidationFailed,
+                prepared.MissingRequired);
+        }
+
+        // No further visible page ⇒ submit. Identity columns are written only for Identified.
+        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
 
         return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
@@ -1082,6 +1123,58 @@ internal sealed class SurveyService(
             selection => (IReadOnlyList<string>)selection.Value.ToList(),
             StringComparer.Ordinal);
 
+    private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
+        => survey.Questions
+            .OrderBy(question => question.PageNumber)
+            .ThenBy(question => question.Order)
+            .Select(question => new QuestionInput(
+                question.Id,
+                question.PageNumber,
+                question.Order,
+                question.Type,
+                question.Prompt,
+                question.HelpText,
+                question.IsRequired,
+                question.RatingMin,
+                question.RatingMax,
+                question.RatingMinLabel,
+                question.RatingMaxLabel,
+                question.ShowIf,
+                question.Options
+                    .OrderBy(option => option.Order)
+                    .Select(option => new OptionInput(
+                        option.Id,
+                        option.Order,
+                        option.Value,
+                        option.Label))
+                    .ToList(),
+                question.GridSelectionMode,
+                question.GridRows?
+                    .Select(row => new GridRowInput(row.Value, row.Label))
+                    .ToList()))
+            .ToList();
+
+    private static void ReplaceWizardAnswers(
+        SurveyWizardState state,
+        IReadOnlyList<SurveyAnswerInput> answers)
+    {
+        state.Answers.Clear();
+        foreach (var answer in answers)
+        {
+            state.Answers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                GridSelections = answer.GridSelections?.ToDictionary(
+                        pair => pair.Key,
+                        pair => pair.Value.ToList(),
+                        StringComparer.Ordinal)
+                    ?? new Dictionary<string, List<string>>(StringComparer.Ordinal),
+                TextValue = answer.TextValue,
+                RatingValue = answer.RatingValue,
+            };
+        }
+    }
+
     /// <summary>
     /// Keeps only the answers to questions visible under full cascading branching: an answer on a
     /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
@@ -1127,6 +1220,11 @@ internal sealed class SurveyService(
             })
             .ToList();
     }
+
+    private sealed record SubmissionPreparation(
+        IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
+        IReadOnlyList<QuestionInput> Questions,
+        IReadOnlyList<Guid> MissingRequired);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer

@@ -73,7 +73,7 @@
             <div class="mb-2">
                 <label class="form-label small fw-semibold" for="grid-mode-@key">Selections per row</label>
                 <select id="grid-mode-@key" name="@(prefix).GridSelectionMode" class="form-select form-select-sm w-auto">
-                    @if (q.GridSelectionMode == GridSelectionMode.Single)
+                    @if ((q.GridSelectionMode ?? GridSelectionMode.Single) == GridSelectionMode.Single)
                     {
                         <option value="@GridSelectionMode.Single" selected>One choice</option>
                     }

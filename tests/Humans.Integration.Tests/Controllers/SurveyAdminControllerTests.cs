@@ -129,6 +129,34 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
     }
 
     [HumansFact(Timeout = 60000)]
+    public async Task Save_rejects_grid_when_selection_mode_is_omitted()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var createResp = await Client.GetAsync("/Survey/Admin/Create", ct);
+        var token = ExtractAntiForgeryToken(await createResp.Content.ReadAsStringAsync(ct));
+
+        var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", token!),
+            ("Title[en]", $"Grid missing mode {Guid.NewGuid():N}"),
+            ("Questions.Index", "grid"),
+            ("Questions[grid].Id", Guid.NewGuid().ToString()),
+            ("Questions[grid].PageNumber", "1"),
+            ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].Prompt[en]", "When can you attend?"),
+            ("Questions[grid].Options.Index", "column"),
+            ("Questions[grid].Options[column].Value", "column-1"),
+            ("Questions[grid].Options[column].Label[en]", "Available"),
+            ("Questions[grid].GridRows.Index", "row"),
+            ("Questions[grid].GridRows[row].Value", "row-1"),
+            ("Questions[grid].GridRows[row].Label[en]", "Monday")), ct);
+
+        saveResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await saveResp.Content.ReadAsStringAsync(ct))
+            .Should().Contain("must choose a selection mode");
+    }
+
+    [HumansFact(Timeout = 60000)]
     public async Task Save_adds_grid_with_client_generated_ids_to_existing_survey()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

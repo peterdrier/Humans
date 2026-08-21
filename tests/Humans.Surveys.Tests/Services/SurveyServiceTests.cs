@@ -1151,6 +1151,33 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SubmitResponseAsync_rejects_an_incomplete_required_grid()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        var grid = GridQuestion(Guid.NewGuid(), survey.Id, GridSelectionMode.Single);
+        grid.IsRequired = true;
+        survey.Questions = [grid];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [new SurveyAnswerInput(
+                grid.Id, [], null, null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["monday"] = ["morning"],
+                })]);
+
+        var act = async () => await CreateService()
+            .SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Required survey questions*");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SubmitResponseAsync_drops_answers_to_questions_hidden_by_branching()
     {
         var gate = Guid.NewGuid();
@@ -1507,6 +1534,54 @@ public class SurveyServiceTests
         result.MissingRequired.Should().ContainSingle().Which.Should().Be(gridId);
         state.CurrentPage.Should().Be(1);
         state.Answers[gridId.ToString()].GridSelections.Keys.Should().ContainSingle().Which.Should().Be("monday");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_revalidates_the_definition_reloaded_for_submission()
+    {
+        var gridId = Guid.NewGuid();
+        var initial = SurveyWith(SurveyStatus.Open, null, null);
+        var initialGrid = GridQuestion(gridId, initial.Id, GridSelectionMode.Single);
+        initialGrid.IsRequired = true;
+        initialGrid.GridRows = [new SurveyGridRow("monday", L("Monday"))];
+        initial.Questions = [initialGrid];
+
+        var reloaded = new Survey
+        {
+            Id = initial.Id,
+            Title = initial.Title,
+            DefaultCulture = initial.DefaultCulture,
+            Status = SurveyStatus.Open,
+        };
+        var reloadedGrid = GridQuestion(gridId, reloaded.Id, GridSelectionMode.Single);
+        reloadedGrid.IsRequired = true;
+        reloaded.Questions = [reloadedGrid];
+        _repo.GetByIdAsync(initial.Id, Arg.Any<CancellationToken>())
+            .Returns(initial, reloaded);
+
+        var state = WizardState(initial.Id);
+        state.Started = true;
+        var posted = new SurveyAnswerInput(
+            gridId, [], null, null,
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                ["monday"] = ["morning"],
+            });
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state,
+            page: 1,
+            back: false,
+            [posted],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().ContainSingle().Which.Should().Be(gridId);
+        state.CurrentPage.Should().Be(1);
+        state.Answers[gridId.ToString()].GridSelections.Keys
+            .Should().ContainSingle().Which.Should().Be("monday");
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

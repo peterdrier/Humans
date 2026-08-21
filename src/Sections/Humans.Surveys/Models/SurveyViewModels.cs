@@ -211,7 +211,7 @@ internal sealed class SurveyQuestionBuilderViewModel
     public int? RatingMax { get; set; }
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
-    public GridSelectionMode GridSelectionMode { get; set; } = GridSelectionMode.Single;
+    public GridSelectionMode? GridSelectionMode { get; set; }
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
@@ -249,7 +249,7 @@ internal sealed class SurveyQuestionBuilderViewModel
         ShowIfCombine = q.ShowIf?.Combine ?? BranchCombine.All,
         ShowIfClauses = q.ShowIf?.Clauses.Select(SurveyBranchClauseBuilderViewModel.FromClause).ToList() ?? [],
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
-        GridSelectionMode = q.GridSelectionMode ?? GridSelectionMode.Single,
+        GridSelectionMode = q.GridSelectionMode ?? Humans.Surveys.Domain.GridSelectionMode.Single,
         GridRows = q.GridRows?.Select(SurveyGridRowBuilderViewModel.FromInput).ToList() ?? [],
     };
 
