@@ -1,7 +1,7 @@
 using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +21,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsServiceRead>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = await sp.GetRequiredService<IBurnSettingsService>().GetActiveAsync(ct);
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 

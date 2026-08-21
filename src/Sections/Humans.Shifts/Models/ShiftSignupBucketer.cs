@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
@@ -21,7 +20,7 @@ internal static class ShiftSignupBucketer
 
     internal static ShiftSignupBuckets Build(
         IReadOnlyList<ShiftSignup> signups,
-        EventSettingsInfo? eventSettings,
+        BurnSettingsInfo? eventSettings,
         IReadOnlyDictionary<Guid, string> teamNames,
         Instant now,
         bool includeOtherStatusesInPast = true,

@@ -7,7 +7,7 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
@@ -18,7 +18,7 @@ namespace Humans.Events.Services;
 
 internal sealed class EventService(
     IEventRepository repo,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     IUserServiceRead userService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
@@ -26,7 +26,7 @@ internal sealed class EventService(
     ILogger<EventService> logger)
     : IEventService, IUserDataContributor, ICalendarFeedContributor
 {
-    // EventSettings is owned by Shifts; cross via ISettingsServiceRead supplier API (§2c, #719).
+    // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
 
     public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
     {
@@ -37,8 +37,8 @@ internal sealed class EventService(
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Shifts-owned event_settings row via
-        // ISettingsServiceRead (cross-section supplier API, §2c / #719).
-        var burn = await appSettings.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
+        // IBurnSettingsService (cross-section supplier API, §2c / #719).
+        var burn = await burnSettings.GetByIdAsync(settings.EventSettingsId, ct);
         return new EventGuideSettingsView(
             Id: settings.Id,
             EventSettingsId: settings.EventSettingsId,
@@ -51,22 +51,22 @@ internal sealed class EventService(
             UpdatedAt: settings.UpdatedAt);
     }
 
-    public async Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
     {
         // Invariant: at most one active burn; singleton list keeps admin picker forward-compatible.
-        var active = await appSettings.GetActiveEventSettingsAsync(ct);
+        var active = await burnSettings.GetActiveAsync(ct);
         return active is null ? [] : [active];
     }
 
-    public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-        => appSettings.GetEventSettingsByIdAsync(id, ct);
+    public Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
+        => burnSettings.GetByIdAsync(id, ct);
 
     public async Task SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default)
     {
-        var burn = await appSettings.GetEventSettingsByIdAsync(eventSettingsId, ct)
+        var burn = await burnSettings.GetByIdAsync(eventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {eventSettingsId} not found.");
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
@@ -769,9 +769,9 @@ internal sealed class EventService(
         if (approved.Count == 0) return [];
 
         // Recurrence expansion needs the burn's gate date + timezone, stitched
-        // cross-section via ISettingsServiceRead (§2c) like the guide settings view.
+        // cross-section via IBurnSettingsService (§2c) like the guide settings view.
         var guideSettings = await repo.GetGuideSettingsAsync(ct);
-        var burn = guideSettings is null ? null : await appSettings.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
+        var burn = guideSettings is null ? null : await burnSettings.GetByIdAsync(guideSettings.EventSettingsId, ct);
         var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         if (burn is not null && tz is null)
         {

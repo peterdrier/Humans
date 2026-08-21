@@ -39,8 +39,7 @@
     VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
     leaf member that used to return one returns a flat projection instead
     (ShiftUserSummary, UrgentShiftInfo / ShiftInfo / RotaInfo, ShiftVolunteerProfileInfo,
-    and Guid ids on the seeding verbs). The app-wide event values are Settings'
-    EventSettingsInfo, published from Humans.Settings.Contracts.
+    BurnSettingsInfo, and Guid ids on the seeding verbs).
   -->
 
   <ItemGroup>

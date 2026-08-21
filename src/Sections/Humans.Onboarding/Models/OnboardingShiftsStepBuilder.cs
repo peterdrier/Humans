@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 
 namespace Humans.Onboarding.Models;
@@ -26,7 +25,7 @@ internal static class OnboardingShiftsStepBuilder
     internal const string PriorityAll = "all";
 
     internal static ShiftsStepViewModel Build(
-        EventSettingsInfo eventSettings,
+        BurnSettingsInfo eventSettings,
         IReadOnlyList<UrgentShiftInfo> allShifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,

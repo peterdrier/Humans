@@ -4,7 +4,6 @@ using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
@@ -66,12 +65,12 @@ public class ShiftsControllerDietaryGateTests
         _shiftView.GetUserAsync(_user.Id, Arg.Any<CancellationToken>())
             .Returns(new ShiftUserView(_user.Id, null, null, null, [], []));
 
-        var appSettings = Substitute.For<ISettingsServiceRead>();
-        var builder = new ShiftBrowsePageBuilder(_shiftMgmt, appSettings, _teamService);
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        var builder = new ShiftBrowsePageBuilder(_shiftMgmt, burnSettings, _teamService);
 
         _controller = new ShiftsController(
             _shiftMgmt,
-            appSettings,
+            burnSettings,
             _signupService,
             _volunteerTrackingService,
             _shiftView,

@@ -3,7 +3,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -133,29 +132,6 @@ internal sealed class ShiftManagementService(
 
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
         repo.GetEventSettingsByIdAsync(id);
-
-    public async Task<IReadOnlyList<EventSettingsInfo>> GetAllAsync(CancellationToken ct = default) =>
-        [.. (await repo.GetAllEventSettingsAsync(ct)).Select(ToInfo)];
-
-    private static EventSettingsInfo ToInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null
-            : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose,
-        IsActive: src.IsActive);
 
     public async Task CreateAsync(EventSettings entity)
     {
@@ -359,7 +335,7 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<ShiftSummary?> BuildSummaryAsync(
-        EventSettingsInfo activeEvent,
+        BurnSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default)

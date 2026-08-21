@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
@@ -52,7 +51,7 @@ public class GateServiceTests
 
     private readonly ITicketServiceRead _tickets = Substitute.For<ITicketServiceRead>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
-    private readonly ISettingsServiceRead _burn = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _burn = Substitute.For<IBurnSettingsService>();
     private readonly IShiftManagementServiceRead _shifts = Substitute.For<IShiftManagementServiceRead>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
@@ -65,7 +64,7 @@ public class GateServiceTests
         GateDb = new GateDbContext(_dbOptions);
         GateDbFactory = new TestDbContextFactory<GateDbContext>(_dbOptions);
 
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
@@ -207,7 +206,7 @@ public class GateServiceTests
     // ── Attendance projection (admit → participation Attended) ──────────────
 
     private void StubActiveEvent(int year = 2026) =>
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
             eventName: "Test",
             year: year,
             gateOpeningDate: new LocalDate(year, 3, 1)));
@@ -468,7 +467,7 @@ public class GateServiceTests
         Guid alice = Guid.NewGuid(), bob = Guid.NewGuid(), carol = Guid.NewGuid(),
              dave = Guid.NewGuid(), eve = Guid.NewGuid();
 
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
             eventName: "Test",
             gateOpeningDate: new LocalDate(2026, 3, 1)));
         _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>
@@ -495,7 +494,7 @@ public class GateServiceTests
     [HumansFact]
     public async Task GetShiftRoster_NoActiveEvent_ReturnsEmpty()
     {
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         (await _svc.GetShiftRosterAsync(Guid.NewGuid())).Should().BeEmpty();
     }

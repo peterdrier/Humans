@@ -1,6 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Campaigns.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
@@ -29,7 +29,7 @@ internal sealed class TicketSyncService(
     IUserServiceRead userServiceRead,
     IUserService userService,
     ICampaignService campaignService,
-    ISettingsServiceRead appSettings) : ITicketSyncService, IUserMerge
+    IBurnSettingsService burnSettings) : ITicketSyncService, IUserMerge
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
@@ -428,7 +428,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 

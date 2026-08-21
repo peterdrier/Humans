@@ -1,22 +1,22 @@
-@model Humans.Shifts.Services.AppEventSettingsMoveSnapshot
+@model Humans.Settings.Services.EventSettingsCarrySnapshot
 @{
-    ViewData["Title"] = "Carry Event Settings to Settings";
+    ViewData["Title"] = "Carry event settings";
     Layout = "_AdminLayout";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Carry Event Settings to Settings</h1>
+    <h1>Carry event settings</h1>
     <small class="text-muted">Issue #1104</small>
 </div>
 
 <p class="text-muted">
-    The app-wide event values (public year, event name, timezone, gate-opening
-    date, build calendar, early-entry window and capacity) now live in the
-    Settings section. This screen copies them off the Shifts rows, keeping each
-    row's id so <code>Rota.EventSettingsId</code> still resolves. Run it once
-    after deploy — until then Settings has no active event and the shift, gate
-    and store pages read as "no active event". Idempotent: rows already in
-    Settings are left untouched, so it is safe to re-run.
+    Copies the app-wide event values — public year, event name, timezone,
+    gate-opening date, build calendar, early-entry window and capacity — off the
+    Shifts rows into this section's own table, keeping each row's id so
+    <code>Rota.EventSettingsId</code> still resolves. Nothing reads this table
+    yet, so running it changes nothing users can see; it is the step that has to
+    happen before anything can be pointed at it. Idempotent: rows already here
+    are left untouched, so it is safe to re-run.
 </p>
 
 <div class="row g-3 mb-4">
@@ -31,7 +31,7 @@
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Already in Settings</h6>
+                <h6 class="card-subtitle text-muted mb-2">Already carried</h6>
                 <p class="h2 mb-0 text-success">@Model.CarriedCount</p>
             </div>
         </div>
@@ -53,8 +53,8 @@
         @if (Model.RemainingCount == 0)
         {
             <p class="mb-0">
-                Every Shifts event row is in Settings. The old columns can be
-                retired in the follow-up step.
+                Every Shifts event row is here. Pointing the sections at this
+                table, and retiring the old columns, are the follow-up steps.
             </p>
         }
         else
@@ -63,7 +63,7 @@
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-primary">
                     <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>
-                    Carry @Model.RemainingCount event row@(Model.RemainingCount == 1 ? "" : "s") into Settings
+                    Carry @Model.RemainingCount event row@(Model.RemainingCount == 1 ? "" : "s") across
                 </button>
             </form>
         }
@@ -79,7 +79,7 @@
                 .Column("Event", r => r.EventName)
                 .Column("Year", r => r.Year)
                 .Column("Active", r => r.IsActive ? "Yes" : "No")
-                .Column("In Settings", r => r.AlreadyCarried ? "Yes" : "No")
+                .Column("Carried", r => r.AlreadyCarried ? "Yes" : "No")
                 .Build();
         }
         <partial name="_Table" model="carryTable" />

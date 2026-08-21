@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +28,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
     private readonly IUserService _userService;
-    private readonly ISettingsServiceRead _shiftManagementService;
+    private readonly IBurnSettingsService _shiftManagementService;
     private readonly ITicketRepository _ticketRepository;
     private readonly TicketSyncService _service;
 
@@ -48,7 +48,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
-        _shiftManagementService = Substitute.For<ISettingsServiceRead>();
+        _shiftManagementService = Substitute.For<IBurnSettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory);
 

@@ -77,7 +77,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | VolunteerTagPreferences | R (via repo) |
 | GeneralAvailability | R (via `IVolunteerTrackingRepository`, GDPR export) |
 
-Cross-section calls via `IShiftManagementService`, `ISettingsServiceRead`,
+Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
 (lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).
@@ -154,21 +154,18 @@ Implements `IShiftView`, `IShiftViewInvalidator`. Resolves the inner
 Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
 Both cache instances are surfaced on `/Debug/CacheStats`.
 
-### AppEventSettingsMoveService (Scoped)
+### BurnSettingsService (Scoped)
 
-No repository — an orchestrator over `IShiftManagementService` (this
-section's rows) and `ISettingsService` (the destination, hence
-`[CrossSectionWrite]`).
+Repository: `IShiftManagementRepository` (read-only — fetches `EventSettings`).
 
 | Table | R/W |
 |-------|-----|
-| EventSettings | R (via `IShiftManagementService.GetAllAsync`) |
+| EventSettings | R |
 
-Backs `/Shifts/Admin/EventSettingsCarry`, the operator screen that carried
-the app-wide event values into Settings' `app_event_settings`
-(nobodies-collective/Humans#1104). Writes only rows Settings does not
-already hold, keeping each row's `Id`; idempotent and re-runnable. Retires
-with the old columns.
+Read-only adapter mapping `EventSettings` → `BurnSettingsInfo` DTO at the
+section boundary. Exposes `IBurnSettingsService` for cross-section
+consumers that need active-event metadata without coupling to the full
+shifts surface. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 

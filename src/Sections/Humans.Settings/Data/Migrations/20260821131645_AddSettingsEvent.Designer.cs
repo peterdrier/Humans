@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Settings.Data.Migrations
 {
     [DbContext(typeof(SettingsDbContext))]
-    [Migration("20260821105115_AddAppEventSettings")]
-    partial class AddAppEventSettings
+    [Migration("20260821131645_AddSettingsEvent")]
+    partial class AddSettingsEvent
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -65,14 +65,16 @@ namespace Humans.Settings.Data.Migrations
                     b.Property<LocalDate>("GateOpeningDate")
                         .HasColumnType("date");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("PreEventWeekStartOffset")
                         .HasColumnType("integer");
 
                     b.Property<int>("SetupWeekStartOffset")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<int>("StrikeEndOffset")
                         .HasColumnType("integer");
@@ -90,9 +92,9 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("Status");
 
-                    b.ToTable("app_event_settings", (string)null);
+                    b.ToTable("settings_event", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Settings.Domain.Setting", b =>

@@ -47,6 +47,9 @@ public sealed class Section : ISection
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftManagementService>());
 
+        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings — see #719.
+        services.AddScoped<IBurnSettingsService, BurnSettingsService>();
+
         services.AddScoped<ShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftSignupService>());
         services.AddScoped<IShiftSignups>(sp => sp.GetRequiredService<ShiftSignupService>());
@@ -89,10 +92,6 @@ public sealed class Section : ISection
 
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
-
-        // Operator screen that carries the app-wide event values into Settings (#1104).
-        // Retires with the old columns.
-        services.AddScoped<IAppEventSettingsMoveService, AppEventSettingsMoveService>();
 
         // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
         // SectionPolicies. CampComplianceAccessHandler moved to Camps — policy, consumers,

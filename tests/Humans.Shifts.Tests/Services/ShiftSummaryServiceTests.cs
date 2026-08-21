@@ -3,7 +3,6 @@ using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
@@ -36,7 +35,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     // Scenario ids. The entity is what the repository reads; _burn is the
     // cross-section DTO BuildSummaryAsync now takes (same Id, same calendar).
     private readonly EventSettings _event;
-    private readonly EventSettingsInfo _burn;
+    private readonly BurnSettingsInfo _burn;
     private readonly Guid _powerId = Guid.NewGuid();
     private readonly Guid _subId = Guid.NewGuid();
     private readonly Guid _waterId = Guid.NewGuid();
@@ -64,7 +63,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             IsActive = true
         };
 
-        _burn = new EventSettingsInfo(
+        _burn = new BurnSettingsInfo(
             Id: _event.Id,
             EventName: _event.EventName,
             Year: 2026,
@@ -79,7 +78,8 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             FinishingWeekendStartOffset: _event.FinishingWeekendStartOffset,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: _event.EarlyEntryClose);
+            EarlyEntryClose: _event.EarlyEntryClose,
+            IsShiftBrowsingOpen: _event.IsShiftBrowsingOpen);
 
         SeedScenario();
 

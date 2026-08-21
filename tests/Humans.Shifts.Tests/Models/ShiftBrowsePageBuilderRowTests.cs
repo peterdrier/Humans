@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Models;
@@ -20,10 +19,10 @@ public class ShiftBrowsePageBuilderRowTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
-    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
-    private static readonly EventSettingsInfo Event = new(
+    private static readonly BurnSettingsInfo Event = new(
         Id: Guid.NewGuid(),
         EventName: "Test Event 2026",
         Year: 2026,
@@ -38,7 +37,8 @@ public class ShiftBrowsePageBuilderRowTests
         FinishingWeekendStartOffset: -3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     [HumansFact]
     public async Task BuildRowAsync_ReturnsMappedItem_AndCallerSignupStatus()
@@ -60,7 +60,7 @@ public class ShiftBrowsePageBuilderRowTests
             remainingSlots: 2,
             signups: [new ShiftSignupInfo(userId, "Tester", SignupStatus.Confirmed)]);
 
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
             .Returns([urgent]);
 
@@ -77,7 +77,7 @@ public class ShiftBrowsePageBuilderRowTests
             }
         };
 
-        var builder = new ShiftBrowsePageBuilder(_shiftManagement, _appSettings, _teamService);
+        var builder = new ShiftBrowsePageBuilder(_shiftManagement, _burnSettings, _teamService);
 
         var result = await builder.BuildRowAsync(
             shiftId, userSignups, isPrivileged: false, Xunit.TestContext.Current.CancellationToken);

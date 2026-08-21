@@ -25,7 +25,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -58,7 +57,7 @@ internal sealed class ProfileController(
     IAuditLogService auditLogService,
     IOnboardingIntake onboardingService,
     IShiftSignups shiftSignupService,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     IShiftManagementServiceRead shiftMgmt,
     IShiftVolunteerProfiles shiftProfiles,
     IShiftView shiftView,
@@ -166,7 +165,7 @@ internal sealed class ProfileController(
     /// </summary>
     private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
     {
-        var active = await appSettings.GetActiveEventSettingsAsync();
+        var active = await burnSettings.GetActiveAsync();
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
@@ -625,7 +624,7 @@ internal sealed class ProfileController(
 
     private async Task<int?> GetActiveEventYearOrSetErrorAsync()
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         if (activeEvent is not null && activeEvent.Year > 0)
         {
             return activeEvent.Year;

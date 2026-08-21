@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -141,7 +140,7 @@ public class AgentUserSnapshotProviderTests
 
     private static AgentUserSnapshotProvider MakeProvider(
         Guid userId,
-        EventSettingsInfo? activeEvent,
+        BurnSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
@@ -204,17 +203,17 @@ public class AgentUserSnapshotProviderTests
         shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(view));
 
-        var appSettings = Substitute.For<ISettingsServiceRead>();
-        appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
 
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
             users, roles, teams, consents, feedback, tickets,
-            shiftView, appSettings, clock);
+            shiftView, burnSettings, clock);
     }
 
-    private static EventSettingsInfo MakeEventSettings() => new(
+    private static BurnSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Nowhere 2026",
         Year: 2026,
@@ -229,7 +228,8 @@ public class AgentUserSnapshotProviderTests
         FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     /// <summary>
     /// One signup on the section's boundary shape, with the fields the

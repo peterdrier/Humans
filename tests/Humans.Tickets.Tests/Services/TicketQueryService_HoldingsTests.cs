@@ -3,7 +3,7 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
 using NodaTime;
@@ -41,7 +41,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
-            Substitute.For<ISettingsServiceRead>(),
+            Substitute.For<IBurnSettingsService>(),
             SystemClock.Instance);
 
         // Default: no orders, no visible attendees

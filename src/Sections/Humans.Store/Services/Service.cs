@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -23,7 +23,7 @@ internal sealed class Service(
     ICampServiceRead campService,
     ITeamServiceRead teamService,
     IClock clock,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     IStripeService stripeService,
     IHoldedClient holdedClient,
     IOptions<StoreSectionOptions> options,
@@ -40,7 +40,7 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
@@ -139,7 +139,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+            var activeEvent = await burnSettings.GetActiveAsync();
             var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
             catalog = (await GetActiveCatalogAsync(year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
@@ -391,7 +391,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
 
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
@@ -419,7 +419,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (order is null) return null;
@@ -592,7 +592,7 @@ internal sealed class Service(
 
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1477,7 +1477,7 @@ internal sealed class Service(
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var catalogYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
         foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))

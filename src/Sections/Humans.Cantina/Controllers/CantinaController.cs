@@ -1,6 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Cantina.Services;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
@@ -24,19 +24,19 @@ namespace Humans.Cantina.Controllers;
 internal sealed class CantinaController : HumansControllerBase
 {
     private readonly ICantinaRosterService _roster;
-    private readonly ISettingsServiceRead _appSettings;
+    private readonly IBurnSettingsService _burnSettings;
     private readonly IClock _clock;
     private readonly ILogger<CantinaController> _logger;
 
     public CantinaController(
         ICantinaRosterService roster,
-        ISettingsServiceRead appSettings,
+        IBurnSettingsService burnSettings,
         IClock clock,
         ILogger<CantinaController> logger,
         IUserServiceRead userService) : base(userService)
     {
         _roster = roster;
-        _appSettings = appSettings;
+        _burnSettings = burnSettings;
         _clock = clock;
         _logger = logger;
     }
@@ -112,7 +112,7 @@ internal sealed class CantinaController : HumansControllerBase
     /// </summary>
     private async Task<int> ComputeDefaultWeekStartOffsetAsync()
     {
-        var burn = await _appSettings.GetActiveEventSettingsAsync().ConfigureAwait(false);
+        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
         if (burn is null)
             return 0;
         return _roster.GetCurrentWeekStartOffsetForActiveEvent(burn, _clock.GetCurrentInstant());
@@ -125,7 +125,7 @@ internal sealed class CantinaController : HumansControllerBase
     /// </summary>
     private async Task<int> ComputeDefaultDayOffsetAsync()
     {
-        var burn = await _appSettings.GetActiveEventSettingsAsync().ConfigureAwait(false);
+        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
         if (burn is null)
             return 0;
         return _roster.GetCurrentDayOffsetForActiveEvent(burn, _clock.GetCurrentInstant());

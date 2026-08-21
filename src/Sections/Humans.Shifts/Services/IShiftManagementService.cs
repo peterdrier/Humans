@@ -1,6 +1,5 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
@@ -62,13 +61,6 @@ internal interface IShiftManagementService
     /// Gets an EventSettings by primary key.
     /// </summary>
     Task<EventSettings?> GetByIdAsync(Guid id);
-
-    /// <summary>
-    /// Every EventSettings row, oldest cycle first. Only the operator screen that
-    /// carries the app-wide values over to Settings reads this (#1104); it goes
-    /// away with the old columns.
-    /// </summary>
-    Task<IReadOnlyList<EventSettingsInfo>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Creates a new EventSettings. Validates only one IsActive=true.
@@ -139,7 +131,7 @@ internal interface IShiftManagementService
     /// orders for display.
     /// </summary>
     Task<ShiftSummary?> BuildSummaryAsync(
-        EventSettingsInfo activeEvent,
+        BurnSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default);

@@ -1,7 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Helpers;
 using Humans.Users.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Identity;
@@ -28,10 +27,10 @@ internal sealed record DashboardResetResult(
 /// All writes go through the owning section services. The controller keeps destructive
 /// reset behind full Admin authorization.
 /// </summary>
-[CrossSectionWrite("Dev teardown deletes the seeded teams and users; the seed writes the app-wide event row into Settings.")]
+[CrossSectionWrite("Dev teardown deletes the seeded teams and users.")]
 internal sealed class DevelopmentDashboardSeeder(
     IShiftSeeding shiftManagementService,
-    ISettingsService appSettings,
+    IBurnSettingsService burnSettings,
     IShiftSignupSeeding shiftSignupService,
     ITeamService teamService,
     ITeamSeeding teamSeeding,
@@ -47,10 +46,6 @@ internal sealed class DevelopmentDashboardSeeder(
     private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
 
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
-    private const string SeededTimeZoneId = "Europe/Madrid";
-    private const int SeededBuildStartOffset = -14;
-    private const int SeededEventEndOffset = 6;
-    private const int SeededStrikeEndOffset = 9;
     private const string DevTeamNameSuffix = " (dev)";
     private const string DevUserEmailSuffix = "@seed.local";
     private const string DevUserEmailPrefix = "dev-human-";
@@ -84,10 +79,8 @@ internal sealed class DevelopmentDashboardSeeder(
 
     public async Task<DashboardSeedResult> SeedAsync(CancellationToken cancellationToken)
     {
-        // Active, not merely present: reset deactivates the Settings row rather than
-        // deleting it (Settings exposes no delete), so a bare row means "reset, reseed me".
-        var existing = await appSettings.GetEventSettingsByIdAsync(SeededEventId, cancellationToken);
-        if (existing is { IsActive: true })
+        var existing = await burnSettings.GetByIdAsync(SeededEventId, cancellationToken);
+        if (existing is not null)
         {
             logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);
             return new DashboardSeedResult(AlreadySeeded: true, 0, 0, 0, 0);
@@ -99,43 +92,18 @@ internal sealed class DevelopmentDashboardSeeder(
         // Deactivate any existing active event so ours becomes the one resolved by GetActiveAsync.
         await shiftManagementService.DeactivateActiveBurnAsync();
 
-        var gateOpeningDate = todayUtc.PlusDays(60);
-
         await shiftManagementService.CreateBurnAsync(new CreateBurnInput(
             Id: SeededEventId,
             EventName: SeededEventName,
             Year: todayUtc.Year,
-            TimeZoneId: SeededTimeZoneId,
-            GateOpeningDate: gateOpeningDate,
-            BuildStartOffset: SeededBuildStartOffset,
-            EventEndOffset: SeededEventEndOffset,
-            StrikeEndOffset: SeededStrikeEndOffset,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: todayUtc.PlusDays(60),
+            BuildStartOffset: -14,
+            EventEndOffset: 6,
+            StrikeEndOffset: 9,
             // Enable volunteer browsing so /Shifts/ and /Teams/{slug}/Shifts render
             // the seeded rotas side-by-side with /Shifts/Dashboard for QA comparisons.
             IsShiftBrowsingOpen: true));
-
-        // Same event, app-wide half — this is the row every other section reads (#1104).
-        // Shares SeededEventId so Rota.EventSettingsId resolves through either.
-        await appSettings.SaveEventSettingsAsync(
-            new EventSettingsInfo(
-                Id: SeededEventId,
-                EventName: SeededEventName,
-                Year: todayUtc.Year,
-                TimeZoneId: SeededTimeZoneId,
-                GateOpeningDate: gateOpeningDate,
-                BuildStartOffset: SeededBuildStartOffset,
-                EventEndOffset: SeededEventEndOffset,
-                StrikeEndOffset: SeededStrikeEndOffset,
-                // Match the Shifts entity's build sub-period defaults, which CreateBurnInput
-                // does not carry.
-                FirstCrewStartOffset: -25,
-                SetupWeekStartOffset: -16,
-                PreEventWeekStartOffset: -9,
-                FinishingWeekendStartOffset: -4,
-                EarlyEntryCapacity: new Dictionary<int, int>(),
-                BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null),
-            cancellationToken);
 
         // Teams: create parents, then subteams. Goes through ITeamService so slug
         // generation, validation, and cache seeding match production.
@@ -465,14 +433,6 @@ internal sealed class DevelopmentDashboardSeeder(
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
         var eventsDeleted = await shiftManagementService.DeleteEventAsync(SeededEventId, cancellationToken);
-
-        // Settings' app-wide half of the same event. Deactivated rather than deleted —
-        // the section's write surface has no delete today (#1104) — which is enough for
-        // SeedAsync's gate to let a reseed through.
-        var seededAppSettings = await appSettings.GetEventSettingsByIdAsync(SeededEventId, cancellationToken);
-        if (seededAppSettings is { IsActive: true })
-            await appSettings.SaveEventSettingsAsync(
-                seededAppSettings with { IsActive = false }, cancellationToken);
 
         // Dev users - match the seed marker on UserEmails.
         var devUserIds = await userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(

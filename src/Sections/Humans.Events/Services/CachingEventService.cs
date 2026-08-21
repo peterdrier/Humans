@@ -4,7 +4,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Base.Threading;
 using Humans.Events.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,10 +75,10 @@ internal sealed class CachingEventService(
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
 
-    public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
+    public Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsOptionsAsync(ct));
 
-    public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
+    public Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsByIdAsync(id, ct));
 
     public async Task SaveGuideSettingsAsync(
@@ -527,7 +527,7 @@ internal sealed class CachingEventService(
     private async Task RefreshSettingsAsync(CancellationToken ct)
     {
         // The inner service stitches TimeZoneId from the Shifts-owned
-        // event_settings row via ISettingsServiceRead (#719) and returns the
+        // event_settings row via IBurnSettingsService (#719) and returns the
         // ready EventGuideSettingsView; cache it directly.
         _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
     }

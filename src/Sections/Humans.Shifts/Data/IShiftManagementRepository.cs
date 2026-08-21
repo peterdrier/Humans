@@ -43,11 +43,7 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Loads an <see cref="EventSettings"/> by id (read-only).</summary>
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Every <see cref="EventSettings"/> row, oldest cycle first. Feeds the
-    /// operator screen that carries the app-wide values over to Settings (#1104);
-    /// goes away with the row when the old columns are retired.
-    /// </summary>
+    /// <summary>Every <see cref="EventSettings"/> row, oldest cycle first (read-only).</summary>
     Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default);
 
     /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>

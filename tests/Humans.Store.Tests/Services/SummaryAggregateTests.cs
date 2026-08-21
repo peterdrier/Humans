@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Data;
@@ -24,7 +24,7 @@ public class SummaryAggregateTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
-    private readonly ISettingsServiceRead _shifts = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();

@@ -1,4 +1,4 @@
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using NodaTime;
 
 namespace Humans.Events.Helpers;
@@ -8,7 +8,7 @@ namespace Humans.Events.Helpers;
 /// </summary>
 internal static class EventsTimeHelpers
 {
-    public static DateTimeZone? GetTimeZone(EventSettingsInfo? burn)
+    public static DateTimeZone? GetTimeZone(BurnSettingsInfo? burn)
         => burn != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
             : null;

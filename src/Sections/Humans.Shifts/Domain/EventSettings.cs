@@ -1,4 +1,4 @@
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using NodaTime;
 
 namespace Humans.Shifts.Domain;
@@ -7,7 +7,7 @@ namespace Humans.Shifts.Domain;
 /// Singleton event configuration — dates, timezone, early entry capacity, and global caps.
 /// One active EventSettings per event cycle.
 /// </summary>
-internal sealed class EventSettings : IEventSettingsInfo
+internal sealed class EventSettings : IBurnSettingsInfo
 {
     /// <summary>
     /// Unique identifier.
@@ -142,16 +142,16 @@ internal sealed class EventSettings : IEventSettingsInfo
         return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
     }
 
-    // The early-entry clock rule lives on IEventSettingsInfo as a default
+    // The early-entry clock rule lives on IBurnSettingsInfo as a default
     // implementation so entity and DTO share one copy. C# does not surface a
     // default implementation through the concrete type, so these two forward to
     // it — they carry no logic of their own and cannot drift from it.
 
-    /// <inheritdoc cref="IEventSettingsInfo.IsEarlyEntryClosed" />
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
     public bool IsEarlyEntryClosed(Instant now) =>
-        ((IEventSettingsInfo)this).IsEarlyEntryClosed(now);
+        ((IBurnSettingsInfo)this).IsEarlyEntryClosed(now);
 
-    /// <inheritdoc cref="IEventSettingsInfo.IsEarlyEntrySignupsClosedFor" />
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntrySignupsClosedFor" />
     public bool IsEarlyEntrySignupsClosedFor(bool isPrivileged, Instant now) =>
-        ((IEventSettingsInfo)this).IsEarlyEntrySignupsClosedFor(isPrivileged, now);
+        ((IBurnSettingsInfo)this).IsEarlyEntrySignupsClosedFor(isPrivileged, now);
 }

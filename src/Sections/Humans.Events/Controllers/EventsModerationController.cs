@@ -1,6 +1,6 @@
 using Humans.Events.Services;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -252,7 +252,7 @@ internal sealed class EventsModerationController(
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync()
+    private async Task<(BurnSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync()
     {
         var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = guideSettings != null
@@ -261,14 +261,14 @@ internal sealed class EventsModerationController(
         return (eventSettings, GetTimeZone(eventSettings));
     }
 
-    private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings)
+    private async Task<string?> ResolveCampNameAsync(Guid campId, BurnSettingsInfo eventSettings)
     {
         var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year);
         var camp = campsById.GetValueOrDefault(campId);
         return camp?.Active?.Name ?? camp?.Slug;
     }
 
-    private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, EventSettingsInfo burn)
+    private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, BurnSettingsInfo burn)
     {
         var categories = (await guide.GetActiveCategoriesAsync())
             .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();

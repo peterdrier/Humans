@@ -34,8 +34,8 @@ Repository: `IGateRepository`.
 Cross-section calls via `ITicketServiceRead` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
-`ISettingsServiceRead` (event timezone / active event), `IShiftManagementService`
-(gate-crew shift roster for the claim screen, via
+`IBurnSettingsService` (event timezone / active event), `IShiftManagementService`
+(active event + gate-crew shift roster for the claim screen, via
 `GetBrowseShiftsAsync`), `IRoleAssignmentService` (server-verified supervisor
 roles for overrides), `IUserService` (participation projection),
 `IAuditLogService` (PIN set/reset audit — never the PIN value), plus

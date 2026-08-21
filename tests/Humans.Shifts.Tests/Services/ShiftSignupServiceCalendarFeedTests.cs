@@ -11,7 +11,6 @@ using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Data;
@@ -46,7 +45,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
-            Substitute.For<ISettingsServiceRead>(),
+            Substitute.For<IBurnSettingsService>(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,

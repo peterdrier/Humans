@@ -28,11 +28,12 @@ public sealed class Section : ISection
         // every method opens its own short-lived DbContext.
         services.AddSingleton<ISettingsRepository, Repository>();
 
-        // Both interfaces resolve the same implementation: outside sections take
-        // ISettingsServiceRead, the ones that genuinely write take ISettingsService
-        // and declare it with [CrossSectionWrite]
-        // (memory/architecture/section-read-write-split.md).
-        services.AddScoped<ISettingsService, Service>();
-        services.AddScoped<ISettingsServiceRead>(sp => sp.GetRequiredService<ISettingsService>());
+        // One registration, two ways in: outside sections take ISettingsService,
+        // the section's own screens take the concrete Service because the
+        // event-settings write is deliberately not on the contract.
+        services.AddScoped<Service>();
+        services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<Service>());
+
+        services.AddScoped<IEventSettingsCarryService, EventSettingsCarryService>();
     }
 }

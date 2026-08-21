@@ -1,6 +1,6 @@
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -57,7 +57,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             Substitute.For<IUserServiceRead>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<ISettingsServiceRead>());
+            Substitute.For<IBurnSettingsService>());
 
         await service.ReassignAsync(
             sourceUserId,

@@ -36,7 +36,7 @@
 
 - All scanner routes require the `ScannerAccess` policy (`TicketAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`.
 - `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
-- `/Scanner/Tickets` performs cross-section reads via `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IICalFeedService`, `IEventServiceRead`, and `ISettingsServiceRead` to render the ticket card plus door-context for matched Humans. It is strictly read-only and must never write server-side state.
+- `/Scanner/Tickets` performs cross-section reads via `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IICalFeedService`, `IEventServiceRead`, and `IBurnSettingsService` to render the ticket card plus door-context for matched Humans. It is strictly read-only and must never write server-side state.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.
 - No database tables are owned by this section.
 - The camera stream is released (`MediaStreamTrack.stop()` on every track) when the user taps Stop or the page unloads.
@@ -59,7 +59,7 @@
 - **Consent**: `IConsentServiceRead.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
 - **Events**: `IEventServiceRead.GetApprovedEventsAsync` — events the matched Human is offering (filtered by `SubmitterUserId`, non-camp, expanded per occurrence for recurring events).
-- **Settings / Calendar**: `ISettingsServiceRead.GetActiveEventSettingsAsync` for active event year + time zone; `Humans.Calendar.Contracts.IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (Shifts source only). The feed orchestrator moved from Base into `Humans.Calendar` at G5 lane 4b-2c, so `Humans.Scanner` references `Humans.Calendar`.
+- **Shifts / BurnSettings / Calendar**: `IBurnSettingsService.GetActiveAsync` for active event year + time zone; `Humans.Calendar.Contracts.IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (Shifts source only). The feed orchestrator moved from Base into `Humans.Calendar` at G5 lane 4b-2c, so `Humans.Scanner` references `Humans.Calendar`.
 - **Issues**: feedback/issues filed from `/Scanner/*` route to `IssueSectionRouting.Scanner`, visible to TicketAdmin and Board handlers. Scanner does not call `IIssuesService` directly.
 
 ## Architecture
@@ -73,5 +73,5 @@
 - No `Humans.Application.Services.Scanner/` namespace — correct, no business logic in this section.
 - **Decorator decision:** no caching decorator. Scanner reads through existing section interfaces (each section owns its own caching).
 - **Cross-domain navs:** none.
-- **Cross-section calls (ticket card):** `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `ISettingsServiceRead`, `IICalFeedService`, `IEventServiceRead` — all injected into `ScannerController`.
+- **Cross-section calls (ticket card):** `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IBurnSettingsService`, `IICalFeedService`, `IEventServiceRead` — all injected into `ScannerController`.
 - The `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.

@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
@@ -13,7 +12,7 @@ namespace Humans.Shifts.Models;
 
 internal sealed record ShiftAdminPageRequest(
     TeamInfo Department,
-    EventSettingsInfo EventSettings,
+    BurnSettingsInfo EventSettings,
     bool CanManage,
     bool CanApprove,
     bool CanViewMedical,

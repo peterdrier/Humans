@@ -301,7 +301,7 @@ still serve by inheriting the leaf):
 
 | Leaf interface | What it carries |
 |---|---|
-| `ISettingsServiceRead` → `EventSettingsInfo` | **The only way to read the active event, and it is Settings', not Shifts'** (nobodies-collective/Humans#1104). `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never an EF entity. Shifts' own knobs — `IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours` — stay on the Shifts row and are not on the DTO. |
+| `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate` and the build calendar; never the `EventSettings` entity. |
 | `IShiftManagementServiceRead` | The thirteen pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, staffing snapshot, coverage, rota search, and one rota by id. |
 | `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes — hence not a `…Read` name). |
 | `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
@@ -331,7 +331,7 @@ section and is not on the leaf.
 
 ## Architecture
 
-**Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `WorkloadService` (read-only aggregations, no DbSet writes), `AppEventSettingsMoveService` (temporary — backs the operator screen that carried the app-wide values into Settings, nobodies-collective/Humans#1104; retires with the old columns)
+**Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `BurnSettingsService` (cross-section read DTO supplier — returns `BurnSettingsInfo` over `event_settings`, issue nobodies-collective/Humans#719), `WorkloadService` (read-only aggregations, no DbSet writes)
 **Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts only reads it via `IUserService`.
 **Status:** (A) Fully migrated. The services live in `Humans.Shifts.Services` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; the remaining cross-section FK constraints were cut in nobodies-collective/Humans#992 — cross-section links are now bare Guid columns with no FK constraint.
 

@@ -4,7 +4,6 @@ using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
@@ -44,9 +43,9 @@ public class ShiftsControllerSummaryTests
     private readonly ShiftBrowsePageBuilder _builder;
     private readonly ILogger<ShiftsController> _logger = NullLogger<ShiftsController>.Instance;
 
-    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
 
-    private static readonly EventSettingsInfo ActiveEvent = new(
+    private static readonly BurnSettingsInfo ActiveEvent = new(
         Id: Guid.NewGuid(),
         EventName: "Test Event",
         Year: 2026,
@@ -61,13 +60,14 @@ public class ShiftsControllerSummaryTests
         FinishingWeekendStartOffset: -3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     public ShiftsControllerSummaryTests()
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _appSettings, _teamService);
+        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
     // Authorization is declarative: [Authorize(Policy = ShiftDepartmentManager)] on
@@ -79,7 +79,7 @@ public class ShiftsControllerSummaryTests
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         var result = await ctrl.Summary();
 
@@ -92,7 +92,7 @@ public class ShiftsControllerSummaryTests
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
         _shiftMgmt.BuildSummaryAsync(ActiveEvent, "ghost", null, Arg.Any<CancellationToken>())
             .Returns((ShiftSummary?)null);
 
@@ -106,7 +106,7 @@ public class ShiftsControllerSummaryTests
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
 
         var campX = Guid.NewGuid();
         var campY = Guid.NewGuid();
@@ -147,7 +147,7 @@ public class ShiftsControllerSummaryTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUserInfo(userId));
         var ctrl = new ShiftsController(
-            _shiftMgmt, _appSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
+            _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {

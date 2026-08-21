@@ -60,7 +60,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EventSettings
             .AsNoTracking()
-            .OrderBy(e => e.Year) // arch:db-sort-ok operator move screen lists cycles oldest first
+            .OrderBy(e => e.Year) // arch:db-sort-ok the carry screen lists cycles oldest first
             .ToListAsync(ct);
     }
 

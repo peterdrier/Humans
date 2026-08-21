@@ -11,7 +11,7 @@ namespace Humans.Settings.Models;
 /// the Shifts knobs (browsing switch, volunteer cap, reminder lead time) stay on
 /// the Shifts screen.
 /// </summary>
-internal sealed class AppEventSettingsViewModel : IValidatableObject
+internal sealed class EventSettingsViewModel : IValidatableObject
 {
     public Guid? Id { get; set; }
 
@@ -46,6 +46,12 @@ internal sealed class AppEventSettingsViewModel : IValidatableObject
 
     public string? EarlyEntryClose { get; set; }
 
+    /// <summary>
+    /// The form's view of <see cref="EventSettingsStatus"/>. The screen only ever
+    /// loads the active row, so the checkbox maps to Active/Inactive and never
+    /// reaches <see cref="EventSettingsStatus.Deleted"/> — withdrawing a cycle is
+    /// not something this form does.
+    /// </summary>
     public bool IsActive { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -73,11 +79,11 @@ internal sealed class AppEventSettingsViewModel : IValidatableObject
     }
 }
 
-internal sealed record AppEventSettingsFormError(string FieldName, string Message);
+internal sealed record EventSettingsFormError(string FieldName, string Message);
 
-internal sealed record AppEventSettingsParseResult(
+internal sealed record EventSettingsParseResult(
     EventSettingsInfo? Settings,
-    IReadOnlyList<AppEventSettingsFormError> Errors)
+    IReadOnlyList<EventSettingsFormError> Errors)
 {
     public bool Success => Settings is not null && Errors.Count == 0;
 }
@@ -86,9 +92,9 @@ internal sealed record AppEventSettingsParseResult(
 /// Form ↔ <see cref="EventSettingsInfo"/>. The controller never touches the EF
 /// entity — the DTO is the section's own write surface too.
 /// </summary>
-internal static class AppEventSettingsFormMapper
+internal static class EventSettingsFormMapper
 {
-    internal static AppEventSettingsViewModel ToViewModel(EventSettingsInfo src) => new()
+    internal static EventSettingsViewModel ToViewModel(EventSettingsInfo src) => new()
     {
         Id = src.Id,
         EventName = src.EventName,
@@ -108,19 +114,19 @@ internal static class AppEventSettingsFormMapper
         EarlyEntryClose = src.EarlyEntryClose.HasValue
             ? InstantPattern.General.Format(src.EarlyEntryClose.Value)
             : null,
-        IsActive = src.IsActive,
+        IsActive = src.Status == EventSettingsStatus.Active,
     };
 
-    internal static AppEventSettingsParseResult Parse(AppEventSettingsViewModel model)
+    internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
     {
-        var errors = new List<AppEventSettingsFormError>();
+        var errors = new List<EventSettingsFormError>();
 
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
-            errors.Add(new AppEventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
+            errors.Add(new EventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
 
         var parsedDate = LocalDatePattern.Iso.Parse(model.GateOpeningDate);
         if (!parsedDate.Success)
-            errors.Add(new AppEventSettingsFormError(nameof(model.GateOpeningDate), "Invalid date format."));
+            errors.Add(new EventSettingsFormError(nameof(model.GateOpeningDate), "Invalid date format."));
 
         Instant? earlyEntryClose = null;
         if (!string.IsNullOrEmpty(model.EarlyEntryClose))
@@ -129,7 +135,7 @@ internal static class AppEventSettingsFormMapper
             if (parsedInstant.Success)
                 earlyEntryClose = parsedInstant.Value;
             else
-                errors.Add(new AppEventSettingsFormError(nameof(model.EarlyEntryClose), "Invalid UTC instant format."));
+                errors.Add(new EventSettingsFormError(nameof(model.EarlyEntryClose), "Invalid UTC instant format."));
         }
 
         var earlyEntryCapacity = ParseDictionary(
@@ -141,11 +147,11 @@ internal static class AppEventSettingsFormMapper
                 model.BarriosEarlyEntryAllocationJson, nameof(model.BarriosEarlyEntryAllocationJson), errors);
 
         if (errors.Count > 0)
-            return new AppEventSettingsParseResult(null, errors);
+            return new EventSettingsParseResult(null, errors);
 
         var gateOpening = parsedDate.Value;
 
-        return new AppEventSettingsParseResult(
+        return new EventSettingsParseResult(
             new EventSettingsInfo(
                 Id: model.Id ?? Guid.NewGuid(),
                 EventName: model.EventName,
@@ -163,12 +169,14 @@ internal static class AppEventSettingsFormMapper
                 EarlyEntryCapacity: earlyEntryCapacity,
                 BarriosEarlyEntryAllocation: barriosAllocation,
                 EarlyEntryClose: earlyEntryClose,
-                IsActive: model.IsActive),
+                Status: model.IsActive
+                    ? EventSettingsStatus.Active
+                    : EventSettingsStatus.Inactive),
             []);
     }
 
     private static Dictionary<int, int>? ParseDictionary(
-        string? json, string fieldName, List<AppEventSettingsFormError> errors)
+        string? json, string fieldName, List<EventSettingsFormError> errors)
     {
         if (string.IsNullOrWhiteSpace(json))
             return null;
@@ -179,7 +187,7 @@ internal static class AppEventSettingsFormMapper
         }
         catch (JsonException ex)
         {
-            errors.Add(new AppEventSettingsFormError(fieldName, $"Invalid JSON: {ex.Message}"));
+            errors.Add(new EventSettingsFormError(fieldName, $"Invalid JSON: {ex.Message}"));
             return null;
         }
     }

@@ -9,8 +9,8 @@ only. Dietary data lives on `Profile` and is read through the unified
 ### CantinaRosterService (Scoped)
 
 No repository. Cross-section reads via `IShiftManagementService`
-(on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `ISettingsServiceRead`
-(app-wide event metadata — `GetActiveEventSettingsAsync` returning `EventSettingsInfo`, for
+(on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `IBurnSettingsService`
+(active-burn metadata — `GetActiveAsync` returning `BurnSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone) and
 `IUserServiceRead` (cached `UserInfo` + `ProfileInfo` for dietary
 preference, allergies, intolerances). Implements `ICantinaRosterService`.

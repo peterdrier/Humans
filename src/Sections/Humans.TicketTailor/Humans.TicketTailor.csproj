@@ -12,7 +12,7 @@
       ITicketVendorService port. It owns no tables (no DbContext, no repository, no
       AddSectionDbContext — the Data steps of G5-SECTION-TEMPLATE.md are skipped
       wholesale), no controllers and no views, so this is plain Microsoft.NET.Sdk rather
-      than Sdk.Razor (Scanner's shape).
+      than Sdk.Razor (SystemSettings' shape).
 
       Everything the client needs is either the ASP.NET shared framework
       (IHttpClientFactory), Base (TicketVendorSettings) or Humans.Tickets (the port and its

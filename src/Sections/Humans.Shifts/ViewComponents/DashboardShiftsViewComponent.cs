@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Humans.Governance.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -14,10 +12,10 @@ namespace Humans.Shifts.ViewComponents;
 /// "no shifts yet" guided-discovery callout, and the volunteer "Get involved" tri-card
 /// row. Absorbed from Shell's DashboardService (nobodies-collective/Humans#1091).
 /// </summary>
-internal sealed class DashboardShiftsViewComponent(
-    IShiftManagementService shiftMgmt,
+public sealed class DashboardShiftsViewComponent(
+    IShiftManagementServiceRead shiftMgmt,
     IShiftView shiftView,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     ITeamServiceRead teamService,
     IMembershipCalculatorRead membershipCalculator,
     IClock clock,
@@ -33,19 +31,17 @@ internal sealed class DashboardShiftsViewComponent(
         var ct = HttpContext.RequestAborted;
         var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
 
-        EventSettingsInfo? activeEvent = null;
+        BurnSettingsInfo? activeEvent = null;
         try
         {
-            activeEvent = await appSettings.GetActiveEventSettingsAsync(ct);
+            activeEvent = await burnSettings.GetActiveAsync(ct);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load active event for the dashboard shifts card");
         }
 
-        // Browsing-open is Shifts' own knob, still on the section's row (#1104).
-        var isShiftBrowsingOpen = activeEvent is not null
-            && (await shiftMgmt.GetActiveAsync())?.IsShiftBrowsingOpen == true;
+        var isShiftBrowsingOpen = activeEvent is not null && activeEvent.IsShiftBrowsingOpen;
         var urgentShifts = isShiftBrowsingOpen
             ? await UrgentShiftsAsync(activeEvent!.Id)
             : [];

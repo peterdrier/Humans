@@ -1,7 +1,7 @@
 using Humans.Store.Contracts;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Base.Constants;
@@ -28,13 +28,13 @@ public class OrderAuthorizationHandlerTests
 
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
-    private readonly ISettingsServiceRead _shifts = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly OrderAuthorizationHandler _handler;
 
     public OrderAuthorizationHandlerTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock);
     }
 

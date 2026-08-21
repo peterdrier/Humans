@@ -4,7 +4,6 @@ using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
@@ -39,14 +38,14 @@ public class ShiftsControllerUserActiveSignupsTests
 
     // Madrid (UTC+2 in July) vs Auckland (UTC+13 in January). If the wrong burn were
     // used for a row, both the local time-of-day and the absolute instant would move.
-    private static readonly EventSettingsInfo ActiveBurn =
+    private static readonly BurnSettingsInfo ActiveBurn =
         MakeBurn(ActiveBurnId, "Nowhere 2026", 2026, "Europe/Madrid", new LocalDate(2026, 7, 9));
 
-    private static readonly EventSettingsInfo PastBurn =
+    private static readonly BurnSettingsInfo PastBurn =
         MakeBurn(PastBurnId, "Southern 2025", 2025, "Pacific/Auckland", new LocalDate(2025, 1, 15));
 
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IVolunteerTrackingService _volunteerTracking = Substitute.For<IVolunteerTrackingService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
@@ -62,23 +61,9 @@ public class ShiftsControllerUserActiveSignupsTests
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 6, 1, 0, 0));
 
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn);
-        _appSettings.GetEventSettingsByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
-        _appSettings.GetEventSettingsByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
-
-        // Browsing-open is Shifts' own knob, read off the section's row rather than
-        // the app-wide DTO since nobodies-collective/Humans#1104 — without it the
-        // controller short-circuits to "BrowsingClosed" before building the model.
-        _shiftMgmt.GetActiveAsync().Returns(new EventSettings
-        {
-            Id = ActiveBurnId,
-            EventName = "Nowhere 2026",
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 9),
-            IsShiftBrowsingOpen = true,
-            IsActive = true,
-        });
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn);
+        _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
+        _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
         _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId).Returns([]);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns([]);
@@ -122,8 +107,8 @@ public class ShiftsControllerUserActiveSignupsTests
 
         // Both rows share one burn id each, so the distinct set is resolved once per
         // burn — never once per row (that would be an N+1).
-        await _appSettings.Received(1).GetEventSettingsByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>());
-        await _appSettings.Received(1).GetEventSettingsByIdAsync(PastBurnId, Arg.Any<CancellationToken>());
+        await _burnSettings.Received(1).GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>());
+        await _burnSettings.Received(1).GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -139,14 +124,14 @@ public class ShiftsControllerUserActiveSignupsTests
         var model = await BuildBrowseModelAsync();
 
         Assert.Equal(3, model.UserActiveSignups.Count);
-        await _appSettings.Received(1).GetEventSettingsByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>());
+        await _burnSettings.Received(1).GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Index_InactiveStatusesAndUnresolvableBurns_AreDropped()
     {
         var unknownBurnId = Guid.NewGuid();
-        _appSettings.GetEventSettingsByIdAsync(unknownBurnId, Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burnSettings.GetByIdAsync(unknownBurnId, Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         _signupService.GetByUserAsync(_userId).Returns(
         [
@@ -172,9 +157,9 @@ public class ShiftsControllerUserActiveSignupsTests
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(_userId));
 
         var ctrl = new ShiftsController(
-            _shiftMgmt, _appSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
+            _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
             _auditLog, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
-            new ShiftBrowsePageBuilder(_shiftMgmt, _appSettings, _teamService),
+            new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 
         var http = new DefaultHttpContext
@@ -209,7 +194,7 @@ public class ShiftsControllerUserActiveSignupsTests
             },
         };
 
-    private static EventSettingsInfo MakeBurn(
+    private static BurnSettingsInfo MakeBurn(
         Guid id, string name, int year, string timeZoneId, LocalDate gateOpening) =>
         new(
             Id: id,
@@ -226,7 +211,8 @@ public class ShiftsControllerUserActiveSignupsTests
             FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null);
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: true);
 
     private static UserInfo MakeUserInfo(Guid userId) =>
         UserInfoFactory.Create(

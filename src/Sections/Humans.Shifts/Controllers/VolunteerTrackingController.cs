@@ -1,7 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Base.Controllers;
@@ -25,7 +24,7 @@ namespace Humans.Shifts.Controllers;
 internal sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
     IShiftManagementService shiftManagementService,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserServiceRead userService,
@@ -80,7 +79,7 @@ internal sealed class VolunteerTrackingController(
         // already know HasActiveEvent is true here), so the result is non-null
         // in practice; defensive fall-back keeps the page renderable if a race
         // empties EventSettings between the two calls.
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync(ct);
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         var departments = activeEvent is null
             ? []
             : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id);
@@ -118,7 +117,7 @@ internal sealed class VolunteerTrackingController(
         BuildSubPeriod? subPeriod = null,
         CancellationToken ct = default)
     {
-        var eventSettings = await appSettings.GetActiveEventSettingsAsync(ct);
+        var eventSettings = await burnSettings.GetActiveAsync(ct);
         if (eventSettings is null)
         {
             SetError(localizer["VolTrack_NoActiveEvent"]);
@@ -346,7 +345,7 @@ internal sealed class VolunteerTrackingController(
     public async Task<IActionResult> SetAvailabilityDay(
         Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
     {
-        var es = await appSettings.GetActiveEventSettingsAsync(ct);
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
         var current = await GetCurrentUserInfoAsync();
@@ -374,7 +373,7 @@ internal sealed class VolunteerTrackingController(
     public async Task<IActionResult> ClearAvailabilityDay(
         Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
     {
-        var es = await appSettings.GetActiveEventSettingsAsync(ct);
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
         var current = await GetCurrentUserInfoAsync();

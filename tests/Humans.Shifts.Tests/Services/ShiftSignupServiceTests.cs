@@ -14,7 +14,6 @@ using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Xunit;
@@ -59,7 +58,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
-            Substitute.For<ISettingsServiceRead>(),
+            Substitute.For<IBurnSettingsService>(),
             AuditLog,
             Notifier,
             AdminAuthorization,

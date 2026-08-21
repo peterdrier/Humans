@@ -16,14 +16,14 @@ namespace Humans.Events.Contracts;
 /// <para>
 /// <b>Stop-gap stale window (issue #719):</b> <see cref="TimeZoneId"/> is
 /// read from the Shifts-owned <c>event_settings</c> table at warm /
-/// refresh time via <c>ISettingsServiceRead</c>. The Events section has no
+/// refresh time via <c>IBurnSettingsService</c>. The Events section has no
 /// invalidation signal for burn-settings edits today, so a moderator
 /// changing the burn's <c>TimeZoneId</c> will <em>not</em> flush this
 /// cache entry until either: (a) another event-section write happens, or
 /// (b) the process restarts. Acceptable in practice — <c>TimeZoneId</c>
 /// is set per-burn and effectively never changes mid-cycle. Tracked in
 /// <see href="https://github.com/nobodies-collective/Humans/issues/719"/>;
-/// once <c>ISettingsServiceRead</c> exposes an invalidation signal, this
+/// once <c>IBurnSettingsService</c> exposes an invalidation signal, this
 /// section will subscribe and the stale window collapses to zero.
 /// </para>
 /// </remarks>

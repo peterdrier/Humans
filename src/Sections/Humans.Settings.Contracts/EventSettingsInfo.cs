@@ -13,7 +13,7 @@ namespace Humans.Settings.Contracts;
 /// (design-rules §2c, <c>memory/architecture/no-cross-section-ef-joins.md</c>).
 /// <see cref="Id"/> is what a section stores when it needs to point at an event
 /// cycle — <c>Rota.EventSettingsId</c>, <c>EventGuideSettings.EventSettingsId</c>.
-/// <see cref="IsActive"/> is on the DTO so a save round-trips: reads that go
+/// <see cref="Status"/> is on the DTO so a save round-trips: reads that go
 /// through <c>GetActiveEventSettingsAsync</c> can ignore it.
 /// </remarks>
 public sealed record EventSettingsInfo(
@@ -32,7 +32,7 @@ public sealed record EventSettingsInfo(
     IReadOnlyDictionary<int, int> EarlyEntryCapacity,
     IReadOnlyDictionary<int, int>? BarriosEarlyEntryAllocation,
     Instant? EarlyEntryClose,
-    bool IsActive = true) : IEventSettingsInfo
+    EventSettingsStatus Status = EventSettingsStatus.Active) : IEventSettingsInfo
 {
     /// <summary>
     /// Step-function lookup: returns the cumulative EE capacity for the

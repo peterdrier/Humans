@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
 
@@ -37,11 +37,11 @@ internal interface ICantinaRosterService : IApplicationService
     /// Computes the <c>weekStartOffset</c> of the week containing
     /// <paramref name="now"/> in the active event's timezone. Returns the
     /// day-offset of that week's Monday relative to
-    /// <see cref="EventSettingsInfo.GateOpeningDate"/>. The controller calls
+    /// <see cref="BurnSettingsInfo.GateOpeningDate"/>. The controller calls
     /// this to resolve a default when no explicit <c>weekStartOffset</c> is
     /// on the URL.
     /// </summary>
-    int GetCurrentWeekStartOffsetForActiveEvent(EventSettingsInfo burn, Instant now);
+    int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now);
 
     /// <summary>
     /// Builds the per-day matrix payload for the Cantina Daily Matrix page
@@ -57,9 +57,9 @@ internal interface ICantinaRosterService : IApplicationService
 
     /// <summary>
     /// Computes the day-offset of "today" in the active event's timezone,
-    /// relative to <see cref="EventSettingsInfo.GateOpeningDate"/>. The
+    /// relative to <see cref="BurnSettingsInfo.GateOpeningDate"/>. The
     /// controller calls this to resolve a default when no explicit
     /// <c>dayOffset</c> is on the URL.
     /// </summary>
-    int GetCurrentDayOffsetForActiveEvent(EventSettingsInfo burn, Instant now);
+    int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now);
 }

@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Services.Users;
 using NodaTime;
 using NodaTime.Testing;
@@ -11,7 +11,7 @@ namespace Humans.Users.Tests.Services;
 public sealed class UserParticipationBackfillServiceTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ISettingsServiceRead _shifts = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private List<(Guid UserId, ParticipationStatus Status)>? _captured;
 
     private UserParticipationBackfillService CreateService()

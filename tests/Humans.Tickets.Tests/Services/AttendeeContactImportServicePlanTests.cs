@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
 using Humans.Tickets.Services;
@@ -250,7 +250,7 @@ internal sealed class PlanHarness
     public IUserEmailService UserEmails { get; } = Substitute.For<IUserEmailService>();
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
-    public ISettingsServiceRead Shifts { get; } = Substitute.For<ISettingsServiceRead>();
+    public IBurnSettingsService Shifts { get; } = Substitute.For<IBurnSettingsService>();
     public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));

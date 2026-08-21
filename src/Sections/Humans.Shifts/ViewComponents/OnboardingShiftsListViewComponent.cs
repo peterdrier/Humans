@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +26,7 @@ namespace Humans.Shifts.ViewComponents;
 public sealed class OnboardingShiftsListViewComponent : ViewComponent
 {
     public IViewComponentResult Invoke(
-        EventSettingsInfo eventSettings,
+        BurnSettingsInfo eventSettings,
         IReadOnlyList<UrgentShiftInfo> shifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,

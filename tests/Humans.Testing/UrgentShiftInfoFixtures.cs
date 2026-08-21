@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
@@ -76,7 +75,7 @@ public static class UrgentShiftFixtures
     public static UrgentShiftInfo Urgent(
         ShiftInfo? shift = null,
         RotaInfo? rota = null,
-        IEventSettingsInfo? burn = null,
+        IBurnSettingsInfo? burn = null,
         string departmentName = "Test Department",
         double urgencyScore = 0,
         int confirmedCount = 0,

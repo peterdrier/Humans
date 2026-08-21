@@ -47,7 +47,7 @@ graph LR
     classDef containers fill:#4ade80,color:#000
     classDef events fill:#2dd4bf,color:#000
     classDef earlyentry fill:#fb923c,color:#fff
-    classDef settings fill:#71717a,color:#fff
+    classDef systemsettings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
     classDef gate fill:#b45309,color:#fff
@@ -88,6 +88,7 @@ graph LR
     ShiftSign[ShiftSignupService]:::shifts
     VolTrack[VolunteerTrackingService]:::shifts
     VolTrackExport[VolunteerTrackingExportService]:::shifts
+    BurnSettings[BurnSettingsService]:::shifts
     ShiftView[ShiftViewService]:::shifts
     RotaMsg[RotaCoordinatorMessageService]:::shifts
     Workload[WorkloadService]:::shifts
@@ -169,7 +170,7 @@ graph LR
     EarlyEntry[EarlyEntryService]:::earlyentry
     Gate[GateService]:::gate
     Survey[SurveyService]:::surveys
-    SettingsSvc[Settings Service]:::settings
+    SysSettings[SystemSettingsService]:::systemsettings
     Guide[GuideRoleResolver]:::guide
 
     %% ═══════════════════════════════════
@@ -218,7 +219,7 @@ graph LR
     %% Cantina
     Cantina --> ShiftMgmt
     Cantina --> User
-    Cantina --> SettingsSvc
+    Cantina --> BurnSettings
 
     %% CityPlanning
     CityPlan --> Camp
@@ -328,7 +329,7 @@ graph LR
     GRemoval --> Email
     DriveMon --> TRes
     DriveMon --> User
-    DriveMon --> SettingsSvc
+    DriveMon --> SysSettings
     DriveMon --> Audit
     GSyncOutboxProc --> User
     GSyncOutboxProc --> Team
@@ -407,7 +408,7 @@ graph LR
     Dash --> MembershipCalc
     Dash --> AppDec
     Dash --> ShiftMgmt
-    Dash --> SettingsSvc
+    Dash --> BurnSettings
     Dash --> ShiftView
     Dash --> TicketQ
     Dash --> User
@@ -465,7 +466,7 @@ graph LR
     %% Gate
     Gate --> TicketQ
     Gate --> EarlyEntry
-    Gate --> SettingsSvc
+    Gate --> BurnSettings
     Gate --> ShiftMgmt
     Gate --> Role
     Gate --> User
@@ -486,12 +487,12 @@ graph LR
     MailerLiteImport --> AcctProv
     MailerLiteImport --> CommPref
     MailerLiteImport --> Audit
-    EventSvc --> SettingsSvc
+    EventSvc --> BurnSettings
     EventSvc --> User
     EventSvc --> Email
 
-    %% Email (admin outbox — pause flag lives in Settings)
-    EmailOutbox --> SettingsSvc
+    %% Email (admin outbox — pause flag lives in SystemSettings)
+    EmailOutbox --> SysSettings
 
     %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
     AdminDbDiag --> User
@@ -571,7 +572,7 @@ The most depended-on cross-section surfaces (read the counts off the diagram):
 - **`ShiftManagementService`** — shift hub; itself lazy-resolves Team/Role/Tickets/User/Camp to break cycles.
 - **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` takes the full `INotificationService`.
 - **`IEmailService`** / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
-- **`AdminAuthorizationService`**, Settings' **`Service`**, **`ShiftViewService`** — repo-only adapters with zero outbound service edges.
+- **`AdminAuthorizationService`**, **`BurnSettingsService`**, **`ShiftViewService`** — repo-only adapters with zero outbound service edges.
 
 ## Pending follow-ups
 

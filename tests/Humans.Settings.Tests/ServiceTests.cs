@@ -44,7 +44,7 @@ public sealed class ServiceTests
         EarlyEntryCapacity = new Dictionary<int, int> { [-14] = 50, [-7] = 100 },
         BarriosEarlyEntryAllocation = new Dictionary<int, int> { [-7] = 20 },
         EarlyEntryClose = Instant.FromUtc(2026, 7, 4, 12, 0),
-        IsActive = isActive,
+        Status = isActive ? EventSettingsStatus.Active : EventSettingsStatus.Inactive,
     };
 
     [HumansFact]
@@ -71,7 +71,7 @@ public sealed class ServiceTests
         dto.EarlyEntryCapacity.Should().Equal(new Dictionary<int, int> { [-14] = 50, [-7] = 100 });
         dto.BarriosEarlyEntryAllocation.Should().Equal(new Dictionary<int, int> { [-7] = 20 });
         dto.EarlyEntryClose.Should().Be(Instant.FromUtc(2026, 7, 4, 12, 0));
-        dto.IsActive.Should().BeTrue();
+        dto.Status.Should().Be(EventSettingsStatus.Active);
     }
 
     [HumansFact]
@@ -122,7 +122,7 @@ public sealed class ServiceTests
         var dto = await BuildSut().GetEventSettingsByIdAsync(id, TestContext.Current.CancellationToken);
 
         dto!.Id.Should().Be(id);
-        dto.IsActive.Should().BeFalse();
+        dto.Status.Should().Be(EventSettingsStatus.Inactive);
     }
 
     [HumansFact]
@@ -157,7 +157,7 @@ public sealed class ServiceTests
             EarlyEntryCapacity: new Dictionary<int, int> { [-12] = 40 },
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null,
-            IsActive: false);
+            Status: EventSettingsStatus.Inactive);
 
         await BuildSut().SaveEventSettingsAsync(dto, TestContext.Current.CancellationToken);
 
@@ -178,7 +178,7 @@ public sealed class ServiceTests
                 && e.EarlyEntryCapacity[-12] == 40
                 && e.BarriosEarlyEntryAllocation == null
                 && e.EarlyEntryClose == null
-                && !e.IsActive),
+                && e.Status == EventSettingsStatus.Inactive),
             Now,
             Arg.Any<CancellationToken>());
     }

@@ -5,6 +5,13 @@ using NodaTime;
 
 namespace Humans.Settings.Services;
 
+/// <summary>
+/// The section's service. Implements the cross-section contract
+/// <see cref="ISettingsService"/> and adds the event-settings write, which is
+/// section-internal on purpose: only <c>SettingsAdminController</c> and
+/// <c>EventSettingsCarryService</c> call it, and both live here. In-section
+/// callers inject this class; everyone else takes the interface.
+/// </summary>
 internal sealed class Service(ISettingsRepository repository, IClock clock) : ISettingsService
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
@@ -24,6 +31,11 @@ internal sealed class Service(ISettingsRepository repository, IClock clock) : IS
         Guid id, CancellationToken cancellationToken = default) =>
         ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
 
+    /// <summary>
+    /// Inserts or updates the row identified by <see cref="EventSettingsInfo.Id"/>.
+    /// Idempotent: saving the same values twice leaves the row unchanged.
+    /// Not on <see cref="ISettingsService"/> — see the class summary.
+    /// </summary>
     public Task SaveEventSettingsAsync(
         EventSettingsInfo settings, CancellationToken cancellationToken = default) =>
         repository.UpsertEventSettingsAsync(
@@ -46,7 +58,7 @@ internal sealed class Service(ISettingsRepository repository, IClock clock) : IS
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose,
-        IsActive: src.IsActive);
+        Status: src.Status);
 
     private static EventSettings ToEntity(EventSettingsInfo src) => new()
     {
@@ -66,6 +78,6 @@ internal sealed class Service(ISettingsRepository repository, IClock clock) : IS
         BarriosEarlyEntryAllocation = src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose = src.EarlyEntryClose,
-        IsActive = src.IsActive,
+        Status = src.Status,
     };
 }

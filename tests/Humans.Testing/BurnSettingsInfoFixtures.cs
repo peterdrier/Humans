@@ -1,24 +1,25 @@
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 
 using NodaTime;
 
 namespace Humans.Testing;
 
 /// <summary>
-/// Builds an <see cref="EventSettingsInfo"/> for tests that stub
-/// <c>ISettingsServiceRead</c>. Every parameter has a default, so a test that
+/// Builds a <see cref="BurnSettingsInfo"/> for tests that stub
+/// <c>IBurnSettingsService</c>. Every parameter has a default, so a test that
 /// only cares about the year writes <c>BurnFixtures.Burn(year: 2026)</c>.
 /// </summary>
 /// <remarks>
 /// Shared here rather than copied per test class because the record is
-/// positional with seventeen members: fifteen call sites across six section
-/// test projects stub it. The DTO moved from Shifts to Settings when the
-/// app-wide event values did (nobodies-collective/Humans#1104); Shifts' own
-/// browsing-open knob stayed on the Shifts row and is stubbed there instead.
+/// positional with eighteen members: fifteen call sites across six section
+/// test projects stub it after the Shifts read boundary moved every
+/// cross-section burn read off <c>IShiftManagementService.GetActiveAsync</c>
+/// (which returned the <c>EventSettings</c> entity) onto this DTO
+/// (nobodies-collective/Humans#866).
 /// </remarks>
 public static class BurnFixtures
 {
-    public static EventSettingsInfo Burn(
+    public static BurnSettingsInfo Burn(
         Guid? id = null,
         string eventName = "Test Burn",
         int year = 2026,
@@ -33,7 +34,8 @@ public static class BurnFixtures
         int finishingWeekendStartOffset = -2,
         IReadOnlyDictionary<int, int>? earlyEntryCapacity = null,
         IReadOnlyDictionary<int, int>? barriosEarlyEntryAllocation = null,
-        Instant? earlyEntryClose = null) =>
+        Instant? earlyEntryClose = null,
+        bool isShiftBrowsingOpen = false) =>
         new(
             Id: id ?? Guid.NewGuid(),
             EventName: eventName,
@@ -49,5 +51,6 @@ public static class BurnFixtures
             FinishingWeekendStartOffset: finishingWeekendStartOffset,
             EarlyEntryCapacity: earlyEntryCapacity ?? new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: barriosEarlyEntryAllocation,
-            EarlyEntryClose: earlyEntryClose);
+            EarlyEntryClose: earlyEntryClose,
+            IsShiftBrowsingOpen: isShiftBrowsingOpen);
 }

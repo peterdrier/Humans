@@ -3,7 +3,7 @@ using Humans.Consent.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
 using Humans.Calendar.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Authorization;
 using Humans.Scanner.Models;
@@ -24,7 +24,7 @@ internal sealed class ScannerController(
     IConsentServiceRead consents,
     IICalFeedService calendarFeed,
     IEventServiceRead events,
-    ISettingsServiceRead appSettings) : Controller
+    IBurnSettingsService burnSettings) : Controller
 {
     [HttpGet("")]
     public IActionResult Index() => View();
@@ -66,7 +66,7 @@ internal sealed class ScannerController(
             ee = await earlyEntry.GetForUserAsync(userId, ct);
             pendingConsents = await consents.GetPendingDocumentNamesAsync(userId, ct);
 
-            var burn = await appSettings.GetActiveEventSettingsAsync(ct);
+            var burn = await burnSettings.GetActiveAsync(ct);
             burnTz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
             if (burn is not null)
             {
@@ -105,7 +105,7 @@ internal sealed class ScannerController(
     /// the Events feed contributor does.
     /// </summary>
     private async Task<IReadOnlyList<CalendarFeedItem>> GetProvideItemsAsync(
-        Guid userId, EventSettingsInfo? burn, DateTimeZone? tz, CancellationToken ct)
+        Guid userId, BurnSettingsInfo? burn, DateTimeZone? tz, CancellationToken ct)
     {
         var shiftItems = (await calendarFeed.GetFeedItemsAsync(userId, ct))
             .Where(i => string.Equals(i.Source, "Shifts", StringComparison.Ordinal));

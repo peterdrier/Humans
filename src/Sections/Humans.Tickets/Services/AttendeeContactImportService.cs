@@ -1,7 +1,7 @@
 using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Services.Dtos;
 using NodaTime;
 using Humans.Tickets.Data;
@@ -15,7 +15,7 @@ internal sealed class AttendeeContactImportService(
     IUserEmailService userEmails,
     IAccountProvisioningService provisioning,
     IUserService users,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
     IClock clock,
@@ -107,7 +107,7 @@ internal sealed class AttendeeContactImportService(
         // Evict before participation loop so attendee mutation always invalidates caches.
         ticketCacheInvalidator.InvalidateAfterContactImport();
 
-        var active = await appSettings.GetActiveEventSettingsAsync();
+        var active = await burnSettings.GetActiveAsync();
         if (active is not null && importState.NewlyMatchedUserIds.Count > 0)
         {
             foreach (var userId in importState.NewlyMatchedUserIds)

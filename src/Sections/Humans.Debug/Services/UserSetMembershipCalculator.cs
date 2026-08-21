@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
@@ -22,11 +21,11 @@ internal static class UserSetMembershipCalculator
 {
     public static async Task<UserSetMembership> BuildAsync(
         IReadOnlyCollection<UserInfo> snapshot,
-        ISettingsServiceRead appSettings,
+        IBurnSettingsService burnSettings,
         IShiftView shiftView,
         CancellationToken ct)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var activeYear = activeEvent?.Year ?? 0;
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 

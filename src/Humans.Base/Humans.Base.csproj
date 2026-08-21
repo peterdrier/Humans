@@ -14,7 +14,7 @@
     Lowest-level project: system marker interfaces, architecture attributes, and
     shape interfaces shared by Domain entities and their Application DTOs. Those
     shape interfaces may carry default-implemented members when a rule must have a
-    single home across both implementers (IEventSettingsInfo's early-entry clock) —
+    single home across both implementers (IBurnSettingsInfo's early-entry clock) —
     so a little behaviour lives here, deliberately, not just declarations.
     THE ONE INVARIANT, restated for what it always meant: Base must stay the bottom of
     the graph, so every project it references must sit on a chain that TERMINATES.
@@ -36,7 +36,7 @@
     Npgsql. Do not reason from package count when placing a type here; reason from the
     ProjectReference rule above and from whether the type is genuinely cross-section.
 
-    NodaTime is here because IEventSettingsInfo's calendar members are LocalDate and
+    NodaTime is here because IBurnSettingsInfo's calendar members are LocalDate and
     Instant. Namespaces intentionally remain Humans.Application.* (namespace ≠ assembly)
     so call sites and the Humans.Analyzers full-name constants are unaffected by the move.
 

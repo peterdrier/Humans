@@ -1,4 +1,3 @@
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 
 namespace Humans.Onboarding.Models;
@@ -46,7 +45,7 @@ internal sealed class ShiftsStepViewModel
     public bool HasAnyImportant { get; init; }
 
     /// <summary>Null when no event is active — the view renders its no-event empty state.</summary>
-    public EventSettingsInfo? EventSettings { get; init; }
+    public BurnSettingsInfo? EventSettings { get; init; }
 
     /// <summary>The event's shifts already filtered to <see cref="SelectedPriority"/>.</summary>
     public IReadOnlyList<UrgentShiftInfo> Shifts { get; init; } = [];

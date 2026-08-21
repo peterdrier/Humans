@@ -7,13 +7,13 @@ using NodaTime;
 namespace Humans.Settings.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAppEventSettings : Migration
+    public partial class AddSettingsEvent : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "app_event_settings",
+                name: "settings_event",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -31,26 +31,26 @@ namespace Humans.Settings.Data.Migrations
                     EarlyEntryCapacity = table.Column<string>(type: "jsonb", nullable: false),
                     BarriosEarlyEntryAllocation = table.Column<string>(type: "jsonb", nullable: true),
                     EarlyEntryClose = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_app_event_settings", x => x.Id);
+                    table.PrimaryKey("PK_settings_event", x => x.Id);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_app_event_settings_IsActive",
-                table: "app_event_settings",
-                column: "IsActive");
+                name: "IX_settings_event_Status",
+                table: "settings_event",
+                column: "Status");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "app_event_settings");
+                name: "settings_event");
         }
     }
 }

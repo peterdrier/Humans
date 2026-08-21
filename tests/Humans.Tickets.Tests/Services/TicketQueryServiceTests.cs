@@ -3,7 +3,7 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
-using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
 using Humans.Base.Constants;
@@ -24,7 +24,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ISettingsServiceRead _shiftManagementService = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _shiftManagementService = Substitute.For<IBurnSettingsService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -815,8 +815,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
-            .Returns((EventSettingsInfo?)null);
+        _shiftManagementService.GetActiveAsync()
+            .Returns((BurnSettingsInfo?)null);
     }
 
     private static User CreateUser(string name, string email)

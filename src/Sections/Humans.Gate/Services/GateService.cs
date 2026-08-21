@@ -4,7 +4,6 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
@@ -30,7 +29,7 @@ internal sealed class GateService(
     IGateRepository repository,
     ITicketServiceRead tickets,
     IEarlyEntryService earlyEntry,
-    ISettingsServiceRead appSettings,
+    IBurnSettingsService burnSettings,
     IShiftManagementServiceRead shifts,
     IRoleAssignmentService roles,
     IUserService users,
@@ -63,7 +62,7 @@ internal sealed class GateService(
 
         var settings = await repository.GetSettingsAsync(ct);
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = await appSettings.GetActiveEventSettingsAsync(ct);
+        var burn = await burnSettings.GetActiveAsync(ct);
         var now = clock.GetCurrentInstant();
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
@@ -154,7 +153,7 @@ internal sealed class GateService(
         // same fact). Log and move on; the next sync converges the row.
         try
         {
-            var activeEvent = await appSettings.GetActiveEventSettingsAsync();
+            var activeEvent = await burnSettings.GetActiveAsync();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -243,7 +242,7 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await appSettings.GetActiveEventSettingsAsync(ct);
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         if (activeEvent is null)
             return [];
 

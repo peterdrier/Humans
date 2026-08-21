@@ -5,7 +5,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -50,7 +49,7 @@ public class VolunteerTrackingControllerTests
     private readonly UserManager<User> _userManager;
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IVolunteerTrackingExportService _exportService =
         Substitute.For<IVolunteerTrackingExportService>();
     private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
@@ -87,7 +86,7 @@ public class VolunteerTrackingControllerTests
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _shiftMgmt, _appSettings, _exportService, _xlsxBuilder,
+            _service, _shiftMgmt, _burnSettings, _exportService, _xlsxBuilder,
             _userService, _auditLog, _localizer);
 
         var http = new DefaultHttpContext();
@@ -621,7 +620,7 @@ public class VolunteerTrackingControllerTests
         var target = Guid.NewGuid();
         var esId = Guid.NewGuid();
         var es = MakeBurn(esId);
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         _service
             .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
             .Returns(true);
@@ -647,7 +646,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var es = MakeBurn(Guid.NewGuid());
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         // Default: SetDayAvailabilityAsync returns false → no audit row (service short-circuited).
         var ctrl = BuildSut(current);
 
@@ -668,7 +667,7 @@ public class VolunteerTrackingControllerTests
         var target = Guid.NewGuid();
         var esId = Guid.NewGuid();
         var es = MakeBurn(esId);
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         _service
             .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
             .Returns(true);
@@ -694,7 +693,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var es = MakeBurn(Guid.NewGuid());
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         // Default: SetDayAvailabilityAsync returns false → no audit row.
         var ctrl = BuildSut(current);
 
@@ -713,7 +712,7 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var es = MakeBurn(Guid.NewGuid());
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         var ctrl = BuildSut(current);
         var localUrl = $"/Profile/{Guid.NewGuid()}";
         ctrl.Url.IsLocalUrl(localUrl).Returns(true);
@@ -729,7 +728,7 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var es = MakeBurn(Guid.NewGuid());
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         var ctrl = BuildSut(current);
         const string externalUrl = "https://evil.test/steal";
         ctrl.Url.IsLocalUrl(externalUrl).Returns(false);
@@ -744,7 +743,7 @@ public class VolunteerTrackingControllerTests
     public async Task SetAvailabilityDay_NoActiveEvent_RedirectsWithError()
     {
         var current = new User { Id = Guid.NewGuid() };
-        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         var ctrl = BuildSut(current);
 
         await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, TestContext.Current.CancellationToken);
@@ -793,7 +792,7 @@ public class VolunteerTrackingControllerTests
 
     // These tests only care about the burn's Id (it is what gets forwarded to
     // SetDayAvailabilityAsync); the rest are inert defaults.
-    private static EventSettingsInfo MakeBurn(Guid id) =>
+    private static BurnSettingsInfo MakeBurn(Guid id) =>
         new(
             Id: id,
             EventName: "Test Burn",
@@ -809,5 +808,6 @@ public class VolunteerTrackingControllerTests
             FinishingWeekendStartOffset: -2,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null);
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: false);
 }

@@ -76,8 +76,11 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public Instant? EarlyEntryClose { get; set; }
 
-    /// <summary>Whether this is the active event configuration.</summary>
-    public bool IsActive { get; set; }
+    /// <summary>
+    /// Lifecycle of this cycle. Deleting sets <see cref="EventSettingsStatus.Deleted"/>;
+    /// the row is never removed, because other sections point at its <see cref="Id"/>.
+    /// </summary>
+    public EventSettingsStatus Status { get; set; } = EventSettingsStatus.Active;
 
     /// <summary>When this record was created.</summary>
     public Instant CreatedAt { get; set; }

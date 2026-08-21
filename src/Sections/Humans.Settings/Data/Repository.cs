@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -44,7 +45,7 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.EventSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.IsActive, ct);
+            .FirstOrDefaultAsync(e => e.Status == EventSettingsStatus.Active, ct);
     }
 
     public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
@@ -83,7 +84,7 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             existing.EarlyEntryCapacity = settings.EarlyEntryCapacity;
             existing.BarriosEarlyEntryAllocation = settings.BarriosEarlyEntryAllocation;
             existing.EarlyEntryClose = settings.EarlyEntryClose;
-            existing.IsActive = settings.IsActive;
+            existing.Status = settings.Status;
             existing.UpdatedAt = now;
         }
 
