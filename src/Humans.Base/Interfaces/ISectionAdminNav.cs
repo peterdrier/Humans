@@ -26,6 +26,12 @@ public sealed record AdminNavGroup(
 }
 
 /// <summary>One item in an admin sidebar group.</summary>
+/// <remarks>
+/// <paramref name="Label"/> must stand alone in the sidebar, where the heading above it is the
+/// merge group ("Money"), not the owning section. The breadcrumb states the section, so a label
+/// that repeats it reads twice; <paramref name="BreadcrumbLabel"/> is the shorter form to use
+/// there. Leave it unset when the label is already section-free.
+/// </remarks>
 public sealed record AdminNavItem(
     string Label,
     string? Controller,
@@ -37,7 +43,12 @@ public sealed record AdminNavItem(
     Func<ClaimsPrincipal, bool>? RoleCheck = null,
     Func<IServiceProvider, ValueTask<int?>>? PillCount = null,
     Func<IWebHostEnvironment, bool>? EnvironmentGate = null,
-    int Weight = 0);
+    int Weight = 0,
+    string? BreadcrumbLabel = null)
+{
+    /// <summary>What the breadcrumb renders — <see cref="BreadcrumbLabel"/>, or <see cref="Label"/>.</summary>
+    public string CrumbLabel => BreadcrumbLabel ?? Label;
+}
 
 /// <summary>The admin sidebar groups a section contributes.</summary>
 public interface ISectionAdminNav : ISectionContribution

@@ -28,6 +28,12 @@
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
+      <vc:audit-log> on the report detail page. The view component lives in the section project,
+      not the contracts leaf, so showing audit history takes the section reference — same as
+      Store, Teams, Tickets and Users. Acyclic: nothing on Humans.AuditLog's graph names Expenses.
+    -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <!--
       The report grid's category column renders Budget's own Budget_ColCategory key, so the
       view binds IStringLocalizer<BudgetResource> and needs the section project, not just its
       leaf. Acyclic: Humans.Budget references Humans.Finance.Contracts and this project's

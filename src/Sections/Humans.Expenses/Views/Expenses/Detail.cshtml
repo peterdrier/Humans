@@ -194,6 +194,76 @@
     </div>
 
     <div class="col-md-4">
+        @* Every decision on a report is taken here rather than from a queue row, so nobody
+           approves a report without the lines and receipts on screen (peterdrier/Humans#1447).
+           A finance admin looking at a Submitted report can both endorse and approve it — the
+           authorization handler has always granted them the coordinator's operations. *@
+        @if (Model.HasDecision)
+        {
+            <div class="card mb-3 border-primary">
+                <div class="card-header bg-primary-subtle"><strong><i class="fa-solid fa-gavel me-1"></i>Decision</strong></div>
+                <div class="card-body">
+                    @if (Model.CanApprove)
+                    {
+                        <form asp-action="Approve" asp-route-id="@r.Id" method="post" class="mb-3">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-2">
+                                <label class="form-label" for="approve-max">@Localizer["Expenses_MaxAmount"]</label>
+                                <input type="number" class="form-control" id="approve-max" name="MaxAmount"
+                                       step="0.01" min="0.01"
+                                       value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                       placeholder="Leave blank for no cap">
+                                @* Blank clears a coordinator's cap rather than keeping it, which is
+                                   also how an admin corrects one that was entered wrong. *@
+                                <div class="form-text">
+                                    Caps the payout below the receipts total (@r.Total.ToEuro()).
+                                    Overrides the coordinator's cap; blank means no cap.
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label" for="approve-category">Category override</label>
+                                <select class="form-select" id="approve-category" name="OverrideCategoryId">
+                                    <option value="">Keep @Model.CategoryDisplayName</option>
+                                    @foreach (var option in Model.Categories)
+                                    {
+                                        <option value="@option.Id">@option.DisplayName</option>
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fa-solid fa-check me-1"></i>Approve
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanEndorse)
+                    {
+                        <form asp-action="Endorse" asp-route-id="@r.Id" method="post" class="mb-3">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-2">
+                                <label class="form-label" for="endorse-max">@Localizer["Expenses_MaxAmount"]</label>
+                                <input type="number" class="form-control" id="endorse-max" name="MaxAmount"
+                                       step="0.01" min="0.01"
+                                       value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
+                            </div>
+                            <button type="submit" class="btn btn-outline-success w-100"
+                                    data-confirm="@Localizer["Expenses_EndorseConfirm"].Value">
+                                <i class="fa-solid fa-check me-1"></i>@Localizer["Expenses_Endorse"]
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanFinanceReject || Model.CanCoordinatorReject)
+                    {
+                        <button type="button" class="btn btn-outline-danger w-100"
+                                data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fa-solid fa-xmark me-1"></i>@Localizer["Expenses_Reject"]
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (Model.PayeeName is not null || Model.PayeeMaskedIban is not null || Model.CanEditIban)
         {
             <div class="card mb-3">
@@ -449,6 +519,48 @@
         }
     </div>
 </div>
+
+@* Who did what, on the report itself — the endorsement, its authorized maximum, the approval and
+   any rejection all land here (peterdrier/Humans#1447). Everyone who may open the report sees it:
+   the entries are that report's own history. *@
+<vc:audit-log entity-type="@AuditEntityTypes.Report" entity-id="@r.Id"
+              limit="50" title="History" empty-text="Nothing recorded yet." />
+
+@if (Model.CanFinanceReject || Model.CanCoordinatorReject)
+{
+    @* Finance rejection and coordinator rejection are the same gesture with the same
+       consequence — the report goes back to the submitter as a draft carrying this reason —
+       so they share one dialog. A finance admin who holds both takes the finance path. *@
+    var rejectAction = Model.CanFinanceReject ? "Reject" : "CoordinatorReject";
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="@rejectAction" asp-route-id="@r.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="rejectModalLabel">@Localizer["Expenses_RejectModalTitle"]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">@Localizer["Expenses_RejectModalBody"]</p>
+                        <div class="mb-3">
+                            <label for="rejectReason" class="form-label fw-semibold">
+                                @Localizer["Expenses_RejectReasonLabel"] <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="rejectReason" name="Reason"
+                                      rows="3" maxlength="1000" required
+                                      placeholder="@Localizer["Expenses_RejectReasonPlaceholder"].Value"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-danger">@Localizer["Expenses_Reject"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

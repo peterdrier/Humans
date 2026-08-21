@@ -1,8 +1,8 @@
 @model Humans.Web.ViewComponents.AdminBreadcrumbViewModel
 <a asp-controller="Admin" asp-action="Index">Admin</a>
-@if (Model.GroupLabel is not null)
+@if (Model.SectionLabel is not null)
 {
-    <span class="sep">/</span><span>@Model.GroupLabel</span>
+    <span class="sep">/</span><span>@Model.SectionLabel</span>
     <span class="sep">/</span><span class="here">@Model.ItemLabel</span>
 }
 else if (!string.IsNullOrEmpty(Model.FallbackTitle))

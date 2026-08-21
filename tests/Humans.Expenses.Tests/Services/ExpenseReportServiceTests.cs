@@ -1463,7 +1463,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawn()
+    public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawn_ForFinanceAdmin()
     {
         var (_, category) = SetupActiveYear();
         var yearId = Guid.NewGuid();
@@ -1472,10 +1472,61 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
         await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Withdrawn);
 
-        var queue = await _sut.GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
+        var queue = await _sut.GetReviewQueueAsync(Guid.NewGuid(), isFinanceAdmin: true,
+            Xunit.TestContext.Current.CancellationToken);
         queue.Should().HaveCount(2);
         queue.Should().OnlyContain(r =>
             r.Status != ExpenseReportStatus.Draft && r.Status != ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_ScopesToOwnReportsAndCoordinatedCategories()
+    {
+        // The one queue replaced a separate coordinator page (peterdrier/Humans#1447): a
+        // coordinator sees their own reports plus their departments', and nothing else.
+        var (_, category) = SetupActiveYear();
+        var coordinatorUserId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+
+        var ownId = Guid.NewGuid();
+        var departmentId = Guid.NewGuid();
+        var strangersId = Guid.NewGuid();
+        await SeedReportWithStatus(ownId, coordinatorUserId, Guid.NewGuid(), yearId,
+            ExpenseReportStatus.Approved);
+        await SeedReportWithStatus(departmentId, Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
+            ExpenseReportStatus.Submitted);
+
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns([category.TeamId!.Value]);
+
+        var queue = await _sut.GetReviewQueueAsync(coordinatorUserId, isFinanceAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        queue.Select(r => r.Id).Should().BeEquivalentTo([ownId, departmentId]);
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_ShowsPlainMemberOnlyTheirOwnReports()
+    {
+        var (_, category) = SetupActiveYear();
+        var memberUserId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+
+        var ownId = Guid.NewGuid();
+        await SeedReportWithStatus(ownId, memberUserId, category.Id, yearId,
+            ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Submitted);
+
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(memberUserId,
+            Arg.Any<CancellationToken>()).Returns([]);
+
+        var queue = await _sut.GetReviewQueueAsync(memberUserId, isFinanceAdmin: false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        queue.Select(r => r.Id).Should().BeEquivalentTo([ownId]);
     }
 
     [HumansFact]
