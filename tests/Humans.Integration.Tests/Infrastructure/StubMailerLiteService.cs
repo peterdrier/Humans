@@ -14,7 +14,9 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// Defaults model the smallest account the section's pages need to be worth rendering: the
 /// <c>Website</c> group the import reads (resolved by name, and
 /// <c>MailerLiteImportService.BuildPlanAsync</c> throws if it is absent) plus whatever
-/// subscribers a test adds. The four writes record their calls and mutate nothing.
+/// subscribers a test adds. The four audience-management writes record their calls and
+/// mutate nothing; <see cref="DeleteSubscriberAsync"/> actually removes the subscriber so
+/// GDPR erasure tests can observe the effect.
 /// </remarks>
 internal sealed class StubMailerLiteService : IMailerLiteService
 {
@@ -90,4 +92,10 @@ internal sealed class StubMailerLiteService : IMailerLiteService
     public Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
         string groupId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
         Task.FromResult(new BulkImportResult(emails.Count, 0, 0, 0));
+
+    public Task DeleteSubscriberAsync(string email, CancellationToken ct = default)
+    {
+        _subscribers.RemoveAll(s => string.Equals(s.Email, email, StringComparison.OrdinalIgnoreCase));
+        return Task.CompletedTask;
+    }
 }
