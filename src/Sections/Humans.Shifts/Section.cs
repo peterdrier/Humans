@@ -90,6 +90,10 @@ public sealed class Section : ISection
         // Rota coordinator "email a rota" — see #732.
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
 
+        // Operator screen that carries the app-wide event values into Settings (#1104).
+        // Retires with the old columns.
+        services.AddScoped<IAppEventSettingsMoveService, AppEventSettingsMoveService>();
+
         // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
         // SectionPolicies. CampComplianceAccessHandler moved to Camps — policy, consumers,
         // requirement and handler are all Camps'; it reads the coordinator lookup through

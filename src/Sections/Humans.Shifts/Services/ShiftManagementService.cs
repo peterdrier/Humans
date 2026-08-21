@@ -134,6 +134,9 @@ internal sealed class ShiftManagementService(
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
         repo.GetEventSettingsByIdAsync(id);
 
+    public Task<IReadOnlyList<EventSettings>> GetAllAsync(CancellationToken ct = default) =>
+        repo.GetAllEventSettingsAsync(ct);
+
     public async Task CreateAsync(EventSettings entity)
     {
         if (entity.IsActive)

@@ -64,6 +64,13 @@ internal interface IShiftManagementService
     Task<EventSettings?> GetByIdAsync(Guid id);
 
     /// <summary>
+    /// Every EventSettings row, oldest cycle first. Only the operator screen that
+    /// carries the app-wide values over to Settings reads this (#1104); it goes
+    /// away with the old columns.
+    /// </summary>
+    Task<IReadOnlyList<EventSettings>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Creates a new EventSettings. Validates only one IsActive=true.
     /// </summary>
     Task CreateAsync(EventSettings entity);
