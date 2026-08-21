@@ -397,6 +397,15 @@ _logger.LogInformation(
 | Background Jobs | `/hangfire` | - |
 | Check Group Settings | `/Google/CheckGroupSettings` | - |
 
+### Settings (admin sidebar)
+
+| Action | Link | Notes |
+|--------|------|-------|
+| Event settings | `/Settings/Admin` | The app-wide event values in `settings_event`. **Nothing reads that table yet** — the live editor is still `/Shifts/Admin`'s event form until the readers are repointed (nobodies-collective/Humans#1104) |
+| Carry event settings | `/Settings/Admin/Carry` | Operator screen that copies the Shifts event rows into `settings_event`. Idempotent, no deadline, retires once the old columns are dropped |
+
+Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*` is frozen and new admin pages belong to their section (`memory/architecture/no-admin-url-section.md`).
+
 ## System Health
 
 ### Dashboard Indicators

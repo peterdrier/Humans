@@ -32,4 +32,12 @@ public interface IBurnSettingsService : IApplicationService
     /// previous cycle.
     /// </summary>
     Task<BurnSettingsInfo?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every burn, oldest cycle first. Added for the Settings section's carry
+    /// screen, which copies these rows into <c>settings_event</c> one cycle at a
+    /// time and needs to see all of them, not just the active one
+    /// (nobodies-collective/Humans#1104). Retires with the carry screen.
+    /// </summary>
+    Task<IReadOnlyList<BurnSettingsInfo>> GetAllAsync(CancellationToken ct = default);
 }

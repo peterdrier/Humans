@@ -40,7 +40,7 @@ public class ServiceBoundaryArchitectureTests
         new Dictionary<Type, string>
         {
             [SectionRepository("Humans.Events.Data.IEventRepository")] = "Events",
-            [SectionRepository("Humans.SystemSettings.Data.ISystemSettingsRepository")] = "SystemSettings",
+            [SectionRepository("Humans.Settings.Data.ISettingsRepository")] = "Settings",
             [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
             [typeof(IAccountMergeRepository)] = "Humans",
             [HostRepository("Humans.Web.Repositories.Admin.IAdminDatabaseDiagnosticsRepository")] = "Admin",

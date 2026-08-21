@@ -4,7 +4,7 @@
     GoogleIntegration's cross-section surface, carved into its own leaf project because the
     section is referenced in both directions: it consumes Humans.Teams.Contracts,
     Humans.Auth.Contracts, Humans.AuditLog.Contracts, Humans.Email.Contracts,
-    Humans.Notifications.Contracts and Humans.SystemSettings.Contracts, while Teams,
+    Humans.Notifications.Contracts and Humans.Settings.Contracts, while Teams,
     Notifications, Surveys and Monitor inject its services. A Contracts/ *folder* inside
     Humans.GoogleIntegration would therefore cycle at the assembly level (design §15.5b,
     memory/architecture/section-project-cycle-fix.md) — and would cycle a second way, because

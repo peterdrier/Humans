@@ -4,7 +4,7 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Email\Humans.Email.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />

@@ -55,6 +55,15 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .OrderBy(e => e.Year) // arch:db-sort-ok the carry screen lists cycles oldest first
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
