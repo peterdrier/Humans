@@ -142,7 +142,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Routing
 
-- **`/Survey/Admin/*`** — `SurveyAdminController` (BoardOrAdmin): index, builder, send, results, CSV/JSON export.
+- **`/Survey/Admin/*`** — `SurveyAdminController` (BoardOrAdmin): index, builder, read-only preview,
+  preview-email-to-self, send, results, CSV/JSON export.
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
@@ -176,6 +177,15 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Grid questions may be branch targets, never branch sources.** A Grid can carry its own `ShowIf`, but author-save rejects any branch clause that references a Grid question.
 - **Grid result percentages are row-local.** Each cell's percentage uses respondents who answered that row as its denominator. Results retain the current authored matrix. CSV/JSON/Markdown export, the analysis API, and GDPR export retain raw stored row/column keys just as choice exports retain `SelectedOptionValues`, alongside best-effort labels in the survey's default culture; removed definitions fall back to their raw keys instead of hiding historical answers.
 - **Invitation send is idempotent and additive.** Each send resolves the audience, diffs against existing `(SurveyId, UserId)` invitations, and creates+emails only net-new recipients; nobody is double-invited and **sends never revoke**. The Send page previews that exact net-new count, not the raw audience size. Requires the survey Open with a valid audience configuration (`Team` requires a team; `LoggedInSince` requires a cutoff date). Invites are operational (`MessageCategory.System`, always-send) — surveys are never marketing.
+- **Survey preview is side-effect-free and status-independent.** Board/Admin authors may preview Draft,
+  Open, or Closed surveys through the respondent views. Preview page navigation is GET-only, displays
+  all authored conditional questions for inspection, and never creates an invitation, response, draft,
+  reminder, completion, or funnel event. The final Submit control is disabled.
+- **Preview email reuses the real invitation pipeline without joining its ledger.** It targets the
+  current Board/Admin user's canonical notification email and uses
+  `IEmailMessageFactory.SurveyInvitation` + `IEmailService.SendAsync`. Its seven-day signed token has a
+  distinct Data Protection purpose and redirects `/Survey/Answer` to the protected preview route; no
+  `SurveyInvitation` row is created.
 - **Exactly one reminder.** The 7-day reminder fires once per invitee (Open survey, `Completed == false`, `SentAt ≥ 7 days ago`, `ReminderSentAt is null`), stamping `ReminderSentAt` so it never repeats.
 - **Public responses are always Anonymous + `InputMethod=Slug`.** The slug path requires `AllowAnonymous`; reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
 <!-- wheat: docs/plans/2026-06-27-post-event-app-feedback-survey.md §1.2, §3, §4 -->
@@ -214,7 +224,9 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.SurveyInvitation` / `SurveyReminder` — invite + reminder mail (queued through the email outbox in production).
 - **GoogleIntegration:** `IGoogleTranslationService` — the builder's "Save + translate missing" pre-fills blank cultures from the default culture (Cloud Translation; dev stub returns `[xx]`-prefixed text). Fills blanks only — authored text is never overwritten.
 - **Audit Log:** `IAuditLogService.LogAsync` — survey lifecycle + send/reminder events (never individual submissions).
-- **Data Protection:** `IDataProtectionProvider` via `ISurveyInviteTokenProvider` — time-limited, tamper-evident invite tokens (`/Survey/Answer?t={token}`).
+- **Data Protection:** `IDataProtectionProvider` via `ISurveyInviteTokenProvider` and
+  `SurveyPreviewTokenProvider` — time-limited, tamper-evident invitation and preview tokens with
+  distinct purposes (`/Survey/Answer?t={token}`).
 - **GDPR:** implements `IUserDataContributor` to export the user's Identified survey responses under `GdprExportSections.SurveyResponses`.
 
 ## Architecture

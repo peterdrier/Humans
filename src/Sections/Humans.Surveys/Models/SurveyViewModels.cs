@@ -49,6 +49,12 @@ internal sealed class SurveyIntroViewModel
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 
+    /// <summary>True for the protected, side-effect-free Board/Admin preview flow.</summary>
+    public bool IsPreview { get; init; }
+
+    /// <summary>The previewed survey id; set only when <see cref="IsPreview"/>.</summary>
+    public Guid? PreviewSurveyId { get; init; }
+
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
 }
 

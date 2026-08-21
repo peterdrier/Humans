@@ -16,6 +16,23 @@
                     }
                 </div>
 
+                @if (Model.IsPreview)
+                {
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3" role="note">
+                        <div>
+                            <i class="fa-solid fa-eye me-1"></i>
+                            <strong>Preview only.</strong> Answers and activity are not saved. Conditional questions are shown so they can be inspected.
+                        </div>
+                        <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail"
+                              asp-route-id="@Model.PreviewSurveyId" method="post" class="flex-shrink-0">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-dark">
+                                <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
+                            </button>
+                        </form>
+                    </div>
+                }
+
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="alert alert-danger" role="alert">
@@ -26,15 +43,27 @@
                 @{
                     // Public-slug path posts to PublicSubmitPage with the slug in the route; the invited
                     // path posts to SubmitPage with the token in a hidden field.
-                    var submitAction = Model.IsPublic ? "PublicSubmitPage" : "SubmitPage";
+                    var submitController = Model.IsPreview ? "SurveyAdmin" : "Survey";
+                    var submitAction = Model.IsPreview ? "PreviewPage" : Model.IsPublic ? "PublicSubmitPage" : "SubmitPage";
                 }
-                <form asp-controller="Survey" asp-action="@submitAction" asp-route-slug="@(Model.IsPublic ? Model.Slug : null)" method="post">
-                    @Html.AntiForgeryToken()
-                    @if (!Model.IsPublic)
+                <form asp-controller="@submitController"
+                      asp-action="@submitAction"
+                      asp-route-id="@(Model.IsPreview ? Model.PreviewSurveyId : null)"
+                      asp-route-slug="@(Model.IsPublic ? Model.Slug : null)"
+                      method="@(Model.IsPreview ? "get" : "post")">
+                    @if (!Model.IsPreview)
                     {
-                        <input type="hidden" name="Token" value="@Model.Token" />
+                        @Html.AntiForgeryToken()
+                        @if (!Model.IsPublic)
+                        {
+                            <input type="hidden" name="Token" value="@Model.Token" />
+                        }
                     }
                     <input type="hidden" name="Page" value="@Model.Page" />
+                    @if (Model.IsPreview)
+                    {
+                        <input type="hidden" name="Culture" value="@Model.PreviewCulture" />
+                    }
 
                     @for (var i = 0; i < Model.Questions.Count; i++)
                     {
@@ -175,7 +204,17 @@
                     }
 
                     <div class="d-flex justify-content-between mt-4">
-                        @if (Model.CanGoBack)
+                        @if (Model.IsPreview && Model.PreviousPreviewPage is not null)
+                        {
+                            <a asp-controller="SurveyAdmin" asp-action="PreviewPage"
+                               asp-route-id="@Model.PreviewSurveyId"
+                               asp-route-culture="@Model.PreviewCulture"
+                               asp-route-page="@Model.PreviousPreviewPage"
+                               class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
+                            </a>
+                        }
+                        else if (Model.CanGoBack)
                         {
                             <button type="submit" name="Back" value="true" class="btn btn-outline-secondary" formnovalidate>
                                 <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
@@ -186,16 +225,43 @@
                             <span></span>
                         }
 
-                        <button type="submit" class="btn btn-primary">
-                            @if (Model.IsLastStep)
-                            {
-                                <span>@Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
-                            }
-                            else
-                            {
-                                <span>@Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
-                            }
-                        </button>
+                        @if (Model.IsPreview && Model.NextPreviewPage is not null)
+                        {
+                            <a asp-controller="SurveyAdmin" asp-action="PreviewPage"
+                               asp-route-id="@Model.PreviewSurveyId"
+                               asp-route-culture="@Model.PreviewCulture"
+                               asp-route-page="@Model.NextPreviewPage"
+                               class="btn btn-primary">
+                                @Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        }
+                        else if (Model.IsPreview)
+                        {
+                            <div class="d-flex gap-2">
+                                <a asp-controller="SurveyAdmin" asp-action="PreviewThankYou"
+                                   asp-route-id="@Model.PreviewSurveyId"
+                                   asp-route-culture="@Model.PreviewCulture"
+                                   class="btn btn-outline-primary">
+                                    Preview thank-you
+                                </a>
+                                <button type="button" class="btn btn-primary" disabled aria-disabled="true">
+                                    @Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i>
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-primary">
+                                @if (Model.IsLastStep)
+                                {
+                                    <span>@Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
+                                }
+                                else
+                                {
+                                    <span>@Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
+                                }
+                            </button>
+                        }
                     </div>
                 </form>
             </div>

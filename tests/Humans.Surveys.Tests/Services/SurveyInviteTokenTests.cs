@@ -33,4 +33,19 @@ public class SurveyInviteTokenTests
     {
         CreateProvider().Resolve("not-a-real-token").Should().BeNull();
     }
+
+    [HumansFact]
+    public void Preview_token_round_trips_survey_id_and_is_distinct_from_invite_tokens()
+    {
+        var dataProtection = DataProtectionProvider.Create("survey-preview-tests");
+        var previewProvider = new SurveyPreviewTokenProvider(dataProtection);
+        var inviteProvider = new SurveyInviteTokenProvider(dataProtection);
+        var surveyId = Guid.NewGuid();
+
+        var token = previewProvider.Create(surveyId);
+
+        previewProvider.Resolve(token).Should().Be(surveyId);
+        inviteProvider.Resolve(token).Should().BeNull();
+        previewProvider.Resolve(inviteProvider.Create(Guid.NewGuid())).Should().BeNull();
+    }
 }

@@ -29,6 +29,10 @@
     @if (!Model.IsNew)
     {
         <div class="d-flex align-items-center gap-2">
+            <a asp-controller="SurveyAdmin" asp-action="Preview" asp-route-id="@Model.Id"
+               class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
+                <i class="fa-solid fa-eye me-1"></i>Preview
+            </a>
             <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : "bg-warning text-dark")">@Model.Status</span>
             @if (Model.Status != SurveyStatus.Open)
             {

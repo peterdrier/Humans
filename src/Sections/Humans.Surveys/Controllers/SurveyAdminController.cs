@@ -63,6 +63,101 @@ internal sealed class SurveyAdminController(
         return View("Builder", vm);
     }
 
+    [HttpGet("Preview/{id:guid}")]
+    public async Task<IActionResult> Preview(Guid id, string? culture, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+
+        var editable = detail.Editable;
+        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var vm = new SurveyIntroViewModel
+        {
+            Title = editable.Title.Resolve(resolvedCulture, editable.DefaultCulture),
+            Intro = editable.Intro.Resolve(resolvedCulture, editable.DefaultCulture),
+            Culture = resolvedCulture,
+            AllowAnonymous = editable.AllowAnonymous,
+            ShowAnonymitySelector = editable.AllowAnonymous,
+            IsPreview = true,
+            PreviewSurveyId = detail.Id,
+        };
+        return View("~/Views/Survey/Intro.cshtml", vm);
+    }
+
+    [HttpGet("Preview/{id:guid}/Page")]
+    public async Task<IActionResult> PreviewPage(Guid id, string? culture, int? page, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+
+        var editable = detail.Editable;
+        var pages = SurveyWizardFlow.OrderedPages(editable.Questions);
+        if (pages.Count == 0)
+            return RedirectToAction(nameof(PreviewThankYou), new { id, culture });
+
+        var selectedPage = page is not null && pages.Contains(page.Value) ? page.Value : pages[0];
+        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var state = new SurveyWizardState
+        {
+            SurveyId = id,
+            Culture = resolvedCulture,
+            CurrentPage = selectedPage,
+        };
+        var questions = editable.Questions
+            .Where(question => question.PageNumber == selectedPage)
+            .OrderBy(question => question.Order)
+            .ToList();
+        var vm = SurveyPageViewModelFactory.Build(
+            state, editable, questions, pages, isPublic: false, routeKey: string.Empty,
+            isPreview: true, previewSurveyId: id);
+        return View("~/Views/Survey/Page.cshtml", vm);
+    }
+
+    [HttpGet("Preview/{id:guid}/ThankYou")]
+    public async Task<IActionResult> PreviewThankYou(Guid id, string? culture, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+
+        var editable = detail.Editable;
+        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var thankYou = editable.ThankYou.Resolve(resolvedCulture, editable.DefaultCulture);
+        var vm = new SurveyThankYouViewModel
+        {
+            Title = editable.Title.Resolve(resolvedCulture, editable.DefaultCulture),
+            ThankYou = thankYou,
+            IsPreview = true,
+            PreviewSurveyId = id,
+        };
+        return View("~/Views/Survey/ThankYou.cshtml", vm);
+    }
+
+    [HttpPost("Preview/{id:guid}/Email")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendPreviewEmail(
+        Guid id,
+        [FromServices] SurveyPreviewEmailService previewEmailService,
+        CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+
+        try
+        {
+            var email = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
+            SetSuccess($"Survey preview email queued for {email}.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(
+                "Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Send), new { id });
+    }
+
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(SurveyBuilderViewModel model, string? submitAction, CancellationToken ct)
@@ -259,5 +354,12 @@ internal sealed class SurveyAdminController(
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Select(t => new SurveyTeamOption(t.Id, t.Name))
             .ToList();
+    }
+
+    private static string ResolvePreviewCulture(string? requested, string surveyDefault)
+    {
+        if (requested.IsSupportedCultureCode()) return requested!;
+        if (surveyDefault.IsSupportedCultureCode()) return surveyDefault;
+        return CultureCatalog.DefaultCultureCode;
     }
 }

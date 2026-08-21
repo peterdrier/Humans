@@ -10,6 +10,23 @@
             <div class="card-body p-4">
                 <h1 class="h3 mb-3">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title)</h1>
 
+                @if (Model.IsPreview)
+                {
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3" role="note">
+                        <div>
+                            <i class="fa-solid fa-eye me-1"></i>
+                            <strong>Preview only.</strong> You can inspect this survey, but no response or activity will be saved.
+                        </div>
+                        <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail"
+                              asp-route-id="@Model.PreviewSurveyId" method="post" class="flex-shrink-0">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-dark">
+                                <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
+                            </button>
+                        </form>
+                    </div>
+                }
+
                 @if (Model.HasResumableDraft)
                 {
                     <div class="alert alert-info" role="alert">
@@ -26,13 +43,20 @@
                 @{
                     // The public-slug path posts to PublicStart with the slug; the invited path posts to
                     // Start with the token. The form body (language picker, anonymity, transparency) is shared.
-                    var formAction = Model.IsPublic ? "PublicStart" : "Start";
+                    var formAction = Model.IsPreview ? "PreviewPage" : Model.IsPublic ? "PublicStart" : "Start";
                 }
-                <form asp-controller="Survey" asp-action="@formAction" asp-route-slug="@(Model.IsPublic ? Model.Slug : null)" method="post">
-                    @Html.AntiForgeryToken()
-                    @if (!Model.IsPublic)
+                <form asp-controller="@(Model.IsPreview ? "SurveyAdmin" : "Survey")"
+                      asp-action="@formAction"
+                      asp-route-id="@(Model.IsPreview ? Model.PreviewSurveyId : null)"
+                      asp-route-slug="@(Model.IsPublic ? Model.Slug : null)"
+                      method="@(Model.IsPreview ? "get" : "post")">
+                    @if (!Model.IsPreview)
                     {
-                        <input type="hidden" name="Token" value="@Model.Token" />
+                        @Html.AntiForgeryToken()
+                        @if (!Model.IsPublic)
+                        {
+                            <input type="hidden" name="Token" value="@Model.Token" />
+                        }
                     }
 
                     <div class="mb-3">
@@ -84,7 +108,7 @@
                             </p>
                         </fieldset>
                     }
-                    else if (!Model.IsPublic)
+                    else if (!Model.IsPublic && !Model.IsPreview)
                     {
                         <input type="hidden" name="Anonymity" value="@nameof(ResponseAnonymity.Identified)" />
                     }
@@ -94,7 +118,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">
-                        @(Model.HasResumableDraft ? Localizer["Survey_Continue"] : Localizer["Survey_Start"])
+                        @(Model.IsPreview ? "Start preview" : Model.HasResumableDraft ? Localizer["Survey_Continue"] : Localizer["Survey_Start"])
                     </button>
                 </form>
             </div>
