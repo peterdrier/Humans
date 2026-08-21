@@ -207,4 +207,12 @@ public enum AuditAction
     ExpenseHoldedPushed,
     ExpenseHoldedFailed,
     ExpenseHoldedRequeued,
+    // Vendor commitment registry (nobodies-collective/Humans#1030): the pre-accounting trail for
+    // money promised, paid, and invoiced — including the dupe flags that keep a second booking of
+    // the same cost from landing silently.
+    VendorCommitmentRecorded,
+    VendorCommitmentPaymentRecorded,
+    VendorCommitmentInvoiceLinked,
+    VendorCommitmentDuplicateFlagged,
+    VendorCommitmentClosed,
 }

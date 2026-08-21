@@ -1,6 +1,7 @@
 using Humans.Gdpr.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
+using Humans.Expenses.Domain;
 using Humans.Expenses.Jobs;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
@@ -33,6 +34,8 @@ public sealed class Section : ISection
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
 
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
+        services.AddSingleton<IVendorCommitmentRepository, VendorCommitmentRepository>();
+        services.AddScoped<IVendorCommitmentService, VendorCommitmentService>();
         services.AddScoped<ExpenseReportService>();
         services.AddScoped<IExpenseReportServiceRead>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
@@ -59,6 +62,11 @@ public sealed class Section : ISection
             [ExpenseReportStatus.CoordinatorEndorsed] = "bg-info text-dark",
             [ExpenseReportStatus.Approved] = "bg-success",
             [ExpenseReportStatus.Withdrawn] = "bg-secondary",
+            [VendorCommitmentStatus.Open] = "bg-secondary",
+            [VendorCommitmentStatus.PartiallyPaid] = "bg-warning text-dark",
+            [VendorCommitmentStatus.Paid] = "bg-primary",
+            [VendorCommitmentStatus.Invoiced] = "bg-success",
+            [VendorCommitmentStatus.Closed] = "bg-dark",
         });
 
         services.AddScoped<HoldedExpenseOutboxJob>();
