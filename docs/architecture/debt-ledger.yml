@@ -262,6 +262,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-08-21
+    what: "Nothing builds the real service provider and resolves the sections' registered services, so a DI misregistration ships green. Found in nobodies-collective/Humans#1104: a commit registered Service only as ISettingsWriteService while two consumers still asked for the concrete Service — the build passed and all ~4,900 unit tests passed, but /Settings/Admin and /Settings/Admin/Carry would both have thrown on activation and IEventSettingsCarryService could not have been constructed. Nothing in the suite would have caught it at any point. A composition-root smoke check that builds the container from the same ISection registration path the app uses and resolves every registered service would close it. Needs Peter's approval before anything is added (memory/process rule: no new CI checks without permission)."
+    review: panel
   - added: 2026-08-16
     what: "21 classes carry [CrossSectionWrite(\"reason\")] (grep src/ --include=*.cs) — each is a cross-section write through another section's full I*Service, which HUM0032 accepts only because the marker is there. The preferred shape is the other way round: the section that owns the data ships a view component and writes its own rows, so the consumer never holds the write interface. Introduced with the marker in nobodies-collective/Humans#1064; every one is a pre-existing call newly made visible, not new coupling. Work them down per owning section, not as one sweep — several (GoogleIntegration's four sync services, Development's two dev seeders) are provisioning paths where a view component is the wrong answer and the marker is the final state."
     review: panel
