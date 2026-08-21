@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using NodaTime;
@@ -74,7 +75,7 @@ public sealed class ShiftFilterResolverTests
 
     // Only the four calendar scalars ResolvePeriodRange reads are meaningful here;
     // the rest are filled with inert defaults.
-    private static BurnSettingsInfo MakeEventSettings(LocalDate gate, int buildStart, int eventEnd, int strikeEnd) =>
+    private static EventSettingsInfo MakeEventSettings(LocalDate gate, int buildStart, int eventEnd, int strikeEnd) =>
         new(
             Id: Guid.NewGuid(),
             EventName: "Test Burn",
@@ -90,6 +91,5 @@ public sealed class ShiftFilterResolverTests
             FinishingWeekendStartOffset: buildStart,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null,
-            IsShiftBrowsingOpen: false);
+            EarlyEntryClose: null);
 }

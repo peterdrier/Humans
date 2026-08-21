@@ -315,7 +315,7 @@
         });
     </script>
 
-    @if (!es.IsShiftBrowsingOpen)
+    @if (!Model.IsShiftBrowsingOpen)
     {
         <div class="alert alert-danger">@Localizer["Shifts_NotOpenYet"]</div>
     }

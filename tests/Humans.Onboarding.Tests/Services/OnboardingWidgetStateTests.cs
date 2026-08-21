@@ -3,6 +3,7 @@ using Humans.Base.Constants;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -16,7 +17,7 @@ public class OnboardingWidgetStateTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculatorRead _membership = Substitute.For<IMembershipCalculatorRead>();
-    private readonly IBurnSettingsService _shiftMgmt = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _shiftMgmt = Substitute.For<ISettingsServiceRead>();
     private readonly IConsentServiceRead _consents = Substitute.For<IConsentServiceRead>();
     private readonly IOnboardingWidgetSessionState _session = Substitute.For<IOnboardingWidgetSessionState>();
 
@@ -110,7 +111,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _shiftMgmt.GetActiveAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _shiftMgmt.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
@@ -125,7 +126,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _shiftMgmt.GetActiveAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _shiftMgmt.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
         _session.ShiftSkipActive.Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
@@ -142,7 +143,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _shiftMgmt.GetActiveAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _shiftMgmt.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(
                 userId,
@@ -172,7 +173,7 @@ public class OnboardingWidgetStateTests
                 new RequiredConsentRow(signedDocId, "Code of Conduct", Signed: true),
                 new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false)
             ]);
-        _shiftMgmt.GetActiveAsync().Returns(BurnFixtures.Burn(id: eventId));
+        _shiftMgmt.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(id: eventId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
@@ -186,7 +187,7 @@ public class OnboardingWidgetStateTests
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _shiftMgmt.GetActiveAsync().Returns((BurnSettingsInfo?)null);
+        _shiftMgmt.GetActiveEventSettingsAsync().Returns((EventSettingsInfo?)null);
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 

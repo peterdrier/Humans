@@ -47,9 +47,6 @@ public sealed class Section : ISection
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftManagementService>());
 
-        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings — see #719.
-        services.AddScoped<IBurnSettingsService, BurnSettingsService>();
-
         services.AddScoped<ShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftSignupService>());
         services.AddScoped<IShiftSignups>(sp => sp.GetRequiredService<ShiftSignupService>());

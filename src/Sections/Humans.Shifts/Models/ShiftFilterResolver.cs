@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using NodaTime;
 
@@ -25,7 +26,7 @@ internal static class ShiftFilterResolver
     /// and <c>ShiftsController.GetPeriodDateRange</c> (consolidating those into this single
     /// home is intentional — see CLAUDE.md DRY rule).
     /// </summary>
-    internal static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod period, BurnSettingsInfo es) =>
+    internal static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod period, EventSettingsInfo es) =>
         period switch
         {
             ShiftPeriod.Build => (

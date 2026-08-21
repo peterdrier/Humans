@@ -2,6 +2,7 @@ using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -20,7 +21,7 @@ internal sealed class AgentUserSnapshotProvider(
     IFeedbackServiceRead feedback,
     ITicketServiceRead tickets,
     IShiftView shiftView,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IClock clock) : IAgentUserSnapshotProvider
 {
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
@@ -61,7 +62,7 @@ internal sealed class AgentUserSnapshotProvider(
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await burnSettings.GetActiveAsync(cancellationToken);
+        var activeEvent = await appSettings.GetActiveEventSettingsAsync(cancellationToken);
         if (activeEvent is null)
             return [];
 

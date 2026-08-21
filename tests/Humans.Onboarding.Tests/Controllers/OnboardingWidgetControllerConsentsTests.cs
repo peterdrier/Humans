@@ -4,6 +4,7 @@ using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
 using Humans.Onboarding.Controllers;
@@ -36,7 +37,7 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
     private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
@@ -73,7 +74,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, SystemClock.Instance, _localizer, _consentLocalizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _appSettings, _shiftView, _consents, _onboardingService, SystemClock.Instance, _localizer, _consentLocalizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

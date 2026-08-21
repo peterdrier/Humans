@@ -1,6 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Events.Models;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -16,10 +16,10 @@ internal static class EventsLookupHelpers
 {
     /// <summary>
     /// Builds the day-offset options (one per build/event day from gate opening to
-    /// <see cref="BurnSettingsInfo.EventEndOffset"/>) for an event form's date and
+    /// <see cref="EventSettingsInfo.EventEndOffset"/>) for an event form's date and
     /// recurrence selectors.
     /// </summary>
-    public static List<EventDayOptionViewModel> BuildEventDayOptions(BurnSettingsInfo burn)
+    public static List<EventDayOptionViewModel> BuildEventDayOptions(EventSettingsInfo burn)
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var days = new List<EventDayOptionViewModel>();

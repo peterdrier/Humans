@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
@@ -20,7 +21,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private const int DaysPerWeek = 7;
 
     private readonly IShiftManagementServiceRead _shiftMgmt;
-    private readonly IBurnSettingsService _burnSettings;
+    private readonly ISettingsServiceRead _appSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
@@ -29,19 +30,19 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     public CantinaRosterService(
         IShiftManagementServiceRead shiftMgmt,
-        IBurnSettingsService burnSettings,
+        ISettingsServiceRead appSettings,
         IUserServiceRead userRead,
         IClock clock)
     {
         _shiftMgmt = shiftMgmt;
-        _burnSettings = burnSettings;
+        _appSettings = appSettings;
         _userRead = userRead;
         _clock = clock;
     }
 
     public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
     {
-        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var burn = await _appSettings.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         var weekStartDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(weekStartOffset);
@@ -177,7 +178,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             EventTodayDate: eventTodayDate);
     }
 
-    public int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
+    public int GetCurrentWeekStartOffsetForActiveEvent(EventSettingsInfo burn, Instant now)
     {
         ArgumentNullException.ThrowIfNull(burn);
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
@@ -189,7 +190,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         return Period.Between(burn.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
 
-    public int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
+    public int GetCurrentDayOffsetForActiveEvent(EventSettingsInfo burn, Instant now)
     {
         ArgumentNullException.ThrowIfNull(burn);
         var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
@@ -200,7 +201,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
     {
-        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var burn = await _appSettings.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         var calendarDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(dayOffset);
@@ -346,7 +347,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private async Task<List<(int DayOffset, IReadOnlyList<Guid> UserIds)>> LoadWeeklyOnSiteUsersAsync(
-        BurnSettingsInfo? burn,
+        EventSettingsInfo? burn,
         int weekStartOffset,
         CancellationToken ct)
     {
@@ -376,7 +377,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     /// which the caller discards anyway, so scanning past it is wasted DB work.
     /// </summary>
     private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
-        BurnSettingsInfo burn,
+        EventSettingsInfo burn,
         int scanThroughOffset,
         CancellationToken ct)
     {
@@ -527,7 +528,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         return noShift;
     }
 
-    private LocalDate? GetEventTodayDate(BurnSettingsInfo? burn)
+    private LocalDate? GetEventTodayDate(EventSettingsInfo? burn)
     {
         if (burn is null)
             return null;

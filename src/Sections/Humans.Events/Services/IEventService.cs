@@ -1,5 +1,5 @@
 using Humans.Events.Services.Dtos;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
@@ -14,8 +14,8 @@ internal interface IEventService : IApplicationService, IEventServiceRead
 {
     // ── Settings ─────────────────────────────────────────────────────────
     // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
-    Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
-    Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
+    Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,

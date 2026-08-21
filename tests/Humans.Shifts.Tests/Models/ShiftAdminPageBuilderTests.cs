@@ -2,6 +2,7 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
@@ -39,7 +40,7 @@ public sealed class ShiftAdminPageBuilderTests
         IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
         CreatedAt: TestNow, Members: []);
 
-    private static readonly BurnSettingsInfo Event = new(
+    private static readonly EventSettingsInfo Event = new(
         Id: Guid.NewGuid(),
         EventName: "Test Event 2026",
         Year: 2026,
@@ -54,8 +55,7 @@ public sealed class ShiftAdminPageBuilderTests
         FinishingWeekendStartOffset: -3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     public ShiftAdminPageBuilderTests()
     {

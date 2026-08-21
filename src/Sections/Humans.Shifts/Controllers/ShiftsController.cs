@@ -6,6 +6,7 @@ using AngleSharp.Dom;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -26,7 +27,7 @@ namespace Humans.Shifts.Controllers;
 [CrossSectionWrite("Rotates the user iCal token from the shifts calendar page.")]
 internal sealed class ShiftsController(
     IShiftManagementService shiftMgmt,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IShiftSignupService signupService,
     IVolunteerTrackingService volunteerTrackingService,
     IShiftRowView shiftView,
@@ -55,7 +56,7 @@ internal sealed class ShiftsController(
 
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
@@ -67,7 +68,9 @@ internal sealed class ShiftsController(
         var hasSignups = userSignups.Count > 0;
         var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
 
-        if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
+        // Browsing-open is Shifts' own knob, still on the section's row (#1104).
+        var isShiftBrowsingOpen = (await shiftMgmt.GetActiveAsync())?.IsShiftBrowsingOpen ?? false;
+        if (!isShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
 
         var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
@@ -76,6 +79,7 @@ internal sealed class ShiftsController(
             userSignups,
             userView.TagPreferences,
             userActiveSignupsForUi,
+            isShiftBrowsingOpen,
             departmentId,
             fromDate,
             toDate,
@@ -127,7 +131,7 @@ internal sealed class ShiftsController(
 
     private async Task<IActionResult> RenderSummaryAsync(string? teamSlug, Guid? rotaId)
     {
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
         var summary = await shiftMgmt.BuildSummaryAsync(es, teamSlug, rotaId, HttpContext.RequestAborted);
@@ -179,7 +183,7 @@ internal sealed class ShiftsController(
             return RedirectHeader(Url.Action(
                 "Index", "OnboardingWidget"));
 
-        var es = await burnSettings.GetActiveAsync(ct)
+        var es = await appSettings.GetActiveEventSettingsAsync(ct)
             ?? throw new InvalidOperationException("ToggleDay requires an active event.");
 
         // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only); also
@@ -329,7 +333,7 @@ internal sealed class ShiftsController(
             return currentUserNotFound;
         }
 
-        var es = await burnSettings.GetActiveAsync();
+        var es = await appSettings.GetActiveEventSettingsAsync();
 
         // see #720: cached ShiftUserView, event-scoped (empty when no active event).
         var userView = await shiftView.GetUserAsync(user.Id);
@@ -406,7 +410,7 @@ internal sealed class ShiftsController(
             return currentUserNotFound;
         }
 
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
         if (es is null) return BadRequest("No active event.");
 
         await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
@@ -528,10 +532,10 @@ internal sealed class ShiftsController(
             .Where(s => s.Shift?.Rota is not null)
             .ToList();
 
-        var burns = new Dictionary<Guid, BurnSettingsInfo>();
+        var burns = new Dictionary<Guid, EventSettingsInfo>();
         foreach (var burnId in active.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
         {
-            if (await burnSettings.GetByIdAsync(burnId, ct) is { } burn)
+            if (await appSettings.GetEventSettingsByIdAsync(burnId, ct) is { } burn)
                 burns[burnId] = burn;
         }
 

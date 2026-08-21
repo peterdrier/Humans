@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Data;
@@ -31,7 +31,7 @@ public class ServiceTeamOrdersTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
-    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _shifts = Substitute.For<ISettingsServiceRead>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
@@ -40,7 +40,7 @@ public class ServiceTeamOrdersTests
 
     public ServiceTeamOrdersTests()
     {
-        _shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

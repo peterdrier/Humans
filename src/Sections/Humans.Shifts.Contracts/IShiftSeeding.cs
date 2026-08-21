@@ -19,15 +19,15 @@ namespace Humans.Shifts.Contracts;
 /// Nothing else outside the section calls any of these — every other
 /// <c>CreateAsync</c> / <c>UpdateAsync</c> hit in the repo is a different
 /// service's member of the same name; the burn other sections read is
-/// <see cref="IBurnSettingsService"/>, which returns
-/// <see cref="BurnSettingsInfo"/> rather than the entity.
+/// <see cref="ISettingsServiceRead"/>, which returns
+/// <see cref="EventSettingsInfo"/> rather than the entity.
 /// </para>
 ///
 /// <para>
 /// The verbs take input records rather than <c>EventSettings</c> / <c>Rota</c>
 /// rows, and the two reads the seeder used to make through here
 /// (<c>GetActiveAsync</c> / <c>GetByIdAsync</c>) are gone: they duplicated
-/// <see cref="IBurnSettingsService"/> exactly, which the seeder now injects.
+/// <see cref="ISettingsServiceRead"/> exactly, which the seeder now injects.
 /// Deactivating whatever burn is currently active was a read-modify-write of
 /// the entity across the boundary and is now one verb
 /// (nobodies-collective/Humans#866).

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Debug.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -13,12 +14,12 @@ namespace Humans.Debug.Tests.Services;
 /// </summary>
 public class UserSetMembershipCalculatorTests
 {
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
 
     public UserSetMembershipCalculatorTests()
     {
-        _burnSettings.GetActiveAsync().Returns(MakeBurnSettings(2026));
+        _appSettings.GetActiveEventSettingsAsync().Returns(MakeBurnSettings(2026));
     }
 
     [HumansFact]
@@ -33,7 +34,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: [u2.Id]);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _appSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUsers.Should().Be(3);
         result.CountsByMask[3].Should().Be(1); // Profile | Ticket
@@ -54,7 +55,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: []);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _appSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingOptInsCount.Should().Be(1);
     }
@@ -69,7 +70,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: [profileTicketShift.Id]);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _appSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
 
         result.ProfilesCount.Should().Be(2);
         result.TicketsCount.Should().Be(1);
@@ -111,7 +112,7 @@ public class UserSetMembershipCalculatorTests
         AbsoluteStart: Instant.FromUtc(2026, 8, 1, 0, 0),
         AbsoluteEnd: Instant.FromUtc(2026, 8, 1, 8, 0));
 
-    private static BurnSettingsInfo MakeBurnSettings(int year) => new(
+    private static EventSettingsInfo MakeBurnSettings(int year) => new(
         Id: Guid.NewGuid(),
         EventName: "Nowhere " + year,
         Year: year,
@@ -126,8 +127,7 @@ public class UserSetMembershipCalculatorTests
         FinishingWeekendStartOffset: 6,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     private static UserInfo MakeUserInfo(bool hasProfile, int? ticketYear, bool? marketingOptedOut)
     {

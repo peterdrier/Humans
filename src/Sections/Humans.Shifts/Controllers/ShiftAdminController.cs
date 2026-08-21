@@ -1,4 +1,5 @@
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -17,7 +18,7 @@ namespace Humans.Shifts.Controllers;
 internal sealed class ShiftAdminController(
     ITeamServiceRead teamService,
     IShiftManagementService shiftMgmt,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IShiftSignupService signupService,
     IShiftRowView shiftView,
     IUserServiceRead userService,
@@ -42,7 +43,7 @@ internal sealed class ShiftAdminController(
 
         var canManage = await CanManageDepartmentAsync(user, team);
         var canApprove = await CanApproveDepartmentAsync(user, team);
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
         if (es is null)
         {
             SetError("No active event settings configured.");
@@ -71,7 +72,7 @@ internal sealed class ShiftAdminController(
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+        var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
         if (es is null) return BadRequest("No active event.");
 
         if (!ModelState.IsValid)

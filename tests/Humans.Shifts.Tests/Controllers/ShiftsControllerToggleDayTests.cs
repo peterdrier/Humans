@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
@@ -52,9 +53,9 @@ public class ShiftsControllerToggleDayTests
     private readonly ShiftBrowsePageBuilder _builder;
     private readonly ILogger<ShiftsController> _logger = NullLogger<ShiftsController>.Instance;
 
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
 
-    private static readonly BurnSettingsInfo Event = new(
+    private static readonly EventSettingsInfo Event = new(
         Id: Guid.NewGuid(),
         EventName: "Test Event 2026",
         Year: 2026,
@@ -69,8 +70,7 @@ public class ShiftsControllerToggleDayTests
         FinishingWeekendStartOffset: -3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     public ShiftsControllerToggleDayTests()
     {
@@ -78,14 +78,14 @@ public class ShiftsControllerToggleDayTests
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _onboardingLocalizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
+        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _appSettings, _teamService);
     }
 
     private ShiftsController BuildSut(Guid userId, UserInfo userInfo)
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
-            _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
+            _shiftMgmt, _appSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
@@ -158,7 +158,7 @@ public class ShiftsControllerToggleDayTests
             remainingSlots: 2,
             signups: signups);
 
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
             .Returns([urgent]);
     }
@@ -267,7 +267,7 @@ public class ShiftsControllerToggleDayTests
         StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created.Id), true, false, [created]));
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>());
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -284,7 +284,7 @@ public class ShiftsControllerToggleDayTests
         // Named (passes name gate) but no dietary preference recorded.
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: null));
 
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event);
         StubToggleOutcome(ToggleDaySignupOutcome.DietaryRequired());
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);

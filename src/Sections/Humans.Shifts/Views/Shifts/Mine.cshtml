@@ -6,7 +6,7 @@
 }
 
 @functions {
-    string GetPhase(Shift shift, BurnSettingsInfo es)
+    string GetPhase(Shift shift, EventSettingsInfo es)
     {
         var period = shift.GetShiftPeriod(es);
         return period switch
@@ -18,7 +18,7 @@
         };
     }
 
-    string GetPhaseBadge(Shift shift, BurnSettingsInfo es)
+    string GetPhaseBadge(Shift shift, EventSettingsInfo es)
     {
         var period = shift.GetShiftPeriod(es);
         return period switch

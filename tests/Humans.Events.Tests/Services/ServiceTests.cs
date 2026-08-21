@@ -7,7 +7,7 @@ using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
 using Humans.Gdpr.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -21,7 +21,7 @@ public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
@@ -29,7 +29,7 @@ public sealed class EventServiceTests
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _appSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance);
     }
 
     [HumansTheory]
@@ -60,7 +60,7 @@ public sealed class EventServiceTests
     public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
     {
         var eventSettingsId = Guid.NewGuid();
-        _burnSettings.GetByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new BurnSettingsInfo(
+        _appSettings.GetEventSettingsByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             Id: eventSettingsId,
             EventName: "Nowhere 2026",
             Year: 2026,
@@ -75,8 +75,7 @@ public sealed class EventServiceTests
             FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null,
-            IsShiftBrowsingOpen: false));
+            EarlyEntryClose: null));
 
         await _service.SaveGuideSettingsAsync(
             existingId: null,

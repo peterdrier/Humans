@@ -1,5 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
@@ -131,7 +132,7 @@ internal interface IShiftManagementService
     /// orders for display.
     /// </summary>
     Task<ShiftSummary?> BuildSummaryAsync(
-        BurnSettingsInfo activeEvent,
+        EventSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default);

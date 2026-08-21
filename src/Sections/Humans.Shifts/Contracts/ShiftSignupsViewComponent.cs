@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Models;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +24,7 @@ namespace Humans.Shifts.Contracts;
 /// </remarks>
 public sealed class ShiftSignupsViewComponent(
     IShiftView shiftView,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     ITeamServiceRead teamService,
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
@@ -39,7 +40,7 @@ public sealed class ShiftSignupsViewComponent(
 
         try
         {
-            var es = await burnSettings.GetActiveAsync();
+            var es = await appSettings.GetActiveEventSettingsAsync();
 
             // T-10: signups come from the cached shift view (issue #720). The summary's
             // Signups list is pre-filtered to the active event by the inner

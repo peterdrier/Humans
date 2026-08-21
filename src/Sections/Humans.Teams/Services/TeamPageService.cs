@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -10,7 +11,7 @@ internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
     IShiftManagementServiceRead shiftManagementService,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IUserServiceRead userService) : ITeamPageService
 {
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
@@ -151,7 +152,7 @@ internal sealed class TeamPageService(
         var canManageShifts = canManageShiftsByRole ||
             await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
 
-        var activeEvent = await burnSettings.GetActiveAsync();
+        var activeEvent = await appSettings.GetActiveEventSettingsAsync();
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

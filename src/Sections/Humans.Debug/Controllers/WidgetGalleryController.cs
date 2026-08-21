@@ -1,5 +1,6 @@
 using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -28,7 +29,7 @@ internal sealed class WidgetGalleryController(
     ITeamServiceRead teamService,
     ICampServiceRead campService,
     IShiftManagementServiceRead shiftService,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IEventServiceRead eventService,
     IConfiguration configuration) : HumansControllerBase(userService)
 {
@@ -106,7 +107,7 @@ internal sealed class WidgetGalleryController(
 
         // Browse rather than urgency-ranked: the gallery wants any rota, and the urgent list
         // is filtered to what still needs volunteers, so it empties out after the burn.
-        var burn = await burnSettings.GetActiveAsync(ct);
+        var burn = await appSettings.GetActiveEventSettingsAsync(ct);
         var browsable = burn is null
             ? []
             : await shiftService.GetBrowseShiftsAsync(new ShiftBrowseQuery(burn.Id));
@@ -137,7 +138,7 @@ internal sealed class WidgetGalleryController(
     /// (nobodies-collective/Humans#866); what is left binds only leaf records, which is
     /// why the two staffing partials stayed in Shell.
     /// </summary>
-    private static BurnSettingsInfo BuildSampleEventSettings() => new(
+    private static EventSettingsInfo BuildSampleEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Nowhere 2026",
         Year: 2026,
@@ -152,8 +153,7 @@ internal sealed class WidgetGalleryController(
         FinishingWeekendStartOffset: 6,
         EarlyEntryCapacity: new Dictionary<int, int> { [-10] = 20, [-7] = 50 },
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     private static List<DailyStaffingData> BuildSampleStaffingData() =>
     [
@@ -178,7 +178,7 @@ internal sealed class WidgetGalleryViewModel
     public string? SampleTeamSlug { get; init; }
     public string? SampleTeamName { get; init; }
     public ShiftVolunteerProfileInfo? SampleVolunteerProfile { get; init; }
-    public BurnSettingsInfo? SampleEventSettings { get; init; }
+    public EventSettingsInfo? SampleEventSettings { get; init; }
     public required IReadOnlyList<DailyStaffingData> SampleStaffingData { get; init; }
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }

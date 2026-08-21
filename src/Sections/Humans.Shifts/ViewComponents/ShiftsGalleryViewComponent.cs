@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Models;
@@ -29,7 +30,7 @@ namespace Humans.Shifts.ViewComponents;
 /// </remarks>
 internal sealed class ShiftsGalleryViewComponent(
     IShiftManagementService shiftMgmt,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     ILogger<ShiftsGalleryViewComponent> logger) : ViewComponent
 {
     private const int SampleShiftCount = 8;
@@ -38,7 +39,7 @@ internal sealed class ShiftsGalleryViewComponent(
     {
         try
         {
-            var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
+            var es = await appSettings.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
             if (es is null)
                 return View(ShiftsGalleryViewModel.Empty);
 
@@ -105,7 +106,7 @@ internal sealed class ShiftsGalleryViewComponent(
 
 internal sealed class ShiftsGalleryViewModel
 {
-    public BurnSettingsInfo? EventSettings { get; init; }
+    public EventSettingsInfo? EventSettings { get; init; }
     public RotaInfo? Rota { get; init; }
     public IReadOnlyList<ShiftDisplayItem> RotaShifts { get; init; } = [];
     public IReadOnlySet<Guid> UserSignupShiftIds { get; init; } = new HashSet<Guid>();

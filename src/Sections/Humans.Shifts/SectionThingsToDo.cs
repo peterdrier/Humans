@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Humans.Base;
 using Humans.Base.Interfaces;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -47,8 +49,9 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     /// </summary>
     private static async ValueTask<bool> HasSignupsAsync(IServiceProvider services, Guid userId)
     {
-        var activeEvent = await services.GetRequiredService<IBurnSettingsService>().GetActiveAsync();
-        if (activeEvent is null || !activeEvent.IsShiftBrowsingOpen)
+        // Browsing-open is Shifts' own knob, still on the section's row (#1104).
+        var shiftsRow = await services.GetRequiredService<IShiftManagementService>().GetActiveAsync();
+        if (shiftsRow is null || !shiftsRow.IsShiftBrowsingOpen)
         {
             return false;
         }

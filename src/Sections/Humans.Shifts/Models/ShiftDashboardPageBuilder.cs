@@ -1,4 +1,5 @@
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using NodaTime;
 using Microsoft.AspNetCore.Hosting;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Shifts.Models;
 
 internal sealed record ShiftDashboardPageRequest(
-    BurnSettingsInfo EventSettings,
+    EventSettingsInfo EventSettings,
     Guid? DepartmentId,
     Guid? RotaId,
     string? StartDate,
@@ -75,7 +76,7 @@ internal sealed class ShiftDashboardPageBuilder(
         };
     }
 
-    private BuildDayCountdown BuildCountdown(BurnSettingsInfo eventSettings)
+    private BuildDayCountdown BuildCountdown(EventSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
         var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;

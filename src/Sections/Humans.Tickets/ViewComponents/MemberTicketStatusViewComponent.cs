@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +15,7 @@ namespace Humans.Tickets.ViewComponents;
 public sealed class MemberTicketStatusViewComponent(
     ITicketServiceRead ticketService,
     IUserServiceRead userService,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IOptions<TicketVendorSettings> ticketSettings,
     ILogger<MemberTicketStatusViewComponent> logger) : ViewComponent
 {
@@ -60,7 +60,7 @@ public sealed class MemberTicketStatusViewComponent(
     {
         try
         {
-            var activeEvent = await burnSettings.GetActiveAsync(ct);
+            var activeEvent = await appSettings.GetActiveEventSettingsAsync(ct);
             return activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : null;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

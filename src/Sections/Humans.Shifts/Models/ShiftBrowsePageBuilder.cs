@@ -1,4 +1,5 @@
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -15,11 +16,12 @@ namespace Humans.Shifts.Models;
 /// id set on the view model.
 /// </summary>
 internal sealed record ShiftBrowsePageRequest(
-    BurnSettingsInfo EventSettings,
+    EventSettingsInfo EventSettings,
     Guid UserId,
     IReadOnlyList<ShiftSignup> UserSignups,
     IReadOnlyList<VolunteerTagPreference> UserTagPreferences,
     IReadOnlyList<UserSignupConflictItem> UserActiveSignups,
+    bool IsShiftBrowsingOpen,
     Guid? DepartmentId,
     string? FromDate,
     string? ToDate,
@@ -32,7 +34,7 @@ internal sealed record ShiftBrowsePageRequest(
 
 internal sealed class ShiftBrowsePageBuilder(
     IShiftManagementService shiftManagement,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     ITeamServiceRead teamService)
 {
     /// <summary>
@@ -123,6 +125,7 @@ internal sealed class ShiftBrowsePageBuilder(
         return new ShiftBrowseViewModel
         {
             EventSettings = es,
+            IsShiftBrowsingOpen = request.IsShiftBrowsingOpen,
             FilterDepartmentId = request.DepartmentId,
             FilterFromDate = request.FromDate,
             FilterToDate = request.ToDate,
@@ -157,8 +160,8 @@ internal sealed class ShiftBrowsePageBuilder(
     public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(
         Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
     {
-        // GetActiveAsync() is BurnSettingsInfo? — guard for nullable + TreatWarningsAsErrors.
-        var es = await burnSettings.GetActiveAsync(ct)
+        // GetActiveAsync() is EventSettingsInfo? — guard for nullable + TreatWarningsAsErrors.
+        var es = await appSettings.GetActiveEventSettingsAsync(ct)
             ?? throw new InvalidOperationException("BuildRowAsync requires an active event.");
 
         var flags = ShiftBrowseQueryFlags.IncludeSignups;

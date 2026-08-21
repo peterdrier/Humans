@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Attributes;
 using NodaTime;
@@ -117,7 +118,7 @@ internal sealed class Shift
     /// always returns the date at <see cref="AllDayWindowStart"/> (08:00), ignoring the
     /// stored <see cref="StartTime"/>.
     /// </summary>
-    public Instant GetAbsoluteStart(IBurnSettingsInfo eventSettings)
+    public Instant GetAbsoluteStart(IEventSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
         var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
@@ -130,7 +131,7 @@ internal sealed class Shift
     /// returns the date at <see cref="AllDayWindowEnd"/> (18:00), ignoring the stored
     /// <see cref="Duration"/>. When <c>false</c>, returns start + duration.
     /// </summary>
-    public Instant GetAbsoluteEnd(IBurnSettingsInfo eventSettings)
+    public Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings)
     {
         if (IsAllDay)
         {
@@ -159,7 +160,7 @@ internal sealed class Shift
     /// <summary>
     /// Classifies the shift into Build, Event, or Strike period based on its day offset.
     /// </summary>
-    public ShiftPeriod GetShiftPeriod(IBurnSettingsInfo eventSettings) =>
+    public ShiftPeriod GetShiftPeriod(IEventSettingsInfo eventSettings) =>
         DayOffset < 0 ? ShiftPeriod.Build :
         DayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
         ShiftPeriod.Strike;

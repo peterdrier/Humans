@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Services;
 using NodaTime;
@@ -20,7 +21,7 @@ namespace Humans.Cantina.Tests.Services;
 public class CantinaRosterServiceTests
 {
     private readonly IShiftManagementServiceRead _shiftMgmt;
-    private readonly IBurnSettingsService _burnSettings;
+    private readonly ISettingsServiceRead _appSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
     private readonly CantinaRosterService _service;
@@ -32,7 +33,7 @@ public class CantinaRosterServiceTests
     public CantinaRosterServiceTests()
     {
         _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
-        _burnSettings = Substitute.For<IBurnSettingsService>();
+        _appSettings = Substitute.For<ISettingsServiceRead>();
         _userRead = Substitute.For<IUserServiceRead>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that
         // care about EventTodayDate semantics override on a per-test basis.
@@ -49,7 +50,7 @@ public class CantinaRosterServiceTests
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock);
+        _service = new CantinaRosterService(_shiftMgmt, _appSettings, _userRead, _clock);
     }
 
     /// <summary>Builds a profile carrying burner name + dietary (dietary now lives on the profile).</summary>
@@ -70,7 +71,7 @@ public class CantinaRosterServiceTests
             intolerances: intolerances,
             intoleranceOtherText: intoleranceOther));
 
-    private static BurnSettingsInfo ActiveEvent() => new(
+    private static EventSettingsInfo ActiveEvent() => new(
         Id: Guid.NewGuid(),
         EventName: EventName,
         Year: GateOpening.Year,
@@ -85,8 +86,7 @@ public class CantinaRosterServiceTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: false);
+        EarlyEntryClose: null);
 
     /// <summary>
     /// Active event with an explicit build→strike offset range so the
@@ -94,13 +94,13 @@ public class CantinaRosterServiceTests
     /// days outside the visible week. The default <see cref="ActiveEvent"/>
     /// leaves both offsets at 0, which would scan only day 0.
     /// </summary>
-    private static BurnSettingsInfo ActiveEventWithRange(int buildStart, int strikeEnd) =>
+    private static EventSettingsInfo ActiveEventWithRange(int buildStart, int strikeEnd) =>
         ActiveEvent() with { BuildStartOffset = buildStart, StrikeEndOffset = strikeEnd };
 
     [HumansFact]
     public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
     {
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
@@ -135,7 +135,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_NoOnSiteUsers_AnyDay_ReturnsZeroState()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
@@ -158,7 +158,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OneOmnivoreOnOneDay_AggregatesCorrectly()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var userId = Guid.NewGuid();
 
@@ -199,7 +199,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OnePersonOnMultipleDays_CountedOnce()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var userId = Guid.NewGuid();
 
@@ -238,7 +238,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsAsUnanswered_Once()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var userId = Guid.NewGuid();
 
@@ -275,7 +275,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_MixedCohort_RollsUpUniqueAcrossWeek()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
@@ -337,7 +337,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_OtherTextDeduplicatedAcrossWeek()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
@@ -366,7 +366,7 @@ public class CantinaRosterServiceTests
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var userId = Guid.NewGuid();
         SetupDay(WeekStartOffset + 0, userId);
@@ -393,7 +393,7 @@ public class CantinaRosterServiceTests
         // Also verifies the cohort-exclusion invariant: a known human with NO
         // signups all week does NOT appear in People.
         var es = ActiveEvent();
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var onSiteUserId = Guid.NewGuid();
         var excludedUserId = Guid.NewGuid(); // never appears on any day → must be excluded
@@ -428,7 +428,7 @@ public class CantinaRosterServiceTests
         // arrival day, pulling them into the cohort even though they were not
         // returned for any visible-week load except day 2.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var id = Guid.NewGuid();
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
@@ -461,7 +461,7 @@ public class CantinaRosterServiceTests
         // this week. They have NO shift in offsets 0..6 — the arrival day alone
         // pulls them into the cohort.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var id = Guid.NewGuid();
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 7, Arg.Any<CancellationToken>())
@@ -485,7 +485,7 @@ public class CantinaRosterServiceTests
         // the last day of that window (index 6). The pre-event/negative arrival
         // day must NOT be clamped — the human must appear with ArrivesOn at -1.
         var ev = ActiveEventWithRange(buildStart: -7, strikeEnd: 2);
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var id = Guid.NewGuid();
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 0, Arg.Any<CancellationToken>())
@@ -509,7 +509,7 @@ public class CantinaRosterServiceTests
         // earliest in-week day is the offset-8 shift, and offset 7 (index 0)
         // must have zero on-site.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 14);
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var id = Guid.NewGuid();
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())

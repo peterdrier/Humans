@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Models;
@@ -26,7 +27,7 @@ internal sealed class OnboardingWidgetController(
     IProfileEditorService profileEditorService,
     IShiftSignups signupService,
     IShiftManagementServiceRead shiftMgmt,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IShiftView shiftView,
     IConsentSubmission consents,
     IOnboardingService onboardingService,
@@ -125,7 +126,7 @@ internal sealed class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await burnSettings.GetActiveAsync(ct);
+        var es = await appSettings.GetActiveEventSettingsAsync(ct);
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 

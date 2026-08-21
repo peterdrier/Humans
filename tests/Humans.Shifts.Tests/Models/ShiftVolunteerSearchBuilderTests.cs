@@ -1,6 +1,7 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Helpers;
@@ -23,13 +24,13 @@ public class ShiftVolunteerSearchBuilderTests
     private static readonly Guid ActiveBurnId = Guid.NewGuid();
     private static readonly Guid PastBurnId = Guid.NewGuid();
 
-    private static readonly BurnSettingsInfo ActiveBurn =
+    private static readonly EventSettingsInfo ActiveBurn =
         MakeBurn(ActiveBurnId, "Europe/Madrid", new LocalDate(2026, 7, 9));
 
-    private static readonly BurnSettingsInfo PastBurn =
+    private static readonly EventSettingsInfo PastBurn =
         MakeBurn(PastBurnId, "Europe/Madrid", new LocalDate(2025, 7, 9));
 
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
@@ -38,9 +39,9 @@ public class ShiftVolunteerSearchBuilderTests
 
     public ShiftVolunteerSearchBuilderTests()
     {
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn);
-        _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
-        _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
+        _appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn);
+        _appSettings.GetEventSettingsByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
+        _appSettings.GetEventSettingsByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
         _userService.SearchUsersAsync("ann", Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([new HumanSearchResult(_candidateId, Guid.NewGuid(), "Ann", null, "Name", null, null, 100)]);
@@ -50,7 +51,7 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     private ShiftVolunteerSearchBuilder BuildSut() =>
-        new(_burnSettings, _userService, _shiftView, _signupService, _tracking);
+        new(_appSettings, _userService, _shiftView, _signupService, _tracking);
 
     [HumansFact]
     public async Task TargetInActiveBurn_ReusesCachedViewAndResolvesTheBurnOnce()
@@ -66,7 +67,7 @@ public class ShiftVolunteerSearchBuilderTests
         Assert.True(row.HasOverlap); // 12:00–16:00 overlaps the 10:00–14:00 target.
 
         // Active burn already in hand — no extra GetByIdAsync round trip.
-        await _burnSettings.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default);
+        await _appSettings.DidNotReceiveWithAnyArgs().GetEventSettingsByIdAsync(default, default);
         await _signupService.DidNotReceiveWithAnyArgs().GetByUserAsync(default, default);
         await _tracking.Received(1).GetAvailableForDayAsync(ActiveBurnId, 1);
     }
@@ -92,7 +93,7 @@ public class ShiftVolunteerSearchBuilderTests
         Assert.False(row.HasOverlap); // 20:00–22:00 in the past burn misses 10:00–14:00.
 
         // Exactly one extra service call for the off-cycle burn — bounded, not per row.
-        await _burnSettings.Received(1).GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>());
+        await _appSettings.Received(1).GetEventSettingsByIdAsync(PastBurnId, Arg.Any<CancellationToken>());
         await _signupService.Received(1).GetByUserAsync(_candidateId, PastBurnId);
         await _tracking.Received(1).GetAvailableForDayAsync(PastBurnId, 1);
     }
@@ -101,7 +102,7 @@ public class ShiftVolunteerSearchBuilderTests
     public async Task ShiftFromAnUnresolvableBurn_IsNotFound()
     {
         var unknownId = Guid.NewGuid();
-        _burnSettings.GetByIdAsync(unknownId, Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+        _appSettings.GetEventSettingsByIdAsync(unknownId, Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
 
         var result = await BuildSut().BuildForShiftAsync(
             MakeShift(unknownId, dayOffset: 0, new LocalTime(9, 0), Duration.FromHours(2)),
@@ -120,7 +121,7 @@ public class ShiftVolunteerSearchBuilderTests
             canViewMedical: false);
 
         Assert.Equal(VolunteerSearchBuildStatus.EmptyQuery, result.Status);
-        await _burnSettings.DidNotReceiveWithAnyArgs().GetActiveAsync();
+        await _appSettings.DidNotReceiveWithAnyArgs().GetActiveEventSettingsAsync();
     }
 
     private void SetCachedSignups(params ShiftSignup[] signups) =>
@@ -148,7 +149,7 @@ public class ShiftVolunteerSearchBuilderTests
             Shift = MakeShift(burnId, dayOffset, start, duration),
         };
 
-    private static BurnSettingsInfo MakeBurn(Guid id, string timeZoneId, LocalDate gateOpening) =>
+    private static EventSettingsInfo MakeBurn(Guid id, string timeZoneId, LocalDate gateOpening) =>
         new(
             Id: id,
             EventName: "Burn",
@@ -164,6 +165,5 @@ public class ShiftVolunteerSearchBuilderTests
             FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null,
-            IsShiftBrowsingOpen: true);
+            EarlyEntryClose: null);
 }

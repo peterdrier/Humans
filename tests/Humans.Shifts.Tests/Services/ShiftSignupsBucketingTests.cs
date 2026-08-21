@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -20,7 +21,7 @@ public class ShiftSignupsBucketingTests
     // Event starts July 1 at midnight UTC. Test clock is July 1 12:00 UTC (mid-event).
     private static readonly Instant TestNow = Instant.FromUtc(2026, 7, 1, 12, 0);
 
-    private static readonly BurnSettingsInfo TestEvent = new(
+    private static readonly EventSettingsInfo TestEvent = new(
         Id: Guid.NewGuid(),
         EventName: "Test Burn",
         Year: 2026,
@@ -35,8 +36,7 @@ public class ShiftSignupsBucketingTests
         FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null,
-        IsShiftBrowsingOpen: true);
+        EarlyEntryClose: null);
 
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -106,11 +106,11 @@ public class ShiftSignupsBucketingTests
     public async Task ServiceError_ReturnsEmptyModel()
     {
         var shiftView = Substitute.For<IShiftView>();
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<BurnSettingsInfo?>(new InvalidOperationException("DB down")));
+        var appSettings = Substitute.For<ISettingsServiceRead>();
+        appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventSettingsInfo?>(new InvalidOperationException("DB down")));
 
-        var model = await RunComponent([], burnSettings, shiftView);
+        var model = await RunComponent([], appSettings, shiftView);
 
         model.Upcoming.Should().BeEmpty();
         model.Pending.Should().BeEmpty();
@@ -119,16 +119,16 @@ public class ShiftSignupsBucketingTests
 
     private async Task<ShiftSignupsViewModel> RunComponent(
         List<ShiftSignupSummary> signups,
-        IBurnSettingsService? burnSettings = null,
+        ISettingsServiceRead? appSettings = null,
         IShiftView? shiftView = null)
     {
-        var callerProvidedMocks = burnSettings is not null;
+        var callerProvidedMocks = appSettings is not null;
         shiftView ??= Substitute.For<IShiftView>();
-        burnSettings ??= Substitute.For<IBurnSettingsService>();
+        appSettings ??= Substitute.For<ISettingsServiceRead>();
 
         if (!callerProvidedMocks)
         {
-            burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(TestEvent);
+            appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(TestEvent);
             shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<ShiftUserSummary>(
                     ShiftFixtures.UserSummary(_userId, signups)));
@@ -152,7 +152,7 @@ public class ShiftSignupsBucketingTests
 
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(
-            shiftView, burnSettings, teamService, clock,
+            shiftView, appSettings, teamService, clock,
             NullLogger<ShiftSignupsViewComponent>.Instance);
 
         // Minimal ViewComponentContext for View() to work

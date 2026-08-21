@@ -5,6 +5,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -22,7 +23,7 @@ internal sealed class ShiftSignupService(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     IAdminAuthorizationService adminAuthorization,
@@ -1182,13 +1183,13 @@ internal sealed class ShiftSignupService(
         var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
 
-        // Resolve EventName for each distinct EventSettingsId via IBurnSettingsService
+        // Resolve EventName for each distinct EventSettingsId via ISettingsServiceRead
         // (EventSettings.EventSettings nav is not included by GetAvailabilityForUserAsync).
         var distinctEventSettingsIds = generalAvailability.Select(ga => ga.EventSettingsId).Distinct();
         var eventNamesById = new Dictionary<Guid, string>();
         foreach (var id in distinctEventSettingsIds)
         {
-            var info = await burnSettings.GetByIdAsync(id, ct);
+            var info = await appSettings.GetEventSettingsByIdAsync(id, ct);
             if (info is not null)
                 eventNamesById[id] = info.EventName;
         }

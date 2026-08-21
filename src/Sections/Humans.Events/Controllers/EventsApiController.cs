@@ -1,7 +1,7 @@
 using Humans.Base.Controllers;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Events.Filters;
 using Humans.Events.Helpers;
 using Humans.Events.Models;
@@ -267,7 +267,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         return await guide.GetExcludedCategorySlugsAsync(userId.Value);
     }
 
-    private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
+    private async Task<EventSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
     {
         if (guideSettings == null) return null;
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);

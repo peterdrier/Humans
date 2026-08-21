@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
@@ -146,7 +147,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         // Sub-period offsets mirror the EventSettings entity defaults
         // (FirstCrew=-25, SetupWeek=-16, PreEventWeek=-9, FinishingWeekend=-4),
         // which the SetupWeek bounds assertion above depends on.
-        var activeEvent = new BurnSettingsInfo(
+        var activeEvent = new EventSettingsInfo(
             Id: Guid.NewGuid(),
             EventName: "Test Burn",
             Year: 2026,
@@ -161,13 +162,12 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null,
-            IsShiftBrowsingOpen: false);
-        var burnSettings = Substitute.For<IBurnSettingsService>();
-        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
+            EarlyEntryClose: null);
+        var appSettings = Substitute.For<ISettingsServiceRead>();
+        appSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
 
         var ctrl = new VolunteerTrackingController(
-            service, shiftMgmt, burnSettings, exportService, xlsxBuilder,
+            service, shiftMgmt, appSettings, exportService, xlsxBuilder,
             userService, auditLog, localizer)
         {
             ControllerContext = BuildControllerContext(currentUserId),

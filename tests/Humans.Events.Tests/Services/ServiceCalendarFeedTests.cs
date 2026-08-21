@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -20,12 +20,12 @@ public class EventServiceCalendarFeedTests
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
 
     private readonly IEventRepository _repo = Substitute.For<IEventRepository>();
-    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly ISettingsServiceRead _appSettings = Substitute.For<ISettingsServiceRead>();
     private readonly EventService _service;
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _appSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);
@@ -84,8 +84,8 @@ public class EventServiceCalendarFeedTests
             UpdatedAt = FixedNow,
         };
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(guideSettings);
-        _burnSettings.GetByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new BurnSettingsInfo(
+        _appSettings.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(
                 Id: guideSettings.EventSettingsId,
                 EventName: "Test Event 2026",
                 Year: 2026,
@@ -100,8 +100,7 @@ public class EventServiceCalendarFeedTests
                 FinishingWeekendStartOffset: -2,
                 EarlyEntryCapacity: new Dictionary<int, int>(),
                 BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null,
-                IsShiftBrowsingOpen: false));
+                EarlyEntryClose: null));
     }
 
     [HumansFact]

@@ -1,4 +1,4 @@
-using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -23,7 +23,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Onsite")]
 internal sealed class TicketsOnsiteAdminController(
     IUserServiceRead userService,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     IOnsiteRosterService roster) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -33,7 +33,7 @@ internal sealed class TicketsOnsiteAdminController(
         [FromQuery] string? role,
         CancellationToken ct)
     {
-        var active = await burnSettings.GetActiveAsync();
+        var active = await appSettings.GetActiveEventSettingsAsync();
         var year = active?.Year ?? 0;
 
         var result = await roster.GetRosterAsync(year, camp, team, role, ct);

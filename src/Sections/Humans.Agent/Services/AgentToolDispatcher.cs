@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Agent.Services.Preload;
 using NodaTime;
@@ -16,7 +17,7 @@ internal sealed class AgentToolDispatcher(
     CommunityFaqReader community,
     IAuditViewerService auditViewer,
     IShiftView shiftView,
-    IBurnSettingsService burnSettings,
+    ISettingsServiceRead appSettings,
     ILogger<AgentToolDispatcher> logger) : IAgentToolDispatcher
 {
     internal const int DefaultAuditHistoryLimit = 20;
@@ -143,7 +144,7 @@ internal sealed class AgentToolDispatcher(
     private async Task<AnthropicToolResult> DispatchGetShiftDetailsAsync(
         string callId, Guid userId, Guid shiftKey, CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync(ct);
+        var activeEvent = await appSettings.GetActiveEventSettingsAsync(ct);
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
@@ -175,7 +176,7 @@ internal sealed class AgentToolDispatcher(
     }
 
     /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
-    private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups, BurnSettingsInfo ev)
+    private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups, EventSettingsInfo ev)
     {
         // Order chronologically so first/last reflect actual span.
         var ordered = signups.OrderBy(s => s.Date).ToList();

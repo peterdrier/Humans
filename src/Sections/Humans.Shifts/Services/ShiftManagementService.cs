@@ -3,6 +3,7 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -335,7 +336,7 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<ShiftSummary?> BuildSummaryAsync(
-        BurnSettingsInfo activeEvent,
+        EventSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default)
