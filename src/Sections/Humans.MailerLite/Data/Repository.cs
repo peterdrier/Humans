@@ -32,9 +32,7 @@ internal sealed class Repository(
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.MailerLiteSyncStates
             .AsNoTracking()
-            .Where(s => s.Key == key)
-            .OrderByDescending(s => s.LastSyncAt)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(s => s.Key == key, ct);
     }
 
     public async Task<MailerLiteSyncState> UpsertSyncStateAsync(
