@@ -297,6 +297,21 @@ internal sealed class AccountMergeService(
         return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.AccountMergeRequests] =
+                "Partially retained: the merge row (source id, target id, status, dates) is what " +
+                "keeps a tombstoned account's history reachable — deleting it would strand every " +
+                "chain-followed record and break the erasure's own provability (GDPR Art. 5(2)). " +
+                "The requested email address and any admin notes on it are cleared."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        mergeRepository.ScrubPiiForUserAsync(userId, ct);
+
     // --- Cross-section read helpers for UserEmailService ---
 
     public Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(

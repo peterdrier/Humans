@@ -235,6 +235,17 @@ internal sealed class NotificationInboxService(
         return [new UserDataSlice(GdprExportSections.Notifications, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Notifications] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repo.EraseForUserAsync(userId, ct);
+
     private static (NotificationInboxFilter Filter, NotificationInboxTab Tab)
         ParseFilterAndTab(string filter, string tab)
     {

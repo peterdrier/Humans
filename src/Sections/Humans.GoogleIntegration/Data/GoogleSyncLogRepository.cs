@@ -72,6 +72,23 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .ToListAsync(ct);
     }
 
+    public async Task<int> DeleteByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return 0;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.GoogleSyncLog
+            .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))
+            .ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.GoogleSyncLog.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {

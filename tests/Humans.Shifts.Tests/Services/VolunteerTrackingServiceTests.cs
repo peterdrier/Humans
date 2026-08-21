@@ -814,6 +814,13 @@ public class VolunteerTrackingServiceTests
                         && (userIds is null || userIds.Contains(a.UserId)))
                     .ToList());
 
+        public Task<int> DeleteVolunteerTrackingForUserAsync(Guid userId, CancellationToken ct = default)
+        {
+            var removed = Availabilities.RemoveAll(a => a.UserId == userId)
+                        + BuildStatuses.RemoveAll(b => b.UserId == userId);
+            return Task.FromResult(removed);
+        }
+
         public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
             Guid userId,
             Guid? eventSettingsId = null,

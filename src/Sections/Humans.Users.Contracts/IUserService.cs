@@ -380,14 +380,8 @@ public interface IUserService : IUserServiceRead, IUserMerge
 /// <param name="PreferredLanguage">
 /// The user's preferred language, used to render the confirmation email.
 /// </param>
-/// <param name="CancelledSignupIds">
-/// The id of each shift signup that was cancelled as part of the
-/// anonymization, paired with the shift it belonged to. Used by the caller
-/// to emit per-signup audit entries.
-/// </param>
 public record AnonymizedAccountSummary(
     string? OriginalEmail,
     string OriginalDisplayName,
-    string PreferredLanguage,
-    IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);
+    string PreferredLanguage);
 

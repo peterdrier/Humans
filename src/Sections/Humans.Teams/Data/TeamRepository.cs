@@ -1179,6 +1179,22 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
+    public async Task<int> DeleteJoinRequestsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+
+        // Load+remove (not ExecuteDelete) so the state-history children come with the parent.
+        var requests = await db.TeamJoinRequests
+            .Include(tjr => tjr.StateHistory)
+            .Where(tjr => tjr.UserId == userId)
+            .ToListAsync(ct);
+        if (requests.Count == 0) return 0;
+
+        db.TeamJoinRequests.RemoveRange(requests);
+        await db.SaveChangesAsync(ct);
+        return requests.Count;
+    }
+
     public async Task<IReadOnlyList<TeamJoinRequest>> GetAllJoinRequestsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {

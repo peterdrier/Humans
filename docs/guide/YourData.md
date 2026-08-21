@@ -69,9 +69,16 @@ delete:
 - **For 30 days:** you can still sign in, and you can **change your mind and
   cancel** the deletion during this window.
 - **After 30 days:** your personal information is automatically erased
-  (anonymised) in the background.
-- Your Google access (drives, group emails) falls away on the normal sync cycle
-  once you've left your teams.
+  (anonymised) in the background, section by section — profile, contact details,
+  emails, photo, tickets, feedback, messages, survey answers, the lot.
+- **Your `@nobodies.team` account is suspended** as part of that, and your Google
+  access (drives, group emails) falls away on the normal sync cycle once you've
+  left your teams.
+- A few records survive, without your name attached: the association's register
+  of who was a member, held which role and covered which shift in which year
+  (Spanish association law), the accounting and expense books (Spanish tax and
+  commercial law), and the consent and audit logs that prove we were allowed to
+  hold your data in the first place — and that we erased it.
 
 So nothing is rushed, and you have a full month to undo it if you change your
 mind.

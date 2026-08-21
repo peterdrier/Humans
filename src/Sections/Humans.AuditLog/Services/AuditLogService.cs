@@ -205,6 +205,21 @@ internal sealed class AuditLogService(
         return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
 
+    // ─── IUserDataContributor (GDPR erasure) ───
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.AuditLog] =
+                "Retained: append-only record of processing activity (GDPR Art. 30) and the " +
+                "evidence trail for the erasure itself (Art. 17(3)(b), Art. 5(1)(f)). Rows key " +
+                "off a user id and carry no identity fields."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
         IReadOnlyList<AuditAction> actions,

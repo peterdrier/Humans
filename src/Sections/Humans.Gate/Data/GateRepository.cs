@@ -63,6 +63,28 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             .ToListAsync(ct);
     }
 
+    public async Task<int> EraseUserFromScansAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        // Load-modify-save (not ExecuteUpdate) so the path also runs under the EF
+        // in-memory test provider, and idempotent on a retried deletion run.
+        var rows = await ctx.Set<GateScanEvent>()
+            .Where(e => e.GuestUserId == userId || e.OverrideByUserId == userId)
+            .ToListAsync(ct);
+
+        foreach (var row in rows)
+        {
+            if (row.GuestUserId == userId) row.GuestUserId = null;
+            if (row.OverrideByUserId == userId) row.OverrideByUserId = null;
+        }
+
+        var pins = await ctx.GateStaffPins.Where(p => p.UserId == userId).ToListAsync(ct);
+        ctx.GateStaffPins.RemoveRange(pins);
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

@@ -628,6 +628,24 @@ internal sealed class ApplicationDecisionService(
         return [new UserDataSlice(GdprExportSections.Applications, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Applications] =
+                "Partially retained: the tier, status, term and Board-meeting dates of each " +
+                "application stay as the association's record of its membership decisions " +
+                "(Ley Orgánica 1/2002 Art. 14 — register of members and book of Board acts; " +
+                "GDPR Art. 17(3)(b)). Every free-text field the human wrote or that was written " +
+                "about them — motivation, additional info, contribution, role understanding, " +
+                "review and decision notes, state-history notes, and their own Board-vote notes " +
+                "— is cleared."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repository.ScrubFreeTextForUserAsync(userId, clock.GetCurrentInstant(), ct);
+
     private async Task<(string? ReviewerName, IReadOnlyList<ApplicationStateHistoryDto> History)> StitchHistoryAsync(
         MemberApplication application, CancellationToken ct)
     {

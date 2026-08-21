@@ -1422,6 +1422,24 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
         return [new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.CampRoleAssignments] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// Drops the user's camp memberships and every role assignment hanging off
+    /// them (Camp Lead included — it is a role assignment since #753).
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await _repo.DeleteCampFootprintForUserAsync(userId, ct);
+        _earlyEntryInvalidator.InvalidateUser(userId);
+    }
+
     public async Task SetEeStartDateAsync(
         LocalDate? eeStartDate, Guid actorUserId,
         CancellationToken cancellationToken = default)

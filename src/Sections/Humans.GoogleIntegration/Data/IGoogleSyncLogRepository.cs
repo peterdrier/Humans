@@ -28,6 +28,9 @@ internal interface IGoogleSyncLogRepository : IRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>Every entry for the GDPR export — uncapped, unlike the display reads.</summary>
+    /// <summary>GDPR Art. 17: removes every sync-log row attributed to the given users.</summary>
+    Task<int> DeleteByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }

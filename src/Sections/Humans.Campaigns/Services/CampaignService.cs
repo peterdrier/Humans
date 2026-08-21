@@ -700,6 +700,18 @@ internal sealed class CampaignService(
         return [new UserDataSlice(GdprExportSections.CampaignGrants, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.CampaignGrants] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>A grant is a user↔discount-code link and nothing else — hard-deleted.</summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repository.DeleteGrantsForUserAsync(userId, ct);
+
     public Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,
         EmailOutboxStatus status,

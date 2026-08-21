@@ -1233,6 +1233,44 @@ internal sealed class ShiftSignupService(
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.ShiftSignups] =
+                "Partially retained: the signup row (shift, status, timestamps, keyed to the user " +
+                "id the Users section tombstones) is the association's record of who covered " +
+                "which volunteer shift — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every " +
+                "still-active signup is cancelled immediately.",
+            [GdprExportSections.VolunteerEventProfiles] = null,
+            [GdprExportSections.GeneralAvailability] = null,
+            [GdprExportSections.ShiftTagPreferences] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// Cancels live commitments, then deletes the volunteer event profile (free-text
+    /// skills/quirks/languages), the availability and build-status rows, and the
+    /// shift-tag preferences.
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var cancelled = await CancelActiveSignupsForUserAsync(userId, "Account deletion", ct);
+        foreach (var (signupId, shiftId) in cancelled)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
+                $"Cancelled signup (account deletion) for shift {shiftId}",
+                jobName: nameof(ShiftSignupService));
+        }
+
+        await repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+        await trackingRepo.DeleteVolunteerTrackingForUserAsync(userId, ct);
+        await repo.DeleteVolunteerTagPreferencesForUserAsync(userId, ct);
+        viewInvalidator.InvalidateUser(userId);
+        earlyEntryInvalidator.InvalidateUser(userId);
+    }
+
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
         // Active commitments only — Confirmed + Pending. Cancelled/bailed/noshow

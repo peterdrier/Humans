@@ -23,6 +23,19 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
             .ToListAsync(ct);
     }
 
+    public async Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CommunicationPreferences
+            .Where(cp => cp.UserId == userId)
+            .ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.CommunicationPreferences.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<CommunicationPreference?> GetByUserAndCategoryAsync(
         Guid userId, MessageCategory category, CancellationToken ct = default)
     {

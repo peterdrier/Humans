@@ -307,4 +307,18 @@ internal sealed class ConsentService(
 
         return [new UserDataSlice(GdprExportSections.Consents, shaped)];
     }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Consents] =
+                "Retained: the consent ledger (including the IP address and user agent captured " +
+                "at the moment of consent) is the evidence that processing had a lawful basis " +
+                "— GDPR Art. 7(1) accountability and Art. 17(3)(e) legal claims. The ledger is " +
+                "append-only and its UserId points at the tombstone the Users section leaves behind."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
 }

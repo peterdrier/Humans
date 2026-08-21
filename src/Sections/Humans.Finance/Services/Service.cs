@@ -826,6 +826,23 @@ internal sealed class Service(
         ];
     }
 
+    // ─── GDPR (Article 17 erasure) ─────────────────────────────────────────────
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.HoldedCreditorAccount] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// Drops the member↔Holded creditor binding. The invoices themselves live in
+    /// Holded and are fiscal records outside this section's ownership.
+    /// </summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        ClearCreditorContactAsync(userId, ct);
+
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>

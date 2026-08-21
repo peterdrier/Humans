@@ -25,4 +25,12 @@ internal interface ITicketTransferRepository : IRepository
     /// transfer requests they were involved in.
     /// </summary>
     Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: tombstones the receiver name/email, clears the sender's
+    /// stated reason and any admin notes the user wrote, on every transfer
+    /// request naming them. The request row stays — it is part of the ticket's
+    /// chain of custody.
+    /// </summary>
+    Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
 }

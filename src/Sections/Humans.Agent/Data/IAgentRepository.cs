@@ -56,6 +56,9 @@ internal interface IAgentRepository : IRepository
 
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);
 
+    /// <summary>GDPR Art. 17: removes every conversation (and its messages) belonging to the user.</summary>
+    Task<int> DeleteConversationsForUserAsync(Guid userId, CancellationToken cancellationToken);
+
     // ---- Admin status (read-only, in-memory aggregated by callers) ----------
 
     /// <summary>

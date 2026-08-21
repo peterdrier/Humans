@@ -1340,4 +1340,22 @@ internal sealed class ExpenseReportService(
                     : (object?)null),
         ];
     }
+
+    // ─── IUserDataContributor (GDPR erasure) ───
+
+    private const string FiscalRetention =
+        "Retained: reimbursement records are accounting vouchers. Spanish law requires the " +
+        "books and their supporting documents be kept 6 years (Código de Comercio Art. 30) " +
+        "and 4 years for tax purposes (Ley 58/2003 Art. 66) — GDPR Art. 17(3)(b).";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.ExpenseReports] = FiscalRetention,
+            [GdprExportSections.ExpenseAuditLog] = FiscalRetention
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
 }

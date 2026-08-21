@@ -908,6 +908,29 @@ internal sealed class TicketQueryService(
         return [ordersSlice, attendeesSlice];
     }
 
+    private const string SalesRecordRetention =
+        "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +
+        "payment status, dates) is a sales record backing the association's books — Código de " +
+        "Comercio Art. 30 and Ley 58/2003 Art. 66, GDPR Art. 17(3)(b). Every identifier on it " +
+        "is erased: BuyerName/BuyerEmail and AttendeeName/AttendeeEmail are overwritten with " +
+        "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
+        "requests is cleared.";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.TicketOrders] = SalesRecordRetention,
+            [GdprExportSections.TicketAttendeeMatches] = SalesRecordRetention
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await ticketRepository.EraseUserPiiAsync(userId, ct);
+        await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
+    }
+
     private static bool HasSearchTerm(
         [NotNullWhen(true)] string? value, int minLength = 2) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;

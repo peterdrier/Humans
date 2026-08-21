@@ -92,6 +92,9 @@ internal partial interface IShiftManagementRepository
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
+    /// <summary>GDPR Art. 17: removes the user's shift-tag preferences.</summary>
+    Task<int> DeleteVolunteerTagPreferencesForUserAsync(Guid userId, CancellationToken ct = default);
+
     // ============================================================
     // Writes — ShiftSignup
     // ============================================================

@@ -553,6 +553,12 @@ internal interface ITeamRepository : IRepository
     /// Raw data for the GDPR export contributor: all the user's join
     /// requests with team name and timestamps.
     /// </summary>
+    /// <summary>
+    /// GDPR Art. 17: hard-deletes every join request the user authored, with its
+    /// state history — the request carries their free-text <c>Message</c>.
+    /// </summary>
+    Task<int> DeleteJoinRequestsForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<TeamJoinRequest>> GetAllJoinRequestsForUserAsync(
         Guid userId, CancellationToken ct = default);
 

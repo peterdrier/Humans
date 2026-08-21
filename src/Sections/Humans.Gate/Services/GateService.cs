@@ -404,6 +404,23 @@ internal sealed class GateService(
         return [slice];
     }
 
+    // ── IUserDataContributor (GDPR Article 17) ───────────────────────────────
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.GateScans] =
+                "Partially retained: scans the person performed as gate staff keep their " +
+                "attribution — ScannedByUserId is a non-nullable operational column and the row " +
+                "is the venue's access-control record (GDPR Art. 17(3)(b) and (e)). Their own " +
+                "admission links (GuestUserId, OverrideByUserId) and their gate staff PIN are cleared."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repository.EraseUserFromScansAsync(userId, ct);
+
     private static GateScanResult NotFound(string code) =>
         new(GatePreCheckOutcome.Invalid, code, null, null, false, null, null, null, null, null);
 

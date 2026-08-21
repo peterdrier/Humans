@@ -31,6 +31,14 @@ internal interface IGateRepository : IRepository
     /// <summary>Re-point <c>GuestUserId</c> and <c>ScannedByUserId</c> from <paramref name="fromUserId"/> to <paramref name="toUserId"/> on account merge. Idempotent.</summary>
     Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// GDPR Art. 17: clears the user's admission links on scan events
+    /// (<c>GuestUserId</c>, <c>OverrideByUserId</c>) and deletes their staff PIN.
+    /// <c>ScannedByUserId</c> is non-nullable and stays — see the section's
+    /// erasure declaration.
+    /// </summary>
+    Task<int> EraseUserFromScansAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>Delete scan rows older than <paramref name="cutoff"/> (retention purge). Returns the number removed.</summary>
     Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default);
 

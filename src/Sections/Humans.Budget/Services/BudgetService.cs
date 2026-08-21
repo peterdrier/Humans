@@ -922,4 +922,17 @@ internal sealed class BudgetService(
 
         return [new UserDataSlice(GdprExportSections.BudgetAuditLog, shaped)];
     }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.BudgetAuditLog] =
+                "Retained: append-only accounting audit ledger. Spanish law requires the books " +
+                "and their supporting records be kept 6 years (Código de Comercio Art. 30) and " +
+                "4 years for tax purposes (Ley 58/2003 Art. 66) — GDPR Art. 17(3)(b)."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
 }

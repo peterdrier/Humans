@@ -966,5 +966,16 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventFavourite>>(
                 Favourites.Where(f => f.UserId == userId).ToList());
+
+        public Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default)
+        {
+            var removed = Favourites.RemoveAll(f => f.UserId == userId);
+            if (Preference?.UserId == userId)
+            {
+                Preference = null;
+                removed++;
+            }
+            return Task.FromResult(removed);
+        }
     }
 }

@@ -432,6 +432,39 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     // Account-merge fold
     // ==========================================================================
 
+    public async Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var own = await ctx.NotificationRecipients
+            .Where(nr => nr.UserId == userId)
+            .ToListAsync(ct);
+        ctx.NotificationRecipients.RemoveRange(own);
+
+        // A notification addressed only to this human carries their title/body — take it with them.
+        var notificationIds = own.Select(nr => nr.NotificationId).Distinct().ToList();
+        var stillAddressed = await ctx.NotificationRecipients
+            .Where(nr => notificationIds.Contains(nr.NotificationId) && nr.UserId != userId)
+            .Select(nr => nr.NotificationId)
+            .Distinct()
+            .ToListAsync(ct);
+        var orphanIds = notificationIds.Except(stillAddressed).ToList();
+        var orphans = await ctx.Notifications
+            .Where(n => orphanIds.Contains(n.Id))
+            .ToListAsync(ct);
+        ctx.Notifications.RemoveRange(orphans);
+
+        var resolved = await ctx.Notifications
+            .Where(n => n.ResolvedByUserId == userId)
+            .ToListAsync(ct);
+        foreach (var n in resolved.Where(n => !orphanIds.Contains(n.Id)))
+        {
+            n.ResolvedByUserId = null;
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> ReassignRecipientsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

@@ -103,6 +103,9 @@ internal interface ICommunicationPreferenceRepository : IRepository
     /// <c>communication_preferences</c> rows ultimately attributed to
     /// <paramref name="targetUserId"/>.
     /// </summary>
+    /// <summary>GDPR Art. 17: removes every communication preference row for the user.</summary>
+    Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<int> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);

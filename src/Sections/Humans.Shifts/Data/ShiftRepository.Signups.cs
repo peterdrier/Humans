@@ -143,6 +143,18 @@ internal sealed partial class ShiftRepository
     // Writes — ShiftSignup
     // ============================================================
 
+    public async Task<int> DeleteVolunteerTagPreferencesForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var preferences = await _dbContext.VolunteerTagPreferences
+            .Where(vtp => vtp.UserId == userId)
+            .ToListAsync(ct);
+        if (preferences.Count == 0) return 0;
+
+        _dbContext.VolunteerTagPreferences.RemoveRange(preferences);
+        await _dbContext.SaveChangesAsync(ct);
+        return preferences.Count;
+    }
+
     public void AddRange(IEnumerable<ShiftSignup> signups) => _dbContext.ShiftSignups.AddRange(signups);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _dbContext.SaveChangesAsync(ct);
