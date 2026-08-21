@@ -501,6 +501,28 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task EnsureStubProfileAsync_WithoutNames_InheritsBurnerNameAlreadySeededOnUser()
+    {
+        // #1097 regression: OAuth/import account creation seeds User.BurnerName directly,
+        // then calls EnsureStubProfileAsync with no names. The stub must inherit that
+        // BurnerName, or the Profile->User mirror in UpdateUserStateFromProfileAsync wipes
+        // it back to empty on the very same save.
+        var userId = Guid.NewGuid();
+        var user = SeedUser(userId);
+        user.BurnerName = "Seeded Burner";
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
+
+        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
+        profile.BurnerName.Should().Be("Seeded Burner");
+        var fresh = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        fresh.BurnerName.Should().Be("Seeded Burner");
+        // FirstName/LastName are still blank, so the user stays Bare, not Active.
+        fresh.State.Should().Be(UserState.Bare);
+    }
+
+    [HumansFact]
     public async Task EnsureStubProfileAsync_MergedTombstone_NoOps()
     {
         var userId = Guid.NewGuid();
