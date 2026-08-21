@@ -1,23 +1,23 @@
 using AwesomeAssertions;
-using Humans.SystemSettings.Data;
-using Humans.SystemSettings.Domain;
+using Humans.Settings.Data;
+using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.SystemSettings.Tests;
+namespace Humans.Settings.Tests;
 
 public sealed class RepositoryTests : IDisposable
 {
-    private readonly SystemSettingsDbContext _seedContext;
-    private readonly TestDbContextFactory<SystemSettingsDbContext> _factory;
+    private readonly SettingsDbContext _seedContext;
+    private readonly TestDbContextFactory<SettingsDbContext> _factory;
     private readonly Repository _repository;
 
     public RepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<SystemSettingsDbContext>()
+        var options = new DbContextOptionsBuilder<SettingsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _factory = new TestDbContextFactory<SystemSettingsDbContext>(options);
+        _factory = new TestDbContextFactory<SettingsDbContext>(options);
         _seedContext = _factory.CreateDbContext();
         _repository = new Repository(_factory);
     }
@@ -38,7 +38,7 @@ public sealed class RepositoryTests : IDisposable
     [HumansFact]
     public async Task GetValueAsync_ReturnsStoredValue()
     {
-        _seedContext.SystemSettings.Add(new SystemSetting
+        _seedContext.Settings.Add(new Setting
         {
             Key = "Feature:Enabled",
             Value = "true",
@@ -55,7 +55,7 @@ public sealed class RepositoryTests : IDisposable
     {
         await _repository.SetValueAsync("Email:Paused", "true", Xunit.TestContext.Current.CancellationToken);
 
-        var row = await _seedContext.SystemSettings.AsNoTracking()
+        var row = await _seedContext.Settings.AsNoTracking()
             .SingleAsync(setting => setting.Key == "Email:Paused", Xunit.TestContext.Current.CancellationToken);
         row.Value.Should().Be("true");
     }
@@ -63,7 +63,7 @@ public sealed class RepositoryTests : IDisposable
     [HumansFact]
     public async Task SetValueAsync_UpdatesExistingRowInPlace()
     {
-        _seedContext.SystemSettings.Add(new SystemSetting
+        _seedContext.Settings.Add(new Setting
         {
             Key = "Email:Paused",
             Value = "true",
@@ -72,7 +72,7 @@ public sealed class RepositoryTests : IDisposable
 
         await _repository.SetValueAsync("Email:Paused", "false", Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _seedContext.SystemSettings.AsNoTracking()
+        var rows = await _seedContext.Settings.AsNoTracking()
             .Where(setting => setting.Key == "Email:Paused")
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle();

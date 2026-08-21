@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Humans.SystemSettings.Data.Migrations
+namespace Humans.Settings.Data.Migrations
 {
     /// <inheritdoc />
     public partial class BaselineSystemSettings : Migration

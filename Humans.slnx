@@ -59,8 +59,8 @@
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
     <Project Path="src/Sections/Humans.Stripe/Humans.Stripe.csproj" />
     <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
-    <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
-    <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Settings/Humans.Settings.csproj" />
+    <Project Path="src/Sections/Humans.Settings.Contracts/Humans.Settings.Contracts.csproj" />
     <Project Path="src/Sections/Humans.TicketTailor/Humans.TicketTailor.csproj" />
     <Project Path="src/Sections/Humans.Tickets/Humans.Tickets.csproj" />
     <Project Path="src/Sections/Humans.Tickets.Contracts/Humans.Tickets.Contracts.csproj" />
@@ -117,7 +117,7 @@
     <Project Path="tests/Humans.Teams.Tests/Humans.Teams.Tests.csproj" />
     <Project Path="tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj" />
     <Project Path="tests/Humans.Tickets.Tests/Humans.Tickets.Tests.csproj" />
-    <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
+    <Project Path="tests/Humans.Settings.Tests/Humans.Settings.Tests.csproj" />
     <Project Path="tests/Humans.Users.Tests/Humans.Users.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>

@@ -25,7 +25,7 @@ using Humans.Finance.Data;
 using Humans.Gate.Data;
 using Humans.Holded.Data;
 using Humans.Store.Data;
-using Humans.SystemSettings.Data;
+using Humans.Settings.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -85,9 +85,9 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     private static readonly SectionCase[] Sections =
     [
         new(
-            "SystemSettings",
+            "Settings",
             "system_settings",
-            CreateSectionContext<SystemSettingsDbContext>,
+            CreateSectionContext<SettingsDbContext>,
             """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'"""),
         new(
             "Containers",

@@ -1,12 +1,12 @@
 using Humans.Base.Interfaces.Repositories;
 
-namespace Humans.SystemSettings.Data;
+namespace Humans.Settings.Data;
 
 /// <summary>
-/// Repository for the <c>system_settings</c> table. The interface stays and keeps
+/// Repository for the <c>settings</c> table. The interface stays and keeps
 /// its prefix (design §6a): <c>RepositoryTests</c> substitutes it.
 /// </summary>
-internal interface ISystemSettingsRepository : IRepository
+internal interface ISettingsRepository : IRepository
 {
     Task<string?> GetValueAsync(string key, CancellationToken ct = default);
 

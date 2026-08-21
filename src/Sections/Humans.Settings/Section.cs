@@ -1,29 +1,35 @@
 using Humans.Base.Interfaces;
 using Humans.Base.Hosting;
-using Humans.SystemSettings.Contracts;
-using Humans.SystemSettings.Data;
-using Humans.SystemSettings.Services;
+using Humans.Settings.Contracts;
+using Humans.Settings.Data;
+using Humans.Settings.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Humans.SystemSettings;
+namespace Humans.Settings;
 
 /// <summary>
-/// SystemSettings' DI entry point, at the project root by convention. Discovered by
+/// Settings' DI entry point, at the project root by convention. Discovered by
 /// Shell — nothing names it, so it needs no section prefix.
 /// </summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSectionDbContext<SystemSettingsDbContext>(sentinelTable: "system_settings");
+        // Sentinel stays "system_settings" — the pre-rename table name. Renaming the
+        // context renamed its history table too (__EFMigrationsHistory_SystemSettings ->
+        // __EFMigrationsHistory_Settings), so on an existing database the section reads an
+        // empty history and would re-execute its baseline. The sentinel is what tells
+        // SectionMigrationRunner "the tables are already there" — so it must name a table
+        // that exists *before* this section's pending migrations run.
+        services.AddSectionDbContext<SettingsDbContext>(sentinelTable: "system_settings");
 
-        // Repository uses IDbContextFactory<SystemSettingsDbContext> so it can be Singleton;
+        // Repository uses IDbContextFactory<SettingsDbContext> so it can be Singleton;
         // every method opens its own short-lived DbContext.
-        services.AddSingleton<ISystemSettingsRepository, Repository>();
+        services.AddSingleton<ISettingsRepository, Repository>();
 
-        // ISystemSettingsService is the section's Contracts/ surface — Email and
+        // ISettingsService is the section's Contracts/ surface — Email and
         // GoogleIntegration both call it — so unlike Store the interface stays (§6a).
-        services.AddScoped<ISystemSettingsService, Service>();
+        services.AddScoped<ISettingsService, Service>();
     }
 }

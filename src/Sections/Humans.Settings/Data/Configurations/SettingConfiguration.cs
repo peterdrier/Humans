@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.SystemSettings.Domain;
+using Humans.Settings.Domain;
 
-namespace Humans.SystemSettings.Data.Configurations;
+namespace Humans.Settings.Data.Configurations;
 
-internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
+internal sealed class SettingConfiguration : IEntityTypeConfiguration<Setting>
 {
-    public void Configure(EntityTypeBuilder<SystemSetting> builder)
+    public void Configure(EntityTypeBuilder<Setting> builder)
     {
         builder.ToTable("system_settings");
 
@@ -21,7 +21,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             .IsRequired();
 
         builder.HasData(
-            new SystemSetting { Key = "IsEmailSendingPaused", Value = "false" }
+            new Setting { Key = "IsEmailSendingPaused", Value = "false" }
         );
     }
 }

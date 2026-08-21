@@ -15,7 +15,7 @@ using Humans.Email.Services;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Base.Services.Metering;
-using Humans.SystemSettings.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Email.Tests.Services;
@@ -39,7 +39,7 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
-    private readonly ISystemSettingsService _systemSettingsService;
+    private readonly ISettingsService _settingsStore;
     private readonly EmailOutboxService _outboxService;
     private readonly IEmailOutboxProcessor _job;
 
@@ -57,10 +57,10 @@ public class EmailOutboxProcessorTests : IDisposable
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(_options));
-        // SystemSettings is its own section (#866 G5): its repository, service and
+        // Settings is its own section (#866 G5): its repository, service and
         // DbContext are internal to it, so this job test substitutes the contract.
-        _systemSettingsService = Substitute.For<ISystemSettingsService>();
-        _outboxService = new EmailOutboxService(_repo, _systemSettingsService, _settings, _clock);
+        _settingsStore = Substitute.For<ISettingsService>();
+        _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock);
 
         _job = NewProcessor(_settings);
     }
@@ -142,8 +142,8 @@ public class EmailOutboxProcessorTests : IDisposable
     [HumansFact]
     public async Task ProcessQueuedAsync_SkipsPaused()
     {
-        _systemSettingsService
-            .GetValueAsync(SystemSettingKeys.IsEmailSendingPaused, Arg.Any<CancellationToken>())
+        _settingsStore
+            .GetValueAsync(SettingKeys.IsEmailSendingPaused, Arg.Any<CancellationToken>())
             .Returns("true");
 
         await SeedMessageAsync(EmailOutboxStatus.Queued);

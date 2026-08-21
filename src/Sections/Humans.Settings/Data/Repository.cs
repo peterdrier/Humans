@@ -1,15 +1,15 @@
-using Humans.SystemSettings.Domain;
+using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.SystemSettings.Data;
+namespace Humans.Settings.Data;
 
-internal sealed class Repository(IDbContextFactory<SystemSettingsDbContext> factory)
-    : ISystemSettingsRepository
+internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
+    : ISettingsRepository
 {
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemSettings
+        return await ctx.Settings
             .AsNoTracking()
             .Where(setting => setting.Key == key)
             .Select(setting => setting.Value)
@@ -19,12 +19,12 @@ internal sealed class Repository(IDbContextFactory<SystemSettingsDbContext> fact
     public async Task SetValueAsync(string key, string value, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var setting = await ctx.SystemSettings
+        var setting = await ctx.Settings
             .FirstOrDefaultAsync(s => s.Key == key, ct);
 
         if (setting is null)
         {
-            ctx.SystemSettings.Add(new SystemSetting
+            ctx.Settings.Add(new Setting
             {
                 Key = key,
                 Value = value,

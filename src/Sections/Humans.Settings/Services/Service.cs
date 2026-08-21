@@ -1,9 +1,9 @@
-using Humans.SystemSettings.Contracts;
-using Humans.SystemSettings.Data;
+using Humans.Settings.Contracts;
+using Humans.Settings.Data;
 
-namespace Humans.SystemSettings.Services;
+namespace Humans.Settings.Services;
 
-internal sealed class Service(ISystemSettingsRepository repository) : ISystemSettingsService
+internal sealed class Service(ISettingsRepository repository) : ISettingsService
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
         repository.GetValueAsync(key, cancellationToken);

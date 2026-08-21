@@ -2,7 +2,7 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
-using Humans.SystemSettings.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using NodaTime;
@@ -20,7 +20,7 @@ namespace Humans.Email.Services;
 /// </summary>
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
-    ISystemSettingsService systemSettings,
+    ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
     IClock clock) : IEmailOutboxService
 {
@@ -75,15 +75,15 @@ internal sealed class EmailOutboxService(
 
     public async Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default)
     {
-        var value = await systemSettings.GetValueAsync(
-            SystemSettingKeys.IsEmailSendingPaused,
+        var value = await settingsStore.GetValueAsync(
+            SettingKeys.IsEmailSendingPaused,
             cancellationToken);
         return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     public Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default) =>
-        systemSettings.SetValueAsync(
-            SystemSettingKeys.IsEmailSendingPaused,
+        settingsStore.SetValueAsync(
+            SettingKeys.IsEmailSendingPaused,
             paused ? "true" : "false",
             cancellationToken);
 

@@ -3,7 +3,7 @@ using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Base.Configuration;
-using Humans.SystemSettings.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.Options;
 using Humans.Base.Enums;
 using NodaTime;
@@ -16,13 +16,13 @@ public sealed class EmailOutboxServiceTests
 {
     private readonly Instant _now = Instant.FromUtc(2026, 5, 10, 12, 0);
     private readonly IEmailOutboxRepository _repo = Substitute.For<IEmailOutboxRepository>();
-    private readonly ISystemSettingsService _systemSettings = Substitute.For<ISystemSettingsService>();
+    private readonly ISettingsService _settingsStore = Substitute.For<ISettingsService>();
     private readonly EmailOutboxService _service;
 
     public EmailOutboxServiceTests()
     {
         _service = new EmailOutboxService(
-            _repo, _systemSettings, Options.Create(new EmailSettings()), new FakeClock(_now));
+            _repo, _settingsStore, Options.Create(new EmailSettings()), new FakeClock(_now));
     }
 
     [HumansFact]
@@ -57,8 +57,8 @@ public sealed class EmailOutboxServiceTests
     [HumansFact]
     public async Task IsEmailPausedAsync_ReturnsTrueWhenSettingIsTrue()
     {
-        _systemSettings.GetValueAsync(
-                SystemSettingKeys.IsEmailSendingPaused,
+        _settingsStore.GetValueAsync(
+                SettingKeys.IsEmailSendingPaused,
                 Arg.Any<CancellationToken>())
             .Returns("true");
 
@@ -72,8 +72,8 @@ public sealed class EmailOutboxServiceTests
     {
         await _service.SetEmailPausedAsync(true, Xunit.TestContext.Current.CancellationToken);
 
-        await _systemSettings.Received(1).SetValueAsync(
-            SystemSettingKeys.IsEmailSendingPaused,
+        await _settingsStore.Received(1).SetValueAsync(
+            SettingKeys.IsEmailSendingPaused,
             "true",
             Arg.Any<CancellationToken>());
     }

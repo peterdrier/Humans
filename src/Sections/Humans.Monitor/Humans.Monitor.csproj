@@ -44,7 +44,7 @@
          referenced for @addTagHelper *, Humans.GoogleIntegration to bind. Monitor reads
          neither the audit log nor the sync log itself. -->
     <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
-    <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

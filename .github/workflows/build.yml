@@ -35,7 +35,7 @@ env:
   # a G5 move edits its pair's project here.
   SECTION_DB_CONTEXTS: >-
     UsersDbContext:src/Sections/Humans.Users
-    SystemSettingsDbContext:src/Sections/Humans.SystemSettings
+    SettingsDbContext:src/Sections/Humans.Settings
     ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Sections/Humans.Agent
     ExpensesDbContext:src/Sections/Humans.Expenses

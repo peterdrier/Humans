@@ -1,27 +1,39 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <!--
-    Microsoft.NET.Sdk, not Sdk.Razor: SystemSettings has no controllers and no views,
-    so AddRazorSupportForMvc and the Sdk.Web <Using> items Sdk.Razor does not inherit
-    would both be dead weight. Section discovery keys off Section.cs : ISection,
-    not off being an MVC application part (design §15 step 1, amended here).
+    Sdk.Razor, not plain Sdk: the section owns /Admin/Settings — a controller and its
+    views — so it is an MVC application part. Section discovery still keys off
+    Section.cs : ISection (design §15 step 1).
   -->
 
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
   <ItemGroup>
-    <InternalsVisibleTo Include="Humans.SystemSettings.Tests" />
+    <InternalsVisibleTo Include="Humans.Settings.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <PackageReference Include="NodaTime" />
   </ItemGroup>
 
   <ItemGroup>
