@@ -21,6 +21,9 @@ internal enum VendorCommitmentMatchDecision
     Review
 }
 
+/// <summary><paramref name="Linked"/> is set only for <see cref="VendorCommitmentMatchDecision.Link"/>;
+/// <paramref name="ForReview"/> and <paramref name="ReviewKind"/> only for
+/// <see cref="VendorCommitmentMatchDecision.Review"/>.</summary>
 internal sealed record VendorCommitmentMatchOutcome(
     VendorCommitmentMatchDecision Decision,
     MatchableDocument? Linked,

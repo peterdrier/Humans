@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Expenses.Data.Migrations
 {
     [DbContext(typeof(ExpensesDbContext))]
-    [Migration("20260821025435_VendorCommitments")]
+    [Migration("20260821031525_VendorCommitments")]
     partial class VendorCommitments
     {
         /// <inheritdoc />
@@ -273,10 +273,6 @@ namespace Humans.Expenses.Data.Migrations
                     b.Property<decimal>("ExpectedAmount")
                         .HasColumnType("decimal(12,2)");
 
-                    b.Property<string>("HoldedContactId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
                     b.Property<Instant?>("MatchedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -324,8 +320,6 @@ namespace Humans.Expenses.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BudgetCategoryId");
-
-                    b.HasIndex("HoldedContactId");
 
                     b.HasIndex("MatchedHoldedDocId");
 

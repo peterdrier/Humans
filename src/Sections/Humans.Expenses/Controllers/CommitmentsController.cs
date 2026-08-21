@@ -21,7 +21,6 @@ internal sealed class CommitmentsController(
     IUserServiceRead userService,
     IVendorCommitmentService service,
     IBudgetServiceRead budgetService,
-    Humans.Holded.Contracts.IHoldedClient holdedClient,
     ILogger<CommitmentsController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -32,7 +31,7 @@ internal sealed class CommitmentsController(
         {
             Commitments = commitments,
             CategoryNames = await CategoryNamesAsync(),
-            HoldedConfigured = holdedClient.IsConfigured,
+            HoldedConfigured = service.MatchingAvailable,
         });
     }
 
@@ -72,8 +71,7 @@ internal sealed class CommitmentsController(
 
         var (result, commitmentId) = await service.CreateAsync(
             model.VendorName, model.ExpectedAmount, model.Purpose,
-            model.BudgetCategoryId, model.HoldedContactId,
-            user.Id, upload, HttpContext.RequestAborted);
+            model.BudgetCategoryId, user.Id, upload, HttpContext.RequestAborted);
 
         if (!result.Succeeded || commitmentId is not { } id)
         {

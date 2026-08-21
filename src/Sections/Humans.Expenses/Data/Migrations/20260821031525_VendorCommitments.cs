@@ -18,7 +18,6 @@ namespace Humans.Expenses.Data.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     VendorName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    HoldedContactId = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     ExpectedAmount = table.Column<decimal>(type: "numeric(12,2)", nullable: false),
                     Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     Purpose = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
@@ -112,11 +111,6 @@ namespace Humans.Expenses.Data.Migrations
                 name: "IX_vendor_commitments_BudgetCategoryId",
                 table: "vendor_commitments",
                 column: "BudgetCategoryId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_vendor_commitments_HoldedContactId",
-                table: "vendor_commitments",
-                column: "HoldedContactId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_vendor_commitments_MatchedHoldedDocId",

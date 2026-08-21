@@ -48,13 +48,14 @@ internal interface IVendorCommitmentRepository : IRepository
         Guid commitmentId, IReadOnlyList<VendorCommitmentMatchCandidate> candidates,
         CancellationToken ct = default);
 
-    /// <summary>Marks one candidate accepted or dismissed. Null when it does not exist or is
-    /// already resolved; otherwise the owning commitment id.</summary>
-    Task<Guid?> ResolveCandidateAsync(
+    /// <summary>Marks one candidate accepted or dismissed. False when it does not exist or was
+    /// already resolved.</summary>
+    Task<bool> ResolveCandidateAsync(
         Guid candidateId, bool accepted, Guid actorUserId,
         Instant resolvedAt, CancellationToken ct = default);
 
-    /// <summary>The candidate's document identity, for the accept path. Null when unknown.</summary>
+    /// <summary>The candidate's commitment and document identity, for the accept path.
+    /// Null when unknown.</summary>
     Task<VendorCommitmentMatchCandidateDto?> GetCandidateAsync(
         Guid candidateId, CancellationToken ct = default);
 }

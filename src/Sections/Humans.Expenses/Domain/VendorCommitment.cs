@@ -11,8 +11,6 @@ internal sealed class VendorCommitment
 {
     public Guid Id { get; init; }
     public string VendorName { get; set; } = "";
-    /// <summary>Holded contact id when the vendor is already known there. Bare id, never a nav.</summary>
-    public string? HoldedContactId { get; set; }
     public decimal ExpectedAmount { get; set; }
     public string Currency { get; set; } = "EUR";
     public string Purpose { get; set; } = "";

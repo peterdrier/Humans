@@ -29,13 +29,6 @@ internal sealed class CommitmentDetailViewModel
     public string? CategoryDisplayName { get; init; }
 
     public decimal Outstanding => Commitment.ExpectedAmount - Commitment.TotalPaid;
-
-    public bool CanRecordPayment =>
-        Commitment.Status != Domain.VendorCommitmentStatus.Closed;
-
-    public bool CanClose =>
-        Commitment.Status == Domain.VendorCommitmentStatus.Invoiced
-        || (Commitment.Status == Domain.VendorCommitmentStatus.Open && Commitment.TotalPaid == 0m);
 }
 
 internal sealed class CommitmentNewViewModel
@@ -52,9 +45,6 @@ internal sealed class CommitmentNewViewModel
     public string Purpose { get; set; } = "";
 
     public Guid? BudgetCategoryId { get; set; }
-
-    [StringLength(64)]
-    public string? HoldedContactId { get; set; }
 }
 
 internal sealed class RecordCommitmentPaymentInputModel

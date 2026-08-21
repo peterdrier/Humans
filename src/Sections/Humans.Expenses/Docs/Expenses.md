@@ -91,7 +91,6 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 |----------|------|-------|
 | Id | Guid | PK |
 | VendorName | string | matched against Holded's `contactName` by normalized containment |
-| HoldedContactId | string? | Holded contact id (cross-domain, scalar only) |
 | ExpectedAmount | decimal | the committed amount; matched **exactly** against purchase-document totals |
 | Currency | string | "EUR" |
 | Purpose | string | what the money is for |

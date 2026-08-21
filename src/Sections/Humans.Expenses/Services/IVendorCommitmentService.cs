@@ -11,6 +11,10 @@ namespace Humans.Expenses.Services;
 /// </summary>
 internal interface IVendorCommitmentService : IApplicationService
 {
+    /// <summary>False where no Holded API key is configured (PR previews, local dev) — every call
+    /// would 401, so the screens hide the match action rather than offering a button that fails.</summary>
+    bool MatchingAvailable { get; }
+
     Task<VendorCommitmentDto?> GetAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<VendorCommitmentDto>> ListAsync(CancellationToken ct = default);
@@ -24,8 +28,8 @@ internal interface IVendorCommitmentService : IApplicationService
     /// <summary>Records the accepted quote. The PDF is optional at creation and can be added later.</summary>
     Task<(ExpenseMutationResult Result, Guid? CommitmentId)> CreateAsync(
         string vendorName, decimal expectedAmount, string purpose,
-        Guid? budgetCategoryId, string? holdedContactId,
-        Guid actorUserId, ExpenseFileUpload? quote = null, CancellationToken ct = default);
+        Guid? budgetCategoryId, Guid actorUserId,
+        ExpenseFileUpload? quote = null, CancellationToken ct = default);
 
     Task<ExpenseMutationResult> AttachQuoteAsync(
         Guid commitmentId, Guid actorUserId, ExpenseFileUpload quote, CancellationToken ct = default);

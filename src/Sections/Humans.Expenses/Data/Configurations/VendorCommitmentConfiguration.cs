@@ -12,7 +12,6 @@ internal sealed class VendorCommitmentConfiguration : IEntityTypeConfiguration<V
         b.HasKey(x => x.Id);
 
         b.Property(x => x.VendorName).HasMaxLength(200).IsRequired();
-        b.Property(x => x.HoldedContactId).HasMaxLength(64);
         b.Property(x => x.ExpectedAmount).HasColumnType("decimal(12,2)");
         b.Property(x => x.Currency).HasMaxLength(3).IsRequired();
         b.Property(x => x.Purpose).HasMaxLength(500).IsRequired();
@@ -40,8 +39,7 @@ internal sealed class VendorCommitmentConfiguration : IEntityTypeConfiguration<V
 
         b.HasIndex(x => x.Status);
         b.HasIndex(x => x.MatchedHoldedDocId);
-        // FK-only refs (no nav) — Budget's key and Holded's contact id.
+        // FK-only ref (no nav) — Budget's key.
         b.HasIndex(x => x.BudgetCategoryId);
-        b.HasIndex(x => x.HoldedContactId);
     }
 }

@@ -121,7 +121,7 @@
                     </dd>
                 </dl>
             </div>
-            @if (Model.CanClose)
+            @if (c.CanClose)
             {
                 <div class="card-footer">
                     <form asp-action="Close" asp-route-id="@c.Id" method="post">
@@ -191,7 +191,7 @@
                     </div>
                 }
             </div>
-            @if (Model.CanRecordPayment)
+            @if (c.CanRecordPayment)
             {
                 <div class="card-footer">
                     <form asp-action="RecordPayment" asp-route-id="@c.Id" method="post" class="row g-2">

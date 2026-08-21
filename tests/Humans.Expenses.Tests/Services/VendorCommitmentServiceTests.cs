@@ -47,7 +47,7 @@ public sealed class VendorCommitmentServiceTests
     private async Task<Guid> RecordAsync(decimal amount = 1_000m, string vendor = "TOI TOI")
     {
         var (result, id) = await _sut.CreateAsync(
-            vendor, amount, "Sanitary units", null, null, Guid.NewGuid(), null, Ct);
+            vendor, amount, "Sanitary units", null, Guid.NewGuid(), null, Ct);
         result.Succeeded.Should().BeTrue();
         return id!.Value;
     }
@@ -70,7 +70,7 @@ public sealed class VendorCommitmentServiceTests
     public async Task CreateAsync_RejectsANonPositiveAmount(decimal amount)
     {
         var (result, id) = await _sut.CreateAsync(
-            "Repsol", amount, "Fuel", null, null, Guid.NewGuid(), null, Ct);
+            "Repsol", amount, "Fuel", null, Guid.NewGuid(), null, Ct);
 
         result.Succeeded.Should().BeFalse();
         id.Should().BeNull();
@@ -80,7 +80,7 @@ public sealed class VendorCommitmentServiceTests
     public async Task CreateAsync_RejectsABlankVendor()
     {
         var (result, _) = await _sut.CreateAsync(
-            "  ", 100m, "Fuel", null, null, Guid.NewGuid(), null, Ct);
+            "  ", 100m, "Fuel", null, Guid.NewGuid(), null, Ct);
 
         result.Succeeded.Should().BeFalse();
     }

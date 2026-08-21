@@ -147,20 +147,20 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<Guid?> ResolveCandidateAsync(
+    public async Task<bool> ResolveCandidateAsync(
         Guid candidateId, bool accepted, Guid actorUserId,
         Instant resolvedAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.VendorCommitmentMatchCandidates
             .FirstOrDefaultAsync(c => c.Id == candidateId, ct);
-        if (row is null || row.ResolvedAt is not null) return null;
+        if (row is null || row.ResolvedAt is not null) return false;
 
         row.Accepted = accepted;
         row.ResolvedAt = resolvedAt;
         row.ResolvedByUserId = actorUserId;
         await ctx.SaveChangesAsync(ct);
-        return row.VendorCommitmentId;
+        return true;
     }
 
     public async Task<VendorCommitmentMatchCandidateDto?> GetCandidateAsync(
@@ -182,7 +182,6 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         {
             Id = e.Id,
             VendorName = e.VendorName,
-            HoldedContactId = e.HoldedContactId,
             ExpectedAmount = e.ExpectedAmount,
             Currency = e.Currency,
             Purpose = e.Purpose,
@@ -209,6 +208,6 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         };
 
     private static VendorCommitmentMatchCandidateDto ToDto(VendorCommitmentMatchCandidate c) =>
-        new(c.Id, c.HoldedDocId, c.HoldedDocNumber, c.ContactName, c.DocDate, c.DocTotal,
-            c.Kind, c.DetectedAt, c.Accepted, c.ResolvedAt);
+        new(c.Id, c.VendorCommitmentId, c.HoldedDocId, c.HoldedDocNumber, c.ContactName,
+            c.DocDate, c.DocTotal, c.Kind, c.DetectedAt, c.Accepted, c.ResolvedAt);
 }

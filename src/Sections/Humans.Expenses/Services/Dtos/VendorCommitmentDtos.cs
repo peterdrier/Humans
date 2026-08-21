@@ -15,6 +15,7 @@ internal sealed record VendorCommitmentPaymentDto(
 /// <summary>A purchase document parked for a human decision — ambiguous fit, or a suspected dupe.</summary>
 internal sealed record VendorCommitmentMatchCandidateDto(
     Guid Id,
+    Guid VendorCommitmentId,
     string HoldedDocId,
     string HoldedDocNumber,
     string ContactName,
@@ -33,7 +34,6 @@ internal sealed record VendorCommitmentDto
 {
     public required Guid Id { get; init; }
     public required string VendorName { get; init; }
-    public string? HoldedContactId { get; init; }
     public required decimal ExpectedAmount { get; init; }
     public required string Currency { get; init; }
     public required string Purpose { get; init; }
@@ -56,9 +56,22 @@ internal sealed record VendorCommitmentDto
 
     public decimal TotalPaid => Payments.Sum(p => p.Amount);
 
-    /// <summary>The liability: money has gone out and no purchase document backs it yet (AC2).</summary>
+    /// <summary>The liability: money has gone out and no purchase document backs it yet (AC2).
+    /// A Closed commitment is out: closing is the accountant saying the matter is settled, and a
+    /// list you cannot ever clear is not a liability list.</summary>
     public bool IsPaidAwaitingInvoice =>
         TotalPaid > 0m && MatchedHoldedDocId is null && Status != VendorCommitmentStatus.Closed;
+
+    public bool CanRecordPayment => Status != VendorCommitmentStatus.Closed;
+
+    /// <summary>
+    /// Two ways out of the registry: the invoice arrived and the cost is booked, or the quote was
+    /// never taken up and no money moved. Anything else still owes someone an invoice. One
+    /// definition, read by both the service guard and the screen that offers the button.
+    /// </summary>
+    public bool CanClose =>
+        Status == VendorCommitmentStatus.Invoiced
+        || (Status == VendorCommitmentStatus.Open && TotalPaid == 0m);
 
     /// <summary>Unresolved review rows, oldest first — the order they are worked in.</summary>
     public IReadOnlyList<VendorCommitmentMatchCandidateDto> PendingCandidates =>

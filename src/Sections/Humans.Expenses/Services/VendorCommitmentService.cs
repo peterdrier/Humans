@@ -38,6 +38,8 @@ internal sealed class VendorCommitmentService(
     internal static string QuoteKey(Guid commitmentId, string extension) =>
         $"uploads/vendor-commitment-quotes/{commitmentId}{extension}";
 
+    public bool MatchingAvailable => holdedClient.IsConfigured;
+
     public Task<VendorCommitmentDto?> GetAsync(Guid id, CancellationToken ct = default) =>
         repo.GetByIdAsync(id, ct);
 
@@ -71,8 +73,8 @@ internal sealed class VendorCommitmentService(
 
     public async Task<(ExpenseMutationResult Result, Guid? CommitmentId)> CreateAsync(
         string vendorName, decimal expectedAmount, string purpose,
-        Guid? budgetCategoryId, string? holdedContactId,
-        Guid actorUserId, ExpenseFileUpload? quote = null, CancellationToken ct = default)
+        Guid? budgetCategoryId, Guid actorUserId,
+        ExpenseFileUpload? quote = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(vendorName))
             return (ExpenseMutationResult.Failure("Vendor name is required."), null);
@@ -88,7 +90,6 @@ internal sealed class VendorCommitmentService(
         {
             Id = Guid.NewGuid(),
             VendorName = vendorName.Trim(),
-            HoldedContactId = string.IsNullOrWhiteSpace(holdedContactId) ? null : holdedContactId.Trim(),
             ExpectedAmount = expectedAmount,
             Currency = "EUR",
             Purpose = purpose.Trim(),
@@ -209,11 +210,7 @@ internal sealed class VendorCommitmentService(
         var commitment = await repo.GetByIdAsync(commitmentId, ct);
         if (commitment is null) return ExpenseMutationResult.Failure("Commitment not found.");
 
-        // Two ways out of the registry: the invoice arrived and the cost is booked, or the quote
-        // was never taken up and no money moved. Anything else still owes someone an invoice.
-        var closable = commitment.Status == VendorCommitmentStatus.Invoiced
-            || (commitment.Status == VendorCommitmentStatus.Open && commitment.TotalPaid == 0m);
-        if (!closable)
+        if (!commitment.CanClose)
             return ExpenseMutationResult.Failure(
                 "Only an invoiced commitment, or an unpaid one being abandoned, can be closed.");
 
@@ -240,10 +237,12 @@ internal sealed class VendorCommitmentService(
         {
             docs = await holdedClient.ListPurchaseDocumentsAsync(ct);
         }
-        catch (HoldedApiException ex)
+        catch (Exception ex)
         {
+            // Broad on purpose: an unhandled transport failure here would 500 the page the operator
+            // triggered the run from, and nothing is written until a document is matched.
             logger.LogError(ex, "Could not list Holded purchase documents for commitment matching");
-            return (ExpenseMutationResult.Failure($"Holded rejected the request: {ex.Message}"), null);
+            return (ExpenseMutationResult.Failure($"Could not read Holded: {ex.Message}"), null);
         }
 
         var commitments = await repo.GetAllAsync(ct);
@@ -347,22 +346,24 @@ internal sealed class VendorCommitmentService(
             return ExpenseMutationResult.Failure("This review item has already been resolved.");
 
         var now = clock.GetCurrentInstant();
-        var commitmentId = await repo.ResolveCandidateAsync(candidateId, accepted, actorUserId, now, ct);
-        if (commitmentId is not { } id) return ExpenseMutationResult.Failure("Review item not found.");
 
-        if (!accepted) return ExpenseMutationResult.Success;
-
-        if (!await repo.LinkPurchaseDocumentAsync(
-                id, candidate.HoldedDocId, candidate.HoldedDocNumber, now, ct))
+        // Link before resolving: if the link is refused, the row stays pending rather than being
+        // marked accepted with nothing linked behind it.
+        if (accepted && !await repo.LinkPurchaseDocumentAsync(
+                candidate.VendorCommitmentId, candidate.HoldedDocId, candidate.HoldedDocNumber, now, ct))
             return ExpenseMutationResult.Failure(
                 "This commitment already carries a purchase document. Dismiss the item instead, " +
                 "or unlink the existing document in Holded first.");
 
-        await auditLogService.LogAsync(
-            AuditAction.VendorCommitmentInvoiceLinked,
-            AuditEntityTypes.Commitment, id,
-            $"Purchase document {candidate.HoldedDocNumber} linked after review.",
-            actorUserId);
+        if (!await repo.ResolveCandidateAsync(candidateId, accepted, actorUserId, now, ct))
+            return ExpenseMutationResult.Failure("Review item not found.");
+
+        if (accepted)
+            await auditLogService.LogAsync(
+                AuditAction.VendorCommitmentInvoiceLinked,
+                AuditEntityTypes.Commitment, candidate.VendorCommitmentId,
+                $"Purchase document {candidate.HoldedDocNumber} linked after review.",
+                actorUserId);
 
         return ExpenseMutationResult.Success;
     }
