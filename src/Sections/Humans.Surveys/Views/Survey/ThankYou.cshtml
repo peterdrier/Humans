@@ -8,19 +8,11 @@
     <div class="col-md-8 col-lg-6">
         @if (Model.IsPreview)
         {
-            <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 mt-4 mb-0" role="note">
-                <div>
-                    <i class="fa-solid fa-eye me-1"></i>
-                    <strong>Preview only.</strong> No response was submitted.
-                </div>
-                <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail"
-                      asp-route-id="@Model.PreviewSurveyId" method="post" class="flex-shrink-0">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-dark">
-                        <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
-                    </button>
-                </form>
-            </div>
+            <partial name="_PreviewNotice"
+                     model="@(new SurveyPreviewNoticeModel(
+                         Model.PreviewSurveyId!.Value,
+                         "No response was submitted.",
+                         "mt-4 mb-0"))" />
         }
         <div class="card mt-4">
             <div class="card-body text-center py-5">

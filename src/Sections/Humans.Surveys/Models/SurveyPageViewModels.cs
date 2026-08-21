@@ -77,6 +77,12 @@ internal sealed record SurveyPageOption(string Value, string Label);
 /// <summary>One resolved Grid row.</summary>
 internal sealed record SurveyPageGridRow(string Value, string Label);
 
+/// <summary>Pure presentation model for the shared author-preview notice.</summary>
+internal sealed record SurveyPreviewNoticeModel(
+    Guid SurveyId,
+    string Message,
+    string AdditionalCssClasses = "");
+
 /// <summary>Posted by one wizard page. <see cref="Answers"/> binds via indexed form fields.</summary>
 internal sealed class SurveyPageInputModel
 {
