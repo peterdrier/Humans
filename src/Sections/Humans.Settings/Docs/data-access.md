@@ -17,20 +17,20 @@ which predates the convention and keeps its name.
 ### Service (Scoped)
 
 Repository: `ISettingsRepository`. Registered twice against one instance: as
-`ISettingsService` for everyone outside the section, and as the concrete
-`Service` for the section's own screens.
+`ISettingsService` for everyone outside the section, and as the section-internal
+`ISettingsWriteService` for the section's own screens.
 
 `SaveEventSettingsAsync` is deliberately **not** on `ISettingsService`. Nothing
-outside Settings writes the event values, so the write is reachable only by
-injecting the concrete class — which only `SettingsAdminController` and
-`EventSettingsCarryService` do. The key/value `SetValueAsync` does stay on the
-interface, because Email's send-pause flag and Monitor's last-run stamp have
-always been written from outside.
+outside Settings writes the event values, so the write lives on
+`ISettingsWriteService`, which only `SettingsAdminController` and
+`EventSettingsCarryService` inject. The key/value `SetValueAsync` does stay on
+the cross-section interface, because Email's send-pause flag and Monitor's
+last-run stamp have always been written from outside.
 
 | Table | R/W |
 |-------|-----|
 | `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key) |
-| `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the interface; `SaveEventSettingsAsync` section-internal) |
+| `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the cross-section interface; `SaveEventSettingsAsync` on `ISettingsWriteService`) |
 
 Thin over the repository — no business logic beyond entity↔DTO mapping, no
 cross-section calls, no cache. Key/value consumers today:
@@ -51,14 +51,20 @@ other sections store the row's `Id`.
 
 ## EventSettingsCarryService (Scoped)
 
-No repository of its own beyond `Service`. Reads the Shifts rows it copies from
-through `IBurnSettingsService` (`Humans.Shifts.Contracts`) — an ordinary
-cross-section read — and writes `settings_event` through the section's own
-`Service`. Driven by `/Settings/Admin/Carry`, operator-triggered, idempotent,
-never on startup. Keeps each row's `Id` so `Rota.EventSettingsId` and
-`EventGuideSettings.EventSettingsId` still resolve, and marks only the cycle
-that is active in Shifts as `Active`. Retires with the old columns, taking the
-`Humans.Shifts.Contracts` project reference with it.
+No repository of its own. Reads the Shifts rows it copies from through
+`IBurnSettingsService` (`Humans.Shifts.Contracts`) — an ordinary cross-section
+read — and writes `settings_event` through `ISettingsWriteService`. Driven by
+`/Settings/Admin/Carry`, operator-triggered, idempotent, never on startup. Keeps
+each row's `Id` so `Rota.EventSettingsId` and `EventGuideSettings.EventSettingsId`
+still resolve.
+
+**It preserves the at-most-one-`Active` invariant.** `BurnSettingsInfo` carries
+no active flag, so the carry calls `IBurnSettingsService.GetActiveAsync()` once
+and gives that id `Active`; every other cycle is written `Inactive`. Copying them
+all as `Active` would put several live cycles in the table at once.
+
+Retires with the old columns, taking the `Humans.Shifts.Contracts` project
+reference with it.
 
 `/Settings/Admin` is the section's own admin screen for the app-wide event
 values.

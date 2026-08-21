@@ -14,14 +14,14 @@ namespace Humans.Settings.Controllers;
 /// (memory/architecture/no-admin-url-section.md).
 /// </summary>
 /// <remarks>
-/// Takes the concrete <see cref="Service"/>, not <c>ISettingsService</c>: the
+/// Takes <see cref="ISettingsWriteService"/>, not <c>ISettingsService</c>: the
 /// event-settings write is deliberately off the cross-section contract, so the
 /// only callers that can reach it are the section's own screens.
 /// </remarks>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Settings/Admin")]
 internal sealed class SettingsAdminController(
-    Service settingsService,
+    ISettingsWriteService settingsService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]

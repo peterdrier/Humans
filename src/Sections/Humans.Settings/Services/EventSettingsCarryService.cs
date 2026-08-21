@@ -44,7 +44,7 @@ internal interface IEventSettingsCarryService : IApplicationService
 
 internal sealed class EventSettingsCarryService(
     IBurnSettingsService burnSettings,
-    Service settings) : IEventSettingsCarryService
+    ISettingsWriteService settings) : IEventSettingsCarryService
 {
     public async Task<EventSettingsCarrySnapshot> GetSnapshotAsync(CancellationToken ct = default)
     {
