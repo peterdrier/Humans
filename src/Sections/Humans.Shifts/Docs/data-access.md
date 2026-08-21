@@ -55,6 +55,16 @@ lazy-resolves the read surfaces `ITeamServiceRead`, `IUserServiceRead`,
 `IUserMerge`. Also exposes the Cantina-gating predicates
 (`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
 
+**Event-scoping invariant (day queries).** `ShiftRepository.GetUserIdsForDayAsync`
+matches a signup to a day/status by `Shift.DayOffset` + `Status`, then requires
+`Shift.Rota.EventSettingsId` to equal the requested (active) event before the
+signup counts — a Pending/Confirmed signup on a rota bound to a *different*
+`EventSettings` row (e.g. a duplicate/stale event) is excluded from the day
+cohort, never included cross-event. Every exclusion is logged at Warning
+(signup id, user id, day offset, status scope, both event ids) so a rota
+mis-linked to a non-active event is diagnosable instead of silently dropping
+its volunteers from the Cantina roster (nobodies-collective/Humans#896).
+
 **Shift Summary by Camp.** `BuildSummaryAsync` assembles the
 read-only by-camp shift summary: confirmed signup totals come from
 `IShiftManagementRepository.GetConfirmedUserShiftTotalsAsync` (reads
