@@ -2,7 +2,6 @@ using Humans.Base.Controllers;
 using System.Globalization;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
-using Humans.Base.Extensions;
 using Humans.Surveys.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -117,7 +116,7 @@ internal sealed class SurveyController(
 
         // When the survey forbids anonymity, the only tier is Identified.
         var anonymity = editable.AllowAnonymous ? model.Anonymity : ResponseAnonymity.Identified;
-        var culture = ResolveCulture(model.Culture, editable.DefaultCulture);
+        var culture = SurveyPageViewModelFactory.ResolveCulture(model.Culture, editable.DefaultCulture);
 
         var state = BuildState(ctx, anonymity, culture);
         state.Started = true;
@@ -203,7 +202,7 @@ internal sealed class SurveyController(
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
 
-        var resolvedCulture = ResolveCulture(culture, editable.DefaultCulture);
+        var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var state = new SurveyWizardState
         {
             SurveyId = ctx.SurveyId,
@@ -433,13 +432,8 @@ internal sealed class SurveyController(
 
     /// <summary>Picks a supported display culture, defaulting to the current UI culture then the survey's default.</summary>
     private static string ResolveCulture(string surveyDefault)
-        => ResolveCulture(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, surveyDefault);
-
-    private static string ResolveCulture(string? requested, string surveyDefault)
-    {
-        if (requested.IsSupportedCultureCode()) return requested!;
-        if (surveyDefault.IsSupportedCultureCode()) return surveyDefault;
-        return CultureCatalog.DefaultCultureCode;
-    }
+        => SurveyPageViewModelFactory.ResolveCulture(
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
+            surveyDefault);
 
 }

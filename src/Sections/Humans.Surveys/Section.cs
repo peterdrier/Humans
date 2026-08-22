@@ -37,7 +37,7 @@ public sealed class Section : ISection
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
         services.AddScoped<SurveyPreviewTokenProvider>();
-        services.AddScoped<SurveyPreviewEmailService>();
+        services.AddScoped<ISurveyPreviewEmailService, SurveyPreviewEmailService>();
 
         // Survey analysis API key. Missing/empty key is a runtime 503 at the filter, not a startup failure.
         services.Configure<SurveyApiSettings>(opts =>

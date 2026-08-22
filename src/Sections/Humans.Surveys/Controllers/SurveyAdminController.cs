@@ -70,7 +70,7 @@ internal sealed class SurveyAdminController(
         if (detail is null) return NotFound();
 
         var editable = detail.Editable;
-        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var vm = new SurveyIntroViewModel
         {
             Title = editable.Title.Resolve(resolvedCulture, editable.DefaultCulture),
@@ -96,7 +96,7 @@ internal sealed class SurveyAdminController(
             return RedirectToAction(nameof(PreviewThankYou), new { id, culture });
 
         var selectedPage = page is not null && pages.Contains(page.Value) ? page.Value : pages[0];
-        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var state = new SurveyWizardState
         {
             SurveyId = id,
@@ -120,7 +120,7 @@ internal sealed class SurveyAdminController(
         if (detail is null) return NotFound();
 
         var editable = detail.Editable;
-        var resolvedCulture = ResolvePreviewCulture(culture, editable.DefaultCulture);
+        var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var thankYou = editable.ThankYou.Resolve(resolvedCulture, editable.DefaultCulture);
         var vm = new SurveyThankYouViewModel
         {
@@ -136,7 +136,7 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendPreviewEmail(
         Guid id,
-        [FromServices] SurveyPreviewEmailService previewEmailService,
+        [FromServices] ISurveyPreviewEmailService previewEmailService,
         CancellationToken ct)
     {
         var actorId = GetCurrentUserId();
@@ -356,10 +356,4 @@ internal sealed class SurveyAdminController(
             .ToList();
     }
 
-    private static string ResolvePreviewCulture(string? requested, string surveyDefault)
-    {
-        if (requested.IsSupportedCultureCode()) return requested!;
-        if (surveyDefault.IsSupportedCultureCode()) return surveyDefault;
-        return CultureCatalog.DefaultCultureCode;
-    }
 }

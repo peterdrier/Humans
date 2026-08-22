@@ -1,8 +1,14 @@
 using Humans.Email.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
+
+internal interface ISurveyPreviewEmailService : IOrchestrator
+{
+    Task<string> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
+}
 
 /// <summary>
 /// Sends a side-effect-free survey invitation preview to the requesting Board/Admin user. It reuses
@@ -15,7 +21,7 @@ internal sealed class SurveyPreviewEmailService(
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     SurveyPreviewTokenProvider previewTokens,
-    ILogger<SurveyPreviewEmailService> logger)
+    ILogger<SurveyPreviewEmailService> logger) : ISurveyPreviewEmailService
 {
     public async Task<string> SendToUserAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
     {

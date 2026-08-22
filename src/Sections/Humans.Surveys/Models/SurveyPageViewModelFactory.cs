@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 
 namespace Humans.Surveys.Models;
@@ -8,6 +9,13 @@ namespace Humans.Surveys.Models;
 /// </summary>
 internal static class SurveyPageViewModelFactory
 {
+    public static string ResolveCulture(string? requested, string surveyDefault)
+    {
+        if (requested.IsSupportedCultureCode()) return requested!;
+        if (surveyDefault.IsSupportedCultureCode()) return surveyDefault;
+        return CultureCatalog.DefaultCultureCode;
+    }
+
     public static SurveyPageViewModel Build(
         SurveyWizardState state,
         SurveyEditInput editable,
