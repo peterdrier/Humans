@@ -79,7 +79,16 @@ VERDICT_FILE=""
 CALLER_PATH="$PATH"
 
 export PATH="$PATH:$HOME/.dotnet/tools"
-[ -d "$HOME/.dotnet" ] && export PATH="$HOME/.dotnet:$PATH"
+
+# A $HOME SDK from an earlier run gets to go first only if it actually works.
+# Prepending it merely because the directory exists lets a stale or wrong-band
+# muxer shadow every SDK behind it — including one this script is about to
+# install under the system prefix, which would then be reported as "still no
+# SDK" while sitting perfectly usable on disk. Ask the muxer directly; we are
+# already in the repo root, so this resolves global.json.
+if [ -x "$HOME/.dotnet/dotnet" ] && "$HOME/.dotnet/dotnet" --version >/dev/null 2>&1; then
+  export PATH="$HOME/.dotnet:$PATH"
+fi
 
 # Anything installed under $HOME has to be reachable from the *next* command,
 # not just this one. A cloud container runs each tool call as a fresh
