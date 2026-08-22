@@ -256,6 +256,7 @@ internal sealed class DevelopmentDashboardSeeder(
             {
                 Id = userId,
                 DisplayName = display,
+                BurnerName = display,
                 CreatedAt = createdAt,
                 LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
             };

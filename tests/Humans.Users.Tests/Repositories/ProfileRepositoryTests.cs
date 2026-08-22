@@ -263,6 +263,62 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persistedProfile.UpdatedAt.Should().Be(profileUpdatedAt);
     }
 
+    // #1097 — every Profile write mirrors the names onto the owning User row.
+
+    [HumansFact]
+    public async Task AddAsync_MirrorsProfileNamesOntoTheUser()
+    {
+        var user = await SeedUserAsync();
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+
+        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await ReloadUserAsync(user.Id);
+        reloaded.BurnerName.Should().Be("Burner");
+        reloaded.FirstName.Should().Be("First");
+        reloaded.LastName.Should().Be("Last");
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_MirrorsRenamedProfileOntoTheUser()
+    {
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Old", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        var detached = await _dbContext.Profiles.AsNoTracking()
+            .SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
+        detached.BurnerName = "New";
+
+        await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
+
+        (await ReloadUserAsync(user.Id)).BurnerName.Should().Be("New");
+    }
+
+    [HumansFact]
+    public async Task AnonymizeForDeletionByUserIdAsync_ClearsTheUserSideBurnerName()
+    {
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.AnonymizeForDeletionByUserIdAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await ReloadUserAsync(user.Id);
+        reloaded.BurnerName.Should().BeEmpty();
+        reloaded.FirstName.Should().Be("Deleted");
+        reloaded.LastName.Should().Be("User");
+    }
+
+    private async Task<User> ReloadUserAsync(Guid userId)
+    {
+        _dbContext.ChangeTracker.Clear();
+        return await _dbContext.Users.AsNoTracking()
+            .SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
+    }
+
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
     {
         var user = new User

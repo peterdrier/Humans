@@ -88,6 +88,7 @@ internal sealed class GateTerminalAccountSeeder(
         {
             Id = SystemUserIds.GateTerminal,
             DisplayName = SystemUserIds.GateTerminalDisplayName,
+            BurnerName = SystemUserIds.GateTerminalDisplayName,
             CreatedAt = now
         };
 
