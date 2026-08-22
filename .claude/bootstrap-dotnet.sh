@@ -67,7 +67,16 @@ warn() { echo "bootstrap-dotnet: $*" >&2; }
 # Verdict cache. Outside the repo (never committed, survives worktree churn) and
 # inside the container, so a fresh container re-probes and a warm one does not.
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/humans-bootstrap-dotnet"
-VERDICT_FILE="$CACHE_DIR/build-verdict"
+# VERDICT_FILE is set once the SDK is known: the verdict is a property of an
+# SDK/analyzer-pin pair, so keying on them means installing a different SDK or
+# repinning Roslyn invalidates it instead of silently reusing a stale answer.
+VERDICT_FILE=""
+
+# The environment a *later* command will get. Everything below adds $HOME dirs
+# to this script's own PATH, which makes `command -v` answer yes for tools the
+# next shell cannot see — so reachability has to be judged against this copy,
+# never against the live PATH.
+CALLER_PATH="$PATH"
 
 export PATH="$PATH:$HOME/.dotnet/tools"
 [ -d "$HOME/.dotnet" ] && export PATH="$HOME/.dotnet:$PATH"
@@ -139,6 +148,9 @@ fi
 usable_sdk || { warn "still no SDK satisfying global.json ($SDK_VERSION) after install"; exit 1; }
 SDK_ACTUAL="$(dotnet --version)"
 
+ROSLYN_PIN="$(sed -n 's/.*Microsoft\.CodeAnalysis\.CSharp"[[:space:]]*Version="\([^"]*\)".*/\1/p' Directory.Packages.props | head -1)"
+VERDICT_FILE="$CACHE_DIR/verdict-sdk${SDK_ACTUAL}-roslyn${ROSLYN_PIN:-none}"
+
 # ── 2 & 3. Tools, each only if missing ────────────────────────────────────────
 STRYKER_STATUS="skipped"
 REFORGE_STATUS="skipped"
@@ -178,6 +190,7 @@ case "$PROBE" in
   force) SHOULD_PROBE=1 ;;
   never) SHOULD_PROBE=0 ;;
   auto)  [ "$SDK_SOURCE" = "distro package" ] && [ ! -s "$VERDICT_FILE" ] && SHOULD_PROBE=1 ;;
+         # a generic failure is never cached, so `auto` retries it next run
 esac
 
 if [ "$SHOULD_PROBE" = "1" ]; then
@@ -200,10 +213,20 @@ if [ "$SHOULD_PROBE" = "1" ]; then
                code finding, and let CI be the compile gate."
   else
     BUILD_STATUS="NO — see log"
-    BUILD_DETAIL="build failed for a reason other than CS9057; log at $PROBE_LOG"
+    BUILD_DETAIL="build failed for a reason other than CS9057 — most likely the branch
+               that is checked out, not the toolchain. Not cached; the next run
+               re-checks. Log at $PROBE_LOG"
   fi
-  mkdir -p "$CACHE_DIR"
-  printf 'full build: %s\n' "$BUILD_STATUS" >"$VERDICT_FILE"
+  # Only an environment-level answer is worth remembering. A generic build
+  # failure usually says something about the branch that happens to be checked
+  # out, and caching it would make every later run in this container docs-only
+  # over a compile error that a different worktree does not have.
+  case "$BUILD_STATUS" in
+    yes|NO\ —\ CS9057)
+      mkdir -p "$CACHE_DIR"
+      printf 'full build: %s\n' "$BUILD_STATUS" >"$VERDICT_FILE"
+      ;;
+  esac
 elif [ -s "$VERDICT_FILE" ]; then
   BUILD_STATUS="$(sed -n 's/^full build: //p' "$VERDICT_FILE" | head -1)"
   BUILD_DETAIL="cached from an earlier run in this container; --probe to re-check"
@@ -235,8 +258,9 @@ fi
 # will still be there, because a happy summary followed by "dotnet: not found"
 # is the worst outcome this script can produce.
 UNREACHABLE=""
-command -v dotnet >/dev/null 2>&1 || UNREACHABLE="dotnet"
-if [ "$TOOLS" = "1" ] && ! command -v reforge >/dev/null 2>&1; then
+PATH="$CALLER_PATH" command -v dotnet >/dev/null 2>&1 || UNREACHABLE="dotnet"
+if [ "$TOOLS" = "1" ] && [ "$REFORGE_STATUS" != "FAILED" ] \
+   && ! PATH="$CALLER_PATH" command -v reforge >/dev/null 2>&1; then
   UNREACHABLE="${UNREACHABLE:+$UNREACHABLE and }reforge"
 fi
 if [ -n "$UNREACHABLE" ]; then
