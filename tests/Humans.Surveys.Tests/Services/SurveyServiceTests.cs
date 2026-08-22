@@ -796,6 +796,51 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SendInvitesAsync_leaves_optional_copy_blank_when_only_an_unrelated_culture_exists()
+    {
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        survey.InvitationEmailSubject = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = string.Empty,
+            ["es"] = "Elige una fecha",
+        });
+        survey.InvitationEmailMessage = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = string.Empty,
+            ["es"] = "Dinos qué te conviene.",
+        });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, userId));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "human@example.org" });
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [userId] = UserInfoWithName(userId, "Étincelle", "fr"),
+                }));
+
+        await CreateService().SendInvitesAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        _emailMessages.Received(1).SurveyInvitation(
+            "human@example.org",
+            "Étincelle",
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            "fr",
+            string.Empty,
+            string.Empty);
+    }
+
+    [HumansFact]
     public async Task SendInvitesAsync_marks_failed_when_email_send_throws()
     {
         var teamId = Guid.NewGuid();

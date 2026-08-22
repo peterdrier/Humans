@@ -320,8 +320,8 @@ internal sealed class SurveyService(
                 : survey.DefaultCulture;
             var name = user?.BurnerName ?? string.Empty;
             var title = survey.Title.Resolve(culture, survey.DefaultCulture);
-            var customSubject = survey.InvitationEmailSubject.Resolve(culture, survey.DefaultCulture);
-            var customMessage = survey.InvitationEmailMessage.Resolve(culture, survey.DefaultCulture);
+            var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
+            var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
             var token = tokenProvider.Create(inv.Id);
             var msg = emailMessages.SurveyInvitation(
                 email, name, title, token, culture, customSubject, customMessage);

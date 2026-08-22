@@ -75,8 +75,8 @@ internal sealed class SurveyPreviewEmailService(
             ? user.PreferredLanguage
             : survey.DefaultCulture;
         var title = survey.Title.Resolve(culture, survey.DefaultCulture);
-        var customSubject = survey.InvitationEmailSubject.Resolve(culture, survey.DefaultCulture);
-        var customMessage = survey.InvitationEmailMessage.Resolve(culture, survey.DefaultCulture);
+        var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
+        var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
         var token = previewTokens.Create(surveyId, culture);
         return emailMessages.SurveyInvitation(
             email, name, title, token, culture, customSubject, customMessage);
