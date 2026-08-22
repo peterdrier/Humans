@@ -96,8 +96,9 @@ is clean and `git worktree remove` succeeds without `--force`.
 
 **Then dispatch the selector** — a focused **sonnet** subagent whose entire job is to return
 one section name (measured 2026-08-22: ~270k fresh + ~1.1M cached input tokens over 19 calls,
-≈$1.50 API-equivalent). It works read-only from `$WORKTREE`, must not read source files or
-docs, and gets the blocked set passed in. Its brief:
+≈$1.50 API-equivalent). It works read-only from `$WORKTREE`, reads nothing beyond the command
+output below and the sections' `Docs/health.md` files (tier-2 dates), and gets the blocked set
+passed in. Its brief:
 
 1. `dotnet build Humans.slnx -v quiet` (an unbuilt solution silently under-reports Reforge
    scores; the build also serves Phase 3/4), then `reforge surface-score --format compact`.
@@ -108,9 +109,10 @@ docs, and gets the blocked set passed in. Its brief:
 4. While any eligible never-doctored section remains: rank that tier by score and take the
    **median** — middle-out. The process proves itself on mid-sized sections; the biggest and
    smallest get their turn once the middle has been worked.
-5. Once every eligible section has been doctored: rank by days since the section's `health.md`
-   last-assessed date combined with change volume since it (`git log --stat` over the
-   section's paths) — more and bigger changes come sooner. Judgment call; no exact formula.
+5. Once every eligible section has been doctored: read each section's `Docs/health.md` for its
+   last-assessed date, then rank by days since that date combined with change volume since it
+   (`git log --stat` over the section's paths) — more and bigger changes come sooner. Judgment
+   call; no exact formula.
 6. Return exactly three fields and nothing else: `SECTION: <Name>`,
    `TIER: never-doctored | re-doctor`, `RATIONALE:` (≤3 lines: pool size after exclusions,
    what was blocked/skipped, why this pick).
@@ -134,8 +136,9 @@ runs, because a target written after a linter run is a summary of the linter run
 Pass 2). This skill had it backwards until 2026-08-18, and the Finance run's "ideal shape" came
 out as a restatement of its reforge score — the failure that rule exists to prevent.
 
-Start `dotnet build Humans.slnx -v quiet` in the background now: reforge needs a built solution
-and 3d's tool threads need the build. Do not look at its output until 3d.
+The Phase 2 selector already built the solution on a normal run; only when it was skipped
+(`--section`) start `dotnet build Humans.slnx -v quiet` in the background now — reforge needs a
+built solution and 3d's tool threads need the build. Do not look at its output until 3d.
 
 ### 3a. Inventory — every file, assigned
 
