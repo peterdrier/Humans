@@ -63,14 +63,13 @@
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Expenses_ColDepartment" xml:space="preserve"><value>Departament</value></data>
   <data name="Expenses_ColPayable" xml:space="preserve"><value>A pagar</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Informe</value></data>
   <data name="Expenses_ColRequested" xml:space="preserve"><value>Sol·licitat</value></data>
   <data name="Expenses_ColSubject" xml:space="preserve"><value>Assumpte</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentat per</value></data>
-  <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Cua del coordinador</value></data>
-  <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Informes de despeses — Cua del coordinador</value></data>
   <data name="Expenses_Endorse" xml:space="preserve"><value>Avala</value></data>
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Vols avalar aquest informe de despeses?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta el teu primer informe</value></data>
@@ -86,10 +85,12 @@
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>El teu compte de creditor a Holded encara no està vinculat, així que no es pot mostrar el teu extracte. Demana a un administrador de Finances que el vinculi.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Encara no has establert el teu IBAN de pagament. Se't demanarà que l'estableixis quan presentis un informe.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Encara no hi ha informes de despeses.</value></data>
-  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No hi ha cap informe esperant el teu aval.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No hi ha cap informe per revisar.</value></data>
   <data name="Expenses_Reject" xml:space="preserve"><value>Rebutja</value></data>
-  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Qui l'ha presentat veurà aquest motiu. Explica clarament per què l'informe no es pot avalar.</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Qui l'ha presentat veurà aquest motiu. Explica clarament per què es rebutja l'informe.</value></data>
   <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Rebutja l'informe</value></data>
   <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Motiu del rebuig</value></data>
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>p. ex. Falten rebuts de la línia 2</value></data>
+  <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Revisió de despeses</value></data>
+  <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Informes de despeses — Revisió</value></data>
 </root>
