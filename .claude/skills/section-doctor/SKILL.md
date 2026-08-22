@@ -55,16 +55,20 @@ sweep commit (Phase 5), idempotent by construction.
 `REPO_ROOT=$(git rev-parse --show-toplevel)`. Parse args; record start time (`date -u`).
 
 Then `.claude/bootstrap-dotnet.sh` — a cloud container ships no .NET SDK, so this is what
-makes `dotnet`, Stryker and reforge exist at all. It is idempotent; on a machine that is
-already set up it just reports state. **Read its `Full build` line and believe it**
+makes `dotnet`, Stryker and reforge exist at all. Half a second on a machine that is already
+set up, so it costs a run nothing to call it every time. **Read its `Full build` line**
 ([`cloud-run-dotnet-bootstrap`](../../../memory/process/cloud-run-dotnet-bootstrap.md)):
 
-- `yes` — a normal run.
+- `not checked` / `yes` — a normal run. `not checked` is the usual answer locally: the SDK
+  was already there, so the script neither installed nor doubted it.
 - `NO` — a **docs-only run**. Work the reading threads, keep strikes to docs, comments and
   resx, queue every code finding for the Needs-Peter block rather than editing C# you cannot
   compile, record each compiler-dependent thread as skipped-with-reason (3d's rule), and let
   the PR's CI be the compile gate. Say so in the run file's header and in the PR body — a run
   that could not build and does not say so reads as a run that found nothing to build.
+
+If a build later fails with `CS9057`, that is this and not your change: re-run the script with
+`--probe` to get the verdict written down, then treat the run as docs-only from there.
 
 ## Phase 1: Worktree
 

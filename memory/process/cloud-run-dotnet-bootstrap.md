@@ -5,14 +5,15 @@ description: Cloud containers ship no .NET SDK. Run `.claude/bootstrap-dotnet.sh
 
 A Claude Code cloud container starts with **no `dotnet` on PATH**. Any scheduled job or remote session that intends to build, test, measure mutation score, or run reforge must run `.claude/bootstrap-dotnet.sh` before its first phase.
 
-The script installs an SDK matching `global.json`, puts `~/.dotnet/tools` on PATH, restores Stryker, installs Reforge, then probes a real build and prints a capability summary. It is idempotent — running it on an already-configured machine is a no-op that just reports state.
+The script installs an SDK matching `global.json`, puts `~/.dotnet/tools` on PATH, restores Stryker, installs Reforge, and prints a capability summary. Every step is skipped when already satisfied, so on a machine that has the toolchain it costs about half a second and changes nothing. The one expensive step — a real build probe — runs only after a *fallback* SDK install, where whether that SDK can compile this repo is genuinely unknown, and its verdict is cached for the life of the container.
 
 **Why a script rather than a list of commands in each job's prompt:** the commands are not the hard part. Knowing *which* of them are even possible in a given container is, and that answer changes with the egress policy and the image. A prompt that says "run `dotnet tool restore`" fails opaquely on a container with no SDK; the script fails legibly, and every job gets the same answer.
 
 **How to apply:**
 
-- Run it first, read the summary, and treat the **`Full build`** line as authoritative for the rest of the session.
-- `Full build: yes` — proceed normally; build and test before every commit as usual.
+- Run it first and read the **`Full build`** line. It costs about half a second on a machine that already has the toolchain, so there is no reason to skip it or to guard the call.
+- `Full build: not checked` — the normal answer on a local checkout: the SDK was already present, so the script neither installed it nor spent a minute doubting it. Proceed normally. `--probe` forces the check.
+- `Full build: yes` — probed and confirmed; proceed normally.
 - `Full build: NO` — this is a **docs-only session**. Work the reading threads, keep changes to docs, comments and other non-compiled files, queue every code finding for Peter rather than editing C# you cannot compile, record every compiler-dependent step as skipped-with-reason, and let the PR's CI be the compile gate. Do not edit the repo to route around the limitation.
 - Never install the SDK by hand in a job prompt, and never retry or tunnel past a host the egress proxy denies with a 403 — report the blocked host instead. The script already probes the official installer once and falls back to the distro package.
 

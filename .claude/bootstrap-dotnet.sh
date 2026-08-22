@@ -6,43 +6,50 @@ usage() {
   cat <<'EOF'
 Usage: .claude/bootstrap-dotnet.sh [options]
 
-Brings a fresh cloud container up to a working .NET toolchain for this repo,
-then reports honestly which capabilities the result actually has. Safe to run
-on a machine that is already set up — every step is a no-op when satisfied.
+Makes a container that has no .NET SDK usable, and gets out of the way
+everywhere else. Safe and near-free to call at the top of every run.
 
-What it does, in order:
-  1. Ensures a .NET SDK matching global.json is on PATH. Prefers the official
-     installer when its host is reachable (that channel carries every feature
-     band); falls back to the distro package when it is not.
+On a machine that already has the toolchain — any local checkout, or a cloud
+container bootstrapped earlier — it costs about a second and changes nothing.
+Every step is skipped when it is already satisfied:
+
+  1. Installs a .NET SDK matching global.json when `dotnet` is absent. Prefers
+     the official installer when its host is reachable (that channel carries
+     every feature band); falls back to the distro package when it is not.
   2. Puts the global tool directory on PATH.
-  3. Restores the pinned local tools (Stryker, from .config/dotnet-tools.json).
-  4. Installs Reforge as a global tool.
-  5. Probes a real build and reports whether full build/test/mutation work is
-     available, or only the read-and-write-docs subset.
+  3. Restores Stryker (a no-op, and near-instant, once restored).
+  4. Installs Reforge only if it is not already on PATH.
+  5. Probes one real build ONLY after a fallback SDK install — the one case
+     where it is genuinely unknown whether the SDK can compile this repo — and
+     caches the verdict for the life of the container. This is the only step
+     that costs real time, it never runs on a machine that already had an SDK,
+     and it runs at most once per container. `--probe` forces it.
 
-Exit status is 0 whenever the SDK is present, even if the build probe fails —
-a degraded environment is a fact to report, not an error to abort on. It exits
-non-zero only when there is no usable SDK at all.
+Exit status is 0 whenever an SDK is present, even if the build probe says the
+SDK cannot build this repo — a degraded environment is a fact to report, not
+an error to abort on. It exits non-zero only when there is no usable SDK.
 
 Options:
-  --no-probe       Skip the build probe (saves ~1 minute; capability unknown)
+  --probe          Force the build probe even if a verdict is cached
+  --no-probe       Never probe (leaves capability unknown after a fresh install)
   --no-tools       Skip Stryker and Reforge
-  --quiet          Only print the final summary
+  --quiet          Only print the summary
   --help           Show this help
 
 Examples:
   .claude/bootstrap-dotnet.sh
-  .claude/bootstrap-dotnet.sh --no-probe --quiet
+  .claude/bootstrap-dotnet.sh --probe        # re-check after changing SDKs
 EOF
 }
 
-PROBE=1
+PROBE=auto
 TOOLS=1
 QUIET=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --no-probe) PROBE=0 ;;
+    --probe)    PROBE=force ;;
+    --no-probe) PROBE=never ;;
     --no-tools) TOOLS=0 ;;
     --quiet)    QUIET=1 ;;
     --help|-h)  usage; exit 0 ;;
@@ -57,13 +64,20 @@ cd "$REPO_ROOT"
 say() { [ "$QUIET" = "1" ] || echo "bootstrap-dotnet: $*"; }
 warn() { echo "bootstrap-dotnet: $*" >&2; }
 
+# Verdict cache. Outside the repo (never committed, survives worktree churn) and
+# inside the container, so a fresh container re-probes and a warm one does not.
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/humans-bootstrap-dotnet"
+VERDICT_FILE="$CACHE_DIR/build-verdict"
+
+export PATH="$PATH:$HOME/.dotnet/tools"
+[ -d "$HOME/.dotnet" ] && export PATH="$HOME/.dotnet:$PATH"
+
 # ── What this repo asks for ───────────────────────────────────────────────────
 # Read the requirement rather than hardcoding it, so a global.json bump does not
 # silently leave this script installing last year's SDK.
 SDK_VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][^"]*\)".*/\1/p' global.json | head -1)"
 [ -n "$SDK_VERSION" ] || { warn "could not read sdk.version from global.json"; exit 1; }
 SDK_MAJOR_MINOR="${SDK_VERSION%.*}"          # 10.0.100 -> 10.0
-say "global.json wants SDK $SDK_VERSION (channel $SDK_MAJOR_MINOR)"
 
 SDK_SOURCE="already present"
 
@@ -74,7 +88,7 @@ if ! command -v dotnet >/dev/null 2>&1; then
   # Some environments deny its host by egress policy. Probe once and believe the
   # answer — a policy denial is not something to retry or route around.
   INSTALLER_HOST="https://builds.dotnet.microsoft.com"
-  say "no dotnet on PATH; probing $INSTALLER_HOST"
+  say "no dotnet on PATH; global.json wants $SDK_VERSION — probing $INSTALLER_HOST"
   if curl -fsS --max-time 20 -o /dev/null "$INSTALLER_HOST/dotnet/release-metadata/releases-index.json" 2>/dev/null; then
     say "installer host reachable; installing channel $SDK_MAJOR_MINOR"
     curl -fsSL --max-time 120 https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
@@ -94,14 +108,8 @@ fi
 
 command -v dotnet >/dev/null 2>&1 || { warn "dotnet still not on PATH after install"; exit 1; }
 SDK_ACTUAL="$(dotnet --version 2>/dev/null || echo unknown)"
-say "SDK $SDK_ACTUAL ($SDK_SOURCE)"
 
-# ── 2. Global tools on PATH ───────────────────────────────────────────────────
-# dotnet puts global tools here and says so on first install, but nothing adds it
-# to PATH for a non-interactive shell.
-export PATH="$PATH:$HOME/.dotnet/tools"
-
-# ── 3 & 4. Tools ──────────────────────────────────────────────────────────────
+# ── 2 & 3. Tools, each only if missing ────────────────────────────────────────
 STRYKER_STATUS="skipped"
 REFORGE_STATUS="skipped"
 if [ "$TOOLS" = "1" ]; then
@@ -113,8 +121,10 @@ if [ "$TOOLS" = "1" ]; then
     warn "dotnet tool restore failed — mutation testing will not be available"
   fi
 
-  if dotnet tool update --global Reforge >/dev/null 2>&1; then
+  if command -v reforge >/dev/null 2>&1; then
     # `reforge --version` appends a build hash; the version alone is what reads well.
+    REFORGE_STATUS="$(reforge --version 2>/dev/null | head -1 | cut -d+ -f1 || echo present)"
+  elif dotnet tool update --global Reforge >/dev/null 2>&1; then
     REFORGE_STATUS="$(reforge --version 2>/dev/null | head -1 | cut -d+ -f1 || echo installed)"
   else
     REFORGE_STATUS="FAILED"
@@ -122,21 +132,24 @@ if [ "$TOOLS" = "1" ]; then
   fi
 fi
 
-# ── 5. Does a build actually work here? ───────────────────────────────────────
-# An SDK on PATH is not the same as a build. This repo's analyzers are compiled
-# against a pinned Roslyn, and an SDK whose compiler is older than that pin fails
-# every project with CS9057 before a single line is compiled. Find out now, with
-# one small real build, rather than three phases into a run.
+# ── 4. Can this SDK actually build the repo? ──────────────────────────────────
+# Only an open question after a fallback install: this repo's analyzers are
+# compiled against a pinned Roslyn, and an SDK whose compiler is older fails
+# every project with CS9057 before a line is compiled. Ask once, cache the
+# answer, and never spend the minute again in this container.
 BUILD_STATUS="not probed"
 BUILD_DETAIL=""
-if [ "$PROBE" = "1" ]; then
-  say "probing a real build (this takes about a minute)"
+SHOULD_PROBE=0
+case "$PROBE" in
+  force) SHOULD_PROBE=1 ;;
+  never) SHOULD_PROBE=0 ;;
+  auto)  [ "$SDK_SOURCE" = "distro package" ] && [ ! -s "$VERDICT_FILE" ] && SHOULD_PROBE=1 ;;
+esac
+
+if [ "$SHOULD_PROBE" = "1" ]; then
+  say "checking whether this SDK can build the repo (about a minute, once per container)"
   PROBE_LOG="$(mktemp)"
-  PROBE_PROJECT="src/Humans.Analyzers/Humans.Analyzers.csproj"
-  if [ ! -f "$PROBE_PROJECT" ]; then
-    PROBE_PROJECT="Humans.slnx"
-  fi
-  if dotnet build "$PROBE_PROJECT" -v quiet >"$PROBE_LOG" 2>&1 \
+  if dotnet build src/Humans.Analyzers/Humans.Analyzers.csproj -v quiet >"$PROBE_LOG" 2>&1 \
      && dotnet build src/Humans.Base/Humans.Base.csproj -v quiet >>"$PROBE_LOG" 2>&1; then
     BUILD_STATUS="yes"
   elif grep -q CS9057 "$PROBE_LOG"; then
@@ -155,6 +168,20 @@ if [ "$PROBE" = "1" ]; then
     BUILD_STATUS="NO — see log"
     BUILD_DETAIL="build failed for a reason other than CS9057; log at $PROBE_LOG"
   fi
+  mkdir -p "$CACHE_DIR"
+  printf 'full build: %s\n' "$BUILD_STATUS" >"$VERDICT_FILE"
+elif [ -s "$VERDICT_FILE" ]; then
+  BUILD_STATUS="$(sed -n 's/^full build: //p' "$VERDICT_FILE" | head -1)"
+  BUILD_DETAIL="cached from an earlier run in this container; --probe to re-check"
+elif [ "$SDK_SOURCE" = "already present" ]; then
+  BUILD_STATUS="not checked"
+  BUILD_DETAIL="this script did not install the SDK and has not tried to build with
+               it. Normal on a local checkout. If a build later fails CS9057,
+               that is this — run --probe to confirm."
+else
+  BUILD_STATUS="not checked"
+  BUILD_DETAIL="installed from the ${SDK_SOURCE}, which carries every feature band,
+               so a build is expected to work. --probe to confirm."
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -169,8 +196,3 @@ EOF
 if [ -n "$BUILD_DETAIL" ]; then
   echo "               ${BUILD_DETAIL}"
 fi
-cat <<'EOF'
-
-  Add the global tool dir to PATH in your own shell:
-      export PATH="$PATH:$HOME/.dotnet/tools"
-EOF
