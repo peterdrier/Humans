@@ -78,7 +78,7 @@
         <div class="card-header py-2"><strong>Survey</strong></div>
         <div class="card-body">
             <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Title), "Title", Model.Title))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), "Intro", Model.Intro, Multiline: true))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), "Intro", Model.Intro, Multiline: true, Markdown: true))" />
             <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.ThankYou), "Thank-you", Model.ThankYou, Multiline: true))" />
 
             <div class="row g-3 mt-1">
@@ -211,6 +211,14 @@
                 });
             }
 
+            function refreshVisibleMarkdownEditors() {
+                requestAnimationFrame(() => {
+                    document.querySelectorAll(
+                        '.survey-culture-field[data-culture="' + activeCulture + '"] .CodeMirror'
+                    ).forEach(el => el.CodeMirror?.refresh());
+                });
+            }
+
             function cultureInput(group, culture) {
                 return group.querySelector('.survey-culture-field[data-culture="' + culture + '"] input, ' +
                                            '.survey-culture-field[data-culture="' + culture + '"] textarea');
@@ -241,6 +249,7 @@
                     t.classList.toggle('btn-outline-secondary', t !== tab);
                 });
                 applyCulture();
+                refreshVisibleMarkdownEditors();
                 updateMissingBadges();
             }));
 

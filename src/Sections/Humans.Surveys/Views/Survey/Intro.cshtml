@@ -28,7 +28,7 @@
 
                 @if (!string.IsNullOrWhiteSpace(Model.Intro))
                 {
-                    <div class="mb-4">@Model.Intro</div>
+                    <div class="mb-4 survey-intro">@Html.SanitizedMarkdown(Model.Intro)</div>
                 }
 
                 @{

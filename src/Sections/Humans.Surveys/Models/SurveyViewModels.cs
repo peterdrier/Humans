@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
@@ -35,6 +36,7 @@ internal sealed class SurveyIntroViewModel
 {
     public string Token { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
+    [MarkdownContent]
     public string Intro { get; init; } = string.Empty;
 
     /// <summary>The currently-selected language; the form posts it back so the wizard runs in it.</summary>
@@ -106,7 +108,8 @@ internal sealed record SurveyLocalizedFieldModel(
     string Label,
     IReadOnlyDictionary<string, string> Values,
     bool Multiline = false,
-    int? MaxLength = null);
+    int? MaxLength = null,
+    bool Markdown = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
 internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);

@@ -28,7 +28,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| Title / Intro / ThankYou | LocalizedText | jsonb (culture → text); default `'{}'::jsonb` |
+| Title / Intro / ThankYou | LocalizedText | jsonb (culture → text); default `'{}'::jsonb`. Intro is raw Markdown rendered only through the shared sanitized-Markdown helper. |
 | InvitationEmailSubject / InvitationEmailMessage | LocalizedText | optional custom initial-invitation copy; jsonb default `'{}'::jsonb` means use standard localized wording |
 | DefaultCulture | string | max 10; fallback culture for resolution |
 | AllowAnonymous | bool | gates the anonymity selector and the public slug |
