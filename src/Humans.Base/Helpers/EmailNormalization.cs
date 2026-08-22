@@ -51,6 +51,31 @@ public static class EmailNormalization
     }
 
     /// <summary>
+    /// Comparison-only Gmail identity key: builds on <see cref="CanonicalizeGmail"/>
+    /// (lowercase, googlemail→gmail, strip "+tag") and additionally strips dots
+    /// from the local part, since Gmail ignores them too
+    /// (first.last@gmail.com and firstlast@gmail.com are the same account).
+    /// Unlike <see cref="CanonicalizeGmail"/>, never use this for a Drive API
+    /// target address — dotted addresses are accepted as-is by Drive, only
+    /// "+tag" is rejected (nobodies-collective/Humans#945). This is for
+    /// matching a Google-reported address against stored <c>user_emails</c>
+    /// rows that may carry either alias form (nobodies-collective/Humans#1101).
+    /// </summary>
+    public static string CanonicalizeGmailAlias(string email)
+    {
+        var canonical = CanonicalizeGmail(email);
+        if (string.IsNullOrEmpty(canonical))
+            return canonical;
+
+        const string gmailSuffix = "@gmail.com";
+        if (!canonical.EndsWith(gmailSuffix, StringComparison.Ordinal))
+            return canonical;
+
+        var localPart = canonical[..^gmailSuffix.Length].Replace(".", string.Empty, StringComparison.Ordinal);
+        return string.Concat(localPart, gmailSuffix);
+    }
+
+    /// <summary>
     /// Compares two email addresses for equivalence, treating @googlemail.com and @gmail.com as the same domain.
     /// </summary>
     public static bool EmailsMatch(string? a, string? b)

@@ -89,6 +89,18 @@ internal sealed class GoogleWorkspaceSyncService(
                     "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
                     apiRole, userEmail, resource.GoogleId,
                     result.Error?.StatusCode, result.Error?.RawMessage);
+                // Issue nobodies-collective/Humans#1099 — record the failed
+                // grant so it surfaces on the resource/human monitor pages
+                // and in the GDPR export, matching GoogleGroupSyncService's
+                // failure rows.
+                await googleSyncLog.LogAsync(
+                    GoogleSyncLogAction.AccessGranted, resource.Id,
+                    $"Failed to grant Drive access ({effectiveLevel}) to {userEmail} ({resource.Name}): " +
+                    $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
+                    nameof(GoogleWorkspaceSyncService),
+                    userEmail, apiRole, GoogleSyncSource.ManualSync, success: false,
+                    errorMessage: result.Error?.RawMessage,
+                    userId: userId, ct: cancellationToken);
                 await HandleDriveAddFailureAsync(resource, userEmail, result.Error, cancellationToken);
                 break;
         }
@@ -191,6 +203,18 @@ internal sealed class GoogleWorkspaceSyncService(
                 logger.LogWarning(
                     "Google API error deleting permission {PermissionId} on {GoogleId} — HTTP {Code}: {Message}",
                     permissionId, resource.GoogleId, result.Error?.StatusCode, result.Error?.RawMessage);
+                // Issue nobodies-collective/Humans#1099 — record the failed
+                // revocation so it surfaces on the resource/human monitor
+                // pages and in the GDPR export, matching
+                // GoogleGroupSyncService's failure rows.
+                await googleSyncLog.LogAsync(
+                    GoogleSyncLogAction.AccessRevoked, resource.Id,
+                    $"Failed to remove Drive access for {userEmail} ({resource.Name}): " +
+                    $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
+                    nameof(GoogleWorkspaceSyncService),
+                    userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: false,
+                    errorMessage: result.Error?.RawMessage,
+                    userId: userId, ct: cancellationToken);
                 return;
         }
 
