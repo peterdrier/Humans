@@ -20,7 +20,12 @@ Read-only weekly roster surface for the food-service team — who is on site eac
 
 ## Data Model
 
-None — Cantina owns no tables. The section is a pure read/aggregate composition over:
+None — Cantina owns no tables. The section is a pure read/aggregate composition over the
+sources below. **Pending change:** nobodies-collective/Humans#1113 moves the food preferences
+into Cantina with its own table, `DbContext`, repository and cache, so this section is not
+expected to stay table-less; see [`health.md`](health.md) §5.
+
+The current sources:
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementServiceRead`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
 - Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserServiceRead.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
@@ -81,7 +86,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 
 **Project:** `src/Sections/Humans.Cantina` (G5, nobodies-collective/Humans#866)
 **Owning services:** `CantinaRosterService`
-**Owned tables:** None — orchestrator over `IShiftManagementServiceRead`, `IBurnSettingsService`, and `IUserServiceRead`.
+**Owned tables:** None today — orchestrator over `IShiftManagementServiceRead`, `IBurnSettingsService`, and `IUserServiceRead`. Changing under nobodies-collective/Humans#1113.
 **Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built directly on the §15 pattern from day one, moved into its own project unchanged.
 **Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 

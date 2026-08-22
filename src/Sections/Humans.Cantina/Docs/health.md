@@ -4,6 +4,9 @@
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users.Contracts/UserInfo.cs
   src/Sections/Humans.Users.Contracts/DietaryOptions.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
+  src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
 -->
 
 # Cantina — Health
@@ -74,18 +77,29 @@ through and owns nothing but sorting and file naming.
 
 - **Unknown dietary values have no defined home.** The breakdown buckets the four canonical
   preferences and an "Unanswered" pseudo-bucket; a stored value outside that set is currently
-  counted as neither (see the run file's finding 1). The intended rule — treat unknown as
-  Unanswered — is stated in a code comment but not implemented.
+  counted as neither. The intended rule — treat unknown as Unanswered — is stated in a code
+  comment but not implemented. `DietaryPreference` is an unvalidated `string?` and the write
+  path does not filter it, so the fix is a value-model change, not a count fix. Tracked in
+  **nobodies-collective/Humans#1113** along with the missing "Other" preference and write
+  validation; deliberately not patched here.
 - **`VolunteerEventProfile.DietaryPreference` / `.Allergies` / `.Intolerances` are marked
   "RETAINED for prod-soak drop"** in Shifts. When they go, every doc that still names them as
   Cantina's source (and this section's freshness triggers) should be re-checked in the same pass.
+- **The section is expected to stop being table-less.** **nobodies-collective/Humans#1113** moves
+  the food preferences into Cantina end-to-end — its own table, `DbContext`, repository and
+  cache — with Users and Shifts no longer reading food data, and `MedicalConditions` staying in
+  Users as Art. 9 data. It also carries the GDPR erasure gap. Everything below about owning no
+  tables describes today, not the destination: **do not defend it against #1113.**
+  **nobodies-collective/Humans#1112** (`IUserPart` fanout) is the seam that makes it possible.
 
 ## 6. Deliberately not done
 
 - **No caching decorator on the roster.** The page is a low-traffic coordinator surface and the
   numbers must be live; the expensive part (user reads) already rides the Users cache.
-- **No repository, no `DbContext`, no EF reference.** The section owns no tables. Pinned by
-  `SectionAssemblyDoesNotReferenceEntityFrameworkCore`.
+- **No repository, no `DbContext`, no EF reference.** The section owns no tables *today*, and
+  the architecture test `SectionAssemblyDoesNotReferenceEntityFrameworkCore` pins that. This is
+  a description of the current shape, not a principle to defend —
+  nobodies-collective/Humans#1113 deliberately reverses it, and that test changes with it.
 - **No `MIN(DayOffset) GROUP BY UserId` query for the first-confirmed-shift scan.** It would be
   cheaper than the per-day loop, and it was rejected on purpose: it needs a new repository and a
   new cross-section interface method, and Cantina is not allowed to reach a repository. The
