@@ -8,9 +8,9 @@ namespace Humans.Cantina.Services.Dtos;
 /// <c>ArrivesOn</c>/<c>NoShift</c> fields (the daily view is a single day,
 /// every row is on-site that day by definition).
 ///
-/// Deliberately excludes <c>MedicalConditions</c>: medical fields never
-/// cross the Application boundary in the roster surface (GDPR Art. 9
-/// boundary; same rule as <see cref="RosterPersonDto"/>).
+/// Deliberately excludes <c>MedicalConditions</c>: the cached profile the
+/// service reads does carry it, and this record is where it stops (GDPR
+/// Art. 9 boundary; same rule as <see cref="RosterPersonDto"/>).
 /// </summary>
 /// <param name="UserId">The human's user id.</param>
 /// <param name="BurnerName">

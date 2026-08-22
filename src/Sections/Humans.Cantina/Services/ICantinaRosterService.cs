@@ -13,12 +13,18 @@ namespace Humans.Cantina.Services;
 /// further service look-ups.
 ///
 /// <para>
-/// The service stitches two sources together at the section boundary so no
-/// medical fields cross it: the on-site cohort from
+/// The service stitches two sources together: the on-site cohort from
 /// <c>IShiftManagementServiceRead</c> (queried per day and unioned by user
 /// id), and dietary fields plus burner names from <c>IUserServiceRead</c>'s
 /// cached profile read-model. Both are section services — Cantina never
 /// touches another section's repository.
+/// </para>
+/// <para>
+/// The medical boundary is an exclusion, not a narrower read: the cached
+/// profile record Cantina receives does carry <c>MedicalConditions</c>, and
+/// this service simply never reads it. Nothing downstream can leak it because
+/// the output records have no such property — but the guarantee lives here and
+/// in those records, not in the read contract.
 /// </para>
 /// </summary>
 internal interface ICantinaRosterService : IApplicationService

@@ -35,7 +35,9 @@ Access is role-based only. There is no team-membership-based path.
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
-`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. No new retention policy; data lives only as long as the underlying `Profile` row does, which is erased with the account.
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
+
+> **Retention, as actually implemented:** account deletion *anonymizes* the profile rather than dropping it — `UserRepository.AnonymizeProfileInternalAsync` clears name, contact, location, bio, emergency-contact and notes fields, and deletes contact-field and volunteer-history rows. It does **not** clear the dietary fields, and it does not clear `MedicalConditions` either. So dietary answers (and medical answers) survive account deletion attached to an anonymized profile. Flagged 2026-08-22; see the Cantina run file's Needs-Peter queue. Do not describe this page as inheriting an erasure guarantee it does not have.
 
 ## Week Boundary
 
@@ -129,8 +131,8 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 
 **Acceptance Criteria:**
 - Route: `GET /Cantina/Roster/Day` — optional `?dayOffset=<int>`, defaulting to today's offset in the event timezone (`0` when there is no active event). Reached by clicking any cell of the weekly per-day mini-summary row.
-- Page renders day-scoped aggregates (total on site, unanswered count, dietary breakdown, allergy and intolerance roll-ups, "Other" free-text entries), each counting every unique on-site human for that day once.
-- Below them, a **matrix**: one row per on-site human, one column per canonical allergy and intolerance chip, plus free-text columns and a totals row at the bottom. Coordinators scan a column to count portions and a row to find one person.
+- Page renders a summary card with two numbers: total on site that day, and how many of them have no `DietaryPreference`.
+- Below it, a **matrix**: one row per on-site human, one column per canonical dietary preference, allergy and intolerance chip, plus the two free-text columns, and a **totals row** counting each column over the rendered rows. Coordinators scan a column to count portions and a row to find one person. The per-chip counts live in that totals row — this page renders no separate roll-up panel, and the payload's `AllergyRollup` / `IntoleranceRollup` / `*OtherEntries` are carried for the CSV rather than for this view.
 - Matrix rows sort alphabetically by burner name (cultural collation, case-insensitive) — deliberately *not* the weekly arrival/allergy/dietary ordering, because this is a look-up surface.
 - The day's cohort includes arrival-day humans (those whose first confirmed shift is the following day), matching the weekly mini-summary count for the same day.
 - A "Today" badge appears when the day being viewed is today in the event timezone; a breadcrumb links back to the containing week.

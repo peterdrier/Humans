@@ -4,8 +4,8 @@ namespace Humans.Cantina.Services.Dtos;
 
 /// <summary>
 /// One human on the Cantina Weekly Roster. Deliberately excludes
-/// <c>MedicalConditions</c>: medical fields never cross the Application
-/// boundary in the roster surface. The volunteer's <see cref="BurnerName"/>
+/// <c>MedicalConditions</c>: the cached profile the service reads does carry
+/// it, and this record is where it stops. The volunteer's <see cref="BurnerName"/>
 /// is stitched in by the service layer from <c>IUserServiceRead</c>'s cached
 /// profile read-model.
 ///
