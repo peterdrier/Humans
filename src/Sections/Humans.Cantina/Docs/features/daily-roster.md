@@ -1,5 +1,6 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Shifts/Data/IShiftManagementRepository.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users.Contracts/UserInfo.cs
   src/Sections/Humans.Users.Contracts/DietaryOptions.cs
