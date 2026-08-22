@@ -66,6 +66,13 @@ WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # cd here; all commands run i
 Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Scope every
 Glob/Grep to `$WORKTREE`.
 
+Start the phase log now, and append one line at the start of each later phase (2, 3, 4, 5, 7) —
+Phase 7's cost report buckets the session transcript by these timestamps:
+
+```bash
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) phase1" >> $WORKTREE/.phase-log   # never committed
+```
+
 ## Phase 2: Select the section
 
 Selection is computed live every run — nothing is stored. (`docs/health/plan.md` and the
@@ -355,10 +362,24 @@ git push -u origin section-doctor/$TS
 gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <headline>" --body ...
 ```
 
-Body: assessment summary, worked/skipped bullets, and a **`## Needs Peter`** block — terse,
-numbered, answerable in a word or two. **The PR body is the authoritative queue while the PR is
-open** (resume reads it from there); the run file's copy carries it forward after merge. One PR
-per run; never merge.
+Body: assessment summary, worked/skipped bullets, a **`## Cost`** table (below), and a
+**`## Needs Peter`** block — terse, numbered, answerable in a word or two. **The PR body is the
+authoritative queue while the PR is open** (resume reads it from there); the run file's copy
+carries it forward after merge. One PR per run; never merge.
+
+**Cost report** — before creating the PR, run:
+
+```bash
+python .claude/skills/section-doctor/cost-report.py section-doctor/$TS $WORKTREE/.phase-log
+```
+
+It finds this run's own session transcript under `~/.claude/projects` (the model never sees its
+own usage in-band, but the harness logs every API call's tokens there), buckets the main thread
+by the phase log, adds one row per subagent transcript, and prints a markdown table with
+API-equivalent $. Paste it as `## Cost` into the PR body and the run file (run-file copy lands
+with the backfill commit). The script never fails the run — on any discovery problem it prints
+`Cost: unmeasured (...)`; use that line as the table. Cloud-environment transcript layout is
+unverified — if the first routine run reports unmeasured, note it in Needs-Peter.
 
 Then backfill the real PR number over every `pending` reference (run file header, health history
 row), commit, push again.
