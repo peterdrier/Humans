@@ -345,6 +345,17 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain("Preview only.");
             html.Should().Contain("Send preview email to me");
+
+            if (route.Contains("/Page", StringComparison.Ordinal))
+            {
+                Regex.IsMatch(
+                        html,
+                        "<fieldset[^>]*disabled=\"disabled\"[^>]*>.*?name=\"Answers\\[0\\]\\.TextValue\"",
+                        RegexOptions.IgnoreCase | RegexOptions.Singleline,
+                        TimeSpan.FromSeconds(2))
+                    .Should().BeTrue(
+                        because: "preview answer controls must be disabled so browsers cannot submit them into the query string");
+            }
         }
     }
 

@@ -63,7 +63,8 @@
                             && ViewData.ModelState.TryGetValue(q.Id.ToString(), out var entry)
                             && entry.Errors.Count > 0;
 
-                        <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
+                        <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)"
+                                  disabled="@(Model.IsPreview ? "disabled" : null)">
                             <legend class="form-label fw-semibold">
                                 @q.Prompt
                                 @if (q.IsRequired)
