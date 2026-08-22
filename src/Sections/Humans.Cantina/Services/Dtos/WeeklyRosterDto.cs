@@ -28,8 +28,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// multiple days is counted once.
 /// </param>
 /// <param name="UnansweredCount">
-/// Unique humans across the week with no <c>VolunteerEventProfile</c> or
-/// with an empty <c>DietaryPreference</c>. Coordinators use this to chase
+/// Unique humans across the week with no profile row, or with an empty
+/// <c>DietaryPreference</c>. Coordinators use this to chase
 /// people who haven't filled the form yet.
 /// </param>
 /// <param name="DietaryBreakdown">
@@ -55,8 +55,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// One row per unique on-site human across the week. Returned in unspecified
 /// order — the web layer's <c>CantinaRosterAssembler</c> sorts for display
 /// (first arrival → has-allergies → dietary priority → cultural-collation
-/// burner name). Humans with no <c>VolunteerEventProfile</c> still appear
-/// here with empty dietary fields.
+/// burner name). Humans with no profile row still appear here with empty
+/// dietary fields.
 /// </param>
 /// <param name="EventTodayDate">
 /// Today's calendar date in the active event's timezone

@@ -504,3 +504,31 @@ Present the open items inline, then apply each answer:
   invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole
   first pass missed. **Always build the matrix**, even when the section looks well tested; the
   gaps it finds are the invariants nobody thought to doubt.
+- 2026-08-18: a new test that does not move the mutants it was written for is not passing, it is
+  not discriminating. Re-run the tool thread against the new tests before the PR; Finance's
+  creditor-block boundary test passed for the wrong reason because the list unions three sources.
+- 2026-08-18: Stryker's `--coverage-analysis` is config-only, not a CLI flag, and a section-scoped
+  run must exclude `Data/Migrations` — migration bodies were 292 of 599 surviving mutants and made
+  the score unreadable. Write the config first.
+- 2026-08-18: when the reviewer gate cannot be obtained (there: a session-level instruction against
+  dispatching agents), say so in the commit message as well as the run file. A commit that lands
+  unreviewed should say so where the diff is read, not only where the run is.
+- 2026-08-18: `git log --all` is not blindfold-safe — on a run with a blocked branch set it
+  surfaced a commit subject from that set during an unrelated history check. Scope history checks
+  to a named branch or ref, never `--all`.
+- 2026-08-18: `dotnet ef migrations add/remove --no-build` reads whatever assembly the startup
+  project last built, so it generated an empty migration and then `remove --force` walked back an
+  already-merged one. Always full-build before either command; recover a mis-removal with
+  `git checkout` of the Migrations folder, never by hand-editing.
+- 2026-08-18: fixing a doc's headline stale claim is not fixing the doc. `Finance.md`'s route table
+  was corrected while eight smaller claims in the same file survived, four of them describing a
+  read-split that had already shipped. When a section doc is opened at all, read it end to end
+  against the code and fix every claim, not the worst one.
+- 2026-08-18: rebuild a section doc's Cross-Section Dependencies from its `.csproj` project
+  references, not from prose. `Finance.md` listed a Tickets dependency the section has not had
+  since the controller split, and named `IBudgetService` (read+write) where the code injects
+  `IBudgetServiceRead`.
+- 2026-08-18: run `dotnet format whitespace Humans.slnx --verify-no-changes` before the PR, not
+  after CI says so. Two new test files failed code-quality on collection-expression line breaks
+  that the local build and the full test run both pass through; a green build is not the
+  formatting gate.

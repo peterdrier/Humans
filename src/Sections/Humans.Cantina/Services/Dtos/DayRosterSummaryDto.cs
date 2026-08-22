@@ -18,8 +18,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// <param name="TotalOnSite">Distinct on-site humans on this single day.</param>
 /// <param name="UnansweredOnDay">
 /// Distinct on-site humans on this single day whose <c>DietaryPreference</c>
-/// is null/empty (no <c>VolunteerEventProfile</c> counts the same as a VEP
-/// with no preference set).
+/// is null/empty — no profile row counts the same as a profile with no
+/// preference set.
 /// </param>
 internal sealed record DayRosterSummaryDto(
     int DayOffset,

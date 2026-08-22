@@ -35,7 +35,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
 | `/Cantina/Roster/Day/Csv?dayOffset=<int>` | GET | same as above | CSV of the per-day matrix |
 
-`weekStartOffset` is the day-offset of the week's Monday relative to `BurnSettingsInfo.GateOpeningDate`. When omitted, the controller computes the current week via `ICantinaRosterService.GetCurrentWeekStartOffsetForActiveEvent` (returns `0` and an empty roster when no active event).
+`weekStartOffset` is the day-offset of the week's Monday relative to `BurnSettingsInfo.GateOpeningDate`. When omitted, the controller resolves the current week itself: it fetches the active event and, if there is one, asks `ICantinaRosterService.GetCurrentWeekStartOffsetForActiveEvent` to convert "now" into an offset. With no active event the controller uses `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 
 ## Actors & Roles
 
@@ -56,7 +56,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 - The section is **read-only** — no writes to any table, no audit entries, no notifications.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable. The arrival day is a real on-site day, so the `ArrivesOn`-is-non-nullable invariant holds for all roster humans including arrival-day humans.
-- Burner-name stitching reads `UserInfo.BurnerName` (from `IUserServiceRead`), falling through to `"(unknown)"` when absent. `UserInfo.BurnerName` itself derives from `Profile.BurnerName` with the legacy `DisplayName` fallback handled inside the Users section.
+- Burner-name stitching reads `ProfileInfo.BurnerName` off the cached `UserInfo` from `IUserServiceRead`. Every on-site human has a profile row, so the `"(unknown)"` fall-through is a defensive default, not a case the roster is expected to render.
 
 ## Negative Access Rules
 
@@ -83,9 +83,10 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 **Owning services:** `CantinaRosterService`
 **Owned tables:** None — orchestrator over `IShiftManagementServiceRead`, `IBurnSettingsService`, and `IUserServiceRead`.
 **Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built directly on the §15 pattern from day one, moved into its own project unchanged.
+**Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 
 - Everything but `Section` and `CantinaResource` is `internal` (HUM0034). `Contracts/` is an empty folder: nothing outside the section names a Cantina type, and `ICantinaRosterService` stayed in `Services/`, `internal`, because its only consumer is the section's own controller.
-- **No `Humans.Infrastructure` reference and no EF Core package.** The section owns no tables, so there is no `DbContext`, no repository, no migration and no `AddSectionDbContext` line — Scanner's shape. `CantinaArchitectureTests.SectionAssemblyDoesNotReferenceEntityFrameworkCore` is what keeps it that way.
+- **No EF Core package.** The section owns no tables, so there is no `DbContext`, no repository, no migration and no `AddSectionDbContext` line — Scanner's shape. `CantinaArchitectureTests.SectionAssemblyDoesNotReferenceEntityFrameworkCore` is what keeps it that way.
 - **No dedicated repository, no repository reads.** Cantina is a read-side aggregator that calls **only section services** (`IShiftManagementServiceRead`, `IBurnSettingsService`, `IUserServiceRead`) — never a repository. This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The policy registration stays in Shell's `AuthorizationPolicyExtensions` (design §8's asymmetry), and `RoleNames.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` moved from `Humans.Web/Cantina/` into the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).

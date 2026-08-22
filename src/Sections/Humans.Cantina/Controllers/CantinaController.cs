@@ -17,7 +17,8 @@ namespace Humans.Cantina.Controllers;
 /// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
 /// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
 /// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans
-/// without the role get HTTP 403.
+/// without the role are redirected to /Account/AccessDenied by cookie
+/// authentication's AccessDeniedPath — not a bare 403.
 /// </summary>
 [Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]
 [Route("Cantina")]
