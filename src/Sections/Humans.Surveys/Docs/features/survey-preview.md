@@ -26,7 +26,8 @@ risks creating misleading invitation/funnel data and makes authoring unnecessari
 - The recipient is the currently authenticated user's canonical notification email.
 - The message uses the same localized survey-invitation template, subject, routing category, branded
   wrapping, and outbox transport as a regular invitation.
-- Its signed link opens the protected preview instead of the answering flow.
+- Its signed link preserves the recipient's resolved culture and opens the protected preview instead of
+  the answering flow.
 - Sending or following a preview email creates no invitation, response, draft, reminder, completion,
   or funnel activity.
 
@@ -46,10 +47,10 @@ unauthenticated or unauthorized visitors must still pass the normal Board/Admin 
 
 ## Data model and side effects
 
-No schema or entity changes are introduced. Preview tokens carry only the survey id and use a
-Data Protection purpose distinct from invitation tokens. Preview rendering is GET-only and reads the
-saved survey definition. Preview email sends through the email outbox but does not write to any Surveys
-table.
+No schema or entity changes are introduced. Preview tokens carry the survey id and resolved recipient
+culture, and use a Data Protection purpose distinct from invitation tokens. Preview rendering is GET-only
+and reads the saved survey definition. Preview email sends through the email outbox but does not write to
+any Surveys table.
 
 ## Related features
 

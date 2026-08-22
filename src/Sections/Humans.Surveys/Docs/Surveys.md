@@ -184,8 +184,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Preview email reuses the real invitation pipeline without joining its ledger.** It targets the
   current Board/Admin user's canonical notification email and uses
   `IEmailMessageFactory.SurveyInvitation` + `IEmailService.SendAsync`. Its seven-day signed token has a
-  distinct Data Protection purpose and redirects `/Survey/Answer` to the protected preview route; no
-  `SurveyInvitation` row is created.
+  distinct Data Protection purpose, retains the recipient's resolved culture, and redirects
+  `/Survey/Answer` to the protected preview route; no `SurveyInvitation` row is created.
 - **Exactly one reminder.** The 7-day reminder fires once per invitee (Open survey, `Completed == false`, `SentAt ≥ 7 days ago`, `ReminderSentAt is null`), stamping `ReminderSentAt` so it never repeats.
 - **Public responses are always Anonymous + `InputMethod=Slug`.** The slug path requires `AllowAnonymous`; reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
 <!-- wheat: docs/plans/2026-06-27-post-event-app-feedback-survey.md §1.2, §3, §4 -->
