@@ -655,20 +655,7 @@ internal sealed class IssuesService(
         // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
         foreach (var row in expired)
         {
-            var issueDir = Path.Combine(
-                env.ContentRootPath, "wwwroot", "uploads", "issues", row.Id.ToString());
-
-            try
-            {
-                if (Directory.Exists(issueDir))
-                    Directory.Delete(issueDir, recursive: true);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Failed to delete screenshot directory {Dir} for purged issue {IssueId}",
-                    issueDir, row.Id);
-            }
+            DeleteScreenshotDirectory(row.Id);
         }
 
         logger.LogInformation(
@@ -703,6 +690,49 @@ internal sealed class IssuesService(
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.Issues, shaped)];
+    }
+
+    // ─── IUserDataContributor (GDPR erasure) ───
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Issues] =
+                "Partially retained: issues the person reported are deleted outright, comments " +
+                "and screenshots with them. A comment they left on someone else's issue is that " +
+                "issue's content and stays, with the authorship detached (SenderUserId nulled) — " +
+                "GDPR Art. 17(3)(b), since removing it would gut another human's thread."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // The screenshots are the reporter's own uploads — they go with the rows.
+        foreach (var issueId in await repo.EraseForUserAsync(userId, ct))
+        {
+            DeleteScreenshotDirectory(issueId);
+        }
+    }
+
+    /// <summary>Best-effort removal of an issue's upload dir; failures are logged, never thrown.</summary>
+    private void DeleteScreenshotDirectory(Guid issueId)
+    {
+        var issueDir = Path.Combine(
+            env.ContentRootPath, "wwwroot", "uploads", "issues", issueId.ToString());
+
+        try
+        {
+            if (Directory.Exists(issueDir))
+                Directory.Delete(issueDir, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to delete screenshot directory {Dir} for issue {IssueId}",
+                issueDir, issueId);
+        }
     }
 
     // ─── Helpers — audit, notifications, in-memory stitching ───

@@ -216,6 +216,26 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> DeleteCampFootprintForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var members = await ctx.CampMembers
+            .Where(m => m.UserId == userId)
+            .ToListAsync(ct);
+        if (members.Count == 0) return 0;
+
+        var memberIds = members.Select(m => m.Id).ToList();
+        var assignments = await ctx.CampRoleAssignments
+            .Where(a => memberIds.Contains(a.CampMemberId))
+            .ToListAsync(ct);
+
+        ctx.CampRoleAssignments.RemoveRange(assignments);
+        ctx.CampMembers.RemoveRange(members);
+        await ctx.SaveChangesAsync(ct);
+        return assignments.Count + members.Count;
+    }
+
     public async Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(
         int year, CancellationToken ct = default)
     {

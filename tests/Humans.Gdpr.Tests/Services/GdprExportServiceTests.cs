@@ -200,5 +200,16 @@ public class GdprExportServiceTests
             if (_throw is not null) throw _throw;
             return Task.FromResult<IReadOnlyList<UserDataSlice>>(_slices);
         }
+
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            _slices.ToDictionary(s => s.SectionName, _ => (string?)null, StringComparer.Ordinal);
+
+        public Guid? ErasedUserId { get; private set; }
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct)
+        {
+            ErasedUserId = userId;
+            return Task.CompletedTask;
+        }
     }
 }

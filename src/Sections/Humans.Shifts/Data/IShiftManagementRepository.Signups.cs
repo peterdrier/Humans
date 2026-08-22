@@ -92,6 +92,17 @@ internal partial interface IShiftManagementRepository
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
+    /// <summary>GDPR Art. 17: removes the user's shift-tag preferences.</summary>
+    Task<int> DeleteVolunteerTagPreferencesForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: clears <see cref="ShiftSignup.StatusReason"/> on every one of the
+    /// user's signups. The signup row itself is retained as the association's record of
+    /// who covered which shift, but the coordinator's free text about the person is not
+    /// part of that record.
+    /// </summary>
+    Task<int> ClearSignupStatusReasonsForUserAsync(Guid userId, CancellationToken ct = default);
+
     // ============================================================
     // Writes — ShiftSignup
     // ============================================================

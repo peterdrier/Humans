@@ -311,4 +311,12 @@ internal interface ITicketRepository : IRepository
     /// <paramref name="targetUserId"/>.
     /// </summary>
     Task<int> ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: overwrites buyer and attendee name/email on the rows matched
+    /// to this user with tombstones, drops <c>MatchedUserId</c> so nothing links
+    /// back, and scrubs the free text on their ticket-transfer requests. The
+    /// order/attendee rows themselves stay as sales records.
+    /// </summary>
+    Task<int> EraseUserPiiAsync(Guid userId, CancellationToken ct = default);
 }

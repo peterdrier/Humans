@@ -51,6 +51,39 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
             .ToListAsync(ct);
     }
 
+    public async Task<int> ScrubPiiForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var rows = await ctx.AccountMergeRequests
+            .Where(amr => amr.TargetUserId == userId
+                       || amr.SourceUserId == userId
+                       || amr.ResolvedByUserId == userId)
+            .ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        foreach (var row in rows)
+        {
+            // Email and AdminNotes describe the human being merged, not the admin
+            // who resolved it — scrubbing them on a row this user merely resolved
+            // would erase someone else's record. Drop the attribution instead.
+            if (row.TargetUserId == userId || row.SourceUserId == userId)
+            {
+                // Email is init-only — write through the tracked entry.
+                ctx.Entry(row).Property(nameof(AccountMergeRequest.Email)).CurrentValue = string.Empty;
+                row.AdminNotes = null;
+            }
+
+            if (row.ResolvedByUserId == userId)
+            {
+                row.ResolvedByUserId = null;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
         IReadOnlyList<Guid> emailIds, CancellationToken ct = default)
     {

@@ -33,12 +33,16 @@ closed, transcribed from the code rather than from memory.
   the document's top-level keys survive a contributor moving between services.
 - **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp and the merged
   section bag, which is what the two controllers serialize to the download.
-- **Erasure is not this section's.** The right-to-deletion cascade
-  (`IAccountDeletionService` / `AccountDeletionService`, driven by
-  `ProcessAccountDeletionsJob`) lives under **Users**. The 2026-08-03 frozen
-  inventory assigns "export/erasure" to Gdpr and the code disagrees; that is an
-  open ruling (G0 gap #2), not a G5 move's business, and nothing was moved to
-  resolve it here.
+- **Erasure shares the contract, not the orchestrator.** Since
+  nobodies-collective/Humans#853 `IUserDataContributor` also carries
+  `ErasureDeclaration` (a static `GdprExportSections` → retention-reason table;
+  `null` = erased in full) and `EraseForUserAsync`, so a section cannot export a
+  category without accounting for its deletion. The orchestration still lives
+  under **Users**: `IAccountDeletionService` / `AccountDeletionService`, driven
+  by `ProcessAccountDeletionsJob`, fans the erasure out over
+  `IEnumerable<IUserDataContributor>`. The 2026-08-03 frozen inventory assigns
+  "export/erasure" to Gdpr and the code still splits them; that is an open
+  ruling (G0 gap #2), unchanged here.
 
 ## Routing
 
@@ -102,7 +106,9 @@ it would be a URL change, which is out of scope here too.
 - Adding a user-scoped section: add its section-name constants to
   `GdprExportSections`, implement `IUserDataContributor` on its owning service,
   register the forwarding factory beside that service, and add the type to
-  `GdprExportDependencyInjectionTests.ExpectedContributorTypes`.
+  `GdprExportDependencyInjectionTests.ExpectedContributorTypes`. The new
+  constants must also appear in that contributor's `ErasureDeclaration` or
+  `GdprErasureCoverageTests` fails the build.
 
 ## Cross-Section Dependencies
 

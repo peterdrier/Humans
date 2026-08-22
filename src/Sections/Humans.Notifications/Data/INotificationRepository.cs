@@ -194,6 +194,12 @@ internal interface INotificationRepository : IRepository
     /// not touched. Returns the count of recipient rows attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
+    /// <summary>
+    /// GDPR Art. 17: drops the user's recipient rows, deletes any notification
+    /// left with no recipients at all, and clears their resolver attribution.
+    /// </summary>
+    Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<int> ReassignRecipientsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

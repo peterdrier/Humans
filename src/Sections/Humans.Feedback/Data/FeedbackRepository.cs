@@ -139,6 +139,45 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
     // Account-merge fold
     // ==========================================================================
 
+    public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        // Own reports go entirely — messages cascade off the report FK.
+        var ownReports = await ctx.FeedbackReports
+            .Where(r => r.UserId == userId)
+            .ToListAsync(ct);
+        ctx.FeedbackReports.RemoveRange(ownReports);
+
+        var ownReportIds = ownReports.Select(r => r.Id).ToHashSet();
+
+        // Messages left on other people's reports are that report's content — detach the author instead.
+        var foreignMessages = await ctx.FeedbackMessages
+            .Where(m => m.SenderUserId == userId)
+            .ToListAsync(ct);
+        foreach (var m in foreignMessages.Where(m => !ownReportIds.Contains(m.FeedbackReportId)))
+        {
+            ctx.Entry(m).Property(nameof(FeedbackMessage.SenderUserId)).CurrentValue = null;
+        }
+
+        // Triage fields on other people's reports.
+        var triaged = await ctx.FeedbackReports
+            .Where(r => r.ResolvedByUserId == userId || r.AssignedToUserId == userId)
+            .ToListAsync(ct);
+        foreach (var r in triaged.Where(r => !ownReportIds.Contains(r.Id)))
+        {
+            if (r.ResolvedByUserId == userId) r.ResolvedByUserId = null;
+            if (r.AssignedToUserId == userId) r.AssignedToUserId = null;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return ownReports
+            .Select(r => r.ScreenshotStoragePath)
+            .OfType<string>()
+            .ToList();
+    }
+
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

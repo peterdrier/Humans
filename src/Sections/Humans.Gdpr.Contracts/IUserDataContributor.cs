@@ -31,4 +31,29 @@ public interface IUserDataContributor : IFanout
     /// from the final export by the orchestrator.
     /// </summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Article 17 counterpart of <see cref="ContributeForUserAsync"/>: one entry
+    /// for every export section name this contributor owns. A <c>null</c> value
+    /// means <see cref="EraseForUserAsync"/> erases or anonymizes that category
+    /// in full; a non-empty value means something in it is deliberately kept, and
+    /// the string says what survives and under which lawful basis.
+    ///
+    /// <para>
+    /// MUST be a static table — the erasure-coverage architecture test reads it
+    /// from an uninitialized instance, so an implementation may not touch
+    /// instance state, the database, or the clock.
+    /// </para>
+    /// </summary>
+    IReadOnlyDictionary<string, string?> ErasureDeclaration { get; }
+
+    /// <summary>
+    /// Erases this contributor's personal data for <paramref name="userId"/>:
+    /// every category <see cref="ErasureDeclaration"/> maps to <c>null</c> is
+    /// deleted or anonymized in full, and every category mapped to a retention
+    /// reason keeps exactly what that reason names. Implementations must be
+    /// idempotent — the deletion job retries the whole cascade the next day
+    /// after a mid-cascade failure.
+    /// </summary>
+    Task EraseForUserAsync(Guid userId, CancellationToken ct);
 }

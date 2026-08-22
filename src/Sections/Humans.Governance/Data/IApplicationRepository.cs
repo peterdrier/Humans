@@ -209,6 +209,14 @@ internal interface IApplicationRepository : IRepository
     /// <paramref name="updatedAt"/>. Returns the count of <c>Application</c>
     /// rows attributed to <paramref name="targetUserId"/> after the move.
     /// </summary>
+    /// <summary>
+    /// GDPR Art. 17: clears the applicant's own free text (motivation, additional
+    /// info, contribution, role understanding) and the reviewer prose attached to
+    /// their applications, leaving the tier/status/date skeleton the association
+    /// must keep. Also clears notes on votes the user cast as a Board member.
+    /// </summary>
+    Task<int> ScrubFreeTextForUserAsync(Guid userId, Instant updatedAt, CancellationToken ct = default);
+
     Task<int> ReassignApplicationsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

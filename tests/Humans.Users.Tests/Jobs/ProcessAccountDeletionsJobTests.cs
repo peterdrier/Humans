@@ -72,8 +72,6 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     public async Task ExecuteAsync_AnonymizesAndLogsAndEmailsEachDueAccount()
     {
         var userId = Guid.NewGuid();
-        var signupId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
 
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([userId]);
@@ -82,23 +80,18 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
                 OriginalDisplayName: "Test User",
-                PreferredLanguage: "en",
-                CancelledSignupIds: [(signupId, shiftId)]));
+                PreferredLanguage: "en"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(
             userId, Arg.Any<CancellationToken>());
 
+        // The audit log is retained through erasure, so its description must NOT
+        // quote the name the cascade just removed — that would re-seed the identity.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AccountAnonymized, nameof(User), userId,
-            Arg.Is<string>(s => s.Contains("Test User")),
-            nameof(ProcessAccountDeletionsJob),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-
-        await _auditLogService.Received(1).LogAsync(
-            AuditAction.ShiftSignupCancelled, "ShiftSignup", signupId,
-            Arg.Is<string>(s => s.Contains(shiftId.ToString())),
+            Arg.Is<string>(s => !s.Contains("Test User")),
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
@@ -119,8 +112,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .Returns((AnonymizedAccountSummary?)null);
         _accountDeletionService.AnonymizeExpiredAccountAsync(goodId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
-                "other@example.com", "Other User", "es",
-                []));
+                "other@example.com", "Other User", "es"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -140,8 +132,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: null,
                 OriginalDisplayName: "Orphan User",
-                PreferredLanguage: "en",
-                CancelledSignupIds: []));
+                PreferredLanguage: "en"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -168,8 +159,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("DB error"));
         _accountDeletionService.AnonymizeExpiredAccountAsync(user2, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
-                "u2@example.com", "User Two", "en",
-                []));
+                "u2@example.com", "User Two", "en"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 

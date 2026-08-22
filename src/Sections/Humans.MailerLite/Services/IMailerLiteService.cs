@@ -66,4 +66,15 @@ internal interface IMailerLiteService : IApplicationService
     [ExternalWrite]
     Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
         string groupId, IReadOnlyList<string> emails, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a subscriber from MailerLite by email — GDPR Article 17 erasure
+    /// (nobodies-collective/Humans#853). Unlike the audience-management writes above, not
+    /// scoped to "Humans - " groups: erasure has to remove the person outright, regardless
+    /// of which groups they're in. A subscriber that's already gone (404) is treated as
+    /// success, not failure — the erasure job retries the whole cascade on failure, so this
+    /// must be idempotent.
+    /// </summary>
+    [ExternalWrite]
+    Task DeleteSubscriberAsync(string email, CancellationToken ct = default);
 }

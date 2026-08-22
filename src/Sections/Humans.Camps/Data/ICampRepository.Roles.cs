@@ -107,6 +107,14 @@ internal partial interface ICampRepository
     Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// GDPR Art. 17: removes the user's whole camp footprint — every
+    /// <c>CampRoleAssignment</c> that hangs off one of their <c>CampMember</c>
+    /// rows, then the <c>CampMember</c> rows themselves. Idempotent; returns the
+    /// number of rows removed across both tables.
+    /// </summary>
+    Task<int> DeleteCampFootprintForUserAsync(Guid userId, CancellationToken ct = default);
+
     // Compliance
 
     /// <summary>

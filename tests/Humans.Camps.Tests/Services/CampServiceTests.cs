@@ -21,6 +21,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
+    private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -50,6 +51,7 @@ public sealed class CampServiceTests : CampsTestHarness
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningService>(() => _cityPlanningService),
             _earlyEntryInvalidator,
+            _campInfoInvalidator,
             Substitute.For<IUserServiceRead>(),
             Clock,
             NullLogger<CampService>.Instance);

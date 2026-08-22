@@ -28,6 +28,7 @@ internal sealed class TicketQueryService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IBurnSettingsService burnSettings,
+    ITicketCacheInvalidator cacheInvalidator,
     IClock clock) : ITicketService, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
@@ -906,6 +907,34 @@ internal sealed class TicketQueryService(
         }).ToList());
 
         return [ordersSlice, attendeesSlice];
+    }
+
+    private const string SalesRecordRetention =
+        "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +
+        "payment status, dates) is a sales record backing the association's books — Código de " +
+        "Comercio Art. 30 and Ley 58/2003 Art. 66, GDPR Art. 17(3)(b). Every identifier on it " +
+        "is erased: BuyerName/BuyerEmail and AttendeeName/AttendeeEmail are overwritten with " +
+        "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
+        "requests is cleared.";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.TicketOrders] = SalesRecordRetention,
+            [GdprExportSections.TicketAttendeeMatches] = SalesRecordRetention
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await ticketRepository.EraseUserPiiAsync(userId, ct);
+        await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
+
+        // The order projection is a warmed singleton with no TTL and carries the
+        // buyer/attendee names and emails just tombstoned — without this the erased
+        // identity keeps being served from memory until the process restarts.
+        cacheInvalidator.InvalidateAll();
     }
 
     private static bool HasSearchTerm(

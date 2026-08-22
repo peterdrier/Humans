@@ -299,6 +299,68 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
     }
 
+    public async Task<int> ScrubFreeTextForUserAsync(
+        Guid userId, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var applications = await ctx.Applications
+            .Where(a => a.UserId == userId)
+            .ToListAsync(ct);
+
+        foreach (var application in applications)
+        {
+            application.Motivation = string.Empty;
+            application.AdditionalInfo = null;
+            application.SignificantContribution = null;
+            application.RoleUnderstanding = null;
+            application.DecisionNote = null;
+            ctx.Entry(application).Property(nameof(MemberApplication.ReviewNotes)).CurrentValue = null;
+            application.UpdatedAt = updatedAt;
+        }
+
+        var applicationIds = applications.Select(a => a.Id).ToList();
+        var history = await ctx.ApplicationStateHistories
+            .Where(h => applicationIds.Contains(h.ApplicationId))
+            .ToListAsync(ct);
+        foreach (var row in history)
+        {
+            ctx.Entry(row).Property(nameof(ApplicationStateHistory.Notes)).CurrentValue = null;
+        }
+
+        // Notes the user wrote as a reviewer on somebody else's application are
+        // their words too — same reason as the Board votes below.
+        var reviewed = await ctx.Applications
+            .Where(a => a.ReviewedByUserId == userId && a.UserId != userId)
+            .ToListAsync(ct);
+        foreach (var application in reviewed)
+        {
+            application.DecisionNote = null;
+            ctx.Entry(application).Property(nameof(MemberApplication.ReviewNotes)).CurrentValue = null;
+            application.UpdatedAt = updatedAt;
+        }
+
+        var authoredHistory = await ctx.ApplicationStateHistories
+            .Where(h => h.ChangedByUserId == userId)
+            .ToListAsync(ct);
+        foreach (var row in authoredHistory)
+        {
+            ctx.Entry(row).Property(nameof(ApplicationStateHistory.Notes)).CurrentValue = null;
+        }
+
+        // Notes the user wrote as a voting Board member are their words too.
+        var votes = await ctx.BoardVotes
+            .Where(v => v.BoardMemberUserId == userId)
+            .ToListAsync(ct);
+        foreach (var vote in votes)
+        {
+            vote.Note = null;
+            vote.UpdatedAt = updatedAt;
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> ReassignApplicationsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Caching;
@@ -36,6 +37,7 @@ internal sealed class FeedbackService(
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     INavBadgeCacheInvalidator navBadge,
+    IFileStorage fileStorage,
     IMemoryCache cache,
     IClock clock,
     ILogger<FeedbackService> logger) : IFeedbackServiceRead, IUserDataContributor, IUserMerge
@@ -350,6 +352,38 @@ internal sealed class FeedbackService(
             }).ToList();
 
         return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.FeedbackReports] =
+                "Partially retained: reports the person filed are deleted outright, messages and " +
+                "screenshots with them. A reply they left on someone else's report is that report's content and " +
+                "stays, with the authorship detached (SenderUserId nulled) — GDPR Art. 17(3)(b), " +
+                "since removing it would gut another human's thread."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Own reports and their free text are hard-deleted; triage links elsewhere are detached.</summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // The screenshots are the reporter's own uploads — they go with the rows.
+        foreach (var key in await repository.EraseForUserAsync(userId, ct))
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(key, ct);
+            }
+            catch (Exception ex)
+            {
+                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
+                logger.LogWarning(ex,
+                    "Failed to delete feedback screenshot {Key} during GDPR erasure for user {UserId}",
+                    key, userId);
+            }
+        }
     }
 
     // Cross-domain read stitching (design-rules §6b in-memory join via UserInfo).

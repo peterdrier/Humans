@@ -307,4 +307,18 @@ internal sealed class RoleAssignmentService(
         return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.RoleAssignments] =
+                "Partially retained: expired role rows (role name + validity dates, keyed to the " +
+                "user id the Users section tombstones) stay as the association's record of who " +
+                "held which governance office — Ley Orgánica 1/2002 Arts. 11 and 14, GDPR " +
+                "Art. 17(3)(b). Every still-active assignment is ended immediately."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        RevokeAllActiveAsync(userId, ct);
 }

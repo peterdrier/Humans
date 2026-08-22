@@ -297,6 +297,31 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var responses = await ctx.SurveyResponses
+            .Where(r => r.UserId == userId)
+            .ToListAsync(ct);
+
+        foreach (var response in responses)
+        {
+            // UserId / InvitationId / Anonymity are init-only — write through the tracked entry.
+            var entry = ctx.Entry(response);
+            entry.Property(nameof(SurveyResponse.UserId)).CurrentValue = null;
+            entry.Property(nameof(SurveyResponse.InvitationId)).CurrentValue = null;
+            entry.Property(nameof(SurveyResponse.Anonymity)).CurrentValue = ResponseAnonymity.Anonymous;
+        }
+
+        var invitations = await ctx.SurveyInvitations
+            .Where(i => i.UserId == userId)
+            .ToListAsync(ct);
+        ctx.SurveyInvitations.RemoveRange(invitations);
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(SurveysDbContext ctx, Survey existing, Survey incoming)
     {

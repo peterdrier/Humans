@@ -3,6 +3,7 @@ using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
@@ -20,10 +21,9 @@ internal sealed class AccountDeletionService(
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
-    IShiftSignups shiftSignupService,
-    IShiftVolunteerProfiles shiftVolunteerProfiles,
-    IFileStorage fileStorage,
+    IEnumerable<IUserDataContributor> erasureContributors,
     ITicketServiceRead ticketQueryService,
+    IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
@@ -118,6 +118,13 @@ internal sealed class AccountDeletionService(
 
     public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
+        if (await userService.GetUserInfoAsync(userId, ct) is null)
+            return new OnboardingResult(false, "NotFound");
+
+        // Same Article 17 fan-out as the expiry path — an admin purge must not
+        // erase less than the scheduled job does.
+        await EraseEverySectionAsync(userId, ct);
+
         // Identity-only at the User aggregate; own-data delete in IUserService.PurgeOwnDataAsync.
         var displayName = await userService.PurgeOwnDataAsync(userId, ct);
         if (displayName is null)
@@ -134,8 +141,10 @@ internal sealed class AccountDeletionService(
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
-        // GDPR audit — right-of-access reads from the audit log.
-        var description = $"Admin-initiated purge: identity collapsed (was \"{displayName}\")";
+        // GDPR audit — right-of-access reads from the audit log. Like the scheduled
+        // path, the description must not name the human: the audit log survives
+        // erasure, so quoting the purged identity here would put it straight back.
+        const string description = "Admin-initiated purge: identity collapsed";
         if (actorId is Guid actor)
         {
             await auditLogService.LogAsync(
@@ -156,71 +165,64 @@ internal sealed class AccountDeletionService(
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Capture identity slice BEFORE any writes — caller still needs it if the final step throws.
+        // Capture identity slice BEFORE any writes — caller still needs it if the cascade throws.
         var user = await userService.GetUserInfoAsync(userId, ct);
         if (user is null)
             return null;
 
-        var originalEmail = user.Email;
-        var originalDisplayName = user.BurnerName;
-        var preferredLanguage = user.PreferredLanguage;
+        var summary = new AnonymizedAccountSummary(
+            user.Email, user.BurnerName, user.PreferredLanguage);
 
-        // Cross-section cleanup BEFORE identity collapse — deletion markers stay set so a failure retries tomorrow.
+        // Deletion markers stay set until the last contributor succeeds, so a
+        // mid-cascade failure retries the whole fan-out tomorrow.
+        await EraseEverySectionAsync(userId, ct);
 
-        // 1. End team memberships + role slots.
-        await teamService.RevokeAllMembershipsAsync(userId, ct);
-
-        // 1b. Delete team early-entry grants (right-to-erasure; no DB cascade — bare UserId).
-        await teamService.DeleteEarlyEntryGrantsForUserAsync(userId, ct);
-
-        // 2. End governance roles.
-        await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
-
-        // 3. Anonymize profile + contact fields + volunteer history, then remove stale profile-picture bytes.
-        var profileAnonymization = await userService.AnonymizeProfileForDeletionAsync(userId, ct);
-        if (profileAnonymization.Anonymized &&
-            profileAnonymization.ProfileId is { } profileId &&
-            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
-        {
-            try
-            {
-                await fileStorage.DeleteAsync(
-                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType),
-                    ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Failed to delete profile picture during expired account anonymization for user {UserId}", userId);
-            }
-        }
-
-        // 4. Cancel active shift signups.
-        var cancelledSignupIds = await shiftSignupService.CancelActiveSignupsForUserAsync(
-            userId, "Account deletion", ct);
-
-        // 5. Delete VolunteerEventProfile rows.
-        await shiftVolunteerProfiles.DeleteShiftProfilesForUserAsync(userId, ct);
-
-        // 6. Anonymize identity + drop UserEmails — clears deletion markers; user falls off the candidate list.
-        var identity = await userService.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
-        if (identity is null)
-        {
-            // Concurrent deletion — steps 1–5 already invalidated their own caches; skip step-7 and return the captured slice.
-            return new AnonymizedAccountSummary(
-                originalEmail, originalDisplayName, preferredLanguage, cancelledSignupIds);
-        }
-
-        // 7. Cross-section cache invalidations (UserInfo already done by UserService).
+        // Cross-section cache invalidations (each contributor drops its own; these are the shared ones).
+        // The UserInfo entry first: contributors are registered against the inner
+        // UserService, so nothing behind the caching decorator has seen these writes
+        // and admin search would keep matching the erased human by their real name.
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
+        teamService.InvalidateActiveTeamsCache();
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
-        return new AnonymizedAccountSummary(
-            identity.OriginalEmail,
-            identity.OriginalDisplayName,
-            identity.PreferredLanguage,
-            cancelledSignupIds);
+        return summary;
+    }
+
+    // --- GDPR Article 17 fan-out ---
+
+    /// <summary>
+    /// Runs every <see cref="IUserDataContributor"/>'s erasure. Sequential, not
+    /// Task.WhenAll: contributors share scoped section DbContexts which are not
+    /// thread-safe (same reason as the export fan-out).
+    /// </summary>
+    /// <remarks>
+    /// The contributor that owns the <c>Account</c> identity runs last, so the
+    /// sections that need the human's addresses to reach an external processor
+    /// (the Workspace suspend) can still resolve them. Ordering is derived from
+    /// the declarations, not from a pinned type list.
+    /// </remarks>
+    private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
+    {
+        var ordered = erasureContributors
+            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
+
+        foreach (var contributor in ordered)
+        {
+            try
+            {
+                await contributor.EraseForUserAsync(userId, ct);
+            }
+            catch (Exception ex)
+            {
+                // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
+                logger.LogError(ex,
+                    "GDPR erasure contributor {Contributor} failed for user {UserId}",
+                    contributor.GetType().Name, userId);
+                throw;
+            }
+        }
     }
 }

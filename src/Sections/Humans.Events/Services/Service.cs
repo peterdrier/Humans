@@ -842,4 +842,16 @@ internal sealed class EventService(
 
         return [new UserDataSlice(GdprExportSections.Events, shaped)];
     }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Events] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Favourites and the category-exclusion preference are the section's only user-scoped rows.</summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
 }

@@ -336,6 +336,20 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
     // Account-merge fold
     // ==========================================================================
 
+    public async Task<int> DeleteGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var rows = await ctx.CampaignGrants
+            .Where(g => g.UserId == userId)
+            .ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.CampaignGrants.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<int> ReassignGrantsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

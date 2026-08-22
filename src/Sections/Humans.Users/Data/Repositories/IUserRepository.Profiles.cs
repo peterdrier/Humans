@@ -121,6 +121,14 @@ internal partial interface IUserRepository
     Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// GDPR Art. 17, deletion path only: clears the Article 9 special-category
+    /// fields the shared anonymization deliberately leaves alone for the merge
+    /// fold (diet, allergies, intolerances, medical conditions) plus the
+    /// consent-check and rejection prose, and deletes the profile's language rows.
+    /// </summary>
+    Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets <c>User.State</c> to <c>Suspended</c> for every user in
     /// <paramref name="userIds"/> that has a profile and is not already suspended.
     /// Persists in a single SaveChanges and returns the set of user ids that were

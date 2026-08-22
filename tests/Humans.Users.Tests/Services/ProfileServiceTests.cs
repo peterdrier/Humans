@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Users.Services;
@@ -37,6 +38,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _communicationPreferenceRepository,
             AdminAuthorization,
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
 
@@ -387,6 +389,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _communicationPreferenceRepository,
         AdminAuthorization,
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
+        Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance);
 

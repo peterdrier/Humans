@@ -5,6 +5,7 @@ using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -30,10 +31,10 @@ public class AccountDeletionServiceTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly IShiftSignups _shiftSignupService = Substitute.For<IShiftSignups>();
-    private readonly IShiftVolunteerProfiles _shiftManagementService = Substitute.For<IShiftVolunteerProfiles>();
-    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
+    private readonly IUserDataContributor _identityContributor = Substitute.For<IUserDataContributor>();
+    private readonly IUserDataContributor _sectionContributor = Substitute.For<IUserDataContributor>();
     private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
+    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
@@ -53,15 +54,27 @@ public class AccountDeletionServiceTests
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
 
+        // The contributor owning the Account section must erase last — the fan-out
+        // orders off the declaration, so the fakes declare the two shapes.
+        _identityContributor.ErasureDeclaration.Returns(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                [GdprExportSections.Account] = "tombstone"
+            });
+        _sectionContributor.ErasureDeclaration.Returns(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                [GdprExportSections.Issues] = null
+            });
+
         _service = new AccountDeletionService(
             _userService,
             _userEmailService,
             _teamService,
             _roleAssignmentService,
-            _shiftSignupService,
-            _shiftManagementService,
-            _fileStorage,
+            [_identityContributor, _sectionContributor],
             _ticketQueryService,
+            _userInfoInvalidator,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
             _shiftViewInvalidator,
@@ -251,6 +264,7 @@ public class AccountDeletionServiceTests
     public async Task PurgeAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns((string?)null);
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
@@ -262,14 +276,18 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_InvalidatesActiveTeamsCache()
+    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesActiveTeamsCache()
     {
         var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
+        // An admin purge must not erase less than the scheduled job does.
+        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _identityContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
         await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
         await _userService.Received(1).DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
@@ -280,18 +298,21 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndDisplayName()
+    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndWithoutThePurgedName()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
         await _service.PurgeAsync(userId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        // GDPR right-of-access depends on this audit row surviving the purge.
+        // GDPR right-of-access depends on this audit row surviving the purge — which is
+        // exactly why it must not quote the identity the purge just collapsed. The user
+        // id is the subject; the name would outlive the erasure in a retained table.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AccountPurged, nameof(User), userId,
-            Arg.Is<string>(s => s.Contains("Test Human")),
+            Arg.Is<string>(s => !s.Contains("Test Human")),
             actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -313,25 +334,13 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_RunsCascadeInOrderAndInvalidatesCaches()
+    public async Task AnonymizeExpiredAccountAsync_ErasesEverySectionAndInvalidatesCaches()
     {
         var userId = Guid.NewGuid();
-        var user = MakeUser(userId, email: "expired@example.com");
-        var signupId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
+        var user = MakeUser(userId, email: "expired@example.com", displayName: "Expired Human",
+            preferredLanguage: "es");
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        _userService.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true, profileId, "image/png"));
-        _shiftSignupService.CancelActiveSignupsForUserAsync(
-            userId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns([(signupId, shiftId)]);
-        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ExpiredDeletionAnonymizationResult(
-                OriginalEmail: "expired@example.com",
-                OriginalDisplayName: "Expired Human",
-                PreferredLanguage: "es"));
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -339,19 +348,9 @@ public class AccountDeletionServiceTests
         result.OriginalEmail.Should().Be("expired@example.com");
         result.OriginalDisplayName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
-        result.CancelledSignupIds.Should().ContainSingle()
-            .Which.Should().Be((signupId, shiftId));
 
-        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
-        await _userService.Received(1).AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>());
-        await _fileStorage.Received(1).DeleteAsync(
-            $"uploads/profile-pictures/{profileId}.png",
-            Arg.Any<CancellationToken>());
-        await _shiftSignupService.Received(1).CancelActiveSignupsForUserAsync(
-            userId, Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _shiftManagementService.Received(1).DeleteShiftProfilesForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _userService.Received(1).ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>());
+        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _identityContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
@@ -359,58 +358,38 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_ErasesTeamEarlyEntryGrants()
+    public async Task AnonymizeExpiredAccountAsync_ErasesTheAccountIdentityLast()
     {
+        // Sections that must reach an external processor (the Workspace suspend)
+        // need the human's addresses, which the Account contributor is about to drop.
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ExpiredDeletionAnonymizationResult("e@example.com", "Name", "es"));
+
+        var order = new List<string>();
+        _sectionContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => { order.Add("section"); return Task.CompletedTask; });
+        _identityContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => { order.Add("identity"); return Task.CompletedTask; });
 
         await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        await _teamService.Received(1).DeleteEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
+        order.Should().Equal("section", "identity");
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_UserVanishedMidCascade_ReturnsPreCapturedSlice()
+    public async Task AnonymizeExpiredAccountAsync_ContributorFailurePreservesDeletionFields()
     {
-        var userId = Guid.NewGuid();
-        var user = MakeUser(userId, email: "gone@example.com", displayName: "Gone");
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((ExpiredDeletionAnonymizationResult?)null);
-
-        var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.OriginalEmail.Should().Be("gone@example.com");
-        result.OriginalDisplayName.Should().Be("Gone");
-        // Steps 1–5 already invalidated their own section caches; the
-        // step-7 cross-section invalidations key off the identity write
-        // completing, so they're correctly skipped on this branch.
-        _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
-        _roleAssignmentClaimsInvalidator.DidNotReceive().Invalidate(userId);
-        _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);
-    }
-
-    [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_CascadeFailurePreservesDeletionFields()
-    {
-        // If a mid-cascade step throws, the identity-collapse step never runs,
-        // which means DeletionScheduledFor / DeletionEligibleAfter stay set —
-        // so the job picks the user up again tomorrow. Asserted indirectly by
-        // observing that ApplyExpiredDeletionAnonymizationAsync is never called
-        // when an earlier cascade step fails.
+        // A throwing contributor must abort the run: the Account contributor never
+        // clears DeletionScheduledFor, so tomorrow's job retries the whole fan-out.
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
-            .Returns<int>(_ => throw new InvalidOperationException("boom"));
+        _sectionContributor.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("boom"));
 
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _userService.DidNotReceive().ApplyExpiredDeletionAnonymizationAsync(
-            userId, Arg.Any<CancellationToken>());
+        await _identityContributor.DidNotReceive().EraseForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

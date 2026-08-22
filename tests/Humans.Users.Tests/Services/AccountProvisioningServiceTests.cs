@@ -219,6 +219,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();

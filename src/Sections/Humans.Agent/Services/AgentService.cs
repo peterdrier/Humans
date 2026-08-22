@@ -673,6 +673,18 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         return [new UserDataSlice(GdprExportSections.AgentConversations, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.AgentConversations] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Conversations are free-text chat transcripts — hard-deleted, messages cascade.</summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        _repo.DeleteConversationsForUserAsync(userId, ct);
+
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
 

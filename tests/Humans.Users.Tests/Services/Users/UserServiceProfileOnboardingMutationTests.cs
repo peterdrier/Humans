@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Services;
@@ -35,6 +36,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _communicationPreferenceRepository,
             AdminAuthorization,
             _claimsCacheInvalidator,
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
     }
@@ -623,6 +625,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
             _claimsCacheInvalidator,
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
 }

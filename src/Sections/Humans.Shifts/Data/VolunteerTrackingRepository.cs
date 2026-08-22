@@ -50,6 +50,18 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
         return await query.ToListAsync(ct);
     }
 
+    public async Task<int> DeleteVolunteerTrackingForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var availability = await db.GeneralAvailability.Where(g => g.UserId == userId).ToListAsync(ct);
+        var buildStatuses = await db.VolunteerBuildStatuses.Where(b => b.UserId == userId).ToListAsync(ct);
+        if (availability.Count == 0 && buildStatuses.Count == 0) return 0;
+
+        db.GeneralAvailability.RemoveRange(availability);
+        db.VolunteerBuildStatuses.RemoveRange(buildStatuses);
+        await db.SaveChangesAsync(ct);
+        return availability.Count + buildStatuses.Count;
+    }
+
     public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
         Guid userId,
         Guid? eventSettingsId = null,

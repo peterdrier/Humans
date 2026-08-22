@@ -193,19 +193,46 @@ silently drop a category.
 
 ## Right to deletion (Article 17)
 
-Implemented, but not through this fan-out — it's a separate orchestration
-owned by Users, not Gdpr (see `src/Sections/Humans.Gdpr/Docs/Gdpr.md`).
-`IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`)
-drives a 30-day grace period: on request it revokes team memberships and
-governance roles immediately, then the daily `ProcessAccountDeletionsJob`
-anonymizes the account once the grace period expires — cascading through
-Teams, governance roles, shift signups, and identity/profile data directly,
-rather than reusing `IUserDataContributor`, because deletion needs per-section
-side effects (revoke, cancel, anonymize) that export's read-only slice doesn't
-have. See `docs/guide/YourData.md` for the user-facing flow and
-`src/Sections/Humans.Users/Docs/Users.md` for the full cascade. Append-only
-entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
+Erasure runs through the same fan-out, over the same interface
+(nobodies-collective/Humans#853). `IUserDataContributor` carries two Article 17
+members alongside `ContributeForUserAsync`, so a section cannot export a
+category without accounting for its deletion:
+
+- `ErasureDeclaration` — a **static** table, one entry per `GdprExportSections`
+  key the contributor owns. `null` means erased or anonymized in full; a string
+  names what survives and the lawful basis for keeping it. It must not touch
+  instance state, the DbContext or the clock: the architecture test reads it
+  from an uninitialized instance.
+- `EraseForUserAsync(userId, ct)` — idempotent, because the job retries the
+  whole cascade the next day after a mid-cascade failure.
+
+`IAccountDeletionService`
+(`src/Sections/Humans.Users/Services/AccountDeletionService.cs`) still owns the
+30-day grace period — on request it revokes team memberships and governance
+roles immediately — but once the grace period expires the daily
+`ProcessAccountDeletionsJob` runs the fan-out rather than a hand-wired cascade.
+Contributors run sequentially (scoped section DbContexts are not thread-safe,
+same as the export), the contributor declaring `Account` runs last so sections
+that still need the human's addresses can resolve them, and a contributor that
+throws aborts the run with the deletion markers still set. Erasure also
+suspends the human's `@nobodies.team` Workspace account before dropping the
+Google sync-log rows. See `docs/guide/YourData.md` for the user-facing flow.
+
+`tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs` is the
+enforcement: it discovers contributors by reflection over the same section
+assemblies the runtime composes itself from, and requires the union of every
+`ErasureDeclaration` to equal the full set of `GdprExportSections` constants,
+with no category claimed twice and no retention left unexplained. Adding a
+user-scoped section adds an export key, and the build stays red until some
+contributor accounts for its erasure.
+
+Append-only entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
 `budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
-`team_join_request_state_history`) are not deleted — foreign keys are nulled
-or the row is re-pointed at the anonymized user rather than a separate
-tombstone user.
+`team_join_request_state_history`) are not deleted — foreign keys are nulled or
+the row is re-pointed at the anonymized user rather than a separate tombstone
+user. The lawful basis for each retained category lives in the owning
+contributor's `ErasureDeclaration`, which is the single source of truth: the
+accounting and expense ledgers under Código de Comercio Art. 30 and Ley 58/2003
+Art. 66, the membership/role/shift/team records under Ley Orgánica 1/2002
+Arts. 11 and 14, the consent ledger under GDPR Art. 7(1), and the audit log
+under GDPR Art. 30.

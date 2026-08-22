@@ -113,4 +113,11 @@ internal partial interface ISurveyRepository : IRepository
     /// excluded — they are not personal data linkable to the user. No display ordering. Read-only.
     /// </summary>
     Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: de-identifies the user's responses — drops the UserId and
+    /// InvitationId links and demotes them to <see cref="ResponseAnonymity.Anonymous"/>
+    /// — and deletes their invitations. The answers stay as anonymous research data.
+    /// </summary>
+    Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default);
 }

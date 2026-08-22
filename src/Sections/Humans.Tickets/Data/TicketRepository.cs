@@ -890,6 +890,36 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
+    public async Task<int> EraseUserPiiAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var tombstoneName = TicketPiiTombstone.Name;
+        var tombstoneEmail = TicketPiiTombstone.EmailFor(userId);
+
+        var orders = await ctx.TicketOrders
+            .Where(o => o.MatchedUserId == userId)
+            .ToListAsync(ct);
+        foreach (var order in orders)
+        {
+            order.BuyerName = tombstoneName;
+            order.BuyerEmail = tombstoneEmail;
+            order.MatchedUserId = null;
+        }
+
+        var attendees = await ctx.TicketAttendees
+            .Where(a => a.MatchedUserId == userId)
+            .ToListAsync(ct);
+        foreach (var attendee in attendees)
+        {
+            attendee.AttendeeName = tombstoneName;
+            attendee.AttendeeEmail = tombstoneEmail;
+            attendee.MatchedUserId = null;
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
