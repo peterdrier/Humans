@@ -56,7 +56,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 - The section is **read-only** — no writes to any table, no audit entries, no notifications.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable. The arrival day is a real on-site day, so the `ArrivesOn`-is-non-nullable invariant holds for all roster humans including arrival-day humans.
-- Burner-name stitching reads `UserInfo.BurnerName` (from `IUserServiceRead`), falling through to `"(unknown)"` when absent. `UserInfo.BurnerName` itself derives from `Profile.BurnerName` with the legacy `DisplayName` fallback handled inside the Users section.
+- Burner-name stitching reads `ProfileInfo.BurnerName` off the cached `UserInfo` from `IUserServiceRead`. Every on-site human has a profile row, so the `"(unknown)"` fall-through is a defensive default, not a case the roster is expected to render.
 
 ## Negative Access Rules
 
