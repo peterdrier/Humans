@@ -3,11 +3,13 @@ name: bootstrap the .NET toolchain before any cloud run
 description: Cloud containers ship no .NET SDK. Run `.claude/bootstrap-dotnet.sh` first and believe its `Full build` line — never install the SDK by hand, and never work around a denied egress host.
 ---
 
-A Claude Code cloud container starts with **no `dotnet` on PATH**. Any scheduled job or remote session that intends to build, test, measure mutation score, or run reforge must run `.claude/bootstrap-dotnet.sh` before its first phase.
+A Claude Code cloud container starts with **no `dotnet` on PATH**. A local checkout does not have this problem, so the instruction to bootstrap belongs to the jobs that run in the cloud — their own scheduled prompt — and not to the skills and docs a local session also reads. A run can tell which it is: `CLAUDE_CODE_ENTRYPOINT=remote_trigger` marks a scheduled firing, and `CCR_AGENT_PROXY_ENABLED` / `CLAUDE_CODE_CONTAINER_ID` mark a remote container generally.
+
+**Every scheduled job's prompt that intends to build, test, measure mutation score or run reforge should open with `.claude/bootstrap-dotnet.sh`.** Skills, `CLAUDE.md` and section docs should not — a local session reading them would be told to go installing SDKs it already has.
 
 The script installs an SDK matching `global.json`, puts `~/.dotnet/tools` on PATH, restores Stryker, installs Reforge, and prints a capability summary. Every step is skipped when already satisfied, so on a machine that has the toolchain it costs about half a second and changes nothing. The one expensive step — a real build probe — runs only after a *fallback* SDK install, where whether that SDK can compile this repo is genuinely unknown, and its verdict is cached for the life of the container.
 
-**Why a script rather than a list of commands in each job's prompt:** the commands are not the hard part. Knowing *which* of them are even possible in a given container is, and that answer changes with the egress policy and the image. A prompt that says "run `dotnet tool restore`" fails opaquely on a container with no SDK; the script fails legibly, and every job gets the same answer.
+**Why a script rather than a list of commands in each job's prompt:** the commands are not the hard part. Knowing *which* of them are even possible in a given container is, and that answer changes with the egress policy and the image. A prompt that says "run `dotnet tool restore`" fails opaquely on a container with no SDK; the script fails legibly, and every job gets the same answer from one place. It is also safe if a local session does call it — 0.5s and no changes — so a job prompt need not guard the call.
 
 **How to apply:**
 

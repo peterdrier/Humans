@@ -54,21 +54,19 @@ sweep commit (Phase 5), idempotent by construction.
 
 `REPO_ROOT=$(git rev-parse --show-toplevel)`. Parse args; record start time (`date -u`).
 
-Then `.claude/bootstrap-dotnet.sh` — a cloud container ships no .NET SDK, so this is what
-makes `dotnet`, Stryker and reforge exist at all. Half a second on a machine that is already
-set up, so it costs a run nothing to call it every time. **Read its `Full build` line**
-([`cloud-run-dotnet-bootstrap`](../../../memory/process/cloud-run-dotnet-bootstrap.md)):
+Getting a toolchain is the *environment's* job, not this skill's: a local run already has
+one, and the scheduled cloud run is told to bootstrap in its own prompt
+([`cloud-run-dotnet-bootstrap`](../../../memory/process/cloud-run-dotnet-bootstrap.md)).
+Nothing to do here.
 
-- `not checked` / `yes` — a normal run. `not checked` is the usual answer locally: the SDK
-  was already there, so the script neither installed nor doubted it.
-- `NO` — a **docs-only run**. Work the reading threads, keep strikes to docs, comments and
-  resx, queue every code finding for the Needs-Peter block rather than editing C# you cannot
-  compile, record each compiler-dependent thread as skipped-with-reason (3d's rule), and let
-  the PR's CI be the compile gate. Say so in the run file's header and in the PR body — a run
-  that could not build and does not say so reads as a run that found nothing to build.
-
-If a build later fails with `CS9057`, that is this and not your change: re-run the script with
-`--probe` to get the verdict written down, then treat the run as docs-only from there.
+**What is this skill's job is the run you get when there is no compiler** — which is a real
+run, not a failed one. If `dotnet build` is unavailable (in a cloud container it announces
+itself as `CS9057`; `.claude/bootstrap-dotnet.sh --probe` writes the verdict down), then this
+is a **docs-only run**: work the reading threads, keep strikes to docs, comments and resx,
+queue every code finding for the Needs-Peter block rather than editing C# you cannot compile,
+record each compiler-dependent thread as skipped-with-reason (3d's rule), and let the PR's CI
+be the compile gate. Say so in the run file's header and in the PR body — a run that could
+not build and does not say so reads as a run that found nothing to build.
 
 ## Phase 1: Worktree
 
