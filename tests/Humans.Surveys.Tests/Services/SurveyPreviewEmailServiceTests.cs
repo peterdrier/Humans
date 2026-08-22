@@ -13,6 +13,58 @@ namespace Humans.Surveys.Tests.Services;
 public sealed class SurveyPreviewEmailServiceTests
 {
     [HumansFact]
+    public async Task PreviewForUserAsync_returns_the_rendered_message_without_sending_it()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var userEmails = Substitute.For<IUserEmailService>();
+        var users = Substitute.For<IUserServiceRead>();
+        var emailService = Substitute.For<IEmailService>();
+        var messages = Substitute.For<IEmailMessageFactory>();
+        var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
+        var previewTokens = new SurveyPreviewTokenProvider(
+            DataProtectionProvider.Create("survey-preview-page-tests"));
+        var editable = new SurveyEditInput(
+            Text("Volunteer survey"), LocalizedText.Empty, LocalizedText.Empty,
+            Text("Choose our gathering dates"), Text("Tell us which weekends work for you."),
+            "en",
+            false, null, null, null, null, null, null, []);
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable));
+        userEmails.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "tester@example.com" });
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserInfo(
+                userId, "Tester", false, "en", null, Instant.FromUnixTimeSeconds(0),
+                null, null, null, null, null, false, null, false, null, null, null,
+                null, null, null, [], [], [], null, []));
+        var rendered = new EmailMessage(
+            "tester@example.com", "Tester", "Choose our gathering dates",
+            "<h2>Volunteer survey</h2><p>Tell us which weekends work for you.</p>",
+            "survey_invitation", MessageCategory.System);
+        messages.SurveyInvitation(
+                "tester@example.com", "Tester", "Volunteer survey", Arg.Any<string>(), "en",
+                "Choose our gathering dates", "Tell us which weekends work for you.")
+            .Returns(rendered);
+        var wrapped = new RenderedEmailPreview(
+            "tester@example.com", "Choose our gathering dates", "<html>Branded preview</html>");
+        emailPreviews.RenderSystemMessage(rendered).Returns(wrapped);
+        var sut = new SurveyPreviewEmailService(
+            surveys, userEmails, users, emailService, messages, emailPreviews, previewTokens,
+            NullLogger<SurveyPreviewEmailService>.Instance);
+
+        var preview = await sut.PreviewForUserAsync(
+            surveyId, userId, Xunit.TestContext.Current.CancellationToken);
+
+        preview.Should().Be(wrapped);
+        emailPreviews.Received(1).RenderSystemMessage(rendered);
+        await emailService.DidNotReceive().SendAsync(
+            Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SendToUserAsync_uses_invitation_template_without_creating_an_invitation()
     {
         var surveyId = Guid.NewGuid();
@@ -22,10 +74,13 @@ public sealed class SurveyPreviewEmailServiceTests
         var users = Substitute.For<IUserServiceRead>();
         var emailService = Substitute.For<IEmailService>();
         var messages = Substitute.For<IEmailMessageFactory>();
+        var emailPreviews = Substitute.For<IEmailPreviewServiceRead>();
         var previewTokens = new SurveyPreviewTokenProvider(
             DataProtectionProvider.Create("survey-preview-email-tests"));
         var editable = new SurveyEditInput(
-            Text("Volunteer survey"), LocalizedText.Empty, LocalizedText.Empty, "en",
+            Text("Volunteer survey"), LocalizedText.Empty, LocalizedText.Empty,
+            Text("Choose our gathering dates"), Text("Tell us which weekends work for you."),
+            "en",
             false, null, null, null, null, null, null, []);
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable));
@@ -47,7 +102,9 @@ public sealed class SurveyPreviewEmailServiceTests
                 "Tester",
                 "Volunteer survey",
                 Arg.Do<string>(token => capturedToken = token),
-                "fr")
+                "fr",
+                "Choose our gathering dates",
+                "Tell us which weekends work for you.")
             .Returns(rendered);
         var sut = new SurveyPreviewEmailService(
             surveys,
@@ -55,6 +112,7 @@ public sealed class SurveyPreviewEmailServiceTests
             users,
             emailService,
             messages,
+            emailPreviews,
             previewTokens,
             NullLogger<SurveyPreviewEmailService>.Instance);
 

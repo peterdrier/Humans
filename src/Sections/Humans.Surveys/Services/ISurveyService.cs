@@ -32,8 +32,8 @@ internal interface ISurveyService : IApplicationService
     Task UpdateAsync(Guid surveyId, SurveyEditInput input, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Machine-translates the survey's authored content (title, intro, thank-you, prompts, help,
-    /// rating/option/Grid-row labels) from its default culture into every <paramref name="targetCultures"/>
+    /// Machine-translates the survey's authored content (title, intro, thank-you, invitation copy,
+    /// prompts, help, rating/option/Grid-row labels) from its default culture into every <paramref name="targetCultures"/>
     /// entry that is still blank — existing text is never overwritten (spec §6.1: pre-fill, then the
     /// author reviews). Returns the number of fields filled; 0 means nothing was missing.
     /// </summary>
@@ -152,6 +152,8 @@ internal sealed record SurveyEditInput(
     LocalizedText Title,
     LocalizedText Intro,
     LocalizedText ThankYou,
+    LocalizedText InvitationEmailSubject,
+    LocalizedText InvitationEmailMessage,
     string DefaultCulture,
     bool AllowAnonymous,
     Instant? OpensAt,

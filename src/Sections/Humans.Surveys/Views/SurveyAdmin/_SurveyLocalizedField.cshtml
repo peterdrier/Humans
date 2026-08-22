@@ -17,11 +17,11 @@
             <span class="input-group-text" style="min-width:3.5rem;">@culture.ToDisplayLanguageName()</span>
             @if (Model.Multiline)
             {
-                <textarea name="@name" class="form-control" rows="2">@value</textarea>
+                <textarea name="@name" class="form-control" rows="2" maxlength="@Model.MaxLength">@value</textarea>
             }
             else
             {
-                <input type="text" name="@name" class="form-control" value="@value" />
+                <input type="text" name="@name" class="form-control" value="@value" maxlength="@Model.MaxLength" />
             }
         </div>
     }

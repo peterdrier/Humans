@@ -45,6 +45,7 @@ public sealed class Section : ISection
 
         services.AddScoped<IEmailRenderer, EmailRenderer>();
         services.AddSingleton<IEmailBodyComposer, BrandedEmailBodyComposer>();
+        services.AddSingleton<IEmailPreviewServiceRead, EmailPreviewService>();
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
         services.AddScoped<IEmailService, OutboxEmailService>();
 

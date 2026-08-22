@@ -11,7 +11,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Concepts
 
-- A **Survey** is an authored questionnaire with per-culture title/intro/thank-you (`LocalizedText`), a default culture, a status lifecycle (Draft → Open → Closed), an optional open/close window, an audience, and an optional public slug. It owns an ordered graph of questions.
+- A **Survey** is an authored questionnaire with per-culture title/intro/thank-you and optional invitation email subject/message (`LocalizedText`), a default culture, a status lifecycle (Draft → Open → Closed), an optional open/close window, an audience, and an optional public slug. It owns an ordered graph of questions.
 - A **SurveyQuestion** is one prompt on a page, typed (SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid), optionally required, optionally gated by a **`ShowIf` branch condition**. Choice questions own ordered **SurveyQuestionOptions** (stable machine `Value` + `LocalizedText` label). Grid questions reuse those options as columns and store localized, stable-keyed rows directly on the question.
 - A **branch condition** (`BranchCondition` + `BranchClause`, jsonb) is skip-logic: a question is visible only when its clauses (combined `All`/`Any`, operators `Is`/`IsNot`/`Answered`/`NotAnswered` over earlier questions' option values) evaluate true. Evaluated by the pure `SurveyBranchingEvaluator`.
 - A **SurveyInvitation** is the per-recipient ledger row for the invited path: one per `(SurveyId, UserId)`. It carries send/reminder funnel state (`SentAt`, `LatestEmailStatus`, `ReminderSentAt`, `Started`, `Completed`) — all flags/timestamps about *participation*, never about *answer content*.
@@ -29,6 +29,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 |----------|------|-------|
 | Id | Guid | PK |
 | Title / Intro / ThankYou | LocalizedText | jsonb (culture → text); default `'{}'::jsonb` |
+| InvitationEmailSubject / InvitationEmailMessage | LocalizedText | optional custom initial-invitation copy; jsonb default `'{}'::jsonb` means use standard localized wording |
 | DefaultCulture | string | max 10; fallback culture for resolution |
 | AllowAnonymous | bool | gates the anonymity selector and the public slug |
 | Status | SurveyStatus | string-converted; Draft / Open / Closed |
@@ -186,6 +187,11 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   `IEmailMessageFactory.SurveyInvitation` + `IEmailService.SendAsync`. Its seven-day signed token has a
   distinct Data Protection purpose, retains the recipient's resolved culture, and redirects
   `/Survey/Answer` to the protected preview route; no `SurveyInvitation` row is created.
+- **Invitation copy is optional, localized, and plain text.** Authors may replace the initial
+  invitation subject and message, while Humans retains the greeting, survey-title heading, generated
+  answer-link button, sign-off, template key, and System routing policy. Blank custom fields preserve
+  the standard localized wording. Messages are HTML-encoded with line breaks preserved; Markdown,
+  raw HTML, author-provided links, and reminder customization are not supported.
 - **Exactly one reminder.** The 7-day reminder fires once per invitee (Open survey, `Completed == false`, `SentAt ≥ 7 days ago`, `ReminderSentAt is null`), stamping `ReminderSentAt` so it never repeats.
 - **Public responses are always Anonymous + `InputMethod=Slug`.** The slug path requires `AllowAnonymous`; reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
 <!-- wheat: docs/plans/2026-06-27-post-event-app-feedback-survey.md §1.2, §3, §4 -->

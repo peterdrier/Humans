@@ -97,6 +97,8 @@ public sealed class SurveyAdminControllerTests
             Text("Team survey"),
             LocalizedText.Empty,
             LocalizedText.Empty,
+            LocalizedText.Empty,
+            LocalizedText.Empty,
             "en",
             false,
             null,
@@ -158,6 +160,8 @@ public sealed class SurveyAdminControllerTests
         new(
             Text(title),
             string.IsNullOrEmpty(intro) ? LocalizedText.Empty : Text(intro),
+            LocalizedText.Empty,
+            LocalizedText.Empty,
             LocalizedText.Empty,
             "en",
             allowAnonymous,

@@ -133,10 +133,31 @@ internal sealed class EmailRenderer(
             Lf("Email_TermRenewalReminder_Subject", tierName),
             Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
-    public EmailContent RenderSurveyInvitation(string userName, string surveyTitle, string answerToken, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_SurveyInvitation_Subject", surveyTitle),
-            Lf("Email_SurveyInvitation_Body", HtmlEncode(userName), HtmlEncode(surveyTitle), BuildSurveyAnswerUrl(answerToken))));
+    public EmailContent RenderSurveyInvitation(
+        string userName,
+        string surveyTitle,
+        string answerToken,
+        string? culture = null,
+        string? customSubject = null,
+        string? customMessage = null)
+        => RenderLocalized(culture, () =>
+        {
+            var subject = string.IsNullOrWhiteSpace(customSubject)
+                ? Lf("Email_SurveyInvitation_Subject", surveyTitle)
+                : customSubject.Trim();
+            var messageHtml = string.IsNullOrWhiteSpace(customMessage)
+                ? $"<p>{Lf("Email_SurveyInvitation_DefaultMessage", HtmlEncode(surveyTitle))}</p>"
+                : $"<p>{HtmlEncode(customMessage.Trim()).Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\r", "\n", StringComparison.Ordinal).Replace("\n", "<br />", StringComparison.Ordinal)}</p>";
+
+            return new EmailContent(
+                subject,
+                Lf(
+                    "Email_SurveyInvitation_Body",
+                    HtmlEncode(userName),
+                    HtmlEncode(surveyTitle),
+                    BuildSurveyAnswerUrl(answerToken),
+                    messageHtml));
+        });
 
     public EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(

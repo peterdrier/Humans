@@ -47,10 +47,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
     <div class="d-flex align-items-center gap-2">
-        <a asp-controller="SurveyAdmin" asp-action="Preview" asp-route-id="@Model.Id"
-           class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
-            <i class="fa-solid fa-eye me-1"></i>Preview survey
-        </a>
+        <partial name="_SurveyPreviewMenu" model="@Model.Id" />
         <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail" asp-route-id="@Model.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-primary btn-sm">

@@ -59,7 +59,9 @@ public class SurveysApiControllerTests
         var id = Guid.NewGuid();
         var qId = Guid.NewGuid();
         var editable = new SurveyEditInput(
-            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty, "en", false, null, null, null, null, null, null,
+            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty,
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null, null, null, null, null,
             [
                 new QuestionInput(qId, 1, 0, SurveyQuestionType.SingleChoice, Text("Pick one"), LocalizedText.Empty,
                     true, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
@@ -85,7 +87,9 @@ public class SurveysApiControllerTests
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
         var editable = new SurveyEditInput(
-            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty, "en", false, null, null, null, null, null, null,
+            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty,
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null, null, null, null, null,
             [
                 new QuestionInput(
                     questionId, 1, 0, SurveyQuestionType.Grid, Text("Availability"), LocalizedText.Empty,

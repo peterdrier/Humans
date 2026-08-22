@@ -158,6 +158,36 @@ internal sealed class SurveyAdminController(
         return RedirectToAction(nameof(Send), new { id });
     }
 
+    [HttpGet("Preview/{id:guid}/Email")]
+    public async Task<IActionResult> PreviewEmail(
+        Guid id,
+        [FromServices] ISurveyPreviewEmailService previewEmailService,
+        CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+
+        try
+        {
+            var message = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+            return View("EmailPreview", new SurveyEmailPreviewViewModel
+            {
+                SurveyId = id,
+                Recipient = message.RecipientEmail,
+                Subject = message.Subject,
+                HtmlBody = message.HtmlBody,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(
+                "Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, ex.Message);
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+    }
+
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(SurveyBuilderViewModel model, string? submitAction, CancellationToken ct)

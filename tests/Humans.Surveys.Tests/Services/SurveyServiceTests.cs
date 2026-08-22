@@ -62,7 +62,10 @@ public class SurveyServiceTests
             rows ?? [new GridRowInput("monday", L("Monday")), new GridRowInput("tuesday", L("Tuesday"))]);
 
     private static SurveyEditInput Input(params QuestionInput[] qs) =>
-        new(L("Title"), L("Intro"), L("Thanks"), "en", false, null, null, null, null, null, null, qs.ToList());
+        new(
+            L("Title"), L("Intro"), L("Thanks"),
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null, null, null, null, null, qs.ToList());
 
     [HumansFact]
     public async Task CreateAsync_persists_draft_with_questions_options_and_creator()
@@ -90,6 +93,59 @@ public class SurveyServiceTests
         q1.Options.Should().OnlyContain(o => o.QuestionId == q1.Id);
 
         await _audit.Received(1).LogAsync(AuditAction.SurveyCreated, "Survey", id, Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_persists_trimmed_invitation_email_copy()
+    {
+        Survey? captured = null;
+        _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<Survey>());
+        var input = Input() with
+        {
+            InvitationEmailSubject = L("  Help choose our dates  "),
+            InvitationEmailMessage = L("  Tell us what works.  "),
+        };
+
+        await CreateService().CreateAsync(
+            input, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        captured!.InvitationEmailSubject.Resolve("en", "en").Should().Be("Help choose our dates");
+        captured.InvitationEmailMessage.Resolve("en", "en").Should().Be("Tell us what works.");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_multiline_or_overlong_invitation_subjects()
+    {
+        var multiline = Input() with { InvitationEmailSubject = L("First\nSecond") };
+        var overlong = Input() with { InvitationEmailSubject = L(new string('x', 201)) };
+
+        var multilineAct = async () => await CreateService().CreateAsync(
+            multiline, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var overlongAct = async () => await CreateService().CreateAsync(
+            overlong, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await multilineAct.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*single line*");
+        await overlongAct.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*200 characters or fewer*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_overlong_invitation_messages()
+    {
+        var input = Input() with
+        {
+            InvitationEmailMessage = L(new string('x', 4001)),
+        };
+
+        var act = async () => await CreateService().CreateAsync(
+            input, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*4000 characters or fewer*");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -243,11 +299,17 @@ public class SurveyServiceTests
     }
 
     private static SurveyEditInput InputWithSlug(string? slug) =>
-        new(L("Title"), L("Intro"), L("Thanks"), "en", true, null, null, null, null, null, slug, []);
+        new(
+            L("Title"), L("Intro"), L("Thanks"),
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", true, null, null, null, null, null, slug, []);
 
     private static SurveyEditInput InputWithAudience(
         SurveyAudienceType audience, Guid? teamId = null, Instant? loggedInSince = null) =>
-        new(L("Title"), L("Intro"), L("Thanks"), "en", false, null, null,
+        new(
+            L("Title"), L("Intro"), L("Thanks"),
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null,
             audience, teamId, loggedInSince, null, []);
 
     [HumansTheory]
@@ -334,7 +396,11 @@ public class SurveyServiceTests
             new List<OptionInput> { Opt("yes", "Yes", 1) });
         var q2 = new QuestionInput(q2Id, 1, 2, SurveyQuestionType.SingleChoice, L("Q2"), LocalizedText.Empty, false, null, null,
             LocalizedText.Empty, LocalizedText.Empty, null, new List<OptionInput> { Opt("yes", "Yes", 1) });
-        var input = new SurveyEditInput(L("T"), L("I"), L("Ty"), "en", false, null, null, null, null, null, null, new List<QuestionInput> { q1, q2 });
+        var input = new SurveyEditInput(
+            L("T"), L("I"), L("Ty"),
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null, null, null, null, null,
+            new List<QuestionInput> { q1, q2 });
 
         var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), input, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -470,6 +536,26 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _translation.DidNotReceive().TranslateAsync(
             Arg.Any<IReadOnlyList<string>>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_includes_invitation_subject_and_message()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        survey.InvitationEmailSubject = L("Choose a date");
+        survey.InvitationEmailMessage = L("Tell us what works.");
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        Survey? captured = null;
+        _repo.When(r => r.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<Survey>());
+        StubTranslationAsMarker();
+
+        var filled = await CreateService().PreFillTranslationsAsync(
+            survey.Id, ["en", "fr"], Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        filled.Should().Be(3); // title + invitation subject + invitation message
+        captured!.InvitationEmailSubject.Values["fr"].Should().Be("fr:Choose a date");
+        captured.InvitationEmailMessage.Values["fr"].Should().Be("fr:Tell us what works.");
     }
 
     // ── Invitations ──────────────────────────────────────────────────────────
@@ -657,6 +743,56 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == a), Arg.Any<CancellationToken>());
         await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_resolves_title_and_custom_copy_in_each_recipient_culture()
+    {
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "Availability",
+            ["fr"] = "Disponibilités",
+        });
+        survey.InvitationEmailSubject = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "Choose a date",
+            ["fr"] = "Choisissez une date",
+        });
+        survey.InvitationEmailMessage = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "Tell us what works.",
+            ["fr"] = "Dites-nous ce qui vous convient.",
+        });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, userId));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "human@example.org" });
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [userId] = UserInfoWithName(userId, "Étincelle", "fr"),
+                }));
+
+        await CreateService().SendInvitesAsync(
+            survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        _emailMessages.Received(1).SurveyInvitation(
+            "human@example.org",
+            "Étincelle",
+            "Disponibilités",
+            Arg.Any<string>(),
+            "fr",
+            "Choisissez une date",
+            "Dites-nous ce qui vous convient.");
     }
 
     [HumansFact]
@@ -894,8 +1030,8 @@ public class SurveyServiceTests
         rows.Single(r => r.UserId == unknown).Name.Should().Be(unknown.ToString());
     }
 
-    private static UserInfo UserInfoWithName(Guid id, string burnerName) => new(
-        id, burnerName, false, "en", null, Instant.MinValue, null, null, null, null, null,
+    private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
+        id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
         false, null, false, null, null, null, null, null, null,
         [], [], [], null, []);
 

@@ -9,6 +9,38 @@ namespace Humans.Surveys.Tests.Models;
 public sealed class SurveyBuilderViewModelTests
 {
     [HumansFact]
+    public void Invitation_email_copy_round_trips_through_the_builder()
+    {
+        var detail = new SurveyDetail(
+            Guid.NewGuid(),
+            SurveyStatus.Draft,
+            new SurveyEditInput(
+                L("Survey"),
+                LocalizedText.Empty,
+                LocalizedText.Empty,
+                L("Choose a date"),
+                L("Tell us what works."),
+                "en",
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                []));
+
+        var vm = SurveyBuilderViewModel.FromDetail(
+            detail, [], NodaTime.DateTimeZone.Utc);
+        var roundTripped = vm.ToEditInput(NodaTime.DateTimeZone.Utc);
+
+        roundTripped.InvitationEmailSubject.Resolve("en", "en")
+            .Should().Be("Choose a date");
+        roundTripped.InvitationEmailMessage.Resolve("en", "en")
+            .Should().Be("Tell us what works.");
+    }
+
+    [HumansFact]
     public void ToInput_maps_clause_rows_to_a_branch_condition()
     {
         var gate = Guid.NewGuid();

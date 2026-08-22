@@ -8,6 +8,8 @@ internal sealed class Survey
     public LocalizedText Title { get; set; } = LocalizedText.Empty;
     public LocalizedText Intro { get; set; } = LocalizedText.Empty;
     public LocalizedText ThankYou { get; set; } = LocalizedText.Empty;
+    public LocalizedText InvitationEmailSubject { get; set; } = LocalizedText.Empty;
+    public LocalizedText InvitationEmailMessage { get; set; } = LocalizedText.Empty;
     public string DefaultCulture { get; set; } = "en";
     public bool AllowAnonymous { get; set; }
     public SurveyStatus Status { get; set; } = SurveyStatus.Draft;

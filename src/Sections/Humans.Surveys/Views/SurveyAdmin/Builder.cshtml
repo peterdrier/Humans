@@ -29,10 +29,7 @@
     @if (!Model.IsNew)
     {
         <div class="d-flex align-items-center gap-2">
-            <a asp-controller="SurveyAdmin" asp-action="Preview" asp-route-id="@Model.Id"
-               class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">
-                <i class="fa-solid fa-eye me-1"></i>Preview
-            </a>
+            <partial name="_SurveyPreviewMenu" model="@Model.Id!.Value" />
             <span class="badge @(Model.Status == SurveyStatus.Open ? "bg-success" : Model.Status == SurveyStatus.Closed ? "bg-secondary" : "bg-warning text-dark")">@Model.Status</span>
             @if (Model.Status != SurveyStatus.Open)
             {
@@ -144,6 +141,20 @@
                     <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="e.g. feedback-2026" />
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header py-2"><strong>Invitation email</strong></div>
+        <div class="card-body">
+            <p class="small text-muted mb-2">
+                Customize the initial invitation. Humans adds the greeting, survey title, survey-link button,
+                and sign-off. Leave either field blank to use the standard wording.
+            </p>
+            <partial name="_SurveyLocalizedField"
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), "Email subject", Model.InvitationEmailSubject, MaxLength: 200))" />
+            <partial name="_SurveyLocalizedField"
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), "Email message", Model.InvitationEmailMessage, Multiline: true, MaxLength: 4000))" />
         </div>
     </div>
 

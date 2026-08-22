@@ -19,13 +19,24 @@ risks creating misleading invitation/funnel data and makes authoring unnecessari
 - Page navigation is read-only. The final Submit button is disabled and every preview page states that
   answers and activity are not saved.
 
+### Preview the invitation email
+
+- The survey list, builder, and Send page use a shared Preview dropdown with **Preview survey** and
+  **Preview email** choices; both open in a new browser tab.
+- The email preview is side-effect-free and shows the subject and rendered invitation body for the
+  currently authenticated user's notification email and preferred culture.
+- It uses the same typed message factory, signed preview link, and Email-owned branded body composer
+  as `Send preview email to me`, including the real header, footer, and environment banner, but does
+  not enqueue an outbox message.
+
 ### Send a preview email to myself
 
 - A Board or Admin can queue a preview email from the Send page or from the preview notice shown on
   the intro, question, and thank-you pages.
 - The recipient is the currently authenticated user's canonical notification email.
-- The message uses the same localized survey-invitation template, subject, routing category, branded
-  wrapping, and outbox transport as a regular invitation.
+- The message uses the same localized survey-invitation template, authored custom subject/message
+  (or standard-copy fallbacks), routing category, branded wrapping, and outbox transport as a regular
+  invitation.
 - Its signed link preserves the recipient's resolved culture and opens the protected preview instead of
   the answering flow.
 - Sending or following a preview email creates no invitation, response, draft, reminder, completion,
@@ -39,6 +50,7 @@ All preview rendering and send actions are under the existing `BoardOrAdmin`-pro
 - `GET /Survey/Admin/Preview/{id}`
 - `GET /Survey/Admin/Preview/{id}/Page`
 - `GET /Survey/Admin/Preview/{id}/ThankYou`
+- `GET /Survey/Admin/Preview/{id}/Email`
 - `POST /Survey/Admin/Preview/{id}/Email`
 
 The regular `/Survey/Answer?t=...` entry route recognizes a distinct, seven-day Data Protection

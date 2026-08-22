@@ -36,6 +36,9 @@ internal sealed class SurveyService(
     ISurveyInviteTokenProvider tokenProvider,
     IGoogleTranslationService translation) : ISurveyService, ISurveyReminderSender, IUserDataContributor
 {
+    private const int InvitationEmailSubjectMaxLength = 200;
+    private const int InvitationEmailMessageMaxLength = 4000;
+
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
         var surveys = await repo.GetAllSummariesAsync(ct);
@@ -56,7 +59,8 @@ internal sealed class SurveyService(
         if (s is null) return null;
 
         var input = new SurveyEditInput(
-            s.Title, s.Intro, s.ThankYou, s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
+            s.Title, s.Intro, s.ThankYou, s.InvitationEmailSubject, s.InvitationEmailMessage,
+            s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
             s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
             ToQuestionInputs(s));
 
@@ -67,6 +71,9 @@ internal sealed class SurveyService(
     {
         ValidateAudienceConfiguration(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
+        var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
+        var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
+        ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
         var questions = MapQuestions(surveyId, input);
@@ -79,6 +86,8 @@ internal sealed class SurveyService(
             Title = input.Title,
             Intro = input.Intro,
             ThankYou = input.ThankYou,
+            InvitationEmailSubject = invitationEmailSubject,
+            InvitationEmailMessage = invitationEmailMessage,
             DefaultCulture = input.DefaultCulture,
             AllowAnonymous = input.AllowAnonymous,
             Status = SurveyStatus.Draft,
@@ -105,6 +114,9 @@ internal sealed class SurveyService(
     {
         ValidateAudienceConfiguration(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
+        var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
+        var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
+        ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
         var questions = MapQuestions(surveyId, input);
         ValidateQuestionConfiguration(questions);
@@ -116,6 +128,8 @@ internal sealed class SurveyService(
             Title = input.Title,
             Intro = input.Intro,
             ThankYou = input.ThankYou,
+            InvitationEmailSubject = invitationEmailSubject,
+            InvitationEmailMessage = invitationEmailMessage,
             DefaultCulture = input.DefaultCulture,
             AllowAnonymous = input.AllowAnonymous,
             OpensAt = input.OpensAt,
@@ -144,6 +158,8 @@ internal sealed class SurveyService(
         var title = Copy(e.Title);
         var intro = Copy(e.Intro);
         var thankYou = Copy(e.ThankYou);
+        var invitationEmailSubject = Copy(e.InvitationEmailSubject);
+        var invitationEmailMessage = Copy(e.InvitationEmailMessage);
         var questions = e.Questions.Select(q => new
         {
             Question = q,
@@ -155,7 +171,14 @@ internal sealed class SurveyService(
             GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
         }).ToList();
 
-        var allTexts = new List<Dictionary<string, string>> { title, intro, thankYou };
+        var allTexts = new List<Dictionary<string, string>>
+        {
+            title,
+            intro,
+            thankYou,
+            invitationEmailSubject,
+            invitationEmailMessage,
+        };
         foreach (var q in questions)
         {
             allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
@@ -184,6 +207,7 @@ internal sealed class SurveyService(
 
         var input = new SurveyEditInput(
             new LocalizedText(title), new LocalizedText(intro), new LocalizedText(thankYou),
+            new LocalizedText(invitationEmailSubject), new LocalizedText(invitationEmailMessage),
             e.DefaultCulture, e.AllowAnonymous, e.OpensAt, e.ClosesAt,
             e.AudienceType, e.AudienceTeamId, e.AudienceLoggedInSince, e.PublicSlug,
             questions.Select(q => q.Question with
@@ -264,8 +288,6 @@ internal sealed class SurveyService(
 
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
         var users = await userService.GetUserInfosAsync(netNew, ct);
-        var title = survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture);
-
         var invitationsCreated = 0;
         var emailsQueued = 0;
         var failed = 0;
@@ -292,10 +314,17 @@ internal sealed class SurveyService(
             await repo.AddInvitationAndSaveAsync(inv, ct);
             invitationsCreated++;
 
-            var culture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : survey.DefaultCulture;
+            var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
+            var culture = preferredCulture.IsSupportedCultureCode()
+                ? preferredCulture!
+                : survey.DefaultCulture;
             var name = user?.BurnerName ?? string.Empty;
+            var title = survey.Title.Resolve(culture, survey.DefaultCulture);
+            var customSubject = survey.InvitationEmailSubject.Resolve(culture, survey.DefaultCulture);
+            var customMessage = survey.InvitationEmailMessage.Resolve(culture, survey.DefaultCulture);
             var token = tokenProvider.Create(inv.Id);
-            var msg = emailMessages.SurveyInvitation(email, name, title, token, culture);
+            var msg = emailMessages.SurveyInvitation(
+                email, name, title, token, culture, customSubject, customMessage);
 
             try
             {
@@ -1351,6 +1380,45 @@ internal sealed class SurveyService(
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
             return "A cutoff date is required for the Logged in since audience.";
         return null;
+    }
+
+    private static LocalizedText NormalizeLocalizedText(LocalizedText text)
+        => new(text.Values.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value?.Trim() ?? string.Empty,
+            StringComparer.OrdinalIgnoreCase));
+
+    private static void ValidateInvitationEmailCopy(
+        LocalizedText subject,
+        LocalizedText message)
+    {
+        var multilineSubject = subject.Values.FirstOrDefault(
+            pair => pair.Value.Contains('\r', StringComparison.Ordinal)
+                    || pair.Value.Contains('\n', StringComparison.Ordinal));
+        if (!string.IsNullOrEmpty(multilineSubject.Key))
+        {
+            throw new InvalidOperationException(
+                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).");
+        }
+
+        ValidateLocalizedLength(
+            subject,
+            InvitationEmailSubjectMaxLength,
+            "Survey invitation email subjects");
+        ValidateLocalizedLength(
+            message,
+            InvitationEmailMessageMaxLength,
+            "Survey invitation email messages");
+
+        static void ValidateLocalizedLength(LocalizedText text, int maxLength, string description)
+        {
+            var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
+            if (!string.IsNullOrEmpty(offender.Key))
+            {
+                throw new InvalidOperationException(
+                    $"{description} must be {maxLength} characters or fewer ({offender.Key}).");
+            }
+        }
     }
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>

@@ -168,6 +168,7 @@ internal sealed class EmailController(
     [HttpGet("EmailPreview")]
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
+        [FromServices] IEmailBodyComposer bodyComposer,
         [FromServices] IOptions<EmailSettings> emailSettings)
     {
         var settings = emailSettings.Value;
@@ -177,7 +178,14 @@ internal sealed class EmailController(
         {
             var (name, email) = Personas[culture];
             var ctx = new PreviewContext(culture, name, email, settings);
-            previews[culture] = PreviewDefinitions.Select(build => build(renderer, ctx)).ToList();
+            previews[culture] = PreviewDefinitions
+                .Select(build => build(renderer, ctx))
+                .Select(item =>
+                {
+                    item.Body = bodyComposer.Compose(item.Body).HtmlBody;
+                    return item;
+                })
+                .ToList();
         }
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
