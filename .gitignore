@@ -152,3 +152,7 @@ insp*.xml
 
 # Generated artifact of the localization-coverage sweep (tests/.../Localization). Re-created on each run.
 /localization-sweep-report.md
+
+# Python bytecode (.claude/session-cost.py and any future tooling script).
+__pycache__/
+*.pyc
