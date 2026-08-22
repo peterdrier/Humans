@@ -11,9 +11,9 @@ because `IApplicationService` is the marker the service layer is defined by
 (`docs/architecture/peters-hard-rules.md`), not because anything needs the seam.
 
 The two things outside the section that mention "Cantina" are neither references to this
-project: `AdminNavTree` reaches `/Cantina/Roster` by controller *name*, and
+project: the admin nav reaches `/Cantina/Roster` by controller *name*, and
 `RoleNames.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` are `string` constants in
-`Humans.Domain` and `Humans.UI`.
+`Humans.Base`.
 
 A folder rather than a `Humans.Cantina.Contracts` project: folder vs. project is decided by
 where the consumer lives, and there are no consumers at all.

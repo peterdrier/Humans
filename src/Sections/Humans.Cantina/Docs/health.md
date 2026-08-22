@@ -79,6 +79,11 @@ private controller helpers that a nullable parameter would delete.
   preferences and an "Unanswered" pseudo-bucket; a stored value outside that set is currently
   counted as neither (see the run file's finding 1). The intended rule — treat unknown as
   Unanswered — is stated in a code comment but not implemented.
+- **Burner names come from the profile row, not from the user read-model.** The service reads
+  `ProfileInfo.BurnerName` and drops humans whose `UserInfo.Profile` is null, so a profile-less
+  on-site human renders as `"(unknown)"`. `Cantina.md` documents the other path —
+  `UserInfo.BurnerName`, which carries the Users-side legacy fallback. One of the two has to
+  give; see the run file's finding 2.
 - **`VolunteerEventProfile.DietaryPreference` / `.Allergies` / `.Intolerances` are marked
   "RETAINED for prod-soak drop"** in Shifts. When they go, every doc that still names them as
   Cantina's source (and this section's freshness triggers) should be re-checked in the same pass.

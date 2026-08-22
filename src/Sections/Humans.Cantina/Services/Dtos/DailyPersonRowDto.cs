@@ -14,9 +14,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// </summary>
 /// <param name="UserId">The human's user id.</param>
 /// <param name="BurnerName">
-/// Display label, sourced from the human's profile <c>BurnerName</c>;
-/// falls back to the user's <c>DisplayName</c> if no profile / burner
-/// name is set, and finally to <c>"(unknown)"</c> if neither resolves.
+/// Display label, sourced from the human's profile <c>BurnerName</c>,
+/// or <c>"(unknown)"</c> when the human has no profile row.
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in

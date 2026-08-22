@@ -13,12 +13,12 @@ namespace Humans.Cantina.Services;
 /// further service look-ups.
 ///
 /// <para>
-/// The service stitches three sources together at the Application
-/// boundary so no medical fields cross it: the on-site cohort + their
-/// <c>VolunteerEventProfile</c> rows from <c>IShiftManagementRepository</c>
-/// (queried per-day for the 7 days Mon–Sun and unioned by user id), and
-/// burner-name labels from <c>IProfileService</c> with a
-/// <c>User.DisplayName</c> fallback via <c>IUserService</c>.
+/// The service stitches two sources together at the section boundary so no
+/// medical fields cross it: the on-site cohort from
+/// <c>IShiftManagementServiceRead</c> (queried per day and unioned by user
+/// id), and dietary fields plus burner names from <c>IUserServiceRead</c>'s
+/// cached profile read-model. Both are section services — Cantina never
+/// touches another section's repository.
 /// </para>
 /// </summary>
 internal interface ICantinaRosterService : IApplicationService

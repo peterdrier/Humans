@@ -60,8 +60,8 @@ namespace Humans.Cantina.Services.Dtos;
 /// <param name="People">
 /// One row per unique on-site human on this day. Returned in unspecified
 /// order — the web layer's <c>CantinaRosterAssembler.WithSortedPeople</c>
-/// alphabetizes for display. Humans with no <c>VolunteerEventProfile</c>
-/// still appear here with empty dietary fields.
+/// alphabetizes for display. Humans with no profile row still appear here
+/// with empty dietary fields.
 /// </param>
 internal sealed record DailyMatrixDto(
     int DayOffset,
