@@ -147,11 +147,6 @@ public sealed class CantinaCsvWritersTests
             WeekStartOffset: 0,
             TotalOnSite: 1,
             UnansweredCount: 0,
-            DietaryBreakdown: new Dictionary<string, int>(StringComparer.Ordinal),
-            AllergyRollup: [],
-            AllergyOtherEntries: [],
-            IntoleranceRollup: [],
-            IntoleranceOtherEntries: [],
             People:
             [
                 new DailyPersonRowDto(

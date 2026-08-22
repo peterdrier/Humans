@@ -269,11 +269,6 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 WeekStartOffset: weekStartOffset,
                 TotalOnSite: 0,
                 UnansweredCount: 0,
-                DietaryBreakdown: EmptyDietaryBreakdown(),
-                AllergyRollup: EmptyRollup(DietaryOptions.AllergyOptions),
-                AllergyOtherEntries: Array.Empty<string>(),
-                IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
-                IntoleranceOtherEntries: Array.Empty<string>(),
                 People: Array.Empty<DailyPersonRowDto>());
         }
 
@@ -305,28 +300,10 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 
-        // Aggregates are over the day's cohort (no week dedup needed — each
-        // user appears exactly once in userIds for this single day).
-        var dayProfiles = new List<ProfileInfo>(userIds.Count);
-        foreach (var id in userIds)
-        {
-            if (profileByUserId.TryGetValue(id, out var p))
-                dayProfiles.Add(p);
-        }
-
-        var dietaryBreakdown = BuildDietaryBreakdown(dayProfiles, userIds.Count);
-        var (allergyRollup, allergyOther) = BuildRollup(
-            dayProfiles,
-            p => p.Allergies,
-            p => p.AllergyOtherText,
-            DietaryOptions.AllergyOptions);
-        var (intoleranceRollup, intoleranceOther) = BuildRollup(
-            dayProfiles,
-            p => p.Intolerances,
-            p => p.IntoleranceOtherText,
-            DietaryOptions.IntoleranceOptions);
-
-        var answeredCount = dayProfiles.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
+        // The chip rollups the daily page shows are counted from People by the
+        // view and the CSV writer, so the only day-scoped aggregate the service
+        // still owes is the unanswered headline count.
+        var answeredCount = people.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
         var unanswered = userIds.Count - answeredCount;
 
         return new DailyMatrixDto(
@@ -337,11 +314,6 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             WeekStartOffset: weekStartOffset,
             TotalOnSite: userIds.Count,
             UnansweredCount: unanswered,
-            DietaryBreakdown: dietaryBreakdown,
-            AllergyRollup: allergyRollup,
-            AllergyOtherEntries: allergyOther,
-            IntoleranceRollup: intoleranceRollup,
-            IntoleranceOtherEntries: intoleranceOther,
             People: people);
     }
 
