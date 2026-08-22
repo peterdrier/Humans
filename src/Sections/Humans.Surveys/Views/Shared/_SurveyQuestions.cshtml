@@ -21,8 +21,6 @@
             <p class="form-text mt-0 mb-2">@q.HelpText</p>
         }
 
-        <input type="hidden" name="Answers[@i].QuestionId" value="@q.Id" />
-
         @switch (q.Type)
         {
             case SurveyQuestionType.SingleChoice:
@@ -130,6 +128,12 @@
                 break;
             }
         }
+
+        @* Keep this after the visible answer control. Bootstrap floats legend and applies
+           `legend + * { clear: left }`; an invisible input in that position prevents the
+           first checkbox/radio/table from clearing the legend. Field order does not affect
+           MVC's indexed answer binding. *@
+        <input type="hidden" name="Answers[@i].QuestionId" value="@q.Id" />
 
         @if (hasError)
         {

@@ -371,6 +371,56 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             .And.Contain("culture=fr");
     }
 
+    [HumansFact(Timeout = 60000)]
+    public async Task Preview_question_controls_clear_the_legend_before_hidden_binding_fields()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var token = await GetCreateTokenAsync();
+
+        var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", token),
+            ("Title[en]", $"Preview controls {Guid.NewGuid():N}"),
+            ("Questions.Index", "choices"),
+            ("Questions[choices].Id", Guid.NewGuid().ToString()),
+            ("Questions[choices].PageNumber", "1"),
+            ("Questions[choices].Type", nameof(SurveyQuestionType.MultiChoice)),
+            ("Questions[choices].Prompt[en]", "Choose days"),
+            ("Questions[choices].Options.Index", "friday"),
+            ("Questions[choices].Options[friday].Value", "friday"),
+            ("Questions[choices].Options[friday].Label[en]", "Friday"),
+            ("Questions.Index", "grid"),
+            ("Questions[grid].Id", Guid.NewGuid().ToString()),
+            ("Questions[grid].PageNumber", "1"),
+            ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].Prompt[en]", "Choose times"),
+            ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Multiple)),
+            ("Questions[grid].Options.Index", "morning"),
+            ("Questions[grid].Options[morning].Value", "morning"),
+            ("Questions[grid].Options[morning].Label[en]", "Morning"),
+            ("Questions[grid].GridRows.Index", "saturday"),
+            ("Questions[grid].GridRows[saturday].Value", "saturday"),
+            ("Questions[grid].GridRows[saturday].Label[en]", "Saturday")), ct);
+        var surveyId = ExtractSurveyId(saveResp);
+
+        var preview = await Client.GetAsync($"/Survey/Admin/Preview/{surveyId}/Page?page=1", ct);
+        preview.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await preview.Content.ReadAsStringAsync(ct);
+
+        var firstCheckbox = html.IndexOf("id=\"q0_friday\"", StringComparison.Ordinal);
+        var choiceBindingField = html.IndexOf("name=\"Answers[0].QuestionId\"", StringComparison.Ordinal);
+        firstCheckbox.Should().BeGreaterThan(-1);
+        choiceBindingField.Should().BeGreaterThan(firstCheckbox,
+            because: "the first visible choice must immediately follow and clear Bootstrap's floated legend");
+
+        var gridTable = html.IndexOf("class=\"table table-sm align-middle survey-grid", StringComparison.Ordinal);
+        var gridBindingField = html.IndexOf("name=\"Answers[1].QuestionId\"", StringComparison.Ordinal);
+        gridTable.Should().BeGreaterThan(-1);
+        gridBindingField.Should().BeGreaterThan(gridTable,
+            because: "the visible Grid table must clear the legend before the hidden binding field");
+        html.Should().Contain("Morning").And.Contain("Saturday");
+    }
+
     private async Task<string> GetCreateTokenAsync()
     {
         var createResp = await Client.GetAsync(
