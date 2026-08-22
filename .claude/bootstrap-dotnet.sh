@@ -72,6 +72,25 @@ VERDICT_FILE="$CACHE_DIR/build-verdict"
 export PATH="$PATH:$HOME/.dotnet/tools"
 [ -d "$HOME/.dotnet" ] && export PATH="$HOME/.dotnet:$PATH"
 
+# Anything installed under $HOME has to be reachable from the *next* command,
+# not just this one. A cloud container runs each tool call as a fresh
+# non-interactive shell and sources neither ~/.bashrc nor ~/.profile, so an
+# `export PATH` here dies with this process and the caller's `dotnet build`
+# still fails. Link into a directory that is already on PATH instead.
+LINK_DIR=""
+for d in /usr/local/bin /usr/bin; do
+  case ":$PATH:" in *":$d:"*) [ -w "$d" ] && { LINK_DIR="$d"; break; } ;; esac
+done
+
+# Nothing to link is the normal case (a distro SDK is already on PATH), so this
+# never fails the run.
+link_onto_path() {  # <absolute-target> <command-name>
+  if [ -n "$LINK_DIR" ] && [ -x "$1" ] && [ ! -e "$LINK_DIR/$2" ]; then
+    ln -s "$1" "$LINK_DIR/$2" || return 0
+  fi
+  return 0
+}
+
 # ── What this repo asks for ───────────────────────────────────────────────────
 # Read the requirement rather than hardcoding it, so a global.json bump does not
 # silently leave this script installing last year's SDK.
@@ -81,19 +100,30 @@ SDK_MAJOR_MINOR="${SDK_VERSION%.*}"          # 10.0.100 -> 10.0
 
 SDK_SOURCE="already present"
 
+# `dotnet` on PATH is not the same as an SDK this repo can use: the host is
+# happy to exist while global.json resolves to nothing (a .NET 9 SDK against a
+# 10.0 requirement, say). `dotnet --version` run from the repo root does the
+# real resolution, so ask it rather than asking whether the binary exists.
+usable_sdk() { command -v dotnet >/dev/null 2>&1 && dotnet --version >/dev/null 2>&1; }
+
 # ── 1. The SDK ────────────────────────────────────────────────────────────────
-if ! command -v dotnet >/dev/null 2>&1; then
+if ! usable_sdk; then
   # The official installer is preferred: it serves every feature band, so it can
   # satisfy analyzer packages that need a newer Roslyn than a distro build ships.
   # Some environments deny its host by egress policy. Probe once and believe the
   # answer — a policy denial is not something to retry or route around.
   INSTALLER_HOST="https://builds.dotnet.microsoft.com"
-  say "no dotnet on PATH; global.json wants $SDK_VERSION — probing $INSTALLER_HOST"
+  if command -v dotnet >/dev/null 2>&1; then
+    say "dotnet is on PATH but no SDK satisfies global.json ($SDK_VERSION) — probing $INSTALLER_HOST"
+  else
+    say "no dotnet on PATH; global.json wants $SDK_VERSION — probing $INSTALLER_HOST"
+  fi
   if curl -fsS --max-time 20 -o /dev/null "$INSTALLER_HOST/dotnet/release-metadata/releases-index.json" 2>/dev/null; then
     say "installer host reachable; installing channel $SDK_MAJOR_MINOR"
     curl -fsSL --max-time 120 https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
     bash /tmp/dotnet-install.sh --channel "$SDK_MAJOR_MINOR" --install-dir "$HOME/.dotnet"
     export PATH="$HOME/.dotnet:$PATH"
+    link_onto_path "$HOME/.dotnet/dotnet" dotnet
     SDK_SOURCE="official installer"
   elif command -v apt-get >/dev/null 2>&1; then
     say "installer host unreachable (egress policy or offline); falling back to the distro package"
@@ -106,8 +136,8 @@ if ! command -v dotnet >/dev/null 2>&1; then
   fi
 fi
 
-command -v dotnet >/dev/null 2>&1 || { warn "dotnet still not on PATH after install"; exit 1; }
-SDK_ACTUAL="$(dotnet --version 2>/dev/null || echo unknown)"
+usable_sdk || { warn "still no SDK satisfying global.json ($SDK_VERSION) after install"; exit 1; }
+SDK_ACTUAL="$(dotnet --version)"
 
 # ── 2 & 3. Tools, each only if missing ────────────────────────────────────────
 STRYKER_STATUS="skipped"
@@ -121,16 +151,20 @@ if [ "$TOOLS" = "1" ]; then
     warn "dotnet tool restore failed — mutation testing will not be available"
   fi
 
-  if command -v reforge >/dev/null 2>&1; then
+  if command -v reforge >/dev/null 2>&1 || dotnet tool update --global Reforge >/dev/null 2>&1; then
     # `reforge --version` appends a build hash; the version alone is what reads well.
     REFORGE_STATUS="$(reforge --version 2>/dev/null | head -1 | cut -d+ -f1 || echo present)"
-  elif dotnet tool update --global Reforge >/dev/null 2>&1; then
-    REFORGE_STATUS="$(reforge --version 2>/dev/null | head -1 | cut -d+ -f1 || echo installed)"
   else
     REFORGE_STATUS="FAILED"
     warn "Reforge install failed — surface scores will not be available"
   fi
 fi
+
+# Link whatever ended up under $HOME onto PATH, regardless of whether this run
+# installed it or found it. `command -v` above is answered by this script's own
+# PATH export, which the caller's next shell will not have.
+link_onto_path "$HOME/.dotnet/dotnet" dotnet
+link_onto_path "$HOME/.dotnet/tools/reforge" reforge
 
 # ── 4. Can this SDK actually build the repo? ──────────────────────────────────
 # Only an open question after a fallback install: this repo's analyzers are
@@ -195,4 +229,22 @@ bootstrap-dotnet: summary
 EOF
 if [ -n "$BUILD_DETAIL" ]; then
   echo "               ${BUILD_DETAIL}"
+fi
+
+# The caller's next command is a new shell. Say plainly whether what we set up
+# will still be there, because a happy summary followed by "dotnet: not found"
+# is the worst outcome this script can produce.
+UNREACHABLE=""
+command -v dotnet >/dev/null 2>&1 || UNREACHABLE="dotnet"
+if [ "$TOOLS" = "1" ] && ! command -v reforge >/dev/null 2>&1; then
+  UNREACHABLE="${UNREACHABLE:+$UNREACHABLE and }reforge"
+fi
+if [ -n "$UNREACHABLE" ]; then
+  cat <<EOF
+
+  WARNING  ${UNREACHABLE} live under \$HOME and could not be linked onto PATH.
+           This shell can see them; the next command cannot. Prefix later
+           commands with:
+               export PATH="\$HOME/.dotnet:\$HOME/.dotnet/tools:\$PATH"
+EOF
 fi
