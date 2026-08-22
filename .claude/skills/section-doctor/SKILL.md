@@ -95,56 +95,56 @@ Selection is computed live every run — nothing is stored. (`docs/health/plan.m
 replan machinery are gone, 2026-08-22: a checked-in plan went stale whenever merges paused for
 long enough, and the runs must keep going unattended.)
 
-**Blocked set first** (main thread, cheap):
+**Fetch the open-PR list once** (main thread, cheap):
 
 ```bash
-gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName,title \
-  --jq '.[] | select(.headRefName | startswith("section-doctor/"))'
+gh pr list --repo peterdrier/Humans --state open --limit 200 \
+  --json number,headRefName,title,files > $WORKTREE/.prs.json   # never committed
 ```
 
-(`--limit` is mandatory — `gh pr list` fetches only 30 by default and the prefix filter runs
-client-side in `--jq`, so an older open run silently drops out without it. `--search "head:..."`
-matches exact branch names, not prefixes — don't use it.) The **blocked set** is the sections
-named by those open PRs' titles (`doctor(<Section>): …`): an open run PR must be dealt with
-before its section can be doctored again. If **every** section is blocked, report the open PRs
-and go straight to Phase 9 teardown — nothing has been written at this point, so the worktree
-is clean and `git worktree remove` succeeds without `--force`.
+(`--limit` is mandatory — `gh pr list` fetches only 30 by default, so an older open run
+silently drops out without it. `--search "head:..."` matches exact branch names, not prefixes
+— don't use it.) In a cloud session without `gh`, write the same JSON shape from the GitHub
+MCP tools: `[{number, headRefName, title, files: [paths]}]` for all open PRs.
 
-**Then dispatch the selector** — a focused **sonnet** subagent whose entire job is to return
-one section name (measured 2026-08-22: ~270k fresh + ~1.1M cached input tokens over 19 calls,
-≈$1.50 API-equivalent). It works read-only from `$WORKTREE`, reads nothing beyond the command
-output below and the sections' `Docs/health.md` files (tier-2 dates), and gets the blocked set
-passed in. Its brief:
+**Then run the selector script** (scripted 2026-08-22 — the selection maths used to be a
+sonnet subagent burning ~$1.50/run; a subagent remains only for the re-doctor judgment below):
 
-1. `dotnet build Humans.slnx -v quiet` (an unbuilt solution silently under-reports Reforge
-   scores; the build also serves Phase 3/4), then `reforge surface-score --format compact`.
-2. Pool: every `src/Sections/` project, minus the blocked set. **Feature-active down-rank**:
-   sections touched by an open non-doctor PR (`gh pr list --repo peterdrier/Humans --state
-   open --limit 200 --json headRefName,files`, changed paths mapped to
-   `src/Sections/Humans.<X>/`) drop to the bottom of whichever tier they land in — picked
-   only when no non-active section is eligible there, but never excluded: an open feature PR
-   must not keep a section from ever being doctored.
-3. Tier: a section is previously-doctored iff `src/Sections/Humans.<X>/Docs/health.md` exists
-   on `origin/main` (any newer copy lives on an open PR, and that section is blocked anyway).
-   Never-doctored sections always outrank previously-doctored ones.
-4. While any eligible never-doctored section remains: rank that tier by score (feature-active
-   members set aside per step 2) and take the **median** — middle-out. The process proves
-   itself on mid-sized sections; the biggest and smallest get their turn once the middle has
-   been worked.
-5. Once every eligible section has been doctored: read each section's `Docs/health.md` for its
-   last-assessed date, then rank by days since that date combined with change volume since it
-   (`git log --stat` over the section's paths) — more and bigger changes come sooner. Judgment
-   call; no exact formula.
-6. Return exactly three fields and nothing else: `SECTION: <Name>`,
-   `TIER: never-doctored | re-doctor`, `RATIONALE:` (≤3 lines: pool size after exclusions,
-   what was blocked/skipped, why this pick).
+```bash
+python .claude/skills/section-doctor/select-section.py --prs $WORKTREE/.prs.json
+```
+
+It computes the **blocked set** (sections named by open `section-doctor/` PRs' titles,
+`doctor(<Section>): …` — an open run PR must be dealt with before its section can be doctored
+again), the pool (every `src/Sections/` project), the **feature-active down-rank** (sections
+touched by open non-doctor PRs sink to the tier bottom — picked only when nothing else is
+eligible there, never excluded), the tiers (previously-doctored iff
+`src/Sections/Humans.<X>/Docs/health.md` exists at the branch point; never-doctored always
+outranks), builds the solution (an unbuilt solution silently under-reports Reforge scores; the
+build also serves Phase 3/4), runs `reforge surface-score --format compact`, and takes the
+**median** of the ranked never-doctored tier — middle-out: the process proves itself on
+mid-sized sections; the biggest and smallest get their turn once the middle has been worked.
+It prints `SECTION:` / `TIER:` / `RATIONALE:` plus the full ranked table for the run file, and
+falls back to a LOC ranking (flagged in its output) when reforge is unusable. Act on its
+verdicts — never re-derive the maths in-band:
+
+- **`ALL BLOCKED`** (exit 3): report the open PRs and go straight to Phase 9 teardown —
+  nothing has been written at this point, so the worktree is clean and `git worktree remove`
+  succeeds without `--force`.
+- **`JUDGMENT REQUIRED`** (exit 2): every eligible section is previously-doctored. Only now
+  dispatch a focused **sonnet** selector subagent, giving it the script's table: read each
+  section's `Docs/health.md` for its last-assessed date, rank by days since that date combined
+  with change volume since it (`git log --stat` over the section's paths) — more and bigger
+  changes come sooner. Judgment call; no exact formula. It returns `SECTION:` / `TIER:
+  re-doctor` / `RATIONALE:` (≤3 lines) and nothing else.
 
 Sections passed over as blocked are noted in this run's run file under skipped
 (`<section> — open PR #N`); they need no other bookkeeping — the tier/staleness scan returns
 to them.
 
 Take the selected section (or `--section`, which skips the selector but never the blocked
-set). Sections are `src/Sections/` projects only.
+set — check it with `select-section.py --prs $WORKTREE/.prs.json --blocked-only`). Sections
+are `src/Sections/` projects only.
 
 **Never work a section in the blocked set.** A section with an open section-doctor PR has
 unmerged strikes that today's run cannot see — re-doctoring it duplicates work and produces
@@ -158,7 +158,7 @@ runs, because a target written after a linter run is a summary of the linter run
 Pass 2). This skill had it backwards until 2026-08-18, and the Finance run's "ideal shape" came
 out as a restatement of its reforge score — the failure that rule exists to prevent.
 
-The Phase 2 selector already built the solution on a normal run; only when it was skipped
+Phase 2's selector script already built the solution on a normal run; only when it was skipped
 (`--section`) start `dotnet build Humans.slnx -v quiet` in the background now — reforge needs a
 built solution and 3d's tool threads need the build. Do not look at its output until 3d.
 
