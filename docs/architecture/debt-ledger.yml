@@ -262,6 +262,12 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-08-22
+    what: "docs/features/global/background-jobs.md and Finance.md both carried POST /Finance/Creditors/Resync, deleted in nobodies-collective/Humans#1267 — a route can be removed from the controller and survive in every doc that names it, because nothing sweeps route strings. A repo-wide check that every /Route referenced under docs/ resolves to a live action would have caught it (found by /section-doctor on Finance, 2026-08-18)."
+    review: light
+  - added: 2026-08-22
+    what: "Budget's Views/BudgetAdmin/NoActiveYear.cshtml has no links to the three /Finance/* pages that YearDetail.cshtml carries, so with no active budget year the Holded provisioning, unmatched-doc and creditor-accounts pages have no nav path at all (found by /section-doctor on Finance, 2026-08-18; the view is Budget's)."
+    review: light
   - added: 2026-08-18
     what: "DevelopmentDashboardSeeder fails on a fresh Development database while seeding dashboard scenarios: it calls Signup.Refuse() after the signup has already reached Confirmed state, raising 'Cannot refuse signup in Confirmed state' and aborting the remaining seed data. Reproduced while locally testing the Surveys audience workflow; needs a focused correction to the scenario's state-transition ordering."
     review: panel
