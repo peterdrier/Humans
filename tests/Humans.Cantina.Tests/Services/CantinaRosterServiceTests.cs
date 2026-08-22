@@ -98,6 +98,29 @@ public class CantinaRosterServiceTests
         ActiveEvent() with { BuildStartOffset = buildStart, StrikeEndOffset = strikeEnd };
 
     [HumansFact]
+    public async Task GetWeeklyRoster_NoOffset_DefaultsToTheWeekContainingToday()
+    {
+        // Clock is Tue 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar
+        // day — and GateOpening is Tue 7 Jul, so the Monday of this week is
+        // 6 Jul: offset -1.
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+
+        var result = await _service.GetWeeklyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.WeekStartOffset.Should().Be(-1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    {
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+
+        var result = await _service.GetWeeklyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.WeekStartOffset.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
     {
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);

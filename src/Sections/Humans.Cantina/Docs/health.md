@@ -30,10 +30,9 @@ Everything the section exposes answers one of four questions.
 | **Week overview** | How many are here each day this week, and how many haven't answered? | `GET /Cantina/Roster` |
 | **Day detail** | Exactly who is here on this one day, and what does each of them eat? | `GET /Cantina/Roster/Day` |
 | **Take it away** | The same two answers, as a file. | `GET /Cantina/Roster/Csv`, `GET /Cantina/Roster/Day/Csv` |
-| **Which week/day did you mean?** | Resolve "now" to an offset when the URL doesn't say. | `GetCurrentWeekStartOffsetForActiveEvent`, `GetCurrentDayOffsetForActiveEvent` |
 
-The fourth shape is not a question a coordinator asks — it is bookkeeping that leaked into the
-service interface. See §3.
+Three shapes, and "which week did you mean?" is not one of them — resolving a missing offset to
+"now" is the service's own default, not a question a coordinator asks.
 
 ## 3. Structure
 
@@ -48,11 +47,9 @@ The section is a read-side aggregator with no storage of its own. Written fresh,
   take a finished payload and arrange it.
 - **Two payload records**, one per real question, plus the small row/rollup records they carry.
 
-Today's layout differs in exactly one place: the two "which week/day did you mean?" methods sit
-on the service interface and are called *by the controller*, which then hands the answer back to
-the service. That forces `IBurnSettingsService` and `IClock` into the controller purely so it can
-ask a question it immediately gives back — 2 interface methods, 2 controller dependencies and 2
-private controller helpers that a nullable parameter would delete.
+The layout matches. Each entry point takes a nullable offset and resolves the default itself
+from the event it has already loaded, so the controller passes the query parameter straight
+through and owns nothing but sorting and file naming.
 
 ## 4. Invariants
 

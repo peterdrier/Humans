@@ -39,9 +39,16 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         _clock = clock;
     }
 
-    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default)
     {
         var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        return await BuildWeeklyRosterAsync(
+            burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
+    }
+
+    private async Task<WeeklyRosterDto> BuildWeeklyRosterAsync(
+        BurnSettingsInfo? burn, int weekStartOffset, CancellationToken ct)
+    {
         var weekStartDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(weekStartOffset);
@@ -182,30 +189,36 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             EventTodayDate: eventTodayDate);
     }
 
-    public int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
+    /// <summary>
+    /// The offset of the Monday of the week containing today, in the event's
+    /// timezone. Zero without an active event — nothing to be relative to.
+    /// </summary>
+    private int CurrentWeekStartOffset(BurnSettingsInfo? burn)
     {
-        ArgumentNullException.ThrowIfNull(burn);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var todayLocal = now.InZone(zone).Date;
+        if (burn is null || GetEventTodayDate(burn) is not { } today)
+            return 0;
+
         // NodaTime: IsoDayOfWeek.Monday = 1; LocalDate.DayOfWeek is an IsoDayOfWeek.
-        var daysSinceMonday = ((int)todayLocal.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-        var monday = todayLocal.PlusDays(-daysSinceMonday);
-        return Period.Between(burn.GateOpeningDate, monday, PeriodUnits.Days).Days;
+        var daysSinceMonday = ((int)today.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
+        return Period.Between(burn.GateOpeningDate, today.PlusDays(-daysSinceMonday), PeriodUnits.Days).Days;
     }
 
-    public int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
-    {
-        ArgumentNullException.ThrowIfNull(burn);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var todayLocal = now.InZone(zone).Date;
-        return Period.Between(burn.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
-    }
+    /// <summary>Today's offset in the event's timezone; zero without an active event.</summary>
+    private int CurrentDayOffset(BurnSettingsInfo? burn)
+        => burn is not null && GetEventTodayDate(burn) is { } today
+            ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
+            : 0;
 
-    public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
+    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default)
     {
         var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        return await BuildDailyRosterAsync(
+            burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
+    }
+
+    private async Task<DailyMatrixDto> BuildDailyRosterAsync(
+        BurnSettingsInfo? burn, int dayOffset, CancellationToken ct)
+    {
         var calendarDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(dayOffset);

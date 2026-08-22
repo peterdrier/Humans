@@ -264,6 +264,28 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
+    public async Task GetDailyRoster_NoOffset_DefaultsToTodayInEventTimezone()
+    {
+        // Clock is 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar day —
+        // and GateOpening is 7 Jul, so "today" is offset 0.
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+
+        var result = await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.DayOffset.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetDailyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    {
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+
+        var result = await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.DayOffset.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task GetDailyRoster_PeopleNotSorted_ReturnsInRepoOrder()
     {
         // Service must NOT sort People — that's the Web-layer assembler's job

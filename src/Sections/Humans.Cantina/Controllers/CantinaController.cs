@@ -1,12 +1,10 @@
 using Humans.Base.Extensions;
 using Humans.Cantina.Services;
-using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Controllers;
@@ -25,28 +23,21 @@ namespace Humans.Cantina.Controllers;
 internal sealed class CantinaController : HumansControllerBase
 {
     private readonly ICantinaRosterService _roster;
-    private readonly IBurnSettingsService _burnSettings;
-    private readonly IClock _clock;
     private readonly ILogger<CantinaController> _logger;
 
     public CantinaController(
         ICantinaRosterService roster,
-        IBurnSettingsService burnSettings,
-        IClock clock,
         ILogger<CantinaController> logger,
         IUserServiceRead userService) : base(userService)
     {
         _roster = roster;
-        _burnSettings = burnSettings;
-        _clock = clock;
         _logger = logger;
     }
 
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
-        var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People
         // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
         return View(CantinaRosterAssembler.WithSortedPeople(roster));
@@ -55,8 +46,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Csv")]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var offset = weekStartOffset ?? await ComputeDefaultWeekStartOffsetAsync().ConfigureAwait(false);
-        var roster = await _roster.GetWeeklyRosterAsync(offset, ct).ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct).ConfigureAwait(false);
         // Match the HTML view's sort order so an exported CSV reads the same
         // as the on-screen roster (see CantinaRosterAssembler.SortForDisplay).
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
@@ -66,7 +56,7 @@ internal sealed class CantinaController : HumansControllerBase
         var filename = $"cantina-roster-week-of-{datePart}.csv";
         _logger.LogDebug(
             "Cantina roster CSV exported for weekStartOffset={WeekStartOffset}, people={PeopleCount}",
-            offset, roster.People.Count);
+            roster.WeekStartOffset, roster.People.Count);
         return File(bytes, "text/csv; charset=utf-8", filename);
     }
 
@@ -78,8 +68,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Day")]
     public async Task<IActionResult> Day(int? dayOffset = null, CancellationToken ct = default)
     {
-        var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync().ConfigureAwait(false);
-        var matrix = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct).ConfigureAwait(false);
         // Display sort is a presentation concern; the service returns People
         // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
         return View(CantinaRosterAssembler.WithSortedPeople(matrix));
@@ -92,8 +81,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Day/Csv")]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {
-        var offset = dayOffset ?? await ComputeDefaultDayOffsetAsync().ConfigureAwait(false);
-        var matrix = await _roster.GetDailyRosterAsync(offset, ct).ConfigureAwait(false);
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct).ConfigureAwait(false);
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
 
         var bytes = CantinaDailyMatrixCsvWriter.Write(matrix);
@@ -101,34 +89,7 @@ internal sealed class CantinaController : HumansControllerBase
         var filename = $"cantina-day-{datePart}-matrix.csv";
         _logger.LogDebug(
             "Cantina day matrix CSV exported for dayOffset={DayOffset}, people={PeopleCount}",
-            offset, matrix.People.Count);
+            matrix.DayOffset, matrix.People.Count);
         return File(bytes, "text/csv; charset=utf-8", filename);
-    }
-
-    /// <summary>
-    /// Computes the <c>weekStartOffset</c> of the week containing "today"
-    /// in the active event's timezone — the Monday-of-this-week relative
-    /// to <c>GateOpeningDate</c>. Returns 0 when no active event exists
-    /// (and lets the view render the empty branch).
-    /// </summary>
-    private async Task<int> ComputeDefaultWeekStartOffsetAsync()
-    {
-        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
-        if (burn is null)
-            return 0;
-        return _roster.GetCurrentWeekStartOffsetForActiveEvent(burn, _clock.GetCurrentInstant());
-    }
-
-    /// <summary>
-    /// Computes the <c>dayOffset</c> of "today" in the active event's
-    /// timezone relative to <c>GateOpeningDate</c>. Returns 0 when no
-    /// active event exists.
-    /// </summary>
-    private async Task<int> ComputeDefaultDayOffsetAsync()
-    {
-        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
-        if (burn is null)
-            return 0;
-        return _roster.GetCurrentDayOffsetForActiveEvent(burn, _clock.GetCurrentInstant());
     }
 }

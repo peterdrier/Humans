@@ -35,7 +35,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
 | `/Cantina/Roster/Day/Csv?dayOffset=<int>` | GET | same as above | CSV of the per-day matrix |
 
-`weekStartOffset` is the day-offset of the week's Monday relative to `BurnSettingsInfo.GateOpeningDate`. When omitted, the controller resolves the current week itself: it fetches the active event and, if there is one, asks `ICantinaRosterService.GetCurrentWeekStartOffsetForActiveEvent` to convert "now" into an offset. With no active event the controller uses `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
+`weekStartOffset` is the day-offset of the week's Monday relative to `BurnSettingsInfo.GateOpeningDate`. When omitted, the service resolves the week containing today in the event's timezone, off the active event it has already loaded. With no active event the offset is `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 
 ## Actors & Roles
 
