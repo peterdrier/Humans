@@ -139,7 +139,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
     }
 
     [HumansFact(Timeout = 60000)]
-    public async Task Admin_survey_builder_renders_the_shared_markdown_editor_for_intro()
+    public async Task Admin_survey_builder_renders_the_shared_markdown_editor_for_intro_and_email_message()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
@@ -150,6 +150,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
             .Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("name=\"Intro[en]\"");
+        html.Should().Contain("name=\"InvitationEmailMessage[en]\"");
         html.Should().Contain("easymde@2.21.0");
         html.Should().Contain("new EasyMDE");
         html.Should().NotContain("<markdown-editor");

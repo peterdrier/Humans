@@ -149,12 +149,13 @@
         <div class="card-body">
             <p class="small text-muted mb-2">
                 Customize the initial invitation. Humans adds the greeting, survey title, survey-link button,
-                and sign-off. Leave either field blank to use the standard wording.
+                and sign-off. The message supports Markdown formatting, but not images. Leave either field
+                blank to use the standard wording.
             </p>
             <partial name="_SurveyLocalizedField"
                      model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), "Email subject", Model.InvitationEmailSubject, MaxLength: 200))" />
             <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), "Email message", Model.InvitationEmailMessage, Multiline: true, MaxLength: 4000))" />
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailMessage), "Email message", Model.InvitationEmailMessage, Multiline: true, Markdown: true, MaxLength: 4000))" />
         </div>
     </div>
 

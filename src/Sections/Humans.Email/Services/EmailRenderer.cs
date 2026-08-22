@@ -2,6 +2,7 @@ using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
@@ -147,7 +148,7 @@ internal sealed class EmailRenderer(
                 : customSubject.Trim();
             var messageHtml = string.IsNullOrWhiteSpace(customMessage)
                 ? $"<p>{Lf("Email_SurveyInvitation_DefaultMessage", HtmlEncode(surveyTitle))}</p>"
-                : $"<p>{HtmlEncode(customMessage.Trim()).Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\r", "\n", StringComparison.Ordinal).Replace("\n", "<br />", StringComparison.Ordinal)}</p>";
+                : SanitizedMarkdownRenderer.Render(customMessage.Trim(), allowImages: false);
 
             return new EmailContent(
                 subject,

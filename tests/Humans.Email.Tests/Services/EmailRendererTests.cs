@@ -11,7 +11,7 @@ namespace Humans.Email.Tests.Services;
 public sealed class EmailRendererTests
 {
     [HumansFact]
-    public void SurveyInvitation_custom_copy_is_trimmed_encoded_and_preserves_line_breaks()
+    public void SurveyInvitation_custom_copy_renders_sanitized_markdown_without_images()
     {
         var renderer = CreateRenderer();
 
@@ -21,14 +21,18 @@ public sealed class EmailRendererTests
             "token + value",
             "en",
             "  Help choose our dates  ",
-            "  First line\r\n<script>alert('x')</script>\nLast line  ");
+            "  **Choose carefully.**\r\n\r\n- Friday\r\n- Saturday\r\n\r\n[Details](https://example.com)\r\n\r\n![Poster](https://example.com/poster.png)\r\n<script>alert('x')</script>  ");
 
         content.Subject.Should().Be("Help choose our dates");
         content.HtmlBody.Should().Contain("Daniel &lt;Admin&gt;");
         content.HtmlBody.Should().Contain("<h2>Dates &amp; places</h2>");
-        content.HtmlBody.Should().Contain(
-            "<p>First line<br />&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;<br />Last line</p>");
+        content.HtmlBody.Should().Contain("<p><strong>Choose carefully.</strong></p>");
+        content.HtmlBody.Should().Contain("<ul>");
+        content.HtmlBody.Should().Contain("<li>Friday</li>");
+        content.HtmlBody.Should().Contain("<a href=\"https://example.com\">Details</a>");
         content.HtmlBody.Should().NotContain("<script>");
+        content.HtmlBody.Should().NotContain("<img");
+        content.HtmlBody.Should().NotContain("poster.png");
         content.HtmlBody.Should().Contain(
             "https://humans.example/Survey/Answer?t=token%20%2B%20value");
     }

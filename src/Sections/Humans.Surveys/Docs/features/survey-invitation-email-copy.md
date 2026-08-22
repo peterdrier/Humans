@@ -11,10 +11,10 @@ survey title, secure answer-link button, sign-off, routing policy, and branded e
 
 ## User stories and acceptance criteria
 
-- A Board or Admin can optionally author a localized invitation email subject and plain-text message
+- A Board or Admin can optionally author a localized invitation email subject and Markdown-formatted message
   in the existing survey builder language tabs.
 - The subject is a single line of at most 200 characters per culture.
-- The message is at most 4,000 characters per culture. Line breaks are preserved.
+- The message is at most 4,000 characters per culture. Line breaks and basic Markdown formatting are preserved.
 - Blank subject or message values use the existing localized standard wording for that part.
 - Existing surveys therefore retain their current invitation output without a data backfill.
 - `Save + translate missing` treats both fields like the other localized survey content and never
@@ -26,7 +26,8 @@ survey title, secure answer-link button, sign-off, routing policy, and branded e
 - The email preview obtains its final HTML through Email's read-only preview contract, so it uses
   the same canonical branded wrapper as the outbox rather than copying email CSS into Surveys.
 - `Send preview email to me` uses the same factory and renderer inputs as a real invitation.
-- Author text is HTML-encoded. It is never interpreted as Markdown or raw HTML.
+- Author Markdown is rendered through the shared sanitized-Markdown renderer. Unsafe HTML is removed and
+  images are not included in invitation emails.
 - Reminder email copy is unchanged.
 
 ## Data model
@@ -47,12 +48,13 @@ accepts optional custom subject/message values after its existing arguments and 
 existing `survey_invitation` renderer. No new email type, transport path, template key, category, or
 service is introduced.
 
-The renderer trims custom copy, HTML-encodes the message, converts line breaks to `<br />`, and retains
-the existing generated survey URL. A blank custom value selects the standard localized resource text.
+The renderer trims custom copy, passes the message through Base's canonical sanitized-Markdown renderer
+with images disabled, and retains the existing generated survey URL. The same renderer supplies both
+preview and delivered emails. A blank custom value selects the standard localized resource text.
 
 ## Non-goals
 
-- Markdown, arbitrary links, HTML, images, attachments, or WYSIWYG editing.
+- Images, attachments, arbitrary HTML, or WYSIWYG editing.
 - Custom reminder copy.
 - Reusable template libraries, audience variants, or campaign analytics.
 - Changes to translation or deployment infrastructure.
