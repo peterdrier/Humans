@@ -375,12 +375,14 @@ Phase 7's own PR-number backfill commit.
 
 ```bash
 git push -u origin section-doctor/$TS
+.claude/session-cost.py > /tmp/run-cost.md    # append to the body; never fails the run
 gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <headline>" --body ...
 ```
 
-Body: assessment summary, worked/skipped bullets, and a **`## Needs Peter`** block — terse,
-numbered, answerable in a word or two. **The PR body is the authoritative queue while the PR is
-open** (resume reads it from there); the run file's copy carries it forward after merge. One PR
+Body: assessment summary, worked/skipped bullets, a **`## Needs Peter`** block — terse,
+numbered, answerable in a word or two — and the **`## Run cost`** block from
+`.claude/session-cost.py` as the last section. **The PR body is the authoritative queue while
+the PR is open** (resume reads it from there); the run file's copy carries it forward after merge. One PR
 per run; never merge.
 
 Then backfill the real PR number over every `pending` reference (run file header, health history
