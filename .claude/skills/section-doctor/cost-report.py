@@ -86,9 +86,13 @@ def main():
 
     rows = {}  # label -> {tok, usd}
     for t, model, u in usage_entries(own):
-        label = "pre-phase-log"
+        # entries before the phase log belong to whatever the session did earlier
+        # (interactive invocation) — not to this run
+        if not t or ts(t) < run_start:
+            continue
+        label = f"main:{phases[0][1]}"
         for start, name in phases:
-            if t and ts(t) >= start:
+            if ts(t) >= start:
                 label = f"main:{name}"
         add(rows.setdefault(label, {}), model, u)
 
@@ -115,7 +119,10 @@ def main():
         f"| **{usd:.2f}** |"
     )
     print()
-    print("API-equivalent $, list rates; run under subscription quota.")
+    print(
+        "API-equivalent $, list rates; run under subscription quota. "
+        "Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded."
+    )
 
 
 if __name__ == "__main__":

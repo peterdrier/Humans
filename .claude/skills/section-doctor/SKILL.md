@@ -102,13 +102,19 @@ passed in. Its brief:
 
 1. `dotnet build Humans.slnx -v quiet` (an unbuilt solution silently under-reports Reforge
    scores; the build also serves Phase 3/4), then `reforge surface-score --format compact`.
-2. Pool: every `src/Sections/` project, minus the blocked set.
+2. Pool: every `src/Sections/` project, minus the blocked set. **Feature-active down-rank**:
+   sections touched by an open non-doctor PR (`gh pr list --repo peterdrier/Humans --state
+   open --limit 200 --json headRefName,files`, changed paths mapped to
+   `src/Sections/Humans.<X>/`) drop to the bottom of whichever tier they land in — picked
+   only when no non-active section is eligible there, but never excluded: an open feature PR
+   must not keep a section from ever being doctored.
 3. Tier: a section is previously-doctored iff `src/Sections/Humans.<X>/Docs/health.md` exists
    on `origin/main` (any newer copy lives on an open PR, and that section is blocked anyway).
    Never-doctored sections always outrank previously-doctored ones.
-4. While any eligible never-doctored section remains: rank that tier by score and take the
-   **median** — middle-out. The process proves itself on mid-sized sections; the biggest and
-   smallest get their turn once the middle has been worked.
+4. While any eligible never-doctored section remains: rank that tier by score (feature-active
+   members set aside per step 2) and take the **median** — middle-out. The process proves
+   itself on mid-sized sections; the biggest and smallest get their turn once the middle has
+   been worked.
 5. Once every eligible section has been doctored: read each section's `Docs/health.md` for its
    last-assessed date, then rank by days since that date combined with change volume since it
    (`git log --stat` over the section's paths) — more and bigger changes come sooner. Judgment
@@ -379,7 +385,9 @@ python .claude/skills/section-doctor/cost-report.py section-doctor/$TS $WORKTREE
 It finds this run's own session transcript under `~/.claude/projects` (the model never sees its
 own usage in-band, but the harness logs every API call's tokens there), buckets the main thread
 by the phase log, adds one row per subagent transcript, and prints a markdown table with
-API-equivalent $. Paste it as `## Cost` into the PR body and the run file (run-file copy lands
+API-equivalent $. The table is a **Phase 1 → PR-creation cutoff, not a run total** — the PR
+create/backfill calls and any Phase 8 work land after measurement (the footer says so). Paste
+it as `## Cost` into the PR body and the run file (run-file copy lands
 with the backfill commit). The script never fails the run — on any discovery problem it prints
 `Cost: unmeasured (...)`; use that line as the table. Cloud-environment transcript layout is
 unverified — if the first routine run reports unmeasured, note it in Needs-Peter.
