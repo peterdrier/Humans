@@ -22,6 +22,8 @@ internal static class AuditEntityTypes
 {
     public const string Report = "ExpenseReport";
 
+    public const string Commitment = "VendorCommitment";
+
     /// <summary>
     /// The IBAN set/remove entries name Users' <c>Profile</c>, which this section cannot spell
     /// since it went internal to <c>Humans.Users</c> (nobodies-collective/Humans#1051). Same

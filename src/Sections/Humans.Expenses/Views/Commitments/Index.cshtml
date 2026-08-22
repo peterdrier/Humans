@@ -1,0 +1,123 @@
+@model Humans.Expenses.Models.CommitmentIndexViewModel
+@{
+    ViewData["Title"] = "Vendor Commitments";
+    Layout = "_AdminLayout";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">Vendor Commitments</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Vendor Commitments</h1>
+    <div class="d-flex gap-2">
+        @* Matching is an explicit action, not a schedule: the nightly job arrives with the bank
+           auto-reconciliation half of nobodies-collective/Humans#1030. *@
+        @if (Model.HoldedConfigured)
+        {
+            <form asp-action="Match" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-code-compare me-2"></i>Match against Holded
+                </button>
+            </form>
+        }
+        <a asp-action="New" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-2"></i>Record commitment
+        </a>
+    </div>
+</div>
+
+<p class="text-muted">
+    A commitment is recorded the moment a quote or proforma is accepted — before any money leaves.
+    Holded only ever holds the real invoice.
+</p>
+
+@if (Model.AwaitingInvoiceCount > 0)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fa-solid fa-file-invoice me-2"></i>
+            <strong>@Model.AwaitingInvoiceCount</strong>
+            @(Model.AwaitingInvoiceCount == 1 ? "commitment has" : "commitments have")
+            been paid with no invoice booked against them.
+        </div>
+        <a asp-action="AwaitingInvoice" class="btn btn-sm btn-warning">Open the liability list</a>
+    </div>
+}
+
+@if (Model.PendingReviewCount > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        <strong>@Model.PendingReviewCount</strong>
+        purchase @(Model.PendingReviewCount == 1 ? "document is" : "documents are")
+        waiting on a human decision — either several fit one commitment, or one would be a second
+        booking of a cost already invoiced. Nothing was linked automatically.
+    </div>
+}
+
+@if (Model.Commitments.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-inbox me-2"></i>No commitments recorded yet.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Vendor</th>
+                    <th>Purpose</th>
+                    <th>Budget line</th>
+                    <th class="text-end">Committed</th>
+                    <th class="text-end">Paid</th>
+                    <th>Status</th>
+                    <th>Invoice</th>
+                    <th>Review</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Commitments)
+                {
+                    <tr>
+                        <td><a asp-action="Detail" asp-route-id="@c.Id">@c.VendorName</a></td>
+                        <td>@(c.Purpose is { Length: > 60 } p ? p[..60] + "…" : c.Purpose)</td>
+                        <td>
+                            @(c.BudgetCategoryId is { } cid && Model.CategoryNames.TryGetValue(cid, out var cat)
+                                ? cat
+                                : "")
+                        </td>
+                        <td class="text-end">@c.ExpectedAmount.ToEuro()</td>
+                        <td class="text-end @(c.TotalPaid > c.ExpectedAmount ? "fw-semibold text-danger" : "")">
+                            @c.TotalPaid.ToEuro()
+                        </td>
+                        <td><span class="badge @c.Status.GetBadgeClass()">@c.Status</span></td>
+                        <td>
+                            @if (c.MatchedHoldedDocNumber is { } docNumber)
+                            {
+                                <span class="text-success"><i class="fa-solid fa-check me-1"></i>@docNumber</span>
+                            }
+                            else if (c.IsPaidAwaitingInvoice)
+                            {
+                                <span class="text-danger">Awaiting</span>
+                            }
+                        </td>
+                        <td>
+                            @if (c.PendingCandidates.Count > 0)
+                            {
+                                <a asp-action="Detail" asp-route-id="@c.Id" class="badge bg-danger text-decoration-none">
+                                    @c.PendingCandidates.Count pending
+                                </a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

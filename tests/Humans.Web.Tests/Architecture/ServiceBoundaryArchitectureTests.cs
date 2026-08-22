@@ -57,6 +57,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Containers.Data.IContainerRepository")] = "Containers",
             [SectionRepository("Humans.Email.Data.IEmailOutboxRepository")] = "Email",
             [SectionRepository("Humans.Expenses.Data.IExpenseRepository")] = "Expenses",
+            [SectionRepository("Humans.Expenses.Data.IVendorCommitmentRepository")] = "Expenses",
             [SectionRepository("Humans.Feedback.Data.IFeedbackRepository")] = "Feedback",
             [SectionRepository("Humans.Gate.Data.IGateRepository")] = "Gate",
             [SectionRepository("Humans.GoogleIntegration.Data.IGoogleResourceRepository")] = "GoogleIntegration",

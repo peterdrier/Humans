@@ -21,6 +21,9 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 - **Payment is external.** There is no SEPA-file generation in the app. Once a report is `Approved` (and booked into Holded as a payable), the treasurer pays the member's creditor account outside the app (bank/Holded). The app only *shows* the ledger: paid/owed is derived from the member's Holded daybook lines (Finance section) via `IHoldedFinanceService.GetCreditorStatusAsync` (balance ≥ 0 = settled).
 - **IBAN** — snapshotted from `Profile.Iban` at submit time into `ExpenseReport.PayeeIban`. Raw IBAN appears only in Holded API request bodies. All log/audit/error output goes through `IbanFormatter.Mask`.
 - **Payable vs Total.** `Total` is the receipts total; `MaxAmount` is an optional cap a decider authorizes. `ExpenseReportDto.Payable` = `min(Total, MaxAmount)` and is the only amount payment math may use.
+- A **VendorCommitment** is a promise to pay a vendor, recorded when a quote or proforma is accepted — before any money leaves (nobodies-collective/Humans#1030). Separate concept from an ExpenseReport: a report is a member asking to be reimbursed, a commitment is the organisation owing a supplier. Commitments live only in Humans; **Holded only ever holds real invoices**, which is what a quote booked as a Factura de compra broke. Payments out are recorded against the commitment, and the real invoice is matched back from Holded's purchase documents.
+- A **VendorCommitmentPayment** is one payment out against a commitment; the commitment's paid total is always the sum of these rows and is never stored.
+- A **VendorCommitmentMatchCandidate** is a purchase document the matcher refused to link on its own — a tie, or a second document for a commitment that is already Invoiced. Resolved by a human, never by the matcher.
 
 ## Data Model
 
@@ -80,6 +83,48 @@ Metadata only; bytes on disk managed by the shared `IFileStorage` (key `uploads/
 
 Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `NextRetryAt`, `FailedPermanently`, `ProcessedAt`, `LastError`.
 
+### VendorCommitment
+
+**Table:** `vendor_commitments`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| VendorName | string | matched against Holded's `contactName` by normalized containment |
+| ExpectedAmount | decimal | the committed amount; matched **exactly** against purchase-document totals |
+| Currency | string | "EUR" |
+| Purpose | string | what the money is for |
+| BudgetCategoryId | Guid? | FK → Budget.BudgetCategory (cross-domain, scalar only) |
+| Status | VendorCommitmentStatus | see enum below |
+| QuoteFileName / QuoteContentType / QuoteExtension / QuoteUploadedAt | — | the accepted quote; bytes via `IFileStorage`, key `uploads/vendor-commitment-quotes/{Id}{Extension}`. Deliberately **not** an `expense_attachments` row: that table is member-scoped and on the GDPR export path, and a vendor's quote is the organisation's document |
+| MatchedHoldedDocId / MatchedHoldedDocNumber / MatchedAt | — | the linked Holded purchase document |
+| CreatedByUserId | Guid | scalar FK |
+| CreatedAt / UpdatedAt / ClosedAt | Instant | |
+
+**Aggregate-local navs:** `Payments`, `MatchCandidates`.
+
+### VendorCommitmentPayment
+
+**Table:** `vendor_commitment_payments`
+
+Fields: `VendorCommitmentId` (FK), `Amount`, `PaidOn` (LocalDate), `Reference` (bank/transfer note), `RecordedByUserId`, `CreatedAt`.
+
+### VendorCommitmentMatchCandidate
+
+**Table:** `vendor_commitment_match_candidates`
+
+Fields: `VendorCommitmentId` (FK), `HoldedDocId`, `HoldedDocNumber`, `ContactName`, `DocDate`, `DocTotal`, `Kind` (Ambiguous | Duplicate), `DetectedAt`, `Accepted` (null = pending), `ResolvedAt`, `ResolvedByUserId`. Unique on `(VendorCommitmentId, HoldedDocId)`.
+
+### VendorCommitmentStatus
+
+| Value | Description |
+|-------|-------------|
+| Open | Recorded; no money out yet |
+| PartiallyPaid | Payments recorded, below the committed amount |
+| Paid | Payments recorded, at or above the committed amount |
+| Invoiced | A Holded purchase document is linked |
+| Closed | Terminal — reachable from Invoiced, or from Open with no payments (an abandoned quote) |
+
 ### ExpenseReportStatus
 
 | Value | Description |
@@ -115,6 +160,15 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/{id}/HoldedRetry` | POST | FinanceAdminOrAdmin (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
 | `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
+| `/Expenses/Commitments` | GET | FinanceAdminOrAdmin | Vendor commitment registry |
+| `/Expenses/Commitments/New` | GET/POST | FinanceAdminOrAdmin | Record a commitment (quote file optional) |
+| `/Expenses/Commitments/AwaitingInvoice` | GET | FinanceAdminOrAdmin | Paid-but-not-invoiced liability list, ordered by age × amount |
+| `/Expenses/Commitments/{id}` | GET | FinanceAdminOrAdmin | Commitment detail — payments, quote, review queue |
+| `/Expenses/Commitments/{id}/Payments` | POST | FinanceAdminOrAdmin | Record a payment out |
+| `/Expenses/Commitments/{id}/Quote` | GET/POST | FinanceAdminOrAdmin | Download / attach the quote |
+| `/Expenses/Commitments/{id}/Close` | POST | FinanceAdminOrAdmin | Close a settled or abandoned commitment |
+| `/Expenses/Commitments/Match` | POST | FinanceAdminOrAdmin | Run commitment ↔ purchase-document matching |
+| `/Expenses/Commitments/Candidates/{candidateId}/Resolve` | POST | FinanceAdminOrAdmin | Link or dismiss one queued review row |
 
 ## Actors & Roles
 
@@ -143,6 +197,11 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - Attachment uploads are stamped on `ExpenseAttachment.HoldedUploadedAt`, so a re-run after a partial failure or a re-queue resumes rather than adding a second copy of every earlier file to the same Holded document.
 - The drain does nothing at all when no `HOLDED_API_KEY_V2` is configured (`IHoldedClient.IsConfigured`): every call would 401, which is a permanent error, so draining would write off the whole queue. The sync card reports that state as "Not configured" rather than "Queued".
 - Holded API request bodies are the only code path that may contain a raw IBAN (not masked).
+- A commitment's status is **derived, not chosen**: `Open → PartiallyPaid → Paid` follows the sum of its payment rows, `Invoiced` follows a linked purchase document, and a payment arriving after the invoice never walks the status backwards. `Closed` is reachable only from `Invoiced` or from `Open` with no payments; no payment may be recorded against a Closed commitment.
+- **Matching never guesses.** `VendorCommitmentMatcher` matches amount-first and exactly, uses the vendor name only as a constraint (normalized: lowercased, diacritics stripped, non-alphanumerics dropped, containment either way with a 4-character floor), and has no tie-break of any kind — deliberately not date proximity. One fit links; two or more fits go to the review queue as `Ambiguous`; none is left alone. This is asserted on the pure function in `VendorCommitmentMatcherTests`, not only through the screens.
+- **A purchase document matching an already-Invoiced commitment is flagged, never linked** — the TOI TOI / Cruz Roja failure (~€120k of duplicate expenses in the '26 books) becomes structurally impossible rather than a matter of care. The check runs before any narrowing, so no fit is good enough to bypass it.
+- One purchase document can back at most one commitment: documents already linked anywhere are excluded from every commitment's candidate pool before matching.
+- Re-running the matcher never resurrects a decision a human already made: resolved review rows are left untouched, and only pending rows are refreshed or withdrawn.
 
 ## Negative Access Rules
 
@@ -163,7 +222,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
 - On **Holded push success**: audit entry `ExpenseHoldedPushed` written (actor: the job). On **write-off**: `ExpenseHoldedFailed`. On **finance re-queue**: `ExpenseHoldedRequeued` (actor: the admin). These carry the push history past outbox-row cleanup — the outbox columns themselves are not readable outside the database.
 - **`HoldedExpenseOutboxJob`** runs every minute.
-- **GDPR export** (`IUserDataContributor`): contributes `ExpenseReports` and `ExpenseAuditLog` slices. Chain-follows merge tombstones. (Historical `ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` audit entries are still surfaced for accounts that have them — the audit log is immutable; only the writers were removed.)
+- On **commitment recorded / payment recorded / invoice linked / duplicate flagged / close**: audit entries `VendorCommitmentRecorded`, `VendorCommitmentPaymentRecorded`, `VendorCommitmentInvoiceLinked`, `VendorCommitmentDuplicateFlagged`, `VendorCommitmentClosed` (entity type `VendorCommitment`).
+- **Commitment matching is operator-triggered**, not scheduled — the nightly job arrives with the bank auto-reconciliation half of nobodies-collective/Humans#1030, which needs Holded API surface that does not exist yet.
+- **GDPR export** (`IUserDataContributor`): contributes `ExpenseReports` and `ExpenseAuditLog` slices. Vendor commitments are organisation data, not member data, and are deliberately outside the export. Chain-follows merge tombstones. (Historical `ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` audit entries are still surfaced for accounts that have them — the audit log is immutable; only the writers were removed.)
 
 ## Cross-Section Dependencies
 
@@ -177,12 +238,13 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 ## Architecture
 
-**Owning services:** `ExpenseReportService`
-**Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
+**Owning services:** `ExpenseReportService`, `VendorCommitmentService`
+**Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, `vendor_commitments`, `vendor_commitment_payments`, `vendor_commitment_match_candidates`
 **Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866); the cross-section leaf `Humans.Expenses.Contracts` later folded into the project's own `Contracts/` folder (ruling 44).
 
 - `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the public cross-section read surface in `Contracts/` (no `[SurfaceBudget]` — budgets are off for the duration of the #866 migration); `IExpenseReportService` adds the mutations. The public surface is `Section` plus everything under `Contracts/`: `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`, how `HoldedExpenseOutboxJob` reaches the section), `IExpenseReportServiceRead`, and its DTO/enum graph. The job moved into this project's `Jobs/` folder at G5 lane 5b-5; only its DI registration and roll-call entry stay in Shell, because recurring jobs are named by concrete type there.
-- `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
+- `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`. `VendorCommitmentRepository` is its sibling over the same context for the three `vendor_commitment*` tables; each table lives in exactly one repository.
+- **Vendor commitments add no public surface.** `VendorCommitment*`, `IVendorCommitmentRepository`, `IVendorCommitmentService`, `VendorCommitmentMatcher`, `CommitmentsController` and the commitment view models are all `internal` — nothing outside Expenses consumes them, so nothing crosses a section boundary. The section's only new outward dependency is five appended `AuditAction` members.
 - **DbContext** — `ExpensesDbContext` (`src/Sections/Humans.Expenses/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Data/Migrations/` (baseline `20260715101338_BaselineExpenses`). Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. It also registers the section's `ExpenseReportStatus` badge colours into `EnumBadgeMap` rather than Base holding a literal row per section enum.
 - **Decorator decision — no caching decorator.** Expense data is mutable and user-specific; low-traffic at ~500 users.

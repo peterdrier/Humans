@@ -1,0 +1,66 @@
+@model Humans.Expenses.Models.CommitmentNewViewModel
+@{
+    ViewData["Title"] = "Record Commitment";
+    Layout = "_AdminLayout";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Vendor Commitments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Record</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">Record Commitment</h1>
+
+<p class="text-muted">
+    Record this as soon as the quote or proforma is accepted — before the transfer goes out. Do not
+    enter the quote into Holded as a purchase invoice: that is what booked the same cost twice.
+</p>
+
+<form asp-action="New" method="post" enctype="multipart/form-data" class="col-lg-8">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="VendorName" class="form-label">Vendor</label>
+        <input asp-for="VendorName" class="form-control" autocomplete="off" />
+        <span asp-validation-for="VendorName" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="ExpectedAmount" class="form-label">Committed amount (EUR)</label>
+        <input asp-for="ExpectedAmount" class="form-control" type="number" step="0.01" min="0.01" />
+        <div class="form-text">Matched exactly against Holded purchase documents later.</div>
+        <span asp-validation-for="ExpectedAmount" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Purpose" class="form-label">Purpose</label>
+        <textarea asp-for="Purpose" class="form-control" rows="2"></textarea>
+        <span asp-validation-for="Purpose" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="BudgetCategoryId" class="form-label">Budget line</label>
+        <select asp-for="BudgetCategoryId" class="form-select">
+            <option value="">— none —</option>
+            @foreach (var option in Model.Categories)
+            {
+                <option value="@option.Id">@option.DisplayName</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="quote" class="form-label">Quote / proforma</label>
+        <input type="file" id="quote" name="quote" class="form-control"
+               accept=".pdf,.jpg,.jpeg,.png,.heic" />
+        <div class="form-text">PDF, JPEG, PNG or HEIC, up to 20 MB. Can be added later.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Record commitment</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
