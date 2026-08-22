@@ -134,8 +134,6 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Route: `GET /Cantina/Roster/Day` — optional `?dayOffset=<int>`, defaulting to today's offset in the event timezone (`0` when there is no active event). Reached by clicking any cell of the weekly per-day mini-summary row.
 - Page renders a summary card with two numbers: total on site that day, and how many of them have no `DietaryPreference`.
 - Below it, a **matrix**: one row per on-site human, one column per canonical dietary preference, allergy and intolerance chip, plus the two free-text columns, and a **totals row** counting each column over the rendered rows. Coordinators scan a column to count portions and a row to find one person. The per-chip counts live in that totals row, counted in the view from the rendered rows. This page renders no separate roll-up panel.
-
-  > The daily payload also carries `DietaryBreakdown`, `AllergyRollup`, `IntoleranceRollup`, `AllergyOtherEntries` and `IntoleranceOtherEntries`, and **nothing reads them** — not this page, not the daily CSV (which counts from `People` itself), only tests. They are computed per request and discarded. Queued for removal; see the Cantina run file's finding 12.
 - Matrix rows sort alphabetically by burner name (cultural collation, case-insensitive) — deliberately *not* the weekly arrival/allergy/dietary ordering, because this is a look-up surface.
 - The day's cohort includes arrival-day humans (those whose first confirmed shift is the following day), matching the weekly mini-summary count for the same day.
 - A "Today" badge appears when the day being viewed is today in the event timezone; a breadcrumb links back to the containing week.
