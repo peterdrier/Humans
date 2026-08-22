@@ -38,7 +38,7 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
 
-> **Retention, as actually implemented:** account deletion *anonymizes* the profile rather than dropping it — `UserRepository.AnonymizeProfileInternalAsync` clears name, contact, location, bio, emergency-contact and notes fields, and deletes contact-field and volunteer-history rows. It does **not** clear the dietary fields, and it does not clear `MedicalConditions` either. So dietary answers (and medical answers) survive account deletion attached to an anonymized profile. Flagged 2026-08-22; see the Cantina run file's Needs-Peter queue. Do not describe this page as inheriting an erasure guarantee it does not have.
+> **Retention, as actually implemented:** account deletion *anonymizes* the profile rather than dropping it — `UserRepository.AnonymizeProfileInternalAsync` clears name, contact, location, bio, emergency-contact and notes fields, and deletes contact-field and volunteer-history rows. It does **not** clear the dietary fields, and it does not clear `MedicalConditions` either. So dietary answers (and medical answers) survive account deletion attached to an anonymized profile. Tracked in nobodies-collective/Humans#1113, which moves the food fields to Cantina behind a GDPR erasure contribution. Do not describe this page as inheriting an erasure guarantee it does not have.
 
 ## Week Boundary
 
