@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
+using Humans.Surveys.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -357,6 +358,17 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
                         because: "preview answer controls must be disabled so browsers cannot submit them into the query string");
             }
         }
+
+        using var scope = Factory.Services.CreateScope();
+        var previewTokens = scope.ServiceProvider.GetRequiredService<SurveyPreviewTokenProvider>();
+        var emailToken = previewTokens.Create(surveyId, "fr");
+        var emailEntry = await Client.GetAsync(
+            $"/Survey/Answer?t={Uri.EscapeDataString(emailToken)}", ct);
+        ((int)emailEntry.StatusCode).Should().BeOneOf(
+            (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
+        emailEntry.Headers.Location!.ToString()
+            .Should().Contain($"/Survey/Admin/Preview/{surveyId}")
+            .And.Contain("culture=fr");
     }
 
     private async Task<string> GetCreateTokenAsync()

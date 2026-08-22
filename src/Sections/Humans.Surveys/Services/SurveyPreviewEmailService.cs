@@ -1,4 +1,5 @@
 using Humans.Email.Contracts;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
@@ -27,9 +28,11 @@ internal sealed class SurveyPreviewEmailService(
 
         var user = await userService.GetUserInfoAsync(userId, ct);
         var name = user?.BurnerName ?? string.Empty;
-        var culture = user?.PreferredLanguage ?? survey.DefaultCulture;
+        var culture = user?.PreferredLanguage.IsSupportedCultureCode() == true
+            ? user.PreferredLanguage
+            : survey.DefaultCulture;
         var title = survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture);
-        var token = previewTokens.Create(surveyId);
+        var token = previewTokens.Create(surveyId, culture);
         var message = emailMessages.SurveyInvitation(email, name, title, token, culture);
 
         try

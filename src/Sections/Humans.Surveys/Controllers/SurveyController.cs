@@ -33,9 +33,12 @@ internal sealed class SurveyController(
     [HttpGet("Answer")]
     public async Task<IActionResult> Answer(string t, CancellationToken ct)
     {
-        if (previewTokens.Resolve(t) is { } previewSurveyId)
+        if (previewTokens.Resolve(t) is { } preview)
         {
-            return RedirectToAction("Preview", "SurveyAdmin", new { id = previewSurveyId });
+            return RedirectToAction(
+                nameof(SurveyAdminController.Preview),
+                "SurveyAdmin",
+                new { id = preview.SurveyId, culture = preview.Culture });
         }
 
         var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
