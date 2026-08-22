@@ -130,6 +130,40 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
     }
 
     [HumansFact(Timeout = 60000)]
+    public async Task Save_updates_invitation_email_copy_on_an_existing_survey()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var createToken = await GetCreateTokenAsync();
+
+        var createResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", createToken),
+            ("Title[en]", $"Invitation update {Guid.NewGuid():N}"),
+            ("InvitationEmailSubject[en]", "Initial subject"),
+            ("InvitationEmailMessage[en]", "Initial message")), ct);
+        var surveyId = ExtractSurveyId(createResp);
+
+        var editResp = await Client.GetAsync($"/Survey/Admin/Edit/{surveyId}", ct);
+        var editToken = ExtractAntiForgeryToken(await editResp.Content.ReadAsStringAsync(ct));
+        var updateResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", editToken!),
+            ("Id", surveyId.ToString()),
+            ("Title[en]", "Invitation update"),
+            ("InvitationEmailSubject[en]", "Choose our weekend"),
+            ("InvitationEmailMessage[en]", "**Tell us what works.**")), ct);
+
+        ((int)updateResp.StatusCode).Should().BeOneOf(
+            (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
+        var survey = await db.Surveys.AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == surveyId, ct);
+        survey.InvitationEmailSubject.Resolve("en", "en").Should().Be("Choose our weekend");
+        survey.InvitationEmailMessage.Resolve("en", "en").Should().Be("**Tell us what works.**");
+    }
+
+    [HumansFact(Timeout = 60000)]
     public async Task Save_binds_and_persists_grid_rows_columns_and_selection_mode()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

@@ -48,6 +48,8 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         existing.Title = survey.Title;
         existing.Intro = survey.Intro;
         existing.ThankYou = survey.ThankYou;
+        existing.InvitationEmailSubject = survey.InvitationEmailSubject;
+        existing.InvitationEmailMessage = survey.InvitationEmailMessage;
         existing.DefaultCulture = survey.DefaultCulture;
         existing.AllowAnonymous = survey.AllowAnonymous;
         // Status is owned by Open/Close (SetStatusAsync) — authoring updates never change it.
