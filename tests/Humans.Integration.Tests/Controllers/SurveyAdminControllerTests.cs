@@ -313,6 +313,41 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             .Should().BeEquivalentTo([columnId, secondColumnId]);
     }
 
+    [HumansFact(Timeout = 60000)]
+    public async Task Preview_routes_render_the_shared_notice_from_SurveyAdminController()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var token = await GetCreateTokenAsync();
+        var title = $"Preview render {Guid.NewGuid():N}";
+
+        var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", token),
+            ("Title[en]", title),
+            ("Intro[en]", "Preview intro"),
+            ("ThankYou[en]", "Preview complete"),
+            ("Questions.Index", "question"),
+            ("Questions[question].Id", Guid.NewGuid().ToString()),
+            ("Questions[question].PageNumber", "1"),
+            ("Questions[question].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[question].Prompt[en]", "Preview question")), ct);
+        var surveyId = ExtractSurveyId(saveResp);
+
+        foreach (var route in new[]
+                 {
+                     $"/Survey/Admin/Preview/{surveyId}",
+                     $"/Survey/Admin/Preview/{surveyId}/Page?page=1",
+                     $"/Survey/Admin/Preview/{surveyId}/ThankYou",
+                 })
+        {
+            var response = await Client.GetAsync(route, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, because: $"{route} must render fully");
+            var html = await response.Content.ReadAsStringAsync(ct);
+            html.Should().Contain("Preview only.");
+            html.Should().Contain("Send preview email to me");
+        }
+    }
+
     private async Task<string> GetCreateTokenAsync()
     {
         var createResp = await Client.GetAsync(
