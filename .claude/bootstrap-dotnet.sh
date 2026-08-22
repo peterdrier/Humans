@@ -181,10 +181,17 @@ if [ "$TOOLS" = "1" ]; then
   fi
 fi
 
-# Link whatever ended up under $HOME onto PATH, regardless of whether this run
-# installed it or found it. `command -v` above is answered by this script's own
-# PATH export, which the caller's next shell will not have.
-link_onto_path "$HOME/.dotnet/dotnet" dotnet
+# Link what ended up under $HOME onto PATH, whether this run installed it or
+# found it: `command -v` above is answered by this script's own PATH export,
+# which the caller's next shell will not have.
+#
+# The dotnet muxer gets linked only if it passes the same usability check that
+# decided whether to trust it earlier. Linking one we rejected would put it at
+# /usr/local/bin/dotnet — ahead of /usr/bin — and hand the next shell exactly
+# the broken SDK this script just worked around.
+if [ -x "$HOME/.dotnet/dotnet" ] && "$HOME/.dotnet/dotnet" --version >/dev/null 2>&1; then
+  link_onto_path "$HOME/.dotnet/dotnet" dotnet
+fi
 link_onto_path "$HOME/.dotnet/tools/reforge" reforge
 
 # ── 4. Can this SDK actually build the repo? ──────────────────────────────────
@@ -221,10 +228,14 @@ if [ "$SHOULD_PROBE" = "1" ]; then
                the reading threads, keep changes to docs and comments, queue every
                code finding, and let CI be the compile gate."
   else
-    BUILD_STATUS="NO — see log"
-    BUILD_DETAIL="build failed for a reason other than CS9057 — most likely the branch
-               that is checked out, not the toolchain. Not cached; the next run
-               re-checks. Log at $PROBE_LOG"
+    # Deliberately not "NO": the memory atom and section-doctor's Phase 0 both
+    # treat NO as "this container cannot compile, do not touch C#". A compile
+    # error in the checked-out branch is a different thing entirely, and one a
+    # run may well be able to fix.
+    BUILD_STATUS="unknown — probe failed"
+    BUILD_DETAIL="the probe build failed for a reason other than CS9057 — most likely
+               the branch that is checked out, not the toolchain. The SDK looks
+               usable. Not cached; the next run re-checks. Log at $PROBE_LOG"
   fi
   # Only an environment-level answer is worth remembering. A generic build
   # failure usually says something about the branch that happens to be checked
@@ -267,7 +278,11 @@ fi
 # will still be there, because a happy summary followed by "dotnet: not found"
 # is the worst outcome this script can produce.
 UNREACHABLE=""
-PATH="$CALLER_PATH" command -v dotnet >/dev/null 2>&1 || UNREACHABLE="dotnet"
+# Presence is not enough: the caller may already have a `dotnet` that cannot
+# satisfy global.json, in which case finding one on their PATH proves nothing.
+# Run the real resolution under their PATH.
+( export PATH="$CALLER_PATH"; command -v dotnet >/dev/null 2>&1 && dotnet --version >/dev/null 2>&1 ) \
+  || UNREACHABLE="a usable dotnet"
 if [ "$TOOLS" = "1" ] && [ "$REFORGE_STATUS" != "FAILED" ] \
    && ! PATH="$CALLER_PATH" command -v reforge >/dev/null 2>&1; then
   UNREACHABLE="${UNREACHABLE:+$UNREACHABLE and }reforge"

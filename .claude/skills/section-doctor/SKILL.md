@@ -62,7 +62,9 @@ Nothing to do here.
 **What is this skill's job is the run you get when there is no compiler** — which is a real
 run, not a failed one. If `dotnet build` is unavailable (in a cloud container it announces
 itself as `CS9057`; `.claude/bootstrap-dotnet.sh --probe` writes the verdict down), then this
-is a **docs-only run**: work the reading threads, keep strikes to docs, comments and resx,
+is a **docs-only run**. A build that fails for any *other* reason is not this — it is a
+normal broken build, and the bootstrap reports it as `unknown — probe failed` rather than
+`NO` precisely so a run does not mistake one for the other. When it is genuinely `NO`: work the reading threads, keep strikes to docs, comments and resx,
 queue every code finding for the Needs-Peter block rather than editing C# you cannot compile,
 record each compiler-dependent thread as skipped-with-reason (3d's rule), and let the PR's CI
 be the compile gate. Say so in the run file's header and in the PR body — a run that could

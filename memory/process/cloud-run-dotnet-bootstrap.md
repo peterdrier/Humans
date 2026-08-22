@@ -16,6 +16,7 @@ The script installs an SDK matching `global.json`, puts `~/.dotnet/tools` on PAT
 - Run it first and read the **`Full build`** line. It costs about half a second on a machine that already has the toolchain, so there is no reason to skip it or to guard the call.
 - `Full build: not checked` — the normal answer on a local checkout: the SDK was already present, so the script neither installed it nor spent a minute doubting it. Proceed normally. `--probe` forces the check.
 - `Full build: yes` — probed and confirmed; proceed normally.
+- `Full build: unknown — probe failed` — the SDK looks fine and the probe build broke for some other reason, most likely the branch that is checked out. **Not** a docs-only session: diagnose it like any build failure.
 - `Full build: NO` — this is a **docs-only session**. Work the reading threads, keep changes to docs, comments and other non-compiled files, queue every code finding for Peter rather than editing C# you cannot compile, record every compiler-dependent step as skipped-with-reason, and let the PR's CI be the compile gate. Do not edit the repo to route around the limitation.
 - Never install the SDK by hand in a job prompt, and never retry or tunnel past a host the egress proxy denies with a 403 — report the blocked host instead. The script already probes the official installer once and falls back to the distro package.
 
