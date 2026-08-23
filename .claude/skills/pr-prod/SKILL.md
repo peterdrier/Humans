@@ -77,12 +77,13 @@ Group added files by folder — each folder is one DbContext chain (`src/Section
    a. The model body between the `#pragma warning` markers is identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
 
    ```bash
-   MSYS_NO_PATHCONV=1 diff \
-     <(git show origin/main:<newest>.Designer.cs | awk '/#pragma warning disable/,/#pragma warning restore/') \
-     <(git show origin/main:<folder>/<Context>ModelSnapshot.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
+   export MSYS_NO_PATHCONV=1   # must be exported — a diff-local prefix doesn't reach the process substitutions
+   a=$(git show origin/main:<newest>.Designer.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
+   b=$(git show origin/main:<folder>/<Context>ModelSnapshot.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
+   [ -n "$a" ] && [ -n "$b" ] && diff <(echo "$a") <(echo "$b") && echo CHAIN-OK
    ```
 
-   Empty output required. A diff means the merge kept the older branch's snapshot and lost the newer's model. Reading via `git show origin/main:` makes the check correct from any checkout — plain paths would silently compare whatever branch the current worktree happens to be on (`MSYS_NO_PATHCONV=1` stops Git Bash mangling the `ref:path` argument).
+   `CHAIN-OK` required. Anything else is a failure: a diff means the merge kept the older branch's snapshot and lost the newer's model, and an empty `$a`/`$b` means `git show` failed (wrong path, or Git Bash mangled the `ref:path` argument) — never treat empty-vs-empty as a pass. Reading via `git show origin/main:` makes the check correct from any checkout; plain paths would silently compare whatever branch the current worktree happens to be on.
 
    b. The snapshot matches the compiled model — catches the other fork resolution, where the merge kept the newer branch's snapshot: Designer and snapshot are then byte-identical but *both* omit the earlier migration's model changes, so (a) alone passes. On a checkout of `origin/main` (the fork tip being promoted):
 
