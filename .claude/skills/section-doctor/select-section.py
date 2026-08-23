@@ -101,7 +101,11 @@ def main():
         if m:
             blocked[m.group(1).strip()] = pr["number"]
         else:
-            warnings.append("cannot parse section from open run PR #%s title %r -- resolve by hand" % (pr.get("number"), pr.get("title")))
+            touched = sorted({s for s in map(path_section, pr_files(pr)) if s})
+            for s in touched:
+                blocked.setdefault(s, pr["number"])
+            warnings.append("cannot parse section from open run PR #%s title %r -- blocked %s from its changed files"
+                            % (pr.get("number"), pr.get("title"), ", ".join(touched) or "nothing"))
 
     if args.blocked_only:
         print("blocked: " + (", ".join("%s (#%s)" % kv for kv in sorted(blocked.items())) or "none"))
@@ -129,7 +133,7 @@ def main():
         scores, source = loc_fallback(eligible), "loc-fallback (reforge unavailable: %s)" % source
 
     def score(s):
-        return scores.get(s, (-1, -1))
+        return scores.get(s, (sys.maxsize, sys.maxsize))  # unscored sorts last
 
     never = [s for s in eligible if not os.path.exists(os.path.join(SECTIONS_DIR, "Humans." + s, "Docs", "health.md"))]
     redoctor = [s for s in eligible if s not in never]
@@ -145,7 +149,10 @@ def main():
         if tier:
             print("tier %s (%d):" % (label, len(tier)))
             for s in sorted(tier, key=score):
-                print("  %-24s score=%-6d loc=%-7d%s" % ((s,) + score(s) + (" [feature-active]" if s in active else "",)))
+                sc = scores.get(s)
+                print("  %-24s %-24s%s" % (s,
+                                           "score=%-6d loc=%-7d" % sc if sc else "score=n/a    loc=n/a",
+                                           " [feature-active]" if s in active else ""))
     unscored = [s for s in eligible if s not in scores]
     if unscored:
         print("WARNING: no score for %s -- ranked last" % ", ".join(unscored))

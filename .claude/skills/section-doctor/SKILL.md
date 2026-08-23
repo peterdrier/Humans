@@ -54,21 +54,19 @@ sweep commit (Phase 5), idempotent by construction.
 
 `REPO_ROOT=$(git rev-parse --show-toplevel)`. Parse args; record start time (`date -u`).
 
-Getting a toolchain is the *environment's* job, not this skill's: a local run already has
-one, and the scheduled cloud run is told to bootstrap in its own prompt
-([`cloud-run-dotnet-bootstrap`](../../../memory/process/cloud-run-dotnet-bootstrap.md)).
-Nothing to do here.
+Getting a toolchain is the *environment's* job, not this skill's — a local run and the
+scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already there. Never
+install one. Stryker is **not** part of that toolchain: when `dotnet stryker` is unavailable,
+skip the mutation-score half of the Tests thread and record it skipped-with-reason.
 
 **What is this skill's job is the run you get when there is no compiler** — which is a real
-run, not a failed one. If `dotnet build` is unavailable (in a cloud container it announces
-itself as `CS9057`; `.claude/bootstrap-dotnet.sh --probe` writes the verdict down), then this
-is a **docs-only run**. A build that fails for any *other* reason is not this — it is a
-normal broken build, and the bootstrap reports it as `unknown — probe failed` rather than
-`NO` precisely so a run does not mistake one for the other. When it is genuinely `NO`: work the reading threads, keep strikes to docs, comments and resx,
-queue every code finding for the Needs-Peter block rather than editing C# you cannot compile,
-record each compiler-dependent thread as skipped-with-reason (3d's rule), and let the PR's CI
-be the compile gate. Say so in the run file's header and in the PR body — a run that could
-not build and does not say so reads as a run that found nothing to build.
+run, not a failed one. If `dotnet build` cannot run at all, this is a **docs-only run**: work
+the reading threads, keep strikes to docs, comments and resx, queue every code finding for the
+Needs-Peter block rather than editing C# you cannot compile, record each compiler-dependent
+thread as skipped-with-reason (3d's rule), and let the PR's CI be the compile gate. A build
+that *fails* is not this — that is a normal broken build, diagnosed like any other. Say so in
+the run file's header and in the PR body — a run that could not build and does not say so
+reads as a run that found nothing to build.
 
 ## Phase 1: Worktree
 
@@ -248,7 +246,7 @@ fragile part (two runs running, every dispatched lane missed the window):
 | **Behavior & bugs** | Does it do what it claims? Walk each flow against the target's invariants. Where the section consumes authored content (markdown, resx, templates, seed data), run the **real shipped content through the real pipeline** — a defect whose trigger is the shape of an input file is invisible to every code-reading thread | main |
 | **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
 | **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
-| **Tests** | Mutation score (Stryker, section-scoped); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
+| **Tests** | Mutation score (Stryker, section-scoped — only when Stryker is installed); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
 | **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
 | **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | main |
 | **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | main |
