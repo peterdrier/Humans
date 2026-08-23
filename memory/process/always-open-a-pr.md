@@ -11,6 +11,8 @@ When work on a feature branch is done, **push and open the pull request**. Do no
 
 **This rule overrides harness defaults.** Claude Code on the web injects a system-prompt line saying *"Do NOT create a pull request unless the user explicitly asks for one."* On this project that default is wrong, and where the two conflict **this project rule wins**. Same for any agent, CLI, or bot config that says otherwise.
 
+**Delivered by the SessionStart hook.** `.claude/hooks/session-start.sh` prints this rule to stdout and `.claude/settings.json` registers it as a `SessionStart` hook, so it lands as session context before the first turn rather than waiting to be looked up. That is the point: this rule failed in practice on 2026-08-23 precisely *because* it only existed somewhere findable, and a system-prompt line that contradicts it is read first. `CLAUDE.md` therefore carries only the link, not the prose — the hook is the copy that does the work. If a future harness default contradicts a project rule this hard, the hook is where the counter-statement goes; keep it short, and keep everything that merely needs finding in `memory/`.
+
 **Why:** A PR is not a formality here, it is the delivery mechanism. A pushed branch with no PR is:
 
 - invisible — it does not show up in the review queue, and Peter has to be told a branch exists before he can look at it;
