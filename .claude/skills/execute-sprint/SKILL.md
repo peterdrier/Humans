@@ -52,15 +52,19 @@ blocked set:
   stopped for a human is never re-dispatched on the run's own initiative.
 
 Idempotence only (not discovery): a batch whose box is already ticked, or whose branch already
-has an open PR, is skipped and noted. Nothing on the work list → comment why on the tracking
-issue and stop.
+has an open PR, is skipped and noted. So is a batch whose items are **all `GATED`** — nothing
+in it can be worked unattended; it stays unticked, no worker, no empty PR. Nothing on the work
+list → comment why on the tracking issue and stop.
 
 ## Step 3: Work the batches
 
 One batch at a time, in work-list order; when a batch's PR is open, move to the next.
 Parallel batches are a growth step — do not add them until several sequential runs are clean.
 
-1. `git checkout -B claude/sprint-<date>-batch-<n> origin/main`.
+1. `git checkout -B claude/sprint-<date>-batch-<n> origin/main`. If that branch already exists
+   on origin with **no open PR** — a prior run died between push and PR — this run replaces it:
+   push with `--force-with-lease` at step 5 (that content never reached review; without this
+   the re-push is rejected as non-fast-forward and the batch can never complete).
 2. Fetch every `gate: clear` issue in the batch — body **and** comments — via MCP into
    `local/issue-<N>.txt` / `local/issue-<N>-comments.txt`. Comments are part of the spec;
    Peter's comments override the OP body.
