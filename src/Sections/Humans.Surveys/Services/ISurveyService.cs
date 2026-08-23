@@ -115,10 +115,16 @@ internal interface ISurveyService : IApplicationService
     Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>
-    /// Replaces the answers on an in-progress Identified draft (per-page autosave). The draft's
-    /// <c>SubmittedAt</c> stays null. Branching is not re-applied here — final submit is authoritative.
+    /// Replaces the answers on an in-progress Identified draft (per-page autosave), together with
+    /// the active session's entry path and culture. Returns false if the draft is no longer active.
+    /// Branching is not re-applied here — final submit is authoritative.
     /// </summary>
-    Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswerInput> answers, CancellationToken ct = default);
+    Task<bool> SaveDraftAnswersAsync(
+        Guid draftResponseId,
+        IReadOnlyList<SurveyAnswerInput> answers,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Finalises a wizard submission per its anonymity tier (see <see cref="SurveySubmission"/>),

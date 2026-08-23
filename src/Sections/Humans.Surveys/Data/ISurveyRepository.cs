@@ -68,11 +68,14 @@ internal partial interface ISurveyRepository : IRepository
     Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets an invitation's <c>LatestEmailStatus</c>. A first <c>Queued</c> transition also stamps
-    /// <c>SentAt</c>, upgrading a public-link participation row into an emailed invitation.
-    /// No-op if the invitation does not exist.
+    /// Atomically upgrades an unsent, incomplete participation row into a queued emailed invitation.
+    /// Returns false if the row is gone, already sent, or completed, so a racing completion/wave
+    /// cannot send a duplicate or already-spent token.
     /// </summary>
-    Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
+    Task<bool> TryQueueInvitationAsync(Guid id, Instant at, CancellationToken ct = default);
+
+    /// <summary>Sets an invitation's latest email status. No-op if the invitation does not exist.</summary>
+    Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, CancellationToken ct = default);
 
     // ── Answering (wizard entry) ────────────────────────────────────────────
     /// <summary>A single invitation by id, or null if it does not exist. Read-only.</summary>
@@ -99,11 +102,17 @@ internal partial interface ISurveyRepository : IRepository
 
     // ── Answering (submit) ──────────────────────────────────────────────────
     /// <summary>
-    /// Replaces a draft response's answers with <paramref name="answers"/> (load tracked, remove
-    /// existing, add new) and saves. When <paramref name="submittedAt"/> is non-null it also stamps
-    /// <c>SubmittedAt</c> (the Identified finalise). No-op if the response does not exist.
+    /// Replaces an in-progress draft's answers with <paramref name="answers"/> and stamps the
+    /// submitting session's entry path and culture. When <paramref name="submittedAt"/> is non-null
+    /// it also finalises the Identified response. Returns false if the draft is gone or already final.
     /// </summary>
-    Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswer> answers, Instant? submittedAt, CancellationToken ct = default);
+    Task<bool> SaveDraftAnswersAsync(
+        Guid draftResponseId,
+        IReadOnlyList<SurveyAnswer> answers,
+        Instant? submittedAt,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default);
 
     /// <summary>Inserts a response together with its answer graph and saves (CompletionTracked/Anonymous final submit).</summary>
     Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);

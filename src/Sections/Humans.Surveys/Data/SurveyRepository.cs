@@ -165,15 +165,27 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         }
     }
 
-    public async Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default)
+    public async Task<bool> TryQueueInvitationAsync(Guid id, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var updated = await ctx.SurveyInvitations
+            .Where(invitation => invitation.Id == id
+                                 && invitation.SentAt == null
+                                 && !invitation.Completed)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(invitation => invitation.SentAt, at)
+                    .SetProperty(invitation => invitation.LatestEmailStatus, EmailOutboxStatus.Queued),
+                ct);
+        return updated == 1;
+    }
+
+    public async Task UpdateInvitationStatusAsync(
+        Guid id, EmailOutboxStatus status, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (invitation is null) return;
-        if (status == EmailOutboxStatus.Queued && invitation.SentAt is null)
-        {
-            invitation.SentAt = at;
-        }
         invitation.LatestEmailStatus = status;
         await ctx.SaveChangesAsync(ct);
     }
@@ -276,14 +288,19 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SaveDraftAnswersAsync(
-        Guid draftResponseId, IReadOnlyList<SurveyAnswer> answers, Instant? submittedAt, CancellationToken ct = default)
+    public async Task<bool> SaveDraftAnswersAsync(
+        Guid draftResponseId,
+        IReadOnlyList<SurveyAnswer> answers,
+        Instant? submittedAt,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var draft = await ctx.SurveyResponses
             .Include(r => r.Answers)
-            .FirstOrDefaultAsync(r => r.Id == draftResponseId, ct);
-        if (draft is null) return;
+            .FirstOrDefaultAsync(r => r.Id == draftResponseId && r.SubmittedAt == null, ct);
+        if (draft is null) return false;
 
         ctx.SurveyAnswers.RemoveRange(draft.Answers);
         foreach (var answer in answers)
@@ -292,8 +309,11 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             draft.Answers.Add(answer);
         }
 
+        draft.InputMethod = inputMethod;
+        draft.Culture = culture;
         if (submittedAt is not null) draft.SubmittedAt = submittedAt;
         await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default)

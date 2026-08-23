@@ -380,15 +380,13 @@ internal sealed class SurveyService(
                 ? existing
                 : await repo.GetOrCreateParticipationAsync(surveyId, userId, now, ct);
 
-            // A public start may have created/completed this row after the wave snapshot.
-            // Never email a token that is already spent.
-            if (inv.Completed)
+            // The conditional update is the authority: a public completion or another wave may
+            // have changed this row after our detached snapshot.
+            if (!await repo.TryQueueInvitationAsync(inv.Id, now, ct))
             {
                 continue;
             }
 
-            await repo.UpdateInvitationStatusAsync(
-                inv.Id, EmailOutboxStatus.Queued, now, ct);
             invitationsCreated++;
 
             var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
@@ -413,7 +411,7 @@ internal sealed class SurveyService(
                 logger.LogError(ex,
                     "Failed to enqueue survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
                     userId, inv.Id, surveyId);
-                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, ct);
+                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, ct);
                 failed++;
             }
         }
@@ -614,12 +612,6 @@ internal sealed class SurveyService(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
             draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         }
-        else if (existingDraft is not null)
-        {
-            // Choosing CompletionTracked is an explicit move away from the personal-data tier.
-            // Retire the now-unreachable Identified draft and its answers before continuing.
-            await repo.DeleteDraftResponseAsync(existingDraft.Id, ct);
-        }
 
         return new SurveyPublicStart(
             participation.Id, draftResponseId, draftAnswers, AlreadyCompleted: false);
@@ -649,8 +641,19 @@ internal sealed class SurveyService(
     public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
         => repo.IncrementPublicStartedAsync(surveyId, ct);
 
-    public Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswerInput> answers, CancellationToken ct = default)
-        => repo.SaveDraftAnswersAsync(draftResponseId, MapAnswers(draftResponseId, answers), submittedAt: null, ct);
+    public Task<bool> SaveDraftAnswersAsync(
+        Guid draftResponseId,
+        IReadOnlyList<SurveyAnswerInput> answers,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default)
+        => repo.SaveDraftAnswersAsync(
+            draftResponseId,
+            MapAnswers(draftResponseId, answers),
+            submittedAt: null,
+            inputMethod,
+            culture,
+            ct);
 
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
@@ -718,7 +721,18 @@ internal sealed class SurveyService(
                     var now = clock.GetCurrentInstant();
                     if (submission.DraftResponseId is { } draftId)
                     {
-                        await repo.SaveDraftAnswersAsync(draftId, MapAnswers(draftId, visibleAnswers), submittedAt: now, ct);
+                        var saved = await repo.SaveDraftAnswersAsync(
+                            draftId,
+                            MapAnswers(draftId, visibleAnswers),
+                            submittedAt: now,
+                            submission.InputMethod,
+                            submission.Culture,
+                            ct);
+                        if (!saved)
+                        {
+                            throw new InvalidOperationException(
+                                "This identified response is no longer available.");
+                        }
                     }
                     else
                     {
@@ -767,6 +781,19 @@ internal sealed class SurveyService(
                     if (submission.InvitationId is { } invId)
                     {
                         await repo.SetInvitationCompletedAsync(invId, ct);
+                    }
+
+                    // Choosing CompletionTracked only retires a personal draft once the unlinkable
+                    // response has actually completed. Until then, another active Identified tab
+                    // remains valid. A stale Identified finalisation fails safely if it loses this race.
+                    if (submission.UserId is { } userId)
+                    {
+                        var personalDraft = await repo.GetDraftResponseAsync(
+                            submission.SurveyId, userId, ct);
+                        if (personalDraft is not null)
+                        {
+                            await repo.DeleteDraftResponseAsync(personalDraft.Id, ct);
+                        }
                     }
 
                     break;
@@ -877,7 +904,17 @@ internal sealed class SurveyService(
         // Identified per-page autosave (replace-all; the draft stays in-progress) on either entry path.
         if (state.Anonymity == ResponseAnonymity.Identified && state.DraftResponseId is { } draftId)
         {
-            await SaveDraftAnswersAsync(draftId, SurveyWizardFlow.ToAnswerInputs(state.Answers), ct);
+            var saved = await SaveDraftAnswersAsync(
+                draftId,
+                SurveyWizardFlow.ToAnswerInputs(state.Answers),
+                state.InputMethod,
+                state.Culture,
+                ct);
+            if (!saved)
+            {
+                throw new InvalidOperationException(
+                    "This identified response is no longer available.");
+            }
         }
 
         // Re-validate required-visible on this page; a Back navigation skips validation.
@@ -926,7 +963,7 @@ internal sealed class SurveyService(
         var submission = new SurveySubmission(
             state.SurveyId,
             state.InvitationId,
-            state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
+            state.Anonymity == ResponseAnonymity.Anonymous ? null : state.UserId,
             state.DraftResponseId,
             state.Anonymity,
             state.InputMethod,
