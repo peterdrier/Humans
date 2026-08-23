@@ -50,9 +50,12 @@ import sys
 from pathlib import Path
 
 # --- what counts as localized -------------------------------------------------------------
-# `@Localizer[...]`, `@SharedLocalizer[...]`, `@ContainersLocalizer[...]`, and the
-# `Localizer[...]` form inside an `@{ }` block.
-LOCALIZED = re.compile(r"\b[A-Za-z]*Localizer\s*\[")
+# `@Localizer[...]`, `@SharedLocalizer[...]`, the `Localizer[...]` form inside an `@{ }`
+# block, and the two `IStringLocalizer` extensions that resolve a key without an indexer
+# (`EnumDisplay`/`EnumSelectItems` → `Enum_<Type>_<Value>`, per EnumLocalizationExtensions).
+LOCALIZED = re.compile(
+    r"\b[A-Za-z]*Localizer\s*(?:\[|\.\s*(?:EnumDisplay|EnumSelectItems)\s*\()"
+)
 # The whole call, for removing localized branches before reading an expression's literals.
 LOCALIZED_CALL = re.compile(r"\b[A-Za-z]*Localizer\s*\[[^\]]*\]")
 STRING_LITERAL = re.compile(r"\"([^\"\\]*)\"")
@@ -118,7 +121,18 @@ WORDLIKE = re.compile(r"[A-Za-z]{2,}")
 CODE_NOISE = {
     "true", "false", "null", "var", "new", "await", "async", "string", "int", "bool",
     "is", "not", "and", "or", "in", "as", "return", "case", "default", "break",
+    "func", "action", "task",  # bare generic type names, left behind when `<…>` reads as a tag
 }
+# Razor switches to code context inside a control-flow body, so statements sit in what looks
+# like a text node once the tags come out. `Expenses/Index.cshtml` had 21 "literals" and every
+# one was code: `var net = …`, `.Column(…)`, `else if (…)`, a `//` comment, an `is { Length: > 60 }`
+# pattern. Tracking the context properly needs a Razor parser; rejecting what reads as code is
+# the cheaper half, and it is the precision that matters for a ranking.
+CODE_PUNCT = re.compile(r"[;{}\[\]<>=]|//|/\*")
+CODE_KEYWORD_START = re.compile(
+    r"^(?:else|if|foreach|for|while|switch|case|try|catch|finally|do|using|lock"
+    r"|var|return|await|new|public|private|internal|static)\b"
+)
 
 
 def _strip_balanced(text: str, opener: str, open_ch: str, close_ch: str) -> str:
@@ -182,6 +196,10 @@ def _is_literal(fragment: str) -> bool:
     """Does this residual fragment read as user-facing prose?"""
     fragment = HTML_ENTITY.sub(" ", fragment).strip()
     if not fragment:
+        return False
+    if fragment.startswith(".") or CODE_PUNCT.search(fragment):
+        return False
+    if CODE_KEYWORD_START.match(fragment):
         return False
     words = WORDLIKE.findall(fragment)
     if not words:
@@ -357,7 +375,15 @@ def bucket_for(route: str) -> str:
     clean = route.strip("/")
     if any(clean == r or clean.startswith(r + "/") for r in EXEMPT_ROUTES):
         return "exempt"
-    if any(seg.lower() in ADMIN_SEGMENT for seg in clean.split("/")):
+    segments = clean.split("/")
+    if any(seg.lower() in ADMIN_SEGMENT for seg in segments):
+        return "admin-route"
+    # The view name is not the action's route template: `GovernanceApplicationsController`'s
+    # `[HttpGet("Admin/{id:guid}")]` renders `AdminDetail.cshtml`, so the `Admin/` segment never
+    # reaches the resolved route. Resolving a view to its own action needs the MVC action
+    # descriptors — which `LocalizationCoverageSweep` has and a static pass does not — so take
+    # the name as the signal it is.
+    if segments and segments[-1].lower().startswith(tuple(ADMIN_SEGMENT)):
         return "admin-route"
     return "member-facing"
 

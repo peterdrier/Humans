@@ -334,6 +334,13 @@ ratio rather than merely miss them.
 **Where both speak, the sweep wins**: it renders, this parses Razor, and a heuristic over markup
 mistakes dynamic data for prose in a way a bracket test does not.
 
+A caveat that follows from being static: it resolves a view to its *controller's* route, not to
+the action that renders it, so an `Admin/{id}` action whose view is `AdminDetail.cshtml` is caught
+by the view name rather than by its route. Mapping a view to its own action needs the MVC action
+descriptors — which the sweep has and this does not. Same reason its literal count is a heuristic
+over markup: Razor switches to code context inside a control-flow body, and what reads as code is
+rejected rather than parsed.
+
 It resolves each view's **route** from its controller's `[Route(…)]` rather than its file path,
 because `memory/code/localization-admin-exempt.md` exempts by route (`Admin/*`, `TeamAdmin/*`,
 `Shifts/Dashboard`) and the two disagree — `Views/Admin/Agent/Settings.cshtml` is served at
