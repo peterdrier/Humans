@@ -59,7 +59,19 @@ internal sealed class SettingsAdminController(
             return View(model);
         }
 
-        await settingsService.SaveEventSettingsAsync(parsed.Settings!, ct);
+        try
+        {
+            await settingsService.SaveEventSettingsAsync(parsed.Settings!, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // The service's own invariants — activating while another cycle is Active, or an id
+            // no Shifts event row carries. Both are conflicts an operator can act on, so they
+            // belong on the form they came from, not in a 500. The message is written for them.
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
+
         SetSuccess("Event settings saved.");
         // By id, not bare: deactivating the row takes it off the default GET.
         return RedirectToAction(nameof(Index), new { id = parsed.Settings!.Id });

@@ -9,10 +9,18 @@
     <small class="text-muted">Issue #1104</small>
 </div>
 
+<div class="alert alert-warning">
+    <strong>Staging only — these edits are not live yet.</strong>
+    Nothing reads this table: every section still reads the app-wide event values from the
+    Shifts-owned row, so <a asp-controller="Shifts" asp-action="Settings">/Shifts/Settings</a>
+    is where a change takes effect today. Editing here stages the value for
+    the cutover that repoints the readers (issue #1104, PR B). Until then, a change made here
+    alone does nothing, and a change made there alone will not be reflected here.
+</div>
+
 <p class="text-muted">
-    The app-wide event values — every section reads these. Shifts' own knobs
-    (browsing switch, global volunteer cap, reminder lead time) stay on the
-    Shifts event settings screen.
+    The app-wide event values. Shifts' own knobs (browsing switch, global volunteer cap,
+    reminder lead time) stay on the Shifts event settings screen and are not moving.
     Editing <strong>@Model.EventName</strong> (@Model.GateOpeningDate).
     <a asp-controller="EventSettingsCarryAdmin" asp-action="Index">All event rows</a>.
 </p>

@@ -133,4 +133,23 @@ public sealed class SettingsAdminControllerTests
         await _settings.DidNotReceive().SaveEventSettingsAsync(
             Arg.Any<EventSettingsInfo>(), Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task Index_Post_ActivationConflict_ComesBackAsAFormErrorNotA500()
+    {
+        // Checking Active on an inactive row while another cycle is Active is an ordinary
+        // operator conflict. The service says so by throwing; the screen has to render it.
+        const string Conflict =
+            "Only one event settings row can be Active at a time — deactivate the current one first.";
+        _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException(Conflict)));
+        var sut = BuildSut();
+        var form = MakeForm(Guid.NewGuid(), isActive: true);
+
+        var result = await sut.Index(form, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+        sut.ModelState[string.Empty]!.Errors
+            .Should().ContainSingle().Which.ErrorMessage.Should().Be(Conflict);
+    }
 }
