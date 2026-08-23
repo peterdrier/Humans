@@ -1,6 +1,6 @@
 ---
 name: PR review feedback — fetch from both repos, reply per-thread, resolve when authorized
-description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve threads when Peter-authorized declines, react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger.
+description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve every dispositioned thread (fixed, refuted, wontfix, issue opened), react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger.
 ---
 
 When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these five rules fire together. They cover the full "find → triage → reply → close" loop.
@@ -32,21 +32,19 @@ Do NOT rely on a single top-level `gh pr comment` as the acknowledgement.
 
 When the same finding is restated on a later commit (duplicate inline comment on a fix push), reply to BOTH threads. A top-level summary may sit ON TOP of thread replies, never instead of them.
 
-## 3. Resolve threads when Peter has authorized the deviation
+## 3. Resolve every dispositioned thread — fixed or refuted
 
-When triaging a finding as "decline because Peter authorized" (budget bumps acknowledged in the PR body, "leave at N" answer to `AskUserQuestion`, etc.), **resolve the thread** in the same step as posting the reply.
-
-The decision rule:
+Once a finding has its disposition reply — fixed, refuted, wontfix, issue opened — **resolve the thread** in the same step. Unresolved threads stay open forever and make a worked PR look unworked.
 
 | Reply | Action |
 |---|---|
 | "Fixed in `<sha>`" | Reply + **resolve thread** |
-| "Not changing — Peter authorized X" | Reply + **resolve thread** |
-| "Not changing — bot is technically wrong" | Reply, **leave open** (default `/pr-fix` behavior) |
+| "Not changing — `<reason>`" (Peter authorized, bot factually wrong, out of scope, wontfix) | Reply + **resolve thread** |
+| "Opened `<owner>#N`" | Reply + **resolve thread** |
 
-A thread stays open only while it still needs someone's attention. A fixed finding needs none — the reply names the commit, and leaving it open makes a worked PR look unworked. Resolve in the same step as the reply, never as a later cleanup pass.
+The only thread left open is one still waiting on someone — a genuine open question or a live disagreement Peter hasn't ruled on. Resolve in the same step as the reply, never as a later cleanup pass.
 
-Discovered on PR #448 when the bot flagged the same authorized budget bump twice and Peter had to ask for the second thread to be manually resolved. The default leave-open rule exists so reviewers can push back when Claude judged the bot wrong — that purpose is moot once Peter has explicitly sanctioned the deviation.
+Discovered on PR #448 (bot re-flagged an authorized deviation until the thread was manually resolved); refuted-thread resolution confirmed by Peter on PR #1460 — a refutation reply without a resolve still leaves the thread open.
 
 ## 4. Never ping `@codex review` to re-trigger
 
