@@ -241,9 +241,11 @@ the wall-clock / token / fragility balance:
   explicit tagged model (table below) and a deadline.
 - **Only the spine and the two judgment threads stay on main** — 3a–3c, Shape, Behavior & bugs,
   and 3e. They are the reading this run exists to do, and a wrong call there costs a real finding.
-  Whether they *must* stay is an open measurement, not a settled rule: the `## Threads` block
-  records model and cost per thread precisely so a later run can answer it with numbers. Don't
-  move them on a hunch in either direction.
+  Whether they *must* stay is an open measurement, not a settled rule: the run-over-run figure
+  that answers it is the whole-run total against the baseline (Phase 7), because Phase 3's
+  main-thread cost is one shared bucket and does not split per lens. Don't move them on a hunch
+  in either direction — move them on a run that dispatched them and came out cheaper without
+  losing findings.
 
 **Dispatch contract** — every dispatched thread gets, verbatim: 3c's target (all six parts plus
 the load-bearing weirdness list), its slice of the 3a inventory, and its row's lens from the table.
@@ -392,6 +394,13 @@ worktree/PR, three bookkeeping writes:
     are what make "did the cheaper thread lose findings?" answerable across runs
     (nobodies-collective/Humans#1465); a run that leaves them blank has decided that question for
     every run after it.
+
+    **A dispatched thread has its own cost; the main-run threads share one.** The phase log has a
+    single `phase3` boundary, so every main-thread call in Phase 3 lands in one `main:phase3`
+    bucket — spine, Shape and Behavior & bugs together. Write that one figure in each main row and
+    mark it `shared`. Never split it per lens: the split would be invented, and an invented number
+    is worse here than a coarse one. The Shape/Behavior question is settled by whole-run totals
+    against the baseline (Phase 7), not by attributing turns to lenses that interleave.
   - **`## Size`** — line count against the run's anchor for every section touched, and the net.
     Growth is reported with its reason, and consolidation that grows this section while shrinking
     another is stated as the trade it is. Include the section's reforge metrics snapshot (`loc`,
