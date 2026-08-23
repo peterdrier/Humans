@@ -552,29 +552,16 @@ internal sealed class SurveyService(
         string culture,
         CancellationToken ct = default)
     {
-        // Idempotent: one in-progress Identified draft per Human, regardless of entry path.
-        var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
-        if (existing is not null)
+        // No audit log for individual response activity (privacy — Deviation #10).
+        var draft = await repo.GetOrCreateIdentifiedDraftAsync(
+            surveyId, participationId, userId, inputMethod, culture, ct);
+        if (draft is null)
         {
-            return new SurveyIdentifiedStart(existing.Id, MapDraftAnswers(existing));
+            throw new InvalidOperationException(
+                "This tracked response has already been completed.");
         }
 
-        var response = new SurveyResponse
-        {
-            Id = Guid.NewGuid(),
-            SurveyId = surveyId,
-            InvitationId = participationId,
-            UserId = userId,
-            Anonymity = ResponseAnonymity.Identified,
-            InputMethod = inputMethod,
-            Culture = culture,
-            SubmittedAt = null,
-            Answers = [],
-        };
-
-        // No audit log for individual response activity (privacy — Deviation #10).
-        await repo.AddResponseAsync(response, ct);
-        return new SurveyIdentifiedStart(response.Id, []);
+        return new SurveyIdentifiedStart(draft.Id, MapDraftAnswers(draft));
     }
 
     public async Task<SurveyPublicStart> StartPublicTrackedResponseAsync(

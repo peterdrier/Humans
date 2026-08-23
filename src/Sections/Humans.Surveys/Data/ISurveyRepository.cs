@@ -90,8 +90,18 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Inserts a response row and saves.</summary>
-    Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
+    /// <summary>
+    /// Gets or creates the Human's Identified draft while locking the shared participation row.
+    /// Returns null if completion already won. The returned response includes the authoritative
+    /// answer snapshot selected by this operation.
+    /// </summary>
+    Task<SurveyResponse?> GetOrCreateIdentifiedDraftAsync(
+        Guid surveyId,
+        Guid participationId,
+        Guid userId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default);
 
     // ── Answering (submit) ──────────────────────────────────────────────────
     /// <summary>

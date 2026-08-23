@@ -256,11 +256,65 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
                 ct);
     }
 
-    public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
+    public async Task<SurveyResponse?> GetOrCreateIdentifiedDraftAsync(
+        Guid surveyId,
+        Guid participationId,
+        Guid userId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var transaction = await ctx.Database.BeginTransactionAsync(ct);
+
+        // Identified starts, autosaves, and both tracked finalisation tiers all serialize on this
+        // participation row. The no-op update locks it without claiming completion.
+        var locked = await ctx.SurveyInvitations
+            .Where(invitation => invitation.Id == participationId
+                                 && invitation.SurveyId == surveyId
+                                 && invitation.UserId == userId
+                                 && !invitation.Completed)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    invitation => invitation.Completed,
+                    invitation => invitation.Completed),
+                ct);
+        if (locked != 1)
+        {
+            await transaction.RollbackAsync(ct);
+            return null;
+        }
+
+        var existing = await ctx.SurveyResponses
+            .Include(response => response.Answers)
+            .FirstOrDefaultAsync(
+                response => response.SurveyId == surveyId
+                            && response.UserId == userId
+                            && response.Anonymity == ResponseAnonymity.Identified
+                            && response.SubmittedAt == null,
+                ct);
+        if (existing is not null)
+        {
+            await transaction.CommitAsync(ct);
+            return existing;
+        }
+
+        var response = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            InvitationId = participationId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            InputMethod = inputMethod,
+            Culture = culture,
+            SubmittedAt = null,
+            Answers = [],
+        };
         ctx.SurveyResponses.Add(response);
         await ctx.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return response;
     }
 
     public async Task<bool> SaveDraftAnswersAsync(
