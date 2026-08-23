@@ -73,9 +73,10 @@
             }
             else
             {
-                @* Shifts' rota tables are Shell's presentation and Shifts has not moved, so the
-                   component stays there and resolves by name across application parts — the
-                   arguments are all Humans.Domain / Humans.Application types (design §15 step 6). *@
+                @* Shifts' rota tables are that section's presentation, so the component lives in
+                   Humans.Shifts and resolves by name across application parts — the arguments
+                   are all Humans.Shifts.Contracts types, which is what lets this view pass them
+                   without a reference to the Shifts section project (design §15 step 6). *@
                 @await Component.InvokeAsync("OnboardingShiftsList", new
                 {
                     eventSettings = Model.EventSettings!,

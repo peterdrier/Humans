@@ -448,7 +448,7 @@ Application boot against the restored database:
 health/live -> 200
 [17:52:23 WRN] Database humans: 130 applied migrations, 0 pending
 [17:52:23 INF] Database humans: schema is up to date
-[17:52:23 INF] SystemSettingsDbContext: schema is up to date
+[17:52:23 INF] SettingsDbContext: schema is up to date
 [17:52:23 INF] ContainersDbContext: schema is up to date
 [17:52:24 INF] AgentDbContext: schema is up to date
 [17:52:24 INF] ExpensesDbContext: schema is up to date

@@ -23,7 +23,7 @@ namespace Humans.Email.Services;
 /// </summary>
 /// <remarks>
 /// The grant mirror goes through <see cref="ICampaignService"/> so Campaigns owns
-/// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to SystemSettings
+/// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to Settings
 /// through <see cref="IEmailOutboxService.IsEmailPausedAsync"/>.
 /// </remarks>
 [CrossSectionWrite("Marks the campaign grant email status after send.")]

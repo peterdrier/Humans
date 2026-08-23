@@ -47,7 +47,7 @@ graph LR
     classDef containers fill:#4ade80,color:#000
     classDef events fill:#2dd4bf,color:#000
     classDef earlyentry fill:#fb923c,color:#fff
-    classDef systemsettings fill:#71717a,color:#fff
+    classDef settings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
     classDef gate fill:#b45309,color:#fff
@@ -170,7 +170,8 @@ graph LR
     EarlyEntry[EarlyEntryService]:::earlyentry
     Gate[GateService]:::gate
     Survey[SurveyService]:::surveys
-    SysSettings[SystemSettingsService]:::systemsettings
+    SettingsSvc[Settings Service]:::settings
+    SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
 
     %% ═══════════════════════════════════
@@ -329,7 +330,7 @@ graph LR
     GRemoval --> Email
     DriveMon --> TRes
     DriveMon --> User
-    DriveMon --> SysSettings
+    DriveMon --> SettingsSvc
     DriveMon --> Audit
     GSyncOutboxProc --> User
     GSyncOutboxProc --> Team
@@ -491,8 +492,12 @@ graph LR
     EventSvc --> User
     EventSvc --> Email
 
-    %% Email (admin outbox — pause flag lives in SystemSettings)
-    EmailOutbox --> SysSettings
+    %% Email (admin outbox — pause flag lives in Settings)
+    EmailOutbox --> SettingsSvc
+
+    %% Settings' carry screen reads the Shifts rows it copies from (#1104).
+    %% Temporary: retires with the carry screen.
+    SettingsCarry --> BurnSettings
 
     %% Web platform (diagnostics — moved to Humans.Web/Services at #1369)
     AdminDbDiag --> User

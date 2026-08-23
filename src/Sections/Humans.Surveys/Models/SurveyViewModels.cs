@@ -120,6 +120,12 @@ internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey
 /// <summary>One Grid row in the builder. Keys are non-sequential indexers.</summary>
 internal sealed record SurveyGridRowModel(string QuestionKey, string RowKey, SurveyGridRowBuilderViewModel Row);
 
+/// <summary>One Information image row in the builder. Keys are non-sequential indexers.</summary>
+internal sealed record SurveyInformationImageRowModel(
+    string QuestionKey,
+    string ImageKey,
+    SurveyInformationImageBuilderViewModel Image);
+
 /// <summary>One show-if clause row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__CKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
 
@@ -186,7 +192,19 @@ internal sealed class SurveyBuilderViewModel
         AudienceType == SurveyAudienceType.Team ? AudienceTeamId : null,
         AudienceType == SurveyAudienceType.LoggedInSince ? ToStartOfDayInstant(AudienceLoggedInSince, zone) : null,
         string.IsNullOrWhiteSpace(PublicSlug) ? null : PublicSlug,
-        Questions.Select((q, i) => q.ToInput(i)).ToList());
+        ToQuestionInputsInPageOrder());
+
+    private IReadOnlyList<QuestionInput> ToQuestionInputsInPageOrder()
+    {
+        var nextOrderByPage = new Dictionary<int, int>();
+        return Questions.Select(question =>
+        {
+            var page = question.PageNumber <= 0 ? 1 : question.PageNumber;
+            var order = nextOrderByPage.GetValueOrDefault(page);
+            nextOrderByPage[page] = order + 1;
+            return question.ToInput(order);
+        }).ToList();
+    }
 
     public static SurveyBuilderViewModel FromDetail(SurveyDetail detail, IReadOnlyList<SurveyTeamOption> teams, DateTimeZone zone)
     {
@@ -243,6 +261,7 @@ internal sealed class SurveyQuestionBuilderViewModel
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
     public List<SurveyGridRowBuilderViewModel> GridRows { get; set; } = [];
+    public List<SurveyInformationImageBuilderViewModel> InformationImages { get; set; } = [];
 
     public QuestionInput ToInput(int order) => new(
         Id,
@@ -259,7 +278,10 @@ internal sealed class SurveyQuestionBuilderViewModel
         ToShowIf(),
         Options.Select((o, i) => o.ToInput(i)).ToList(),
         Type == SurveyQuestionType.Grid ? GridSelectionMode : null,
-        Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null);
+        Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null,
+        Type == SurveyQuestionType.Information
+            ? InformationImages.Select(image => image.ToInput()).ToList()
+            : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
     {
@@ -278,6 +300,9 @@ internal sealed class SurveyQuestionBuilderViewModel
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
         GridSelectionMode = q.GridSelectionMode ?? Humans.Surveys.Domain.GridSelectionMode.Single,
         GridRows = q.GridRows?.Select(SurveyGridRowBuilderViewModel.FromInput).ToList() ?? [],
+        InformationImages = q.InformationImages?
+            .Select(SurveyInformationImageBuilderViewModel.FromInput)
+            .ToList() ?? [],
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>
@@ -289,6 +314,35 @@ internal sealed class SurveyQuestionBuilderViewModel
             .ToList();
         return clauses.Count == 0 ? null : new BranchCondition { Combine = ShowIfCombine, Clauses = clauses };
     }
+}
+
+internal sealed class SurveyInformationImageBuilderViewModel
+{
+    public Guid? Id { get; set; }
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> AltText { get; set; } = new(StringComparer.Ordinal);
+    public string? ExistingStoragePath { get; set; }
+    public string? ExistingFileName { get; set; }
+    public IFormFile? Upload { get; set; }
+
+    public InformationImageInput ToInput() => new(
+        Id,
+        new LocalizedText(Label),
+        new LocalizedText(AltText),
+        ExistingStoragePath,
+        FileName: ExistingFileName,
+        Upload: Upload is { Length: > 0 }
+            ? new SurveyImageUpload(Upload.OpenReadStream(), Upload.ContentType, Upload.FileName, Upload.Length)
+            : null);
+
+    public static SurveyInformationImageBuilderViewModel FromInput(InformationImageInput image) => new()
+    {
+        Id = image.Id,
+        Label = SurveyBuilderViewModel.ToDict(image.Label),
+        AltText = SurveyBuilderViewModel.ToDict(image.AltText),
+        ExistingStoragePath = image.StoragePath,
+        ExistingFileName = image.FileName,
+    };
 }
 
 /// <summary>One structured show-if clause: an earlier question, an operator, and (for Is/IsNot) the option values to match.</summary>

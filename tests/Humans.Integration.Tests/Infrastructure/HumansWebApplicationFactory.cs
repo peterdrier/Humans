@@ -1,6 +1,10 @@
 using System.Net;
+using Humans.Base.Constants;
+using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
+using Humans.Consent.Services;
+using Humans.Onboarding.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
@@ -258,6 +262,131 @@ public class HumansWebApplicationFactory(string connectionString)
             scope.ServiceProvider.GetRequiredService<LegalDbContext>(), user.Id);
 
         return user.Id;
+    }
+
+    /// <summary>
+    /// Signs the given <see cref="HttpClient"/> in as a persona who is <i>part-way</i> through
+    /// onboarding, so anything gated on "still onboarding" actually renders.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every other sign-in helper lands on a complete user, which quietly makes some assertions
+    /// unfalsifiable: <c>OnboardingProgressBannerViewComponent</c> returns
+    /// <c>Show: false</c> for a complete user, so a "banner must not render a raw key" assertion
+    /// against a fully-onboarded persona inspects an empty string and passes no matter what the
+    /// banner would have said. Two misbound keys shipped to production behind exactly that.
+    /// </para>
+    /// <para>
+    /// Incomplete has to be <i>manufactured</i>, not merely left alone. A fresh integration DB has
+    /// no legal documents, so <c>HasAllRequiredConsentsForTeamAsync</c> is vacuously true and the
+    /// persona is <c>Complete</c> the moment it is seeded.
+    /// </para>
+    /// <para>
+    /// <b>Order is load-bearing: sign in first, seed the document second.</b> Dev login runs
+    /// <c>DevPersonaSeeder.EnsureActiveAsync</c> on every request — on the create path and on the
+    /// already-exists path alike — and that method walks
+    /// <c>MissingConsentVersionIds</c> and submits every one of them, so any required document
+    /// present at login time is auto-signed and the persona lands on <c>Complete</c>. Seeding
+    /// first therefore cannot work; it produces the very state the guard below rejects.
+    /// </para>
+    /// <para>
+    /// The document is also created fresh on each call rather than reused when one already
+    /// exists. Reuse has the same defect one step removed: a document seeded by an earlier call
+    /// is signed by this call's login, leaving nothing outstanding. A document the persona
+    /// cannot have consented to is the only thing that reliably holds them on the Consents step.
+    /// </para>
+    /// <para>
+    /// Both caches are invalidated because each is warmed on startup and has already snapshotted
+    /// an empty document set (Calendar's rule — see <c>ConsentPageRenderTests</c>).
+    /// </para>
+    /// </remarks>
+    /// <returns>The persona's user id.</returns>
+    public async Task<Guid> SignInAsMidOnboardingAsync(HttpClient client, DevPersona persona)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(persona);
+
+        var now = SystemClock.Instance.GetCurrentInstant();
+
+        // Step 1 — sign in while there is nothing outstanding to sign. Anything required that
+        // exists at this moment is consented to on our behalf by DevPersonaSeeder; see the
+        // remarks. Whatever state this leaves behind, it is a state we can then make incomplete.
+        var slug = persona.Slug.ToLowerInvariant();
+        var loginResp = await client.GetAsync($"/dev/login/{slug}", TestContext.Current.CancellationToken);
+        if (loginResp.StatusCode is not (HttpStatusCode.Redirect or HttpStatusCode.OK))
+        {
+            throw new InvalidOperationException(
+                $"Dev login for persona '{slug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
+        }
+
+        // Step 2 — introduce a required document the signed-in persona demonstrably has not
+        // consented to, because it did not exist when they signed in.
+        var documentId = Guid.NewGuid();
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
+
+            db.LegalDocuments.Add(new LegalDocument
+            {
+                Id = documentId,
+                Name = $"Mid-onboarding required document ({slug}, {documentId:N})",
+                TeamId = SystemTeamIds.Volunteers,
+                IsRequired = true,
+                IsActive = true,
+                GracePeriodDays = 7,
+                CurrentCommitSha = new string('0', 40),
+                CreatedAt = now,
+                LastSyncedAt = now,
+            });
+            db.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = Guid.NewGuid(),
+                LegalDocumentId = documentId,
+                VersionNumber = "v1",
+                CommitSha = new string('0', 40),
+                Content = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["en"] = "Required for the mid-onboarding persona.",
+                    ["es"] = "Requerido para la persona a medio registrar.",
+                },
+                EffectiveFrom = now - Duration.FromDays(1),
+                RequiresReConsent = false,
+                CreatedAt = now - Duration.FromDays(1),
+                ChangesSummary = null,
+            });
+
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        Services.GetRequiredService<ILegalDocumentCacheInvalidator>().InvalidateAll();
+        Services.GetRequiredService<IConsentCacheInvalidator>().InvalidateAll();
+
+        using var idScope = Services.CreateScope();
+        var email = $"dev-{slug}@localhost";
+        var userId = await idScope.ServiceProvider
+            .GetRequiredService<IUserEmailService>()
+            .GetUserIdByVerifiedEmailAsync(email, TestContext.Current.CancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Persona '{slug}' was not found after dev login (email {email}).");
+
+        // Prove the fixture is in the state the caller asked for. Without this the helper can
+        // silently regress to "fully onboarded" — the exact failure it exists to prevent — and
+        // every test built on it goes quietly vacuous again.
+        var step = await idScope.ServiceProvider
+            .GetRequiredService<IOnboardingWidgetState>()
+            .GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
+        if (step == OnboardingWidgetStep.Complete)
+        {
+            throw new InvalidOperationException(
+                $"SignInAsMidOnboardingAsync produced a Complete persona '{slug}'; "
+                + "the required-document seed did not take, so anything gated on mid-onboarding "
+                + "would render nothing and assert nothing. Most likely cause: something signed "
+                + $"document {documentId:N} on the persona's behalf — check whether a sign-in or "
+                + "a consent-repair path ran after step 2, or whether the cache invalidation "
+                + "above no longer reaches the reader.");
+        }
+
+        return userId;
     }
 
     private static async Task SeedMissingConsentsAsync(LegalDbContext db, Guid userId)

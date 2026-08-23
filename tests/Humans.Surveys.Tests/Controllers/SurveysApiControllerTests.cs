@@ -110,6 +110,43 @@ public class SurveysApiControllerTests
         json.Should().Contain(@"""label"":""Morning""");
     }
 
+    [HumansFact]
+    public async Task Definition_includes_information_markdown_and_public_images()
+    {
+        var id = Guid.NewGuid();
+        var editable = new SurveyEditInput(
+            Text("My Survey"), LocalizedText.Empty, LocalizedText.Empty,
+            LocalizedText.Empty, LocalizedText.Empty,
+            "en", false, null, null, null, null, null, null,
+            [
+                new QuestionInput(
+                    Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+                    Text("Forecast"), Text("**Read this first**"),
+                    false, null, null, LocalizedText.Empty, LocalizedText.Empty, null, [],
+                    InformationImages:
+                    [
+                        new InformationImageInput(
+                            Guid.NewGuid(),
+                            Text("Fire risk"),
+                            Text("Fire risk table"),
+                            "uploads/surveys/fire.png",
+                            "image/png",
+                            "fire.png"),
+                    ]),
+            ]);
+        _surveys.GetForEditAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(id, SurveyStatus.Open, editable));
+
+        var result = await _sut.Definition(id, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result.Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain(@"""type"":""Information""");
+        json.Should().Contain(@"""markdown"":""**Read this first**""");
+        json.Should().Contain(@"""url"":""/uploads/surveys/fire.png""");
+        json.Should().Contain(@"""label"":""Fire risk""");
+        json.Should().Contain(@"""altText"":""Fire risk table""");
+    }
+
     // ── Responses ───────────────────────────────────────────────────────────
 
     [HumansFact]

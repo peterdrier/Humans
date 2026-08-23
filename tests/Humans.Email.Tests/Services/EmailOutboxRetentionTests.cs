@@ -10,7 +10,7 @@ using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Base.Configuration;
-using Humans.SystemSettings.Contracts;
+using Humans.Settings.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
@@ -39,7 +39,7 @@ public class EmailOutboxRetentionTests : IDisposable
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
 
         _retention = new EmailOutboxService(
-            repo, Substitute.For<ISystemSettingsService>(), settings, new FakeClock(Now));
+            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now));
     }
 
     public void Dispose()

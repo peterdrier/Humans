@@ -48,7 +48,56 @@ git diff --stat upstream/main..origin/main | tail -1
 
 If empty: nothing to promote. Tell the user and stop.
 
-### 4. Build the PR body
+### 4. Check EF migration sequencing
+
+Enumerate the migrations being promoted:
+
+```bash
+git diff --name-status upstream/main..origin/main -- '*/Migrations/*'
+```
+
+Group added files by folder — each folder is one DbContext chain (`src/Sections/Humans.<Section>/Data/Migrations/` per section, `src/Humans.Web/Migrations/System/` for the platform context). No added migrations → record "None" for the **DB changes** section and move on. For every folder with added migrations, verify:
+
+1. **End-of-chain** — every new migration's timestamp prefix sorts after every migration already on `upstream/main` in that folder:
+
+   ```bash
+   git ls-tree -r --name-only upstream/main -- <folder>
+   ```
+
+   (`-r` is required — without it, an existing folder prints as a single tree entry and there are no timestamps to compare.)
+
+   If `<folder>` doesn't exist on `upstream/main` because the batch renames it (`R` entries in the step-4 diff, e.g. SystemSettings→Settings), run the same command against the **old** path from the rename entry — the chain continues across the rename. Only a genuinely new context has no upstream chain to compare.
+
+   A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/migration-regen-after-rebase.md`).
+
+2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears in the same diff as `M`, as `A` (new folder), or as the destination of an `R` entry (renamed folder — a rename with a small content change is reported as `R<score>`, not `M`). New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
+
+3. **Chain converges** — the critical case is ≥2 new migrations in one folder (two fork PRs each added one): the second must have been generated on top of the first, not off the same base in parallel. Two-part check; **both** must pass:
+
+   a. The model body between the `#pragma warning` markers is identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
+
+   ```bash
+   export MSYS_NO_PATHCONV=1   # must be exported — a diff-local prefix doesn't reach the process substitutions
+   a=$(git show origin/main:<newest>.Designer.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
+   b=$(git show origin/main:<folder>/<Context>ModelSnapshot.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
+   [ -n "$a" ] && [ -n "$b" ] && diff <(echo "$a") <(echo "$b") && echo CHAIN-OK
+   ```
+
+   `CHAIN-OK` required. Anything else is a failure: a diff means the merge kept the older branch's snapshot and lost the newer's model, and an empty `$a`/`$b` means `git show` failed (wrong path, or Git Bash mangled the `ref:path` argument) — never treat empty-vs-empty as a pass. Reading via `git show origin/main:` makes the check correct from any checkout; plain paths would silently compare whatever branch the current worktree happens to be on.
+
+   b. The snapshot matches the compiled model — catches the other fork resolution, where the merge kept the newer branch's snapshot: Designer and snapshot are then byte-identical but *both* omit the earlier migration's model changes, so (a) alone passes. On a checkout of `origin/main` (the fork tip being promoted):
+
+   ```bash
+   dotnet build Humans.slnx -v quiet
+   dotnet ef migrations has-pending-model-changes --context <Context> \
+     --project src/Sections/Humans.<Section> --startup-project src/Humans.Web --no-build
+   ```
+
+   Must report no pending model changes (`--project` per `memory/process/ef-multi-context-commands.md`; the platform context uses `--project src/Humans.Web`). Together, (a) + (b) prove the newest Designer's model incorporates every promoted migration's entity changes.
+
+**Any check fails → STOP. Do not open the PR.** Report which context and which check. The fix happens on the fork before promotion (stop-and-ask per the atom above; `/ef-regen` is the sanctioned recovery) — a broken chain promoted to prod is a deploy incident, not a PR-body footnote.
+
+### 5. Build the PR body
 
 For each commit, transform the subject as follows:
 
@@ -69,7 +118,7 @@ emit this bullet:
 - `8508e353` nobodies-collective/Humans#673: consolidate person-search with PersonSearchFields bit-flag API (peterdrier/Humans#455)
 ```
 
-### 5. Write the PR
+### 6. Write the PR
 
 Use `gh pr create` with `--head peterdrier:main`. Pass the body via heredoc to preserve formatting:
 
@@ -89,6 +138,11 @@ All issue/PR refs are qualified per `memory/process/issue-refs-qualified.md` —
 - `<sha>` <transformed subject>
 - ...
 
+## DB changes
+
+<!-- REQUIRED section, from step 4. "None." if no migrations in the batch. -->
+- `<Context>`: `<migration id + name>`, `<migration id + name>` (apply order) — sequencing verified
+
 ## Test plan
 
 - [ ] Rebase merge (each PR is already squashed)
@@ -100,11 +154,11 @@ EOF
 
 Substitute `N` with the actual commit count.
 
-### 6. Return the PR URL
+### 7. Return the PR URL
 
 `gh pr create` prints the URL on success — surface it to the user. Don't merge; promotion is Peter's call.
 
-### 7. Discord release notes
+### 8. Discord release notes
 
 After surfacing the PR URL, draft member-facing release notes for Discord and present them in the conversation as a single copy-paste-ready ```markdown code block (Claude does NOT post to Discord — Peter pastes it).
 
@@ -124,7 +178,8 @@ Rules:
 - [ ] Every inline `#NNN` reference is qualified (`peterdrier/Humans#NNN` or `nobodies-collective/Humans#NNN`) — no bare refs anywhere in the body.
 - [ ] Title is `Promote QA → production (<N> commits)` with the correct count.
 - [ ] No existing open PR was overlooked (step 2).
-- [ ] Discord release notes drafted (step 7), dated, member-features first, ≤ 2,000 characters.
+- [ ] Migration sequencing checks (step 4) ran for every context with new migrations; **DB changes** section lists them per context in apply order, or says "None."
+- [ ] Discord release notes drafted (step 8), dated, member-features first, ≤ 2,000 characters.
 
 ## What this skill does NOT do
 

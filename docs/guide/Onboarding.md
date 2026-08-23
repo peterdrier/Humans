@@ -7,6 +7,10 @@
   src/Sections/Humans.Consent/Views/Consent/**
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Index.cshtml
   src/Sections/Humans.Onboarding/Views/OnboardingReview/Detail.cshtml
+  src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
+  src/Sections/Humans.Onboarding/Views/Welcome/**
+  src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
+  src/Sections/Humans.Onboarding/Controllers/WelcomeController.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Onboarding/Controllers/GuestController.cs
   src/Humans.Web/Controllers/HomeController.cs
@@ -34,6 +38,12 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 
 ## Key pages at a glance
 
+- `/OnboardingWidget` — the guided flow. It never has a page of its own: it works out which
+  step you are on and sends you there, so it is safe to bookmark and safe to come back to.
+- `/OnboardingWidget/Names` — step 1, your burner name and legal first/last name.
+- `/OnboardingWidget/Shifts` — step 2, the shifts that most need people right now.
+- `/OnboardingWidget/Consents` — step 3, the required documents, one at a time.
+- `/Welcome` — the explainer for people who are not signed in yet.
 - `/` — Home dashboard with your "Things to do" checklist.
 - `/Profile/Me/Edit` — profile setup (one-shot during onboarding, then a regular edit page).
 - `/Profile/Me/ShiftInfo` — skills, work-style preferences, and languages used to staff shifts.
@@ -52,11 +62,33 @@ You have two ways to create an account:
 
 If your email was imported from a mailing list, your account already exists and clicking your first magic link claims it.
 
-### 2. Complete your profile
+### 2. Work through the guided flow
 
-The very first thing the app asks for is your name. However you signed in, until you've set a burner name and your legal first and last name, the app sends you to a short "let's start with your name" form before anything else opens up — you can't browse the rest of the site nameless. (This never blocks signing in; it only redirects you to the name form once you're in.) Once your name is saved, the gate lifts on your next click.
+Once you are signed in the app takes over and walks you through three steps at
+`/OnboardingWidget`: **Names → Shifts → Consents**. You never have to remember where you
+were — every step hands back to `/OnboardingWidget`, which works out what is still missing
+and sends you to it. Close the tab and come back a week later and you land on the same step.
 
-After that, profile setup asks for your pronouns, location, bio, birthday, and any contact fields you want to share. An emergency contact is optional but recommended.
+**Names.** The very first thing the app asks for is your name. However you signed in, until
+you've set a burner name and your legal first and last name, the app sends you to a short
+"let's start with your name" form before anything else opens up — you can't browse the rest
+of the site nameless. (This never blocks signing in; it only redirects you to the name form
+once you're in.) Once your name is saved, the gate lifts on your next click.
+
+**Shifts.** Next you see the shifts that most need people for the current burn, so you can
+sign up for one — or several days of a Build/Strike rota — while you are here. This step is
+optional: "Skip for now" moves you straight on, and skipping is remembered for the rest of
+your session. If you have signed a document with us before, the flow skips this step for you
+and goes straight to the documents.
+
+**Consents.** Finally the required documents, one at a time, with a "document N of M"
+counter so you can see how many are left.
+
+### 2a. Fill in the rest of your profile
+
+The guided flow only asks for the three names. The full profile — pronouns, location, bio,
+birthday, contact fields — lives at `/Profile/Me/Edit` and you can fill it in whenever you
+like. It asks for your pronouns, location, bio, birthday, and any contact fields you want to share. An emergency contact is optional but recommended.
 
 A separate step (`/Profile/Me/ShiftInfo`) walks you through your skills, work-style preferences, and languages. Coordinators search by skill to find the right person for a role, so a thin profile is harder to place — fill these in honestly and fully even if you're not sure what you'll end up doing.
 
@@ -64,7 +96,11 @@ During this one-shot setup you also see a tier selector. Leave it on **Volunteer
 
 ### 3. Sign the required legal documents
 
-Visit `/Consent` and sign each required document. Signatures are append-only — they cannot be edited or deleted. You enter the Volunteers team once you have entered your legal name and signed all required documents.
+The guided flow's third step shows you each required document in turn. `/Consent` is the
+same set of documents in list form, and is where you go afterwards to re-read anything you
+signed or to sign something newly required. Signatures are append-only — they cannot be
+edited or deleted. You enter the Volunteers team once you have entered your legal name and
+signed all required documents.
 
 ### 4. Become an active Volunteer
 

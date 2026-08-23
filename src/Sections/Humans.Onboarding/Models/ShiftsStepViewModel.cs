@@ -10,12 +10,11 @@ namespace Humans.Onboarding.Models;
 /// <remarks>
 /// The rota tables themselves are not modelled here. They are Shifts' presentation —
 /// <c>ShiftBrowseViewModel</c>, <c>RotaShiftGroup</c>, <c>ShiftBrowseMapper</c> and the
-/// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials all live in Shell and
-/// Shifts has not moved — so the view hands this model's Base-typed contents to Shell's
+/// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials all live in
+/// <c>Humans.Shifts</c> — so the view hands this model's contents to Shifts'
 /// <c>OnboardingShiftsList</c> view component and invokes it by name (design §15 step 6).
-/// Everything on this record is a
-/// <c>Humans.Domain</c> or <c>Humans.Application</c> type, which is what makes that
-/// invocation compile from a section.
+/// Everything on this record is a <c>Humans.Shifts.Contracts</c> type, which is what makes
+/// that invocation compile from here without referencing the Shifts section project.
 /// </remarks>
 internal sealed class ShiftsStepViewModel
 {

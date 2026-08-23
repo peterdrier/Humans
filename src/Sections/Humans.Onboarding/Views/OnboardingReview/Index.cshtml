@@ -1,13 +1,13 @@
 @model OnboardingReviewIndexViewModel
 @{
-    ViewData["Title"] = Localizer["OnboardingReview_Title"].Value;
+    ViewData["Title"] = Localizer["Onboarding_ReviewTitle"].Value;
     var hasSelectableReviews = Model.PendingReviews
         .Concat(Model.FlaggedReviews)
         .Any(item => !string.IsNullOrWhiteSpace(item.LegalName));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["OnboardingReview_Title"]</h1>
+    <h1 class="mb-0">@Localizer["Onboarding_ReviewTitle"]</h1>
     <vc:access-matrix section="OnboardingReview" />
 </div>
 
@@ -15,7 +15,7 @@
 @if (Model.PendingReviews.Count == 0 && Model.FlaggedReviews.Count == 0)
 {
     <div class="alert alert-success">
-        @Localizer["OnboardingReview_NoPending"]
+        @Localizer["Onboarding_ReviewNoPending"]
     </div>
 }
 
@@ -25,7 +25,7 @@
         @if (Model.PendingReviews.Count > 0)
         {
             <h4 class="mt-4 mb-3">
-                @Localizer["OnboardingReview_PendingSection"]
+                @Localizer["Onboarding_ReviewPendingSection"]
                 <span class="badge bg-warning">@Model.PendingReviews.Count</span>
             </h4>
 
@@ -39,7 +39,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.LegalName" />
+                                           value="@item.UserId" aria-label="@Localizer["Onboarding_ReviewSelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -70,7 +70,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Onboarding_ReviewReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -82,7 +82,7 @@
         @if (Model.FlaggedReviews.Count > 0)
         {
             <h4 class="mt-4 mb-3">
-                @Localizer["OnboardingReview_FlaggedSection"]
+                @Localizer["Onboarding_ReviewFlaggedSection"]
                 <span class="badge bg-danger">@Model.FlaggedReviews.Count</span>
             </h4>
 
@@ -96,7 +96,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.LegalName" />
+                                           value="@item.UserId" aria-label="@Localizer["Onboarding_ReviewSelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -117,7 +117,7 @@
                                 {
                                     <span class="badge bg-info me-1">@item.MembershipTier</span>
                                 }
-                                <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
+                                <span class="badge bg-danger">@Localizer["Onboarding_ReviewFlaggedBadge"]</span>
                                 @if (item.RequiredConsentCount > 0)
                                 {
                                     var allSigned = item.ConsentCount >= item.RequiredConsentCount;
@@ -128,7 +128,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Onboarding_ReviewReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -138,16 +138,24 @@
         }
 
         <div class="d-flex justify-content-end mb-4">
+            @* Rendered even with nothing selectable so the queue's shape is legible at a glance.
+               Two branches rather than one button with a bool-valued disabled attribute. Razor
+               would omit such an attribute when the expression is false, so the collapsed form
+               does work — and it is still a reject: code-review-rules.md §"Razor Boolean
+               Attributes" bans that shape regardless of context, because an HTML boolean
+               attribute is live whenever it is *present*, which makes the version of this that
+               is wrong look identical to the version that is right. Do not re-collapse it; it
+               was tried in nobodies-collective/Humans#1458 and reverted in review. *@
             @if (hasSelectableReviews)
             {
                 <button type="submit" class="btn btn-success">
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Onboarding_ReviewBulkClearButton"]
                 </button>
             }
             else
             {
                 <button type="submit" class="btn btn-success" disabled>
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Onboarding_ReviewBulkClearButton"]
                 </button>
             }
         </div>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Settings' cross-section surface, carved into its own leaf project because
+    its consumers are still in Base: EmailOutboxService and DriveActivityMonitorService
+    live in Humans.Application, so a Contracts/ *folder* inside Humans.Settings
+    would make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md). References Humans.Interfaces
+    only — the bottom of the graph — so Humans.Application can reference it freely.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

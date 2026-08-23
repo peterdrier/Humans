@@ -53,7 +53,8 @@
 
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
-<form asp-controller="SurveyAdmin" asp-action="Save" method="post" id="survey-builder-form">
+<form asp-controller="SurveyAdmin" asp-action="Save" method="post" enctype="multipart/form-data"
+      id="survey-builder-form" class="pb-5">
     @Html.AntiForgeryToken()
     @if (!Model.IsNew)
     {
@@ -171,9 +172,9 @@
         <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel("__QKEY__", new SurveyQuestionBuilderViewModel()))" />
     </template>
 
-    <div class="d-flex justify-content-between mt-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-3">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">+ Add question</button>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-column flex-sm-row flex-wrap gap-2">
             <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary"
                     title="Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.">
                 Save + translate missing
@@ -273,8 +274,11 @@
                 const ratings = card.querySelector('.rating-section');
                 const options = card.querySelector('.options-section');
                 const grid = card.querySelector('.grid-section');
+                const information = card.querySelector('.information-section');
+                const required = card.querySelector('.required-section');
                 const isChoice = type === 'SingleChoice' || type === 'MultiChoice';
                 const isGrid = type === 'Grid';
+                const isInformation = type === 'Information';
                 if (options) {
                     options.style.display = isChoice || isGrid ? '' : 'none';
                     const label = options.querySelector('.options-label');
@@ -284,7 +288,10 @@
                 }
                 if (grid) grid.style.display = isGrid ? '' : 'none';
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
+                if (information) information.style.display = isInformation ? '' : 'none';
+                if (required) required.style.display = isInformation ? 'none' : '';
                 updateGridColumnLimit(card);
+                updateInformationImageLimit(card);
             }
 
             function ensureQuestionId(card) {
@@ -321,6 +328,24 @@
                 updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
             }
 
+            function addInformationImage(card) {
+                const tpl = card.querySelector('.information-image-template');
+                const list = card.querySelector('.information-images-container');
+                if (!tpl || !list || list.querySelectorAll('.information-image-row').length >= 5) return;
+                const html = tpl.innerHTML.replaceAll('__IKEY__', freshKey('i'));
+                list.insertAdjacentHTML('beforeend', html);
+                applyCulture(list.lastElementChild);
+                updateInformationImageLimit(card);
+                updateMoveButtons(list, '.information-image-row', 'information-image');
+            }
+
+            function updateInformationImageLimit(card) {
+                const button = card.querySelector('.add-information-image');
+                if (!button) return;
+                button.disabled = card.querySelectorAll(
+                    '.information-images-container .information-image-row').length >= 5;
+            }
+
             function updateMoveButtons(list, itemSelector, classPrefix) {
                 const items = Array.from(list.querySelectorAll(':scope > ' + itemSelector));
                 items.forEach((item, index) => {
@@ -347,6 +372,59 @@
             // ── show-if clause editor ────────────────────────────────────────
             function questionCards() { return Array.from(container.querySelectorAll('.question-card')); }
 
+            function questionPage(card) {
+                const value = Number.parseInt(card.querySelector('.question-page-number')?.value || '1', 10);
+                return Number.isFinite(value) && value > 0 ? value : 1;
+            }
+
+            function updateQuestionControls() {
+                const cards = questionCards();
+                cards.forEach((card, index) => {
+                    const label = card.querySelector('.question-position-label');
+                    const up = card.querySelector('.move-question-up');
+                    const down = card.querySelector('.move-question-down');
+                    const samePageCards = cards.filter(candidate => questionPage(candidate) === questionPage(card));
+                    const pageIndex = samePageCards.indexOf(card);
+                    if (label) label.textContent = 'Question ' + (index + 1);
+                    if (up) up.disabled = pageIndex === 0;
+                    if (down) down.disabled = pageIndex === samePageCards.length - 1;
+                });
+            }
+
+            function addQuestion(afterCard) {
+                const html = qTemplate.innerHTML.replaceAll('__QKEY__', freshKey('q'));
+                let card;
+                if (afterCard) {
+                    afterCard.insertAdjacentHTML('afterend', html);
+                    card = afterCard.nextElementSibling;
+                } else {
+                    container.insertAdjacentHTML('beforeend', html);
+                    card = container.lastElementChild;
+                }
+                initCard(card);
+                if (afterCard) {
+                    card.querySelector('.question-page-number').value = questionPage(afterCard);
+                }
+                applyCulture(card);
+                window.HumansMarkdownEditor?.init(card);
+                updateQuestionControls();
+            }
+
+            function moveQuestion(button, direction) {
+                const card = button.closest('.question-card');
+                const samePageCards = questionCards()
+                    .filter(candidate => questionPage(candidate) === questionPage(card));
+                const index = samePageCards.indexOf(card);
+                const target = samePageCards[index + direction];
+                if (!target) return;
+                if (direction < 0) {
+                    container.insertBefore(card, target);
+                } else {
+                    container.insertBefore(card, target.nextElementSibling);
+                }
+                updateQuestionControls();
+            }
+
             function questionLabel(card, index) {
                 // The first localized field on a card is its Prompt.
                 const prompt = card.querySelector('.survey-localized-field');
@@ -361,7 +439,8 @@
                 select.add(new Option('— choose a question —', ''));
                 questionCards().forEach((card, i) => {
                     if (card === ownCard) return;
-                    if (card.querySelector('.question-type')?.value === 'Grid') return;
+                    const type = card.querySelector('.question-type')?.value;
+                    if (type === 'Grid' || type === 'Information') return;
                     const id = card.querySelector('.question-id')?.value;
                     if (id) select.add(new Option(questionLabel(card, i), id));
                 });
@@ -426,15 +505,16 @@
                 });
                 updateMoveButtons(card.querySelector('.options-container'), '.option-row', 'option');
                 updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
+                updateMoveButtons(
+                    card.querySelector('.information-images-container'),
+                    '.information-image-row',
+                    'information-image');
+                updateInformationImageLimit(card);
             }
 
             // ── events ───────────────────────────────────────────────────────
             document.getElementById('add-question').addEventListener('click', function () {
-                const html = qTemplate.innerHTML.replaceAll('__QKEY__', freshKey('q'));
-                container.insertAdjacentHTML('beforeend', html);
-                const card = container.lastElementChild;
-                initCard(card);
-                applyCulture(card);
+                addQuestion(null);
             });
 
             container.addEventListener('click', function (e) {
@@ -443,6 +523,13 @@
                     const id = card.querySelector('.question-id')?.value;
                     card.remove();
                     if (id) removeClauseRowsReferencing(id);
+                    updateQuestionControls();
+                } else if (e.target.closest('.move-question-up')) {
+                    moveQuestion(e.target, -1);
+                } else if (e.target.closest('.move-question-down')) {
+                    moveQuestion(e.target, 1);
+                } else if (e.target.closest('.add-question-after')) {
+                    addQuestion(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('add-option')) {
                     addOption(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-option')) {
@@ -456,6 +543,24 @@
                     moveCollectionItem(e.target, 1, '.option-row', '.options-container', 'option');
                 } else if (e.target.classList.contains('add-grid-row')) {
                     addGridRow(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('add-information-image')) {
+                    addInformationImage(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('remove-information-image')) {
+                    const card = e.target.closest('.question-card');
+                    e.target.closest('.information-image-row').remove();
+                    updateInformationImageLimit(card);
+                    updateMoveButtons(
+                        card.querySelector('.information-images-container'),
+                        '.information-image-row',
+                        'information-image');
+                } else if (e.target.closest('.move-information-image-up')) {
+                    moveCollectionItem(
+                        e.target, -1, '.information-image-row',
+                        '.information-images-container', 'information-image');
+                } else if (e.target.closest('.move-information-image-down')) {
+                    moveCollectionItem(
+                        e.target, 1, '.information-image-row',
+                        '.information-images-container', 'information-image');
                 } else if (e.target.classList.contains('remove-grid-row')) {
                     const card = e.target.closest('.question-card');
                     e.target.closest('.grid-row').remove();
@@ -480,6 +585,8 @@
             container.addEventListener('change', function (e) {
                 if (e.target.classList.contains('question-type')) {
                     applyTypeVisibility(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('question-page-number')) {
+                    updateQuestionControls();
                 } else if (e.target.classList.contains('showif-mode')) {
                     const card = e.target.closest('.question-card');
                     const conditional = e.target.value === 'conditional';
@@ -510,6 +617,7 @@
             });
 
             questionCards().forEach(initCard);
+            updateQuestionControls();
             applyCulture();
             updateMissingBadges();
         })();

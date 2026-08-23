@@ -10,6 +10,7 @@ using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Interfaces;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,11 +35,12 @@ public class SurveyServiceTests
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ISurveyInviteTokenProvider _tokenProvider = Substitute.For<ISurveyInviteTokenProvider>();
     private readonly IGoogleTranslationService _translation = Substitute.For<IGoogleTranslationService>();
+    private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
 
     private SurveyService CreateService(ILogger<SurveyService>? logger = null) => new(
         _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
-        _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation);
+        _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
     private static LocalizedText L(string en) => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
@@ -165,6 +167,107 @@ public class SurveyServiceTests
         grid.GridSelectionMode.Should().Be(GridSelectionMode.Multiple);
         grid.GridRows!.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
         grid.Options.Select(column => column.Value).Should().ContainInOrder("morning", "afternoon");
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_saves_and_persists_an_information_image()
+    {
+        Survey? captured = null;
+        _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+            .Do(call => captured = call.Arg<Survey>());
+        var questionId = Guid.NewGuid();
+        await using var content = new MemoryStream([1, 2, 3]);
+        var information = new QuestionInput(
+            questionId, 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Use this context before choosing."), true, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null,
+                    L("Fire risk"),
+                    L("Fire risk forecast table"),
+                    Upload: new SurveyImageUpload(content, "image/png", "fire-risk.png", 3)),
+            ]);
+
+        await CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        var saved = captured!.Questions.Should().ContainSingle().Subject;
+        saved.Type.Should().Be(SurveyQuestionType.Information);
+        saved.IsRequired.Should().BeFalse();
+        saved.Options.Should().BeEmpty();
+        var image = saved.InformationImages.Should().ContainSingle().Subject;
+        image.StoragePath.Should().StartWith($"uploads/surveys/{captured.Id}/{questionId}/");
+        image.StoragePath.Should().EndWith(".png");
+        image.Label.Resolve("en", "en").Should().Be("Fire risk");
+        await _fileStorage.Received(1).SaveAsync(
+            image.StoragePath, content, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_does_not_delete_a_removed_image_that_a_concurrent_editor_may_restore()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        var questionId = Guid.NewGuid();
+        survey.Questions =
+        [
+            new SurveyQuestion
+            {
+                Id = questionId,
+                SurveyId = survey.Id,
+                PageNumber = 1,
+                Type = SurveyQuestionType.Information,
+                HelpText = L("Context"),
+                InformationImages =
+                [
+                    new SurveyInformationImage(
+                        Guid.NewGuid(),
+                        "uploads/surveys/old.png",
+                        "image/png",
+                        "old.png",
+                        L("Old"),
+                        L("Old data")),
+                ],
+            },
+        ];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var updated = new QuestionInput(
+            questionId, 1, 0, SurveyQuestionType.Information,
+            LocalizedText.Empty, L("Updated context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages: []);
+
+        await CreateService().UpdateAsync(
+            survey.Id, Input(updated), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_rejects_an_image_row_without_an_upload()
+    {
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null,
+                    L("Fire risk"),
+                    L("Fire risk forecast table")),
+            ]);
+
+        var act = async () => await CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*select the file again*");
+        await _repo.DidNotReceive().AddAsync(
+            Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1954,6 +2057,43 @@ public class SurveyServiceTests
         var result = await CreateService().GetResultsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Information_items_are_omitted_from_results_and_response_exports()
+    {
+        var surveyId = Guid.NewGuid();
+        var informationId = Guid.NewGuid();
+        var answerId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions =
+        [
+            new SurveyQuestion
+            {
+                Id = informationId,
+                SurveyId = surveyId,
+                PageNumber = 1,
+                Order = 0,
+                Type = SurveyQuestionType.Information,
+                Prompt = L("Forecast"),
+                HelpText = L("Context"),
+            },
+            TextQuestion(answerId, surveyId, 1),
+        ];
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<SurveyResponse>());
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var results = await CreateService().GetResultsAsync(
+            surveyId, TestContext.Current.CancellationToken);
+        var export = await CreateService().GetResponseExportAsync(
+            surveyId, TestContext.Current.CancellationToken);
+
+        results!.Questions.Should().ContainSingle().Which.QuestionId.Should().Be(answerId);
+        export!.Questions.Should().ContainSingle().Which.QuestionId.Should().Be(answerId);
     }
 
     [HumansFact]

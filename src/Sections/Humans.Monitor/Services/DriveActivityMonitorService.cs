@@ -1,9 +1,10 @@
+using Humans.Base.Attributes;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Monitor.Contracts;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.SystemSettings.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Services;
@@ -11,10 +12,11 @@ namespace Humans.Monitor.Services;
 /// <summary>
 /// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
 /// </summary>
+[CrossSectionWrite("Monitor stamps its own last-run marker into the Settings key/value store.")]
 internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceService teamResourceService,
-    ISystemSettingsService systemSettings,
+    ISettingsService settingsStore,
     IUserServiceRead userService,
     IAuditLogService auditLogService,
     IClock clock,
@@ -158,8 +160,8 @@ internal sealed class DriveActivityMonitorService(
         // marker outcome — anomalies must surface even on a partial-failure run.
         if (newMarker is not null)
         {
-            await systemSettings.SetValueAsync(
-                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            await settingsStore.SetValueAsync(
+                SettingKeys.DriveActivityMonitorLastRunAt,
                 newMarker.Value.ToIso8601(),
                 cancellationToken);
         }
@@ -218,8 +220,8 @@ internal sealed class DriveActivityMonitorService(
 
     private async Task<Instant?> GetLastRunTimestampAsync(CancellationToken cancellationToken)
     {
-        var value = await systemSettings.GetValueAsync(
-            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+        var value = await settingsStore.GetValueAsync(
+            SettingKeys.DriveActivityMonitorLastRunAt,
             cancellationToken);
         if (string.IsNullOrEmpty(value))
         {

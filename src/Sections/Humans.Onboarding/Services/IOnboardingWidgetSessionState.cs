@@ -2,7 +2,9 @@ namespace Humans.Onboarding.Services;
 
 /// <summary>
 /// Per-request session-derived state consumed by <see cref="IOnboardingWidgetState"/>.
-/// Implemented in the Web layer so that the Application layer never references HTTP types.
+/// The seam exists so <c>OnboardingWidgetState</c> — the step-resolution algorithm, and the
+/// thing worth unit-testing — never names an HTTP type. Both halves live in this folder;
+/// only the implementation touches <c>HttpContext</c>.
 /// </summary>
 internal interface IOnboardingWidgetSessionState
 {

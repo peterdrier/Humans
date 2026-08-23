@@ -9,15 +9,32 @@
     @* Always rendered: new questions get a client-generated id (Builder JS) so show-if clauses can
        reference them before the first save — the service honours supplied ids. *@
     <input type="hidden" name="@(prefix).Id" value="@q.Id" class="question-id" />
-    <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <strong class="small text-muted">Question</strong>
-        <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+        <strong class="small text-muted question-position-label">Question</strong>
+        <div class="d-flex flex-wrap gap-1">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Question order">
+                <button type="button" class="btn btn-outline-secondary move-question-up"
+                        title="Move question up" aria-label="Move question up">
+                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary move-question-down"
+                        title="Move question down" aria-label="Move question down">
+                    <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                </button>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-question-after">
+                + Add below
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+        </div>
     </div>
     <div class="card-body">
         <div class="row g-2 mb-2">
             <div class="col-auto">
                 <label class="form-label small mb-0">Page</label>
-                <input type="number" min="1" name="@(prefix).PageNumber" class="form-control form-control-sm" style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
+                <input type="number" min="1" name="@(prefix).PageNumber"
+                       class="form-control form-control-sm question-page-number"
+                       style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
             </div>
             <div class="col-auto">
                 <label class="form-label small mb-0">Type</label>
@@ -28,7 +45,7 @@
                     }
                 </select>
             </div>
-            <div class="col-auto align-self-end">
+            <div class="col-auto align-self-end required-section">
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="req-@key" name="@(prefix).IsRequired" value="true" @(q.IsRequired ? "checked" : null) />
                     <label class="form-check-label small" for="req-@key">Required</label>
@@ -36,8 +53,32 @@
             </div>
         </div>
 
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt", q.Prompt))" />
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text (optional)", q.HelpText, Multiline: true))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt / optional information heading", q.Prompt))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text / information Markdown", q.HelpText, Multiline: true, Markdown: true))" />
+
+        <div class="information-section border-top pt-2 mt-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small fw-semibold mb-0">Images</label>
+                <span class="small text-muted">Up to five, shown as labelled tabs.</span>
+            </div>
+            <div class="alert alert-warning small py-2">
+                Uploaded image URLs are public and may be shared outside this survey.
+            </div>
+            <div class="information-images-container">
+                @foreach (var (image, i) in q.InformationImages.Select((image, i) => (image, i)))
+                {
+                    <partial name="_SurveyInformationImageRow"
+                             model="@(new SurveyInformationImageRowModel(key, i.ToString(), image))" />
+                }
+            </div>
+            <template class="information-image-template">
+                <partial name="_SurveyInformationImageRow"
+                         model="@(new SurveyInformationImageRowModel(key, "__IKEY__", new SurveyInformationImageBuilderViewModel()))" />
+            </template>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-information-image">
+                + Add image
+            </button>
+        </div>
 
         <div class="rating-section border-top pt-2 mt-2">
             <div class="row g-2">

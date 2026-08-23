@@ -1,0 +1,7 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   No localizer: /Settings/Admin is an admin page (memory/code/localization-admin-exempt.md). *@
+@using Humans.Settings.Models
+@using Humans.Base.Models.Tables
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base

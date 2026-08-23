@@ -76,6 +76,14 @@ internal static class SurveyPageViewModelFactory
                     row.Value,
                     row.Label.Resolve(state.Culture, editable.DefaultCulture)))
                 .ToList(),
+            InformationImages = (question.InformationImages ?? [])
+                .Where(image => !string.IsNullOrWhiteSpace(image.StoragePath))
+                .Select(image => new SurveyPageInformationImage(
+                    image.Id ?? Guid.Empty,
+                    $"/{image.StoragePath!.TrimStart('/')}",
+                    image.Label.Resolve(state.Culture, editable.DefaultCulture),
+                    image.AltText.Resolve(state.Culture, editable.DefaultCulture)))
+                .ToList(),
             SelectedOptionValues = prior?.SelectedOptionValues ?? [],
             GridSelections = prior?.GridSelections.ToDictionary(
                 kv => kv.Key,

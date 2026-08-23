@@ -16,6 +16,9 @@ internal sealed class BurnSettingsService(IShiftManagementRepository repo) : IBu
     public async Task<BurnSettingsInfo?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         ToDto(await repo.GetEventSettingsByIdAsync(id, ct));
 
+    public async Task<IReadOnlyList<BurnSettingsInfo>> GetAllAsync(CancellationToken ct = default) =>
+        [.. (await repo.GetAllEventSettingsAsync(ct)).Select(src => ToDto(src)!)];
+
     private static BurnSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new BurnSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,

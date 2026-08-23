@@ -7,7 +7,6 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Onboarding.Controllers;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NSubstitute;
@@ -23,7 +22,6 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// </summary>
 public class OnboardingWidgetControllerDispatcherTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
@@ -41,9 +39,6 @@ public class OnboardingWidgetControllerDispatcherTests
 
     public OnboardingWidgetControllerDispatcherTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _consentLocalizer[Arg.Any<string>()].Returns(ci =>
@@ -52,8 +47,6 @@ public class OnboardingWidgetControllerDispatcherTests
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var user = new User { Id = userId };
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
         var http = new DefaultHttpContext
         {

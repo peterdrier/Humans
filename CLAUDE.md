@@ -81,6 +81,10 @@ All changes go on a **feature branch in a worktree** (`.worktrees/<name>`) → P
 
 Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-refs-qualified`](memory/process/issue-refs-qualified.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md) · [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md).
 
+## Review Findings
+
+Reviewer findings (Codex, Claude bot, Gemini, humans) are **hypotheses, not a work list**. Verify each against the code and judge whether it deserves a fix *before* changing anything — [`review-finding-triage`](memory/process/review-finding-triage.md). Every finding ends with a disposition reply in its thread (fixed / not fixing / issue opened): [`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md).
+
 ## Doc Freshness
 
 `/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs. Catalog at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml). Spec at `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.

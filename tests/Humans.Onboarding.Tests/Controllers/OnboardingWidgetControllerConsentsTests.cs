@@ -249,6 +249,7 @@ public class OnboardingWidgetControllerConsentsTests
         var unsignedId = Guid.NewGuid();
         _onboardingService.GetNextUnsignedConsentAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new NextConsentStepData(
+                NextConsentStepOutcome.Document,
                 new ConsentReviewDetail(
                     unsignedId,
                     "Privacy Policy",
@@ -284,12 +285,34 @@ public class OnboardingWidgetControllerConsentsTests
         // (see OnboardingServiceTests), not in the controller.
         var userId = Guid.NewGuid();
         _onboardingService.GetNextUnsignedConsentAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new NextConsentStepData(null, 0, 1));
+            .Returns(new NextConsentStepData(NextConsentStepOutcome.NothingLeftToSign, null, 0, 1));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Consents(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+    }
+
+    [HumansFact]
+    public async Task Consents_Get_DocumentUnavailable_StopsInsteadOfBouncingOffTheDispatcher()
+    {
+        // A required document that is still unsigned but whose detail will not load used to
+        // come back here as a null Next, indistinguishable from "nothing left to sign". The
+        // controller handed it to the dispatcher, the dispatcher answered "consents" because
+        // the document is still unsigned, and the two redirected at each other forever.
+        var userId = Guid.NewGuid();
+        _onboardingService.GetNextUnsignedConsentAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new NextConsentStepData(NextConsentStepOutcome.DocumentUnavailable, null, 0, 1));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.Consents(TestContext.Current.CancellationToken);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Home", redirect.ControllerName);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal(
+            "Onboarding_ConsentDocumentUnavailable",
+            ctrl.TempData["ErrorMessage"]);
     }
 }

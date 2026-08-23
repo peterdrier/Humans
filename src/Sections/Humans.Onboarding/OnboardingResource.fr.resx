@@ -40,134 +40,129 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="OnboardingReview_Title" xml:space="preserve">
+  <data name="Onboarding_ReviewTitle" xml:space="preserve">
     <value>File d'attente d'intégration</value>
   </data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
-    <value>Examen : {0}</value>
-  </data>
-  <data name="OnboardingReview_NoPending" xml:space="preserve">
+  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
     <value>Aucun human n'attend de révision.</value>
   </data>
-  <data name="OnboardingReview_PendingSection" xml:space="preserve">
+  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
     <value>En attente d'examen</value>
   </data>
-  <data name="OnboardingReview_FlaggedSection" xml:space="preserve">
+  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
     <value>Signalé pour suivi</value>
   </data>
-  <data name="OnboardingReview_FlaggedBadge" xml:space="preserve">
+  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
     <value>Signalé</value>
   </data>
-  <data name="OnboardingReview_ProfileSummary" xml:space="preserve">
+  <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Résumé du profil</value>
   </data>
-  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve">
+  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
     <value>Résumé du nouveau human</value>
   </data>
-  <data name="OnboardingReview_LegalName" xml:space="preserve">
+  <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Nom légal</value>
   </data>
-  <data name="OnboardingReview_HasApplication" xml:space="preserve">
+  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
     <value>A une candidature</value>
   </data>
-  <data name="OnboardingReview_Consents" xml:space="preserve">
-    <value>Consentements</value>
-  </data>
-  <data name="OnboardingReview_Signed" xml:space="preserve">
+  <data name="Onboarding_ReviewSigned" xml:space="preserve">
     <value>signé(s)</value>
   </data>
-  <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve">
+  <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Motivation de la candidature</value>
   </data>
-  <data name="OnboardingReview_PreviousNotes" xml:space="preserve">
+  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
     <value>Notes d'examen précédentes</value>
   </data>
-  <data name="OnboardingReview_Actions" xml:space="preserve">
+  <data name="Onboarding_ReviewActions" xml:space="preserve">
     <value>Actions</value>
   </data>
-  <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve">
+  <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Notes facultatives...</value>
   </data>
-  <data name="OnboardingReview_ClearButton" xml:space="preserve">
+  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
     <value>Valider &amp; Approuver</value>
   </data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve">
+  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
     <value>Approuve la révision du profil. Le human rejoindra les Bénévoles lorsque les documents légaux seront également signés.</value>
   </data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve">
+  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
     <value>La révision du profil de ce human sera validée. Continuer ?</value>
   </data>
-  <data name="OnboardingReview_FlagButton" xml:space="preserve">
+  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
     <value>Signaler pour examen</value>
   </data>
-  <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve">
+  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
     <value>Motif du signalement...</value>
   </data>
-  <data name="OnboardingReview_FlagConfirm" xml:space="preserve">
+  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
     <value>Ce human sera signalé pour examen complémentaire. Continuer ?</value>
   </data>
-  <data name="OnboardingReview_AlreadyCleared" xml:space="preserve">
+  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
     <value>Ce human a déjà été validé.</value>
   </data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve">
+  <data name="Onboarding_ReviewCleared" xml:space="preserve">
     <value>Révision du profil validée.</value>
   </data>
-  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve">
+  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
     <value>Aucun human sélectionné n'a été validé.</value>
   </data>
-  <data name="OnboardingReview_BulkCleared" xml:space="preserve">
+  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
     <value>{0} humans sélectionnés validés.</value>
   </data>
-  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve">
+  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
     <value>{0} sur {1} sélectionnés validés — les autres ne sont plus éligibles.</value>
   </data>
-  <data name="OnboardingReview_BulkClearButton" xml:space="preserve">
+  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
     <value>Valider tous les sélectionnés</value>
   </data>
-  <data name="OnboardingReview_Flagged" xml:space="preserve">
+  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
     <value>Human signalé pour examen complémentaire.</value>
   </data>
-  <data name="OnboardingReview_RejectButton" xml:space="preserve">
+  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
     <value>Refuser l'inscription</value>
   </data>
-  <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve">
+  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
     <value>Motif du refus...</value>
   </data>
-  <data name="OnboardingReview_RejectConfirm" xml:space="preserve">
+  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
     <value>Êtes-vous sûr de vouloir refuser l'inscription de ce human ? Cette action est irréversible.</value>
   </data>
-  <data name="OnboardingReview_RejectHelp" xml:space="preserve">
+  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
     <value>Le refus refusera définitivement l'inscription de ce human et enverra un email de notification.</value>
   </data>
-  <data name="OnboardingReview_Rejected" xml:space="preserve">
+  <data name="Onboarding_ReviewRejected" xml:space="preserve">
     <value>L'inscription a été refusée.</value>
   </data>
-  <data name="OnboardingReview_AlreadyRejected" xml:space="preserve">
+  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
     <value>Ce human a déjà été refusé.</value>
   </data>
-  <data name="OnboardingReview_LegalDocuments" xml:space="preserve">
+  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
     <value>Documents légaux</value>
   </data>
-  <data name="OnboardingReview_DocsComplete" xml:space="preserve">
+  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
     <value>Complet</value>
   </data>
-  <data name="OnboardingReview_DocsPending" xml:space="preserve">
+  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
     <value>En attente</value>
   </data>
-  <data name="OnboardingReview_DocsNote" xml:space="preserve">
+  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
     <value>La révision du profil peut se faire indépendamment. Le human rejoindra les Bénévoles lorsque tous les documents seront signés.</value>
   </data>
-  <data name="OnboardingBanner_Text" xml:space="preserve">
+  <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Terminez la configuration de votre compte pour accéder aux créneaux et aux fonctionnalités d'équipe.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="OnboardingBanner_Cta" xml:space="preserve">
+  <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Continuer la configuration →</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Le nom que tout le monde voit dans le système. L'unicité aide mais n'est pas obligatoire, même s'il pourrait être difficile de trouver « Bob » parmi les quelques milliers de humans présents si quelqu'un vous cherche.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Le nom sous lequel tout le monde vous connaîtra.</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continuer</value></data>
+  <data name="Onboarding_ConsentDocumentUnavailable" xml:space="preserve"><value>Nous n'avons pas pu charger le prochain document à signer. Réessayez dans un instant ou contactez-nous si le problème persiste.</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>pas</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>cette information, et nous ne la divulguerions que si la loi ou un audit formel l'exigeait.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservé en interne, visible uniquement par les Admins, et utilisé seulement là où la loi espagnole l'exige — par exemple, notre enregistrement d'audit attestant que vous avez accepté l'Accord de bénévolat à une date et une heure précises. Nous n'exportons explicitement</value></data>
@@ -191,115 +186,118 @@
   <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Inscription impossible.</value></data>
   <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Inscription impossible pour cette plage de dates.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Choisissez un quart</value></data>
-  <data name="Welcome_Title" xml:space="preserve">
+  <data name="Onboarding_WelcomeTitle" xml:space="preserve">
     <value>Bienvenue</value>
   </data>
-  <data name="Welcome_Heading" xml:space="preserve">
+  <data name="Onboarding_WelcomeHeading" xml:space="preserve">
     <value>C'est bon, t'es dedans.</value>
   </data>
-  <data name="Welcome_Subtitle" xml:space="preserve">
+  <data name="Onboarding_WelcomeSubtitle" xml:space="preserve">
     <value>Ton billet pour Elsewhere 2026 est confirmé.</value>
   </data>
-  <data name="Welcome_ShiftsTitle" xml:space="preserve">
+  <data name="Onboarding_WelcomeShiftsTitle" xml:space="preserve">
     <value>Maintenant, on fait ça ensemble.</value>
   </data>
-  <data name="Welcome_ShiftsBody" xml:space="preserve">
+  <data name="Onboarding_WelcomeShiftsBody" xml:space="preserve">
     <value>Elsewhere, c'est pas un festival où tu viens — c'est un que tu aides à construire. Chaque human choisit des créneaux : montage avant, opération pendant et démontage après.</value>
   </data>
-  <data name="Welcome_ShiftsBody2" xml:space="preserve">
+  <data name="Onboarding_WelcomeShiftsBody2" xml:space="preserve">
     <value>Pour voir les créneaux et t'inscrire, il te faut un compte Humans. Ça prend juste quelques minutes.</value>
   </data>
-  <data name="Welcome_CTA" xml:space="preserve">
+  <data name="Onboarding_WelcomeCTA" xml:space="preserve">
     <value>Se connecter ou créer un compte</value>
   </data>
-  <data name="Welcome_Footer" xml:space="preserve">
+  <data name="Onboarding_WelcomeFooter" xml:space="preserve">
     <value>Déjà un compte ? Même bouton — connecte-toi et tu arrives directement sur les créneaux.</value>
   </data>
-  <data name="Welcome_Contact" xml:space="preserve">
+  <data name="Onboarding_WelcomeContact" xml:space="preserve">
     <value>Des questions ? Écris-nous à</value>
   </data>
-  <data name="Guest_AccountSubtitle" xml:space="preserve">
+  <data name="Onboarding_GuestAccountSubtitle" xml:space="preserve">
     <value>Même sans profil, tu peux gérer ton compte et tes données.</value>
   </data>
-  <data name="Guest_AccountTitle" xml:space="preserve">
+  <data name="Onboarding_GuestAccountTitle" xml:space="preserve">
     <value>Tes affaires</value>
   </data>
-  <data name="Guest_BarriosDescription" xml:space="preserve">
+  <data name="Onboarding_GuestBarriosDescription" xml:space="preserve">
     <value>Les quartiers que les gens construisent et habitent pendant l'événement</value>
   </data>
-  <data name="Guest_CommsDescription" xml:space="preserve">
+  <data name="Onboarding_GuestCommsDescription" xml:space="preserve">
     <value>Choisis quels emails et notifications tu reçois de notre part</value>
   </data>
-  <data name="Guest_CommsTitle" xml:space="preserve">
+  <data name="Onboarding_GuestCommsTitle" xml:space="preserve">
     <value>Communications</value>
   </data>
-  <data name="Guest_CreateProfile" xml:space="preserve">
+  <data name="Onboarding_GuestCreateProfile" xml:space="preserve">
     <value>Créer mon profil</value>
   </data>
-  <data name="Guest_DataDescription" xml:space="preserve">
+  <data name="Onboarding_GuestDataDescription" xml:space="preserve">
     <value>Télécharge tout ce qu'on a sur toi — c'est à toi</value>
   </data>
-  <data name="Guest_DataTitle" xml:space="preserve">
+  <data name="Onboarding_GuestDataTitle" xml:space="preserve">
     <value>Tes données</value>
   </data>
-  <data name="Guest_DeleteDescription" xml:space="preserve">
+  <data name="Onboarding_GuestDeleteDescription" xml:space="preserve">
     <value>Demande la suppression de ton compte — 30 jours pour changer d'avis</value>
   </data>
-  <data name="Guest_DeleteTitle" xml:space="preserve">
+  <data name="Onboarding_GuestDeleteTitle" xml:space="preserve">
     <value>Disparaître</value>
   </data>
-  <data name="Guest_DeletionCancelButton" xml:space="preserve">
+  <data name="Onboarding_GuestDeletionCancelButton" xml:space="preserve">
     <value>J'ai changé d'avis</value>
   </data>
-  <data name="Guest_DeletionHeldUntil" xml:space="preserve">
+  <data name="Onboarding_GuestDeletionHeldUntil" xml:space="preserve">
     <value>On supprimera tout après le {0} — on attend la fin de l'événement.</value>
   </data>
-  <data name="Guest_DeletionPendingTitle" xml:space="preserve">
+  <data name="Onboarding_GuestDeletionPendingTitle" xml:space="preserve">
     <value>Tu es sur le départ</value>
   </data>
-  <data name="Guest_DeletionRequestedOn" xml:space="preserve">
+  <data name="Onboarding_GuestDeletionRequestedOn" xml:space="preserve">
     <value>Demandé le {0}.</value>
   </data>
-  <data name="Guest_DeletionScheduledFor" xml:space="preserve">
+  <data name="Onboarding_GuestDeletionScheduledFor" xml:space="preserve">
     <value>Tout disparaît le {0}. Pour de vrai.</value>
   </data>
-  <data name="Guest_Explore" xml:space="preserve">
+  <data name="Onboarding_GuestExplore" xml:space="preserve">
     <value>Jette un œil</value>
   </data>
-  <data name="Guest_ExploreSubtitle" xml:space="preserve">
+  <data name="Onboarding_GuestExploreSubtitle" xml:space="preserve">
     <value>Pas besoin de profil. Juste de la curiosité.</value>
   </data>
-  <data name="Guest_GetInvolvedBullet1" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedBullet1" xml:space="preserve">
     <value>Tu peux rejoindre des équipes</value>
   </data>
-  <data name="Guest_GetInvolvedBullet2" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedBullet2" xml:space="preserve">
     <value>Tu peux prendre des créneaux</value>
   </data>
-  <data name="Guest_GetInvolvedBullet3" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedBullet3" xml:space="preserve">
     <value>Les gens savent qui tu es</value>
   </data>
-  <data name="Guest_GetInvolvedDescription" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedDescription" xml:space="preserve">
     <value>Tu existes… mais personne ne te voit. Crée ton profil et soudain :</value>
   </data>
-  <data name="Guest_GetInvolvedHint" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedHint" xml:space="preserve">
     <value>~2 minutes.</value>
   </data>
-  <data name="Guest_GetInvolvedTitle" xml:space="preserve">
+  <data name="Onboarding_GuestGetInvolvedTitle" xml:space="preserve">
     <value>Prêt·e à arrêter d'être un fantôme ?</value>
   </data>
-  <data name="Guest_Greeting" xml:space="preserve">
+  <data name="Onboarding_GuestGreeting" xml:space="preserve">
     <value>Salut, {0}.</value>
   </data>
-  <data name="Guest_Legal" xml:space="preserve">
+  <data name="Onboarding_GuestLegal" xml:space="preserve">
     <value>Mentions légales</value>
   </data>
-  <data name="Guest_LegalDescription" xml:space="preserve">
+  <data name="Onboarding_GuestLegalDescription" xml:space="preserve">
     <value>Confidentialité, conditions, consentements — ennuyeux mais important</value>
   </data>
-  <data name="Guest_Subtitle" xml:space="preserve">
+  <data name="Onboarding_GuestSubtitle" xml:space="preserve">
     <value>Bienvenue sur Humans — où Nobodies Collective gère tout pour Elsewhere.</value>
   </data>
-  <data name="Guest_TeamsDescription" xml:space="preserve">
+  <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>Les équipes qui font tourner la machine — son, sécurité, construction, tout</value>
   </data>
+  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Examiner</value></data>
+  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Sélectionner {0}</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Voulez-vous vraiment demander la suppression du compte ? Vous pouvez annuler avant la date de suppression.</value></data>
 </root>

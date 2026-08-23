@@ -13,9 +13,9 @@ namespace Humans.Onboarding.Models;
 /// </summary>
 /// <remarks>
 /// This is the half of Shell's former <c>OnboardingShiftsBrowseModelBuilder</c> that names
-/// only <c>Humans.Domain</c> and <c>Humans.Application</c> types. The other half — grouping
-/// the filtered shifts into <c>RotaShiftGroup</c>s through <c>ShiftBrowseMapper</c> — stayed
-/// in Shell with the rest of Shifts' presentation layer and is now
+/// only <c>Humans.Shifts.Contracts</c> types. The other half — grouping the filtered shifts
+/// into <c>RotaShiftGroup</c>s through <c>ShiftBrowseMapper</c> — went to
+/// <c>Humans.Shifts</c> with the rest of that section's presentation layer and is now
 /// <c>OnboardingShiftsListViewComponent</c>.
 /// </remarks>
 internal static class OnboardingShiftsStepBuilder

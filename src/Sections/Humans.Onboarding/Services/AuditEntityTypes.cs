@@ -5,11 +5,10 @@ namespace Humans.Onboarding.Services;
 /// </summary>
 /// <remarks>
 /// The funnel annotates and rejects through <c>IUserService</c>, so the entity it names
-/// is Profiles' <c>Profile</c> — a type Onboarding does not own and, once Profiles goes
-/// to G5, will not be able to spell. <c>nameof</c> over another section's entity compiles
-/// today and breaks in a section nobody is editing on the day that section moves, and the
-/// string is persisted in <c>audit_log.entity_type</c> either way
-/// (<c>memory/code/type-name-as-persisted-string.md</c>).
+/// is Users' <c>Profile</c> — a type Onboarding does not own and, now that Users is its
+/// own G5 project, cannot spell: the entity is internal to <c>Humans.Users</c>. The value
+/// is persisted in <c>audit_log.entity_type</c>, so a literal is what it would have to be
+/// regardless (<c>memory/code/type-name-as-persisted-string.md</c>).
 /// </remarks>
 internal static class AuditEntityTypes
 {

@@ -82,7 +82,8 @@ internal static class SurveyWizardFlow
     public static IReadOnlyList<Guid> RequiredUnanswered(
         IReadOnlyList<QuestionInput> visibleQuestions, IReadOnlyDictionary<Guid, AnswerState> answers)
         => visibleQuestions
-            .Where(q => q.Id is { } id && q.IsRequired
+            .Where(q => q.Type != SurveyQuestionType.Information
+                && q.Id is { } id && q.IsRequired
                 && !(answers.TryGetValue(id, out var a) && IsAnswered(q, a)))
             .Select(q => q.Id!.Value)
             .ToList();

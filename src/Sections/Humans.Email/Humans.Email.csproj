@@ -31,10 +31,10 @@
       The outbox drain mirrors a campaign grant's delivery status, and the pause flag is a
       system_settings row. Both go through the other section's leaf, never its project, so
       the graph stays acyclic: Humans.Campaigns references Humans.Email.Contracts back, and
-      Humans.Email.Contracts names no Campaigns or SystemSettings type.
+      Humans.Email.Contracts names no Campaigns or Settings type.
     -->
     <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Settings.Contracts\Humans.Settings.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

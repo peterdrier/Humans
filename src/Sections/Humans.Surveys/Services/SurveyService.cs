@@ -10,6 +10,7 @@ using Humans.Surveys.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Interfaces;
 using Humans.Surveys.Domain;
 using NodaTime;
 
@@ -34,10 +35,17 @@ internal sealed class SurveyService(
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
-    IGoogleTranslationService translation) : ISurveyService, ISurveyReminderSender, IUserDataContributor
+    IGoogleTranslationService translation,
+    IFileStorage fileStorage) : ISurveyService, ISurveyReminderSender, IUserDataContributor
 {
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
+    private const int MaxInformationImages = 5;
+    private const long MaxInformationImageBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> AllowedInformationImageContentTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
+    private static readonly HashSet<string> AllowedInformationImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
 
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -76,9 +84,19 @@ internal sealed class SurveyService(
         ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
-        var questions = MapQuestions(surveyId, input);
-        ValidateQuestionConfiguration(questions);
-        ValidateBranching(questions);
+        var prepared = await PrepareInformationImagesAsync(surveyId, input, existing: null, ct);
+        List<SurveyQuestion> questions;
+        try
+        {
+            questions = MapQuestions(surveyId, prepared.Input);
+            ValidateQuestionConfiguration(questions);
+            ValidateBranching(questions);
+        }
+        catch
+        {
+            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
 
         var survey = new Survey
         {
@@ -103,7 +121,15 @@ internal sealed class SurveyService(
             Questions = questions,
         };
 
-        await repo.AddAsync(survey, ct);
+        try
+        {
+            await repo.AddAsync(survey, ct);
+        }
+        catch
+        {
+            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
         await auditLog.LogAsync(AuditAction.SurveyCreated, AuditEntityTypes.Survey, surveyId,
             $"Created survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'", actorUserId);
@@ -118,9 +144,21 @@ internal sealed class SurveyService(
         var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
         ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         var now = clock.GetCurrentInstant();
-        var questions = MapQuestions(surveyId, input);
-        ValidateQuestionConfiguration(questions);
-        ValidateBranching(questions);
+        var existing = await repo.GetByIdAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
+        List<SurveyQuestion> questions;
+        try
+        {
+            questions = MapQuestions(surveyId, prepared.Input);
+            ValidateQuestionConfiguration(questions);
+            ValidateBranching(questions);
+        }
+        catch
+        {
+            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
 
         var survey = new Survey
         {
@@ -142,7 +180,15 @@ internal sealed class SurveyService(
             Questions = questions,
         };
 
-        await repo.UpdateAsync(survey, ct);
+        try
+        {
+            await repo.UpdateAsync(survey, ct);
+        }
+        catch
+        {
+            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, "Updated survey", actorUserId);
     }
 
@@ -169,6 +215,12 @@ internal sealed class SurveyService(
             MaxLabel = Copy(q.RatingMaxLabel),
             Options = q.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList(),
             GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
+            InformationImages = (q.InformationImages ?? []).Select(image => new
+            {
+                Image = image,
+                Label = Copy(image.Label),
+                AltText = Copy(image.AltText),
+            }).ToList(),
         }).ToList();
 
         var allTexts = new List<Dictionary<string, string>>
@@ -184,6 +236,8 @@ internal sealed class SurveyService(
             allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
             allTexts.AddRange(q.Options.Select(o => o.Label));
             allTexts.AddRange(q.GridRows.Select(row => row.Label));
+            allTexts.AddRange(q.InformationImages.Select(image => image.Label));
+            allTexts.AddRange(q.InformationImages.Select(image => image.AltText));
         }
 
         // One batched call per target culture; only fills blanks — never overwrites authored text.
@@ -218,6 +272,11 @@ internal sealed class SurveyService(
                 RatingMaxLabel = new LocalizedText(q.MaxLabel),
                 Options = q.Options.Select(o => o.Option with { Label = new LocalizedText(o.Label) }).ToList(),
                 GridRows = q.GridRows.Select(row => row.Row with { Label = new LocalizedText(row.Label) }).ToList(),
+                InformationImages = q.InformationImages.Select(image => image.Image with
+                {
+                    Label = new LocalizedText(image.Label),
+                    AltText = new LocalizedText(image.AltText),
+                }).ToList(),
             }).ToList());
 
         await UpdateAsync(surveyId, input, actorUserId, ct);
@@ -687,6 +746,7 @@ internal sealed class SurveyService(
 
         foreach (var question in visibleBefore)
         {
+            if (question.Type == SurveyQuestionType.Information) continue;
             var id = question.Id!.Value;
             if (!posted.TryGetValue(id, out var answer))
             {
@@ -831,6 +891,7 @@ internal sealed class SurveyService(
         var responseRate = invitedCount == 0 ? 0d : (double)responseCount / invitedCount;
 
         var questions = survey.Questions
+            .Where(q => q.Type != SurveyQuestionType.Information)
             .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
             .Select(q => BuildQuestionAggregate(q, responses, culture))
             .ToList();
@@ -864,6 +925,7 @@ internal sealed class SurveyService(
         var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
 
         var orderedQuestions = survey.Questions
+            .Where(q => q.Type != SurveyQuestionType.Information)
             .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
             .ToList();
 
@@ -1195,6 +1257,15 @@ internal sealed class SurveyService(
                 question.GridSelectionMode,
                 question.GridRows?
                     .Select(row => new GridRowInput(row.Value, row.Label))
+                    .ToList(),
+                question.InformationImages?
+                    .Select(image => new InformationImageInput(
+                        image.Id,
+                        image.Label,
+                        image.AltText,
+                        image.StoragePath,
+                        image.ContentType,
+                        image.FileName))
                     .ToList()))
             .ToList();
 
@@ -1238,7 +1309,8 @@ internal sealed class SurveyService(
         var questions = survey.Questions.ToDictionary(q => q.Id);
         return answers
             .Where(a => effective.ContainsKey(a.QuestionId))
-            .Where(a => questions.ContainsKey(a.QuestionId))
+            .Where(a => questions.TryGetValue(a.QuestionId, out var question)
+                && question.Type != SurveyQuestionType.Information)
             .Select(a =>
             {
                 var question = questions[a.QuestionId];
@@ -1421,6 +1493,151 @@ internal sealed class SurveyService(
         }
     }
 
+    private async Task<PreparedInformationImages> PrepareInformationImagesAsync(
+        Guid surveyId,
+        SurveyEditInput input,
+        Survey? existing,
+        CancellationToken ct)
+    {
+        var existingImages = existing?.Questions
+            .SelectMany(question => question.InformationImages ?? [])
+            .ToDictionary(image => image.Id)
+            ?? new Dictionary<Guid, SurveyInformationImage>();
+        var newStoragePaths = new List<string>();
+        var preparedQuestions = new List<QuestionInput>(input.Questions.Count);
+
+        try
+        {
+            foreach (var question in input.Questions)
+            {
+                var questionId = question.Id ?? Guid.NewGuid();
+                if (question.Type != SurveyQuestionType.Information)
+                {
+                    preparedQuestions.Add(question with
+                    {
+                        Id = questionId,
+                        InformationImages = null,
+                    });
+                    continue;
+                }
+
+                var requestedImages = question.InformationImages ?? [];
+                if (requestedImages.Count > MaxInformationImages)
+                {
+                    throw new InvalidOperationException(
+                        $"An Information item can have at most {MaxInformationImages} images.");
+                }
+
+                var preparedImages = new List<InformationImageInput>(requestedImages.Count);
+                foreach (var requested in requestedImages)
+                {
+                    if (requested.Upload is { } upload)
+                    {
+                        ValidateInformationImage(upload);
+                        // Replacements get a fresh key so a failed database save cannot delete or
+                        // overwrite the still-authoritative existing file.
+                        var imageId = Guid.NewGuid();
+                        var extension = Path.GetExtension(upload.FileName);
+                        var storagePath = $"uploads/surveys/{surveyId}/{questionId}/{imageId}{extension}";
+                        await fileStorage.SaveAsync(storagePath, upload.Content, ct);
+                        newStoragePaths.Add(storagePath);
+                        preparedImages.Add(requested with
+                        {
+                            Id = imageId,
+                            StoragePath = storagePath,
+                            ContentType = upload.ContentType,
+                            FileName = upload.FileName,
+                            Upload = null,
+                        });
+                        continue;
+                    }
+
+                    if (requested.Id is { } existingId
+                        && existingImages.TryGetValue(existingId, out var persisted))
+                    {
+                        preparedImages.Add(requested with
+                        {
+                            StoragePath = persisted.StoragePath,
+                            ContentType = persisted.ContentType,
+                            FileName = persisted.FileName,
+                            Upload = null,
+                        });
+                        continue;
+                    }
+
+                    throw new InvalidOperationException(
+                        "Select an image file for every image row. " +
+                        "If a previous save failed, select the file again.");
+                }
+
+                preparedQuestions.Add(question with
+                {
+                    Id = questionId,
+                    IsRequired = false,
+                    RatingMin = null,
+                    RatingMax = null,
+                    RatingMinLabel = LocalizedText.Empty,
+                    RatingMaxLabel = LocalizedText.Empty,
+                    Options = [],
+                    GridSelectionMode = null,
+                    GridRows = null,
+                    InformationImages = preparedImages,
+                });
+            }
+        }
+        catch
+        {
+            await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
+            throw;
+        }
+
+        return new PreparedInformationImages(
+            input with { Questions = preparedQuestions },
+            newStoragePaths);
+    }
+
+    private static void ValidateInformationImage(SurveyImageUpload upload)
+    {
+        if (upload.Length <= 0)
+        {
+            throw new InvalidOperationException("The selected image is empty.");
+        }
+        if (!AllowedInformationImageContentTypes.Contains(upload.ContentType))
+        {
+            throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+        }
+        if (upload.Length > MaxInformationImageBytes)
+        {
+            throw new InvalidOperationException("Each Information image must be under 10 MB.");
+        }
+        if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(upload.FileName)))
+        {
+            throw new InvalidOperationException(
+                "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
+        }
+    }
+
+    private async Task DeleteFilesBestEffortAsync(
+        IEnumerable<string> storagePaths,
+        CancellationToken ct)
+    {
+        foreach (var storagePath in storagePaths.Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(storagePath, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to delete survey Information image {StoragePath}", storagePath);
+            }
+        }
+    }
+
+    private sealed record PreparedInformationImages(
+        SurveyEditInput Input,
+        IReadOnlyList<string> NewStoragePaths);
+
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
     private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)
         => input.Questions.Select(q =>
@@ -1444,6 +1661,15 @@ internal sealed class SurveyService(
                 GridRows = q.Type == SurveyQuestionType.Grid
                     ? (q.GridRows ?? []).Select(row => new SurveyGridRow(row.Value, row.Label)).ToList()
                     : null,
+                InformationImages = q.Type == SurveyQuestionType.Information
+                    ? (q.InformationImages ?? []).Select(image => new SurveyInformationImage(
+                        image.Id!.Value,
+                        image.StoragePath!,
+                        image.ContentType!,
+                        image.FileName!,
+                        image.Label,
+                        image.AltText)).ToList()
+                    : null,
                 ShowIf = q.ShowIf,
                 Options = q.Options.Select(o => new SurveyQuestionOption
                 {
@@ -1460,6 +1686,45 @@ internal sealed class SurveyService(
     {
         foreach (var question in questions)
         {
+            if (question.Type == SurveyQuestionType.Information)
+            {
+                if (question.IsRequired)
+                {
+                    throw new InvalidOperationException(
+                        $"Information item {question.Id} cannot be required.");
+                }
+
+                var images = question.InformationImages ?? [];
+                if (images.Count > MaxInformationImages)
+                {
+                    throw new InvalidOperationException(
+                        $"Information item {question.Id} can have at most {MaxInformationImages} images.");
+                }
+
+                if (!question.HelpText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))
+                    && images.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Information item {question.Id} must contain Markdown or at least one image.");
+                }
+
+                if (images.Any(image =>
+                    !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
+                {
+                    throw new InvalidOperationException(
+                        $"Every image in Information item {question.Id} must have a label.");
+                }
+
+                if (images.Any(image =>
+                    !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
+                {
+                    throw new InvalidOperationException(
+                        $"Every image in Information item {question.Id} must have alt text.");
+                }
+
+                continue;
+            }
+
             if (question.Type != SurveyQuestionType.Grid) continue;
 
             if (question.GridSelectionMode is null
@@ -1519,15 +1784,16 @@ internal sealed class SurveyService(
         }
 
         var types = questions.ToDictionary(question => question.Id, question => question.Type);
-        var gridSources = questions
+        var nonAnswerSources = questions
             .Where(question => question.ShowIf?.Clauses.Any(clause =>
-                types.GetValueOrDefault(clause.QuestionId) == SurveyQuestionType.Grid) == true)
+                types.GetValueOrDefault(clause.QuestionId) is
+                    SurveyQuestionType.Grid or SurveyQuestionType.Information) == true)
             .Select(question => question.Id)
             .ToList();
-        if (gridSources.Count > 0)
+        if (nonAnswerSources.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Grid questions cannot be branching sources. Offending question ids: {string.Join(", ", gridSources)}.");
+                $"Grid questions and Information items cannot be branching sources. Offending question ids: {string.Join(", ", nonAnswerSources)}.");
         }
     }
 

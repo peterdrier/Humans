@@ -1,5 +1,9 @@
 @model Humans.Surveys.Models.SurveyPageViewModel
 
+@{
+    var nextAnswerIndex = 0;
+}
+
 @for (var i = 0; i < Model.Questions.Count; i++)
 {
     var q = Model.Questions[i];
@@ -7,6 +11,83 @@
         && ViewData.ModelState.TryGetValue(q.Id.ToString(), out var entry)
         && entry.Errors.Count > 0;
 
+    @if (q.Type == SurveyQuestionType.Information)
+    {
+        var tabGroupId = $"information-{q.Id:N}";
+        <section class="mb-4 survey-information-block"
+                 aria-labelledby="@(!string.IsNullOrWhiteSpace(q.Prompt) ? $"{tabGroupId}-heading" : null)">
+            @if (!string.IsNullOrWhiteSpace(q.Prompt))
+            {
+                <h2 class="h5" id="@(tabGroupId)-heading">@q.Prompt</h2>
+            }
+            @if (!string.IsNullOrWhiteSpace(q.HelpText))
+            {
+                <div class="survey-information-markdown">@Html.SanitizedMarkdown(q.HelpText)</div>
+            }
+
+            @if (q.InformationImages.Count == 1)
+            {
+                var image = q.InformationImages[0];
+                <figure class="mt-3">
+                    <img src="@image.Url" alt="@image.AltText" class="img-fluid rounded" />
+                    <figcaption class="small text-muted mt-1">@image.Label</figcaption>
+                </figure>
+            }
+            else if (q.InformationImages.Count > 1)
+            {
+                <ul class="nav nav-tabs flex-nowrap overflow-x-auto mt-3"
+                    id="@(tabGroupId)-tabs" role="tablist">
+                    @for (var imageIndex = 0; imageIndex < q.InformationImages.Count; imageIndex++)
+                    {
+                        var image = q.InformationImages[imageIndex];
+                        var active = imageIndex == 0;
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link text-nowrap @(active ? "active" : "")"
+                               id="@(tabGroupId)-tab-@imageIndex"
+                               data-bs-toggle="tab"
+                               href="#@(tabGroupId)-panel-@imageIndex"
+                               role="tab"
+                               aria-controls="@(tabGroupId)-panel-@imageIndex"
+                               aria-selected="@(active ? "true" : "false")">
+                                @image.Label
+                            </a>
+                        </li>
+                    }
+                </ul>
+                <div class="tab-content border border-top-0 rounded-bottom p-3">
+                    @for (var imageIndex = 0; imageIndex < q.InformationImages.Count; imageIndex++)
+                    {
+                        var image = q.InformationImages[imageIndex];
+                        var active = imageIndex == 0;
+                        <div class="tab-pane fade @(active ? "show active" : "")"
+                             id="@(tabGroupId)-panel-@imageIndex"
+                             role="tabpanel"
+                             aria-labelledby="@(tabGroupId)-tab-@imageIndex"
+                             tabindex="0">
+                            <figure class="mb-0">
+                                <img src="@image.Url" alt="@image.AltText" class="img-fluid rounded" />
+                                <figcaption class="small text-muted mt-1">@image.Label</figcaption>
+                            </figure>
+                        </div>
+                    }
+                </div>
+                <noscript>
+                    <div class="mt-3">
+                        @foreach (var image in q.InformationImages)
+                        {
+                            <figure>
+                                <img src="@image.Url" alt="@image.AltText" class="img-fluid rounded" />
+                                <figcaption class="small text-muted mt-1">@image.Label</figcaption>
+                            </figure>
+                        }
+                    </div>
+                </noscript>
+            }
+        </section>
+        continue;
+    }
+
+    var answerIndex = nextAnswerIndex++;
     <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
         <legend class="form-label fw-semibold">
             @q.Prompt
@@ -18,7 +99,9 @@
 
         @if (!string.IsNullOrWhiteSpace(q.HelpText))
         {
-            <p class="form-text mt-0 mb-2">@q.HelpText</p>
+            <div class="form-text mt-0 mb-2 survey-question-help">
+                @Html.SanitizedMarkdown(q.HelpText)
+            </div>
         }
 
         @switch (q.Type)
@@ -29,9 +112,9 @@
                     var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
                     <div class="form-check">
                         <input class="form-check-input" type="radio"
-                               id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                               id="q@(answerIndex)_@opt.Value" name="Answers[@answerIndex].SelectedOptionValues"
                                value="@opt.Value" @(sel ? "checked" : null) />
-                        <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                        <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
                 break;
@@ -42,20 +125,20 @@
                     var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox"
-                               id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                               id="q@(answerIndex)_@opt.Value" name="Answers[@answerIndex].SelectedOptionValues"
                                value="@opt.Value" @(sel ? "checked" : null) />
-                        <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                        <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
                 break;
 
             case SurveyQuestionType.ShortText:
                 <input class="form-control" type="text"
-                       name="Answers[@i].TextValue" value="@q.TextValue" />
+                       name="Answers[@answerIndex].TextValue" value="@q.TextValue" />
                 break;
 
             case SurveyQuestionType.LongText:
-                <textarea class="form-control" rows="4" name="Answers[@i].TextValue">@q.TextValue</textarea>
+                <textarea class="form-control" rows="4" name="Answers[@answerIndex].TextValue">@q.TextValue</textarea>
                 break;
 
             case SurveyQuestionType.Rating:
@@ -72,9 +155,9 @@
                         {
                             var checkedRating = q.RatingValue == n;
                             <input type="radio" class="btn-check"
-                                   id="q@(i)_r@(n)" name="Answers[@i].RatingValue"
+                                   id="q@(answerIndex)_r@(n)" name="Answers[@answerIndex].RatingValue"
                                    value="@n" autocomplete="off" @(checkedRating ? "checked" : null) />
-                            <label class="btn btn-outline-primary" for="q@(i)_r@(n)">@n</label>
+                            <label class="btn btn-outline-primary" for="q@(answerIndex)_r@(n)">@n</label>
                         }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(q.RatingMaxLabel))
@@ -107,14 +190,14 @@
                                 <tr>
                                     <th scope="row">
                                         @row.Label
-                                        <input type="hidden" name="Answers[@i].GridRows[@rowIndex].RowValue" value="@row.Value" />
+                                        <input type="hidden" name="Answers[@answerIndex].GridRows[@rowIndex].RowValue" value="@row.Value" />
                                     </th>
                                     @foreach (var column in q.Options)
                                     {
                                         var selected = selectedColumns?.Contains(column.Value, StringComparer.Ordinal) == true;
                                         <td class="text-center">
                                             <input class="form-check-input" type="@(single ? "radio" : "checkbox")"
-                                                   name="Answers[@i].GridRows[@rowIndex].SelectedColumnValues"
+                                                   name="Answers[@answerIndex].GridRows[@rowIndex].SelectedColumnValues"
                                                    value="@column.Value"
                                                    aria-label="@($"{row.Label}: {column.Label}")"
                                                    @if (selected) { <text>checked</text> } />
@@ -133,7 +216,7 @@
            `legend + * { clear: left }`; an invisible input in that position prevents the
            first checkbox/radio/table from clearing the legend. Field order does not affect
            MVC's indexed answer binding. *@
-        <input type="hidden" name="Answers[@i].QuestionId" value="@q.Id" />
+        <input type="hidden" name="Answers[@answerIndex].QuestionId" value="@q.Id" />
 
         @if (hasError)
         {

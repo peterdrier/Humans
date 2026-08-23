@@ -8,7 +8,7 @@ namespace Humans.Email.Data;
 /// <summary>
 /// Repository for the <c>email_outbox_messages</c> table — the only
 /// non-test file that writes to the outbox DbSet. The email pause flag
-/// (<c>IsEmailSendingPaused</c>) now lives in the SystemSettings section,
+/// (<c>IsEmailSendingPaused</c>) now lives in the Settings section,
 /// accessed via <c>IEmailOutboxService.IsEmailPausedAsync</c>.
 /// </summary>
 /// <remarks>
@@ -96,6 +96,10 @@ internal interface IEmailOutboxRepository : IRepository
     /// processor: not yet sent, below the retry cap, past
     /// <see cref="EmailOutboxMessage.NextRetryAt"/>, and either never
     /// picked up or stale (older than <paramref name="staleThreshold"/>).
+    /// Rows whose <see cref="EmailOutboxMessage.TemplateName"/> is in
+    /// <see cref="TimeSensitiveTemplates.Names"/> are ordered ahead of all others
+    /// so they are not stuck behind a bulk backlog; ordering within each class is
+    /// FIFO by <see cref="EmailOutboxMessage.CreatedAt"/>.
     /// Returned entities are detached; to update, use
     /// <see cref="MarkPickedUpAsync"/> / <see cref="MarkSentAsync"/> /
     /// <see cref="MarkFailedAsync"/>.

@@ -2,16 +2,19 @@
    here ships broken markup with a green build and no runtime error — see design §1/§2.
 
    Three localizers by design (design §15 step 3b, Governance's two-marker variant plus
-   one): the section owns its 67 Onboarding_* / OnboardingReview_* / OnboardingBanner_*
+   one): the section owns its Onboarding_* / OnboardingReview_* / OnboardingBanner_*
    keys; SharedResource keeps the genuinely shared vocabulary the widget renders
-   (Common_*, Shifts_*) and the three Onboarding_*Label keys MVC's global
+   (Common_*, Shifts_*, Admin_*) and the three Onboarding_*Label keys MVC's global
    DataAnnotationLocalizerProvider resolves; and the widget's Consents step renders
-   Consent's copy through Consent's own _ConsentReviewBody partial.
+   Consent's copy through Consent's own _ConsentReviewBody partial. Which of the three a
+   given key belongs to is not guessable from the call site — a key looked up against the
+   wrong one renders as its own name with a green build and a 200, so
+   OnboardingLocalizerBindingTests checks every one of them.
 
    The review pages' three <vc:> elements resolve as follows: <vc:human> and
-   <vc:access-matrix> are both in Humans.UI and bind through the @addTagHelper below;
-   <vc:profile-card> still reads a Shell-owned registry and stays there, invoked by name
-   (design §15 step 6). Guarded by OnboardingPageRenderTests (step 12). *@
+   <vc:access-matrix> are both in Humans.Base/ViewComponents/ and bind through the
+   @addTagHelper below; <vc:profile-card> is Users' (Humans.Users/ViewComponents/) and is
+   invoked by name (design §15 step 6). Guarded by OnboardingPageRenderTests (step 12). *@
 @using Humans.Base.Extensions
 @using Humans.Consent
 @using Humans.Consent.Contracts

@@ -1,11 +1,11 @@
 @model OnboardingReviewDetailViewModel
 @{
-    ViewData["Title"] = Localizer["OnboardingReview_Title"].Value;
+    ViewData["Title"] = Localizer["Onboarding_ReviewTitle"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["OnboardingReview_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Onboarding_ReviewTitle"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">
             <vc:human user-id="@Model.UserId" />
         </li>
@@ -16,27 +16,28 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["OnboardingReview_NewHumanSummary"]</div>
+            <div class="card-header">@Localizer["Onboarding_ReviewNewHumanSummary"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">@Localizer["OnboardingReview_LegalName"]</dt>
+                    <dt class="col-sm-4">@Localizer["Onboarding_ReviewLegalName"]</dt>
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
-                    <dt class="col-sm-4">@Localizer["Admin_Joined"]</dt>
+                    @* Admin_* keys are SharedResource's — the section set does not carry them. *@
+                    <dt class="col-sm-4">@SharedLocalizer["Admin_Joined"]</dt>
                     <dd class="col-sm-8">@Model.ProfileCreatedAt.ToDate()</dd>
 
-                    <dt class="col-sm-4">@Localizer["AdminHuman_MembershipTier"]</dt>
+                    <dt class="col-sm-4">@SharedLocalizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-8">
                         @Model.MembershipTier
                         @if (Model.HasPendingApplication)
                         {
-                            <span class="badge bg-info ms-1">@Localizer["OnboardingReview_HasApplication"]</span>
+                            <span class="badge bg-info ms-1">@Localizer["Onboarding_ReviewHasApplication"]</span>
                         }
                     </dd>
 
                     @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
                     {
-                        <dt class="col-sm-4">@Localizer["OnboardingReview_ApplicationMotivation"]</dt>
+                        <dt class="col-sm-4">@Localizer["Onboarding_ReviewApplicationMotivation"]</dt>
                         <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
                     }
                 </dl>
@@ -46,7 +47,7 @@
         @if (!string.IsNullOrEmpty(Model.ConsentCheckNotes))
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["OnboardingReview_PreviousNotes"]</div>
+                <div class="card-header">@Localizer["Onboarding_ReviewPreviousNotes"]</div>
                 <div class="card-body">
                     <p class="mb-0" style="white-space: pre-wrap;">@Model.ConsentCheckNotes</p>
                 </div>
@@ -62,13 +63,13 @@
             var allSigned = Model.ConsentCount >= Model.RequiredConsentCount;
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-file-signature me-1"></i> @Localizer["OnboardingReview_LegalDocuments"]
+                    <i class="fa-solid fa-file-signature me-1"></i> @Localizer["Onboarding_ReviewLegalDocuments"]
                 </div>
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span>@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["OnboardingReview_Signed"]</span>
+                        <span>@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["Onboarding_ReviewSigned"]</span>
                         <span class="badge @(allSigned ? "bg-success" : "bg-warning")">
-                            @(allSigned ? Localizer["OnboardingReview_DocsComplete"] : Localizer["OnboardingReview_DocsPending"])
+                            @(allSigned ? Localizer["Onboarding_ReviewDocsComplete"] : Localizer["Onboarding_ReviewDocsPending"])
                         </span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -82,66 +83,87 @@
                     </div>
                     @if (!allSigned)
                     {
-                        <div class="form-text mt-2">@Localizer["OnboardingReview_DocsNote"]</div>
+                        <div class="form-text mt-2">@Localizer["Onboarding_ReviewDocsNote"]</div>
                     }
                 </div>
             </div>
         }
 
         <div class="card mb-4">
-            <div class="card-header">@Localizer["OnboardingReview_Actions"]</div>
+            <div class="card-header">@Localizer["Onboarding_ReviewActions"]</div>
             <div class="card-body">
-                @if (Model.ConsentCheckStatus != ConsentCheckStatus.Cleared)
+                @* Clearing a cleared human is the no-op; Reject stays available afterwards,
+                   because cause can surface after the fact and the coordinator needs somewhere
+                   to act on it. The service never refused it — until this change the rule lived
+                   only in this view, so any other caller already had what the page withheld.
+                   Reject carries ConsentCoordinatorBoardOrAdmin on the action itself; that
+                   policy is the gate, not the markup. Flag is the one action still withheld
+                   here, for the reason given above its own block. *@
+                @if (Model.ConsentCheckStatus == ConsentCheckStatus.Cleared)
+                {
+                    <div class="text-success text-center mb-3">
+                        <i class="fa-solid fa-circle-check fa-2x mb-2"></i>
+                        <p class="mb-0">@Localizer["Onboarding_ReviewAlreadyCleared"]</p>
+                    </div>
+
+                    <hr />
+                }
+                else
                 {
                     <form asp-action="Clear" asp-route-userId="@Model.UserId" method="post" class="mb-3">
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
-                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["OnboardingReview_NotesPlaceholder"].Value"></textarea>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewNotesPlaceholder"].Value"></textarea>
                         </div>
                         <button type="submit" class="btn btn-success w-100"
-                                data-confirm="@Localizer["OnboardingReview_ClearConfirm"].Value">
-                            <i class="fa-solid fa-check me-1"></i> @Localizer["OnboardingReview_ClearButton"]
+                                data-confirm="@Localizer["Onboarding_ReviewClearConfirm"].Value">
+                            <i class="fa-solid fa-check me-1"></i> @Localizer["Onboarding_ReviewClearButton"]
                         </button>
-                        <div class="form-text">@Localizer["OnboardingReview_ClearHelp"]</div>
+                        <div class="form-text">@Localizer["Onboarding_ReviewClearHelp"]</div>
                     </form>
 
                     <hr />
+                }
 
-                    @if (Model.ConsentCheckStatus != ConsentCheckStatus.Flagged)
-                    {
-                        <form asp-action="Flag" asp-route-userId="@Model.UserId" method="post">
-                            @Html.AntiForgeryToken()
-                            <div class="mb-2">
-                                <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["OnboardingReview_FlagReasonPlaceholder"].Value"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-danger w-100"
-                                    data-confirm="@Localizer["OnboardingReview_FlagConfirm"].Value">
-                                <i class="fa-solid fa-flag me-1"></i> @Localizer["OnboardingReview_FlagButton"]
-                            </button>
-                        </form>
-                    }
-
-                    <hr />
-
-                    <form asp-action="Reject" asp-route-userId="@Model.UserId" method="post">
+                @* Flag stays hidden for a cleared human, and that is not the old "the view is the
+                   rule" guard — it is a real consequence. RecordConsentCheck sets
+                   Profile.IsApproved = (status == Cleared) (Humans.Users UserService), and
+                   SystemTeamSyncJob gates Colaborador/Asociado team membership on
+                   Profile.IsApproved. So flagging a cleared tier member silently drops them from
+                   their tier team on the next hourly sync — a kick-out dressed as an annotation.
+                   Volunteers admission already ignores IsApproved for exactly this reason
+                   ("the Flagged consent-check is an audit annotation that no longer gates
+                   admission"); the tier path never got the same treatment. Reject below is the
+                   intended kick-out and is available. Remove this condition once Cleared →
+                   Flagged stops clearing approval — see the run file's Needs Peter item 2. *@
+                @if (Model.ConsentCheckStatus is not ConsentCheckStatus.Flagged
+                     and not ConsentCheckStatus.Cleared)
+                {
+                    <form asp-action="Flag" asp-route-userId="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
-                            <textarea name="reason" class="form-control" rows="2" placeholder="@Localizer["OnboardingReview_RejectReasonPlaceholder"].Value"></textarea>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewFlagReasonPlaceholder"].Value"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-outline-danger w-100"
-                                data-confirm="@Localizer["OnboardingReview_RejectConfirm"].Value">
-                            <i class="fa-solid fa-ban me-1"></i> @Localizer["OnboardingReview_RejectButton"]
+                        <button type="submit" class="btn btn-danger w-100"
+                                data-confirm="@Localizer["Onboarding_ReviewFlagConfirm"].Value">
+                            <i class="fa-solid fa-flag me-1"></i> @Localizer["Onboarding_ReviewFlagButton"]
                         </button>
-                        <div class="form-text">@Localizer["OnboardingReview_RejectHelp"]</div>
                     </form>
+
+                    <hr />
                 }
-                else if (Model.ConsentCheckStatus == ConsentCheckStatus.Cleared)
-                {
-                    <div class="text-success text-center">
-                        <i class="fa-solid fa-circle-check fa-2x mb-2"></i>
-                        <p>@Localizer["OnboardingReview_AlreadyCleared"]</p>
+
+                <form asp-action="Reject" asp-route-userId="@Model.UserId" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-2">
+                        <textarea name="reason" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewRejectReasonPlaceholder"].Value"></textarea>
                     </div>
-                }
+                    <button type="submit" class="btn btn-outline-danger w-100"
+                            data-confirm="@Localizer["Onboarding_ReviewRejectConfirm"].Value">
+                        <i class="fa-solid fa-ban me-1"></i> @Localizer["Onboarding_ReviewRejectButton"]
+                    </button>
+                    <div class="form-text">@Localizer["Onboarding_ReviewRejectHelp"]</div>
+                </form>
             </div>
         </div>
     </div>

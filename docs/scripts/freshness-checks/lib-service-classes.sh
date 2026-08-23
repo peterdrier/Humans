@@ -9,7 +9,7 @@
 # nodes and reported 307 of them missing, a number no regeneration could ever
 # clear. `sort -u` on basenames also collapsed the five sections that name their
 # service class exactly `Service` (Containers, Finance, Holded, Store,
-# SystemSettings) into one entry.
+# Settings) into one entry.
 #
 # What a service is, per docs/architecture/peters-hard-rules.md: "Services must
 # derive from IApplicationService" — and "some services are orchestrators",

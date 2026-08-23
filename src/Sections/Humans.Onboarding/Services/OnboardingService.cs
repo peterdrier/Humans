@@ -16,7 +16,7 @@ namespace Humans.Onboarding.Services;
 // Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
 // Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
 // admin dashboard tiles (section-contributed chrome, nobodies-collective/Humans#1091), account
-// deletion (future IAccountDeletionService).
+// deletion (IAccountDeletionService, in Humans.Users).
 [CrossSectionWrite("Onboarding applies the profile mutation that completes signup.")]
 internal sealed class OnboardingService(
     IUserService userService,
@@ -255,15 +255,23 @@ internal sealed class OnboardingService(
             // un-suspend otherwise only fires on a fresh signature in SubmitConsentAsync.
             // No-op for any non-Suspended user.
             await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
-            return new NextConsentStepData(null, 0, rows.Count);
+            return new NextConsentStepData(NextConsentStepOutcome.NothingLeftToSign, null, 0, rows.Count);
         }
 
         var detail = await consentService.GetConsentReviewDetailAsync(
             unsigned[0].DocumentVersionId, userId, ct);
         if (detail is null)
-            return new NextConsentStepData(null, 0, rows.Count);
+        {
+            logger.LogError(
+                "Required consent document version {DocumentVersionId} has no reviewable detail; "
+                + "user {UserId} cannot complete the onboarding consent step",
+                unsigned[0].DocumentVersionId,
+                userId);
+            return new NextConsentStepData(NextConsentStepOutcome.DocumentUnavailable, null, 0, rows.Count);
+        }
 
-        return new NextConsentStepData(detail, rows.Count - unsigned.Count + 1, rows.Count);
+        return new NextConsentStepData(
+            NextConsentStepOutcome.Document, detail, rows.Count - unsigned.Count + 1, rows.Count);
     }
 
     // --- Helpers ---

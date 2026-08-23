@@ -12,7 +12,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 ## Concepts
 
 - A **Survey** is an authored questionnaire with per-culture title/intro/thank-you and optional invitation email subject/message (`LocalizedText`), a default culture, a status lifecycle (Draft → Open → Closed), an optional open/close window, an audience, and an optional public slug. It owns an ordered graph of questions.
-- A **SurveyQuestion** is one prompt on a page, typed (SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid), optionally required, optionally gated by a **`ShowIf` branch condition**. Choice questions own ordered **SurveyQuestionOptions** (stable machine `Value` + `LocalizedText` label). Grid questions reuse those options as columns and store localized, stable-keyed rows directly on the question.
+- A **SurveyQuestion** is one ordered item on a page, typed (SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid, Information), optionally required, optionally gated by a **`ShowIf` branch condition**. Choice questions own ordered **SurveyQuestionOptions** (stable machine `Value` + `LocalizedText` label). Grid questions reuse those options as columns and store localized, stable-keyed rows directly on the question. Information items reuse Prompt as an optional heading and HelpText as sanitized Markdown, and may carry up to five labelled public images.
 - A **branch condition** (`BranchCondition` + `BranchClause`, jsonb) is skip-logic: a question is visible only when its clauses (combined `All`/`Any`, operators `Is`/`IsNot`/`Answered`/`NotAnswered` over earlier questions' option values) evaluate true. Evaluated by the pure `SurveyBranchingEvaluator`.
 - A **SurveyInvitation** is the per-recipient ledger row for the invited path: one per `(SurveyId, UserId)`. It carries send/reminder funnel state (`SentAt`, `LatestEmailStatus`, `ReminderSentAt`, `Started`, `Completed`) — all flags/timestamps about *participation*, never about *answer content*.
 - A **SurveyResponse** is one submitted (or, for Identified, in-progress) answer set, tagged with its **anonymity tier** and **input method** (UserSpecificLink vs Slug). It owns **SurveyAnswers** (selected option values, free text, rating, or Grid row-to-column selections).
@@ -61,6 +61,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | RatingMin / RatingMax | int? | rating-question range |
 | GridSelectionMode | GridSelectionMode? | string-converted; Single / Multiple for Grid questions |
 | GridRows | List&lt;SurveyGridRow&gt;? | jsonb; ordered stable row `Value` + localized label |
+| InformationImages | List&lt;SurveyInformationImage&gt;? | nullable jsonb; up to five public storage keys with localized label and alt text |
 | ShowIf | BranchCondition? | jsonb skip-logic |
 
 **Index:** `(SurveyId, PageNumber, Order)`.
@@ -131,7 +132,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | Enum | Values |
 |------|--------|
 | SurveyStatus | Draft, Open, Closed |
-| SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid |
+| SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating, Grid, Information |
 | GridSelectionMode | Single, Multiple |
 | ResponseAnonymity | Identified, CompletionTracked, Anonymous |
 | SurveyInputMethod | UserSpecificLink, Slug |
@@ -139,7 +140,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | BranchCombine | All, Any |
 | BranchOperator | Is, IsNot, Answered, NotAnswered |
 
-`LocalizedText` (culture → text), `SurveyGridRow`, and `BranchCondition`/`BranchClause` are section-owned value objects in `src/Sections/Humans.Surveys/Domain/`; localized text, Grid rows/selections, and branch conditions are persisted as jsonb.
+`LocalizedText` (culture → text), `SurveyGridRow`, `SurveyInformationImage`, and `BranchCondition`/`BranchClause` are section-owned value objects in `src/Sections/Humans.Surveys/Domain/`; localized text, Grid rows/selections, Information images, and branch conditions are persisted as jsonb.
 
 ## Routing
 
@@ -177,6 +178,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Grid questions are bounded matrices.** A Grid has at least one localized row, one to five localized columns, and a `Single` or `Multiple` selection mode. Row and column keys are non-blank and unique. A required Grid is complete only when every row has a valid selection; `Single` permits exactly one column per row. Posted selections are normalized against the authored schema before autosave/submission.
 - **Grid questions may be branch targets, never branch sources.** A Grid can carry its own `ShowIf`, but author-save rejects any branch clause that references a Grid question.
 - **Grid result percentages are row-local.** Each cell's percentage uses respondents who answered that row as its denominator. Results retain the current authored matrix. CSV/JSON/Markdown export, the analysis API, and GDPR export retain raw stored row/column keys just as choice exports retain `SelectedOptionValues`, alongside best-effort labels in the survey's default culture; removed definitions fall back to their raw keys instead of hiding historical answers.
+- **Information items are context, not answers.** They share question ordering, paging, translation, preview, and conditional visibility, but are never required, never branch sources, emit no answer input, and are omitted from results and response exports. Markdown uses the shared sanitizer. Images are public `IFileStorage` objects under `uploads/surveys/`, capped at five, and their builder upload form warns that URLs can be shared outside the survey.
+- **Question help text is sanitized Markdown.** Existing plain text remains valid; respondent and preview rendering use the shared Markdown renderer/sanitizer. Prompts remain plain text.
 - **Invitation send is idempotent and additive.** Each send resolves the audience, diffs against existing `(SurveyId, UserId)` invitations, and creates+emails only net-new recipients; nobody is double-invited and **sends never revoke**. The Send page previews that exact net-new count, not the raw audience size. Requires the survey Open with a valid audience configuration (`Team` requires a team; `LoggedInSince` requires a cutoff date). Invites are operational (`MessageCategory.System`, always-send) — surveys are never marketing.
 - **Survey preview is side-effect-free and status-independent.** Board/Admin authors may preview Draft,
   Open, or Closed surveys through the respondent views. Preview page navigation is GET-only, displays

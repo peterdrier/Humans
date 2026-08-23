@@ -164,7 +164,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - Coordinator reviews profile (can proceed regardless of legal document status)
 - Review queue shows legal document progress (X/Y signed) for context
 - **Clear**: ConsentCheckStatus = Cleared, IsApproved = true — annotation only; no team sync, no access change. Volunteers-team admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
-- **Bulk Clear**: Coordinators can multi-select rows that have a legal name and clear them in one action. The server re-checks each selection against the live queue and only clears those that are still pending and still have a legal name; users no longer eligible (already cleared, profile rejected, legal name went blank) are silently skipped and surfaced in the flash message as "Approved X of Y selected".
+- **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row `ClearConsentCheckAsync`, whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
 - **Flag**: ConsentCheckStatus = Flagged with notes — an audit annotation only; it does NOT block app access or Volunteers admission (Reject, which sets `RejectedAt`, is the kick-out lever). Can be resolved later.
 
 `IsApproved = true` is set on clearance even if legal docs are incomplete — it is a CC audit annotation, not an activation signal. App access came earlier at name entry (`UserState == Active`), and Volunteers-team admission is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields && !IsSuspended && RejectedAt is null && HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted.
@@ -235,7 +235,7 @@ After deployment, new humans go through the consent check pipeline. Existing hum
 ### Pre-Approval (New Human)
 ```
 Getting Started
-├── [✓] Complete your profile          → /Profile/Edit
+├── [✓] Complete your profile          → /Profile/Me/Edit
 ├── [○] Sign required documents         → /Consent
 ├── [○] Safety check (pending)
 │
@@ -264,7 +264,7 @@ Term expires: Dec 31, 2027
 6. **Auto-Pending** — system sets ConsentCheckStatus to Pending when all consents are signed
 7. **Batch sync** — neither consent-check clearance nor consent submission triggers a per-user team sync; `SystemTeamSyncJob` reconciles Volunteers membership on **name + consents** (eventually consistent)
 8. **IsApproved is an audit annotation** — it does not gate access or Volunteers admission; app access is `UserState == Active` (name entered) and admission is name + consents
-8. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard
+9. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard
 
 ## Related Features
 

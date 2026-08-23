@@ -72,6 +72,9 @@ internal sealed class SurveysApiController(ISurveyService surveyService, IUserSe
                     order = q.Order,
                     type = q.Type.ToString(),
                     prompt = q.Prompt.Resolve(culture, culture),
+                    markdown = q.Type == SurveyQuestionType.Information
+                        ? q.HelpText.Resolve(culture, culture)
+                        : null,
                     required = q.IsRequired,
                     ratingMin = q.RatingMin,
                     ratingMax = q.RatingMax,
@@ -79,6 +82,15 @@ internal sealed class SurveysApiController(ISurveyService surveyService, IUserSe
                     gridSelectionMode = q.GridSelectionMode?.ToString(),
                     gridRows = (q.GridRows ?? [])
                         .Select(row => new { value = row.Value, label = row.Label.Resolve(culture, culture) }),
+                    images = (q.InformationImages ?? [])
+                        .Where(image => !string.IsNullOrWhiteSpace(image.StoragePath))
+                        .Select(image => new
+                        {
+                            id = image.Id,
+                            url = $"/{image.StoragePath!.TrimStart('/')}",
+                            label = image.Label.Resolve(culture, culture),
+                            altText = image.AltText.Resolve(culture, culture),
+                        }),
                     options = q.Options
                         .OrderBy(o => o.Order)
                         .Select(o => new { value = o.Value, label = o.Label.Resolve(culture, culture) }),

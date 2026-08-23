@@ -138,6 +138,62 @@ public sealed class SurveyBuilderViewModelTests
         vm.ToInput(0).GridSelectionMode.Should().BeNull();
     }
 
+    [HumansFact]
+    public void Information_images_round_trip_through_the_builder()
+    {
+        var imageId = Guid.NewGuid();
+        var input = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Weather context"), L("**Forecast details**"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    imageId,
+                    L("Temperature"),
+                    L("Temperature forecast table"),
+                    "uploads/surveys/survey/question/image.png",
+                    "image/png",
+                    "temperature.png"),
+            ]);
+
+        var vm = SurveyQuestionBuilderViewModel.FromInput(input);
+        var roundTripped = vm.ToInput(0);
+
+        var image = vm.InformationImages.Should().ContainSingle().Subject;
+        image.ExistingStoragePath.Should().Be("uploads/surveys/survey/question/image.png");
+        var mapped = roundTripped.InformationImages.Should().ContainSingle().Subject;
+        mapped.Id.Should().Be(imageId);
+        mapped.Label.Resolve("en", "en").Should().Be("Temperature");
+        mapped.AltText.Resolve("en", "en").Should().Be("Temperature forecast table");
+    }
+
+    [HumansFact]
+    public void ToEditInput_uses_the_posted_question_list_order_within_each_page()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var thirdId = Guid.NewGuid();
+        var vm = new SurveyBuilderViewModel
+        {
+            Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Survey" },
+            Questions =
+            [
+                new SurveyQuestionBuilderViewModel { Id = secondId, PageNumber = 2, Prompt = Dict("Second") },
+                new SurveyQuestionBuilderViewModel { Id = firstId, PageNumber = 1, Prompt = Dict("First") },
+                new SurveyQuestionBuilderViewModel { Id = thirdId, PageNumber = 2, Prompt = Dict("Third") },
+            ],
+        };
+
+        var questions = vm.ToEditInput(NodaTime.DateTimeZone.Utc).Questions;
+
+        questions.Select(question => question.Id).Should().ContainInOrder(secondId, firstId, thirdId);
+        questions.Select(question => question.Order).Should().ContainInOrder(0, 0, 1);
+    }
+
     private static LocalizedText L(string value)
-        => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
+        => new(Dict(value));
+
+    private static Dictionary<string, string> Dict(string value)
+        => new(StringComparer.Ordinal) { ["en"] = value };
 }
