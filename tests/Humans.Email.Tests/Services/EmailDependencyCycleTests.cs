@@ -76,6 +76,10 @@ public sealed class EmailDependencyCycleTests
 
         services.AddScoped<IUserEmailService>(_ => Substitute.For<IUserEmailService>());
 
+        // Section.cs picks Smtp or Stub by configuration; either way it is Scoped, so the
+        // send path OutboxEmailService takes for DoNotPersist messages resolves.
+        services.AddScoped<IEmailTransport>(_ => Substitute.For<IEmailTransport>());
+
         services.AddScoped<OutboxEmailService>();
         services.AddScoped<IEmailService>(sp => sp.GetRequiredService<OutboxEmailService>());
 

@@ -93,11 +93,24 @@ public class ProcessAccountDeletionsJob(
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))
                     {
-                        await emailService.SendAsync(emailMessages.AccountDeleted(
-                            summary.OriginalEmail,
-                            summary.OriginalDisplayName,
-                            summary.PreferredLanguage),
-                            cancellationToken);
+                        // Courtesy confirmation to an address we have just erased. It sends
+                        // without an outbox row (AccountDeleted sets DoNotPersist), so a
+                        // transport failure is terminal — the erasure itself has already
+                        // succeeded and must not be reported as failed, nor retried.
+                        try
+                        {
+                            await emailService.SendAsync(emailMessages.AccountDeleted(
+                                summary.OriginalEmail,
+                                summary.OriginalDisplayName,
+                                summary.PreferredLanguage),
+                                cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex,
+                                "Account {UserId} was anonymized but its deletion confirmation " +
+                                "could not be delivered", userId);
+                        }
                     }
 
                     processed++;

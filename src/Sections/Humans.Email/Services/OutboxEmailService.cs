@@ -19,13 +19,16 @@ namespace Humans.Email.Services;
 /// per-template metric, and — for time-sensitive templates that set
 /// <see cref="EmailMessage.TriggerImmediate"/> — runs the processor immediately
 /// through <see cref="IImmediateOutboxProcessor"/>. SMTP-send lives in
-/// <c>ProcessEmailOutboxJob</c>.
+/// <c>ProcessEmailOutboxJob</c> — except for <see cref="EmailMessage.DoNotPersist"/>
+/// messages, which go straight to <see cref="IEmailTransport"/> here because they
+/// must leave no stored copy of the recipient.
 /// </summary>
 internal sealed class OutboxEmailService(
     IEmailOutboxRepository outboxRepo,
     IUserEmailService userEmailService,
     IEmailBodyComposer bodyComposer,
     IImmediateOutboxProcessor immediateProcessor,
+    IEmailTransport transport,
     IHumansMetrics metrics,
     IClock clock,
     ICommunicationPreferenceService commPrefService,
@@ -65,6 +68,21 @@ internal sealed class OutboxEmailService(
         }
 
         var (wrappedHtml, plainText) = bodyComposer.Compose(message.HtmlBody, unsubscribeUrl);
+
+        if (message.DoNotPersist)
+        {
+            // Straight to the transport: no row, so no retry and no stored copy of a
+            // recipient the erasure cascade has already removed. Logged without the
+            // address for the same reason.
+            await transport.SendAsync(
+                message.RecipientEmail, message.RecipientName, message.Subject,
+                wrappedHtml, plainText, message.ReplyTo, cancellationToken: cancellationToken);
+
+            metrics.RecordEmailQueued(message.TemplateName);
+            logger.LogInformation(
+                "Email sent without an outbox row: {TemplateName}", message.TemplateName);
+            return;
+        }
 
         var entity = new EmailOutboxMessage
         {
