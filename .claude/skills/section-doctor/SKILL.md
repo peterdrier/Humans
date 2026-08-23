@@ -247,14 +247,73 @@ fragile part (two runs running, every dispatched lane missed the window):
 | **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
 | **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
 | **Tests** | Mutation score (Stryker, section-scoped — only when Stryker is installed); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
-| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
+| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); **localization coverage of the views** (below); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
 | **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | main |
 | **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | main |
-| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them; off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
+| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
 
 **Every thread that does not run says so in the run file, with why.** A silent skip is how the
 2026-08-18 run left the whole mutation dimension unmeasured with nothing flagging it. A thread
 earns removal from this table only when several runs record it as "ran, found nothing".
+
+#### Open-issue review (Inbox)
+
+The Inbox thread pulls the section's open issues to work or rank them. Nothing then checks
+whether those issues are still *correct* — and a run that has just read the section end to end,
+inventory and target and docs and invariants, is the best-informed reader of that backlog anyone
+gets. Throwing that away is how a backlog drifts: issues describing files that moved, asking for
+behavior that shipped, contradicting each other or the section doc, or predating a G5 project
+split that changed the answer (nobodies-collective/Humans#1118).
+
+So review each one against **this run's own target shape and inventory**, on four lenses:
+
+- **Validity** — does it still describe real code? Do its paths, types, routes and project names
+  resolve? Was it shipped already?
+- **Consistency** — does it contradict the section doc, another open issue, or a hard rule?
+- **Freshness** — does it predate a change (section split, read-split, a deleted context) that
+  changes the answer or the scope?
+- **Spec quality** — are the acceptance criteria still meaningful? Is the section label present?
+
+Output is a **recommendation, never an action.** One line per reviewed issue in the run file's
+`## Needs Peter` checklist: the issue ref, a verdict of `close` / `edit` / `relabel` / `keep`, and
+the one-sentence reason.
+
+**Hard constraint: a run may not mutate any GitHub issue.** No close, no edit, no relabel, no
+comment on another issue — including issues this run's own findings duplicate, and including a
+`keep`. A run's only writes are its own run file and its own PR (whose body and description it
+owns). Every recommendation is enacted by Peter, after review; this sits on Phase 4's
+skip-and-queue list beside schema changes and surface additions.
+
+Cap the pass at the section's open issues — recommendations are per-issue one-liners, so a large
+backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
+`## Threads` like every other thread; a review that did not happen says so, with why.
+
+#### Localization coverage (Prose & surface)
+
+Resx parity is the direction that is already gated — `SectionResourceParityTests` plus the dead
+resource / missing translation / `resource-key-prefix` checks above, all of them about the keys
+that *exist*. The direction that leaks is user-facing view text that never became a key at all,
+and perfect parity says nothing about it: `/Expenses/{id}` was 575 lines with 11 `@Localizer[…]`
+calls, all six resx files in agreement, and the page mostly untranslated
+(nobodies-collective/Humans#1115).
+
+Background command, per view, worst coverage first:
+
+```bash
+python .claude/skills/section-doctor/loc-coverage.py --section <X>   # --json for the raw rows
+```
+
+It resolves each view's **route** from its controller's `[Route(…)]` — not its file path, because
+`memory/code/localization-admin-exempt.md` exempts by route (`Admin/*`, `TeamAdmin/*`,
+`Shifts/Dashboard`) and `Views/Admin/Agent/Settings.cshtml` is served at `Agent/Admin/Settings`.
+Views on a route with an `Admin`/`TeamAdmin` segment are reported in their own table, unranked.
+
+The atom's other half is judgment, and judgment is the run's: a view rendered only to
+coordinators or finance admins reads as an admin function even on a member-facing route. The
+detector leaves those in the ranked table; the run passes on them and says why. **Report the
+count, don't backfill unless the run is *for* that** — the same standing rule as
+`resource-key-prefix`. Adding keys to a member-facing page is real work, and it is `## Needs
+Peter` material when it is not this run's headline.
 
 ### 3e. Merge, rank, and check independence
 
@@ -311,10 +370,12 @@ executed after it. Budget checks are real
    push every 3–5 items.
 
 **Skip-and-queue classes** (never block the loop): schema/EF changes of any kind, public/interface
-surface *additions*, privilege changes, anything needing Peter's judgment → skip, queue for
-Phase 7's Needs-Peter block. Off-section debt discovered → this run's sweep queue (`debt:`),
-never chased, never written to the ledger directly. If in-flight feature work on this section
-surfaces mid-run → stop striking, ship the assessment-only PR, note it in the run file.
+surface *additions*, privilege changes, **mutating a GitHub issue** (closing, editing, relabelling
+or commenting on one — 3d's Inbox review recommends, Peter enacts), anything needing Peter's
+judgment → skip, queue for Phase 7's Needs-Peter block. Off-section debt discovered → this run's
+sweep queue (`debt:`), never chased, never written to the ledger directly. If in-flight feature
+work on this section surfaces mid-run → stop striking, ship the assessment-only PR, note it in
+the run file.
 
 ## Phase 5: Bookkeeping
 
@@ -327,8 +388,10 @@ worktree/PR, three bookkeeping writes:
   timestamp; if the path already exists at the branch point, suffix `-<HHMMZ>`). Sections:
   run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, worked,
   skipped + why (including sections passed over as blocked), retro (Phase 6), `## Needs Peter`
-  checklist, `## Sweep queue` (`lesson:` / `debt:` / `memory:` items as plain bullets — a
-  later run's sweep applies them after this run merges; nothing ever ticks them).
+  checklist — Phase 4's skipped classes plus 3d's open-issue recommendations, each
+  `<ref> — <close|edit|relabel|keep> — <reason>` — and `## Sweep queue` (`lesson:` / `debt:` /
+  `memory:` items as plain bullets — a later run's sweep applies them after this run merges;
+  nothing ever ticks them).
 
   Plus three blocks that make the Purpose's three tests answerable rather than assertable:
 
@@ -459,6 +522,9 @@ Present the open items inline, then apply each answer:
   `Docs/health.md`, its own `docs/health/runs/<date>-<Section>.md`, and — in the sweep commit
   only (Phase 5) — this skill's files, `docs/architecture/debt-ledger.yml`, `memory/`; never
   the run files it sweeps. Nothing writes `docs/architecture/maintenance-log.md`.
+- **Every GitHub issue is read-only to every run.** No close, edit, relabel or comment, on any
+  issue, ever — 3d's Inbox review recommends and Peter enacts. A run's only GitHub writes are its
+  own PR.
 - **`docs/architecture/section-conformance.yml` is read-only to every run**, sweeps included.
   Rows are added and removed only at Peter's direction; a run that wants one proposes it in its
   Needs-Peter block.
