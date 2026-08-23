@@ -2376,6 +2376,32 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_stale_completion_tracked_claim_returns_completed_outcome()
+    {
+        var survey = SurveyForWizard(out var q1Id, out var q2Id);
+        var invitationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var state = WizardState(survey.Id, invitationId);
+        state.UserId = userId;
+        state.Anonymity = ResponseAnonymity.CompletionTracked;
+        state.Started = true;
+        state.CurrentPage = 2;
+        state.Answers[q1Id.ToString()] = new SurveyWizardAnswer
+        {
+            SelectedOptionValues = ["yes"],
+        };
+        _repo.TryFinalizeCompletionTrackedResponseAsync(
+                invitationId, userId, Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 2, back: false, [TextAns(q2Id, "done")],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_returns_closed_when_survey_not_open()
     {
         var survey = SurveyForWizard(out var q1Id, out _);

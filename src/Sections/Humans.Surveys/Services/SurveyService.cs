@@ -646,12 +646,19 @@ internal sealed class SurveyService(
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.AlreadyCompleted)
+        {
+            throw new InvalidOperationException("This invitation has already submitted a response.");
+        }
         if (prepared.MissingRequired.Count > 0)
         {
             throw new InvalidOperationException("Required survey questions are unanswered.");
         }
 
-        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
+        if (!await PersistResponseAsync(submission, prepared.VisibleAnswers, ct))
+        {
+            throw new InvalidOperationException("This tracked response has already been completed.");
+        }
     }
 
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
@@ -675,7 +682,7 @@ internal sealed class SurveyService(
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
             if (invitation?.Completed == true)
             {
-                throw new InvalidOperationException("This invitation has already submitted a response.");
+                return new SubmissionPreparation([], [], [], AlreadyCompleted: true);
             }
         }
 
@@ -697,7 +704,7 @@ internal sealed class SurveyService(
         return new SubmissionPreparation(visibleAnswers, questions, missingRequired);
     }
 
-    private async Task PersistResponseAsync(
+    private async Task<bool> PersistResponseAsync(
         SurveySubmission submission,
         IReadOnlyList<SurveyAnswerInput> visibleAnswers,
         CancellationToken ct)
@@ -727,8 +734,7 @@ internal sealed class SurveyService(
                             invId, submission.DraftResponseId, response, ct);
                         if (!claimed)
                         {
-                            throw new InvalidOperationException(
-                                "This tracked response has already been completed.");
+                            return false;
                         }
                     }
                     else
@@ -744,8 +750,7 @@ internal sealed class SurveyService(
                                 ct);
                             if (!saved)
                             {
-                                throw new InvalidOperationException(
-                                    "This identified response is no longer available.");
+                                return false;
                             }
                         }
                         else
@@ -754,7 +759,7 @@ internal sealed class SurveyService(
                         }
                     }
 
-                    break;
+                    return true;
                 }
 
             case ResponseAnonymity.CompletionTracked:
@@ -784,11 +789,10 @@ internal sealed class SurveyService(
                         invId, userId, response, ct);
                     if (!claimed)
                     {
-                        throw new InvalidOperationException(
-                            "This tracked response has already been completed.");
+                        return false;
                     }
 
-                    break;
+                    return true;
                 }
 
             case ResponseAnonymity.Anonymous:
@@ -809,7 +813,7 @@ internal sealed class SurveyService(
                     };
                     // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
                     await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-                    break;
+                    return true;
                 }
         }
     }
@@ -964,6 +968,10 @@ internal sealed class SurveyService(
             state.Culture,
             SurveyWizardFlow.ToAnswerInputs(state.Answers));
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.AlreadyCompleted)
+        {
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
+        }
         if (prepared.MissingRequired.Count > 0)
         {
             ReplaceWizardAnswers(state, prepared.VisibleAnswers);
@@ -1445,7 +1453,8 @@ internal sealed class SurveyService(
     private sealed record SubmissionPreparation(
         IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
         IReadOnlyList<QuestionInput> Questions,
-        IReadOnlyList<Guid> MissingRequired);
+        IReadOnlyList<Guid> MissingRequired,
+        bool AlreadyCompleted = false);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer
