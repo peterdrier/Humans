@@ -42,7 +42,7 @@ section's first doctor pass, so there is no previous target to diff against.
 1. **[bug — struck] The site-wide onboarding progress banner rendered its own key names to
    every mid-onboarding human, on every authenticated page, in all six languages.**
    `Views/Shared/Components/OnboardingProgressBanner/Default.cshtml` bound
-   `IHtmlLocalizer<SharedResource>`; `OnboardingBanner_Text` and `OnboardingBanner_Cta` came
+   `IHtmlLocalizer<SharedResource>`; `Onboarding_BannerText` and `Onboarding_BannerCta` came
    home to `OnboardingResource` with the G5 resx carve. A localizer returns the key as its own
    value when it cannot find it, so this shipped with a green build, a 200, no log line and
    identical output in every language — which is also why a translation review would not have
@@ -385,24 +385,59 @@ branch.
    (Finding 14.) The detector's allow-regex is `Section\.cs`, so it flags `SectionAdminNav.cs`
    and `SectionChrome.cs` here — and the same two files, plus seven more kinds, in 29 other
    sections. Every section does this; either the template should say so or the detector should
-   stop reporting it. `docs/sections/G5-SECTION-TEMPLATE.md` and
-   `docs/architecture/section-conformance.yml` are both outside a run's write scope.
-2. [ ] **Should a cleared human be re-flaggable or rejectable from the review detail page?**
-   The page hides both actions once `ConsentCheckStatus == Cleared`; the service refuses
-   neither. So the rule exists only in a view, and any other caller — or a stale page — can do
-   it. Either the service should enforce it or the view should stop implying it.
-3. [ ] **`resource-key-prefix` for Onboarding: section prefix or literal string?**
-   (Finding 15.) The set carries `Onboarding_`, `OnboardingReview_`, `OnboardingBanner_` and
-   `Guest_`. If the rule means the literal `Onboarding_`, most of the set needs renaming across
-   six locales and every call site; if it means "prefixed by something this section owns", the
-   set already conforms and the detector needs the looser test.
-4. [ ] **Add a mid-onboarding persona to `HumansWebApplicationFactory`.** Without one,
+   stop reporting it. **Answered 2026-08-23 — widen it: "yes, you're right, rule needs
+   expanding."** Allow-regex is now `Section[A-Za-z]*\.cs`. Peter also gave the direction of
+   travel: *"realistically though we're going to merge the other classes into Section.cs with
+   multiple interface implementations"* — so the sibling files are transitional, not the target
+   shape. Recorded in both the detector's notes and `G5-SECTION-TEMPLATE.md` step 2, which now
+   says prefer folding into one `Section.cs` and do not add a new sibling kind.
+
+   Widening drops this rule from ~30 noise hits to **12 real ones**, all pre-existing and none
+   in Onboarding: `Health/` in Agent, Email, GoogleIntegration, Guide and Tickets; `Helpers/` in
+   Events, Shifts and Users; `Extensions/` in Users; and three loose root files
+   (`LogApiKeyAuthFilter.cs` in Debug, `HoldedSectionOptions.cs`, `StoreSectionOptions.cs`).
+   **`Health/` in five sections looks like the next `Section*.cs`** — a convention the allow-list
+   never learned — but that is a separate call from the one made here, so it is reported, not
+   changed.
+2. [x] **Should a cleared human be re-flaggable or rejectable from the review detail page?**
+   **Answered 2026-08-23 — yes, allow it; enforce nothing.** "If need be we can reject a person
+   later if there's cause. You don't need to enforce anything though, just allow the state
+   change with the right permissions." So the view stops withholding flag and reject once
+   `Cleared`; only the clear form is replaced by the already-cleared note. The service keeps
+   its permissive behaviour deliberately, and the gate is the
+   `ConsentCoordinatorBoardOrAdmin` policy on the actions. Recorded as an invariant in
+   `health.md` so a later run does not "fix" it back.
+3. [x] **`resource-key-prefix` for Onboarding: section prefix or literal string?**
+   (Finding 15.) **Answered 2026-08-23 — the literal `Onboarding_`, and rename.** "It's not for
+   user benefit, but it's tech debt." 78 of the set's 105 keys moved:
+   `OnboardingReview_X` → `Onboarding_ReviewX`, `OnboardingBanner_X` → `Onboarding_BannerX`,
+   `Guest_X` → `Onboarding_GuestX`, `Welcome_X` → `Onboarding_WelcomeX`; the 27 already on
+   `Onboarding_` are untouched. Applied across all six locales and every call site, including
+   Governance's `BoardVoting/Detail.cshtml`, which binds this section's set through
+   `OnboardingLocalizer` and is the one legitimate off-section consumer.
+4. [x] **Add a mid-onboarding persona to `HumansWebApplicationFactory`.** Without one,
    `OnboardingPageRenderTests`' banner assertion is vacuous — which is how findings 1 and 2
-   shipped past it. Not written here: no Docker to run it against, and blind integration-test
-   infrastructure is worse than none.
-5. [ ] **Widen `OnboardingLocalizerBindingTests` repo-wide once Users and Governance are
+   shipped past it. **Answered 2026-08-23 — there was no question in it; written.**
+   `SignInAsMidOnboardingAsync` is on the factory and the banner now has a test that renders it.
+
+   The part worth knowing: *skipping* the consent seed is not enough. A fresh integration DB has
+   no legal documents, so `HasAllRequiredConsentsForTeamAsync` is vacuously true and the persona
+   is `Complete` the moment dev-login seeds it — the incomplete state has to be **manufactured**.
+   The helper seeds a required, active Volunteers document with an already-effective version,
+   invalidates both startup-warmed caches, then dev-logs in without consenting to it. It then
+   asserts the resulting step is not `Complete` and throws if it is, so the helper cannot quietly
+   regress into the vacuum it exists to close. CI is the gate — no Docker here.
+5. [x] **Widen `OnboardingLocalizerBindingTests` repo-wide once Users and Governance are
    clean.** (Finding 17.) The sweep already runs repo-wide; it is scoped to this section only
-   because four real hits remain in Users and belong to Users' run.
+   because four real hits remain in Users. **Answered 2026-08-23 — leave them: "those sound
+   like they're in Users, outside the scope of this section-doctor run."** The four keys stay
+   in the sweep queue for Users' own run, and the test stays section-scoped until then.
+5b. [x] **Is the untranslated admin sidebar debt or a decision?** Raised because
+   `AdminNavItem.Label` is a raw string rendered as-is, so all 29 contributing sections
+   hard-code English. **Answered 2026-08-23 — a decision: "admin side stuff is English only
+   until further notice."** So it is not debt and no run should re-report it; the sweep-queue
+   entry is rewritten to say so. The eight dead `Nav_*` keys in `SharedResource` are a
+   separate matter — still dead, still Base's, still queued.
 6. [ ] **`cost-report.py` works in the cloud environment — the skill should stop warning that
    it might not, and should learn to emit a phase marker per phase.** The transcript layout the
    skill flags as unverified is the layout the script reads, so `## Cost` above is real. What is
@@ -414,6 +449,8 @@ branch.
 
 ## Sweep queue
 
+- `lesson: 2026-08-23 — "make the fixture incomplete" is usually harder than skipping a seed step. Onboarding's mid-onboarding persona could not be built by omitting the consent seed: with no legal documents in a fresh test DB the required-consent check is vacuously true and the user is Complete anyway. The incomplete state had to be manufactured (seed a required doc, then do NOT consent). Whenever a fixture is meant to be partway through something, assert the partway-ness inside the helper and throw — otherwise it silently becomes the complete case again.`
+- `lesson: 2026-08-23 — a resource-key rename is verifiable in a way most refactors are not: after renaming, diff the set of keys referenced in source against the set the resx carries, in both directions. That check found the three [Display(Name=...)] keys in Onboarding live in SharedResource rather than the section's set (correct — Program.cs routes all DataAnnotations lookups there), which no amount of reading the diff would have shown.`
 - `lesson: 2026-08-23 — a NotContain assertion in a render test is only as good as the fixture's state. Onboarding's banner assertion signed in a fully-onboarded persona, for whom the banner renders nothing, so it could not fail — and the two keys it was written to guard shipped misbound. Ask of every render assertion: what must the fixture be for this to have anything to assert against?`
 - `lesson: 2026-08-23 — a key looked up against the wrong IStringLocalizer<T> is not an error. The localizer returns the key as its own value, so the page renders the raw key with a green build, a 200, no log line, and identically in every language — which is why translation review misses it too. Check every localizer binding in a section against the set that actually carries each key; it is cheap and no tool does it.`
 - `lesson: 2026-08-23 — a resx carve leaves misbindings in both directions. Onboarding had keys that came home still bound to SharedResource, and SharedResource keys bound to the section's set. A guard that only asserts the absence of the carved prefixes catches the first kind and never the second.`
@@ -429,7 +466,8 @@ branch.
 - `debt: 2026-08-23 — four pre-existing violations of code-review-rules.md §"Razor Boolean Attributes", all the banned bool-valued form rather than the sanctioned ? "x" : null string form: Humans.Shifts/Views/VolunteerTracking/_ExportCard.cshtml line 50 (disabled="@subPeriodHidden") and lines 34 and 44 (selected="@(expr == expr)"), and Humans.MailerLite/Views/MailerLite/Admin/Debug.cshtml line 67 (selected="@(a.Key == Model.SelectedKey)"). Found by sweeping the repo for the pattern after review blocked the same shape in Onboarding; left to Shifts' and MailerLite's own runs (found by /section-doctor on Onboarding, 2026-08-23).`
 - `lesson: 2026-08-23 — cost-report.py does read the cloud transcript layout; the skill's "may not work here" hedge is stale and a run should just measure. What it cannot do is split the phases: the phase log stops being written after phase3, so every later phase is attributed to that row. Write a phase marker at the top of each phase, not just the first three.`
 - `debt: 2026-08-23 — four misbound resource keys in Users: Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated in Humans.Users/Controllers/ProfileController.cs (bound UsersResource, keys are SharedResource's), and Admin_SortBy in Humans.Users/Views/UsersAdmin/AdminList.cshtml. Each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (found by /section-doctor on Onboarding, 2026-08-23).`
-- `debt: 2026-08-23 — the admin sidebar is untranslated by construction. AdminNavItem.Label is a raw string rendered as-is by Shell's AdminSidebarViewComponent, so all 29 sections contributing SectionAdminNav hard-code English labels. Seven Nav_* keys in SharedResource (Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, plus Nav_OnboardingReview) are consequently named nowhere in src/ or tests/ (found by /section-doctor on Onboarding, 2026-08-23).`
+- `decision: 2026-08-23 — the admin sidebar being English-only is DELIBERATE, not debt. AdminNavItem.Label is a raw string rendered as-is by Shell's AdminSidebarViewComponent and all 29 sections contributing SectionAdminNav hard-code English; Peter: "admin side stuff is english only until further notice." Do not report it as a conformance or localization finding, and do not localize AdminNavItem without asking first.`
+- `debt: 2026-08-23 — eight Nav_* keys in SharedResource are named nowhere in src/ or tests/: Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, Nav_OnboardingReview. Dead because the admin sidebar takes raw strings — but the English-only decision above is about the sidebar, not about keeping dead keys, so these are still deletable. Base's set, so Base's run (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Onboarding test files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger would delete both copies (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — the two Humans.Onboarding.Docs data-access blocks for HumanLifecycleService and NonCompliantMemberSuspension describe Users-owned services and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them. Left in place with a pointer rather than moved, because the concurrency contract forbids a run writing another section's file (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — /Profile/Edit is stale in three places outside Users: a comment in Humans.Consent/Controllers/ConsentController.cs, a doc comment in Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. The live route is /Profile/Me/Edit (found by /section-doctor on Onboarding, 2026-08-23).`

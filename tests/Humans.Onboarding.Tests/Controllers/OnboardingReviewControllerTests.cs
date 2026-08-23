@@ -105,7 +105,7 @@ public class OnboardingReviewControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(OnboardingReviewController.Index));
-        ctrl.TempData["ErrorMessage"].Should().Be("OnboardingReview_AlreadyRejected");
+        ctrl.TempData["ErrorMessage"].Should().Be("Onboarding_ReviewAlreadyRejected");
     }
 
     [HumansFact]
@@ -131,7 +131,7 @@ public class OnboardingReviewControllerTests
         var result = await ctrl.Flag(_subjectId, notes: "needs a chat");
 
         result.Should().BeOfType<RedirectToActionResult>();
-        ctrl.TempData["SuccessMessage"].Should().Be("OnboardingReview_Flagged");
+        ctrl.TempData["SuccessMessage"].Should().Be("Onboarding_ReviewFlagged");
         await _onboarding.Received(1).FlagConsentCheckAsync(
             _subjectId, _reviewerId, "needs a chat", Arg.Any<CancellationToken>());
     }
@@ -142,9 +142,9 @@ public class OnboardingReviewControllerTests
     /// happened — all, some, none — or a half-done sweep reads as a finished one.
     /// </summary>
     [HumansTheory]
-    [InlineData(3, 3, "SuccessMessage", "OnboardingReview_BulkCleared")]
-    [InlineData(3, 1, "SuccessMessage", "OnboardingReview_BulkClearedPartial")]
-    [InlineData(3, 0, "InfoMessage", "OnboardingReview_BulkClearedNone")]
+    [InlineData(3, 3, "SuccessMessage", "Onboarding_ReviewBulkCleared")]
+    [InlineData(3, 1, "SuccessMessage", "Onboarding_ReviewBulkClearedPartial")]
+    [InlineData(3, 0, "InfoMessage", "Onboarding_ReviewBulkClearedNone")]
     public async Task BulkClear_DistinguishesAllFromSomeFromNone(
         int selected, int approved, string slot, string expectedKey)
     {

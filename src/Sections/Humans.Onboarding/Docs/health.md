@@ -95,10 +95,12 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   and deletion are rendered here but owned by Users; Tickets contributes through the
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
   data, not here.
-- **A coordinator cannot flag or reject someone already cleared.** The detail page hides both
-  actions once `ConsentCheckStatus == Cleared`, and the service does not refuse them. Whether
-  a cleared person should be re-flaggable is unsettled; until it is settled, leave the service
-  permissive and the page as it is.
+- **A cleared human can still be flagged or rejected; only clearing is withheld.** Settled by
+  Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs somewhere to
+  act on it. The service was always permissive — the restriction lived only in the detail
+  view, which means every other caller already had what the page withheld. The view now
+  matches, and the gate is the `ConsentCoordinatorBoardOrAdmin` policy on the actions
+  themselves, not the markup. Do not add a service-side refusal for this.
 
 ## 6. Deliberately not done
 

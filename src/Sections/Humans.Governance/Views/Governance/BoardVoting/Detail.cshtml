@@ -17,10 +17,10 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header">@OnboardingLocalizer["OnboardingReview_ProfileSummary"]</div>
+            <div class="card-header">@OnboardingLocalizer["Onboarding_ReviewProfileSummary"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">@OnboardingLocalizer["OnboardingReview_LegalName"]</dt>
+                    <dt class="col-sm-4">@OnboardingLocalizer["Onboarding_ReviewLegalName"]</dt>
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
                     <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
@@ -35,7 +35,7 @@
 
                     @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
                     {
-                        <dt class="col-sm-4">@OnboardingLocalizer["OnboardingReview_ApplicationMotivation"]</dt>
+                        <dt class="col-sm-4">@OnboardingLocalizer["Onboarding_ReviewApplicationMotivation"]</dt>
                         <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
                     }
                 </dl>
@@ -129,7 +129,7 @@
                     <div class="mb-3">
                         <label for="voteNote" class="form-label">@Localizer["BoardVoting_Note"]</label>
                         <textarea id="voteNote" name="note" class="form-control" rows="2"
-                                  placeholder="@OnboardingLocalizer["OnboardingReview_NotesPlaceholder"].Value">@Model.CurrentUserNote</textarea>
+                                  placeholder="@OnboardingLocalizer["Onboarding_ReviewNotesPlaceholder"].Value">@Model.CurrentUserNote</textarea>
                     </div>
                 </form>
             </div>

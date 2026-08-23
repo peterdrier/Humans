@@ -11,7 +11,7 @@ namespace Humans.Onboarding.Tests.Architecture;
 /// <para>
 /// A key looked up against the wrong <c>IStringLocalizer&lt;T&gt;</c> is not an error. The
 /// localizer returns the key as its own value, so the page renders the literal
-/// <c>OnboardingBanner_Text</c> — with a green build, a 200, no log line, and identical
+/// <c>Onboarding_BannerText</c> — with a green build, a 200, no log line, and identical
 /// behaviour in all six languages, which is what makes it survive a translation review too.
 /// The section shipped two of these: the progress banner's two keys were bound to
 /// <c>SharedResource</c> after the carve moved them into <c>OnboardingResource</c>, and the
