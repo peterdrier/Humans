@@ -5,11 +5,11 @@ description: "Use when a sprint tracking issue (label `sprint`) on peterdrier/Hu
 
 # Execute Sprint — Unattended Cloud Runs
 
-Cloud-side half of the sprint process (peterdrier/Humans#1468). `/sprint` runs locally,
-Peter approves which batches go up, and it publishes a tracking issue per
+Cloud-side half of the sprint process (peterdrier/Humans#1468). [`plan-sprint`](../plan-sprint/SKILL.md)
+runs locally, Peter approves which batches go up, and it publishes a tracking issue per
 [`docs/sprints/TRACKING-ISSUE-TEMPLATE.md`](../../../docs/sprints/TRACKING-ISSUE-TEMPLATE.md).
-A routine fires a .NET cloud session on that issue; this skill claims and works batches.
-The local swarm variant is Peter's personal skill — this file is the unattended path only.
+A routine fires a .NET cloud session on that issue; this skill claims and works batches —
+it is the unattended path only.
 
 Ground rules (template + [`batch-worker`](../../agents/batch-worker.md) Unattended Mode):
 
