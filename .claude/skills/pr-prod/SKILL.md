@@ -61,21 +61,35 @@ Group added files by folder — each folder is one DbContext chain (`src/Section
 1. **End-of-chain** — every new migration's timestamp prefix sorts after every migration already on `upstream/main` in that folder:
 
    ```bash
-   git ls-tree --name-only upstream/main -- <folder>
+   git ls-tree -r --name-only upstream/main -- <folder>
    ```
+
+   (`-r` is required — without it, an existing folder prints as a single tree entry and there are no timestamps to compare.)
 
    A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/migration-regen-after-rebase.md`).
 
 2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears as `M` (or `A` when the section/folder itself is new or renamed) in the same diff. New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
 
-3. **Chain converges** — the critical case is ≥2 new migrations in one folder (two fork PRs each added one): the second must have been generated on top of the first, not off the same base in parallel. Mechanical check: the model body between the `#pragma warning` markers must be identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
+3. **Chain converges** — the critical case is ≥2 new migrations in one folder (two fork PRs each added one): the second must have been generated on top of the first, not off the same base in parallel. Two-part check; **both** must pass:
+
+   a. The model body between the `#pragma warning` markers is identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
 
    ```bash
    diff <(awk '/#pragma warning disable/,/#pragma warning restore/' <newest>.Designer.cs) \
         <(awk '/#pragma warning disable/,/#pragma warning restore/' <folder>/<Context>ModelSnapshot.cs)
    ```
 
-   Empty output = chained properly. Any diff means the chain is forked — the merge kept one branch's model in the snapshot and lost the other's.
+   Empty output required. A diff means the merge kept the older branch's snapshot and lost the newer's model.
+
+   b. The snapshot matches the compiled model — catches the other fork resolution, where the merge kept the newer branch's snapshot: Designer and snapshot are then byte-identical but *both* omit the earlier migration's model changes, so (a) alone passes. On a checkout of `origin/main` (the fork tip being promoted):
+
+   ```bash
+   dotnet build Humans.slnx -v quiet
+   dotnet ef migrations has-pending-model-changes --context <Context> \
+     --project src/Sections/Humans.<Section> --startup-project src/Humans.Web --no-build
+   ```
+
+   Must report no pending model changes (`--project` per `memory/process/ef-multi-context-commands.md`; the platform context uses `--project src/Humans.Web`). Together, (a) + (b) prove the newest Designer's model incorporates every promoted migration's entity changes.
 
 **Any check fails → STOP. Do not open the PR.** Report which context and which check. The fix happens on the fork before promotion (stop-and-ask per the atom above; `/ef-regen` is the sanctioned recovery) — a broken chain promoted to prod is a deploy incident, not a PR-body footnote.
 
