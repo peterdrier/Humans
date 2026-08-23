@@ -1,6 +1,6 @@
 ---
 name: PR review feedback — fetch from both repos, reply per-thread, resolve when authorized
-description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve every dispositioned thread (fixed, refuted, wontfix, issue opened), react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger.
+description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve every dispositioned thread (fixed, refuted, wontfix, issue opened), react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger, and post a follow-up comment closing the loop on any top-level (threadless) review.
 ---
 
 When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these five rules fire together. They cover the full "find → triage → reply → close" loop.
@@ -75,3 +75,11 @@ The reaction tracks the triage verdict, one per finding, in the same step as the
 | WONTFIX — correct observation, deliberately not changing | 👍 (`+1`) |
 
 WONTFIX still gets 👍: the find was accurate, the decision was ours. Downvote only when Codex's claim about the code is false — otherwise the signal teaches it to stop reporting things that were right.
+
+## 6. Top-level review comments have no thread — close the loop with a follow-up comment
+
+When findings were posted as a **top-level PR comment** (not inline threads) — including your own `/code-review` output — and you then fix them, post a follow-up comment recording what was fixed. There's no thread to resolve, so the reply/resolve habits above never fire, and the findings sit there reading as open work.
+
+**Why:** on one PR, a 3-issue top-level review was posted, all 3 were fixed and pushed, and the fix was reported in chat — but nothing was posted on the PR itself. Peter: "did you comment on the pr that you fixed those three things?" Anyone reading the PR would have seen three unaddressed findings.
+
+**How to apply:** the follow-up comment states what was fixed and the sha, and — importantly — what was deliberately *not* changed and why, including any finding that turned out to be a false positive on closer inspection. Fixing review findings isn't done at "pushed."
