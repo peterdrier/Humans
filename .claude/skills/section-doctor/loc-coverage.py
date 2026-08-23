@@ -109,7 +109,9 @@ def _strip_balanced(text: str, opener: str, open_ch: str, close_ch: str) -> str:
     i = 0
     n = len(text)
     while i < n:
-        if text.startswith(opener, i):
+        # A word opener (`@functions`) needs a boundary; a punctuation one (`@(`) does not.
+        boundary = not opener[-1].isalpha() or not text[i + len(opener) : i + len(opener) + 1].isalnum()
+        if text.startswith(opener, i) and boundary:
             j = i + len(opener)
             while j < n and text[j].isspace():
                 j += 1
@@ -238,8 +240,8 @@ def scan_view(path: Path) -> dict:
 
 # --- routes -------------------------------------------------------------------------------
 ROUTE_ATTR = re.compile(r'\[\s*Route\s*\(\s*"([^"]*)"')
-EXEMPT_PREFIXES = ("Admin/", "TeamAdmin/")
-EXEMPT_EXACT = ("Admin", "TeamAdmin", "Shifts/Dashboard")
+# `memory/code/localization-admin-exempt.md`: exempt as a whole route or as a route prefix.
+EXEMPT_ROUTES = ("Admin", "TeamAdmin", "Shifts/Dashboard")
 ADMIN_SEGMENT = {"admin", "teamadmin"}
 
 
@@ -274,10 +276,7 @@ def bucket_for(route: str) -> str:
     if route.startswith("(component)") or route.startswith("(shared)"):
         return "member-facing"
     clean = route.strip("/")
-    for exact in EXEMPT_EXACT:
-        if clean == exact or clean.startswith(exact + "/"):
-            return "exempt"
-    if any(clean.startswith(p) for p in EXEMPT_PREFIXES):
+    if any(clean == r or clean.startswith(r + "/") for r in EXEMPT_ROUTES):
         return "exempt"
     if any(seg.lower() in ADMIN_SEGMENT for seg in clean.split("/")[:-1]):
         return "admin-route"
