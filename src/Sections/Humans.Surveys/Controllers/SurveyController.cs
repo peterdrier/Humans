@@ -66,19 +66,8 @@ internal sealed class SurveyController(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
             resumeState.DraftResponseId = identifiedStart.DraftResponseId;
-            foreach (var a in identifiedStart.DraftAnswers)
-            {
-                resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
-                {
-                    SelectedOptionValues = a.SelectedOptionValues.ToList(),
-                    GridSelections = a.GridSelections?.ToDictionary(
-                        kv => kv.Key,
-                        kv => kv.Value.ToList(),
-                        StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
-                    TextValue = a.TextValue,
-                    RatingValue = a.RatingValue,
-                };
-            }
+            RestoreDraftAnswers(resumeState, identifiedStart.DraftAnswers);
+            await surveyService.MarkInvitationStartedAsync(ctx.InvitationId, ct);
 
             resumeState.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
                 editable.Questions, SurveyWizardFlow.ToAnswerStates(resumeState.Answers)) ?? 0;
@@ -130,6 +119,7 @@ internal sealed class SurveyController(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
             state.DraftResponseId = identifiedStart.DraftResponseId;
+            RestoreDraftAnswers(state, identifiedStart.DraftAnswers);
         }
 
         // First advance past the intro flips the invitation's funnel Started flag (all invited tiers).
@@ -141,6 +131,25 @@ internal sealed class SurveyController(
 
         SurveyWizardSession.Save(HttpContext.Session, model.Token, state);
         return RedirectToAction("Page", new { t = model.Token });
+    }
+
+    private static void RestoreDraftAnswers(
+        SurveyWizardState state,
+        IReadOnlyList<SurveyDraftAnswer> draftAnswers)
+    {
+        foreach (var answer in draftAnswers)
+        {
+            state.Answers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                GridSelections = answer.GridSelections?.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.ToList(),
+                    StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
+                TextValue = answer.TextValue,
+                RatingValue = answer.RatingValue,
+            };
+        }
     }
 
     [HttpGet("Answer/Page")]
