@@ -25,7 +25,12 @@ internal interface IVendorCommitmentService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<VendorCommitmentDto>> ListPaidAwaitingInvoiceAsync(CancellationToken ct = default);
 
-    /// <summary>Records the accepted quote. The PDF is optional at creation and can be added later.</summary>
+    /// <summary>
+    /// Records the accepted quote. The PDF is optional at creation and can be added later.
+    /// A commitment id comes back whenever the row was written — including with a failed result,
+    /// which then means the commitment exists but attaching its quote did not. Callers must not
+    /// treat that as "nothing happened" and offer to record it again.
+    /// </summary>
     Task<(ExpenseMutationResult Result, Guid? CommitmentId)> CreateAsync(
         string vendorName, decimal expectedAmount, string purpose,
         Guid? budgetCategoryId, Guid actorUserId,

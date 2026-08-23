@@ -86,7 +86,18 @@ internal sealed class VendorCommitmentService(
         try
         {
             await repo.AddAsync(commitment, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error recording vendor commitment for {Vendor}", vendorName);
+            return (ExpenseMutationResult.Failure(ex.Message), null);
+        }
 
+        // The row is committed from here on, so a failing follow-up must not read as "nothing
+        // happened": the operator would record the same liability a second time. The id comes back
+        // either way and the caller sends them to the commitment with the warning.
+        try
+        {
             if (quote is not null)
                 await StoreQuoteAsync(commitment.Id, quote, now, ct);
 
@@ -96,14 +107,19 @@ internal sealed class VendorCommitmentService(
                 $"Commitment to {commitment.VendorName} for " +
                 $"{expectedAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR recorded.",
                 actorUserId);
-
-            return (ExpenseMutationResult.Success, commitment.Id);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error recording vendor commitment for {Vendor}", vendorName);
-            return (ExpenseMutationResult.Failure(ex.Message), null);
+            logger.LogError(ex,
+                "Vendor commitment {CommitmentId} was recorded, but attaching its quote or writing " +
+                "its audit entry failed", commitment.Id);
+            return (ExpenseMutationResult.Failure(
+                "The commitment was recorded, but attaching the quote to it failed. Open it and " +
+                "upload the quote again — do not record the commitment a second time."),
+                commitment.Id);
         }
+
+        return (ExpenseMutationResult.Success, commitment.Id);
     }
 
     public async Task<ExpenseMutationResult> AttachQuoteAsync(
@@ -216,9 +232,11 @@ internal sealed class VendorCommitmentService(
             return (ExpenseMutationResult.Failure("Holded is not configured in this environment."), null);
 
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs;
+        IReadOnlySet<string> draftIds;
         try
         {
             docs = await holdedClient.ListPurchaseDocumentsAsync(ct);
+            draftIds = await holdedClient.ListDraftPurchaseIdsAsync(ct);
         }
         catch (Exception ex)
         {
@@ -227,6 +245,10 @@ internal sealed class VendorCommitmentService(
             logger.LogError(ex, "Could not list Holded purchase documents for commitment matching");
             return (ExpenseMutationResult.Failure($"Could not read Holded: {ex.Message}"), null);
         }
+
+        // A draft books nothing, so linking one would mark the commitment Invoiced and drop it off
+        // the liability list with no real invoice behind it. Same read as Finance's doc sync.
+        var approved = docs.Where(d => !draftIds.Contains(d.Id)).ToList();
 
         var commitments = await repo.GetAllAsync(ct);
 
@@ -246,7 +268,7 @@ internal sealed class VendorCommitmentService(
 
             // `claimed` holds this commitment's own document too, so an invoiced commitment sees
             // only the *other* documents that fit — which is exactly the dupe population.
-            var pool = docs
+            var pool = approved
                 .Where(d => !claimed.Contains(d.Id))
                 .Select(d => new MatchableDocument(
                     d.Id, d.DocNumber, d.ContactName, d.Date.InZone(MadridZone).Date,

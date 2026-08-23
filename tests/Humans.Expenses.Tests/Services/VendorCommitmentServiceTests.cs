@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Expenses.Tests.Services;
@@ -39,6 +40,8 @@ public sealed class VendorCommitmentServiceTests
             .Options;
         _repo = new VendorCommitmentRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         _holded.IsConfigured.Returns(true);
+        _holded.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>(StringComparer.Ordinal));
         _sut = new VendorCommitmentService(
             _repo, _files, _holded, _audit, new FakeClock(Now),
             NullLogger<VendorCommitmentService>.Instance);
@@ -312,6 +315,47 @@ public sealed class VendorCommitmentServiceTests
             .Select(id => _sut.GetAsync(id, Ct).GetAwaiter().GetResult()!.MatchedHoldedDocId)
             .Count(docId => docId is not null);
         linked.Should().Be(1);
+    }
+
+    // A draft books nothing in Holded, so linking one would mark the commitment Invoiced and drop
+    // it off the liability list with no real invoice behind it.
+    [HumansFact]
+    public async Task RunMatchingAsync_NeverLinksADraftPurchaseDocument()
+    {
+        var id = await RecordAsync(1_000m, "Repsol");
+        await _sut.RecordPaymentAsync(id, 1_000m, PaidOn, null, Guid.NewGuid(), Ct);
+        _holded.ListPurchaseDocumentsAsync(Ct).Returns([ListItem("draft-1", 1_000m, "Repsol")]);
+        _holded.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HashSet<string>(StringComparer.Ordinal) { "draft-1" });
+
+        var (_, run) = await _sut.RunMatchingAsync(Guid.NewGuid(), Ct);
+
+        run!.Linked.Should().Be(0);
+        var commitment = await _sut.GetAsync(id, Ct);
+        commitment!.MatchedHoldedDocId.Should().BeNull();
+        commitment.PendingCandidates.Should().BeEmpty();
+        commitment.IsPaidAwaitingInvoice.Should().BeTrue();
+    }
+
+    // A quote that fails to store must not make a committed row look like it was never written —
+    // the operator would record the same liability again.
+    [HumansFact]
+    public async Task CreateAsync_WhenStoringTheQuoteFails_KeepsTheCommitmentAndReturnsItsId()
+    {
+        _files.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("volume not mounted"));
+        await using var content = new MemoryStream([1, 2, 3]);
+
+        var (result, id) = await _sut.CreateAsync(
+            "Repsol", 500m, "Fuel", null, Guid.NewGuid(),
+            new ExpenseFileUpload("quote.pdf", "application/pdf", content), Ct);
+
+        result.Succeeded.Should().BeFalse();
+        id.Should().NotBeNull();
+        var commitment = await _sut.GetAsync(id!.Value, Ct);
+        commitment.Should().NotBeNull();
+        commitment!.ExpectedAmount.Should().Be(500m);
+        commitment.QuoteFileName.Should().BeNull();
     }
 
     /// <summary>

@@ -75,14 +75,18 @@ internal sealed class CommitmentsController(
             model.VendorName, model.ExpectedAmount, model.Purpose,
             model.BudgetCategoryId, user.Id, upload, HttpContext.RequestAborted);
 
-        if (!result.Succeeded || commitmentId is not { } id)
+        if (commitmentId is not { } id)
         {
             SetError(result.ErrorMessage ?? "Could not record the commitment.");
             model.Categories = await BuildCategoryOptionsAsync();
             return View(model);
         }
 
-        SetSuccess("Commitment recorded.");
+        // An id with a failed result means the commitment exists but a follow-up did not: send the
+        // operator to it carrying the warning, never back to a form they would submit again.
+        if (result.Succeeded) SetSuccess("Commitment recorded.");
+        else SetError(result.ErrorMessage ?? "The commitment was recorded, but a follow-up failed.");
+
         return RedirectToAction(nameof(Detail), new { id });
     }
 
