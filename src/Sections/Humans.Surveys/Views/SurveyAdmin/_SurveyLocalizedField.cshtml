@@ -12,17 +12,29 @@
     {
         var name = $"{Model.NamePrefix}[{culture}]";
         Model.Values.TryGetValue(culture, out var value);
-        <div class="survey-culture-field input-group input-group-sm mb-1" data-culture="@culture"
-             style="@(culture == active ? "" : "display:none")">
-            <span class="input-group-text" style="min-width:3.5rem;">@culture.ToDisplayLanguageName()</span>
-            @if (Model.Multiline)
-            {
-                <textarea name="@name" class="form-control" rows="2">@value</textarea>
-            }
-            else
-            {
-                <input type="text" name="@name" class="form-control" value="@value" />
-            }
-        </div>
+        @if (Model.Markdown)
+        {
+            <div class="survey-culture-field mb-2" data-culture="@culture"
+                 style="@(culture == active ? "" : "display:none")">
+                <div class="small text-muted mb-1">@culture.ToDisplayLanguageName()</div>
+                <markdown-editor name="@name" value="@value" rows="4"
+                                 maxlength="@(Model.MaxLength ?? 0)" />
+            </div>
+        }
+        else
+        {
+            <div class="survey-culture-field input-group input-group-sm mb-1" data-culture="@culture"
+                 style="@(culture == active ? "" : "display:none")">
+                <span class="input-group-text" style="min-width:3.5rem;">@culture.ToDisplayLanguageName()</span>
+                @if (Model.Multiline)
+                {
+                    <textarea name="@name" class="form-control" rows="2" maxlength="@Model.MaxLength">@value</textarea>
+                }
+                else
+                {
+                    <input type="text" name="@name" class="form-control" value="@value" maxlength="@Model.MaxLength" />
+                }
+            </div>
+        }
     }
 </div>

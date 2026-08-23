@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
@@ -10,6 +11,15 @@ namespace Humans.Surveys.Models;
 internal sealed class SurveyAdminIndexViewModel
 {
     public IReadOnlyList<SurveySummary> Surveys { get; init; } = [];
+}
+
+/// <summary>Side-effect-free preview of the current user's survey invitation email.</summary>
+internal sealed class SurveyEmailPreviewViewModel
+{
+    public Guid SurveyId { get; init; }
+    public string Recipient { get; init; } = string.Empty;
+    public string Subject { get; init; } = string.Empty;
+    public string HtmlBody { get; init; } = string.Empty;
 }
 
 /// <summary>A team choice for the audience picker.</summary>
@@ -26,6 +36,7 @@ internal sealed class SurveyIntroViewModel
 {
     public string Token { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
+    [MarkdownContent]
     public string Intro { get; init; } = string.Empty;
 
     /// <summary>The currently-selected language; the form posts it back so the wizard runs in it.</summary>
@@ -49,6 +60,12 @@ internal sealed class SurveyIntroViewModel
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 
+    /// <summary>True for the protected, side-effect-free Board/Admin preview flow.</summary>
+    public bool IsPreview { get; init; }
+
+    /// <summary>The previewed survey id; set only when <see cref="IsPreview"/>.</summary>
+    public Guid? PreviewSurveyId { get; init; }
+
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
 }
 
@@ -66,17 +83,19 @@ internal sealed class SurveyClosedViewModel
     public string? Reason { get; init; }
 }
 
-/// <summary>Admin Send page: header (title/status/audience), resolved audience size, and per-invite status rows (sorted in the controller).</summary>
+/// <summary>Admin Send page: header, net-new recipient count, and per-invite status rows (sorted in the controller).</summary>
 internal sealed class SurveySendViewModel
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public SurveyStatus Status { get; init; }
     public SurveyAudienceType? AudienceType { get; init; }
-    public int PreviewCount { get; init; }
+    public string? AudienceTeamName { get; init; }
+    public LocalDate? AudienceLoggedInSince { get; init; }
+    public int NewRecipientCount { get; init; }
     public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
 
-    public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null;
+    public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null && NewRecipientCount > 0;
 }
 
 /// <summary>
@@ -88,13 +107,18 @@ internal sealed record SurveyLocalizedFieldModel(
     string NamePrefix,
     string Label,
     IReadOnlyDictionary<string, string> Values,
-    bool Multiline = false);
+    bool Multiline = false,
+    int? MaxLength = null,
+    bool Markdown = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
 internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);
 
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
+
+/// <summary>One Grid row in the builder. Keys are non-sequential indexers.</summary>
+internal sealed record SurveyGridRowModel(string QuestionKey, string RowKey, SurveyGridRowBuilderViewModel Row);
 
 /// <summary>One show-if clause row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__CKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
@@ -116,6 +140,8 @@ internal sealed class SurveyBuilderViewModel
     public Dictionary<string, string> Title { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> Intro { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> ThankYou { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> InvitationEmailSubject { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.Ordinal);
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
     public bool AllowAnonymous { get; set; }
@@ -150,6 +176,8 @@ internal sealed class SurveyBuilderViewModel
         new LocalizedText(Title),
         new LocalizedText(Intro),
         new LocalizedText(ThankYou),
+        new LocalizedText(InvitationEmailSubject),
+        new LocalizedText(InvitationEmailMessage),
         string.IsNullOrWhiteSpace(DefaultCulture) ? CultureCatalog.DefaultCultureCode : DefaultCulture,
         AllowAnonymous,
         ToInstant(OpensAt, zone),
@@ -170,6 +198,8 @@ internal sealed class SurveyBuilderViewModel
             Title = ToDict(e.Title),
             Intro = ToDict(e.Intro),
             ThankYou = ToDict(e.ThankYou),
+            InvitationEmailSubject = ToDict(e.InvitationEmailSubject),
+            InvitationEmailMessage = ToDict(e.InvitationEmailMessage),
             DefaultCulture = e.DefaultCulture,
             AllowAnonymous = e.AllowAnonymous,
             OpensAt = FromInstant(e.OpensAt, zone),
@@ -208,9 +238,11 @@ internal sealed class SurveyQuestionBuilderViewModel
     public int? RatingMax { get; set; }
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
+    public GridSelectionMode? GridSelectionMode { get; set; }
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
+    public List<SurveyGridRowBuilderViewModel> GridRows { get; set; } = [];
 
     public QuestionInput ToInput(int order) => new(
         Id,
@@ -225,7 +257,9 @@ internal sealed class SurveyQuestionBuilderViewModel
         new LocalizedText(RatingMinLabel),
         new LocalizedText(RatingMaxLabel),
         ToShowIf(),
-        Options.Select((o, i) => o.ToInput(i)).ToList());
+        Options.Select((o, i) => o.ToInput(i)).ToList(),
+        Type == SurveyQuestionType.Grid ? GridSelectionMode : null,
+        Type == SurveyQuestionType.Grid ? GridRows.Select(r => r.ToInput()).ToList() : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
     {
@@ -242,6 +276,8 @@ internal sealed class SurveyQuestionBuilderViewModel
         ShowIfCombine = q.ShowIf?.Combine ?? BranchCombine.All,
         ShowIfClauses = q.ShowIf?.Clauses.Select(SurveyBranchClauseBuilderViewModel.FromClause).ToList() ?? [],
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
+        GridSelectionMode = q.GridSelectionMode ?? Humans.Surveys.Domain.GridSelectionMode.Single,
+        GridRows = q.GridRows?.Select(SurveyGridRowBuilderViewModel.FromInput).ToList() ?? [],
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>
@@ -290,5 +326,19 @@ internal sealed class SurveyOptionBuilderViewModel
         Id = o.Id,
         Value = o.Value,
         Label = SurveyBuilderViewModel.ToDict(o.Label),
+    };
+}
+
+internal sealed class SurveyGridRowBuilderViewModel
+{
+    public string Value { get; set; } = string.Empty;
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
+
+    public GridRowInput ToInput() => new(Value, new LocalizedText(Label));
+
+    public static SurveyGridRowBuilderViewModel FromInput(GridRowInput row) => new()
+    {
+        Value = row.Value,
+        Label = SurveyBuilderViewModel.ToDict(row.Label),
     };
 }

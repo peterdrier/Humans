@@ -32,7 +32,13 @@ public interface IExpenseReportServiceRead
     Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
+    /// <summary>
+    /// The review queue as <paramref name="viewerUserId"/> may see it: every non-draft,
+    /// non-withdrawn report for a finance admin; otherwise the viewer's own reports plus those
+    /// booked to a budget category they coordinate.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
+        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
 
     /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (~500-user scale).</summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);

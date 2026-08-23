@@ -19,6 +19,14 @@ internal sealed class SurveyPageViewModel
     /// <summary>The public slug (only set when <see cref="IsPublic"/>); drives the post route on the public path.</summary>
     public string Slug { get; init; } = string.Empty;
 
+    /// <summary>True for the protected, read-only admin preview flow.</summary>
+    public bool IsPreview { get; init; }
+
+    public Guid? PreviewSurveyId { get; init; }
+    public string PreviewCulture { get; init; } = string.Empty;
+    public int? PreviousPreviewPage { get; init; }
+    public int? NextPreviewPage { get; init; }
+
     /// <summary>The survey's raw page number this view renders (posted back so the server re-validates the right page).</summary>
     public int Page { get; init; }
 
@@ -52,15 +60,28 @@ internal sealed class SurveyPageQuestion
     public string RatingMinLabel { get; init; } = string.Empty;
     public string RatingMaxLabel { get; init; } = string.Empty;
     public IReadOnlyList<SurveyPageOption> Options { get; init; } = [];
+    public GridSelectionMode? GridSelectionMode { get; init; }
+    public IReadOnlyList<SurveyPageGridRow> GridRows { get; init; } = [];
 
     // Prior answer (for re-render after a validation failure or a Back navigation).
     public IReadOnlyList<string> SelectedOptionValues { get; init; } = [];
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> GridSelections { get; init; }
+        = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
     public string? TextValue { get; init; }
     public int? RatingValue { get; init; }
 }
 
 /// <summary>One resolved choice option: stable machine <see cref="Value"/> + display <see cref="Label"/>.</summary>
 internal sealed record SurveyPageOption(string Value, string Label);
+
+/// <summary>One resolved Grid row.</summary>
+internal sealed record SurveyPageGridRow(string Value, string Label);
+
+/// <summary>Pure presentation model for the shared author-preview notice.</summary>
+internal sealed record SurveyPreviewNoticeModel(
+    Guid SurveyId,
+    string Message,
+    string AdditionalCssClasses = "");
 
 /// <summary>Posted by one wizard page. <see cref="Answers"/> binds via indexed form fields.</summary>
 internal sealed class SurveyPageInputModel
@@ -78,8 +99,16 @@ internal sealed class SurveyPostedAnswer
 {
     public Guid QuestionId { get; set; }
     public List<string> SelectedOptionValues { get; set; } = [];
+    public List<SurveyPostedGridRow> GridRows { get; set; } = [];
     public string? TextValue { get; set; }
     public int? RatingValue { get; set; }
+}
+
+/// <summary>One posted Grid row and its selected column values.</summary>
+internal sealed class SurveyPostedGridRow
+{
+    public string RowValue { get; set; } = string.Empty;
+    public List<string> SelectedColumnValues { get; set; } = [];
 }
 
 /// <summary>The closing thank-you page, with the survey's ThankYou copy resolved for display.</summary>
@@ -87,4 +116,6 @@ internal sealed class SurveyThankYouViewModel
 {
     public string Title { get; init; } = string.Empty;
     public string ThankYou { get; init; } = string.Empty;
+    public bool IsPreview { get; init; }
+    public Guid? PreviewSurveyId { get; init; }
 }

@@ -28,9 +28,10 @@ namespace Humans.Cantina.Services.Dtos;
 /// multiple days is counted once.
 /// </param>
 /// <param name="UnansweredCount">
-/// Unique humans across the week with no <c>VolunteerEventProfile</c> or
-/// with an empty <c>DietaryPreference</c>. Coordinators use this to chase
-/// people who haven't filled the form yet.
+/// Unique humans across the week whose <c>DietaryPreference</c> is empty.
+/// A missing profile row would count the same way, but every on-site human
+/// has one, so in practice this is the unanswered-form count. Coordinators
+/// use it to chase people who haven't filled the form yet.
 /// </param>
 /// <param name="DietaryBreakdown">
 /// Counts keyed by dietary preference, computed over the unique-humans
@@ -55,8 +56,9 @@ namespace Humans.Cantina.Services.Dtos;
 /// One row per unique on-site human across the week. Returned in unspecified
 /// order — the web layer's <c>CantinaRosterAssembler</c> sorts for display
 /// (first arrival → has-allergies → dietary priority → cultural-collation
-/// burner name). Humans with no <c>VolunteerEventProfile</c> still appear
-/// here with empty dietary fields.
+/// burner name). The service builds rows for the whole on-site cohort
+/// regardless of profile state; in practice every on-site human has a profile
+/// row, so the empty-field path is defensive.
 /// </param>
 /// <param name="EventTodayDate">
 /// Today's calendar date in the active event's timezone

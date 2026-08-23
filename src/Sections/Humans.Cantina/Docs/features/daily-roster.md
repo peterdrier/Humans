@@ -1,7 +1,9 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
-  src/Sections/Humans.Shifts/Data/Configurations/VolunteerEventProfileConfiguration.cs
-  src/Sections/Humans.Shifts/Data/IShiftManagementRepository.cs
+  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
+  src/Sections/Humans.Users.Contracts/UserInfo.cs
+  src/Sections/Humans.Users.Contracts/DietaryOptions.cs
   src/Sections/Humans.Cantina/**
 -->
 <!-- freshness:flag-on-change
@@ -16,7 +18,7 @@ Cantina coordinators feed everyone on site during the build and event week. They
 
 Until now, the data was collected via the [Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md) (#279) but had no aggregated read path — coordinators had to ask each volunteer individually, or chase down the data through per-profile badges. This feature surfaces a printable per-week roster behind a single URL, with a CSV download for offline planning, and tightens the GDPR boundary by excluding medical-condition data that the cantina doesn't need.
 
-A previous iteration produced a per-day roster; coordinators rejected it as too granular for shopping/prep — a single day doesn't justify a separate page download. The weekly view is the only roster now: it surfaces a per-day mini-summary (counts only) plus a unique-humans cohort for the whole week.
+The two views split by the job in hand. The weekly view is **overview-only** — week-level aggregates plus a per-day mini-summary (counts only) — because shopping and batch-prep are planned on totals, not on names. The per-day drill-down carries the person-by-person detail, because cooking a specific meal means knowing who is at that meal. Each day's row in the mini-summary links straight into it.
 
 ## Authorization
 
@@ -34,7 +36,9 @@ Access is role-based only. There is no team-membership-based path.
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
-`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. No new retention policy; data lives only as long as the underlying `VolunteerEventProfile` rows do, which are erased with the account.
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
+
+> **Retention, as actually implemented:** account deletion *anonymizes* the profile rather than dropping it — `UserRepository.AnonymizeProfileInternalAsync` clears name, contact, location, bio, emergency-contact and notes fields, and deletes contact-field and volunteer-history rows. It does **not** clear the dietary fields, and it does not clear `MedicalConditions` either. So dietary answers (and medical answers) survive account deletion attached to an anonymized profile. Tracked in nobodies-collective/Humans#1113, which moves the food fields to Cantina behind a GDPR erasure contribution. Do not describe this page as inheriting an erasure guarantee it does not have.
 
 ## Week Boundary
 
@@ -71,10 +75,8 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Allergy roll-up:** one row per allergy in the standard set (`Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`), counted over unique humans (a person on Mon+Wed with "Peanut" contributes 1, not 2). Free-text `AllergyOtherText` entries surface as a numbered list under "Other (N): …", **deduplicated** across the week (a person whose "Other = MSG" appears Mon–Wed contributes "MSG" once).
   - **Intolerance roll-up:** same shape as allergies, over the standard set (`Lactose`, `Gluten`, `Histamine`), same "Other (N): …" treatment, same week-level dedup.
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
-- Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`).
-- Below that, a **per-person table** with one row per unique human on-site any day that week. Columns: **Burner Name** · **Arrives on** (single short day label, e.g. "Mon 27 May") · **No shift** (list of short day labels for days within the week with no scheduled shift) · **Dietary chip** · **Allergies (chips)** · **Other allergy text** · **Intolerances (chips)** · **Other intolerance text**.
-- Per-person table default sort: first arrival day asc → has-allergies first → canonical dietary order → cultural-collation burner name (Spanish event, names with `ñ`/`á` sort correctly).
-- Per-person table does **not** include a `MedicalConditions` column under any role.
+- Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`). Each of the three cells links into that day's drill-down (US-36.5).
+- The weekly page shows **no per-person rows** — names live on the drill-down and in the CSV. The page carries no `MedicalConditions` under any role, in any view.
 - If there is no active event (no `BurnSettingsInfo` resolvable via `IBurnSettingsService.GetActiveAsync`), the page renders an empty-state message ("no active event") instead of throwing.
 
 ### US-36.2: Coordinator navigates to another week
@@ -98,7 +100,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 **So that** I can hand it to whoever's running the kitchen, paste it into a spreadsheet, or print it
 
 **Acceptance Criteria:**
-- Route: `GET /Cantina/Roster/Csv?weekStartOffset=<int>` — same data scope as the HTML page's per-person table, no UI chrome, no aggregates.
+- Route: `GET /Cantina/Roster/Csv?weekStartOffset=<int>` — one row per unique human across the week, no UI chrome, no aggregates. This is the only week-scoped surface that carries names; the HTML page above is counts-only.
 - One row per unique human across the week; columns:
   ```
   Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
@@ -122,6 +124,21 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Authenticated user without `Admin` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaAdminOrAdmin` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
 - Unauthenticated user is redirected to the login page (global `[Authorize]` policy).
 - The access-denied redirect must **not** leak any data (no headcount, no week label) — only the standard redirect.
+
+### US-36.5: Coordinator drills into a single day to cook that meal
+**As a** cantina coordinator cooking a specific meal
+**I want to** see every human on site that day and what each of them eats
+**So that** I can portion and prep for the people actually at that meal
+
+**Acceptance Criteria:**
+- Route: `GET /Cantina/Roster/Day` — optional `?dayOffset=<int>`, defaulting to today's offset in the event timezone (`0` when there is no active event). Reached by clicking any cell of the weekly per-day mini-summary row.
+- Page renders a summary card with two numbers: total on site that day, and how many of them have no `DietaryPreference`.
+- Below it, a **matrix**: one row per on-site human, one column per canonical dietary preference, allergy and intolerance chip, plus the two free-text columns, and a **totals row** counting each column over the rendered rows. Coordinators scan a column to count portions and a row to find one person. The per-chip counts live in that totals row, counted in the view from the rendered rows. This page renders no separate roll-up panel.
+- Matrix rows sort alphabetically by burner name (cultural collation, case-insensitive) — deliberately *not* the weekly arrival/allergy/dietary ordering, because this is a look-up surface.
+- The day's cohort includes arrival-day humans (those whose first confirmed shift is the following day), matching the weekly mini-summary count for the same day.
+- A "Today" badge appears when the day being viewed is today in the event timezone; a breadcrumb links back to the containing week.
+- No `MedicalConditions` column, under any role.
+- Same authorization gate as every other route in this section.
 
 ## "On-site" Definition
 
@@ -155,13 +172,13 @@ Reads:
 
 | Source | Used for | Notes |
 |---|---|---|
-| `ShiftSignup.Status`, `Shift.DayOffset` | Filter on-site cohort per day; service unions across the 7 days of the week | Existing fields |
-| `VolunteerEventProfile.DietaryPreference` | Per-unique-human dietary chip + breakdown counts | Existing field |
-| `VolunteerEventProfile.Allergies` (`List<string>`) | Allergy chips + roll-up | `jsonb` via `ConfigureJsonbList`, existing |
-| `VolunteerEventProfile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Existing field |
-| `VolunteerEventProfile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | `jsonb` via `ConfigureJsonbList`, existing |
-| `VolunteerEventProfile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Existing field |
-| `User.BurnerName` (or fallback display name) | Per-person table "Burner Name" column | Existing |
+| `ShiftSignup.Status`, `Shift.DayOffset` | Filter on-site cohort per day; service unions across the 7 days of the week | Read via `IShiftManagementServiceRead`, never the repository |
+| `Profile.DietaryPreference` | Per-human dietary chip + breakdown counts | Owned by Users; read from the cached `ProfileInfo` on `UserInfo` |
+| `Profile.Allergies` (`List<string>`) | Allergy chips + roll-up | Same read path |
+| `Profile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
+| `Profile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
+| `Profile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
+| `Profile.BurnerName` | Row label on the drill-down matrix and in both CSVs | `"(unknown)"` is a defensive default; every on-site human has a profile row |
 | `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
 
 At ~500-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
@@ -170,7 +187,7 @@ Explicitly **excluded** at the DTO boundary regardless of viewer role:
 
 | Field | Reason |
 |---|---|
-| `VolunteerEventProfile.MedicalConditions` | GDPR Art. 9; cantina doesn't need it |
+| `Profile.MedicalConditions` | GDPR Art. 9; cantina doesn't need it |
 
 ## Aggregates
 
@@ -179,7 +196,7 @@ All weekly aggregates are computed over the **unique-humans cohort** for the wee
 | Aggregate | Definition |
 |---|---|
 | `TotalUniqueOnSite` | Distinct `UserId` count across Mon–Sun. |
-| `DietaryBreakdown` | One entry per canonical preference plus `"Unanswered"`. Each unique human contributes once based on their VEP's `DietaryPreference` (or "Unanswered" if null/empty). |
+| `DietaryBreakdown` | One entry per canonical preference plus `"Unanswered"`. Each unique human contributes once based on their `Profile.DietaryPreference` (or "Unanswered" if null/empty). |
 | `AllergyRollup` | One entry per canonical allergy label. Each unique human contributes once per label they ticked. |
 | `AllergyOtherEntries` | List of free-text `AllergyOtherText` values, deduplicated across the week by trimmed text (case-sensitive). |
 | `IntoleranceRollup` | Same shape as `AllergyRollup`. |
@@ -194,7 +211,7 @@ In addition, a **per-day mini-summary** carries:
 | `TotalOnSite` | Distinct on-site humans **that day**. |
 | `UnansweredOnDay` | Distinct on-site humans that day with no `DietaryPreference`. |
 
-The mini-summary is the only place daily numbers surface. The per-person table groups by human, not by day.
+The mini-summary is the only place daily numbers surface on the weekly page. The weekly CSV groups by human, not by day; per-day names live on the drill-down (US-36.5).
 
 ## CSV
 
@@ -227,10 +244,10 @@ New / updated components:
 | Layer | Component | Purpose |
 |---|---|---|
 | Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementServiceRead`, `IBurnSettingsService` + `IUserServiceRead` |
-| Application | `WeeklyRosterDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `RollupItemDto` | View-model contracts; no `MedicalConditions` field |
-| Domain | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
-| Web | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
-| Web | `Roster.cshtml` | View (aggregates panel + per-day mini-table + per-person table) |
+| Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
+| Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
+| Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
+| Section | `Roster.cshtml`, `Day.cshtml` | Weekly overview (aggregates + per-day mini-table) and the per-day matrix |
 
 ## Negative access rules
 
@@ -250,7 +267,6 @@ New / updated components:
 - **Editing dietary data from the roster.** Coordinators who need to correct an entry go through the volunteer's profile.
 - **Printable PDF layout.** The HTML view is browser-print-friendly; a dedicated PDF generator is not in scope.
 - **Real-time push updates.** The page is a normal request/response; coordinators refresh to pick up new signups.
-- **Per-day drill-down page.** The mini-summary surfaces per-day numbers; a separate per-day page was rejected as low-value.
 
 ## Related Features
 

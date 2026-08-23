@@ -109,7 +109,7 @@ public class CantinaDailyRosterServiceTests
 
         result.People.Should().ContainSingle(p => p.UserId == id);
         result.TotalOnSite.Should().Be(1);
-        result.DietaryBreakdown["Vegan"].Should().Be(1);
+        result.People.Single().DietaryPreference.Should().Be("Vegan");
         result.UnansweredCount.Should().Be(0);
     }
 
@@ -147,16 +147,6 @@ public class CantinaDailyRosterServiceTests
         result.TotalOnSite.Should().Be(0);
         result.UnansweredCount.Should().Be(0);
         result.People.Should().BeEmpty();
-        result.AllergyOtherEntries.Should().BeEmpty();
-        result.IntoleranceOtherEntries.Should().BeEmpty();
-
-        result.DietaryBreakdown.Should().ContainKey("Unanswered").WhoseValue.Should().Be(0);
-        foreach (var pref in DietaryOptions.DietaryPreferences)
-            result.DietaryBreakdown.Should().ContainKey(pref).WhoseValue.Should().Be(0);
-        result.AllergyRollup.Select(r => r.Label).Should().Equal(DietaryOptions.AllergyOptions);
-        result.AllergyRollup.Should().OnlyContain(r => r.Count == 0);
-        result.IntoleranceRollup.Select(r => r.Label).Should().Equal(DietaryOptions.IntoleranceOptions);
-        result.IntoleranceRollup.Should().OnlyContain(r => r.Count == 0);
     }
 
     [HumansFact]
@@ -172,9 +162,6 @@ public class CantinaDailyRosterServiceTests
         result.TotalOnSite.Should().Be(0);
         result.UnansweredCount.Should().Be(0);
         result.People.Should().BeEmpty();
-        result.DietaryBreakdown.Values.Should().OnlyContain(v => v == 0);
-        result.AllergyRollup.Should().OnlyContain(r => r.Count == 0);
-        result.IntoleranceRollup.Should().OnlyContain(r => r.Count == 0);
     }
 
     [HumansFact]
@@ -200,22 +187,23 @@ public class CantinaDailyRosterServiceTests
         result.TotalOnSite.Should().Be(3);
         result.UnansweredCount.Should().Be(1);
 
-        result.DietaryBreakdown["Vegan"].Should().Be(1);
-        result.DietaryBreakdown["Omnivore"].Should().Be(1);
-        result.DietaryBreakdown["Vegetarian"].Should().Be(0);
-        result.DietaryBreakdown["Pescatarian"].Should().Be(0);
-        result.DietaryBreakdown["Unanswered"].Should().Be(1);
+        // The daily page and its CSV count the chip columns off People, so the
+        // rows have to carry every value those totals are derived from.
+        int WithPreference(string pref) =>
+            result.People.Count(p => string.Equals(p.DietaryPreference, pref, StringComparison.Ordinal));
+        WithPreference("Vegan").Should().Be(1);
+        WithPreference("Omnivore").Should().Be(1);
+        WithPreference("Vegetarian").Should().Be(0);
+        WithPreference("Pescatarian").Should().Be(0);
 
-        var allergy = result.AllergyRollup.ToDictionary(r => r.Label, r => r.Count, StringComparer.Ordinal);
-        allergy["Peanut"].Should().Be(2);
-        allergy["Other"].Should().Be(1);
-        allergy["Tree nut"].Should().Be(0);
-        result.AllergyOtherEntries.Should().Equal(new[] { "MSG" });
+        result.People.Count(p => p.Allergies.Contains("Peanut")).Should().Be(2);
+        result.People.Count(p => p.Allergies.Contains("Other")).Should().Be(1);
+        result.People.Count(p => p.Allergies.Contains("Tree nut")).Should().Be(0);
+        result.People.Select(p => p.AllergyOtherText).Where(t => t is not null).Should().Equal("MSG");
 
-        var intolerance = result.IntoleranceRollup.ToDictionary(r => r.Label, r => r.Count, StringComparer.Ordinal);
-        intolerance["Lactose"].Should().Be(1);
-        intolerance["Gluten"].Should().Be(0);
-        result.IntoleranceOtherEntries.Should().BeEmpty();
+        result.People.Count(p => p.Intolerances.Contains("Lactose")).Should().Be(1);
+        result.People.Count(p => p.Intolerances.Contains("Gluten")).Should().Be(0);
+        result.People.Should().OnlyContain(p => p.IntoleranceOtherText == null);
 
         result.People.Should().HaveCount(3);
         var rowA = result.People.Single(p => p.UserId == a);
@@ -273,6 +261,28 @@ public class CantinaDailyRosterServiceTests
         (await _service.GetDailyRosterAsync(0, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
         (await _service.GetDailyRosterAsync(-3, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-8);
         (await _service.GetDailyRosterAsync(5, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
+    }
+
+    [HumansFact]
+    public async Task GetDailyRoster_NoOffset_DefaultsToTodayInEventTimezone()
+    {
+        // Clock is 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar day —
+        // and GateOpening is 7 Jul, so "today" is offset 0.
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+
+        var result = await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.DayOffset.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetDailyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    {
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+
+        var result = await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.DayOffset.Should().Be(0);
     }
 
     [HumansFact]

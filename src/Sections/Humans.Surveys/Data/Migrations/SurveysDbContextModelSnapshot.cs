@@ -18,12 +18,12 @@ namespace Humans.Surveys.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.Survey", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.Survey", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -57,6 +57,18 @@ namespace Humans.Surveys.Data.Migrations
                         .HasColumnType("character varying(10)");
 
                     b.Property<string>("Intro")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("InvitationEmailMessage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("InvitationEmailSubject")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("jsonb")
@@ -103,11 +115,14 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("surveys", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyAnswer", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyAnswer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("GridSelections")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid>("QuestionId")
                         .HasColumnType("uuid");
@@ -135,7 +150,7 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("survey_answers", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyInvitation", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyInvitation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -176,11 +191,18 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("survey_invitations", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyQuestion", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("GridRows")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("GridSelectionMode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("HelpText")
                         .IsRequired()
@@ -239,7 +261,7 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("survey_questions", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestionOption", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyQuestionOption", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -269,7 +291,7 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("survey_question_options", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyResponse", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -313,15 +335,15 @@ namespace Humans.Surveys.Data.Migrations
                     b.ToTable("survey_responses", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyAnswer", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyAnswer", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.SurveyQuestion", null)
+                    b.HasOne("Humans.Surveys.Domain.SurveyQuestion", null)
                         .WithMany()
                         .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.SurveyResponse", "Response")
+                    b.HasOne("Humans.Surveys.Domain.SurveyResponse", "Response")
                         .WithMany("Answers")
                         .HasForeignKey("ResponseId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -330,9 +352,9 @@ namespace Humans.Surveys.Data.Migrations
                     b.Navigation("Response");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyQuestion", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Survey", "Survey")
+                    b.HasOne("Humans.Surveys.Domain.Survey", "Survey")
                         .WithMany("Questions")
                         .HasForeignKey("SurveyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -341,9 +363,9 @@ namespace Humans.Surveys.Data.Migrations
                     b.Navigation("Survey");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestionOption", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyQuestionOption", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.SurveyQuestion", "Question")
+                    b.HasOne("Humans.Surveys.Domain.SurveyQuestion", "Question")
                         .WithMany("Options")
                         .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -352,25 +374,25 @@ namespace Humans.Surveys.Data.Migrations
                     b.Navigation("Question");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyResponse", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.SurveyInvitation", null)
+                    b.HasOne("Humans.Surveys.Domain.SurveyInvitation", null)
                         .WithMany()
                         .HasForeignKey("InvitationId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.Survey", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.Survey", b =>
                 {
                     b.Navigation("Questions");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyQuestion", b =>
                 {
                     b.Navigation("Options");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+            modelBuilder.Entity("Humans.Surveys.Domain.SurveyResponse", b =>
                 {
                     b.Navigation("Answers");
                 });

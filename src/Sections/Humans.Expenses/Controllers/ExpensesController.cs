@@ -177,6 +177,7 @@ internal sealed class ExpensesController(
             // Finance admins reviewing a report can bind the submitter to a Holded creditor account
             // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var decisions = await ResolveDecisionsAsync(report);
             // The submitter reads the payment half of the timeline; the finance admin reads the push
             // half — and is the only one who can act on a failed push, so withholding it from them
             // was backwards (nobodies-collective/Humans#1045).
@@ -201,6 +202,13 @@ internal sealed class ExpensesController(
                 BoundAccountName = creditor.BoundAccountName,
                 HasCreditorContact = creditor.HasContact,
                 CreditorAccounts = creditor.Accounts,
+                CanApprove = decisions.Approve,
+                CanFinanceReject = decisions.FinanceReject,
+                CanEndorse = decisions.Endorse,
+                CanCoordinatorReject = decisions.CoordinatorReject,
+                // Only the approval form offers a category override, so the list is loaded only
+                // for the one viewer who can act on it.
+                Categories = decisions.Approve ? await BuildCategoryOptionsAsync() : [],
             };
             return View(model);
         }
@@ -633,26 +641,6 @@ internal sealed class ExpensesController(
         }
     }
 
-    [HttpGet("Coordinator")]
-    public async Task<IActionResult> Coordinator()
-    {
-        try
-        {
-            var (errorResult, user) = await RequireCurrentUserAsync();
-            if (errorResult is not null) return errorResult;
-
-            var reports = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
-            var submitterNames = await ResolveSubmitterNamesAsync(reports);
-            return View(new ExpenseCoordinatorViewModel { Reports = reports, SubmitterNames = submitterNames });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error loading coordinator queue");
-            SetError("Failed to load the coordinator queue.");
-            return RedirectToAction(nameof(Index));
-        }
-    }
-
     [HttpPost("{id:guid}/Endorse")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
@@ -670,13 +658,13 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             SetError("Invalid maximum amount.");
-            return RedirectToAction(nameof(Coordinator));
+            return RedirectToAction(nameof(Detail), new { id });
         }
 
         var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id, input.MaxAmount);
         SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
-        return RedirectToAction(nameof(Coordinator));
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
     [HttpPost("{id:guid}/CoordinatorReject")]
@@ -696,34 +684,45 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
             SetError("A rejection reason is required.");
-            return RedirectToAction(nameof(Coordinator));
+            return RedirectToAction(nameof(Detail), new { id });
         }
 
         var result = await service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
-        return RedirectToAction(nameof(Coordinator));
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
+    /// <summary>
+    /// The one review queue, scoped to the viewer (peterdrier/Humans#1447). It replaced a separate
+    /// coordinator queue that differed from this page only in which rows it listed — a difference
+    /// that stopped being structural once every decision moved onto <see cref="Detail"/>.
+    /// </summary>
     [HttpGet("Review")]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     public async Task<IActionResult> Review()
     {
         try
         {
-            var reports = await expenseReadService.GetReviewQueueAsync();
+            var (errorResult, user) = await RequireCurrentUserAsync();
+            if (errorResult is not null) return errorResult;
+
+            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var reports = await expenseReadService.GetReviewQueueAsync(user.Id, isFinanceAdmin);
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
             return View(new ExpenseReviewViewModel
             {
                 Reports = reports,
                 SubmitterNames = submitterNames,
                 DepartmentNames = await ResolveDepartmentNamesAsync(),
-                FailedHoldedPushCount = await service.CountFailedHoldedPushesAsync(),
+                // Finance admins are the only ones who can act on a written-off push, and the
+                // count is queue-wide rather than scoped, so it stays with them.
+                FailedHoldedPushCount = isFinanceAdmin ? await service.CountFailedHoldedPushesAsync() : 0,
+                IsAdminView = isFinanceAdmin,
             });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error loading finance admin review queue");
+            logger.LogError(ex, "Error loading expense review queue");
             SetError("Failed to load the review queue.");
             return RedirectToAction(nameof(Index));
         }
@@ -747,14 +746,14 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             SetError("Invalid approval input.");
-            return RedirectToAction(nameof(Review));
+            return RedirectToAction(nameof(Detail), new { id });
         }
 
         var result = await service.ApproveWithResultAsync(
             id, user.Id, input.OverrideCategoryId, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
-        return RedirectToAction(nameof(Review));
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
     [HttpPost("{id:guid}/Reject")]
@@ -775,13 +774,13 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
         {
             SetError("A rejection reason is required.");
-            return RedirectToAction(nameof(Review));
+            return RedirectToAction(nameof(Detail), new { id });
         }
 
         var result = await service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
-        return RedirectToAction(nameof(Review));
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
     [HttpPost("{id:guid}/HoldedRetry")]
@@ -829,6 +828,31 @@ internal sealed class ExpensesController(
 
         return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
     }
+
+    /// <summary>
+    /// Which decisions the detail page offers the current user. Every decision on a report is
+    /// taken from that page now — approving from a queue row meant approving without ever opening
+    /// the receipts (peterdrier/Humans#1447). The authorization handler owns the actor matrix;
+    /// the status guard here mirrors the repository's, so a button that would be refused on
+    /// arrival is not drawn.
+    /// </summary>
+    private async Task<(bool Approve, bool FinanceReject, bool Endorse, bool CoordinatorReject)>
+        ResolveDecisionsAsync(ExpenseReportDto report)
+    {
+        var isPending = report.Status is ExpenseReportStatus.Submitted
+            or ExpenseReportStatus.CoordinatorEndorsed;
+        return (
+            Approve: isPending && await AllowsAsync(report, ExpenseReportOperation.Approve),
+            FinanceReject: isPending && await AllowsAsync(report, ExpenseReportOperation.FinanceReject),
+            // The handler already restricts both coordinator operations to Submitted.
+            Endorse: await AllowsAsync(report, ExpenseReportOperation.Endorse),
+            CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
+    }
+
+    /// <summary>Whether the current user may take <paramref name="operation"/> on the report.</summary>
+    private async Task<bool> AllowsAsync(ExpenseReportDto report, ExpenseReportOperation operation) =>
+        (await authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(operation))).Succeeded;
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
         IReadOnlyCollection<ExpenseReportDto> reports)

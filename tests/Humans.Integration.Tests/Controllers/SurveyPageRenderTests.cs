@@ -57,6 +57,24 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
     }
 
     [HumansFact(Timeout = 60000)]
+    public async Task Public_survey_intro_renders_sanitized_markdown_and_preserves_line_breaks()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var slug = $"render-test-{Guid.NewGuid():N}";
+        await SeedOpenPublicSurveyAsync(
+            slug,
+            ct,
+            intro: "First line\nSecond line\n\n**Important**\n\n<script>alert('unsafe')</script>");
+
+        var html = await (await Client.GetAsync($"/Survey/{slug}", ct))
+            .Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("First line<br>");
+        html.Should().Contain("<strong>Important</strong>");
+        html.Should().NotContain("alert('unsafe')");
+    }
+
+    [HumansFact(Timeout = 60000)]
     public async Task Closed_survey_renders_the_closed_page_rather_than_the_wizard()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -120,8 +138,29 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         }
     }
 
+    [HumansFact(Timeout = 60000)]
+    public async Task Admin_survey_builder_renders_the_shared_markdown_editor_for_intro_and_email_message()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var slug = $"render-test-{Guid.NewGuid():N}";
+        var surveyId = await SeedOpenPublicSurveyAsync(slug, ct);
+
+        var html = await (await Client.GetAsync($"/Survey/Admin/Edit/{surveyId}", ct))
+            .Content.ReadAsStringAsync(ct);
+
+        html.Should().Contain("name=\"Intro[en]\"");
+        html.Should().Contain("name=\"InvitationEmailMessage[en]\"");
+        html.Should().Contain("easymde@2.21.0");
+        html.Should().Contain("new EasyMDE");
+        html.Should().NotContain("<markdown-editor");
+    }
+
     private async Task<Guid> SeedOpenPublicSurveyAsync(
-        string slug, CancellationToken ct, SurveyStatus status = SurveyStatus.Open)
+        string slug,
+        CancellationToken ct,
+        SurveyStatus status = SurveyStatus.Open,
+        string intro = "Intro copy")
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
@@ -130,7 +169,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         {
             Id = Guid.NewGuid(),
             Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Render test survey" }),
-            Intro = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Intro copy" }),
+            Intro = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = intro }),
             ThankYou = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Thanks" }),
             DefaultCulture = "en",
             AllowAnonymous = true,

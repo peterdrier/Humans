@@ -1,0 +1,28 @@
+@model SurveyGridRowModel
+@{
+    var prefix = $"Questions[{Model.QuestionKey}].GridRows[{Model.RowKey}]";
+}
+<div class="grid-row border rounded p-2 mb-2">
+    <input type="hidden" name="Questions[@Model.QuestionKey].GridRows.Index" value="@Model.RowKey" />
+    <div class="d-flex gap-2 align-items-start">
+        <div class="flex-grow-1">
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Value</span>
+                <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Row.Value"
+                       placeholder="stable key, e.g. may-03-09" />
+            </div>
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Row label", Model.Row.Label))" />
+        </div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Grid row actions">
+            <button type="button" class="btn btn-outline-secondary move-grid-row-up" title="Move row up">
+                <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                <span class="visually-hidden">Move row up</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary move-grid-row-down" title="Move row down">
+                <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                <span class="visually-hidden">Move row down</span>
+            </button>
+            <button type="button" class="btn btn-outline-danger remove-grid-row" title="Remove row">&times;</button>
+        </div>
+    </div>
+</div>

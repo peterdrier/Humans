@@ -379,10 +379,11 @@
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminacions de compte pendents</value><comment>{0} = count</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Estàs convidat/da a completar l'enquesta &lt;strong&gt;{1}&lt;/strong&gt;. Només et portarà uns minuts.&lt;/p&gt;
+{3}
 &lt;p&gt;&lt;a href="{2}"&gt;Obre l'enquesta&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Gràcies,&lt;br/&gt;El Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Si us plau, completa: {0}</value></data>
+  <data name="Email_SurveyInvitation_DefaultMessage" xml:space="preserve"><value>Estàs convidat/da a completar l'enquesta &lt;strong&gt;{0}&lt;/strong&gt;. Només et portarà uns minuts.</value></data>
   <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
 &lt;p&gt;Només un recordatori que l'enquesta &lt;strong&gt;{1}&lt;/strong&gt; encara espera la teva resposta.&lt;/p&gt;

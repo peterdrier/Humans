@@ -379,10 +379,11 @@
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminazioni di account in sospeso</value><comment>{0} = count</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Sei invitato a completare il sondaggio &lt;strong&gt;{1}&lt;/strong&gt;. Bastano pochi minuti.&lt;/p&gt;
+{3}
 &lt;p&gt;&lt;a href="{2}"&gt;Apri il sondaggio&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Grazie,&lt;br/&gt;Il Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Completa: {0}</value></data>
+  <data name="Email_SurveyInvitation_DefaultMessage" xml:space="preserve"><value>Sei invitato a completare il sondaggio &lt;strong&gt;{0}&lt;/strong&gt;. Bastano pochi minuti.</value></data>
   <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Ciao {0},&lt;/p&gt;
 &lt;p&gt;Solo un promemoria: il sondaggio &lt;strong&gt;{1}&lt;/strong&gt; è ancora in attesa della tua risposta.&lt;/p&gt;

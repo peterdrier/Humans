@@ -181,11 +181,6 @@ public class CantinaRosterAssemblerTests
             WeekStartOffset: -1,
             TotalOnSite: people.Count,
             UnansweredCount: people.Count,
-            DietaryBreakdown: new Dictionary<string, int>(StringComparer.Ordinal),
-            AllergyRollup: Array.Empty<RollupItemDto>(),
-            AllergyOtherEntries: Array.Empty<string>(),
-            IntoleranceRollup: Array.Empty<RollupItemDto>(),
-            IntoleranceOtherEntries: Array.Empty<string>(),
             People: people);
 
     [HumansFact]

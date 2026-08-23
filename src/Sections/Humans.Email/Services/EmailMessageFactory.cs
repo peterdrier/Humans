@@ -92,9 +92,17 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
             "term_renewal_reminder", MessageCategory.Governance);
     }
 
-    public EmailMessage SurveyInvitation(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
+    public EmailMessage SurveyInvitation(
+        string userEmail,
+        string userName,
+        string surveyTitle,
+        string answerToken,
+        string? culture = null,
+        string? customSubject = null,
+        string? customMessage = null)
     {
-        var content = renderer.RenderSurveyInvitation(userName, surveyTitle, answerToken, culture);
+        var content = renderer.RenderSurveyInvitation(
+            userName, surveyTitle, answerToken, culture, customSubject, customMessage);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "survey_invitation", MessageCategory.System);
     }

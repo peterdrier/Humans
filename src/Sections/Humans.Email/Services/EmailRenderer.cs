@@ -2,6 +2,7 @@ using Humans.Users.Contracts;
 using System.Globalization;
 using Humans.Email.Contracts;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
@@ -133,10 +134,31 @@ internal sealed class EmailRenderer(
             Lf("Email_TermRenewalReminder_Subject", tierName),
             Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
-    public EmailContent RenderSurveyInvitation(string userName, string surveyTitle, string answerToken, string? culture = null)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_SurveyInvitation_Subject", surveyTitle),
-            Lf("Email_SurveyInvitation_Body", HtmlEncode(userName), HtmlEncode(surveyTitle), BuildSurveyAnswerUrl(answerToken))));
+    public EmailContent RenderSurveyInvitation(
+        string userName,
+        string surveyTitle,
+        string answerToken,
+        string? culture = null,
+        string? customSubject = null,
+        string? customMessage = null)
+        => RenderLocalized(culture, () =>
+        {
+            var subject = string.IsNullOrWhiteSpace(customSubject)
+                ? Lf("Email_SurveyInvitation_Subject", surveyTitle)
+                : customSubject.Trim();
+            var messageHtml = string.IsNullOrWhiteSpace(customMessage)
+                ? $"<p>{Lf("Email_SurveyInvitation_DefaultMessage", HtmlEncode(surveyTitle))}</p>"
+                : SanitizedMarkdownRenderer.Render(customMessage.Trim(), allowImages: false);
+
+            return new EmailContent(
+                subject,
+                Lf(
+                    "Email_SurveyInvitation_Body",
+                    HtmlEncode(userName),
+                    HtmlEncode(surveyTitle),
+                    BuildSurveyAnswerUrl(answerToken),
+                    messageHtml));
+        });
 
     public EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(

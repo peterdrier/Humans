@@ -21,6 +21,14 @@ internal sealed class LocalizedText : IEquatable<LocalizedText>
         return string.Empty;
     }
 
+    /// <summary>Requested culture → default culture → "".</summary>
+    public string ResolveOptional(string culture, string defaultCulture)
+    {
+        if (_values.TryGetValue(culture, out var v) && !string.IsNullOrEmpty(v)) return v;
+        if (_values.TryGetValue(defaultCulture, out var d) && !string.IsNullOrEmpty(d)) return d;
+        return string.Empty;
+    }
+
     public bool HasCulture(string culture) => _values.TryGetValue(culture, out var v) && !string.IsNullOrEmpty(v);
 
     public bool Equals(LocalizedText? other) =>

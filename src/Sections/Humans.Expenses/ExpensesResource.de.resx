@@ -63,14 +63,13 @@
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
+  <data name="Expenses_ColDepartment" xml:space="preserve"><value>Abteilung</value></data>
   <data name="Expenses_ColPayable" xml:space="preserve"><value>Zahlbar</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Abrechnung</value></data>
   <data name="Expenses_ColRequested" xml:space="preserve"><value>Beantragt</value></data>
   <data name="Expenses_ColSubject" xml:space="preserve"><value>Betreff</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Eingereicht von</value></data>
-  <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Koordinator-Warteschlange</value></data>
-  <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Spesenabrechnungen — Koordinator-Warteschlange</value></data>
   <data name="Expenses_Endorse" xml:space="preserve"><value>Befürworten</value></data>
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Diese Spesenabrechnung befürworten?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Reiche deine erste Abrechnung ein</value></data>
@@ -86,10 +85,12 @@
   <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Dein Holded-Kreditorenkonto ist noch nicht verknüpft, daher kann dein Kontoauszug nicht angezeigt werden. Bitte das Finanzteam, es zu verknüpfen.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Du hast deine Zahlungs-IBAN noch nicht hinterlegt. Du wirst beim Einreichen einer Abrechnung aufgefordert, sie anzugeben.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Noch keine Spesenabrechnungen.</value></data>
-  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Keine Abrechnungen, die auf deine Befürwortung warten.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Keine Abrechnungen zu prüfen.</value></data>
   <data name="Expenses_Reject" xml:space="preserve"><value>Ablehnen</value></data>
-  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Der Einreichende sieht diesen Grund. Erkläre klar, warum die Abrechnung nicht befürwortet werden kann.</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Der Einreichende sieht diesen Grund. Erkläre klar, warum die Abrechnung abgelehnt wird.</value></data>
   <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Abrechnung ablehnen</value></data>
   <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Ablehnungsgrund</value></data>
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>z. B. Fehlende Belege für Position 2</value></data>
+  <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Spesenprüfung</value></data>
+  <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Spesenabrechnungen — Prüfung</value></data>
 </root>

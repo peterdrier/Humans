@@ -82,6 +82,29 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
+    public void SurveyInvitation_forwards_custom_copy_and_preserves_policy()
+    {
+        var msg = _factory.SurveyInvitation(
+            "a@x.com",
+            "Alice",
+            "Availability",
+            "token",
+            "fr",
+            "Choose a date",
+            "Tell us what works.");
+
+        msg.TemplateName.Should().Be("survey_invitation");
+        msg.Category.Should().Be(MessageCategory.System);
+        _renderer.Received(1).RenderSurveyInvitation(
+            "Alice",
+            "Availability",
+            "token",
+            "fr",
+            "Choose a date",
+            "Tell us what works.");
+    }
+
+    [HumansFact]
     public void FacilitatedMessage_WithContactInfo_SetsReplyToSender()
     {
         var msg = _factory.FacilitatedMessage(

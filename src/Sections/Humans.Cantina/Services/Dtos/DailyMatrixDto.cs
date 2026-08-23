@@ -13,9 +13,9 @@ namespace Humans.Cantina.Services.Dtos;
 ///
 /// Computed by <c>ICantinaRosterService.GetDailyRosterAsync</c>; the
 /// controller pipes through <c>CantinaRosterAssembler.WithSortedPeople</c>
-/// to alphabetize <see cref="People"/> for display. Day-scoped semantics:
-/// every aggregate (<see cref="DietaryBreakdown"/>, <see cref="AllergyRollup"/>,
-/// etc.) counts each unique on-site human on this day once.
+/// to alphabetize <see cref="People"/> for display. The chip column totals
+/// are counted from <see cref="People"/> by the view and the CSV writer —
+/// each unique on-site human on this day appears in it exactly once.
 /// </summary>
 /// <param name="DayOffset">
 /// The day-offset relative to <c>EventSettings.GateOpeningDate</c>.
@@ -44,24 +44,13 @@ namespace Humans.Cantina.Services.Dtos;
 /// On-site humans on this single day whose <c>DietaryPreference</c> is
 /// null/empty.
 /// </param>
-/// <param name="DietaryBreakdown">
-/// Counts keyed by dietary preference, computed over this day's cohort.
-/// Always includes the four canonical preferences plus <c>"Unanswered"</c>.
-/// </param>
-/// <param name="AllergyRollup">
-/// One row per canonical allergy chip, counted over the day's cohort.
-/// </param>
-/// <param name="AllergyOtherEntries">
-/// Free-text entries from humans who picked the "Other" allergy chip on
-/// this day, deduplicated by trimmed text.
-/// </param>
-/// <param name="IntoleranceRollup">Same shape as <see cref="AllergyRollup"/> for intolerances.</param>
-/// <param name="IntoleranceOtherEntries">Same dedup rule as <see cref="AllergyOtherEntries"/>.</param>
 /// <param name="People">
 /// One row per unique on-site human on this day. Returned in unspecified
 /// order — the web layer's <c>CantinaRosterAssembler.WithSortedPeople</c>
-/// alphabetizes for display. Humans with no <c>VolunteerEventProfile</c>
-/// still appear here with empty dietary fields.
+/// alphabetizes for display. The service builds rows for the whole on-site
+/// cohort regardless of profile state; in practice every on-site human has a
+/// profile row, so the empty-field path is defensive rather than a case the
+/// page is expected to render.
 /// </param>
 internal sealed record DailyMatrixDto(
     int DayOffset,
@@ -71,9 +60,4 @@ internal sealed record DailyMatrixDto(
     int WeekStartOffset,
     int TotalOnSite,
     int UnansweredCount,
-    IReadOnlyDictionary<string, int> DietaryBreakdown,
-    IReadOnlyList<RollupItemDto> AllergyRollup,
-    IReadOnlyList<string> AllergyOtherEntries,
-    IReadOnlyList<RollupItemDto> IntoleranceRollup,
-    IReadOnlyList<string> IntoleranceOtherEntries,
     IReadOnlyList<DailyPersonRowDto> People);

@@ -379,10 +379,11 @@
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} Kontol&#xF6;schungen ausstehend</value><comment>{0} = count</comment></data>
   <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;du bist eingeladen, die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; auszufüllen. Es dauert nur ein paar Minuten.&lt;/p&gt;
+{3}
 &lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Bitte ausfüllen: {0}</value></data>
+  <data name="Email_SurveyInvitation_DefaultMessage" xml:space="preserve"><value>du bist eingeladen, die Umfrage &lt;strong&gt;{0}&lt;/strong&gt; auszufüllen. Es dauert nur ein paar Minuten.</value></data>
   <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
 &lt;p&gt;nur eine Erinnerung, dass die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; noch auf deine Antwort wartet.&lt;/p&gt;

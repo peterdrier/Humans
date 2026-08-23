@@ -15,6 +15,8 @@ internal sealed class SurveyQuestion
     public int? RatingMax { get; set; }
     public LocalizedText RatingMinLabel { get; set; } = LocalizedText.Empty;
     public LocalizedText RatingMaxLabel { get; set; } = LocalizedText.Empty;
+    public GridSelectionMode? GridSelectionMode { get; set; }
+    public List<SurveyGridRow>? GridRows { get; set; }           // jsonb; null for non-Grid questions
     public BranchCondition? ShowIf { get; set; }
     public Survey Survey { get; set; } = null!;
     public ICollection<SurveyQuestionOption> Options { get; set; } = new List<SurveyQuestionOption>();

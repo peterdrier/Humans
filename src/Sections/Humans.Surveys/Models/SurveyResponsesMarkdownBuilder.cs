@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using NodaTime.Text;
@@ -57,6 +58,13 @@ internal static class SurveyResponsesMarkdownBuilder
     {
         SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>
             Escape(string.Join("|", answer.SelectedValues)),
+        SurveyQuestionType.Grid =>
+            Escape(JsonSerializer.Serialize(
+                (answer.GridSelections ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))
+                .ToDictionary(
+                    selection => selection.Key,
+                    selection => selection.Value,
+                    StringComparer.Ordinal))),
         SurveyQuestionType.Rating =>
             answer.RatingValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
         _ => Escape(answer.TextValue ?? string.Empty),
