@@ -96,6 +96,10 @@ internal interface IEmailOutboxRepository : IRepository
     /// processor: not yet sent, below the retry cap, past
     /// <see cref="EmailOutboxMessage.NextRetryAt"/>, and either never
     /// picked up or stale (older than <paramref name="staleThreshold"/>).
+    /// Rows whose <see cref="EmailOutboxMessage.TemplateName"/> is in
+    /// <see cref="TimeSensitiveTemplates.Names"/> are ordered ahead of all others
+    /// so they are not stuck behind a bulk backlog; ordering within each class is
+    /// FIFO by <see cref="EmailOutboxMessage.CreatedAt"/>.
     /// Returned entities are detached; to update, use
     /// <see cref="MarkPickedUpAsync"/> / <see cref="MarkSentAsync"/> /
     /// <see cref="MarkFailedAsync"/>.
