@@ -444,6 +444,14 @@ branch.
    asserts the resulting step is not `Complete` and throws if it is, so the helper cannot quietly
    regress into the vacuum it exists to close.
 
+   **And the first version of it always failed.** Codex caught it post-push: dev login runs
+   `DevPersonaSeeder.EnsureActiveAsync` on every request, on both the create and already-exists
+   paths, and that method walks `MissingConsentVersionIds` and submits every one. So seeding the
+   required document *before* logging in guarantees the seeder signs it — the persona reaches
+   `Complete` and the guard throws every time. The order is inverted now (sign in, then introduce
+   a document that did not exist at login), and the document is created fresh per call rather
+   than reused, because a reused one is signed by the next call's login for the same reason.
+
    **Correction — there is no gate.** This entry originally read "CI is the gate — no Docker
    here." That is false, and checking it was the run's job. `.github/workflows/build.yml:111`
    runs `dotnet test … --filter "FullyQualifiedName!~Humans.Integration.Tests"`, and the only

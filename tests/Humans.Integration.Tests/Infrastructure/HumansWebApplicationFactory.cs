@@ -279,9 +279,21 @@ public class HumansWebApplicationFactory(string connectionString)
     /// <para>
     /// Incomplete has to be <i>manufactured</i>, not merely left alone. A fresh integration DB has
     /// no legal documents, so <c>HasAllRequiredConsentsForTeamAsync</c> is vacuously true and the
-    /// persona is <c>Complete</c> the moment it is seeded. This helper therefore seeds a required,
-    /// active Volunteers document with an already-effective version <i>first</i>, then dev-logs in
-    /// without seeding consent for it — leaving the user on the Consents step.
+    /// persona is <c>Complete</c> the moment it is seeded.
+    /// </para>
+    /// <para>
+    /// <b>Order is load-bearing: sign in first, seed the document second.</b> Dev login runs
+    /// <c>DevPersonaSeeder.EnsureActiveAsync</c> on every request — on the create path and on the
+    /// already-exists path alike — and that method walks
+    /// <c>MissingConsentVersionIds</c> and submits every one of them, so any required document
+    /// present at login time is auto-signed and the persona lands on <c>Complete</c>. Seeding
+    /// first therefore cannot work; it produces the very state the guard below rejects.
+    /// </para>
+    /// <para>
+    /// The document is also created fresh on each call rather than reused when one already
+    /// exists. Reuse has the same defect one step removed: a document seeded by an earlier call
+    /// is signed by this call's login, leaving nothing outstanding. A document the persona
+    /// cannot have consented to is the only thing that reliably holds them on the Consents step.
     /// </para>
     /// <para>
     /// Both caches are invalidated because each is warmed on startup and has already snapshotted
@@ -295,56 +307,10 @@ public class HumansWebApplicationFactory(string connectionString)
         ArgumentNullException.ThrowIfNull(persona);
 
         var now = SystemClock.Instance.GetCurrentInstant();
-        using (var scope = Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
 
-            var alreadySeeded = await db.DocumentVersions
-                .AsNoTracking()
-                .AnyAsync(v => v.LegalDocument.IsRequired
-                            && v.LegalDocument.IsActive
-                            && v.EffectiveFrom <= now,
-                    TestContext.Current.CancellationToken);
-
-            if (!alreadySeeded)
-            {
-                var documentId = Guid.NewGuid();
-                db.LegalDocuments.Add(new LegalDocument
-                {
-                    Id = documentId,
-                    Name = "Mid-onboarding required document",
-                    TeamId = SystemTeamIds.Volunteers,
-                    IsRequired = true,
-                    IsActive = true,
-                    GracePeriodDays = 7,
-                    CurrentCommitSha = new string('0', 40),
-                    CreatedAt = now,
-                    LastSyncedAt = now,
-                });
-                db.DocumentVersions.Add(new DocumentVersion
-                {
-                    Id = Guid.NewGuid(),
-                    LegalDocumentId = documentId,
-                    VersionNumber = "v1",
-                    CommitSha = new string('0', 40),
-                    Content = new Dictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["en"] = "Required for the mid-onboarding persona.",
-                        ["es"] = "Requerido para la persona a medio registrar.",
-                    },
-                    EffectiveFrom = now - Duration.FromDays(1),
-                    RequiresReConsent = false,
-                    CreatedAt = now - Duration.FromDays(1),
-                    ChangesSummary = null,
-                });
-
-                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-                Services.GetRequiredService<ILegalDocumentCacheInvalidator>().InvalidateAll();
-                Services.GetRequiredService<IConsentCacheInvalidator>().InvalidateAll();
-            }
-        }
-
+        // Step 1 — sign in while there is nothing outstanding to sign. Anything required that
+        // exists at this moment is consented to on our behalf by DevPersonaSeeder; see the
+        // remarks. Whatever state this leaves behind, it is a state we can then make incomplete.
         var slug = persona.Slug.ToLowerInvariant();
         var loginResp = await client.GetAsync($"/dev/login/{slug}", TestContext.Current.CancellationToken);
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect or HttpStatusCode.OK))
@@ -352,6 +318,48 @@ public class HumansWebApplicationFactory(string connectionString)
             throw new InvalidOperationException(
                 $"Dev login for persona '{slug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
         }
+
+        // Step 2 — introduce a required document the signed-in persona demonstrably has not
+        // consented to, because it did not exist when they signed in.
+        var documentId = Guid.NewGuid();
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
+
+            db.LegalDocuments.Add(new LegalDocument
+            {
+                Id = documentId,
+                Name = $"Mid-onboarding required document ({slug}, {documentId:N})",
+                TeamId = SystemTeamIds.Volunteers,
+                IsRequired = true,
+                IsActive = true,
+                GracePeriodDays = 7,
+                CurrentCommitSha = new string('0', 40),
+                CreatedAt = now,
+                LastSyncedAt = now,
+            });
+            db.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = Guid.NewGuid(),
+                LegalDocumentId = documentId,
+                VersionNumber = "v1",
+                CommitSha = new string('0', 40),
+                Content = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["en"] = "Required for the mid-onboarding persona.",
+                    ["es"] = "Requerido para la persona a medio registrar.",
+                },
+                EffectiveFrom = now - Duration.FromDays(1),
+                RequiresReConsent = false,
+                CreatedAt = now - Duration.FromDays(1),
+                ChangesSummary = null,
+            });
+
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        Services.GetRequiredService<ILegalDocumentCacheInvalidator>().InvalidateAll();
+        Services.GetRequiredService<IConsentCacheInvalidator>().InvalidateAll();
 
         using var idScope = Services.CreateScope();
         var email = $"dev-{slug}@localhost";
@@ -372,7 +380,10 @@ public class HumansWebApplicationFactory(string connectionString)
             throw new InvalidOperationException(
                 $"SignInAsMidOnboardingAsync produced a Complete persona '{slug}'; "
                 + "the required-document seed did not take, so anything gated on mid-onboarding "
-                + "would render nothing and assert nothing.");
+                + "would render nothing and assert nothing. Most likely cause: something signed "
+                + $"document {documentId:N} on the persona's behalf — check whether a sign-in or "
+                + "a consent-repair path ran after step 2, or whether the cache invalidation "
+                + "above no longer reaches the reader.");
         }
 
         return userId;
