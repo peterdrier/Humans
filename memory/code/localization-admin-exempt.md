@@ -6,9 +6,3 @@ description: Existing `@Localizer[...]` calls in admin views can stay, but don't
 **Admin pages do not require localization.** Existing localized strings in admin views can stay, but do not add new `@Localizer[...]` calls or resource keys for admin-side views (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`) until further notice. Only public/user-facing views require localization.
 
 The coordinator-facing `/Shifts/Dashboard` is an admin function — existing localization can stay, but new strings there do **not** need to be added to `ca`/`de`/`fr`/`it` resources.
-
-`/section-doctor`'s localization-coverage detector
-(`.claude/skills/section-doctor/loc-coverage.py`) buckets views by route against this same list,
-as the hardcoded `EXEMPT_ROUTES` constant — it does not read this file. **The two are synced by
-hand:** change the routes here and change `EXEMPT_ROUTES` in the same commit, or the detector
-keeps ranking an exempt page as member-facing.

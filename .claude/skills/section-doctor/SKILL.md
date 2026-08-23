@@ -247,7 +247,7 @@ fragile part (two runs running, every dispatched lane missed the window):
 | **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
 | **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
 | **Tests** | Mutation score (Stryker, section-scoped — only when Stryker is installed); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
-| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); **localization coverage of the views** (below); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
+| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
 | **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | main |
 | **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | main |
 | **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
@@ -287,72 +287,6 @@ skip-and-queue list beside schema changes and surface additions.
 Cap the pass at the section's open issues — recommendations are per-issue one-liners, so a large
 backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
 `## Threads` like every other thread; a review that did not happen says so, with why.
-
-#### Localization coverage (Prose & surface)
-
-Resx parity is the direction that is already gated — `SectionResourceParityTests` plus the dead
-resource / missing translation / `resource-key-prefix` checks above, all of them about the keys
-that *exist*. The direction that leaks is user-facing view text that never became a key at all,
-and perfect parity says nothing about it: `/Expenses/{id}` was 575 lines with 11 `@Localizer[…]`
-calls, all six resx files in agreement, and the page mostly untranslated
-(nobodies-collective/Humans#1115).
-
-**`LocalizationCoverageSweep` is the authoritative reading of that direction, and it already
-exists** — `tests/Humans.Integration.Tests/Localization/`, run bi-weekly by
-`.github/workflows/localization-sweep.yml`. It renders the app through a pseudo-localizer, so
-every localized string comes back bracketed and unbracketed prose on a member page *is* a
-hard-coded string; and it classifies each route's audience from the endpoint's real
-authorization metadata, which settles the judgment the atom leaves open — a page gated by a role
-or a non-`AppAccess` policy is `Restricted` however member-facing its URL looks. Prefer it, and
-read the section's rows out of its report rather than re-deriving them:
-
-```bash
-RUN_LOCALIZATION_SWEEP=1 dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
-  --filter "FullyQualifiedName~LocalizationCoverageSweep" -v quiet
-# → localization-sweep-report.md; the section's rows are the `### <url> (<Controller>/<Action>)`
-#   headings under "## Public pages" whose controller belongs to the section.
-```
-
-It needs Docker (Testcontainers) and a booted host, and it has one coverage gap that matters
-here: **a route with a required parameter is never crawled** — it lands in the report's
-`## Coverage gaps — parameterized routes` list. That gap is why the issue's own example leaked.
-Eight of Expenses' eleven GET routes are `{id:guid}` routes, `/Expenses/{id}` among them, so the
-sweep sees `/Expenses`, `/Expenses/New` and `/Expenses/Review` and nothing else.
-
-So the static pass covers what the sweep cannot reach, and adds the per-view ranking:
-
-```bash
-python .claude/skills/section-doctor/loc-coverage.py --section <X>   # --json for the raw rows
-```
-
-Literal user-facing strings against localized ones per `.cshtml`, worst coverage first. Use it
-for the sweep's param-route gaps, for view components and `_*.cshtml` partials (rendered into a
-page, never crawled as one), and on a run with no Docker or no compiler — where it is the only
-reading available. It reads the text a `<script>` puts on the page too (`alert`, `.textContent`),
-because a localized string there already counts and dropping the literal ones would inflate the
-ratio rather than merely miss them.
-**Where both speak, the sweep wins**: it renders, this parses Razor, and a heuristic over markup
-mistakes dynamic data for prose in a way a bracket test does not.
-
-A caveat that follows from being static: it resolves a view to its *controller's* route, not to
-the action that renders it, so an `Admin/{id}` action whose view is `AdminDetail.cshtml` is caught
-by the view name rather than by its route. Mapping a view to its own action needs the MVC action
-descriptors — which the sweep has and this does not. Same reason its literal count is a heuristic
-over markup: Razor switches to code context inside a control-flow body, and what reads as code is
-rejected rather than parsed.
-
-It resolves each view's **route** from its controller's `[Route(…)]` rather than its file path,
-because `memory/code/localization-admin-exempt.md` exempts by route (`Admin/*`, `TeamAdmin/*`,
-`Shifts/Dashboard`) and the two disagree — `Views/Admin/Agent/Settings.cshtml` is served at
-`Agent/Admin/Settings`. Views on a route with an `Admin`/`TeamAdmin` segment go in their own
-table, unranked. It has no view of authorization metadata, so the atom's judgment half stays the
-run's: a view rendered only to coordinators or finance admins reads as an admin function even on
-a member-facing route. The detector leaves those in the ranked table; the run passes on them and
-says why — or checks the sweep's audience for that route, which knows.
-
-**Report the count, don't backfill unless the run is *for* that** — the same standing rule as
-`resource-key-prefix`. Adding keys to a member-facing page is real work, and it is `## Needs
-Peter` material when it is not this run's headline.
 
 ### 3e. Merge, rank, and check independence
 
