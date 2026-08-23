@@ -22,10 +22,11 @@
                     <dt class="col-sm-4">@Localizer["OnboardingReview_LegalName"]</dt>
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
-                    <dt class="col-sm-4">@Localizer["Admin_Joined"]</dt>
+                    @* Admin_* keys are SharedResource's — the section set does not carry them. *@
+                    <dt class="col-sm-4">@SharedLocalizer["Admin_Joined"]</dt>
                     <dd class="col-sm-8">@Model.ProfileCreatedAt.ToDate()</dd>
 
-                    <dt class="col-sm-4">@Localizer["AdminHuman_MembershipTier"]</dt>
+                    <dt class="col-sm-4">@SharedLocalizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-8">
                         @Model.MembershipTier
                         @if (Model.HasPendingApplication)

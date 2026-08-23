@@ -1,5 +1,7 @@
 @using Microsoft.AspNetCore.Mvc.Localization
-@inject IHtmlLocalizer<SharedResource> BannerLocalizer
+@* The banner's two keys live in OnboardingResource, not SharedResource — binding the shared
+   set renders them as their own names on every authenticated page. *@
+@inject IHtmlLocalizer<OnboardingResource> BannerLocalizer
 @model Humans.Onboarding.ViewComponents.OnboardingProgressBannerViewModel
 @if (Model.Show)
 {
