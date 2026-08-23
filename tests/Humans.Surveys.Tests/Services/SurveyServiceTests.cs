@@ -2290,6 +2290,30 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_submits_tracked_response_when_survey_has_no_questions()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Questions = [];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var invitationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var state = WizardState(survey.Id, invitationId);
+        state.UserId = userId;
+        state.Anonymity = ResponseAnonymity.CompletionTracked;
+        state.Started = true;
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, page: 0, back: false, [], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+        await _repo.Received(1).TryFinalizeCompletionTrackedResponseAsync(
+            invitationId,
+            userId,
+            Arg.Is<SurveyResponse>(response => response.Answers.Count == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_returns_closed_when_survey_not_open()
     {
         var survey = SurveyForWizard(out var q1Id, out _);

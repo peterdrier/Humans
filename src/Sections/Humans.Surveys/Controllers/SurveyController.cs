@@ -394,7 +394,26 @@ internal sealed class SurveyController(
         if (visible.Count == 0)
         {
             var next = SurveyWizardFlow.NextVisiblePage(editable.Questions, state.CurrentPage, answerStates);
-            if (next is null) return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+            if (next is null)
+            {
+                // A survey may legitimately have no questions (or an edit may leave no visible
+                // page). Complete through the same service boundary instead of showing thank-you
+                // while leaving tracked participation/drafts unfinished.
+                var terminal = await surveyService.AdvanceWizardAsync(
+                    state, state.CurrentPage, back: false, [], ct);
+                if (terminal.Outcome == SurveyWizardOutcome.Submitted)
+                {
+                    route.Clear(HttpContext.Session);
+                    return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+                }
+
+                if (terminal.Outcome == SurveyWizardOutcome.NotFound)
+                {
+                    return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+                }
+
+                return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            }
             state.CurrentPage = next.Value;
             route.Save(HttpContext.Session, state);
             visible = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, state.CurrentPage, answerStates);
