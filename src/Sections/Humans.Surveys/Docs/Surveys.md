@@ -17,7 +17,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - A **SurveyInvitation** is the per-recipient ledger row for the invited path: one per `(SurveyId, UserId)`. It carries send/reminder funnel state (`SentAt`, `LatestEmailStatus`, `ReminderSentAt`, `Started`, `Completed`) — all flags/timestamps about *participation*, never about *answer content*.
 - A **SurveyResponse** is one submitted (or, for Identified, in-progress) answer set, tagged with its **anonymity tier** and **input method** (UserSpecificLink vs Slug). It owns **SurveyAnswers** (selected option values, free text, rating, or Grid row-to-column selections).
 - **Anonymity tiers** (`ResponseAnonymity`): **Identified** (linked to the invitee, resumable, the only personal-data tier), **CompletionTracked** (participation counted, answers unlinkable), **Anonymous** (no trace). See Invariants.
-- The **public-slug path** is an anonymous answering route (`/Survey/{slug}`) with no invitation/token; responses are always Anonymous + `InputMethod=Slug`.
+- The **public-slug path** (`/Survey/{slug}`) has no emailed token. Logged-out visitors are always Anonymous. Logged-in Humans choose Identified, CompletionTracked, or Anonymous; tracked tiers use the existing per-survey/user participation ledger and all responses retain `InputMethod=Slug`.
 
 ## Data Model
 
@@ -149,7 +149,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   The builder's **Save and review recipients** action continues to the Send page; a Draft with
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
-- **`/Survey/{slug}`** — `SurveyController` public anonymous wizard. Literal segments `Admin`/`Answer` are **reserved slugs** and resolve before `{slug}`.
+- **`/Survey/{slug}`** — `SurveyController` public wizard: logged-out visitors are Anonymous; logged-in Humans choose how they are represented. Literal segments `Admin`/`Answer` are **reserved slugs** and resolve before `{slug}`.
 - **`/api/surveys/*`** — `SurveysApiController` (key-authed, read-only).
 
 ## Actors & Roles
@@ -158,7 +158,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 |-------|--------------|
 | BoardOrAdmin (`PolicyNames.BoardOrAdmin`) | Author surveys (builder), open/close, send invitations, view results + Identified drill-down, export CSV/JSON. |
 | Invited member | Answer their invited survey via the tokenised link; choose anonymity tier when `AllowAnonymous`; resume an unfinished Identified draft. Reachable even for non-members (`Survey` is in `MembershipRequiredFilter.ExemptControllers`; answer actions are `[AllowAnonymous]`). |
-| Anonymous public visitor | Answer via the public slug — always Anonymous, `InputMethod=Slug`, no identity. |
+| Public visitor | Logged out: always Anonymous. Logged in: choose Identified, CompletionTracked, or Anonymous. All public-link responses use `InputMethod=Slug`. |
 | API (key auth) | List surveys, get a definition, read responses (`?format=md`/json) and aggregates via `/api/surveys` — read-only; key from `SURVEY_API_KEY` (`SurveyApiKeyAuthFilter`; 503 when unset, 401 when wrong). |
 
 ## Invariants
@@ -196,7 +196,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   the standard localized wording. Messages are HTML-encoded with line breaks preserved; Markdown,
   raw HTML, author-provided links, and reminder customization are not supported.
 - **Exactly one reminder.** The 7-day reminder fires once per invitee (Open survey, `Completed == false`, `SentAt ≥ 7 days ago`, `ReminderSentAt is null`), stamping `ReminderSentAt` so it never repeats.
-- **Public responses are always Anonymous + `InputMethod=Slug`.** The slug path requires `AllowAnonymous`; reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
+- **Public responses preserve an explicit representation choice.** The slug path requires `AllowAnonymous`. Logged-out visitors are forced to Anonymous. Logged-in Humans default to Identified and may instead choose CompletionTracked or Anonymous. Identified stores `UserId`; CompletionTracked flips only the per-survey/user completion ledger; Anonymous creates no participation link and remains repeatable. All three use `InputMethod=Slug`. Reserved slugs `admin`/`answer` are rejected by the builder and 404 on the answer path.
+- **Public participation rows are not emailed invitations until email is actually prepared.** A logged-in tracked public start may create a `survey_invitations` ledger row with `SentAt = null`. It is excluded from invited counts/status/reminders and does not block a later send; sending upgrades that same row by stamping `SentAt` and queue status.
 <!-- wheat: docs/plans/2026-06-27-post-event-app-feedback-survey.md §1.2, §3, §4 -->
 - **A choice option's `Value` must be non-empty.** `AnswerState.IsAnswered` (`SurveyWizardFlow.cs`) counts an answer only when the option value is non-empty, and `SurveyQuestionOption.Value` defaults to `string.Empty` — an option saved with a blank `Value` makes a required question unsubmittable and cannot be named by a `ShowIf` clause.
 - **Options carry no free-text flag.** `SurveyQuestionOption` is `Order` + `Value` + `Label` only, so "Other — please specify" is authored as a separate optional `ShortText` question gated by `ShowIf` on the `other` option value.
@@ -211,7 +212,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - Results, exports, and the API **cannot** expose respondent identity for CompletionTracked or Anonymous responses — `UserId`/`UserName` are populated **only** for Identified rows (enforced server-side regardless of API params).
 - The system **cannot** store a completion timestamp for CompletionTracked responses (timing side-channel).
 - Individual response submissions **cannot** be audit-logged (would re-link an anonymous answer to a time/actor).
-- Public-slug requests **cannot** carry identity or a non-Anonymous tier; `/Survey/Admin` and `/Survey/Answer` **cannot** be claimed as a public slug.
+- Logged-out public-slug requests **cannot** carry identity or a non-Anonymous tier. Logged-in public requests cannot attach identity without the respondent's explicit tier choice; CompletionTracked/Anonymous response rows cannot carry identity. `/Survey/Admin` and `/Survey/Answer` **cannot** be claimed as a public slug.
 - The `LoggedInSince` audience **cannot** include GDPR-anonymized, deletion-pending, or merged users, or users in `Rejected`/`Suspended`/`AdminSuspended` state — status-walled accounts that can't reach the survey are never invited, even if they logged in after the cutoff (nobodies-collective/Humans#1099).
 
 ## Triggers

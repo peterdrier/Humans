@@ -91,6 +91,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.SurveyInvitations
             .AsNoTracking()
+            .Where(i => i.SentAt != null)
             .GroupBy(i => i.SurveyId)
             .Select(g => new { SurveyId = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -114,7 +115,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = await ctx.SurveyInvitations
             .AsNoTracking()
-            .Where(i => i.SurveyId == surveyId)
+            .Where(i => i.SurveyId == surveyId && i.SentAt != null)
             .Select(i => i.UserId)
             .ToListAsync(ct);
         return ids.ToHashSet();
@@ -139,10 +140,13 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default)
     {
-        _ = at; // accepted for wave-call symmetry; the entity carries no email-status timestamp column.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (invitation is null) return;
+        if (status == EmailOutboxStatus.Queued && invitation.SentAt is null)
+        {
+            invitation.SentAt = at;
+        }
         invitation.LatestEmailStatus = status;
         await ctx.SaveChangesAsync(ct);
     }

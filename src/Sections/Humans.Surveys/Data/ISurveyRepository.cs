@@ -44,7 +44,7 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>Submitted-response count per survey id (for the admin index). Drafts (<c>SubmittedAt is null</c>) excluded. Read-only.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default);
 
-    /// <summary>User ids already invited to a survey (the idempotency ledger for the send wave). Read-only.</summary>
+    /// <summary>User ids whose invitation email has already been prepared (<c>SentAt != null</c>). Public-link participation rows with no email are excluded. Read-only.</summary>
     Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>All invitations for a survey (for the admin Send status list). No display ordering — caller sorts. Read-only.</summary>
@@ -63,7 +63,11 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>Stamps an invitation's <c>ReminderSentAt</c> (the one-shot reminder ledger). No-op if the invitation is gone.</summary>
     Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default);
 
-    /// <summary>Sets an invitation's <c>LatestEmailStatus</c>. No-op if the invitation does not exist.</summary>
+    /// <summary>
+    /// Sets an invitation's <c>LatestEmailStatus</c>. A first <c>Queued</c> transition also stamps
+    /// <c>SentAt</c>, upgrading a public-link participation row into an emailed invitation.
+    /// No-op if the invitation does not exist.
+    /// </summary>
     Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
 
     // ── Answering (wizard entry) ────────────────────────────────────────────

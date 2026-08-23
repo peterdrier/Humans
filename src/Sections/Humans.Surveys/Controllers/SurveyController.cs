@@ -12,10 +12,11 @@ using Humans.Users.Contracts;
 namespace Humans.Surveys.Controllers;
 
 /// <summary>
-/// Public survey answering wizard. Two entry paths share one page flow: the tokenised invite link
+/// Survey answering wizard. Two entry paths share one page flow: the tokenised invite link
 /// (<c>/Survey/Answer?t=…</c>), where identity comes from the token's invitation (never the current
-/// principal); and the public slug link (<c>/Survey/{slug}</c>), which is always Anonymous and carries
-/// no identity. Controllers parse → call the service → format (hard rule): all flow decisions live in
+/// principal); and the public slug link (<c>/Survey/{slug}</c>), where logged-out visitors are Anonymous
+/// while a logged-in Human chooses Identified, CompletionTracked, or Anonymous. Controllers parse →
+/// call the service → format (hard rule): all flow decisions live in
 /// <see cref="ISurveyService.AdvanceWizardAsync"/>; the controller persists the session per
 /// <see cref="WizardRoute"/> and renders/redirects per the outcome.
 /// </summary>
@@ -62,7 +63,8 @@ internal sealed class SurveyController(
             var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
             resumeState.Started = true;
             resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
-                ctx.SurveyId, ctx.InvitationId, ctx.UserId, culture, ct);
+                ctx.SurveyId, ctx.InvitationId, ctx.UserId,
+                SurveyInputMethod.UserSpecificLink, culture, ct);
             foreach (var a in ctx.DraftAnswers)
             {
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
@@ -124,7 +126,8 @@ internal sealed class SurveyController(
         if (anonymity == ResponseAnonymity.Identified)
         {
             state.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
-                ctx.SurveyId, ctx.InvitationId, ctx.UserId, culture, ct);
+                ctx.SurveyId, ctx.InvitationId, ctx.UserId,
+                SurveyInputMethod.UserSpecificLink, culture, ct);
         }
 
         // First advance past the intro flips the invitation's funnel Started flag (all invited tiers).
@@ -173,13 +176,14 @@ internal sealed class SurveyController(
         }
 
         var culture = ResolveCulture(editable.DefaultCulture);
+        var isLoggedIn = GetCurrentUserId() is not null;
         var vm = new SurveyIntroViewModel
         {
             Title = editable.Title.Resolve(culture, editable.DefaultCulture),
             Intro = editable.Intro.Resolve(culture, editable.DefaultCulture),
             Culture = culture,
             AllowAnonymous = true,
-            ShowAnonymitySelector = false, // public path is always Anonymous — no tier choice.
+            ShowAnonymitySelector = isLoggedIn,
             IsPublic = true,
             Slug = ctx.Definition.Editable.PublicSlug ?? slug,
         };
@@ -188,7 +192,11 @@ internal sealed class SurveyController(
 
     [HttpPost("{slug}/Start")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PublicStart(string slug, string culture, CancellationToken ct)
+    public async Task<IActionResult> PublicStart(
+        string slug,
+        string culture,
+        ResponseAnonymity anonymity,
+        CancellationToken ct)
     {
         if (IsReservedSlug(slug)) return NotFound();
 
@@ -203,13 +211,35 @@ internal sealed class SurveyController(
         }
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
+        var userId = GetCurrentUserId();
+        var resolvedAnonymity = userId is null
+            ? ResponseAnonymity.Anonymous
+            : Enum.IsDefined(anonymity)
+                ? anonymity
+                : ResponseAnonymity.Identified;
+
+        Guid? participationId = null;
+        Guid? draftResponseId = null;
+        if (resolvedAnonymity != ResponseAnonymity.Anonymous)
+        {
+            var tracked = await surveyService.StartPublicTrackedResponseAsync(
+                ctx.SurveyId, userId!.Value, resolvedAnonymity, resolvedCulture, ct);
+            if (tracked.AlreadyCompleted)
+            {
+                return RedirectToAction("PublicThankYou", new { slug });
+            }
+
+            participationId = tracked.ParticipationId;
+            draftResponseId = tracked.DraftResponseId;
+        }
+
         var state = new SurveyWizardState
         {
             SurveyId = ctx.SurveyId,
-            InvitationId = null,
-            UserId = null,
-            DraftResponseId = null,
-            Anonymity = ResponseAnonymity.Anonymous,
+            InvitationId = participationId,
+            UserId = resolvedAnonymity == ResponseAnonymity.Anonymous ? null : userId,
+            DraftResponseId = draftResponseId,
+            Anonymity = resolvedAnonymity,
             InputMethod = SurveyInputMethod.Slug,
             Culture = resolvedCulture,
             CurrentPage = SurveyWizardFlow.FirstVisiblePage(editable.Questions, new Dictionary<Guid, AnswerState>()) ?? 0,
@@ -219,6 +249,10 @@ internal sealed class SurveyController(
         // POST) so the SlugStarted funnel counts visitors who click Start and abandon on the first page.
         state.Started = true;
         await surveyService.IncrementPublicStartedAsync(ctx.SurveyId, ct);
+        if (participationId is { } trackedId)
+        {
+            await surveyService.MarkInvitationStartedAsync(trackedId, ct);
+        }
 
         SurveyWizardSession.SaveBySlug(HttpContext.Session, slug, state);
         return RedirectToAction("PublicPage", new { slug });

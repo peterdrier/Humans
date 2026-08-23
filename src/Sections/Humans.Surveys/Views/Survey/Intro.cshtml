@@ -99,9 +99,10 @@
                             </p>
                         </fieldset>
                     }
-                    else if (!Model.IsPublic && !Model.IsPreview)
+                    else if (!Model.IsPreview)
                     {
-                        <input type="hidden" name="Anonymity" value="@nameof(ResponseAnonymity.Identified)" />
+                        <input type="hidden" name="Anonymity"
+                               value="@(Model.IsPublic ? nameof(ResponseAnonymity.Anonymous) : nameof(ResponseAnonymity.Identified))" />
                     }
 
                     <div class="alert alert-secondary small" role="note">

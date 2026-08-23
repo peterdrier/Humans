@@ -79,18 +79,37 @@ internal interface ISurveyService : IApplicationService
 
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
-    /// invitee. Identified is the only resumable tier. Returns the draft response id.
+    /// Human. Identified is the only resumable tier. The participation id may name an emailed invitation
+    /// or an unsent public-link ledger row. Returns the draft response id.
     /// </summary>
-    Task<Guid> StartIdentifiedDraftAsync(Guid surveyId, Guid invitationId, Guid userId, string culture, CancellationToken ct = default);
+    Task<Guid> StartIdentifiedDraftAsync(
+        Guid surveyId,
+        Guid participationId,
+        Guid userId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default);
 
     /// <summary>Marks the invitation's funnel <c>Started</c> flag (set on the first advance past the intro). No-op if the invitation is gone.</summary>
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a public slug into the anonymous answering context (survey id + reused definition), or
+    /// Resolves a public slug into the public answering context (survey id + reused definition), or
     /// null when no survey owns that slug or the slug is blank. The slug is normalised before lookup.
     /// </summary>
     Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets or creates the logged-in Human's per-survey participation ledger for a public-link
+    /// Identified/CompletionTracked start. Returns an existing completion instead of opening a second
+    /// tracked response. Identified additionally creates/resumes its draft.
+    /// </summary>
+    Task<SurveyPublicStart> StartPublicTrackedResponseAsync(
+        Guid surveyId,
+        Guid userId,
+        ResponseAnonymity anonymity,
+        string culture,
+        CancellationToken ct = default);
 
     /// <summary>Increments the survey's public-path <c>Started</c> funnel counter (slug path has no per-person anchor). No-op if the survey is gone.</summary>
     Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
@@ -238,11 +257,20 @@ internal sealed record SurveyAnswerContext(
     bool HasResumableDraft);
 
 /// <summary>
-/// A survey resolved from its public slug for the anonymous answering path: the survey id plus the
-/// reused editable definition (<see cref="SurveyDetail"/>). No invitation/identity — the slug path is
-/// always <see cref="ResponseAnonymity.Anonymous"/>.
+/// A survey resolved from its public slug: the survey id plus the reused editable definition
+/// (<see cref="SurveyDetail"/>). Representation is selected when the respondent starts.
 /// </summary>
 internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
+
+/// <summary>
+/// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created
+/// survey/user ledger row; <c>DraftResponseId</c> is present only for Identified; an already-completed
+/// ledger redirects to the survey's thank-you page rather than opening another tracked response.
+/// </summary>
+internal sealed record SurveyPublicStart(
+    Guid ParticipationId,
+    Guid? DraftResponseId,
+    bool AlreadyCompleted);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
 internal sealed record SurveyDraftAnswer(

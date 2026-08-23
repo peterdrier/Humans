@@ -19,7 +19,7 @@ internal sealed class Survey
     public Guid? AudienceTeamId { get; set; }                 // bare Guid when AudienceType == Team; no nav, no cross-section FK constraint
     public Instant? AudienceLoggedInSince { get; set; }       // cutoff when AudienceType == LoggedInSince; users with LastLoginAt >= cutoff match
     public string? PublicSlug { get; set; }                   // public answering link; requires AllowAnonymous; null = invite-only
-    public int PublicStartedCount { get; set; }               // slug-path "started" funnel counter (anonymous → no per-person anchor)
+    public int PublicStartedCount { get; set; }               // all slug-path starts; tracked users also have a per-person ledger row
     public Guid CreatedByUserId { get; init; }                // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }

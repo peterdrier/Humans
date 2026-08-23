@@ -51,9 +51,31 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         // Resolved copy, not the key: proves SurveysResource.resx is reachable under the
         // section's manifest prefix (the .cs namespace, not the folder path — design §3).
         html.Should().Contain("Start");
+        html.Should().Contain("name=\"Anonymity\"");
+        html.Should().Contain("value=\"Anonymous\"");
+        html.Should().NotContain("id=\"anonIdentified\"");
         html.Should().NotContain("Survey_",
             because: "an unresolved key renders as its own literal name and survives an English-only "
                    + "eyeball check of the page");
+    }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task Logged_in_public_survey_intro_offers_all_three_representation_choices()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        var slug = $"render-test-{Guid.NewGuid():N}";
+        await SeedOpenPublicSurveyAsync(slug, ct);
+
+        var response = await Client.GetAsync($"/Survey/{slug}", ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("id=\"anonIdentified\"");
+        html.Should().Contain("value=\"Identified\"");
+        html.Should().Contain("value=\"CompletionTracked\"");
+        html.Should().Contain("value=\"Anonymous\"");
+        html.Should().Contain("id=\"anonIdentified\" value=\"Identified\" checked");
     }
 
     [HumansFact(Timeout = 60000)]

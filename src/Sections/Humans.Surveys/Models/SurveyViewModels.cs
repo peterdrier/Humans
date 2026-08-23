@@ -46,8 +46,8 @@ internal sealed class SurveyIntroViewModel
     public bool AllowAnonymous { get; init; }
 
     /// <summary>
-    /// When true the anonymity-tier radios are rendered (invited path with <see cref="AllowAnonymous"/>);
-    /// the public-slug path sets this false — that path is always Anonymous, so only the language picker shows.
+    /// When true the anonymity-tier radios are rendered: on the invited path when anonymity is allowed,
+    /// and on the public path for a logged-in Human. Logged-out public visitors remain Anonymous.
     /// </summary>
     public bool ShowAnonymitySelector { get; init; }
 
