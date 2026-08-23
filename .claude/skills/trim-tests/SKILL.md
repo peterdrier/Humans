@@ -168,7 +168,7 @@ Branch: trim-tests/<service>-<date>
 Commits: 3
 ```
 
-Then ask: "Open PR? (y/n)". If yes, PR title `test(<section>): trim and consolidate <ServiceName>Tests`. Body is the report block above. Nothing else.
+Then open the PR — don't ask first ([`always-open-a-pr`](../../../memory/process/always-open-a-pr.md)). Title `test(<section>): trim and consolidate <ServiceName>Tests`. Body is the report block above. Nothing else.
 
 ## Outer iteration loop
 
