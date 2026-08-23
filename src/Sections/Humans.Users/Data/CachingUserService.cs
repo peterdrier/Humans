@@ -349,7 +349,7 @@ internal sealed class CachingUserService(
         var legacyDisplayName = user.DisplayName;
         return current with
         {
-            BurnerName = ResolveBurnerName(legacyDisplayName, current.Profile),
+            BurnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName, current.Profile),
             IsGdprAnonymized = string.Equals(
                 legacyDisplayName, UserInfo.GdprAnonymizedBurnerName, StringComparison.Ordinal),
             PreferredLanguage = user.PreferredLanguage,
@@ -374,10 +374,20 @@ internal sealed class CachingUserService(
         };
     }
 
-    private static string ResolveBurnerName(string legacyDisplayName, ProfileInfo? profile) =>
-        profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
+    /// <summary>
+    /// #1097 resolution order: <c>User.BurnerName</c> → <c>Profile.BurnerName</c> → the legacy
+    /// <c>User.DisplayName</c>. Cache-refresh twin of the same order in <c>UserInfo.Create</c>.
+    /// </summary>
+    private static string ResolveBurnerName(
+        string? userBurnerName, string legacyDisplayName, ProfileInfo? profile)
+    {
+        if (!string.IsNullOrWhiteSpace(userBurnerName))
+            return userBurnerName;
+
+        return profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
             ? profile.BurnerName
             : legacyDisplayName;
+    }
 
     // ==========================================================================
     // Inner delegation — every other IUserService method passes through and

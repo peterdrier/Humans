@@ -8,7 +8,7 @@ only. Dietary data lives on `Profile` and is read through the unified
 
 ### CantinaRosterService (Scoped)
 
-No repository. Cross-section reads via `IShiftManagementService`
+No repository. Cross-section reads via `IShiftManagementServiceRead`
 (on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `IBurnSettingsService`
 (active-burn metadata — `GetActiveAsync` returning `BurnSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone) and
@@ -21,7 +21,8 @@ around food, not medical history.
 
 Arrival-day feeding: each human is also fed the day before their first
 confirmed shift of the event. The first-shift scan reads confirmed
-signups through the existing `IShiftManagementService` surface.
+signups through the same `IShiftManagementServiceRead` surface, one call
+per day from build start.
 
 ---
 

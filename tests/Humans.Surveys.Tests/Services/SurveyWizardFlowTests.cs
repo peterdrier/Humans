@@ -16,6 +16,17 @@ public class SurveyWizardFlowTests
         new(id, page, order, type, L("Q"), LocalizedText.Empty, required, null, null,
             LocalizedText.Empty, LocalizedText.Empty, showIf, opts.ToList());
 
+    private static QuestionInput Grid(
+        Guid id,
+        GridSelectionMode mode,
+        bool required = true) =>
+        new(
+            id, 1, 0, SurveyQuestionType.Grid, L("Availability"), LocalizedText.Empty,
+            required, null, null, LocalizedText.Empty, LocalizedText.Empty, null,
+            [Opt("morning"), Opt("afternoon")],
+            mode,
+            [new GridRowInput("monday", L("Monday")), new GridRowInput("tuesday", L("Tuesday"))]);
+
     private static BranchCondition ShowIfIs(Guid q, string value) => new()
     {
         Combine = BranchCombine.All,
@@ -183,5 +194,68 @@ public class SurveyWizardFlowTests
         };
 
         SurveyWizardFlow.RequiredUnanswered(visible, answers).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void RequiredUnanswered_requires_an_answer_for_every_grid_row()
+    {
+        var id = Guid.NewGuid();
+        var visible = new[] { Grid(id, GridSelectionMode.Multiple) };
+        var incomplete = new Dictionary<Guid, AnswerState>
+        {
+            [id] = new AnswerState(
+                [], null, null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["monday"] = ["morning"],
+                }),
+        };
+
+        SurveyWizardFlow.RequiredUnanswered(visible, incomplete).Should().ContainSingle().Which.Should().Be(id);
+
+        incomplete[id] = incomplete[id] with
+        {
+            Grid = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                ["monday"] = ["morning"],
+                ["tuesday"] = ["afternoon"],
+            },
+        };
+
+        SurveyWizardFlow.RequiredUnanswered(visible, incomplete).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void RequiredUnanswered_requires_exactly_one_selection_per_row_in_single_mode()
+    {
+        var id = Guid.NewGuid();
+        var visible = new[] { Grid(id, GridSelectionMode.Single) };
+        var answers = new Dictionary<Guid, AnswerState>
+        {
+            [id] = new AnswerState(
+                [], null, null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["monday"] = ["morning", "afternoon"],
+                    ["tuesday"] = ["afternoon"],
+                }),
+        };
+
+        SurveyWizardFlow.RequiredUnanswered(visible, answers).Should().ContainSingle().Which.Should().Be(id);
+    }
+
+    [HumansFact]
+    public void ToAnswerInputs_keeps_empty_grid_data_null_for_non_grid_answers()
+    {
+        var id = Guid.NewGuid();
+        var answers = new Dictionary<string, SurveyWizardAnswer>(StringComparer.Ordinal)
+        {
+            [id.ToString()] = new() { TextValue = "hello" },
+        };
+
+        var input = SurveyWizardFlow.ToAnswerInputs(answers).Should().ContainSingle().Subject;
+
+        input.TextValue.Should().Be("hello");
+        input.GridSelections.Should().BeNull();
     }
 }

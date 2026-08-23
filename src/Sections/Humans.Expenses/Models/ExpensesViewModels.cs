@@ -112,6 +112,21 @@ internal sealed class ExpenseDetailViewModel
     public bool HasCreditorContact { get; init; }
     /// <summary>Creditor accounts available to bind to (finance-admin only).</summary>
     public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
+
+    /// <summary>Finance approval is available: the viewer may approve and the report is still pending.</summary>
+    public bool CanApprove { get; init; }
+    /// <summary>Finance rejection is available — returns the report to the submitter as a draft.</summary>
+    public bool CanFinanceReject { get; init; }
+    /// <summary>Coordinator endorsement is available (Submitted reports in a category they coordinate).</summary>
+    public bool CanEndorse { get; init; }
+    /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
+    public bool CanCoordinatorReject { get; init; }
+
+    /// <summary>Any decision at all is on offer — drives whether the decision card renders.</summary>
+    public bool HasDecision => CanApprove || CanFinanceReject || CanEndorse || CanCoordinatorReject;
+
+    /// <summary>Budget categories offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
+    public IReadOnlyList<BudgetCategoryOption> Categories { get; init; } = [];
 }
 
 internal sealed class ExpenseLineNewViewModel
@@ -164,12 +179,6 @@ internal sealed class EditLineInputModel
     public decimal Amount { get; set; }
 }
 
-internal sealed class ExpenseCoordinatorViewModel
-{
-    public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
-    public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
-}
-
 internal sealed class CoordinatorRejectInputModel
 {
     [Required, StringLength(1000, MinimumLength = 1)]
@@ -186,6 +195,17 @@ internal sealed class ExpenseReviewViewModel
     /// <summary>Pushes to Holded that were written off and need a finance admin to look at them.
     /// Zero hides the banner.</summary>
     public required int FailedHoldedPushCount { get; init; }
+
+    /// <summary>
+    /// The viewer is a finance admin, so the page renders in the admin shell. Coordinators and
+    /// members see the same queue, scoped to them, in the member shell — an admin sidebar filtered
+    /// down to nothing is worse than no admin sidebar.
+    /// </summary>
+    public required bool IsAdminView { get; init; }
+
+    /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
+    public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>
+        Reports.GroupBy(r => r.Status).OrderBy(g => g.Key);
 }
 
 internal sealed class ApproveInputModel

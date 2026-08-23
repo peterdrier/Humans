@@ -107,11 +107,10 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Iban` | GET/POST | Authenticated (resource-based: self, FinanceAdmin with report context) | View/set IBAN |
 | `/Expenses/Attachment/{id}` | GET | Authenticated (resource-based) | Download attachment |
 | `/Expenses/Attachment/{id}/View` | GET | Authenticated (resource-based) | Same file inline (images + PDFs render in the tab; other types fall back to download) |
-| `/Expenses/Coordinator` | GET | Authenticated (coordinator) | Coordinator queue |
 | `/Expenses/{id}/Endorse` | POST | Authenticated (coordinator, resource-based) | Endorse |
 | `/Expenses/{id}/CoordinatorReject` | POST | Authenticated (coordinator, resource-based) | Coordinator reject |
-| `/Expenses/Review` | GET | FinanceAdminOrAdmin | Finance review queue |
-| `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
+| `/Expenses/Review` | GET | Authenticated | The review queue, scoped to the viewer — see Invariants. Admin shell for finance admins, member shell for everyone else |
+| `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve. Carries the max-amount and category-override inputs, so it is also how a wrong cap is corrected |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/{id}/HoldedRetry` | POST | FinanceAdminOrAdmin (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
 | `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
@@ -122,7 +121,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 |-------|--------------|
 | Authenticated member | Submit, edit, withdraw own reports. View own reports. Set own IBAN. |
 | Budget Coordinator | All member capabilities. Additionally: endorse or coordinator-reject reports in categories they coordinate. |
-| FinanceAdmin, Admin | All coordinator capabilities. Additionally: full review queue, approve, finance-reject, category override, view Holded sync status, bind a submitter to a Holded creditor account (400000xx) on the expense detail view. |
+| FinanceAdmin, Admin | All coordinator capabilities. Additionally: the unscoped review queue, approve, finance-reject, category override, view Holded sync status, bind a submitter to a Holded creditor account (400000xx) on the expense detail view. |
 | Admin | All FinanceAdmin capabilities. Additionally: reveal raw IBAN on admin user page (audit-logged). |
 
 ## Invariants
@@ -132,7 +131,10 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - A proof row must reference an Invoice line on the same report, must itself be a Receipt line, and nests one level only (enforced at add time). Removing an invoice line removes its proof rows and their attachments. Proof rows never contribute to `Total`, never appear as Holded document lines, and their files are never uploaded to the Holded doc. Proof coverage vs the invoice amount is displayed to reviewers but never enforced.
 - Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
 - Only the deciders set `MaxAmount` — the coordinator on Endorse, a finance admin on Approve. Each decision form is prefilled with the current cap and its submitted value replaces it outright: blank clears the cap (the approve form's "Leave blank for no cap" is literal). The submitter can never set or see a cap input, and neither decider path may lower it below 0.01 or above 1,000,000. A cap is recorded in the decision's own `ExpenseEndorse` / `ExpenseApprove` audit entry, not a separate action.
-- Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review and coordinator queues, and the detail view all read the payable; `Total` renders only as the receipts total.
+- A cap entered wrongly is corrected on the approve form, which overrides whatever the coordinator authorized. There is no path to change it afterwards: approval queues the Holded push in the same transaction, and nothing about an approved report may diverge from the purchase document already in Holded.
+- **Every decision is taken from `/Expenses/{id}`**, never from a queue row, so a report cannot be approved, rejected or endorsed without its lines and receipts on screen. `/Expenses/Review` lists and links; it carries no decision controls.
+- `/Expenses/Review` is one queue for three audiences, scoped by the viewer: a finance admin sees every non-draft, non-withdrawn report; anyone else sees their own plus those booked to a budget category they coordinate. Drafts and withdrawals never appear — they belong to `/Expenses`.
+- Payable is `min(Total, MaxAmount)` (`ExpenseReportDto.Payable`). Owed/paid math, the review queue, and the detail view all read the payable; `Total` renders only as the receipts total.
 - A capped report pushes to Holded with one extra negative line ("Authorized maximum €X — adjustment", amount `MaxAmount − Total`, same account as the receipt lines) so the purchase document totals the payable. No adjustment line when the report is uncapped or the cap is at or above `Total`.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
 - The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report, and the Set/Change IBAN buttons render only for the submitter (the `Iban` action Forbids everyone else).
@@ -171,7 +173,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Teams**: `ITeamService.IsUserCoordinatorOfTeamAsync` — coordinator endorsement gate.
 - **Profiles**: `IProfileService.GetProfileAsync` — IBAN snapshot at submit time; masked IBAN for GDPR export.
 - **Users/Identity**: `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
-- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. Write-only; the GDPR export no longer re-reads audit here.
+- **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. The section never reads audit itself: `/Expenses/{id}` shows the report's history by emitting `<vc:audit-log entity-type="ExpenseReport" entity-id="…">` and letting the AuditLog section own the read and the render. Everyone who may open the report sees it — the entries are that report's own history. The GDPR export does not re-read audit here.
 - **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor status derived from the cached Holded daybook ledger, for the submitter's owed/paid timeline (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
 - **Admin (Users section)**: `/Users/Admin/{id}/RevealIban` lives in `UsersAdminController` and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
 

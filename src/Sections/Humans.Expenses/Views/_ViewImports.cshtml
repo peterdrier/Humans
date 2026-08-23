@@ -26,3 +26,6 @@
 @inject IStringLocalizer<BudgetResource> BudgetLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base
+@* <vc:audit-log> (Expenses/Detail) is the AuditLog section's own component; without this the
+   tag ships as inert literal markup with a green build and no runtime error. *@
+@addTagHelper *, Humans.AuditLog

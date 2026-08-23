@@ -39,9 +39,16 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         _clock = clock;
     }
 
-    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default)
     {
         var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        return await BuildWeeklyRosterAsync(
+            burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
+    }
+
+    private async Task<WeeklyRosterDto> BuildWeeklyRosterAsync(
+        BurnSettingsInfo? burn, int weekStartOffset, CancellationToken ct)
+    {
         var weekStartDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(weekStartOffset);
@@ -54,9 +61,14 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         // tomorrow highlighted late in the evening (CET is ahead of UTC).
         var eventTodayDate = GetEventTodayDate(burn);
 
+        // One day's on-site cohort is asked for by both loads below — the visible
+        // week, and the arrival scan that runs from build start through it. Fetch
+        // each offset once per request.
+        var onSiteByOffset = new Dictionary<int, IReadOnlyList<Guid>>();
+
         // Per-day cohort: 7 sequential queries for the on-site user ids. At ~500
         // users this is fine (see CLAUDE.md scale notes).
-        var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, ct).ConfigureAwait(false);
+        var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
         // Build the union of unique on-site user IDs across the week, and
         // map each user id to the set of calendar dates they were on-site.
@@ -76,7 +88,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             // can't produce an in-week arrival — cap the scan there.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
-                    burn, weekStartOffset + DaysPerWeek, ct).ConfigureAwait(false);
+                    burn, weekStartOffset + DaysPerWeek, onSiteByOffset, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 var arrivalOffset = minOffset - 1;
@@ -177,30 +189,36 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             EventTodayDate: eventTodayDate);
     }
 
-    public int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
+    /// <summary>
+    /// The offset of the Monday of the week containing today, in the event's
+    /// timezone. Zero without an active event — nothing to be relative to.
+    /// </summary>
+    private int CurrentWeekStartOffset(BurnSettingsInfo? burn)
     {
-        ArgumentNullException.ThrowIfNull(burn);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var todayLocal = now.InZone(zone).Date;
+        if (burn is null || GetEventTodayDate(burn) is not { } today)
+            return 0;
+
         // NodaTime: IsoDayOfWeek.Monday = 1; LocalDate.DayOfWeek is an IsoDayOfWeek.
-        var daysSinceMonday = ((int)todayLocal.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-        var monday = todayLocal.PlusDays(-daysSinceMonday);
-        return Period.Between(burn.GateOpeningDate, monday, PeriodUnits.Days).Days;
+        var daysSinceMonday = ((int)today.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
+        return Period.Between(burn.GateOpeningDate, today.PlusDays(-daysSinceMonday), PeriodUnits.Days).Days;
     }
 
-    public int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
-    {
-        ArgumentNullException.ThrowIfNull(burn);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
-            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var todayLocal = now.InZone(zone).Date;
-        return Period.Between(burn.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
-    }
+    /// <summary>Today's offset in the event's timezone; zero without an active event.</summary>
+    private int CurrentDayOffset(BurnSettingsInfo? burn)
+        => burn is not null && GetEventTodayDate(burn) is { } today
+            ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
+            : 0;
 
-    public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
+    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default)
     {
         var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        return await BuildDailyRosterAsync(
+            burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
+    }
+
+    private async Task<DailyMatrixDto> BuildDailyRosterAsync(
+        BurnSettingsInfo? burn, int dayOffset, CancellationToken ct)
+    {
         var calendarDate = burn is null
             ? (LocalDate?)null
             : burn.GateOpeningDate.PlusDays(dayOffset);
@@ -229,9 +247,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
         }
 
+        // The arrival scan below re-reads this same day, so both go through one
+        // per-request cache of the on-site cohort by offset.
+        var onSiteByOffset = new Dictionary<int, IReadOnlyList<Guid>>();
+
         var shiftUserIds = burn is null
             ? Array.Empty<Guid>()
-            : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, dayOffset, ct).ConfigureAwait(false);
+            : await GetOnSiteUserIdsAsync(burn.Id, dayOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
         // Arrival-day feeding: a human is fed (present, no shift) the day before
         // their FIRST confirmed shift across the whole event. For day N that
@@ -249,7 +271,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             // pulled in, so the scan never needs to look past dayOffset+1.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
-                    burn, dayOffset + 1, ct).ConfigureAwait(false);
+                    burn, dayOffset + 1, onSiteByOffset, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 if (minOffset == dayOffset + 1)
@@ -269,11 +291,6 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 WeekStartOffset: weekStartOffset,
                 TotalOnSite: 0,
                 UnansweredCount: 0,
-                DietaryBreakdown: EmptyDietaryBreakdown(),
-                AllergyRollup: EmptyRollup(DietaryOptions.AllergyOptions),
-                AllergyOtherEntries: Array.Empty<string>(),
-                IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
-                IntoleranceOtherEntries: Array.Empty<string>(),
                 People: Array.Empty<DailyPersonRowDto>());
         }
 
@@ -305,28 +322,10 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 
-        // Aggregates are over the day's cohort (no week dedup needed — each
-        // user appears exactly once in userIds for this single day).
-        var dayProfiles = new List<ProfileInfo>(userIds.Count);
-        foreach (var id in userIds)
-        {
-            if (profileByUserId.TryGetValue(id, out var p))
-                dayProfiles.Add(p);
-        }
-
-        var dietaryBreakdown = BuildDietaryBreakdown(dayProfiles, userIds.Count);
-        var (allergyRollup, allergyOther) = BuildRollup(
-            dayProfiles,
-            p => p.Allergies,
-            p => p.AllergyOtherText,
-            DietaryOptions.AllergyOptions);
-        var (intoleranceRollup, intoleranceOther) = BuildRollup(
-            dayProfiles,
-            p => p.Intolerances,
-            p => p.IntoleranceOtherText,
-            DietaryOptions.IntoleranceOptions);
-
-        var answeredCount = dayProfiles.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
+        // The chip rollups the daily page shows are counted from People by the
+        // view and the CSV writer, so the only day-scoped aggregate the service
+        // still owes is the unanswered headline count.
+        var answeredCount = people.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
         var unanswered = userIds.Count - answeredCount;
 
         return new DailyMatrixDto(
@@ -337,17 +336,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             WeekStartOffset: weekStartOffset,
             TotalOnSite: userIds.Count,
             UnansweredCount: unanswered,
-            DietaryBreakdown: dietaryBreakdown,
-            AllergyRollup: allergyRollup,
-            AllergyOtherEntries: allergyOther,
-            IntoleranceRollup: intoleranceRollup,
-            IntoleranceOtherEntries: intoleranceOther,
             People: people);
     }
 
     private async Task<List<(int DayOffset, IReadOnlyList<Guid> UserIds)>> LoadWeeklyOnSiteUsersAsync(
         BurnSettingsInfo? burn,
         int weekStartOffset,
+        Dictionary<int, IReadOnlyList<Guid>> onSiteByOffset,
         CancellationToken ct)
     {
         var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds)>(DaysPerWeek);
@@ -356,12 +351,30 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             var dayOffset = weekStartOffset + i;
             var userIds = burn is null
                 ? Array.Empty<Guid>()
-                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, dayOffset, ct)
-                    .ConfigureAwait(false);
+                : await GetOnSiteUserIdsAsync(burn.Id, dayOffset, onSiteByOffset, ct).ConfigureAwait(false);
             perDay.Add((dayOffset, userIds));
         }
 
         return perDay;
+    }
+
+    /// <summary>
+    /// One on-site cohort read, memoized by day offset for the life of the
+    /// request. The visible week and the arrival scan cover overlapping ranges;
+    /// without this the overlap is fetched twice per render.
+    /// </summary>
+    private async Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
+        Guid burnId,
+        int dayOffset,
+        Dictionary<int, IReadOnlyList<Guid>> onSiteByOffset,
+        CancellationToken ct)
+    {
+        if (onSiteByOffset.TryGetValue(dayOffset, out var cached))
+            return cached;
+
+        var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burnId, dayOffset, ct).ConfigureAwait(false);
+        onSiteByOffset[dayOffset] = userIds;
+        return userIds;
     }
 
     /// <summary>
@@ -378,13 +391,14 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
         BurnSettingsInfo burn,
         int scanThroughOffset,
+        Dictionary<int, IReadOnlyList<Guid>> onSiteByOffset,
         CancellationToken ct)
     {
         var firstOffsetByUser = new Dictionary<Guid, int>();
         var lastOffset = Math.Min(burn.StrikeEndOffset, scanThroughOffset);
         for (var offset = burn.BuildStartOffset; offset <= lastOffset; offset++)
         {
-            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, offset, ct).ConfigureAwait(false);
+            var userIds = await GetOnSiteUserIdsAsync(burn.Id, offset, onSiteByOffset, ct).ConfigureAwait(false);
             foreach (var id in userIds)
             {
                 if (!firstOffsetByUser.TryGetValue(id, out var existing) || offset < existing)

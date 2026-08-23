@@ -9,9 +9,11 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Money", [
-            // Members' own expense pages (Index/Coordinator) are member-shell pages
-            // linked from the member nav — only the finance review queue is admin.
-            new("Expense review", "Expenses", "Review", null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin, Weight: 0)
+            // The review queue serves coordinators and members too and renders in the member
+            // shell for them; this entry is the finance-admin door to it, so it keeps the
+            // admin policy. Members reach the same page from /Expenses.
+            new("Expense review", "Expenses", "Review", null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin, Weight: 0,
+                BreadcrumbLabel: "Review")
         ], Weight: 50)
     ];
 }

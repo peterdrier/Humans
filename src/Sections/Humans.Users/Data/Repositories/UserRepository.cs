@@ -245,6 +245,13 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = "Merged User";
 
+        // #1097: overwrite the User-side names with the same tombstone labels
+        // AnonymizeProfileInternalAsync writes, so the resolver (User.BurnerName first) cannot
+        // render the merged human's real name and the two sides stay in sync.
+        user.BurnerName = "Merged User";
+        user.FirstName = "Merged";
+        user.LastName = "User";
+
         // Scrub the legacy Identity email/username PII from the tombstone. The address
         // already moved to the survivor's UserEmail rows during the fan-out, so keeping
         // it here is redundant PII that would otherwise live on the tombstone forever
@@ -475,6 +482,12 @@ internal sealed partial class UserRepository : IUserRepository
         var preferredLanguage = user.PreferredLanguage;
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
+
+        // #1097: mirror AnonymizeProfileInternalAsync's erasure labels — a blank BurnerName
+        // lets the legacy "Deleted User" DisplayName resolve through, as it does today.
+        user.BurnerName = null;
+        user.FirstName = "Deleted";
+        user.LastName = "User";
 
         // Scrub the legacy Identity email/username PII. The address was already removed
         // from UserEmail rows (RemoveAllUserEmailsForUserAndSaveAsync runs first), but the

@@ -213,6 +213,7 @@ internal sealed class ExternalLoginService(
         {
             Id = Guid.NewGuid(),
             DisplayName = attempt.DisplayName ?? attempt.Email,
+            BurnerName = attempt.DisplayName ?? attempt.Email,
             CreatedAt = now,
             LastLoginAt = now
         };

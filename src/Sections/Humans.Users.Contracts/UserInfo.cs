@@ -383,9 +383,7 @@ public sealed record UserInfo(
             .ToList();
 
         var legacyDisplayName = user.DisplayName;
-        var burnerName = profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            ? profile.BurnerName
-            : legacyDisplayName;
+        var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName, profile);
         var isGdprAnonymized = string.Equals(
             legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
 
@@ -420,5 +418,21 @@ public sealed record UserInfo(
         };
 
         return info;
+    }
+
+    /// <summary>
+    /// #1097 resolution order: <c>User.BurnerName</c> → <c>Profile.BurnerName</c> → the legacy
+    /// <c>User.DisplayName</c>. Monotonic — no user renders blank at any backfill state.
+    /// <c>CachingUserService.ResolveBurnerName</c> is the cache-refresh twin of this.
+    /// </summary>
+    private static string ResolveBurnerName(
+        string? userBurnerName, string legacyDisplayName, ProfileInfo? profile)
+    {
+        if (!string.IsNullOrWhiteSpace(userBurnerName))
+            return userBurnerName;
+
+        return profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
+            ? profile.BurnerName
+            : legacyDisplayName;
     }
 }

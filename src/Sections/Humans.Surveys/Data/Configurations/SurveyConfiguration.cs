@@ -14,6 +14,8 @@ internal sealed class SurveyConfiguration : IEntityTypeConfiguration<Survey>
         SurveyJson.LocalizedText(b, s => s.Title);
         SurveyJson.LocalizedText(b, s => s.Intro);
         SurveyJson.LocalizedText(b, s => s.ThankYou);
+        SurveyJson.LocalizedText(b, s => s.InvitationEmailSubject);
+        SurveyJson.LocalizedText(b, s => s.InvitationEmailMessage);
 
         b.Property(s => s.DefaultCulture).HasMaxLength(10).IsRequired();
         b.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);

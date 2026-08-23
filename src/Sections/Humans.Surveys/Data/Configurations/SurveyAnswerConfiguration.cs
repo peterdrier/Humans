@@ -23,6 +23,16 @@ internal sealed class SurveyAnswerConfiguration : IEntityTypeConfiguration<Surve
                     v => v.Aggregate(0, HashCode.Combine),
                     v => v.ToList()));
 
+        b.Property(a => a.GridSelections).HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, SurveyJson.Options),
+                v => JsonSerializer.Deserialize<Dictionary<string, List<string>>>(v, SurveyJson.Options),
+                new ValueComparer<Dictionary<string, List<string>>?>(
+                    (a, c) => JsonSerializer.Serialize(a, SurveyJson.Options) == JsonSerializer.Serialize(c, SurveyJson.Options),
+                    v => v == null ? 0 : string.GetHashCode(JsonSerializer.Serialize(v, SurveyJson.Options), StringComparison.Ordinal),
+                    v => v == null ? null : JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
+                        JsonSerializer.Serialize(v, SurveyJson.Options), SurveyJson.Options)));
+
         b.Property(a => a.TextValue).HasMaxLength(4000);
 
         // Intra-section FK to the question; Restrict so a question can't be deleted out from under answers.

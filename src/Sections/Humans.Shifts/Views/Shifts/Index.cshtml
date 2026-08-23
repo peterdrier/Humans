@@ -23,6 +23,7 @@
     var allPhasesActive = isBuildActive && isEventActive && isStrikeActive;
 
     // Build sort toggle URLs preserving all current filters
+    var hasDayFilter = !string.IsNullOrEmpty(Model.FilterDay);
     var sortBaseRoute = new Dictionary<string, string?>();
     if (Model.FilterDepartmentId.HasValue)
         sortBaseRoute["departmentId"] = Model.FilterDepartmentId.Value.ToString();
@@ -32,6 +33,26 @@
         sortBaseRoute[$"periods[{si}]"] = activePeriods[si];
     var urgencySortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "urgency" };
     var deptSortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "department" };
+
+    // Day-filter dropdown label (issue #889): "<phase> <weekday day month>", e.g.
+    // "Pre-event Fri Jun 26". Local function — pure presentation, not worth a model method.
+    string DayOptionLabel(DayFilterOption opt)
+    {
+        var prefix = opt.Period switch
+        {
+            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
+            _ => opt.SubPeriod switch
+            {
+                BuildSubPeriod.FirstCrew => Localizer["ShiftDash_SubPeriodFilter_FirstCrew"].Value,
+                BuildSubPeriod.SetupWeek => Localizer["ShiftDash_SubPeriodFilter_SetupWeek"].Value,
+                BuildSubPeriod.PreEventWeek => Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"].Value,
+                BuildSubPeriod.FinishingWeekend => Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"].Value,
+                _ => SharedLocalizer["Shifts_SetUp"].Value,
+            }
+        };
+        return $"{prefix} {opt.Date.ToWeekdayDayMonth()}";
+    }
 }
 
 <style>
@@ -145,18 +166,32 @@
             </select>
         </div>
         <div class="col-auto">
-            <div class="btn-group" role="group" aria-label="Sort order">
-                <a href="@Url.Action("Index", urgencySortRoute)"
-                   class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
-                    <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]
-                </a>
-                <a href="@Url.Action("Index", deptSortRoute)"
-                   class="btn btn-sm @(!isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortDeptHint"]">
-                    <i class="fa-solid fa-building me-1"></i>@Localizer["Shifts_SortDept"]
-                </a>
-            </div>
+            <label class="form-label mb-1">@Localizer["Shifts_DayFilter_Label"]</label>
+            <select name="day" class="form-select form-select-sm">
+                <option value="">@Localizer["Shifts_DayFilter_AllDays"]</option>
+                @foreach (var opt in Model.DayOptions)
+                {
+                    var dayValue = LocalDatePattern.Iso.Format(opt.Date);
+                    <option value="@dayValue" selected="@(Model.FilterDay == dayValue ? "selected" : null)">@DayOptionLabel(opt)</option>
+                }
+            </select>
         </div>
-        @if (Model.FilterDepartmentId.HasValue || activePeriods.Count > 0 && !allPhasesActive || Model.FilterTagIds.Count > 0 || Model.Sort == "department")
+        @if (!hasDayFilter)
+        {
+            <div class="col-auto">
+                <div class="btn-group" role="group" aria-label="Sort order">
+                    <a href="@Url.Action("Index", urgencySortRoute)"
+                       class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
+                        <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]
+                    </a>
+                    <a href="@Url.Action("Index", deptSortRoute)"
+                       class="btn btn-sm @(!isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortDeptHint"]">
+                        <i class="fa-solid fa-building me-1"></i>@Localizer["Shifts_SortDept"]
+                    </a>
+                </div>
+            </div>
+        }
+        @if (Model.FilterDepartmentId.HasValue || activePeriods.Count > 0 && !allPhasesActive || Model.FilterTagIds.Count > 0 || Model.Sort == "department" || hasDayFilter)
         {
             <div class="col-auto">
                 <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_ClearFilters"]</a>
@@ -181,6 +216,7 @@
         if (!string.IsNullOrEmpty(Model.FilterFromDate)) clearRoute["fromDate"] = Model.FilterFromDate;
         if (!string.IsNullOrEmpty(Model.FilterToDate)) clearRoute["toDate"] = Model.FilterToDate;
         if (!string.IsNullOrEmpty(Model.Sort)) clearRoute["sort"] = Model.Sort;
+        if (hasDayFilter) clearRoute["day"] = Model.FilterDay;
         for (var i = 0; i < Model.FilterTagIds.Count; i++) clearRoute[$"tags[{i}]"] = Model.FilterTagIds[i].ToString();
         for (var i = 0; i < activePeriods.Count; i++) clearRoute[$"periods[{i}]"] = activePeriods[i];
 
@@ -212,6 +248,8 @@
                         routeValues["departmentId"] = Model.FilterDepartmentId.Value.ToString();
                     if (!string.IsNullOrEmpty(Model.Sort))
                         routeValues["sort"] = Model.Sort;
+                    if (hasDayFilter)
+                        routeValues["day"] = Model.FilterDay;
                     for (var i = 0; i < newTagIds.Count; i++)
                         routeValues[$"tags[{i}]"] = newTagIds[i].ToString();
                     for (var i = 0; i < activePeriods.Count; i++)
@@ -261,8 +299,8 @@
     }
 
     <script>
-        // Department dropdown auto-submit
-        document.querySelectorAll('[name="departmentId"]').forEach(function(el) {
+        // Department + day dropdown auto-submit
+        document.querySelectorAll('[name="departmentId"], [name="day"]').forEach(function(el) {
             el.addEventListener('change', function() { this.form.submit(); });
         });
 
@@ -282,6 +320,9 @@
                 }
                 @if (!string.IsNullOrEmpty(Model.Sort)) {
                     <text>params.set('sort', '@Model.Sort');</text>
+                }
+                @if (hasDayFilter) {
+                    <text>params.set('day', '@Model.FilterDay');</text>
                 }
                 // Only add periods if not all 3 are selected
                 if (checked.length < 3) {

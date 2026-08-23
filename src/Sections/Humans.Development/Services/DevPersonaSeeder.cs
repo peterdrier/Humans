@@ -102,6 +102,7 @@ internal sealed class DevPersonaSeeder(
         {
             Id = id,
             DisplayName = displayName,
+            BurnerName = displayName,
             CreatedAt = now,
             LastLoginAt = now
         };
@@ -321,6 +322,7 @@ internal sealed class DevPersonaSeeder(
         {
             Id = id,
             DisplayName = displayName,
+            BurnerName = displayName,
             CreatedAt = now,
             LastLoginAt = now
         };

@@ -25,7 +25,8 @@ internal sealed class SectionAdminNav : ISectionAdminNav
         ], Weight: 140),
         new("Temp", System: true, Items: [
             new("Picture migration",     "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image",     PolicyNames.AdminOnly, Weight: 0),
-            new("Stub profile backfill", "ProfileBackfillAdmin",         "Index", null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly, Weight: 10)
+            new("Stub profile backfill", "ProfileBackfillAdmin",         "Index", null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly, Weight: 10),
+            new("User name backfill",    "UserNameBackfillAdmin",        "Index", null, null, "fa-solid fa-signature", PolicyNames.AdminOnly, Weight: 20)
         ], Weight: 170)
     ];
 }
