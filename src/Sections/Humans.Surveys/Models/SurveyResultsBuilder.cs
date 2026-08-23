@@ -33,6 +33,7 @@ internal static class SurveyResultsBuilder
         Prompt = q.Prompt,
         Type = q.Type,
         OptionCounts = q.OptionCounts,
+        Grid = q.Grid,
         RatingDistribution = q.RatingDistribution,
         RatingAverage = q.RatingAverage is { } avg ? avg.ToString("0.0", CultureInfo.InvariantCulture) : null,
         FreeTextAnswers = q.FreeTextAnswers,
@@ -71,6 +72,7 @@ internal sealed class SurveyResultsQuestionViewModel
     public string Prompt { get; init; } = string.Empty;
     public SurveyQuestionType Type { get; init; }
     public IReadOnlyList<OptionCount> OptionCounts { get; init; } = [];
+    public GridAggregate? Grid { get; init; }
     public IReadOnlyList<RatingBucket> RatingDistribution { get; init; } = [];
     public string? RatingAverage { get; init; }
     public IReadOnlyList<string> FreeTextAnswers { get; init; } = [];

@@ -8,15 +8,15 @@ namespace Humans.Cantina.Services.Dtos;
 /// <c>ArrivesOn</c>/<c>NoShift</c> fields (the daily view is a single day,
 /// every row is on-site that day by definition).
 ///
-/// Deliberately excludes <c>MedicalConditions</c>: medical fields never
-/// cross the Application boundary in the roster surface (GDPR Art. 9
-/// boundary; same rule as <see cref="RosterPersonDto"/>).
+/// Deliberately excludes <c>MedicalConditions</c>: the cached profile the
+/// service reads does carry it, and this record is where it stops (GDPR
+/// Art. 9 boundary; same rule as <see cref="RosterPersonDto"/>).
 /// </summary>
 /// <param name="UserId">The human's user id.</param>
 /// <param name="BurnerName">
-/// Display label, sourced from the human's profile <c>BurnerName</c>;
-/// falls back to the user's <c>DisplayName</c> if no profile / burner
-/// name is set, and finally to <c>"(unknown)"</c> if neither resolves.
+/// Display label, sourced from the human's profile <c>BurnerName</c>.
+/// <c>"(unknown)"</c> is a defensive default for a missing profile row, not
+/// a case the matrix is expected to render — every on-site human has one.
 /// </param>
 /// <param name="DietaryPreference">
 /// One of the canonical preferences in

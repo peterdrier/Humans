@@ -21,6 +21,10 @@ public class AdminBreadcrumbViewComponentTests
             new("Tickets", [
                 new("Tickets", "Ticket", "Index", null, null, "icon", null)
             ]),
+            new("Money", [
+                new("Expense review", "Expenses", "Review", null, null, "icon", null,
+                    BreadcrumbLabel: "Review")
+            ]),
             new("Diagnostics", System: true, Items: [
                 new("Logs",     "Debug", "Logs",    null, null, "icon", null),
                 new("DB stats", "Debug", "DbStats", null, null, "icon", null)
@@ -28,8 +32,15 @@ public class AdminBreadcrumbViewComponentTests
         ];
     }
 
+    /// <summary>
+    /// The section crumb is the contributor's assembly name minus the "Humans." prefix — here the
+    /// test assembly, since <see cref="FakeNav"/> lives in it. In the app that is "Expenses",
+    /// "Budget", and so on, with no Shell-side table to keep in step.
+    /// </summary>
+    private const string FakeNavSection = "Web.Tests";
+
     [HumansFact]
-    public void Resolves_Group_And_Item_For_Known_Controller()
+    public void Resolves_Section_And_Item_For_Known_Controller()
     {
         var sut = new AdminBreadcrumbViewComponent([new FakeNav()]);
         var ctx = new ViewComponentContext
@@ -42,8 +53,28 @@ public class AdminBreadcrumbViewComponentTests
         sut.ViewComponentContext = ctx;
         var result = sut.Invoke() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminBreadcrumbViewModel;
-        model!.GroupLabel.Should().Be("Tickets");
+        model!.SectionLabel.Should().Be(FakeNavSection);
         model.ItemLabel.Should().Be("Tickets");
+    }
+
+    [HumansFact]
+    public void Prefers_BreadcrumbLabel_Over_The_Sidebar_Label()
+    {
+        // The sidebar sits under a merge group ("Money") shared by four sections, so its label
+        // repeats the section; the breadcrumb already states the section, so it uses the short form.
+        var sut = new AdminBreadcrumbViewComponent([new FakeNav()]);
+        var ctx = new ViewComponentContext
+        {
+            ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
+            {
+                RouteData = new RouteData { Values = { ["controller"] = "Expenses", ["action"] = "Review" } }
+            }
+        };
+        sut.ViewComponentContext = ctx;
+        var result = sut.Invoke() as ViewViewComponentResult;
+        var model = result!.ViewData!.Model as AdminBreadcrumbViewModel;
+        model!.SectionLabel.Should().Be(FakeNavSection);
+        model.ItemLabel.Should().Be("Review");
     }
 
     [HumansFact]
@@ -63,7 +94,7 @@ public class AdminBreadcrumbViewComponentTests
         sut.ViewComponentContext = ctx;
         var result = sut.Invoke() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminBreadcrumbViewModel;
-        model!.GroupLabel.Should().Be("Diagnostics");
+        model!.SectionLabel.Should().Be(FakeNavSection);
         model.ItemLabel.Should().Be("DB stats");
     }
 
@@ -85,7 +116,7 @@ public class AdminBreadcrumbViewComponentTests
         sut.ViewComponentContext = ctx;
         var result = sut.Invoke() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminBreadcrumbViewModel;
-        model!.GroupLabel.Should().BeNull();
+        model!.SectionLabel.Should().BeNull();
         model.ItemLabel.Should().BeNull();
         model.FallbackTitle.Should().Be("Some Page");
     }

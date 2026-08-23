@@ -7,10 +7,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@Localizer["Expenses_MyReportsTitle"]</h1>
     <div class="d-flex gap-2">
+        @* The separate coordinator queue is gone; Review is one queue scoped to the viewer. The
+           badge still counts only what awaits this coordinator's endorsement. *@
         @if (Model.IsCoordinator)
         {
-            <a asp-action="Coordinator" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-list-check me-1"></i>@Localizer["Expenses_CoordinatorQueue"]
+            <a asp-action="Review" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-list-check me-1"></i>@Localizer["Expenses_ReviewQueue"]
                 @if (Model.CoordinatorQueueCount > 0)
                 {
                     <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>

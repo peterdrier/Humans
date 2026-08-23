@@ -14,7 +14,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 
 - An **Outbox Message** is a single queued email record with recipient, subject, rendered HTML body, status, retry metadata, and optional links to `User` / `CampaignGrant` / `ShiftSignup`.
 - The **Outbox Pause Flag** is a `SystemSetting` row keyed `IsEmailSendingPaused` that, when `"true"`, causes `ProcessEmailOutboxJob` to skip all delivery attempts on its next tick. Resuming flips it back to `"false"`.
-- **Email Body Composition** happens entirely inside the section: `IEmailBodyComposer` / `BrandedEmailBodyComposer` are internal, as are `IEmailRenderer` / `EmailRenderer` and the two transports. Business code outside the section never sees any of them — it builds an `EmailMessage` through `IEmailMessageFactory` and hands it to `IEmailService`, both on `Humans.Email.Contracts`.
+- **Email Body Composition** happens entirely inside the section: `IEmailBodyComposer` / `BrandedEmailBodyComposer` are internal, as are `IEmailRenderer` / `EmailRenderer` and the two transports. Business code outside the section builds an `EmailMessage` through `IEmailMessageFactory` and hands it to `IEmailService`. Authorized UI previews can pass an always-send system message to the read-only `IEmailPreviewServiceRead`; it returns the exact canonical branded wrapper without enqueueing it.
 - **Delivery** is performed by `EmailOutboxProcessor` (section) via `IEmailTransport` (`SmtpEmailTransport` in prod, `StubEmailTransport` in dev/test). `ProcessEmailOutboxJob` (`Humans.Email/Jobs/`) is the Hangfire scheduler shim that calls it through `IEmailOutboxProcessor`. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`, `Humans.Email/Contracts/`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
 - **One `IEmailService` implementation exists:** `OutboxEmailService` (Application, default — writes to the outbox). DI binds `IEmailService` to `OutboxEmailService`.
 
@@ -102,6 +102,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Admin retry resets a row to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`.
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is a section-internal abstraction so `OutboxEmailService` stays free of `IHostEnvironment`/configuration dependencies; the implementation (`BrandedEmailBodyComposer`) is section-internal too. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) lives in `Humans.Email/Contracts/`.
+- `IEmailPreviewServiceRead` is the only cross-section seam for side-effect-free final-body rendering. It delegates to the same internal `IEmailBodyComposer` as the outbox and accepts only always-send system messages; opt-outable messages require recipient-specific unsubscribe policy and are rejected.
 - The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox` views.
 
 ## Negative Access Rules
@@ -147,6 +148,13 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
   - `IEmailService` + `EmailMessage` — the one transport entry point, called by nine `Humans.Application` services, six `Humans.Infrastructure` jobs and six moved sections.
   - `IEmailMessageFactory` — the typed builders those callers use to construct an `EmailMessage`.
+    `SurveyInvitation` accepts optional plain-text custom subject/message values from Surveys; the
+    internal renderer trims and safely encodes them while retaining the existing template, generated
+    answer link, System category, and localized standard-copy fallback.
+  - `IEmailPreviewServiceRead` + `RenderedEmailPreview` — read-only final-body rendering for
+    authorized cross-section preview pages. It applies the same internal branded composer as the
+    outbox, creates no outbox row, and deliberately rejects opt-outable categories whose exact
+    footer depends on recipient-specific send policy.
   - `IEmailOutboxServiceRead` + `EmailOutboxMessageDto` — per-human outbox history for Shell's `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox`.
   - `IEmailOutboxProcessor` / `IEmailOutboxRetention` — what `ProcessEmailOutboxJob` / `CleanupEmailOutboxJob` drive. Both jobs moved out of Base into the section at G5 lane 5b-1 (initially under `Contracts/`, then into their own `Humans.Email/Jobs/` folder at nobodies-collective/Humans#1353's Jobs/ carve-out), so these two have no consumer outside the section any more and could move inward in a later pass.
   - `IImmediateOutboxProcessor` — was on the leaf for the opposite reason: Base *implemented* it. `HangfireImmediateOutboxProcessor` followed the job out of Base at the same lane and still lives under `Humans.Email/Contracts/` — the #1353 Jobs/ carve-out is for `IRecurringJob` implementors and `*Job`-named Hangfire jobs, and this type is neither — so both sides are now section-side.

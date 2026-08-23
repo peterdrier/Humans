@@ -296,6 +296,15 @@ internal sealed class UserService(
             return false;
         }
 
+        // OAuth/import creation seeds User.BurnerName directly (before any Profile exists),
+        // so a caller that passes no burnerName still gets the one already on the User row —
+        // otherwise this stub write would wipe it via the #1097 Profile->User mirror below.
+        // User.FirstName/LastName can't have a value yet at this point (they're only ever
+        // set by that same mirror, which requires a Profile to exist), so there's nothing to
+        // inherit for those.
+        var user = await repo.GetByIdAsync(userId, ct);
+        var resolvedBurnerName = burnerName ?? user?.BurnerName;
+
         var now = clock.GetCurrentInstant();
         var profile = new Profile
         {
@@ -303,14 +312,15 @@ internal sealed class UserService(
             UserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
-            BurnerName = (burnerName ?? string.Empty).Trim(),
+            BurnerName = (resolvedBurnerName ?? string.Empty).Trim(),
             FirstName = (firstName ?? string.Empty).Trim(),
             LastName = (lastName ?? string.Empty).Trim(),
         };
 
         // Seeded names (magic-link signup) promote straight to Active, mirroring
-        // SaveProfileAsync; import/OAuth paths pass no names and stay Bare.
-        // The repository derives User.State from the row it persists.
+        // SaveProfileAsync; import/OAuth paths inherit BurnerName above but still pass no
+        // FirstName/LastName, so they stay Bare. The repository derives User.State from the
+        // row it persists.
         await repo.AddAsync(profile, ct);
         InvalidateClaims(userId);
         return true;

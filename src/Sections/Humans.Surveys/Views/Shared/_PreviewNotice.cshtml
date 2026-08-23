@@ -1,0 +1,15 @@
+@model Humans.Surveys.Models.SurveyPreviewNoticeModel
+
+<div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 @Model.AdditionalCssClasses" role="note">
+    <div>
+        <i class="fa-solid fa-eye me-1"></i>
+        <strong>Preview only.</strong> @Model.Message
+    </div>
+    <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail"
+          asp-route-id="@Model.SurveyId" method="post" class="flex-shrink-0">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-sm btn-outline-dark">
+            <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
+        </button>
+    </form>
+</div>

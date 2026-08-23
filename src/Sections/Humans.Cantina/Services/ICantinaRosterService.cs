@@ -1,7 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.Shifts.Contracts;
 using Humans.Cantina.Services.Dtos;
-using NodaTime;
 
 namespace Humans.Cantina.Services;
 
@@ -13,12 +11,18 @@ namespace Humans.Cantina.Services;
 /// further service look-ups.
 ///
 /// <para>
-/// The service stitches three sources together at the Application
-/// boundary so no medical fields cross it: the on-site cohort + their
-/// <c>VolunteerEventProfile</c> rows from <c>IShiftManagementRepository</c>
-/// (queried per-day for the 7 days Mon–Sun and unioned by user id), and
-/// burner-name labels from <c>IProfileService</c> with a
-/// <c>User.DisplayName</c> fallback via <c>IUserService</c>.
+/// The service stitches two sources together: the on-site cohort from
+/// <c>IShiftManagementServiceRead</c> (queried per day and unioned by user
+/// id), and dietary fields plus burner names from <c>IUserServiceRead</c>'s
+/// cached profile read-model. Both are section services — Cantina never
+/// touches another section's repository.
+/// </para>
+/// <para>
+/// The medical boundary is an exclusion, not a narrower read: the cached
+/// profile record Cantina receives does carry <c>MedicalConditions</c>, and
+/// this service simply never reads it. Nothing downstream can leak it because
+/// the output records have no such property — but the guarantee lives here and
+/// in those records, not in the read contract.
 /// </para>
 /// </summary>
 internal interface ICantinaRosterService : IApplicationService
@@ -26,40 +30,24 @@ internal interface ICantinaRosterService : IApplicationService
     /// <summary>
     /// Builds the full Cantina Weekly Roster payload for the week whose
     /// Monday is at <paramref name="weekStartOffset"/> (relative to
-    /// <c>EventSettings.GateOpeningDate</c>). Returns a fully-populated
-    /// DTO with zero counts and empty lists when there is no active event
-    /// or no on-site humans for the week — the controller treats both as
-    /// "no data" copy without branching.
+    /// <c>EventSettings.GateOpeningDate</c>). Null means the week containing
+    /// today in the active event's timezone, and zero without an active
+    /// event. Returns a fully-populated DTO with zero counts and empty lists
+    /// when there is no active event or no on-site humans for the week — the
+    /// controller treats both as "no data" copy without branching.
     /// </summary>
-    Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default);
-
-    /// <summary>
-    /// Computes the <c>weekStartOffset</c> of the week containing
-    /// <paramref name="now"/> in the active event's timezone. Returns the
-    /// day-offset of that week's Monday relative to
-    /// <see cref="BurnSettingsInfo.GateOpeningDate"/>. The controller calls
-    /// this to resolve a default when no explicit <c>weekStartOffset</c> is
-    /// on the URL.
-    /// </summary>
-    int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now);
+    Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, CancellationToken ct = default);
 
     /// <summary>
     /// Builds the per-day matrix payload for the Cantina Daily Matrix page
     /// (drill-down from the weekly view's per-day mini-table). One row per
     /// unique on-site human on the requested day, plus day-scoped aggregates
-    /// (dietary breakdown, allergy + intolerance rollups, "Other" free-text
-    /// entries). Returns a fully-populated DTO with zero counts and empty
-    /// lists when there is no active event or no on-site humans for the day.
-    /// People are returned in unspecified order; display sort is the Web
-    /// layer's responsibility (<c>CantinaRosterAssembler.WithSortedPeople</c>).
+    /// (the unanswered headline count). Null means today in the active event's
+    /// timezone, and zero without an active event. Returns a fully-populated
+    /// DTO with zero counts and empty lists when there is no active event or
+    /// no on-site humans for the day. People are returned in unspecified
+    /// order; display sort is the Web layer's responsibility
+    /// (<c>CantinaRosterAssembler.WithSortedPeople</c>).
     /// </summary>
-    Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default);
-
-    /// <summary>
-    /// Computes the day-offset of "today" in the active event's timezone,
-    /// relative to <see cref="BurnSettingsInfo.GateOpeningDate"/>. The
-    /// controller calls this to resolve a default when no explicit
-    /// <c>dayOffset</c> is on the URL.
-    /// </summary>
-    int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now);
+    Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, CancellationToken ct = default);
 }

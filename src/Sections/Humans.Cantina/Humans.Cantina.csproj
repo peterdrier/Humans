@@ -23,12 +23,11 @@
 
   <ItemGroup>
     <!--
-      No Humans.Infrastructure reference: Cantina owns no tables, so there is no DbContext,
-      no repository and no AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the
-      Data-and-DbContext steps are skipped wholesale). The roster service composes over
-      IShiftManagementService / IBurnSettingsService / IUserServiceRead, all of which sit on
-      their owners' contracts leaves, and the CSV writers use
-      Humans.Base.Csv.HumansCsv — a Base namespace, not the deleted hub's.
+      Cantina owns no tables, so there is no DbContext, no repository and no
+      AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps
+      are skipped wholesale). The roster service composes over IShiftManagementServiceRead /
+      IBurnSettingsService / IUserServiceRead, all of which sit on their owners' contracts
+      leaves, and the CSV writers use Humans.Base.Csv.HumansCsv.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />

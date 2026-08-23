@@ -40,16 +40,6 @@
   <data name="Cantina_Roster_IntoleranceRollup" xml:space="preserve"><value>Intolerances</value></data>
   <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Other allergies (free-text)</value></data>
   <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Other intolerances (free-text)</value></data>
-  <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Burner name</value></data>
-  <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Arrives on</value></data>
-  <data name="Cantina_Roster_TableNoShift" xml:space="preserve"><value>No shift</value></data>
-  <data name="Cantina_Roster_NoShift_FullWeek" xml:space="preserve"><value>(scheduled every day)</value></data>
-  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(unanswered)</value></data>
-  <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Dietary</value></data>
-  <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Allergies</value></data>
-  <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Other allergy</value></data>
-  <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerances</value></data>
-  <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Other intolerance</value></data>
   <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
   <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>No humans signed up for this week yet.</value></data>
   <data name="Cantina_Roster_WeekPickerLabel" xml:space="preserve"><value>Week</value></data>
@@ -61,8 +51,6 @@
   <data name="Cantina_Roster_PerDayTable_Date" xml:space="preserve"><value>Day</value></data>
   <data name="Cantina_Roster_PerDayTable_Total" xml:space="preserve"><value>On site</value></data>
   <data name="Cantina_Roster_PerDayTable_Unanswered" xml:space="preserve"><value>Unanswered</value></data>
-  <data name="Cantina_Roster_RosterHeading" xml:space="preserve"><value>Roster</value></data>
-  <data name="Cantina_Roster_ShowRoster" xml:space="preserve"><value>Show roster ({0} humans)</value></data>
   <data name="Cantina_Day_PageTitle" xml:space="preserve"><value>Daily roster</value></data>
   <data name="Cantina_Day_TodayBadge" xml:space="preserve"><value>Today</value></data>
   <data name="Cantina_Day_TotalOnSite" xml:space="preserve"><value>humans on site</value></data>

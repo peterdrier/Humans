@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Humans.Base.Csv;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
@@ -58,6 +59,13 @@ internal static class SurveyCsvExportBuilder
     {
         SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>
             string.Join("|", answer.SelectedValues),
+        SurveyQuestionType.Grid =>
+            JsonSerializer.Serialize(
+                (answer.GridSelections ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))
+                .ToDictionary(
+                    selection => selection.Key,
+                    selection => selection.Value,
+                    StringComparer.Ordinal)),
         SurveyQuestionType.Rating =>
             answer.RatingValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
         _ => answer.TextValue ?? string.Empty,

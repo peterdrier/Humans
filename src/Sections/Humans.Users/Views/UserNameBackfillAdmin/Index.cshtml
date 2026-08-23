@@ -1,0 +1,61 @@
+@model Humans.Users.Controllers.UserNameBackfillViewModel
+@{
+    ViewData["Title"] = "User Name Backfill";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>User Name Backfill</h1>
+    <small class="text-muted">Issue #1097</small>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        @if (Model.UnsyncedRows.Count == 0)
+        {
+            <p class="mb-0">
+                <i class="fa-solid fa-circle-check text-success me-1"></i>
+                0 remaining — every human with a Profile carries their BurnerName and legal
+                name on the User row.
+            </p>
+        }
+        else
+        {
+            <p>
+                <strong>@Model.UnsyncedRows.Count</strong>
+                @(Model.UnsyncedRows.Count == 1 ? "human keeps their names" : "humans keep their names")
+                only on the Profile. Copying them onto the User row changes no rendered name —
+                the resolver reads the same value either way.
+            </p>
+            <form method="post" asp-action="Run">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary"
+                        data-confirm="Copy Profile names onto @Model.UnsyncedRows.Count User rows?">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
+                    Copy names for all @Model.UnsyncedRows.Count humans
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (Model.UnsyncedRows.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Humans to be updated</div>
+        @{
+            var backfillTable = TableModel.For(Model.UnsyncedRows)
+                .Column("Email", r => r.Email)
+                .Column("Burner name", r => r.ProfileBurnerName)
+                .Column("Legal name", r => r.ProfileLegalName)
+                .Column("Missing", r => (r.BurnerNameMissing, r.LegalNameMissing) switch
+                {
+                    (true, true) => "burner + legal",
+                    (true, false) => "burner",
+                    _ => "legal"
+                })
+                .Build();
+        }
+        <partial name="_Table" model="backfillTable" />
+    </div>
+}

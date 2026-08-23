@@ -22,6 +22,19 @@ public class LocalizedTextTests
     }
 
     [HumansFact]
+    public void ResolveOptional_does_not_fall_back_to_an_unrelated_culture()
+    {
+        var t = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = string.Empty,
+            ["es"] = "Hola",
+        });
+
+        t.ResolveOptional("fr", "en").Should().BeEmpty();
+        t.ResolveOptional("es", "en").Should().Be("Hola");
+    }
+
+    [HumansFact]
     public void Empty_resolves_to_empty_string_and_equality_is_by_value()
     {
         LocalizedText.Empty.Resolve("en", "en").Should().BeEmpty();

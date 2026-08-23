@@ -55,7 +55,7 @@
         </div>
 
         <div class="options-section border-top pt-2 mt-2">
-            <label class="form-label small fw-semibold">Options</label>
+            <label class="form-label small fw-semibold options-label">Options</label>
             <div class="options-container">
                 @foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
                 {
@@ -66,6 +66,42 @@
                 <partial name="_SurveyOptionRow" model="@(new SurveyOptionRowModel(key, "__OKEY__", new SurveyOptionBuilderViewModel()))" />
             </template>
             <button type="button" class="btn btn-outline-secondary btn-sm add-option">+ Add option</button>
+            <div class="form-text grid-column-help">Grid questions support at most five columns.</div>
+        </div>
+
+        <div class="grid-section border-top pt-2 mt-2">
+            <div class="mb-2">
+                <label class="form-label small fw-semibold" for="grid-mode-@key">Selections per row</label>
+                <select id="grid-mode-@key" name="@(prefix).GridSelectionMode" class="form-select form-select-sm w-auto">
+                    @if ((q.GridSelectionMode ?? GridSelectionMode.Single) == GridSelectionMode.Single)
+                    {
+                        <option value="@GridSelectionMode.Single" selected>One choice</option>
+                    }
+                    else
+                    {
+                        <option value="@GridSelectionMode.Single">One choice</option>
+                    }
+                    @if (q.GridSelectionMode == GridSelectionMode.Multiple)
+                    {
+                        <option value="@GridSelectionMode.Multiple" selected>Multiple choices</option>
+                    }
+                    else
+                    {
+                        <option value="@GridSelectionMode.Multiple">Multiple choices</option>
+                    }
+                </select>
+            </div>
+            <label class="form-label small fw-semibold">Rows</label>
+            <div class="grid-rows-container">
+                @foreach (var (row, i) in q.GridRows.Select((row, i) => (row, i)))
+                {
+                    <partial name="_SurveyGridRow" model="@(new SurveyGridRowModel(key, i.ToString(), row))" />
+                }
+            </div>
+            <template class="grid-row-template">
+                <partial name="_SurveyGridRow" model="@(new SurveyGridRowModel(key, "__RKEY__", new SurveyGridRowBuilderViewModel()))" />
+            </template>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-grid-row">+ Add row</button>
         </div>
 
         <div class="border-top pt-2 mt-2 showif-section">

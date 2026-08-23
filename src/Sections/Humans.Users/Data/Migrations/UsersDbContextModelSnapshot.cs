@@ -68,6 +68,10 @@ namespace Humans.Users.Data.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BurnerName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
@@ -104,6 +108,10 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -124,6 +132,10 @@ namespace Humans.Users.Data.Migrations
 
                     b.Property<Instant?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");

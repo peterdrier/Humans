@@ -26,6 +26,10 @@
     {
         <input type="hidden" name="toDate" value="@Model.FilterToDate" />
     }
+    @if (!string.IsNullOrEmpty(Model.FilterDay))
+    {
+        <input type="hidden" name="day" value="@Model.FilterDay" />
+    }
     @foreach (var pie in Model.CoveragePies)
     {
         var isSelected = Model.FilterDepartmentId == pie.TeamId;

@@ -128,6 +128,7 @@ public sealed class Section : ISection
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<UserEmailService>());
 
         services.AddScoped<IEmailProblemsService, EmailProblemsService>();
+        services.AddScoped<IUserNameSyncService, UserNameSyncService>();
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
 

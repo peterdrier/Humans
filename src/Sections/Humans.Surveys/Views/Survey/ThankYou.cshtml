@@ -6,11 +6,23 @@
 
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
+        @if (Model.IsPreview)
+        {
+            <partial name="_PreviewNotice"
+                     model="@(new SurveyPreviewNoticeModel(
+                         Model.PreviewSurveyId!.Value,
+                         "No response was submitted.",
+                         "mt-4 mb-0"))" />
+        }
         <div class="card mt-4">
             <div class="card-body text-center py-5">
                 <i class="fa-solid fa-circle-check fa-2x text-success mb-3"></i>
                 <h1 class="h4 mb-3">@Localizer["Survey_ThankYou_Heading"]</h1>
-                <div class="text-muted">@Model.ThankYou</div>
+                <div class="text-muted">
+                    @(string.IsNullOrWhiteSpace(Model.ThankYou)
+                        ? Localizer["Survey_ThankYouFallback"]
+                        : Model.ThankYou)
+                </div>
             </div>
         </div>
     </div>

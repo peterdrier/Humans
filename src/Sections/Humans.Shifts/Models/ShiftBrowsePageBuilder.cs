@@ -24,6 +24,7 @@ internal sealed record ShiftBrowsePageRequest(
     string? FromDate,
     string? ToDate,
     string? Period,
+    string? Day,
     bool ShowFull,
     IReadOnlyList<Guid>? TagIds,
     string? Sort,
@@ -60,7 +61,19 @@ internal sealed class ShiftBrowsePageBuilder(
         if ((!string.IsNullOrEmpty(request.FromDate) || !string.IsNullOrEmpty(request.ToDate)) && !string.IsNullOrEmpty(period))
             period = null;
 
-        var activePeriods = ParseActivePeriods(request.Periods, period);
+        // Single-day filter (issue #889) wins over the phase/date-range filters —
+        // it's a separate dropdown control, not meant to compose with them.
+        var filterDay = !string.IsNullOrEmpty(request.Day) && LocalDatePattern.Iso.Parse(request.Day) is { Success: true } dayResult
+            ? dayResult.Value
+            : (LocalDate?)null;
+        if (filterDay.HasValue)
+        {
+            filterFromDate = filterDay;
+            filterToDate = filterDay;
+            period = null;
+        }
+
+        var activePeriods = filterDay.HasValue ? [] : ParseActivePeriods(request.Periods, period);
         var allPeriodsSelected = activePeriods.Count == 3 ||
             (activePeriods.Count == 0 && string.IsNullOrEmpty(period));
 
@@ -100,10 +113,13 @@ internal sealed class ShiftBrowsePageBuilder(
             : periodFilteredShifts;
 
         var departments = await BuildDepartmentGroupsAsync(filteredShifts);
-        var isUrgencySort = !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
+        // The day filter forces the flat, openings-ranked view — a department/period
+        // grouping doesn't express "most openings first" (issue #889).
+        var isUrgencySort = filterDay.HasValue || !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
         var allTags = await shiftManagement.GetTagsAsync();
+        var dayOptions = await BuildDayOptionsAsync(es, browseFlags);
         // T-10: preferred tag ids come from the cached ShiftUserView's
         // TagPreferences (issue #720) — the controller already fetched the
         // view for the signup read, so we reuse those rows here. The shape
@@ -128,6 +144,8 @@ internal sealed class ShiftBrowsePageBuilder(
             FilterToDate = request.ToDate,
             FilterPeriod = period,
             FilterPeriods = activePeriods.Select(p => p.ToString()).ToList(),
+            FilterDay = filterDay.HasValue ? request.Day : null,
+            DayOptions = dayOptions,
             ShowFullShifts = request.ShowFull,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
@@ -136,7 +154,7 @@ internal sealed class ShiftBrowsePageBuilder(
             ShowSignups = true,
             Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = isUrgencySort
-                ? departments.SelectMany(d => d.Rotas).OrderByDescending(r => r.MaxUrgencyScore).ToList()
+                ? RankRotas(departments.SelectMany(d => d.Rotas), filterDay.HasValue)
                 : [],
             AllTags = allTags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList(),
             FilterTagIds = activeTagFilter,
@@ -176,6 +194,39 @@ internal sealed class ShiftBrowsePageBuilder(
 
         var (signedShiftIds, statuses) = ResolveActiveStatuses(userSignups);
         return (item, signedShiftIds.Contains(shiftId), statuses.GetValueOrDefault(shiftId));
+    }
+
+    /// <summary>
+    /// Orders the flat rota list. Openings-first (issue #889 day filter) ranks by
+    /// total remaining slots descending, so fully-booked rotas naturally sink to
+    /// the bottom rather than needing a separate hide-when-full toggle. Otherwise
+    /// falls back to the existing urgency-score ranking.
+    /// </summary>
+    private static List<RotaShiftGroup> RankRotas(IEnumerable<RotaShiftGroup> rotas, bool byOpenings) =>
+        byOpenings
+            ? rotas.OrderByDescending(r => r.Shifts.Sum(s => s.RemainingSlots)).ToList()
+            : rotas.OrderByDescending(r => r.MaxUrgencyScore).ToList();
+
+    /// <summary>
+    /// Every calendar day with at least one browsable shift for the event, labeled
+    /// with its period/build-sub-period for the day-filter dropdown (issue #889).
+    /// Deliberately unfiltered by department/tag/period/day so the option list
+    /// doesn't shrink as the viewer narrows other filters.
+    /// </summary>
+    private async Task<List<DayFilterOption>> BuildDayOptionsAsync(BurnSettingsInfo es, ShiftBrowseQueryFlags browseFlags)
+    {
+        var allShifts = await shiftManagement.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, null, null, null, browseFlags));
+
+        return allShifts
+            .GroupBy(u => u.Date)
+            .OrderBy(g => g.Key)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new DayFilterOption(g.Key, first.Period, BuildSubPeriodClassifier.Classify(first.Shift.DayOffset, es));
+            })
+            .ToList();
     }
 
     private async Task<List<DepartmentShiftGroup>> BuildDepartmentGroupsAsync(

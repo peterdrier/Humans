@@ -154,10 +154,13 @@
   <data name="Email_SurveyInvitation_Body" xml:space="preserve">
     <value>&lt;h2&gt;{1}&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Te invitamos a completar la encuesta &lt;strong&gt;{1}&lt;/strong&gt;. Solo te llevará unos minutos.&lt;/p&gt;
+{3}
 &lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL, {3} = encoded invitation message HTML</comment>
+  </data>
+  <data name="Email_SurveyInvitation_DefaultMessage" xml:space="preserve">
+    <value>Te invitamos a completar la encuesta &lt;strong&gt;{0}&lt;/strong&gt;. Solo te llevará unos minutos.</value>
   </data>
   <data name="Email_SurveyReminder_Body" xml:space="preserve">
     <value>&lt;h2&gt;{1}&lt;/h2&gt;

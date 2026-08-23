@@ -149,8 +149,9 @@ public interface IUserService : IUserServiceRead, IUserMerge
     /// <summary>
     /// Idempotently materializes a stub profile for a live user. Returns true
     /// only when a profile row was created. When provided, seeds the stub with
-    /// the member's burner and legal names (the magic-link signup path); import
-    /// callers omit them and create an empty stub.
+    /// the member's burner and legal names (the magic-link signup path); import/OAuth
+    /// callers omit them, and the stub instead inherits BurnerName from the User row
+    /// (already seeded at account creation) so it survives the #1097 Profile->User mirror.
     /// </summary>
     Task<bool> EnsureStubProfileAsync(
         Guid userId,

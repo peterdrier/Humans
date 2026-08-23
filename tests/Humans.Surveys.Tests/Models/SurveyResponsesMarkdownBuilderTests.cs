@@ -16,6 +16,13 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     private static SurveyExportQuestion Text(Guid id, string prompt) =>
         new(id, prompt, SurveyQuestionType.ShortText, []);
 
+    private static SurveyExportQuestion Grid(Guid id, string prompt) =>
+        new(
+            id, prompt, SurveyQuestionType.Grid,
+            [new SurveyExportOption("morning", "Morning")],
+            GridSelectionMode.Single,
+            [new SurveyExportGridRow("monday", "Monday")]);
+
     [HumansFact]
     public void Flattens_multichoice_values_with_pipe_and_uses_values_not_labels()
     {
@@ -47,6 +54,31 @@ public sealed class SurveyResponsesMarkdownBuilderTests
         var dataLine = md.Split('\n')[2];   // header, separator, then the single data row
         dataLine.Should().Contain("line one line \\| two");   // newline → space, pipe → \|
         dataLine.Should().NotContain("\n");
+    }
+
+    [HumansFact]
+    public void Serializes_grid_selections_as_stable_json()
+    {
+        var gridId = Guid.NewGuid();
+        var md = SurveyResponsesMarkdownBuilder.Build(
+            [Grid(gridId, "Availability")],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(), ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en", Submitted, null, null,
+                    [
+                        new SurveyExportAnswer(
+                            gridId, [], [], null, null,
+                            new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                            {
+                                ["monday"] = ["morning"],
+                            },
+                            [new ResolvedGridSelection("monday", "Monday", ["morning"], ["Morning"])]),
+                    ]),
+            ]);
+
+        md.Should().Contain(@"{""monday"":[""morning""]}");
+        md.Should().NotContain("Monday");
+        md.Should().NotContain("Morning");
     }
 
     [HumansFact]
