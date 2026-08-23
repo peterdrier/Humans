@@ -247,6 +247,30 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_rejects_an_image_row_without_an_upload()
+    {
+        var information = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Conditions"), L("Context"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    null,
+                    L("Fire risk"),
+                    L("Fire risk forecast table")),
+            ]);
+
+        var act = async () => await CreateService().CreateAsync(
+            Input(information), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*select the file again*");
+        await _repo.DidNotReceive().AddAsync(
+            Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateAsync_rejects_a_grid_with_more_than_five_columns()
     {
         var columns = Enumerable.Range(1, 6)

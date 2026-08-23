@@ -1562,7 +1562,12 @@ internal sealed class SurveyService(
                             FileName = persisted.FileName,
                             Upload = null,
                         });
+                        continue;
                     }
+
+                    throw new InvalidOperationException(
+                        "Select an image file for every image row. " +
+                        "If a previous save failed, select the file again.");
                 }
 
                 preparedQuestions.Add(question with
