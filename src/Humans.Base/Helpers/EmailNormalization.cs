@@ -96,3 +96,29 @@ public sealed class NormalizingEmailComparer : IEqualityComparer<string>
 
     public int GetHashCode(string obj) => StringComparer.Ordinal.GetHashCode(EmailNormalization.NormalizeForComparison(obj));
 }
+
+/// <summary>
+/// IEqualityComparer over <see cref="EmailNormalization.CanonicalizeGmailAlias"/>: folds
+/// googlemail↔gmail, "+tag" and dots, so a stored alias row and the canonical address
+/// Google reports compare equal. Use wherever a Google-reported address is keyed against
+/// stored <c>user_emails</c> data (nobodies-collective/Humans#1101) —
+/// <see cref="NormalizingEmailComparer"/> folds only case and the domain, so an
+/// alias-only match hashes to a different bucket and is silently dropped.
+/// </summary>
+public sealed class GmailAliasEmailComparer : IEqualityComparer<string>
+{
+    public static readonly GmailAliasEmailComparer Instance = new();
+
+    public bool Equals(string? x, string? y) =>
+        x is null || y is null
+            ? string.Equals(x, y, StringComparison.Ordinal)
+            : string.Equals(
+                EmailNormalization.CanonicalizeGmailAlias(x),
+                EmailNormalization.CanonicalizeGmailAlias(y),
+                StringComparison.OrdinalIgnoreCase);
+
+    // CanonicalizeGmailAlias leaves non-Gmail addresses at their original casing,
+    // so the hash must be case-insensitive to agree with Equals.
+    public int GetHashCode(string obj) =>
+        StringComparer.OrdinalIgnoreCase.GetHashCode(EmailNormalization.CanonicalizeGmailAlias(obj));
+}

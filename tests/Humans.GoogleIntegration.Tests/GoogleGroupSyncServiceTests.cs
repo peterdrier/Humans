@@ -741,6 +741,43 @@ public sealed class GoogleGroupSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_Revoke_ResolvesTheExtraMemberFromAGmailAliasRow()
+    {
+        // nobodies-collective/Humans#1101: Google reports the canonical address, but the
+        // only user_emails row is a dotted "+tag" alias of it. The alias match is worthless
+        // unless the owner lookup is keyed by the same Gmail identity Google reports.
+        var departed = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("olduser@gmail.com", "groups/group-1/memberships/old"));
+
+        _userEmailService.MatchByEmailsAsync(
+                Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailMatch>
+            {
+                new("old.user+burn@googlemail.com", departed, true, true, _clock.GetCurrentInstant())
+            });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked,
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            nameof(GoogleGroupSyncService),
+            "olduser@gmail.com",
+            "MEMBER",
+            GoogleSyncSource.ScheduledSync,
+            success: true,
+            errorMessage: null,
+            userId: departed,
+            ct: Arg.Any<CancellationToken>());
+    }
+
     private GoogleGroupSyncService CreateService(params IGoogleGroupMembershipSource[] sources) => new(
         sources,
         _membershipClient,

@@ -87,4 +87,40 @@ public class EmailNormalizationTests
     {
         EmailNormalization.CanonicalizeGmailAlias(input!).Should().Be(input);
     }
+
+    // A dictionary keyed by this comparer is how a Google-reported canonical address
+    // finds a user_emails row stored in an alias form (nobodies-collective/Humans#1101).
+    // Equals and GetHashCode must agree or the entry lands in an unreachable bucket.
+    [HumansTheory]
+    [InlineData("us.er@gmail.com", "user@gmail.com")]
+    [InlineData("us.er+tag@gmail.com", "user@gmail.com")]
+    [InlineData("Us.Er+Tag@GoogleMail.COM", "user@gmail.com")]
+    [InlineData("USER@NOBODIES.TEAM", "user@nobodies.team")]
+    public void GmailAliasEmailComparer_TreatsAliasesAsTheSameAccount(string stored, string reported)
+    {
+        GmailAliasEmailComparer.Instance.Equals(stored, reported).Should().BeTrue();
+        GmailAliasEmailComparer.Instance.GetHashCode(stored)
+            .Should().Be(GmailAliasEmailComparer.Instance.GetHashCode(reported));
+    }
+
+    [HumansTheory]
+    [InlineData("us.er@outlook.com", "user@outlook.com")]
+    [InlineData("user+tag@outlook.com", "user@outlook.com")]
+    [InlineData("other@gmail.com", "user@gmail.com")]
+    public void GmailAliasEmailComparer_DoesNotFoldNonGmailAliases(string a, string b)
+    {
+        GmailAliasEmailComparer.Instance.Equals(a, b).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void GmailAliasEmailComparer_KeyedDictionary_FindsAliasStoredRowByReportedAddress()
+    {
+        var byEmail = new Dictionary<string, int>(GmailAliasEmailComparer.Instance)
+        {
+            ["us.er+tag@googlemail.com"] = 42
+        };
+
+        byEmail.TryGetValue("user@gmail.com", out var value).Should().BeTrue();
+        value.Should().Be(42);
+    }
 }

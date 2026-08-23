@@ -365,10 +365,10 @@ internal sealed class GoogleGroupSyncService(
         IReadOnlyCollection<string> emails, CancellationToken ct)
     {
         if (emails.Count == 0)
-            return new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
+            return new Dictionary<string, Guid>(GmailAliasEmailComparer.Instance);
 
         var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(emails, ct));
-        return owners.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.UserId, NormalizingEmailComparer.Instance);
+        return owners.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.UserId, GmailAliasEmailComparer.Instance);
     }
 
     private async Task<ResourceSyncDiff?> ApplyGroupMembershipChangesAsync(

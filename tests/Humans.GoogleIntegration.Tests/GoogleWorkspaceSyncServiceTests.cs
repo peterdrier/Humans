@@ -758,6 +758,72 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns([]);
     }
 
+    [HumansFact]
+    public async Task SyncSingleResourceAsync_ExtraDriveMember_ResolvesIdentityFromAGmailAliasRow()
+    {
+        // nobodies-collective/Humans#1101: Drive reports the canonical Gmail address while the
+        // only user_emails row is a dotted "+tag" alias. Without an alias-keyed lookup the id
+        // is dropped and the revocation is invisible to /Monitor/Human/{id} and the GDPR export.
+        var departed = Guid.NewGuid();
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
+            .Returns(driveResource);
+        _resourceRepository
+            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+
+        // Empty team — every Google-side permission is "extra".
+        var teamInfo = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
+        _teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
+        _userEmailService
+            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
+
+        _drivePermissions
+            .ListPermissionsAsync(TestGoogleFolderId, Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionListResult(
+                Permissions: [
+                    new DrivePermission(
+                        Id: "perm-alias",
+                        Type: "user",
+                        Role: "writer",
+                        EmailAddress: "olduser@gmail.com",
+                        HasInheritedComponent: false)
+                ],
+                Error: null));
+
+        _userEmailService
+            .MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailMatch(
+                    "old.user+burn@googlemail.com", departed,
+                    IsPrimary: true, IsVerified: true,
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
+            ]);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [departed] = MakeUser(departed, "olduser@gmail.com") }));
+
+        var diff = await _syncService.SyncSingleResourceAsync(
+            TestDriveFolderResourceId, SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
+
+        var extra = diff.Members.Single(m => m.State == MemberSyncState.Extra);
+        extra.Email.Should().Be("olduser@gmail.com");
+        extra.UserId.Should().Be(departed);
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

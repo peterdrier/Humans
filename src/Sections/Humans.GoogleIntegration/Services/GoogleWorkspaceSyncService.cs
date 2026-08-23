@@ -1778,7 +1778,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         var emailList = emails.ToList();
         if (emailList.Count == 0)
-            return new Dictionary<string, (string, Guid, string?)>(NormalizingEmailComparer.Instance);
+            return new Dictionary<string, (string, Guid, string?)>(GmailAliasEmailComparer.Instance);
 
         // One winner per address — an unverified duplicate must not outrank the real owner,
         // since this id is what the sync log attributes the row to.
@@ -1788,7 +1788,7 @@ internal sealed class GoogleWorkspaceSyncService(
         var usersById = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
-            NormalizingEmailComparer.Instance);
+            GmailAliasEmailComparer.Instance);
 
         foreach (var (email, match) in owners)
         {

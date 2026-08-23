@@ -241,8 +241,7 @@ internal sealed partial class UserRepository
         // the Gmail-domain rows the exact pass missed are re-checked,
         // canonical-form to canonical-form — non-Gmail rows are untouched.
         var exactIds = exact.Select(e => e.Id).ToHashSet();
-        var canonicalTargets = new HashSet<string>(
-            emails.Select(EmailNormalization.CanonicalizeGmailAlias), StringComparer.Ordinal);
+        var canonicalTargets = new HashSet<string>(emails, GmailAliasEmailComparer.Instance);
 
         var gmailCandidates = await ctx.UserEmails
             .AsNoTracking()
@@ -250,8 +249,7 @@ internal sealed partial class UserRepository
             .ToListAsync(ct);
 
         var aliasMatches = gmailCandidates.Where(ue =>
-            !exactIds.Contains(ue.Id) &&
-            canonicalTargets.Contains(EmailNormalization.CanonicalizeGmailAlias(ue.Email)));
+            !exactIds.Contains(ue.Id) && canonicalTargets.Contains(ue.Email));
 
         return exact.Concat(aliasMatches).ToList();
     }
