@@ -47,8 +47,10 @@ namespace Humans.Cantina.Services.Dtos;
 /// <param name="People">
 /// One row per unique on-site human on this day. Returned in unspecified
 /// order — the web layer's <c>CantinaRosterAssembler.WithSortedPeople</c>
-/// alphabetizes for display. Humans with no profile row still appear here
-/// with empty dietary fields.
+/// alphabetizes for display. The service builds rows for the whole on-site
+/// cohort regardless of profile state; in practice every on-site human has a
+/// profile row, so the empty-field path is defensive rather than a case the
+/// page is expected to render.
 /// </param>
 internal sealed record DailyMatrixDto(
     int DayOffset,
