@@ -14,13 +14,13 @@ Follow the full process documented in `.claude/agents/spec-compliance-reviewer.m
 
 `$ARGUMENTS` can be:
 - `PR <number>` — review an existing PR on peterdrier/Humans
-- `#NNN #NNN ...` — review current changes against specific issues on nobodies-collective/Humans
+- `#NNN #NNN ...` — review current changes against specific issues (qualify the repo: `peterdrier#NNN` or `nobodies-collective#NNN`; bare `#NNN` = upstream)
 - Empty — scan recent commit messages for issue references and review against those
 
 ## Execution
 
 1. Identify issues (from PR body, arguments, or commit messages)
-2. Fetch each issue from `nobodies-collective/Humans` via `gh issue view <number> --repo nobodies-collective/Humans`
+2. Fetch each issue from its home repo via `gh issue view <number> --repo <owner>/Humans` — resolve the owner from the qualified ref per `memory/process/issue-refs-qualified.md`; treat a bare `#N` as upstream
 3. Extract all acceptance criteria and behavioral requirements from each issue
 4. Read the actual code changes (PR diff or local diff)
 5. For each criterion, check the CODE (not the PR description) — quote evidence for PASS, explain divergence for FAIL
