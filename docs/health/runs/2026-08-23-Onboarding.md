@@ -442,7 +442,19 @@ branch.
    The helper seeds a required, active Volunteers document with an already-effective version,
    invalidates both startup-warmed caches, then dev-logs in without consenting to it. It then
    asserts the resulting step is not `Complete` and throws if it is, so the helper cannot quietly
-   regress into the vacuum it exists to close. CI is the gate — no Docker here.
+   regress into the vacuum it exists to close.
+
+   **Correction — there is no gate.** This entry originally read "CI is the gate — no Docker
+   here." That is false, and checking it was the run's job. `.github/workflows/build.yml:111`
+   runs `dotnet test … --filter "FullyQualifiedName!~Humans.Integration.Tests"`, and the only
+   workflow that does run that project (`localization-sweep.yml`, cron 1st & 15th) filters to
+   `~LocalizationCoverageSweep`. So `OnboardingPageRenderTests` executes nowhere: not locally
+   (no Docker in the doctor's environment), not in `build`, not in the sweep. The helper and
+   the banner test are written and compile, and both are unproven. Whether
+   `Humans.Integration.Tests` should get a CI job at all is a separate question — the project
+   currently builds on every branch and is then filtered out, and `localization-sweep.yml`
+   demonstrates that GitHub-hosted runners have the Docker the self-hosted ones lack. Filed as
+   item 8 of the section-doctor retrospective.
 5. [x] **Widen `OnboardingLocalizerBindingTests` repo-wide once Users and Governance are
    clean.** (Finding 17.) The sweep already runs repo-wide; it is scoped to this section only
    because four real hits remain in Users. **Answered 2026-08-23 — leave them: "those sound
