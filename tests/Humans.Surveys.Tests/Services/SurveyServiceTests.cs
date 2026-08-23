@@ -2348,6 +2348,34 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task AdvanceWizardAsync_stale_identified_autosave_returns_completed_outcome()
+    {
+        var survey = SurveyForWizard(out var q1Id, out _);
+        var draftId = Guid.NewGuid();
+        var state = WizardState(survey.Id, Guid.NewGuid());
+        state.UserId = Guid.NewGuid();
+        state.DraftResponseId = draftId;
+        state.Anonymity = ResponseAnonymity.Identified;
+        _repo.SaveDraftAnswersAsync(
+                draftId,
+                Arg.Any<IReadOnlyList<SurveyAnswer>>(),
+                submittedAt: null,
+                state.InputMethod,
+                state.Culture,
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [Ans(q1Id, "yes")],
+            ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+        await _repo.DidNotReceive().TryFinalizeIdentifiedResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<SurveyResponse>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AdvanceWizardAsync_returns_closed_when_survey_not_open()
     {
         var survey = SurveyForWizard(out var q1Id, out _);

@@ -904,8 +904,10 @@ internal sealed class SurveyService(
                 ct);
             if (!saved)
             {
-                throw new InvalidOperationException(
-                    "This identified response is no longer available.");
+                // Another tab completed this participation after the page loaded. Treat the losing
+                // wizard as complete: the controller clears its stale session and redirects to the
+                // same thank-you outcome without writing over the winning response.
+                return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
             }
         }
 
