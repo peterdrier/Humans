@@ -358,9 +358,9 @@ internal sealed class VendorCommitmentService(
         if (accepted && !await repo.LinkPurchaseDocumentAsync(
                 candidate.VendorCommitmentId, candidate.HoldedDocId, candidate.HoldedDocNumber, now, ct))
             return ExpenseMutationResult.Failure(
-                "That purchase document can no longer be linked here — either this commitment " +
-                "already carries one, or the document has since been linked to another " +
-                "commitment. Dismiss the item instead.");
+                "That purchase document can no longer be linked here — this commitment already " +
+                "carries one, or has since been closed, or the document has been linked to " +
+                "another commitment. Dismiss the item instead.");
 
         if (!await repo.ResolveCandidateAsync(candidateId, accepted, actorUserId, now, ct))
             return ExpenseMutationResult.Failure("Review item not found.");

@@ -408,6 +408,64 @@ public sealed class VendorCommitmentServiceTests
         pending.Select(c => c.HoldedDocId).Should().BeEquivalentTo(["doc-2"]);
     }
 
+    [HumansFact]
+    public async Task ResolveCandidateAsync_CannotLinkIntoAClosedCommitment()
+    {
+        var id = await RecordAsync(4_024.30m, "Talleres Fandos");
+        _holded.ListPurchaseDocumentsAsync(Ct).Returns(
+        [
+            ListItem("doc-1", 4_024.30m, "Talleres Fandos"),
+            ListItem("doc-2", 4_024.30m, "Talleres Fandos SL"),
+        ]);
+        await _sut.RunMatchingAsync(Guid.NewGuid(), Ct);
+        var queued = (await _sut.GetAsync(id, Ct))!.PendingCandidates[0].Id;
+        (await _sut.CloseAsync(id, Guid.NewGuid(), Ct)).Succeeded.Should().BeTrue();
+
+        var result = await _sut.ResolveCandidateAsync(queued, accepted: true, Guid.NewGuid(), Ct);
+
+        result.Succeeded.Should().BeFalse();
+        var commitment = await _sut.GetAsync(id, Ct);
+        commitment!.Status.Should().Be(VendorCommitmentStatus.Closed);
+        commitment.MatchedHoldedDocId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CloseAsync_ClearsTheReviewRowsThatCanNoLongerBeAccepted()
+    {
+        var id = await RecordAsync(4_024.30m, "Talleres Fandos");
+        _holded.ListPurchaseDocumentsAsync(Ct).Returns(
+        [
+            ListItem("doc-1", 4_024.30m, "Talleres Fandos"),
+            ListItem("doc-2", 4_024.30m, "Talleres Fandos SL"),
+        ]);
+        await _sut.RunMatchingAsync(Guid.NewGuid(), Ct);
+        (await _sut.GetAsync(id, Ct))!.PendingCandidates.Should().HaveCount(2);
+
+        await _sut.CloseAsync(id, Guid.NewGuid(), Ct);
+
+        (await _sut.GetAsync(id, Ct))!.PendingCandidates.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ResolveCandidateAsync_Accept_ClearsTheCommitmentsOtherReviewRows()
+    {
+        var id = await RecordAsync(4_024.30m, "Talleres Fandos");
+        _holded.ListPurchaseDocumentsAsync(Ct).Returns(
+        [
+            ListItem("doc-1", 4_024.30m, "Talleres Fandos"),
+            ListItem("doc-2", 4_024.30m, "Talleres Fandos SL"),
+        ]);
+        await _sut.RunMatchingAsync(Guid.NewGuid(), Ct);
+        var chosen = await PendingCandidateIdAsync(id, "doc-2");
+
+        (await _sut.ResolveCandidateAsync(chosen, accepted: true, Guid.NewGuid(), Ct))
+            .Succeeded.Should().BeTrue();
+
+        var commitment = await _sut.GetAsync(id, Ct);
+        commitment!.MatchedHoldedDocId.Should().Be("doc-2");
+        commitment.PendingCandidates.Should().BeEmpty();
+    }
+
     private static HoldedPurchaseDocListItemDto ListItem(string id, decimal total, string contact) =>
         new()
         {

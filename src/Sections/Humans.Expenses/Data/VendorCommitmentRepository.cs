@@ -76,6 +76,11 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         // Already carrying a document is the dupe case — the caller queues a review row instead.
         if (commitment is null || commitment.MatchedHoldedDocId is not null) return false;
 
+        // Closed is terminal. A commitment abandoned unpaid can still have review rows queued
+        // against it, and linking one would walk the status back to Invoiced — reopening a matter
+        // the accountant already settled.
+        if (commitment.Status == VendorCommitmentStatus.Closed) return false;
+
         // One document backs at most one commitment. The matching run enforces this within a run;
         // a human accepting two review rows for the same document would otherwise slip past it.
         if (await ctx.VendorCommitments.AnyAsync(
@@ -88,13 +93,15 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         commitment.Status = VendorCommitmentStatus.Invoiced;
         commitment.UpdatedAt = matchedAt;
 
-        // The document is spoken for, so every other commitment's pending row for it can now only
-        // fail. Drop them rather than leave the operator an unacceptable review item.
+        // Two sets of review rows can now only fail, so neither is left for the operator to find:
+        // every other commitment's row for this document, because the document is spoken for; and
+        // this commitment's rows for other documents, because it now carries one. The row being
+        // accepted — this commitment, this document — survives for the caller to resolve.
         ctx.VendorCommitmentMatchCandidates.RemoveRange(
             await ctx.VendorCommitmentMatchCandidates
-                .Where(c => c.HoldedDocId == holdedDocId
-                    && c.VendorCommitmentId != commitmentId
-                    && c.ResolvedAt == null)
+                .Where(c => c.ResolvedAt == null
+                    && ((c.HoldedDocId == holdedDocId && c.VendorCommitmentId != commitmentId)
+                        || (c.VendorCommitmentId == commitmentId && c.HoldedDocId != holdedDocId)))
                 .ToListAsync(ct));
 
         await ctx.SaveChangesAsync(ct);
@@ -111,6 +118,15 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         commitment.Status = VendorCommitmentStatus.Closed;
         commitment.ClosedAt = closedAt;
         commitment.UpdatedAt = closedAt;
+
+        // Unresolved rows are the matcher's suggestions, not a human's ruling, and a closed
+        // commitment can no longer accept one. Drop them so the queue count and the Link action
+        // do not outlive the commitment. Resolved rows stay — those record what a human decided.
+        ctx.VendorCommitmentMatchCandidates.RemoveRange(
+            await ctx.VendorCommitmentMatchCandidates
+                .Where(c => c.VendorCommitmentId == commitmentId && c.ResolvedAt == null)
+                .ToListAsync(ct));
+
         await ctx.SaveChangesAsync(ct);
         return true;
     }
