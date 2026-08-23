@@ -10,6 +10,8 @@ Both repos have issues enabled. Route new issues by kind:
 
 Existing issues stay where they are — no migration.
 
+The two lists can overlap for agent-created content; capability decides: a cloud agent files on the fork even for feedback/direction material (it cannot create upstream issues) and flags it for Peter to re-home, while sessions with upstream access route by content.
+
 **Why:** Cloud sessions can't create issues on upstream (no write access), and Peter's engineering backlog doesn't need teammate visibility. Direction-level issues stay where Daniel and teammates watch.
 
 **How to apply:**

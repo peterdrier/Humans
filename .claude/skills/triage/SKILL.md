@@ -224,7 +224,7 @@ Build a `gitHubIssueNumber` → reporter(s) lookup across both sources (in-app i
 |---|-------|-----------|-----------|--------|
 | 1 | nobodies-collective#174 — Creating team with duplicate slug | 56187b8 | fb:a1b2c3d4 | Close + Notify |
 | 2 | nobodies-collective#175 — Role edit exceeds varchar limit | 56187b8 | — | Close |
-| 3 | peterdrier#176 — Staffing chart decimals | 8a8d6f7 | iss:3bac920b | Close + Notify |
+| 3 | peterdrier#176 — Staffing chart decimals | 8a8d6f7 | — | Close |
 ```
 
 Present inline and ask which to take (do not use `AskUserQuestion`):
