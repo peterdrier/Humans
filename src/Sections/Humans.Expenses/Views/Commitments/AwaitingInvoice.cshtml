@@ -46,7 +46,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var c in Model.Commitments)
+                @foreach (var c in Model.ByLiability)
                 {
                     <tr>
                         <td><a asp-action="Detail" asp-route-id="@c.Id">@c.VendorName</a></td>

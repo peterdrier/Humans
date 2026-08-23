@@ -666,12 +666,15 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
-// Block direct /uploads/profile-pictures/ before UseStaticFiles — must go through /Profile/Picture/{id} for GDPR anonymization gate.
+// Two subpaths of the static uploads area must never be served off disk, so they are 404'd before
+// UseStaticFiles: anything a section stored under IFileStorage.PrivateKeyPrefix, and profile
+// pictures, which predate that convention and go through /Profile/Picture/{id} for the GDPR gate.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value;
     if (path is not null &&
-        path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase))
+        (path.StartsWith($"/{IFileStorage.PrivateKeyPrefix}", StringComparison.OrdinalIgnoreCase) ||
+         path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase)))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;

@@ -18,10 +18,7 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
     public async Task<IReadOnlyList<VendorCommitmentDto>> GetAllAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var entities = await Query(ctx)
-            // arch:db-sort-ok registry list — newest commitments on top by default
-            .OrderByDescending(c => c.CreatedAt)
-            .ToListAsync(ct);
+        var entities = await Query(ctx).ToListAsync(ct);
 
         return entities.Select(ToDto).ToList();
     }
@@ -79,11 +76,27 @@ internal sealed class VendorCommitmentRepository(IDbContextFactory<ExpensesDbCon
         // Already carrying a document is the dupe case — the caller queues a review row instead.
         if (commitment is null || commitment.MatchedHoldedDocId is not null) return false;
 
+        // One document backs at most one commitment. The matching run enforces this within a run;
+        // a human accepting two review rows for the same document would otherwise slip past it.
+        if (await ctx.VendorCommitments.AnyAsync(
+                c => c.Id != commitmentId && c.MatchedHoldedDocId == holdedDocId, ct))
+            return false;
+
         commitment.MatchedHoldedDocId = holdedDocId;
         commitment.MatchedHoldedDocNumber = holdedDocNumber;
         commitment.MatchedAt = matchedAt;
         commitment.Status = VendorCommitmentStatus.Invoiced;
         commitment.UpdatedAt = matchedAt;
+
+        // The document is spoken for, so every other commitment's pending row for it can now only
+        // fail. Drop them rather than leave the operator an unacceptable review item.
+        ctx.VendorCommitmentMatchCandidates.RemoveRange(
+            await ctx.VendorCommitmentMatchCandidates
+                .Where(c => c.HoldedDocId == holdedDocId
+                    && c.VendorCommitmentId != commitmentId
+                    && c.ResolvedAt == null)
+                .ToListAsync(ct));
+
         await ctx.SaveChangesAsync(ct);
         return true;
     }

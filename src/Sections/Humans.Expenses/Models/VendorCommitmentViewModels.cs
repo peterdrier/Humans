@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Services.Dtos;
+using NodaTime;
 
 namespace Humans.Expenses.Models;
 
@@ -10,17 +11,42 @@ internal sealed class CommitmentIndexViewModel
     /// <summary>Hides the "Match against Holded" button where no API key is configured.</summary>
     public required bool HoldedConfigured { get; init; }
 
+    /// <summary>Newest commitments on top — the registry's default reading order.</summary>
+    public IReadOnlyList<VendorCommitmentDto> Newest =>
+        Commitments.OrderByDescending(c => c.CreatedAt).ToList();
+
     public int PendingReviewCount => Commitments.Sum(c => c.PendingCandidates.Count);
     public int AwaitingInvoiceCount => Commitments.Count(c => c.IsPaidAwaitingInvoice);
 }
 
 internal sealed class CommitmentAwaitingInvoiceViewModel
 {
-    /// <summary>Already ordered by age × amount — worst liability first.</summary>
     public required IReadOnlyList<VendorCommitmentDto> Commitments { get; init; }
     public required IReadOnlyDictionary<Guid, string> CategoryNames { get; init; }
+    /// <summary>Anchors the age half of the liability sort.</summary>
+    public required Instant Now { get; init; }
 
     public decimal TotalOutstanding => Commitments.Sum(c => c.TotalPaid);
+
+    /// <summary>Worst liability first, so an old six-figure hole outranks a fresh small one.</summary>
+    public IReadOnlyList<VendorCommitmentDto> ByLiability =>
+        Commitments
+            .OrderByDescending(c => LiabilityWeight(c, Now))
+            .ThenByDescending(c => c.TotalPaid)
+            .ToList();
+
+    /// <summary>
+    /// Age × euros outstanding. Age counts from the first payment out, since that is when the
+    /// association started being owed an invoice. Days are offset by one so the amount still
+    /// discriminates on the day a payment is made; a bare multiply would score every same-day
+    /// liability zero, tiny and six-figure alike.
+    /// </summary>
+    private static decimal LiabilityWeight(VendorCommitmentDto c, Instant now)
+    {
+        var oldestPayment = c.Payments.Count == 0 ? c.CreatedAt : c.Payments.Min(p => p.CreatedAt);
+        var days = (decimal)Math.Max(0d, (now - oldestPayment).TotalDays);
+        return (days + 1m) * c.TotalPaid;
+    }
 }
 
 internal sealed class CommitmentDetailViewModel

@@ -21,6 +21,7 @@ internal sealed class CommitmentsController(
     IUserServiceRead userService,
     IVendorCommitmentService service,
     IBudgetServiceRead budgetService,
+    IClock clock,
     ILogger<CommitmentsController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -43,6 +44,7 @@ internal sealed class CommitmentsController(
         {
             Commitments = commitments,
             CategoryNames = await CategoryNamesAsync(),
+            Now = clock.GetCurrentInstant(),
         });
     }
 

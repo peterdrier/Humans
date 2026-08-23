@@ -20,14 +20,16 @@ public class VendorCommitmentMatcherTests
     private static readonly LocalDate Day = new(2026, 6, 1);
 
     private static MatchableDocument Doc(
-        string id, decimal total, string contact = "TOI TOI", int dayOffset = 0) =>
-        new(id, $"PC-{id}", contact, Day.PlusDays(dayOffset), total);
+        string id, decimal total, string contact = "TOI TOI", int dayOffset = 0,
+        string currency = "EUR") =>
+        new(id, $"PC-{id}", contact, Day.PlusDays(dayOffset), total, currency);
 
     [HumansFact]
     public void NoDocumentAtTheCommittedAmount_IsNoMatch()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            100m, "TOI TOI", alreadyInvoiced: false, [Doc("a", 99.99m), Doc("b", 100.01m)]);
+            100m, "TOI TOI", "EUR", alreadyInvoiced: false,
+            [Doc("a", 99.99m), Doc("b", 100.01m)]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.NoMatch);
         outcome.ForReview.Should().BeEmpty();
@@ -37,7 +39,7 @@ public class VendorCommitmentMatcherTests
     public void SingleExactAmountAndVendor_Links()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            69_398.34m, "TOI TOI", alreadyInvoiced: false,
+            69_398.34m, "TOI TOI", "EUR", alreadyInvoiced: false,
             [Doc("a", 69_398.34m), Doc("b", 1_000m)]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.Link);
@@ -49,7 +51,7 @@ public class VendorCommitmentMatcherTests
     public void AmountMatchesButVendorDoesNot_IsNoMatch()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            500m, "Talleres Fandos", alreadyInvoiced: false, [Doc("a", 500m, "Repsol")]);
+            500m, "Talleres Fandos", "EUR", alreadyInvoiced: false, [Doc("a", 500m, "Repsol")]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.NoMatch);
     }
@@ -60,7 +62,7 @@ public class VendorCommitmentMatcherTests
     public void TwoEqualFits_GoToReviewAsAmbiguous_AndNeitherIsLinked()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            4_024.30m, "Talleres Fandos", alreadyInvoiced: false,
+            4_024.30m, "Talleres Fandos", "EUR", alreadyInvoiced: false,
             [
                 Doc("a", 4_024.30m, "Talleres Fandos", dayOffset: 0),
                 Doc("b", 4_024.30m, "Talleres Fandos SL", dayOffset: 40),
@@ -78,7 +80,7 @@ public class VendorCommitmentMatcherTests
     public void DateProximityIsNeverUsedToBreakATie()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            250m, "Covey", alreadyInvoiced: false,
+            250m, "Covey", "EUR", alreadyInvoiced: false,
             [Doc("near", 250m, "Covey", dayOffset: 1), Doc("far", 250m, "Covey", dayOffset: 300)]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.Review);
@@ -91,7 +93,7 @@ public class VendorCommitmentMatcherTests
     public void SecondDocumentForAnInvoicedCommitment_IsFlaggedAsDuplicate_NotLinked()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            69_398.34m, "TOI TOI", alreadyInvoiced: true, [Doc("second", 69_398.34m)]);
+            69_398.34m, "TOI TOI", "EUR", alreadyInvoiced: true, [Doc("second", 69_398.34m)]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.Review);
         outcome.ReviewKind.Should().Be(VendorCommitmentMatchKind.Duplicate);
@@ -103,9 +105,32 @@ public class VendorCommitmentMatcherTests
     public void InvoicedCommitmentWithNoFurtherMatch_StaysQuiet()
     {
         var outcome = VendorCommitmentMatcher.Match(
-            69_398.34m, "TOI TOI", alreadyInvoiced: true, [Doc("other", 12m)]);
+            69_398.34m, "TOI TOI", "EUR", alreadyInvoiced: true, [Doc("other", 12m)]);
 
         outcome.Decision.Should().Be(VendorCommitmentMatchDecision.NoMatch);
+    }
+
+    // Equal nominal totals in different currencies are different sums of money, so the vendor and
+    // the amount both agreeing is a coincidence rather than a fit.
+    [HumansFact]
+    public void SameAmountInAnotherCurrency_IsNoMatch()
+    {
+        var outcome = VendorCommitmentMatcher.Match(
+            1_000m, "TOI TOI", "EUR", alreadyInvoiced: false,
+            [Doc("usd", 1_000m, currency: "USD")]);
+
+        outcome.Decision.Should().Be(VendorCommitmentMatchDecision.NoMatch);
+    }
+
+    // Holded reports the currency lowercase ("eur"); the commitment stores it uppercase.
+    [HumansFact]
+    public void CurrencyIsComparedCaseInsensitively()
+    {
+        var outcome = VendorCommitmentMatcher.Match(
+            1_000m, "TOI TOI", "EUR", alreadyInvoiced: false,
+            [Doc("a", 1_000m, currency: "eur")]);
+
+        outcome.Decision.Should().Be(VendorCommitmentMatchDecision.Link);
     }
 
     // The Cruz Roja duplicate hid for months behind exactly this name mismatch.

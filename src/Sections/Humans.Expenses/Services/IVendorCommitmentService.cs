@@ -20,8 +20,8 @@ internal interface IVendorCommitmentService : IApplicationService
     Task<IReadOnlyList<VendorCommitmentDto>> ListAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The liability list: commitments with money out and no purchase document, worst first —
-    /// ordered by age × amount, so an old six-figure hole outranks a fresh small one.
+    /// The liability list: commitments with money out and no purchase document. Unordered — the
+    /// worst-first (age × amount) presentation is assembled by the view model.
     /// </summary>
     Task<IReadOnlyList<VendorCommitmentDto>> ListPaidAwaitingInvoiceAsync(CancellationToken ct = default);
 

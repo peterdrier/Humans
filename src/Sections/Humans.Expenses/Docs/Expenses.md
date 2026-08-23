@@ -96,7 +96,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | Purpose | string | what the money is for |
 | BudgetCategoryId | Guid? | FK → Budget.BudgetCategory (cross-domain, scalar only) |
 | Status | VendorCommitmentStatus | see enum below |
-| QuoteFileName / QuoteContentType / QuoteExtension / QuoteUploadedAt | — | the accepted quote; bytes via `IFileStorage`, key `uploads/vendor-commitment-quotes/{Id}{Extension}`. Deliberately **not** an `expense_attachments` row: that table is member-scoped and on the GDPR export path, and a vendor's quote is the organisation's document |
+| QuoteFileName / QuoteContentType / QuoteExtension / QuoteUploadedAt | — | the accepted quote; bytes via `IFileStorage`, key `uploads/private/vendor-commitment-quotes/{Id}{Extension}` — under `IFileStorage.PrivateKeyPrefix`, which `Program.cs` 404s ahead of `UseStaticFiles`, so a vendor's commercial terms are reachable only through the finance-gated download action. Deliberately **not** an `expense_attachments` row: that table is member-scoped and on the GDPR export path, and a vendor's quote is the organisation's document |
 | MatchedHoldedDocId / MatchedHoldedDocNumber / MatchedAt | — | the linked Holded purchase document |
 | CreatedByUserId | Guid | scalar FK |
 | CreatedAt / UpdatedAt / ClosedAt | Instant | |
@@ -202,7 +202,8 @@ Fields: `VendorCommitmentId` (FK), `HoldedDocId`, `HoldedDocNumber`, `ContactNam
 - A commitment's status is **derived, not chosen**: `Open → PartiallyPaid → Paid` follows the sum of its payment rows, `Invoiced` follows a linked purchase document, and a payment arriving after the invoice never walks the status backwards. `Closed` is reachable only from `Invoiced` or from `Open` with no payments; no payment may be recorded against a Closed commitment.
 - **Matching never guesses.** `VendorCommitmentMatcher` matches amount-first and exactly, uses the vendor name only as a constraint (normalized: lowercased, diacritics stripped, non-alphanumerics dropped, containment either way with a 4-character floor), and has no tie-break of any kind — deliberately not date proximity. One fit links; two or more fits go to the review queue as `Ambiguous`; none is left alone. This is asserted on the pure function in `VendorCommitmentMatcherTests`, not only through the screens.
 - **A purchase document matching an already-Invoiced commitment is flagged, never linked** — the TOI TOI / Cruz Roja failure (~€120k of duplicate expenses in the '26 books) becomes structurally impossible rather than a matter of care. The check runs before any narrowing, so no fit is good enough to bypass it.
-- One purchase document can back at most one commitment: documents already linked anywhere are excluded from every commitment's candidate pool before matching.
+- One purchase document can back at most one commitment. Documents already linked anywhere are excluded from every commitment's candidate pool before matching, and the link itself refuses a document another commitment already carries — the review queue offers the same ambiguous document to two commitments, so the run-level exclusion alone would not hold on the human path. Accepting a document also withdraws every other commitment's pending review row for it.
+- Matching is currency-aware: a purchase document is only ever a fit in the commitment's own currency, so an equal nominal total in USD or GBP is a coincidence and not a match.
 - Re-running the matcher never resurrects a decision a human already made: resolved review rows are left untouched, and only pending rows are refreshed or withdrawn.
 
 ## Negative Access Rules

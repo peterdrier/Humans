@@ -164,20 +164,6 @@ public sealed class VendorCommitmentServiceTests
     }
 
     [HumansFact]
-    public async Task ListPaidAwaitingInvoiceAsync_OrdersByAgeTimesAmount()
-    {
-        var small = await RecordAsync(100m, "Alba");
-        await _sut.RecordPaymentAsync(small, 100m, PaidOn, null, Guid.NewGuid(), Ct);
-        var large = await RecordAsync(50_000m, "Cruz Roja");
-        await _sut.RecordPaymentAsync(large, 50_000m, PaidOn, null, Guid.NewGuid(), Ct);
-
-        var awaiting = await _sut.ListPaidAwaitingInvoiceAsync(Ct);
-
-        // Same age, so the larger liability sorts first.
-        awaiting.Select(c => c.Id).Should().ContainInOrder(large, small);
-    }
-
-    [HumansFact]
     public async Task RunMatchingAsync_LinksTheSingleExactFit_AndMarksItInvoiced()
     {
         var id = await RecordAsync(69_398.34m, "TOI TOI");
@@ -326,6 +312,56 @@ public sealed class VendorCommitmentServiceTests
             .Select(id => _sut.GetAsync(id, Ct).GetAwaiter().GetResult()!.MatchedHoldedDocId)
             .Count(docId => docId is not null);
         linked.Should().Be(1);
+    }
+
+    /// <summary>
+    /// Two commitments to the same vendor for the same amount, two documents that fit both. Every
+    /// document is Ambiguous on both commitments, and a Review decision claims nothing — so the
+    /// review queue, unlike the matching run, can offer one document to two operators in turn.
+    /// </summary>
+    private async Task<(Guid First, Guid Second)> TwoCommitmentsSharingCandidatesAsync()
+    {
+        var first = await RecordAsync(500m, "Repsol");
+        var second = await RecordAsync(500m, "Repsol");
+        _holded.ListPurchaseDocumentsAsync(Ct).Returns(
+        [
+            ListItem("doc-1", 500m, "Repsol"),
+            ListItem("doc-2", 500m, "Repsol"),
+        ]);
+        await _sut.RunMatchingAsync(Guid.NewGuid(), Ct);
+        return (first, second);
+    }
+
+    private async Task<Guid> PendingCandidateIdAsync(Guid commitmentId, string holdedDocId) =>
+        (await _sut.GetAsync(commitmentId, Ct))!.PendingCandidates
+            .First(c => string.Equals(c.HoldedDocId, holdedDocId, StringComparison.Ordinal)).Id;
+
+    [HumansFact]
+    public async Task ResolveCandidateAsync_CannotAcceptADocumentAnotherCommitmentAlreadyCarries()
+    {
+        var (first, second) = await TwoCommitmentsSharingCandidatesAsync();
+        var onSecond = await PendingCandidateIdAsync(second, "doc-1");
+        var onFirst = await PendingCandidateIdAsync(first, "doc-1");
+        (await _sut.ResolveCandidateAsync(onFirst, accepted: true, Guid.NewGuid(), Ct))
+            .Succeeded.Should().BeTrue();
+
+        var result = await _sut.ResolveCandidateAsync(onSecond, accepted: true, Guid.NewGuid(), Ct);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(second, Ct))!.MatchedHoldedDocId.Should().BeNull();
+        (await _sut.GetAsync(first, Ct))!.MatchedHoldedDocId.Should().Be("doc-1");
+    }
+
+    [HumansFact]
+    public async Task ResolveCandidateAsync_Accept_DropsTheDocumentFromEveryOtherReviewQueue()
+    {
+        var (first, second) = await TwoCommitmentsSharingCandidatesAsync();
+
+        await _sut.ResolveCandidateAsync(
+            await PendingCandidateIdAsync(first, "doc-1"), accepted: true, Guid.NewGuid(), Ct);
+
+        var pending = (await _sut.GetAsync(second, Ct))!.PendingCandidates;
+        pending.Select(c => c.HoldedDocId).Should().BeEquivalentTo(["doc-2"]);
     }
 
     private static HoldedPurchaseDocListItemDto ListItem(string id, decimal total, string contact) =>

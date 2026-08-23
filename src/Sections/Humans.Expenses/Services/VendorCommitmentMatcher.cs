@@ -7,7 +7,7 @@ namespace Humans.Expenses.Services;
 
 /// <summary>A Holded purchase document reduced to the fields matching actually uses.</summary>
 internal sealed record MatchableDocument(
-    string Id, string DocNumber, string ContactName, LocalDate Date, decimal Total);
+    string Id, string DocNumber, string ContactName, LocalDate Date, decimal Total, string Currency);
 
 internal enum VendorCommitmentMatchDecision
 {
@@ -51,6 +51,10 @@ internal static class VendorCommitmentMatcher
     /// </summary>
     /// <param name="expectedAmount">The committed amount, matched exactly.</param>
     /// <param name="vendorName">The commitment's vendor, matched by normalized containment.</param>
+    /// <param name="currency">
+    /// The commitment's currency. A document in another currency is a different sum of money, so
+    /// an equal nominal total is a coincidence, never a fit.
+    /// </param>
     /// <param name="alreadyInvoiced">
     /// True when the commitment already carries a purchase document. Every further match is then a
     /// suspected duplicate and is flagged, never linked — the €120k proforma-and-invoice failure.
@@ -58,10 +62,14 @@ internal static class VendorCommitmentMatcher
     public static VendorCommitmentMatchOutcome Match(
         decimal expectedAmount,
         string vendorName,
+        string currency,
         bool alreadyInvoiced,
         IReadOnlyList<MatchableDocument> documents)
     {
-        var exact = documents.Where(d => d.Total == expectedAmount).ToList();
+        var exact = documents
+            .Where(d => d.Total == expectedAmount
+                && string.Equals(d.Currency, currency, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         if (exact.Count == 0) return NoMatch;
 
         // Checked before any narrowing: a second document for an invoiced commitment is a dupe

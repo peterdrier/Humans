@@ -34,9 +34,10 @@ internal sealed class VendorCommitmentService(
     private static readonly HashSet<string> AllowedExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".jpg", ".jpeg", ".png", ".heic" };
 
-    /// <summary>One quote file per commitment, keyed by the commitment id.</summary>
+    /// <summary>One quote file per commitment, keyed by the commitment id. Private: a vendor's
+    /// commercial terms are only ever reachable through the finance-gated download action.</summary>
     internal static string QuoteKey(Guid commitmentId, string extension) =>
-        $"uploads/vendor-commitment-quotes/{commitmentId}{extension}";
+        $"{IFileStorage.PrivateKeyPrefix}vendor-commitment-quotes/{commitmentId}{extension}";
 
     public bool MatchingAvailable => holdedClient.IsConfigured;
 
@@ -49,26 +50,8 @@ internal sealed class VendorCommitmentService(
     public async Task<IReadOnlyList<VendorCommitmentDto>> ListPaidAwaitingInvoiceAsync(
         CancellationToken ct = default)
     {
-        var now = clock.GetCurrentInstant();
         var all = await repo.GetAllAsync(ct);
-        return all
-            .Where(c => c.IsPaidAwaitingInvoice)
-            .OrderByDescending(c => LiabilityWeight(c, now))
-            .ThenByDescending(c => c.TotalPaid)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Age × euros outstanding — the sort the liability list is defined by. Age counts from the
-    /// first payment out, since that is when the association started being owed an invoice. Days
-    /// are offset by one so the amount still discriminates on the day a payment is made; a bare
-    /// multiply would score every same-day liability zero, tiny and six-figure alike.
-    /// </summary>
-    private static decimal LiabilityWeight(VendorCommitmentDto c, Instant now)
-    {
-        var oldestPayment = c.Payments.Count == 0 ? c.CreatedAt : c.Payments.Min(p => p.CreatedAt);
-        var days = (decimal)Math.Max(0d, (now - oldestPayment).TotalDays);
-        return (days + 1m) * c.TotalPaid;
+        return all.Where(c => c.IsPaidAwaitingInvoice).ToList();
     }
 
     public async Task<(ExpenseMutationResult Result, Guid? CommitmentId)> CreateAsync(
@@ -266,11 +249,12 @@ internal sealed class VendorCommitmentService(
             var pool = docs
                 .Where(d => !claimed.Contains(d.Id))
                 .Select(d => new MatchableDocument(
-                    d.Id, d.DocNumber, d.ContactName, d.Date.InZone(MadridZone).Date, d.Total))
+                    d.Id, d.DocNumber, d.ContactName, d.Date.InZone(MadridZone).Date,
+                    d.Total, d.Currency))
                 .ToList();
 
             var outcome = VendorCommitmentMatcher.Match(
-                commitment.ExpectedAmount, commitment.VendorName,
+                commitment.ExpectedAmount, commitment.VendorName, commitment.Currency,
                 commitment.MatchedHoldedDocId is not null, pool);
 
             switch (outcome.Decision)
@@ -352,8 +336,9 @@ internal sealed class VendorCommitmentService(
         if (accepted && !await repo.LinkPurchaseDocumentAsync(
                 candidate.VendorCommitmentId, candidate.HoldedDocId, candidate.HoldedDocNumber, now, ct))
             return ExpenseMutationResult.Failure(
-                "This commitment already carries a purchase document. Dismiss the item instead, " +
-                "or unlink the existing document in Holded first.");
+                "That purchase document can no longer be linked here — either this commitment " +
+                "already carries one, or the document has since been linked to another " +
+                "commitment. Dismiss the item instead.");
 
         if (!await repo.ResolveCandidateAsync(candidateId, accepted, actorUserId, now, ct))
             return ExpenseMutationResult.Failure("Review item not found.");

@@ -14,7 +14,8 @@ internal interface IVendorCommitmentRepository : IRepository
 {
     Task<VendorCommitmentDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Every commitment, newest first. ~hundreds of rows — no pagination by design.</summary>
+    /// <summary>Every commitment, unordered — display order is the caller's.
+    /// ~hundreds of rows, so no pagination by design.</summary>
     Task<IReadOnlyList<VendorCommitmentDto>> GetAllAsync(CancellationToken ct = default);
 
     Task<Guid> AddAsync(VendorCommitment commitment, CancellationToken ct = default);
@@ -30,8 +31,9 @@ internal interface IVendorCommitmentRepository : IRepository
         Guid commitmentId, string fileName, string contentType, string extension,
         Instant uploadedAt, CancellationToken ct = default);
 
-    /// <summary>Links the purchase document and moves the commitment to Invoiced.
-    /// False when the commitment does not exist or already carries a document.</summary>
+    /// <summary>Links the purchase document, moves the commitment to Invoiced and drops every other
+    /// commitment's pending review row for that document. False when the commitment does not exist,
+    /// already carries a document, or the document already backs another commitment.</summary>
     Task<bool> LinkPurchaseDocumentAsync(
         Guid commitmentId, string holdedDocId, string holdedDocNumber,
         Instant matchedAt, CancellationToken ct = default);

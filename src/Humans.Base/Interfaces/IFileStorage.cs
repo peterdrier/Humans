@@ -16,6 +16,14 @@ namespace Humans.Base.Interfaces;
 public interface IFileStorage
 {
     /// <summary>
+    /// Keys under this prefix are never served as static files — the hosting layer 404s the
+    /// matching URL path, so the only way to them is an authorized controller action calling
+    /// <see cref="TryReadAsync"/>. Use it for anything the whole internet must not be able to
+    /// fetch by guessing a key.
+    /// </summary>
+    const string PrivateKeyPrefix = "uploads/private/";
+
+    /// <summary>
     /// Atomically write <paramref name="content"/> to <paramref name="key"/>,
     /// overwriting any existing file. Implementations write to a temp sibling
     /// and rename so readers never observe a partial file.
