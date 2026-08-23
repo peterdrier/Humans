@@ -52,6 +52,7 @@ public static class GdprExportSections
     public const string SurveyResponses = "SurveyResponses";
     public const string GateScans = "GateScans";
     public const string GoogleSyncLog = "GoogleSyncLog";
+    public const string EmailOutbox = "EmailOutbox";
 
     /// <summary>
     /// Erasure-only: MailerLite owns no user-scoped tables, so

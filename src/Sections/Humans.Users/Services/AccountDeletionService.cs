@@ -122,21 +122,19 @@ internal sealed class AccountDeletionService(
             return new OnboardingResult(false, "NotFound");
 
         // Same Article 17 fan-out as the expiry path — an admin purge must not
-        // erase less than the scheduled job does.
+        // erase less than the scheduled job does. The Account contributor inside
+        // it owns the identity collapse (tombstone name and address, external
+        // logins, permanent lockout); a second pass here would capture the
+        // tombstone instead of the real name and break IsGdprAnonymized.
         await EraseEverySectionAsync(userId, ct);
-
-        // Identity-only at the User aggregate; own-data delete in IUserService.PurgeOwnDataAsync.
-        var displayName = await userService.PurgeOwnDataAsync(userId, ct);
-        if (displayName is null)
-            return new OnboardingResult(false, "NotFound");
-
-        // Sever external logins so OAuth sign-in creates a fresh user.
-        await userService.DeleteAllExternalLoginsForUserAsync(userId, ct);
 
         // Drop ActiveTeams cache so consumers don't expose pre-purge identity until TTL.
         teamService.InvalidateActiveTeamsCache();
 
-        // Match AnonymizeExpiredAccountAsync's invalidation surface.
+        // Match AnonymizeExpiredAccountAsync's invalidation surface — contributors
+        // run against the inner UserService, so nothing behind the caching
+        // decorator has seen the collapse yet.
+        await userInfoInvalidator.InvalidateAsync(userId, ct);
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);

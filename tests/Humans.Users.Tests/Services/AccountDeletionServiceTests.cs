@@ -265,14 +265,14 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
-        _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns((string?)null);
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
-        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(Guid.Empty, Arg.Any<CancellationToken>());
+        await _identityContributor.DidNotReceiveWithAnyArgs()
+            .EraseForUserAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -280,7 +280,6 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
         var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -288,11 +287,12 @@ public class AccountDeletionServiceTests
         // An admin purge must not erase less than the scheduled job does.
         await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
         await _identityContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
-        await _userService.Received(1).DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
-        // off identity must also drop on admin purge.
+        // off identity must also drop on admin purge. The UserInfo entry first —
+        // contributors run against the inner UserService.
+        await _userInfoInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
@@ -303,7 +303,6 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
         await _service.PurgeAsync(userId, actorId, Xunit.TestContext.Current.CancellationToken);
 

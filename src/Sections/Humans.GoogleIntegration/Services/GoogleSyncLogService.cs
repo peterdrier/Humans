@@ -112,7 +112,9 @@ internal sealed class GoogleSyncLogService(
             var googleAdminService = serviceProvider.GetRequiredService<IGoogleAdminService>();
 
             // actorUserId = the human being erased: the deletion job acts on their request.
-            var result = await googleAdminService.SuspendAccountAsync(workspaceEmail, userId, ct);
+            // omitEmailFromAudit: the audit log survives erasure, so it must not name them.
+            var result = await googleAdminService.SuspendAccountAsync(
+                workspaceEmail, userId, omitEmailFromAudit: true, ct);
             if (!result.Success)
             {
                 logger.LogError(

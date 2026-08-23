@@ -102,14 +102,14 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Admin retry resets a row to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`.
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is a section-internal abstraction so `OutboxEmailService` stays free of `IHostEnvironment`/configuration dependencies; the implementation (`BrandedEmailBodyComposer`) is section-internal too. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) lives in `Humans.Email/Contracts/`.
-- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox` views.
+- `EmailOutboxService` is the section's `IUserDataContributor`. Article 15 exports the human's own outbox history under the `EmailOutbox` key — the same rows `/Profile/Me/Outbox` already shows them. Article 17 deletes **every** row with a matching `UserId`, whatever its status: the retention sweep only reaches `Sent` rows past the cutoff, so failed and queued rows would otherwise outlive the erasure.
 
 ## Negative Access Rules
 
 - Regular humans **cannot** view another human's outbox.
 - Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync` (which writes to the outbox).
 - The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxService.IsEmailPausedAsync`.
-- Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based) or admin discard. No service clears rows as a side-effect.
+- Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based), admin discard, or `EmailOutboxService.EraseForUserAsync` (GDPR Article 17). No service clears rows as a side-effect.
 
 ## Triggers
 

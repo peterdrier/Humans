@@ -56,7 +56,8 @@ stay on so you don't miss anything important about getting in.
 Go to **Profile → Privacy** (`/Profile/Me/Privacy`) and choose **Download My
 Data**. You get a single file with **everything** the system holds about you —
 your account and emails, profile, contact details, team history, roles, consents,
-shift sign-ups, ticket info, notifications, and the log entries you appear in.
+shift sign-ups, ticket info, notifications, the emails we've sent you, and the
+log entries you appear in.
 It's there whenever you want it, no need to ask anyone.
 
 ## Delete your account

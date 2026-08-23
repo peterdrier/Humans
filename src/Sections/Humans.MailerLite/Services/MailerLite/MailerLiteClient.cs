@@ -155,8 +155,10 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         using var resp = await SendAsync(
             HttpMethod.Delete, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
-        if (resp.StatusCode == HttpStatusCode.NotFound) return; // already gone — success
-        resp.EnsureSuccessStatusCode();
+        // 404 = already gone at the remote — success, but the no-TTL snapshot here
+        // can still be holding the address, so the eviction runs either way.
+        if (resp.StatusCode != HttpStatusCode.NotFound)
+            resp.EnsureSuccessStatusCode();
 
         await RemoveFromSubscribersCacheAsync(email, ct);
     }

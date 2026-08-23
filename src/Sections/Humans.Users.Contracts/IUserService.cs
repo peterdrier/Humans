@@ -62,18 +62,6 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
 
     /// <summary>
-    /// Purges a human at the User aggregate — removes all UserEmail rows
-    /// through <c>IUserRepository</c>, anonymizes the display name, and
-    /// permanently locks out the account. Returns the prior display name on
-    /// success, or <c>null</c> if the user did not exist. Invalidates the UserInfo cache on
-    /// success so downstream consumers see the purged view. Cross-section
-    /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
-    /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
-    /// wrapping this method for the admin-initiated purge flow.
-    /// </summary>
-    Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization
     /// on the User aggregate — removes <c>UserEmail</c> rows through
     /// <c>IUserRepository</c>, renames to <c>Deleted User</c>, clears
@@ -345,12 +333,6 @@ public interface IUserService : IUserServiceRead, IUserMerge
     Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
-    /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
-    /// </summary>
-    Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>

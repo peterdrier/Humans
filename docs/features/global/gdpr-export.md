@@ -25,6 +25,9 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
   src/Sections/Humans.Finance/Services/Service.cs
   src/Sections/Humans.Gate/Services/GateService.cs
+  src/Sections/Humans.GoogleIntegration/Services/GoogleSyncLogService.cs
+  src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
+  src/Sections/Humans.Email/Services/EmailOutboxService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -71,7 +74,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  21 section services, each implementing          │
+│  24 section services, each implementing           │
 │  IUserDataContributor:                            │
 │                                                   │
 │    UserService               AccountMergeService  │
@@ -84,7 +87,9 @@ change.
 │    SurveyService             AgentService         │
 │    EventService              IssuesService        │
 │    ExpenseReportService      HoldedFinanceService │
-│    GateService                                    │
+│    GateService               GoogleSyncLogService │
+│    EmailOutboxService                             │
+│    MailerLiteGdprContributor                      │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -152,6 +157,8 @@ service has no data for this user are omitted.
 | `HoldedCreditorAccount` | `HoldedFinanceService` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
+| `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
+| `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Profile/Me/Outbox`. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.
@@ -214,9 +221,18 @@ roles immediately — but once the grace period expires the daily
 Contributors run sequentially (scoped section DbContexts are not thread-safe,
 same as the export), the contributor declaring `Account` runs last so sections
 that still need the human's addresses can resolve them, and a contributor that
-throws aborts the run with the deletion markers still set. Erasure also
-suspends the human's `@nobodies.team` Workspace account before dropping the
-Google sync-log rows. See `docs/guide/YourData.md` for the user-facing flow.
+throws aborts the run with the deletion markers still set. Erasure also reaches
+the external processors that hold the human: it suspends their `@nobodies.team`
+Workspace account before dropping the Google sync-log rows, and deletes their
+MailerLite subscriber. Both paths keep the address out of anything that
+survives — the Workspace suspend audits by actor id, not by address, because
+`AuditLogService.EraseForUserAsync` deliberately keeps the append-only log.
+See `docs/guide/YourData.md` for the user-facing flow.
+
+The admin-initiated purge (`IAccountDeletionService.PurgeAsync`) runs the same
+fan-out and nothing else at the User aggregate: identity collapse belongs to the
+`Account` contributor, so the orchestrator only drops the caches that key off
+identity afterwards.
 
 `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs` is the
 enforcement: it discovers contributors by reflection over the same section

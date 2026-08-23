@@ -148,21 +148,6 @@ internal sealed class UserService(
             "it indicates a DI registration mistake — IUserService should resolve " +
             "to CachingUserService.");
 
-    public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (await repo.GetByIdAsync(userId, ct) is null)
-            return null;
-
-        await repo.RemoveAllUserEmailsForUserAndSaveAsync(userId, ct);
-        var displayName = await repo.PurgeAsync(userId, ct);
-        if (displayName is null)
-            return null;
-
-        logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
-
-        return displayName;
-    }
-
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -1294,9 +1279,6 @@ internal sealed class UserService(
         await repo.RemoveAllUserEmailsForUsersAndSaveAsync(userIds, ct);
         return await repo.DeleteUsersAsync(userIds, ct);
     }
-
-    public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(
