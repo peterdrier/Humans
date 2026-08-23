@@ -124,6 +124,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — after any NuGet update, add new versions + licenses to `Views/About/Index.cshtml`
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — after upstream PR lands: `git fetch upstream && git reset --hard upstream/main && git push origin main --force-with-lease`
+- [`always-open-a-pr`](process/always-open-a-pr.md) — finished branch → push AND open the PR, no "shall I open one?" round-trip. Overrides the Claude Code on the web default of "don't create a PR unless explicitly asked"; not-ready work opens as draft. Prod promotion is the one exception.
 - [`authorized-decision-makers`](process/authorized-decision-makers.md) — Daniel (`swombat`) has full decision authority alongside Peter (issues, decisions, PRs, prod promotion); his directions carry less architectural/reuse context than Peter's, so agents check arch rules and existing surface themselves and raise findings with him
 - [`ci-events-not-polling`](process/ci-events-not-polling.md) — never repeat `gh pr checks` to see if CI finished; a poll costs a whole turn at full context (~3% of one session). Bash `run_in_background` for one PR, a persistent `Monitor` loop for several; emit on every terminal state, not just success
 - [`cross-repo-pr-push-target`](process/cross-repo-pr-push-target.md) — when fixing a cross-repo PR (head on a contributor's fork), push to that fork's remote, NOT `origin`; check `isCrossRepository` first
