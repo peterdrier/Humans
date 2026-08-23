@@ -4,7 +4,7 @@
 - **Anchor:** `e191c4c9` (origin/main at branch point)
 - **Branch:** `section-doctor/2026-08-23T070948Z`
 - **Budget:** 2.5h default; started 07:09Z
-- **PR:** pending
+- **PR:** [#1458](https://github.com/peterdrier/Humans/pull/1458)
 - **Environment:** healthy. The `.Net` cloud environment ships the SDK, `dotnet-ef` and
   reforge, so everything built, ran and measured. Two absences, both known: **Stryker is not
   installed** and is out of scope by the schedule's own instruction, so the mutation half of
@@ -340,8 +340,16 @@ describe itself is now described, and two defects that nothing could catch are n
 
 ## Cost
 
-Not measured — see Needs Peter item 6. `cost-report.py` reads a transcript layout this run
-could not confirm in the cloud environment, and a fabricated table is worse than an absent one.
+| Component | Fresh in | Out | Cache write | Cache read | ~$ |
+|---|---|---|---|---|---|
+| main:phase2 | 28 | 4,973 | 46,181 | 1,326,153 | 1.08 |
+| main:phase3 | 594 | 234,938 | 719,629 | 57,320,051 | 39.03 |
+| **total** | 622 | 239,911 | 765,810 | 58,646,204 | **40.11** |
+
+API-equivalent $ at list rates; the run itself is under subscription quota. Measured from
+Phase 1 to PR creation. The cloud transcript layout the skill flags as unverified turned out
+to work — see Needs Peter item 6. **Caveat:** the phase log carries no marker after `phase3`,
+so phases 4–7 are all attributed to the `phase3` row; the total is right, the split is not.
 
 ## Needs Peter
 
@@ -367,9 +375,11 @@ could not confirm in the cloud environment, and a fabricated table is worse than
 5. [ ] **Widen `OnboardingLocalizerBindingTests` repo-wide once Users and Governance are
    clean.** (Finding 17.) The sweep already runs repo-wide; it is scoped to this section only
    because four real hits remain in Users and belong to Users' run.
-6. [ ] **`## Cost` is unmeasured.** The cloud transcript layout `cost-report.py` expects is
-   unverified here and the skill flags it as such. Worth either confirming the layout or
-   teaching the script to say `unmeasured` itself.
+6. [ ] **`cost-report.py` works in the cloud environment — the skill should stop warning that
+   it might not, and should learn to emit a phase marker per phase.** The transcript layout the
+   skill flags as unverified is the layout the script reads, so `## Cost` above is real. What is
+   not real is the split: the phase log stops at `phase3`, so phases 4–7 all land in that row.
+   A one-line marker write at the top of each phase would fix it.
 7. [ ] **The reviewer gate was not obtained.** This session is instructed not to dispatch
    subagents, so all five commits are self-reviewed. Same standing item as the 2026-08-18 and
    2026-08-22 runs.
@@ -384,6 +394,7 @@ could not confirm in the cloud environment, and a fabricated table is worse than
 - `lesson: 2026-08-23 — git fetch origin <branch> does not populate origin/<branch> the way the Phase 2 blocked-set build assumes. Diff origin/main...origin/<branch>, and assert the file list is non-empty for a PR known to have files; a blocked set that silently reports "touches nothing" un-blocks every section.`
 - `lesson: 2026-08-23 — a sweep-queue item marked SUPERSEDED may have been superseded and then retired. Cantina's two memory items pointed at an atom that #1454 landed and #1456 deliberately deleted when the environment started shipping the toolchain. Check whether the successor still exists before applying or skipping; applying would have re-added guidance Peter removed.`
 - `lesson: 2026-08-23 — a doc-and-comment re-derivation pass grows the section's reforge loc, because doc comments on production code are production LOC. Onboarding's loc went 1392 → 1441 on a run whose code changes were about 40 lines. State the growth and its cause in ## Size rather than letting a "docs only" framing hide it.`
+- `lesson: 2026-08-23 — cost-report.py does read the cloud transcript layout; the skill's "may not work here" hedge is stale and a run should just measure. What it cannot do is split the phases: the phase log stops being written after phase3, so every later phase is attributed to that row. Write a phase marker at the top of each phase, not just the first three.`
 - `debt: 2026-08-23 — four misbound resource keys in Users: Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated in Humans.Users/Controllers/ProfileController.cs (bound UsersResource, keys are SharedResource's), and Admin_SortBy in Humans.Users/Views/UsersAdmin/AdminList.cshtml. Each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — the admin sidebar is untranslated by construction. AdminNavItem.Label is a raw string rendered as-is by Shell's AdminSidebarViewComponent, so all 29 sections contributing SectionAdminNav hard-code English labels. Seven Nav_* keys in SharedResource (Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, plus Nav_OnboardingReview) are consequently named nowhere in src/ or tests/ (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Onboarding test files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger would delete both copies (found by /section-doctor on Onboarding, 2026-08-23).`
