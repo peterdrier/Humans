@@ -40,8 +40,9 @@ gh issue list --repo peterdrier/Humans --state open --limit 200 --json number,ti
 ```bash
 git fetch origin --quiet; git fetch upstream --quiet
 git log --oneline upstream/main..origin/main
-gh pr list --repo peterdrier/Humans --state open --json number,title,headRefName
-gh pr list --repo peterdrier/Humans --state merged --limit 10 --json number,title,mergedAt,headRefName
+gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,title,headRefName
+gh pr list --repo peterdrier/Humans --state merged --limit 50 --json number,title,mergedAt,headRefName
+# default --limit is 30 — too low to classify the pipeline; raise if either returns its cap
 ```
 
 | Stage | Detection | For planning |
