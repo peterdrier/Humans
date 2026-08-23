@@ -138,6 +138,36 @@ public sealed class SurveyBuilderViewModelTests
         vm.ToInput(0).GridSelectionMode.Should().BeNull();
     }
 
+    [HumansFact]
+    public void Information_images_round_trip_through_the_builder()
+    {
+        var imageId = Guid.NewGuid();
+        var input = new QuestionInput(
+            Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
+            L("Weather context"), L("**Forecast details**"), false, null, null,
+            LocalizedText.Empty, LocalizedText.Empty, null, [],
+            InformationImages:
+            [
+                new InformationImageInput(
+                    imageId,
+                    L("Temperature"),
+                    L("Temperature forecast table"),
+                    "uploads/surveys/survey/question/image.png",
+                    "image/png",
+                    "temperature.png"),
+            ]);
+
+        var vm = SurveyQuestionBuilderViewModel.FromInput(input);
+        var roundTripped = vm.ToInput(0);
+
+        var image = vm.InformationImages.Should().ContainSingle().Subject;
+        image.ExistingStoragePath.Should().Be("uploads/surveys/survey/question/image.png");
+        var mapped = roundTripped.InformationImages.Should().ContainSingle().Subject;
+        mapped.Id.Should().Be(imageId);
+        mapped.Label.Resolve("en", "en").Should().Be("Temperature");
+        mapped.AltText.Resolve("en", "en").Should().Be("Temperature forecast table");
+    }
+
     private static LocalizedText L(string value)
         => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
 }

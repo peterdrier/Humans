@@ -31,6 +31,16 @@ internal sealed class SurveyQuestionConfiguration : IEntityTypeConfiguration<Sur
                     v => v == null ? 0 : string.GetHashCode(SurveyJson.SerializeGridRows(v)!, StringComparison.Ordinal),
                     v => SurveyJson.DeserializeGridRows(SurveyJson.SerializeGridRows(v))));
 
+        b.Property(q => q.InformationImages)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => SurveyJson.SerializeInformationImages(v),
+                v => SurveyJson.DeserializeInformationImages(v),
+                new ValueComparer<List<SurveyInformationImage>?>(
+                    (a, c) => SurveyJson.SerializeInformationImages(a) == SurveyJson.SerializeInformationImages(c),
+                    v => v == null ? 0 : string.GetHashCode(SurveyJson.SerializeInformationImages(v)!, StringComparison.Ordinal),
+                    v => SurveyJson.DeserializeInformationImages(SurveyJson.SerializeInformationImages(v))));
+
         b.Property(q => q.ShowIf)
             .HasColumnType("jsonb")
             .HasConversion(

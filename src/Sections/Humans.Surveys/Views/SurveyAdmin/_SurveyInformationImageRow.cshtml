@@ -1,0 +1,39 @@
+@model SurveyInformationImageRowModel
+@{
+    var prefix = $"Questions[{Model.QuestionKey}].InformationImages[{Model.ImageKey}]";
+    var image = Model.Image;
+}
+<div class="information-image-row border rounded p-2 mb-2">
+    <input type="hidden" name="Questions[@Model.QuestionKey].InformationImages.Index" value="@Model.ImageKey" />
+    <input type="hidden" name="@(prefix).Id" value="@image.Id" />
+    <input type="hidden" name="@(prefix).ExistingStoragePath" value="@image.ExistingStoragePath" />
+    <input type="hidden" name="@(prefix).ExistingFileName" value="@image.ExistingFileName" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-start gap-2 mb-2">
+        <div class="flex-grow-1" style="min-width:0">
+            @if (!string.IsNullOrWhiteSpace(image.ExistingStoragePath))
+            {
+                <a href="/@image.ExistingStoragePath.TrimStart('/')" target="_blank" rel="noopener">
+                    @(string.IsNullOrWhiteSpace(image.ExistingFileName) ? "View current image" : image.ExistingFileName)
+                </a>
+                <div class="form-text">Choose a new file below to replace it.</div>
+            }
+            <input type="file" name="@(prefix).Upload" class="form-control form-control-sm mt-1"
+                   accept="image/jpeg,image/png,image/webp" />
+        </div>
+        <div class="btn-group btn-group-sm align-self-start" role="group" aria-label="Image order and removal">
+            <button type="button" class="btn btn-outline-secondary move-information-image-up" aria-label="Move image up">
+                <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary move-information-image-down" aria-label="Move image down">
+                <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="btn btn-outline-danger remove-information-image">Remove</button>
+        </div>
+    </div>
+
+    <partial name="_SurveyLocalizedField"
+             model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Tab label", image.Label))" />
+    <partial name="_SurveyLocalizedField"
+             model="@(new SurveyLocalizedFieldModel($"{prefix}.AltText", "Image alt text", image.AltText))" />
+</div>

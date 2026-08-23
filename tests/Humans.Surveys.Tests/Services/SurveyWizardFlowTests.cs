@@ -197,6 +197,18 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
+    public void RequiredUnanswered_never_requires_an_information_item()
+    {
+        var information = Q(
+            Guid.NewGuid(), 1, 1, SurveyQuestionType.Information, required: true);
+
+        SurveyWizardFlow.RequiredUnanswered(
+                [information],
+                new Dictionary<Guid, AnswerState>())
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
     public void RequiredUnanswered_requires_an_answer_for_every_grid_row()
     {
         var id = Guid.NewGuid();

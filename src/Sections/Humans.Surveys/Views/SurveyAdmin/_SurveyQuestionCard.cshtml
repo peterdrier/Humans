@@ -28,7 +28,7 @@
                     }
                 </select>
             </div>
-            <div class="col-auto align-self-end">
+            <div class="col-auto align-self-end required-section">
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input" id="req-@key" name="@(prefix).IsRequired" value="true" @(q.IsRequired ? "checked" : null) />
                     <label class="form-check-label small" for="req-@key">Required</label>
@@ -36,8 +36,32 @@
             </div>
         </div>
 
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt", q.Prompt))" />
-        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text (optional)", q.HelpText, Multiline: true))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt / optional information heading", q.Prompt))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text / information Markdown", q.HelpText, Multiline: true, Markdown: true))" />
+
+        <div class="information-section border-top pt-2 mt-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small fw-semibold mb-0">Images</label>
+                <span class="small text-muted">Up to five, shown as labelled tabs.</span>
+            </div>
+            <div class="alert alert-warning small py-2">
+                Uploaded image URLs are public and may be shared outside this survey.
+            </div>
+            <div class="information-images-container">
+                @foreach (var (image, i) in q.InformationImages.Select((image, i) => (image, i)))
+                {
+                    <partial name="_SurveyInformationImageRow"
+                             model="@(new SurveyInformationImageRowModel(key, i.ToString(), image))" />
+                }
+            </div>
+            <template class="information-image-template">
+                <partial name="_SurveyInformationImageRow"
+                         model="@(new SurveyInformationImageRowModel(key, "__IKEY__", new SurveyInformationImageBuilderViewModel()))" />
+            </template>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-information-image">
+                + Add image
+            </button>
+        </div>
 
         <div class="rating-section border-top pt-2 mt-2">
             <div class="row g-2">

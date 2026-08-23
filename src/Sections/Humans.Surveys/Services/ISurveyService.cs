@@ -180,7 +180,8 @@ internal sealed record QuestionInput(
     BranchCondition? ShowIf,
     IReadOnlyList<OptionInput> Options,
     GridSelectionMode? GridSelectionMode = null,
-    IReadOnlyList<GridRowInput>? GridRows = null);
+    IReadOnlyList<GridRowInput>? GridRows = null,
+    IReadOnlyList<InformationImageInput>? InformationImages = null);
 
 /// <summary>One choice option in the builder graph. <c>Value</c> is the stable machine key.</summary>
 internal sealed record OptionInput(
@@ -191,6 +192,21 @@ internal sealed record OptionInput(
 
 /// <summary>One Grid row in the builder graph. <c>Value</c> is the stable machine key.</summary>
 internal sealed record GridRowInput(string Value, LocalizedText Label);
+
+/// <summary>
+/// One Information-item image. Existing persisted metadata is populated on reads; a new upload is
+/// populated only for the duration of an authoring save.
+/// </summary>
+internal sealed record InformationImageInput(
+    Guid? Id,
+    LocalizedText Label,
+    LocalizedText AltText,
+    string? StoragePath = null,
+    string? ContentType = null,
+    string? FileName = null,
+    SurveyImageUpload? Upload = null);
+
+internal sealed record SurveyImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
 /// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
 internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);

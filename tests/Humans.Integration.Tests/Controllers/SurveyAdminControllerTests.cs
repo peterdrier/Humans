@@ -1,6 +1,8 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
@@ -229,6 +231,79 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         question.GridRows!.Select(row => row.Value).Should().ContainInOrder("monday", "tuesday");
         question.Options.OrderBy(option => option.Order).Select(option => option.Value)
             .Should().ContainInOrder("morning", "afternoon");
+    }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task Save_uploads_and_preview_renders_an_information_block()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var token = await GetCreateTokenAsync();
+        var questionId = Guid.NewGuid();
+        using var form = new MultipartFormDataContent();
+        AddField("__RequestVerificationToken", token);
+        AddField("Title[en]", $"Information integration survey {Guid.NewGuid():N}");
+        AddField("Questions.Index", "information");
+        AddField("Questions[information].Id", questionId.ToString());
+        AddField("Questions[information].PageNumber", "1");
+        AddField("Questions[information].Type", nameof(SurveyQuestionType.Information));
+        AddField("Questions[information].Prompt[en]", "Conditions");
+        AddField("Questions[information].HelpText[en]", "**Read this before choosing.**");
+        AddField("Questions[information].InformationImages.Index", "fire");
+        AddField("Questions[information].InformationImages[fire].Label[en]", "Fire risk");
+        AddField("Questions[information].InformationImages[fire].AltText[en]", "Fire risk forecast table");
+        var fireFile = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
+        fireFile.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(fireFile, "Questions[information].InformationImages[fire].Upload", "fire-risk.png");
+        AddField("Questions[information].InformationImages.Index", "rain");
+        AddField("Questions[information].InformationImages[rain].Label[en]", "Rain");
+        AddField("Questions[information].InformationImages[rain].AltText[en]", "Rain forecast table");
+        var rainFile = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
+        rainFile.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(rainFile, "Questions[information].InformationImages[rain].Upload", "rain.png");
+
+        var saveResp = await Client.PostAsync("/Survey/Admin/Save", form, ct);
+        var surveyId = ExtractSurveyId(saveResp);
+
+        List<string> storagePaths;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
+            var question = (await db.Surveys.AsNoTracking()
+                    .Include(survey => survey.Questions)
+                    .SingleAsync(survey => survey.Id == surveyId, ct))
+                .Questions.Should().ContainSingle().Subject;
+            question.Type.Should().Be(SurveyQuestionType.Information);
+            question.IsRequired.Should().BeFalse();
+            question.InformationImages.Should().HaveCount(2);
+            question.InformationImages.Select(image => image.Label.Resolve("en", "en"))
+                .Should().ContainInOrder("Fire risk", "Rain");
+            question.InformationImages.Select(image => image.AltText.Resolve("en", "en"))
+                .Should().ContainInOrder("Fire risk forecast table", "Rain forecast table");
+            storagePaths = question.InformationImages.Select(image => image.StoragePath).ToList();
+        }
+
+        var preview = await Client.GetAsync(
+            $"/Survey/Admin/Preview/{surveyId}/Page?page=1", ct);
+        preview.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await preview.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("<strong>Read this before choosing.</strong>");
+        html.Should().Contain("Fire risk");
+        html.Should().Contain("Rain");
+        html.Should().Contain("data-bs-toggle=\"tab\"");
+        html.Should().ContainAll(storagePaths.Select(storagePath => $"/{storagePath}"));
+        html.Should().NotContain("name=\"Answers[0].QuestionId\"");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var fileStorage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
+            foreach (var storagePath in storagePaths)
+            {
+                await fileStorage.DeleteAsync(storagePath, CancellationToken.None);
+            }
+        }
+
+        void AddField(string name, string value) => form.Add(new StringContent(value), name);
     }
 
     [HumansFact(Timeout = 60000)]

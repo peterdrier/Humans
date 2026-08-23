@@ -334,6 +334,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             keptQuestion.RatingMaxLabel = incomingQuestion.RatingMaxLabel;
             keptQuestion.GridSelectionMode = incomingQuestion.GridSelectionMode;
             keptQuestion.GridRows = incomingQuestion.GridRows;
+            keptQuestion.InformationImages = incomingQuestion.InformationImages;
             keptQuestion.ShowIf = incomingQuestion.ShowIf;
 
             ReconcileOptions(ctx, keptQuestion, incomingQuestion);
