@@ -48,7 +48,38 @@ git diff --stat upstream/main..origin/main | tail -1
 
 If empty: nothing to promote. Tell the user and stop.
 
-### 4. Build the PR body
+### 4. Check EF migration sequencing
+
+Enumerate the migrations being promoted:
+
+```bash
+git diff --name-status upstream/main..origin/main -- '*/Migrations/*'
+```
+
+Group added files by folder — each folder is one DbContext chain (`src/Sections/Humans.<Section>/Data/Migrations/` per section, `src/Humans.Web/Migrations/System/` for the platform context). No added migrations → record "None" for the **DB changes** section and move on. For every folder with added migrations, verify:
+
+1. **End-of-chain** — every new migration's timestamp prefix sorts after every migration already on `upstream/main` in that folder:
+
+   ```bash
+   git ls-tree --name-only upstream/main -- <folder>
+   ```
+
+   A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/migration-regen-after-rebase.md`).
+
+2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears as `M` (or `A` when the section/folder itself is new or renamed) in the same diff. New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
+
+3. **Chain converges** — the critical case is ≥2 new migrations in one folder (two fork PRs each added one): the second must have been generated on top of the first, not off the same base in parallel. Mechanical check: the model body between the `#pragma warning` markers must be identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
+
+   ```bash
+   diff <(awk '/#pragma warning disable/,/#pragma warning restore/' <newest>.Designer.cs) \
+        <(awk '/#pragma warning disable/,/#pragma warning restore/' <folder>/<Context>ModelSnapshot.cs)
+   ```
+
+   Empty output = chained properly. Any diff means the chain is forked — the merge kept one branch's model in the snapshot and lost the other's.
+
+**Any check fails → STOP. Do not open the PR.** Report which context and which check. The fix happens on the fork before promotion (stop-and-ask per the atom above; `/ef-regen` is the sanctioned recovery) — a broken chain promoted to prod is a deploy incident, not a PR-body footnote.
+
+### 5. Build the PR body
 
 For each commit, transform the subject as follows:
 
@@ -69,7 +100,7 @@ emit this bullet:
 - `8508e353` nobodies-collective/Humans#673: consolidate person-search with PersonSearchFields bit-flag API (peterdrier/Humans#455)
 ```
 
-### 5. Write the PR
+### 6. Write the PR
 
 Use `gh pr create` with `--head peterdrier:main`. Pass the body via heredoc to preserve formatting:
 
@@ -89,6 +120,11 @@ All issue/PR refs are qualified per `memory/process/issue-refs-qualified.md` —
 - `<sha>` <transformed subject>
 - ...
 
+## DB changes
+
+<!-- REQUIRED section, from step 4. "None." if no migrations in the batch. -->
+- `<Context>`: `<migration id + name>`, `<migration id + name>` (apply order) — sequencing verified
+
 ## Test plan
 
 - [ ] Rebase merge (each PR is already squashed)
@@ -100,11 +136,11 @@ EOF
 
 Substitute `N` with the actual commit count.
 
-### 6. Return the PR URL
+### 7. Return the PR URL
 
 `gh pr create` prints the URL on success — surface it to the user. Don't merge; promotion is Peter's call.
 
-### 7. Discord release notes
+### 8. Discord release notes
 
 After surfacing the PR URL, draft member-facing release notes for Discord and present them in the conversation as a single copy-paste-ready ```markdown code block (Claude does NOT post to Discord — Peter pastes it).
 
@@ -124,7 +160,8 @@ Rules:
 - [ ] Every inline `#NNN` reference is qualified (`peterdrier/Humans#NNN` or `nobodies-collective/Humans#NNN`) — no bare refs anywhere in the body.
 - [ ] Title is `Promote QA → production (<N> commits)` with the correct count.
 - [ ] No existing open PR was overlooked (step 2).
-- [ ] Discord release notes drafted (step 7), dated, member-features first, ≤ 2,000 characters.
+- [ ] Migration sequencing checks (step 4) ran for every context with new migrations; **DB changes** section lists them per context in apply order, or says "None."
+- [ ] Discord release notes drafted (step 8), dated, member-features first, ≤ 2,000 characters.
 
 ## What this skill does NOT do
 
