@@ -226,7 +226,11 @@ the external processors that hold the human: it suspends their `@nobodies.team`
 Workspace account before dropping the Google sync-log rows, and deletes their
 MailerLite subscriber. Both paths keep the address out of anything that
 survives — the Workspace suspend audits by actor id, not by address, because
-`AuditLogService.EraseForUserAsync` deliberately keeps the append-only log.
+`AuditLogService.EraseForUserAsync` deliberately keeps the append-only log. The
+courtesy confirmation the job mails afterwards is sent with
+`EmailMessage.DoNotPersist`, so it writes no outbox row: it goes out after the
+collapse, so its `UserId` would resolve to null and the row would sit beyond the
+reach of both `EmailOutboxService.EraseForUserAsync` and the retention sweep.
 See `docs/guide/YourData.md` for the user-facing flow.
 
 The admin-initiated purge (`IAccountDeletionService.PurgeAsync`) runs the same
