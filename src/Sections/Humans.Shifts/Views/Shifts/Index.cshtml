@@ -321,6 +321,9 @@
                 @if (!string.IsNullOrEmpty(Model.Sort)) {
                     <text>params.set('sort', '@Model.Sort');</text>
                 }
+                @if (hasDayFilter) {
+                    <text>params.set('day', '@Model.FilterDay');</text>
+                }
                 // Only add periods if not all 3 are selected
                 if (checked.length < 3) {
                     checked.forEach(function(p) { params.append('periods', p); });
