@@ -193,11 +193,11 @@ gh issue list --repo peterdrier/Humans --state open \
 
 # Issue refs in production commits — keep the repo qualifier
 git fetch upstream main 2>/dev/null
-git log upstream/main --oneline | grep -oP '[\w.-]+/[\w.-]+#\d+' | sort -u   # qualified refs, per repo
-git log upstream/main --oneline | grep -oP '(?<![\w/])#\d+' | sort -un       # bare refs (legacy)
+git log upstream/main --oneline | grep -oP '(peterdrier|nobodies-collective)(/Humans)?#\d+' | sort -u   # qualified refs (both sanctioned forms), per owner
+git log upstream/main --oneline | grep -oP '(?<![\w/])#\d+' | sort -un                                  # bare refs (legacy)
 ```
 
-Intersect per repo: a qualified ref (`owner/Humans#N`) is a candidate for that owner's issue `N`. Bare `#N` refs predate fork issues (enabled 2026-08-23) and can only mean upstream — match them against upstream only. Never write new bare refs, and never close a fork issue without a qualified match. If none, "No shipped issues to close." and proceed.
+Intersect per repo: a qualified ref (`owner#N` or `owner/Humans#N` — both sanctioned by `issue-refs-qualified`) is a candidate for that owner's issue `N`. Bare `#N` refs predate fork issues (enabled 2026-08-23) and can only mean upstream — match them against upstream only. Never write new bare refs, and never close a fork issue without a qualified match. If none, "No shipped issues to close." and proceed.
 
 ## Step 2.2: Cross-reference with reporters
 
@@ -213,7 +213,7 @@ curl -sf -H "X-Api-Key: $ISSUES_KEY" "$BASE_URL/api/issues?status=Open&limit=200
 curl -sf -H "X-Api-Key: $ISSUES_KEY" "$BASE_URL/api/issues?status=InProgress&limit=200"
 ```
 
-Build a `gitHubIssueNumber` → reporter(s) lookup across both sources (in-app issues: only those with `gitHubIssueNumber` set). Also scan GH issue bodies for `fb:` / `iss:` IDs as fallback.
+Build a `gitHubIssueNumber` → reporter(s) lookup across both sources (in-app issues: only those with `gitHubIssueNumber` set). `gitHubIssueNumber` is number-only and reporter promotions always go upstream (`issue-home-routing`), so **apply this lookup to upstream candidates only** — never match a fork issue's number against it (overlapping number spaces would notify the wrong reporter). Also scan GH issue bodies for `fb:` / `iss:` IDs as fallback.
 
 ## Step 2.3: Present candidates
 
