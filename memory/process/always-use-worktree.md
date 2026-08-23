@@ -13,5 +13,6 @@ description: HARD RULE. All branch work, including main itself, happens in a wor
 - `cd` to that worktree once and stay there. Never `git checkout`, `git reset`, `git stash`, or delete/move tracked files in the main checkout.
 - If the main checkout has uncommitted changes on arrival, assume they belong to another agent/process and leave them alone.
 - When a skill finds the current branch differs from a target PR's head branch, the answer is always "use a worktree" — check `git worktree list` for an existing one first, or create one. Don't present it as a multi-option question.
+- Sole exception: the post-production-merge fork reset in [[after-prod-merge-reset]], run exactly as that atom says and nothing more.
 
 Related: [[worktree-first-scoped-search]], [[worktrees-off-origin-main]], [[pr-fix-switches-to-pr-branch]].

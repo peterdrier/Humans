@@ -100,8 +100,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`narrow-admin-role-needs-anyadminrole`](code/narrow-admin-role-needs-anyadminrole.md) — a new grantable narrow admin role (EarlyEntryArtAdmin, CantinaAdmin) must join the `AnyAdminRole` policy too, or holders pass their page but never see the ADMIN link
 - [`no-enum-compare-in-ef`](code/no-enum-compare-in-ef.md) — enums with `HasConversion<string>()` translate to lexicographic SQL; use `Contains()` with explicit allowed-values list
 - [`no-extensions-for-owned-classes`](code/no-extensions-for-owned-classes.md) — methods/properties go on owned classes; extensions only for BCL/NuGet types
-- [`no-hallucinated-content`](code/no-hallucinated-content.md)
-- [`no-hostile-api-design`](code/no-hostile-api-design.md) — never propose deliberately awkward/ugly method names to discourage callers; enforce restriction via visibility and call-site pinning, not the name — never hardcode invented copy (benefits, policies, pricing); wire to admin-editable fields or ask
+- [`no-hallucinated-content`](code/no-hallucinated-content.md) — never hardcode invented copy (benefits, policies, pricing); wire to admin-editable fields or ask
+- [`no-hostile-api-design`](code/no-hostile-api-design.md) — never propose deliberately awkward/ugly method names to discourage callers; enforce restriction via visibility and call-site pinning, not the name
 - [`no-magic-strings`](code/no-magic-strings.md) — `nameof()`/constants/enums for code-identifier strings (`RedirectToAction`, role names, audit entity types)
 - [`no-new-displayname-fields`](code/no-new-displayname-fields.md) — HARD RULE. Never coin a new `DisplayName` / `*DisplayName` field/property/parameter. Pick the concept-specific name: `BurnerName`, `LegalName`, `GroupName`, `TeamName`, `Title`. Reading from pre-existing legacy `*.DisplayName` is allowed; the rule is on what you NAME the new field.
 - [`no-paving-obsolete-fields`](code/no-paving-obsolete-fields.md) — when migrating a read/write, switch to the canonical replacement; never carry the obsolete field/predicate into new code. `Profile.IsSuspended` → `State == Suspended`.

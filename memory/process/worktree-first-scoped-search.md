@@ -9,6 +9,6 @@ Create the feature worktree **first**, before any code exploration, then do all 
 
 **Why:** on one issue, exploring the main checkout for many turns before making the worktree, then globbing the polluted root repeatedly, burned tens of thousands of tokens on worktree-noise alone.
 
-**How to apply:** step 1 of any feature task is `git worktree add .worktrees/<name> origin/main`. From then on, every Glob/Grep carries an explicit `path` under that worktree; never omit `path` at the repo root.
+**How to apply:** step 1 of any feature task — after the issue-authorization preflight in [[issue-fetch-protocol]] for issue-driven work — is `git worktree add .worktrees/<name> origin/main`. From then on, every Glob/Grep carries an explicit `path` under that worktree; never omit `path` at the repo root.
 
 Related: [[always-use-worktree]].
