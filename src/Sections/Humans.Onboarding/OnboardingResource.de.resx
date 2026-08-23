@@ -168,6 +168,7 @@
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Der Name, den alle im System sehen. Eindeutigkeit hilft, ist aber nicht erforderlich, auch wenn es schwierig sein kann, „Bob“ unter den paar Tausend Humans hier zu finden, falls jemand nach dir sucht.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Der Name, unter dem dich alle kennen werden.</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Onboarding_ConsentDocumentUnavailable" xml:space="preserve"><value>Das nächste zu unterzeichnende Dokument konnte nicht geladen werden. Bitte versuche es gleich noch einmal oder melde dich bei uns, wenn es weiterhin auftritt.</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>nicht</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>und würden sie nur offenlegen, wenn das Gesetz oder eine förmliche Prüfung es erfordert.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wird intern gespeichert, ist nur für Admins sichtbar und wird nur dort verwendet, wo das spanische Recht es verlangt — zum Beispiel für unseren Prüfnachweis, dass du der Volunteer-Vereinbarung zu einem bestimmten Datum und einer bestimmten Uhrzeit zugestimmt hast. Wir exportieren diese Information ausdrücklich</value></data>

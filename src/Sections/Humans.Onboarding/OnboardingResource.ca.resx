@@ -168,6 +168,7 @@
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>El nom que tothom veu al sistema. Que sigui únic ajuda, però no és obligatori, tot i que pot ser difícil trobar el "Bob" entre els milers d'humans que hi ha aquí si algú et ve a buscar.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nom amb què tothom et coneixerà.</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continua</value></data>
+  <data name="Onboarding_ConsentDocumentUnavailable" xml:space="preserve"><value>No hem pogut carregar el següent document que has de signar. Torna-ho a provar d'aquí a una estona o escriu-nos si continua passant.</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>no</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>exportem aquesta informació, i només la divulgaríem si ho exigís la llei o una auditoria formal.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Es guarda internament, només visible per als administradors, i s'utilitza només on la llei espanyola ho requereix — per exemple, el nostre registre d'auditoria que vas acceptar l'acord de voluntariat en una data i hora concretes. Explícitament</value></data>

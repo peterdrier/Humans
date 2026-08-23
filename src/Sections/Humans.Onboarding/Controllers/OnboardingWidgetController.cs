@@ -190,16 +190,26 @@ internal sealed class OnboardingWidgetController(
             return RedirectToNamesForStub();
 
         var step = await onboardingService.GetNextUnsignedConsentAsync(userId, ct);
-        if (step.Next is null)
+        if (step.Outcome is NextConsentStepOutcome.NothingLeftToSign)
             return RedirectToAction(nameof(Index));
 
+        // The dispatcher still answers "consents" while anything is unsigned, so handing an
+        // unloadable document back to it bounces the user between the two forever. Stop.
+        if (step.Outcome is NextConsentStepOutcome.DocumentUnavailable)
+        {
+            SetError(localizer["Onboarding_ConsentDocumentUnavailable"].Value);
+            return RedirectToAction("Index", "Home");
+        }
+
+        // Non-null by the outcome contract on NextConsentStepData.
+        var next = step.Next!;
         var vm = new ConsentsStepViewModel
         {
-            DocumentVersionId = step.Next.DocumentVersionId,
-            DocumentName = step.Next.DocumentName,
-            VersionNumber = step.Next.VersionNumber,
-            Content = new Dictionary<string, string>(step.Next.Content, StringComparer.Ordinal),
-            ChangesSummary = step.Next.ChangesSummary,
+            DocumentVersionId = next.DocumentVersionId,
+            DocumentName = next.DocumentName,
+            VersionNumber = next.VersionNumber,
+            Content = new Dictionary<string, string>(next.Content, StringComparer.Ordinal),
+            ChangesSummary = next.ChangesSummary,
             CurrentIndex = step.CurrentIndex,
             TotalRequired = step.TotalRequired,
         };
