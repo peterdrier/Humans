@@ -73,7 +73,12 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **Admission is name + consents.** `HasRequiredNameFields && !IsSuspended && RejectedAt is
   null && HasAllRequiredConsentsForTeam(Volunteers)`, reconciled by `SystemTeamSyncJob`.
   `ConsentCheckStatus` and `IsApproved` are never consulted.
-- **Clear and Flag change nothing but the record.** No team sync, no email, no access change.
+- **Clear and Flag change nothing but the record *for a Volunteer*.** No team sync, no email,
+  no access change — admission ignores `IsApproved` (above). They are *not* inert for a
+  Colaborador/Asociado: `RecordConsentCheck` sets `Profile.IsApproved = (status == Cleared)`
+  (`Humans.Users` `UserService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
+  so `Cleared → Flagged` drops a tier member from their tier team on the next hourly sync.
+  That is why the detail view still withholds Flag from a cleared human — see §5.
 - **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
   de-provisions the three approval-gated system teams, and notifies the person.
 - **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.
@@ -95,12 +100,21 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   and deletion are rendered here but owned by Users; Tickets contributes through the
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
   data, not here.
-- **A cleared human can still be flagged or rejected; only clearing is withheld.** Settled by
-  Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs somewhere to
-  act on it. The service was always permissive — the restriction lived only in the detail
-  view, which means every other caller already had what the page withheld. The view now
-  matches, and the gate is the `ConsentCoordinatorBoardOrAdmin` policy on the actions
-  themselves, not the markup. Do not add a service-side refusal for this.
+- **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
+  Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
+  somewhere to act on it, and Reject is the verb he named. The service was always permissive —
+  the restriction lived only in the detail view, which means every other caller already had
+  what the page withheld. Reject is now exposed for a cleared human and the gate is the
+  `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup. Do not add a
+  service-side refusal for it.
+
+  Flag is the exception, and not because the view is the rule: `Cleared → Flagged` clears
+  `Profile.IsApproved`, which `SystemTeamSyncJob` reads as tier-team eligibility (§4), so
+  exposing it would make an audit annotation silently kick a Colaborador/Asociado out of their
+  tier team. Volunteers admission was already carved out of `IsApproved` for exactly this
+  reason; the tier path never was. Expose Flag once that is settled — either `Flagged` stops
+  writing `IsApproved`, or tier eligibility stops reading it. Both changes live in
+  `Humans.Users`/`Humans.Teams`, not here.
 
 ## 6. Deliberately not done
 

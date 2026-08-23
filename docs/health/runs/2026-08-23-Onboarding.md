@@ -402,11 +402,27 @@ branch.
 2. [x] **Should a cleared human be re-flaggable or rejectable from the review detail page?**
    **Answered 2026-08-23 — yes, allow it; enforce nothing.** "If need be we can reject a person
    later if there's cause. You don't need to enforce anything though, just allow the state
-   change with the right permissions." So the view stops withholding flag and reject once
-   `Cleared`; only the clear form is replaced by the already-cleared note. The service keeps
-   its permissive behaviour deliberately, and the gate is the
-   `ConsentCoordinatorBoardOrAdmin` policy on the actions. Recorded as an invariant in
+   change with the right permissions." So the view stops withholding **Reject** once `Cleared`
+   — the verb the answer names — and only the clear form is replaced by the already-cleared
+   note. The service keeps its permissive behaviour deliberately, and the gate is the
+   `ConsentCoordinatorBoardOrAdmin` policy on the action. Recorded as an invariant in
    `health.md` so a later run does not "fix" it back.
+
+   **Flag was pulled back out during review, and this half needs Peter.** The first pass
+   exposed Flag too. Codex flagged it, and it was right: `RecordConsentCheck` sets
+   `Profile.IsApproved = (status == Cleared)` (`Humans.Users/Services/UserService.cs:380`) and
+   `SystemTeamSyncJob` gates Colaborador/Asociado team membership on that flag
+   (`Humans.Teams/Services/SystemTeamSyncJob.cs:466`). So a `Cleared → Flagged` on a tier member
+   silently drops them from their tier team on the next hourly sync — a kick-out dressed as an
+   annotation, and not the "allow the state change" that was asked for. Volunteers admission was
+   already carved out of `IsApproved` for exactly this reason
+   (`SystemTeamSyncJob.cs:194` — "the Flagged consent-check is an audit annotation that no longer
+   gates admission"); the tier path never got the same treatment.
+
+   Flag is therefore still hidden for a cleared human, with a comment in the view naming the
+   cascade. The real fix is cross-section and is Peter's call — either `Flagged` stops writing
+   `IsApproved`, or tier eligibility stops reading it. Both live in `Humans.Users`/`Humans.Teams`,
+   outside this run's section (cf. item 5), so nothing was changed there.
 3. [x] **`resource-key-prefix` for Onboarding: section prefix or literal string?**
    (Finding 15.) **Answered 2026-08-23 — the literal `Onboarding_`, and rename.** "It's not for
    user benefit, but it's tech debt." 78 of the set's 105 keys moved:
