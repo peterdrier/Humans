@@ -138,6 +138,40 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<SurveyInvitation> GetOrCreateParticipationAsync(
+        Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.SurveyInvitations
+            .FirstOrDefaultAsync(i => i.SurveyId == surveyId && i.UserId == userId, ct);
+        if (existing is not null) return existing;
+
+        var participation = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+            CreatedAt = createdAt,
+        };
+        ctx.SurveyInvitations.Add(participation);
+
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return participation;
+        }
+        catch (DbUpdateException)
+        {
+            // A concurrent Start POST may have won the unique (SurveyId, UserId) insert race.
+            // Re-read the canonical row; unrelated persistence failures still propagate.
+            ctx.ChangeTracker.Clear();
+            var raced = await ctx.SurveyInvitations
+                .FirstOrDefaultAsync(i => i.SurveyId == surveyId && i.UserId == userId, ct);
+            if (raced is not null) return raced;
+            throw;
+        }
+    }
+
     public async Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

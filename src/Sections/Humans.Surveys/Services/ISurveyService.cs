@@ -266,10 +266,12 @@ internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definitio
 /// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created
 /// survey/user ledger row; <c>DraftResponseId</c> is present only for Identified; an already-completed
 /// ledger redirects to the survey's thank-you page rather than opening another tracked response.
+/// <c>DraftAnswers</c> restores an existing Identified public draft into the wizard session.
 /// </summary>
 internal sealed record SurveyPublicStart(
     Guid ParticipationId,
     Guid? DraftResponseId,
+    IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
     bool AlreadyCompleted);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>

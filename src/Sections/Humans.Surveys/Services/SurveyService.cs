@@ -325,7 +325,10 @@ internal sealed class SurveyService(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
         var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
-        return recipients.Except(alreadyInvited).Count();
+        var completedPublicParticipants = (await repo.GetInvitationsAsync(surveyId, ct))
+            .Where(invitation => invitation.SentAt is null && invitation.Completed)
+            .Select(invitation => invitation.UserId);
+        return recipients.Except(alreadyInvited).Except(completedPublicParticipants).Count();
     }
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -343,9 +346,19 @@ internal sealed class SurveyService(
         var target = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
-        var netNew = target.Except(alreadyInvited).ToList();
-        var existingParticipation = (await repo.GetInvitationsAsync(surveyId, ct))
-            .ToDictionary(invitation => invitation.UserId);
+        var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
+        var completedPublicParticipants = participationRows
+            .Where(invitation => invitation.SentAt is null && invitation.Completed)
+            .Select(invitation => invitation.UserId);
+        var netNew = target
+            .Except(alreadyInvited)
+            .Except(completedPublicParticipants)
+            .ToList();
+        var existingParticipation = participationRows
+            .GroupBy(invitation => invitation.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(invitation => invitation.CreatedAt).First());
 
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
         var users = await userService.GetUserInfosAsync(netNew, ct);
@@ -583,34 +596,27 @@ internal sealed class SurveyService(
                 "Only identified or completion-tracked public responses need a participation ledger.");
         }
 
-        var participation = (await repo.GetInvitationsAsync(surveyId, ct))
-            .FirstOrDefault(invitation => invitation.UserId == userId);
-
-        if (participation is null)
-        {
-            participation = new SurveyInvitation
-            {
-                Id = Guid.NewGuid(),
-                SurveyId = surveyId,
-                UserId = userId,
-                SentAt = null,
-                LatestEmailStatus = null,
-                CreatedAt = clock.GetCurrentInstant(),
-            };
-            await repo.AddInvitationAndSaveAsync(participation, ct);
-        }
+        var participation = await repo.GetOrCreateParticipationAsync(
+            surveyId, userId, clock.GetCurrentInstant(), ct);
 
         if (participation.Completed)
         {
-            return new SurveyPublicStart(participation.Id, null, AlreadyCompleted: true);
+            return new SurveyPublicStart(participation.Id, null, [], AlreadyCompleted: true);
         }
 
-        Guid? draftResponseId = anonymity == ResponseAnonymity.Identified
-            ? await StartIdentifiedDraftAsync(
-                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct)
-            : null;
+        Guid? draftResponseId = null;
+        IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
+        if (anonymity == ResponseAnonymity.Identified)
+        {
+            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
+            draftResponseId = existingDraft?.Id
+                ?? await StartIdentifiedDraftAsync(
+                    surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
+            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
+        }
 
-        return new SurveyPublicStart(participation.Id, draftResponseId, AlreadyCompleted: false);
+        return new SurveyPublicStart(
+            participation.Id, draftResponseId, draftAnswers, AlreadyCompleted: false);
     }
 
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
@@ -1418,6 +1424,19 @@ internal sealed class SurveyService(
             TextValue = a.TextValue,
             RatingValue = a.RatingValue,
         }).ToList();
+
+    private static IReadOnlyList<SurveyDraftAnswer> MapDraftAnswers(SurveyResponse draft)
+        => draft.Answers
+            .Select(answer => new SurveyDraftAnswer(
+                answer.QuestionId,
+                answer.SelectedOptionValues,
+                answer.TextValue,
+                answer.RatingValue,
+                answer.GridSelections?.ToDictionary(
+                    pair => pair.Key,
+                    pair => (IReadOnlyList<string>)pair.Value,
+                    StringComparer.Ordinal)))
+            .ToList();
 
     /// <summary>
     /// Resolves an audience predicate into the set of recipient user ids via cross-section read

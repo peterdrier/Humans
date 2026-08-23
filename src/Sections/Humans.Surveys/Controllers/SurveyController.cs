@@ -220,6 +220,7 @@ internal sealed class SurveyController(
 
         Guid? participationId = null;
         Guid? draftResponseId = null;
+        var stateAnswers = new Dictionary<string, SurveyWizardAnswer>(StringComparer.Ordinal);
         if (resolvedAnonymity != ResponseAnonymity.Anonymous)
         {
             var tracked = await surveyService.StartPublicTrackedResponseAsync(
@@ -231,6 +232,21 @@ internal sealed class SurveyController(
 
             participationId = tracked.ParticipationId;
             draftResponseId = tracked.DraftResponseId;
+            foreach (var answer in tracked.DraftAnswers)
+            {
+                stateAnswers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
+                {
+                    SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                    TextValue = answer.TextValue,
+                    RatingValue = answer.RatingValue,
+                    GridSelections = answer.GridSelections is null
+                        ? new Dictionary<string, List<string>>(StringComparer.Ordinal)
+                        : answer.GridSelections.ToDictionary(
+                            pair => pair.Key,
+                            pair => pair.Value.ToList(),
+                            StringComparer.Ordinal),
+                };
+            }
         }
 
         var state = new SurveyWizardState
@@ -242,17 +258,15 @@ internal sealed class SurveyController(
             Anonymity = resolvedAnonymity,
             InputMethod = SurveyInputMethod.Slug,
             Culture = resolvedCulture,
-            CurrentPage = SurveyWizardFlow.FirstVisiblePage(editable.Questions, new Dictionary<Guid, AnswerState>()) ?? 0,
+            CurrentPage = SurveyWizardFlow.FirstVisiblePage(
+                editable.Questions, SurveyWizardFlow.ToAnswerStates(stateAnswers)) ?? 0,
+            Answers = stateAnswers,
         };
 
         // Mirror the invited Start action: record the public start at intro advance (not the first page
         // POST) so the SlugStarted funnel counts visitors who click Start and abandon on the first page.
         state.Started = true;
         await surveyService.IncrementPublicStartedAsync(ctx.SurveyId, ct);
-        if (participationId is { } trackedId)
-        {
-            await surveyService.MarkInvitationStartedAsync(trackedId, ct);
-        }
 
         SurveyWizardSession.SaveBySlug(HttpContext.Session, slug, state);
         return RedirectToAction("PublicPage", new { slug });

@@ -54,6 +54,13 @@ internal partial interface ISurveyRepository : IRepository
     Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets or creates the one per-survey/user participation row. The unique database index is the
+    /// authority when concurrent public-start requests race.
+    /// </summary>
+    Task<SurveyInvitation> GetOrCreateParticipationAsync(
+        Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default);
+
+    /// <summary>
     /// Invitations due for the one-time 7-day reminder: their survey is <c>Open</c>, not yet
     /// <c>Completed</c>, no reminder sent yet, and sent on or before <paramref name="cutoff"/>. No
     /// display ordering. Read-only.
