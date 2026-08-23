@@ -55,9 +55,11 @@ batch is reclaimable without cleanup. Never work a batch whose PR is already ope
 
 ## Gates — unattended
 
-No one is at the gate: a routine run has no permission prompts. Every stop in
-[`batch-worker`](../../.claude/agents/batch-worker.md) degrades to **skip the item, append to
-Needs-Peter, keep going** — never to shipping the change.
+No one is at the gate: a routine run has no permission prompts. **Pre-implementation** gates in
+[`batch-worker`](../../.claude/agents/batch-worker.md) degrade to **skip the item, append to
+Needs-Peter, keep going** — never to shipping the change. **Post-commit review failures stay hard
+stops:** a batch whose spec, reuse or code review is still failing after 3 iterations is blocked,
+opens no PR, and waits for a human.
 
 - **Unauthorized author** (not `peterdrier` / `swombat`) — `/sprint` marks the item `GATED`
   at plan time; the run skips it. Never worked unattended without per-issue approval.
@@ -67,7 +69,8 @@ Needs-Peter, keep going** — never to shipping the change.
 - **Spec change from `fb:` feedback** —
   [`triage-protocol`](../../memory/process/triage-protocol.md). Skip, record the delta.
 
-A skipped item leaves its batch checkbox unticked and names the skip in the PR body.
+A skipped item leaves its batch checkbox unticked and names the skip in the PR body. If a gate
+fires after the item already has a commit, its commits are reverted before the run continues.
 
 ## Completion
 
