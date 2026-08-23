@@ -126,7 +126,7 @@ someone remembering to go look.
 Procedure — for **each** triggered `freshness:flag-on-change` doc, dispatch a tightly-scoped subagent (≤3 concurrent; cluster docs that share the same changed files into one subagent) with:
 - the doc's absolute path in the worktree;
 - the **exact list of changed files its triggers matched** (not merely "it triggered" — compute this from the Phase 4 match so the subagent reviews the right diff, not all of `src/`);
-- instruction to, per changed file, view `git -C <worktree> diff <prev-anchor> HEAD -- <file>` AND read the current source, then **fix in place** every place the doc's prose is factually contradicted (renamed/removed/added symbol, route, field, enum, behavior, auth rule, default), preserving voice/structure/freshness-markers, surgical edits only;
+- instruction to `cd <worktree>` first (its own Bash call), then per changed file view `git diff <prev-anchor> HEAD -- <file>` AND read the current source, then **fix in place** every place the doc's prose is factually contradicted (renamed/removed/added symbol, route, field, enum, behavior, auth rule, default), preserving voice/structure/freshness-markers, surgical edits only;
 - escalate to the report's "Open questions" **only** genuine judgment calls or pre-existing drift outside the sweep's changed-file scope (be explicit which); `<90%` sure it's real drift → don't edit, ask.
 
 Guide docs are end-user facing: fix only user-visible behavior drift, not internal-implementation wording. Reserve a flag (no fix) strictly for subjective "does this still read right" prose that no code fact contradicts.

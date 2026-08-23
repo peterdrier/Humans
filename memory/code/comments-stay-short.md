@@ -9,6 +9,6 @@ If the rationale genuinely needs a paragraph, it belongs in the issue or a memor
 
 **Why:** the comment gets read to understand a three-second problem. A long history buried in a doc block is noise to scan past every time.
 
-**How to apply:** same for XML doc blocks, `because:` strings in test assertions, commit bodies, and PR descriptions. When editing an existing over-long comment, shorten it rather than adding to it.
+**How to apply:** same for XML doc blocks and `because:` strings in test assertions. When editing an existing over-long comment, shorten it rather than adding to it.
 
 Related: [[name-analyzers-not-numbers]].

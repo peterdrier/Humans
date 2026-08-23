@@ -253,6 +253,8 @@ function reviewPrompt(L, stage, lens) {
 
 You DO NOT receive and MUST NOT consider the Reforge score change. A lower score is NOT a reason to accept. Judge ONLY the structural change. The implementer is incentivized to game a number; assume the change may be gaming until the diff proves a genuine structural improvement you can name in one sentence.
 
+Your FIRST Bash call is \`cd "${L.wt}"\` on its own — every command below runs from inside that worktree (never \`git -C\`).
+
 Inspect (read-only — do not edit anything):
 - The uncommitted diff:  git --no-pager diff
 - New untracked files:   git status --porcelain   (read any new files under ${L.wt})
