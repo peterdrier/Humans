@@ -138,11 +138,25 @@
         }
 
         <div class="d-flex justify-content-end mb-4">
-            @* Rendered even with nothing selectable so the queue's shape is legible at a
-               glance; Razor omits the attribute entirely when the expression is false. *@
-            <button type="submit" class="btn btn-success" disabled="@(!hasSelectableReviews)">
-                <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
-            </button>
+            @* Rendered even with nothing selectable so the queue's shape is legible at a glance.
+               Two branches, not disabled="@@(!hasSelectableReviews)". Razor would omit a
+               false-valued attribute, so the collapsed form does work — and it is still a reject:
+               code-review-rules.md §"Razor Boolean Attributes" bans it regardless of context,
+               because a boolean attribute is live whenever it is *present*, so the version of
+               this that is wrong looks identical to the version that is right. Do not re-collapse
+               this; it was tried in nobodies-collective/Humans#1458 and reverted in review. *@
+            @if (hasSelectableReviews)
+            {
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-success" disabled>
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                </button>
+            }
         </div>
     </form>
 }

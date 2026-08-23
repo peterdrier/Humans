@@ -174,7 +174,7 @@ because they produced none.
   assertions (finding 6), which required making the banner view component internal (finding 11).
 - Re-derived the section's docs and comments from the code across the files in
   `## File coverage` (findings 7–10), including the user guide and its freshness triggers.
-- Collapsed the duplicated bulk-clear button and the unreachable `else if`; localized the three
+- Collapsed the unreachable `else if`; localized the three
   hard-coded English strings; deleted two dead resx keys across six locales; removed the dead
   `UserManager` scaffolding and renamed the misnamed substitute (findings 12, 13).
 - Applied the merged 2026-08-22 Cantina run's sweep queue: 21 lessons into this skill. Its
@@ -351,6 +351,34 @@ Phase 1 to PR creation. The cloud transcript layout the skill flags as unverifie
 to work — see Needs Peter item 6. **Caveat:** the phase log carries no marker after `phase3`,
 so phases 4–7 are all attributed to the `phase3` row; the total is right, the split is not.
 
+## Review round
+
+Phase 8 was skipped by the schedule's instruction, so the review that would have run inline ran
+on the PR instead. Two bot findings and one the surface report caught; all three handled on the
+branch.
+
+1. **Upheld — `disabled="@(!hasSelectableReviews)"` is a documented hard reject.** Finding 12
+   collapsed the bulk-clear button's two branches into one with an expression-valued `disabled`.
+   `code-review-rules.md` §"Razor Boolean Attributes" (8+ historical fixes) bans exactly that,
+   "regardless of context". The collapse *works* — Razor omits a false-valued attribute — and
+   that is the point of the rule: the broken version is indistinguishable from this one, so the
+   rule refuses the shape rather than adjudicating each instance. Reverted to the two-branch
+   form, with a comment naming the rule so the next run does not re-collapse it. **The strike
+   was wrong and the reviewer was right**: a dedup that trades a documented rule for four lines
+   is not a dedup.
+2. **Refuted — the `else if (Cleared)` → `else` collapse.** Codex read the `else` as a catch-all
+   that would tell a coordinator a never-reviewed human had been cleared. It is not: the `if`
+   above it tests `Model.ConsentCheckStatus != ConsentCheckStatus.Cleared`, and the property is
+   `ConsentCheckStatus?`, so C#'s lifted `!=` sends **null down the actions branch**, not the
+   `else`. The `else` is reachable only for `Cleared`, exactly as before. Replied on the thread
+   rather than changing code. (The behaviour Codex describes for a null status — a coordinator
+   seeing Clear/Flag/Reject on someone not in the queue — is real, pre-existing, and unchanged
+   by this branch; it is Needs Peter item 2's question, which this run had already asked.)
+3. **Self-caught — `.phase-log` and `.prs.json` were committed.** The PR surface report listed
+   both under New Files. They are per-run scratch and the skill says never commit them; a
+   strike's `git add -A` cannot tell them from the files it means to stage. Untracked and added
+   to `.gitignore`, which is the fix that survives the next run.
+
 ## Needs Peter
 
 1. [ ] **Widen the `section-file-layout` detector, or the template, to `Section[A-Za-z]*.cs`.**
@@ -394,6 +422,11 @@ so phases 4–7 are all attributed to the `phase3` row; the total is right, the 
 - `lesson: 2026-08-23 — git fetch origin <branch> does not populate origin/<branch> the way the Phase 2 blocked-set build assumes. Diff origin/main...origin/<branch>, and assert the file list is non-empty for a PR known to have files; a blocked set that silently reports "touches nothing" un-blocks every section.`
 - `lesson: 2026-08-23 — a sweep-queue item marked SUPERSEDED may have been superseded and then retired. Cantina's two memory items pointed at an atom that #1454 landed and #1456 deliberately deleted when the environment started shipping the toolchain. Check whether the successor still exists before applying or skipping; applying would have re-added guidance Peter removed.`
 - `lesson: 2026-08-23 — a doc-and-comment re-derivation pass grows the section's reforge loc, because doc comments on production code are production LOC. Onboarding's loc went 1392 → 1441 on a run whose code changes were about 40 lines. State the growth and its cause in ## Size rather than letting a "docs only" framing hide it.`
+- `lesson: 2026-08-23 — before a dedup strike collapses a two-branch view into one, grep docs/architecture/code-review-rules.md for the shape you are collapsing INTO. The bulk-clear collapse produced disabled="@boolExpr", which that file rejects regardless of context, and review blocked it. A dedup that costs a documented rule is not a win, and "but it works" is not the test — the rule exists because the broken shape looks identical to the working one.`
+- `lesson: 2026-08-23 — a run's scratch files get committed unless .gitignore stops them. The skill says never commit .phase-log or .prs.json, and this run committed both, because a strike's git add -A cannot distinguish them from the files it means to stage. An instruction to a future self is not a control; the .gitignore line is. Check git ls-files for run scratch before the PR, and prefer ignoring over remembering.`
+- `lesson: 2026-08-23 — when a bot review says a collapsed conditional broke a null case, check the operator that was actually lifted before believing it. Codex read else-after-"!= Cleared" as a catch-all reaching null; C#'s lifted != sends null down the OTHER branch, so the collapse was exact. Refuting takes one look at the property's nullability and the if above it — but so does confirming, and skipping the look either way is how a bot finding becomes a bad commit.`
+- `lesson: 2026-08-23 — an unattended run that skips Phase 8 has not skipped review, it has deferred it onto the PR. Three findings landed there within minutes of opening, one of them a block. Plan for the post-push round: do not tear down the worktree assuming the run is over, and keep the check-in armed.`
+- `debt: 2026-08-23 — four pre-existing violations of code-review-rules.md §"Razor Boolean Attributes", all the banned bool-valued form rather than the sanctioned ? "x" : null string form: Humans.Shifts/Views/VolunteerTracking/_ExportCard.cshtml line 50 (disabled="@subPeriodHidden") and lines 34 and 44 (selected="@(expr == expr)"), and Humans.MailerLite/Views/MailerLite/Admin/Debug.cshtml line 67 (selected="@(a.Key == Model.SelectedKey)"). Found by sweeping the repo for the pattern after review blocked the same shape in Onboarding; left to Shifts' and MailerLite's own runs (found by /section-doctor on Onboarding, 2026-08-23).`
 - `lesson: 2026-08-23 — cost-report.py does read the cloud transcript layout; the skill's "may not work here" hedge is stale and a run should just measure. What it cannot do is split the phases: the phase log stops being written after phase3, so every later phase is attributed to that row. Write a phase marker at the top of each phase, not just the first three.`
 - `debt: 2026-08-23 — four misbound resource keys in Users: Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated in Humans.Users/Controllers/ProfileController.cs (bound UsersResource, keys are SharedResource's), and Admin_SortBy in Humans.Users/Views/UsersAdmin/AdminList.cshtml. Each renders as its own key name to the user in all six languages. Found by running Onboarding's new binding sweep repo-wide (found by /section-doctor on Onboarding, 2026-08-23).`
 - `debt: 2026-08-23 — the admin sidebar is untranslated by construction. AdminNavItem.Label is a raw string rendered as-is by Shell's AdminSidebarViewComponent, so all 29 sections contributing SectionAdminNav hard-code English labels. Seven Nav_* keys in SharedResource (Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, plus Nav_OnboardingReview) are consequently named nowhere in src/ or tests/ (found by /section-doctor on Onboarding, 2026-08-23).`
