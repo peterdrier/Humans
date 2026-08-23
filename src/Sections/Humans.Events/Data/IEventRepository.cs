@@ -105,4 +105,10 @@ internal interface IEventRepository : IRepository
 
     /// <summary>GDPR Art. 17: removes the user's favourites and their category-exclusion preference.</summary>
     Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR Art. 17: clears <c>Host</c> on every event the user submitted. The submission itself
+    /// is retained — see the retention reason on the section's erasure declaration.
+    /// </summary>
+    Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default);
 }

@@ -18,6 +18,10 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 [CrossSectionWrite("GDPR erasure revokes the user's team memberships and early-entry grants.")]
 internal sealed class AccountDeletionService(
     IUserService userService,
+    // Merge-chain resolution goes through the read contract, matching every other caller of
+    // GetMergedSourceIdsAsync (AuditLog, Consent, Budget) — the primitive is only answerable
+    // by the caching decorator, which is what IUserServiceRead resolves to.
+    IUserServiceRead userServiceRead,
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
@@ -192,35 +196,79 @@ internal sealed class AccountDeletionService(
     // --- GDPR Article 17 fan-out ---
 
     /// <summary>
-    /// Runs every <see cref="IUserDataContributor"/>'s erasure. Sequential, not
-    /// Task.WhenAll: contributors share scoped section DbContexts which are not
-    /// thread-safe (same reason as the export fan-out).
+    /// Runs every <see cref="IUserDataContributor"/>'s erasure, for the account and for
+    /// every account previously merged into it. Sequential, not Task.WhenAll: contributors
+    /// share scoped section DbContexts which are not thread-safe (same reason as the export
+    /// fan-out).
     /// </summary>
     /// <remarks>
-    /// The contributor that owns the <c>Account</c> identity runs last, so the
-    /// sections that need the human's addresses to reach an external processor
-    /// (the Workspace suspend) can still resolve them. Ordering is derived from
-    /// the declarations, not from a pinned type list.
+    /// <para>
+    /// The contributor that owns the <c>Account</c> identity runs last within each pass, so
+    /// the sections that need the human's addresses to reach an external processor (the
+    /// Workspace suspend) can still resolve them. Ordering is derived from the declarations,
+    /// not from a pinned type list.
+    /// </para>
+    /// <para>
+    /// Merged-source ids are erased first, and only then the survivor. Merge moves rows for
+    /// the sections that implement <see cref="IUserMerge"/>; the ones that do not leave their
+    /// rows keyed to the archived source id, where erasing the survivor alone would never
+    /// reach them. To the human there was only ever one account, so all of it is their data.
+    /// </para>
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
         var ordered = erasureContributors
-            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0);
+            .OrderBy(c => c.ErasureDeclaration.ContainsKey(GdprExportSections.Account) ? 1 : 0)
+            .ToList();
 
-        foreach (var contributor in ordered)
+        foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
-            try
+            foreach (var contributor in ordered)
             {
-                await contributor.EraseForUserAsync(userId, ct);
+                try
+                {
+                    await contributor.EraseForUserAsync(subjectId, ct);
+                }
+                catch (Exception ex)
+                {
+                    // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
+                    logger.LogError(ex,
+                        "GDPR erasure contributor {Contributor} failed for user {UserId}",
+                        contributor.GetType().Name, subjectId);
+                    throw;
+                }
             }
-            catch (Exception ex)
+
+            // An archived id's own cache entry, dropped here: contributors write through the
+            // inner UserService, and the callers only invalidate the survivor. A stale entry
+            // would keep the merge tombstone's name searchable after it was erased.
+            if (subjectId != userId)
+                await userInfoInvalidator.InvalidateAsync(subjectId, ct);
+        }
+    }
+
+    /// <summary>
+    /// Every archived id folded into <paramref name="userId"/>, with the survivor itself
+    /// last. Walks transitively — an A→B→C chain leaves A pointing at B —
+    /// over the single canonical primitive
+    /// (<see cref="IUserServiceRead.GetMergedSourceIdsAsync"/>). Typically returns one id.
+    /// </summary>
+    private async Task<IReadOnlyList<Guid>> MergeChainAsync(Guid userId, CancellationToken ct)
+    {
+        var sources = new List<Guid>();
+        var seen = new HashSet<Guid> { userId };
+        var frontier = new Queue<Guid>([userId]);
+
+        while (frontier.Count > 0)
+        {
+            foreach (var sourceId in await userServiceRead.GetMergedSourceIdsAsync(frontier.Dequeue(), ct))
             {
-                // Never swallow: leaving a section's data behind silently is the bug this exists to kill.
-                logger.LogError(ex,
-                    "GDPR erasure contributor {Contributor} failed for user {UserId}",
-                    contributor.GetType().Name, userId);
-                throw;
+                if (!seen.Add(sourceId)) continue;
+                sources.Add(sourceId);
+                frontier.Enqueue(sourceId);
             }
         }
+
+        return [.. sources, userId];
     }
 }

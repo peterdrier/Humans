@@ -495,4 +495,20 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
         return favourites.Count + preferences.Count;
     }
+
+    public async Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var submissions = await ctx.Events
+            .Where(e => e.SubmitterUserId == userId && e.Host != null)
+            .ToListAsync(ct);
+        if (submissions.Count == 0) return 0;
+
+        foreach (var submission in submissions)
+            submission.Host = null;
+
+        await ctx.SaveChangesAsync(ct);
+        return submissions.Count;
+    }
 }

@@ -55,8 +55,15 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
 
+        // The real UserService cannot answer the merge-chain lookup (that primitive only
+        // exists on the caching decorator), and these accounts have no merge history.
+        var userServiceRead = Substitute.For<IUserServiceRead>();
+        userServiceRead.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
+
         _service = new AccountDeletionService(
             _userService,
+            userServiceRead,
             Substitute.For<IUserEmailService>(),
             _teamService,
             Substitute.For<IRoleAssignmentService>(),

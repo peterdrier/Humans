@@ -36,17 +36,29 @@ internal sealed class MailerLiteGdprContributor(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
-    /// Resolves the same notification-target email the audience sync job matches
-    /// subscribers against (<see cref="IUserEmailService.GetPrimaryEmailAsync"/>) and
-    /// deletes that subscriber. No email on file means no subscriber could exist — nothing
-    /// to erase.
+    /// Deletes the subscriber under <em>every</em> address the human owns, not just the
+    /// current notification target. A subscriber routinely sits under a non-primary verified
+    /// address — the "Frank pattern" the audience debug screen exists to explain
+    /// (<c>Docs/features/audience-debug-screen.md</c>) — and erasing only the primary would
+    /// leave that subscriber and its group memberships at the processor after the local
+    /// <c>user_emails</c> rows are gone, with nothing left to find it by.
+    ///
+    /// <para>
+    /// The primary is included explicitly rather than assumed to be in the verified set, and
+    /// each delete is independently idempotent (an absent subscriber is a 404, which the
+    /// client treats as success), so the whole method stays safe to retry.
+    /// </para>
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var email = await userEmailService.GetPrimaryEmailAsync(userId, ct);
-        if (email is null)
-            return;
+        var addresses = new HashSet<string>(
+            await userEmailService.GetVerifiedEmailsForUserAsync(userId, ct),
+            StringComparer.OrdinalIgnoreCase);
 
-        await mailerLiteService.DeleteSubscriberAsync(email, ct);
+        if (await userEmailService.GetPrimaryEmailAsync(userId, ct) is { } primary)
+            addresses.Add(primary);
+
+        foreach (var address in addresses)
+            await mailerLiteService.DeleteSubscriberAsync(address, ct);
     }
 }

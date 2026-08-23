@@ -846,12 +846,25 @@ internal sealed class EventService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.Events] = null
+            [GdprExportSections.Events] =
+                "Partially retained: favourites and the category-exclusion preference are deleted " +
+                "outright. An event the person submitted stays in the guide as the programme " +
+                "record of what ran — GDPR Art. 17(3)(b): it is a listing other people " +
+                "favourited, scheduled around and moderated, and event_moderation_actions " +
+                "references it under a Restrict FK, so removing it would take another human's " +
+                "moderation trail with it. Their Host display name is cleared, and " +
+                "SubmitterUserId (non-nullable) resolves to the account tombstone."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Favourites and the category-exclusion preference are the section's only user-scoped rows.</summary>
-    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
-        repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
+    /// <summary>
+    /// Favourites and the category-exclusion preference go; submitted events stay, with the
+    /// person's <c>Host</c> display name cleared. See <see cref="Erasure"/> for why.
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
+        await repo.ClearSubmitterHostForUserAsync(userId, ct);
+    }
 }

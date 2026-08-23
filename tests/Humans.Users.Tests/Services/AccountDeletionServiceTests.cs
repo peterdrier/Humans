@@ -28,6 +28,7 @@ namespace Humans.Users.Tests.Services;
 public class AccountDeletionServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserServiceRead _userServiceRead = Substitute.For<IUserServiceRead>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
@@ -53,6 +54,9 @@ public class AccountDeletionServiceTests
             .Returns(new UserProfileAnonymizeResult(false, null, null));
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
+        // No merge history unless a test gives one — the fan-out walks the chain.
+        _userServiceRead.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
 
         // The contributor owning the Account section must erase last — the fan-out
         // orders off the declaration, so the fakes declare the two shapes.
@@ -69,6 +73,7 @@ public class AccountDeletionServiceTests
 
         _service = new AccountDeletionService(
             _userService,
+            _userServiceRead,
             _userEmailService,
             _teamService,
             _roleAssignmentService,
@@ -273,6 +278,64 @@ public class AccountDeletionServiceTests
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
         await _identityContributor.DidNotReceiveWithAnyArgs()
             .EraseForUserAsync(Guid.Empty, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_ErasesTheAccountsThatWereMergedIntoThisOne()
+    {
+        var userId = Guid.NewGuid();
+        var mergedIn = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userServiceRead.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { mergedIn });
+
+        await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // Sections that do not implement IUserMerge leave their rows on the archived id;
+        // erasing only the survivor would never reach them.
+        await _sectionContributor.Received(1).EraseForUserAsync(mergedIn, Arg.Any<CancellationToken>());
+        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        // The archived id's cache entry too, or its tombstone name stays searchable.
+        await _userInfoInvalidator.Received(1).InvalidateAsync(
+            mergedIn, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_FollowsTheWholeMergeChain()
+    {
+        var survivor = Guid.NewGuid();
+        var middle = Guid.NewGuid();
+        var oldest = Guid.NewGuid();
+        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(MakeUser(survivor));
+        // oldest -> middle -> survivor: the first hop is not rewritten when the second happens.
+        _userServiceRead.GetMergedSourceIdsAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { middle });
+        _userServiceRead.GetMergedSourceIdsAsync(middle, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { oldest });
+
+        await _service.PurgeAsync(survivor, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _sectionContributor.Received(1).EraseForUserAsync(oldest, Arg.Any<CancellationToken>());
+        await _sectionContributor.Received(1).EraseForUserAsync(middle, Arg.Any<CancellationToken>());
+        await _sectionContributor.Received(1).EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_WithACircularMergeRecord_StillTerminates()
+    {
+        var userId = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userServiceRead.GetMergedSourceIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { other });
+        _userServiceRead.GetMergedSourceIdsAsync(other, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { userId, other });
+
+        var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        await _sectionContributor.Received(1).EraseForUserAsync(other, Arg.Any<CancellationToken>());
+        await _sectionContributor.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
