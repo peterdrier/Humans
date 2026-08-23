@@ -116,7 +116,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 |-------|------|-------|
 | `Id` | Guid | PK |
 | `SurveyId` | Guid | FK → Survey, cascade |
-| `InvitationId` | Guid? | FK → SurveyInvitation (SetNull). Set for invited responses and for logged-in public responses using Identified or CompletionTracked; null for fully Anonymous public responses. |
+| `InvitationId` | Guid? | FK → SurveyInvitation (SetNull). Set only for **Identified** responses (invited or logged-in public); null for CompletionTracked and Anonymous so those response rows remain unlinkable. |
 | `UserId` | Guid? | Respondent user id — **bare `Guid?` column**, no nav, no cross-section FK constraint. **Null unless the respondent chose Identified.** |
 | `Anonymity` | enum `ResponseAnonymity` | `Identified` / `CompletionTracked` / `Anonymous` (see §4) |
 | `InputMethod` | enum `SurveyInputMethod` | How the response was entered: `UserSpecificLink` (tokenised invite) or `Slug` (public link). Lets the funnel split finishes by method. v1 records `UserSpecificLink` unless the public-slug path is in scope (open). |
