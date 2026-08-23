@@ -256,21 +256,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
                 ct);
     }
 
-    public async Task SetDraftResumeContextAsync(
-        Guid draftResponseId,
-        SurveyInputMethod inputMethod,
-        string culture,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var draft = await ctx.SurveyResponses
-            .FirstOrDefaultAsync(response => response.Id == draftResponseId && response.SubmittedAt == null, ct);
-        if (draft is null) return;
-        draft.InputMethod = inputMethod;
-        draft.Culture = culture;
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -287,10 +272,39 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var transaction = await ctx.Database.BeginTransactionAsync(ct);
+
+        var invitationId = await ctx.SurveyResponses
+            .AsNoTracking()
+            .Where(response => response.Id == draftResponseId && response.SubmittedAt == null)
+            .Select(response => response.InvitationId)
+            .FirstOrDefaultAsync(ct);
+        if (invitationId is { } participationId)
+        {
+            // Autosave and finalisation serialize on the same participation row. This no-op
+            // conditional update obtains the row lock without claiming completion.
+            var locked = await ctx.SurveyInvitations
+                .Where(invitation => invitation.Id == participationId && !invitation.Completed)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        invitation => invitation.Completed,
+                        invitation => invitation.Completed),
+                    ct);
+            if (locked != 1)
+            {
+                await transaction.RollbackAsync(ct);
+                return false;
+            }
+        }
+
         var draft = await ctx.SurveyResponses
             .Include(r => r.Answers)
             .FirstOrDefaultAsync(r => r.Id == draftResponseId && r.SubmittedAt == null, ct);
-        if (draft is null) return false;
+        if (draft is null)
+        {
+            await transaction.RollbackAsync(ct);
+            return false;
+        }
 
         ctx.SurveyAnswers.RemoveRange(draft.Answers);
         foreach (var answer in answers)
@@ -303,6 +317,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         draft.Culture = culture;
         if (submittedAt is not null) draft.SubmittedAt = submittedAt;
         await ctx.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return true;
     }
 

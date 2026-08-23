@@ -1559,7 +1559,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartIdentifiedDraftAsync_updates_the_entry_path_when_reusing_a_draft()
+    public async Task StartIdentifiedDraftAsync_returns_same_draft_for_a_different_entry_path()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1578,14 +1578,12 @@ public class SurveyServiceTests
             "en", TestContext.Current.CancellationToken);
 
         result.DraftResponseId.Should().Be(existing.Id);
-        await _repo.Received(1).SetDraftResumeContextAsync(
-            existing.Id, SurveyInputMethod.Slug, "en", Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task StartIdentifiedDraftAsync_updates_the_culture_when_reusing_a_draft()
+    public async Task StartIdentifiedDraftAsync_returns_same_draft_for_a_different_culture()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1605,8 +1603,6 @@ public class SurveyServiceTests
             "es", TestContext.Current.CancellationToken);
 
         result.DraftResponseId.Should().Be(existing.Id);
-        await _repo.Received(1).SetDraftResumeContextAsync(
-            existing.Id, SurveyInputMethod.Slug, "es", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1804,8 +1800,6 @@ public class SurveyServiceTests
         result.DraftAnswers.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new SurveyDraftAnswer(
                 questionId, ["yes"], "saved", null));
-        await _repo.Received(1).SetDraftResumeContextAsync(
-            draft.Id, SurveyInputMethod.Slug, "en", Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

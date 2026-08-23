@@ -90,10 +90,6 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Updates the entry path and culture stored on an in-progress Identified draft. No-op if the draft is gone.</summary>
-    Task SetDraftResumeContextAsync(
-        Guid draftResponseId, SurveyInputMethod inputMethod, string culture, CancellationToken ct = default);
-
     /// <summary>Inserts a response row and saves.</summary>
     Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
 

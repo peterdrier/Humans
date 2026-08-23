@@ -556,11 +556,6 @@ internal sealed class SurveyService(
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
         {
-            if (existing.InputMethod != inputMethod
-                || !string.Equals(existing.Culture, culture, StringComparison.Ordinal))
-            {
-                await repo.SetDraftResumeContextAsync(existing.Id, inputMethod, culture, ct);
-            }
             return new SurveyIdentifiedStart(existing.Id, MapDraftAnswers(existing));
         }
 
