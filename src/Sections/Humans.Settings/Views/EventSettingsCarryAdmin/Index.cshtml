@@ -75,11 +75,14 @@
     <div class="card mb-4">
         <div class="card-header">Event rows</div>
         @{
+            // Carried rows link to their own edit screen — that is the only lookup
+            // for an inactive row, which /Settings/Admin's default GET will not load.
             var carryTable = TableModel.For(Model.Rows)
                 .Column("Event", r => r.EventName)
                 .Column("Year", r => r.Year)
                 .Column("Active", r => r.IsActive ? "Yes" : "No")
                 .Column("Carried", r => r.AlreadyCarried ? "Yes" : "No")
+                .RowHref(r => r.AlreadyCarried ? Url.Action("Index", "SettingsAdmin", new { id = r.Id }) : null)
                 .Build();
         }
         <partial name="_Table" model="carryTable" />

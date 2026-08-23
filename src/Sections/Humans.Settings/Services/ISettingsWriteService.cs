@@ -20,5 +20,9 @@ internal interface ISettingsWriteService : ISettingsService
     /// Inserts or updates the row identified by <see cref="EventSettingsInfo.Id"/>.
     /// Idempotent: saving the same values twice leaves the row unchanged.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Another row is already <c>Active</c>, or the row is new and its id names no
+    /// Shifts event — new event ids come from the carry, not from here.
+    /// </exception>
     Task SaveEventSettingsAsync(EventSettingsInfo settings, CancellationToken cancellationToken = default);
 }

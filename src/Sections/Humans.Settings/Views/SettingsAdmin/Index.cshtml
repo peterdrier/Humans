@@ -13,6 +13,8 @@
     The app-wide event values — every section reads these. Shifts' own knobs
     (browsing switch, global volunteer cap, reminder lead time) stay on the
     Shifts event settings screen.
+    Editing <strong>@Model.EventName</strong> (@Model.GateOpeningDate).
+    <a asp-controller="EventSettingsCarryAdmin" asp-action="Index">All event rows</a>.
 </p>
 
 <div class="row">
@@ -21,10 +23,7 @@
             @Html.AntiForgeryToken()
             <div asp-validation-summary="All" class="alert alert-danger"></div>
 
-            @if (Model.Id.HasValue)
-            {
-                <input type="hidden" asp-for="Id" />
-            }
+            <input type="hidden" asp-for="Id" />
 
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">General</h5></div>

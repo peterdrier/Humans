@@ -3,6 +3,7 @@ using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
 using Humans.Settings.Services;
+using Humans.Shifts.Contracts;
 using NodaTime;
 using NSubstitute;
 using TestContext = Xunit.TestContext;
@@ -21,11 +22,32 @@ public sealed class ServiceTests
     private static readonly Instant Now = Instant.FromUtc(2026, 8, 21, 10, 0);
 
     private readonly ISettingsRepository _repository = Substitute.For<ISettingsRepository>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public ServiceTests() => _clock.GetCurrentInstant().Returns(Now);
 
-    private Service BuildSut() => new(_repository, _clock);
+    private Service BuildSut() => new(_repository, _burnSettings, _clock);
+
+    /// <summary>Makes <paramref name="id"/> an id Shifts' event_settings knows.</summary>
+    private void ShiftsKnows(Guid id) =>
+        _burnSettings.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new BurnSettingsInfo(
+            Id: id,
+            EventName: "Nowhere 2026",
+            Year: 2026,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: new LocalDate(2026, 7, 9),
+            BuildStartOffset: -14,
+            EventEndOffset: 6,
+            StrikeEndOffset: 9,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: false));
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -141,6 +163,7 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_RoundTripsTheDtoBackOntoTheEntityAndStampsTheClock()
     {
         var id = Guid.NewGuid();
+        ShiftsKnows(id);
         var dto = new EventSettingsInfo(
             Id: id,
             EventName: "Nowhere 2027",
@@ -181,6 +204,110 @@ public sealed class ServiceTests
                 && e.Status == EventSettingsStatus.Inactive),
             Now,
             Arg.Any<CancellationToken>());
+    }
+
+    // ── The at-most-one-Active invariant (nobodies-collective/Humans#1104 review).
+    //    No DB constraint backs it, so the service is where it holds.
+
+    private static EventSettingsInfo MakeDto(Guid id, EventSettingsStatus status) => new(
+        Id: id,
+        EventName: "Nowhere 2026",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(2026, 7, 9),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25,
+        SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        Status: status);
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesToActivateWhileAnotherRowIsActive()
+    {
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+        _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var act = () => BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Only one event settings row can be Active*");
+        await _repository.DidNotReceive().UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_LetsTheAlreadyActiveRowSaveAgain()
+    {
+        // The guard excludes the row being saved, so re-saving the active row is
+        // an ordinary edit — only a *second* active row is refused.
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+        _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(false);
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.Status == EventSettingsStatus.Active),
+            Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_DoesNotCheckActivationWhenSavingAnInactiveRow()
+    {
+        // Leaving zero rows active is allowed — deactivating is how a cycle ends.
+        var id = Guid.NewGuid();
+        ShiftsKnows(id);
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+
+        await _repository.DidNotReceive().AnyOtherActiveEventSettingsAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Now, Arg.Any<CancellationToken>());
+    }
+
+    // ── The id-coordination invariant: Rota.EventSettingsId still resolves against
+    //    Shifts' event_settings, so a row born here needs an id Shifts already has.
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesANewRowWhoseIdNamesNoShiftsEvent()
+    {
+        var id = Guid.NewGuid();
+        _burnSettings.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+
+        var act = () => BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"No Shifts event row has id {id}*");
+        await _repository.DidNotReceive().UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_UpdatesAnExistingRowWithoutAskingShifts()
+    {
+        // Only inserts need the id check; a row already here was vetted on the way in.
+        var id = Guid.NewGuid();
+        _repository.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>())
+            .Returns(MakeEntity(id, isActive: false));
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive), TestContext.Current.CancellationToken);
+
+        await _burnSettings.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Now, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

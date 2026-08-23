@@ -47,10 +47,9 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     public string? EarlyEntryClose { get; set; }
 
     /// <summary>
-    /// The form's view of <see cref="EventSettingsStatus"/>. The screen only ever
-    /// loads the active row, so the checkbox maps to Active/Inactive and never
-    /// reaches <see cref="EventSettingsStatus.Deleted"/> — withdrawing a cycle is
-    /// not something this form does.
+    /// The form's view of <see cref="EventSettingsStatus"/>: the checkbox maps to
+    /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
+    /// withdrawing a cycle is not something this form does.
     /// </summary>
     public bool IsActive { get; set; }
 
@@ -121,6 +120,15 @@ internal static class EventSettingsFormMapper
     {
         var errors = new List<EventSettingsFormError>();
 
+        // The form edits an existing row and never invents an id: Shifts' event_settings
+        // still owns them, and a Settings-only id is an event that can hold no rota.
+        if (model.Id is null)
+        {
+            errors.Add(new EventSettingsFormError(
+                nameof(model.Id),
+                "This form edits an existing event row. New rows arrive through /Settings/Admin/Carry."));
+        }
+
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
             errors.Add(new EventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
 
@@ -153,7 +161,7 @@ internal static class EventSettingsFormMapper
 
         return new EventSettingsParseResult(
             new EventSettingsInfo(
-                Id: model.Id ?? Guid.NewGuid(),
+                Id: model.Id!.Value,
                 EventName: model.EventName,
                 // Year is the gate-opening year, never edited on its own.
                 Year: gateOpening.Year,

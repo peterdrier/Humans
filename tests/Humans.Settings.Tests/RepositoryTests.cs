@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -77,5 +78,54 @@ public sealed class RepositoryTests : IDisposable
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle();
         rows[0].Value.Should().Be("false");
+    }
+
+    private static EventSettings MakeEvent(Guid id, EventSettingsStatus status) => new()
+    {
+        Id = id,
+        EventName = "Nowhere 2026",
+        Year = 2026,
+        TimeZoneId = "Europe/Madrid",
+        GateOpeningDate = new NodaTime.LocalDate(2026, 7, 9),
+        EarlyEntryCapacity = new Dictionary<int, int>(),
+        Status = status,
+    };
+
+    [HumansFact]
+    public async Task AnyOtherActiveEventSettingsAsync_IgnoresTheRowBeingSaved()
+    {
+        var id = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repository.AnyOtherActiveEventSettingsAsync(
+            id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AnyOtherActiveEventSettingsAsync_SeesADifferentActiveRow()
+    {
+        _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repository.AnyOtherActiveEventSettingsAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task AnyOtherActiveEventSettingsAsync_IgnoresInactiveAndDeletedRows()
+    {
+        _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Inactive));
+        _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Deleted));
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repository.AnyOtherActiveEventSettingsAsync(
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeFalse();
     }
 }

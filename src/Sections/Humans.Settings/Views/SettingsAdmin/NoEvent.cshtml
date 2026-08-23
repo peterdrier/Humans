@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Event Settings";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Event Settings</h1>
+    <small class="text-muted">Issue #1104</small>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p>
+            No event row to edit here yet. Event ids still belong to the Shifts-owned
+            <code>event_settings</code> rows — <code>Rota.EventSettingsId</code> resolves
+            against them — so this screen edits rows the carry has brought across; it
+            never invents one.
+        </p>
+        <a class="btn btn-primary" asp-controller="EventSettingsCarryAdmin" asp-action="Index">
+            <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>
+            Carry event settings across
+        </a>
+    </div>
+</div>

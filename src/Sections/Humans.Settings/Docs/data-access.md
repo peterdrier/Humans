@@ -32,8 +32,25 @@ last-run stamp have always been written from outside.
 | `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key) |
 | `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the cross-section interface; `SaveEventSettingsAsync` on `ISettingsWriteService`) |
 
-Thin over the repository — no business logic beyond entity↔DTO mapping, no
-cross-section calls, no cache. Key/value consumers today:
+`SaveEventSettingsAsync` holds the table's two invariants — nothing else does,
+because neither can be a DB constraint
+(`memory/architecture/no-db-check-constraints.md`,
+`memory/architecture/unique-constraints-ids-only.md`):
+
+1. **At most one `Active` row.** `AnyOtherActiveEventSettingsAsync(excludingId)`
+   is checked before a row is written `Active`; the row being saved is excluded,
+   so re-saving the active row is an ordinary edit. Zero active rows is legal —
+   deactivating is how a cycle ends. Mirrors Shifts'
+   `ShiftManagementService.CreateAsync`/`UpdateAsync` over the same shape.
+2. **A new row's id must name a Shifts event.** `Rota.EventSettingsId` and
+   `EventGuideSettings.EventSettingsId` still resolve against Shifts'
+   `event_settings`, so a row born here with an invented id is an event that can
+   never hold a rota. Inserts check `IBurnSettingsService.GetByIdAsync` first;
+   updates do not. Retires with the carry, taking the `IBurnSettingsService`
+   dependency with it.
+
+Otherwise thin over the repository — entity↔DTO mapping, no cache. Key/value
+consumers today:
 `EmailOutboxService` (`IsEmailSendingPaused`) and
 `DriveActivityMonitorService` (`DriveActivityMonitor:LastRunAt`);
 well-known keys live in `SettingKeys` (`Humans.Settings.Contracts`).
@@ -67,6 +84,11 @@ Retires with the old columns, taking the `Humans.Shifts.Contracts` project
 reference with it.
 
 `/Settings/Admin` is the section's own admin screen for the app-wide event
-values.
+values. It **edits an existing row and never creates one**: `GET` takes an
+optional `id` (defaulting to the active row), a `POST` redirects back with that
+id so a row the operator just deactivated stays reachable, and with no row to
+show it renders `NoEvent.cshtml` pointing at the carry. The carry screen's row
+table links every carried row to `/Settings/Admin?id=…` — that is the lookup for
+inactive rows.
 
 ---

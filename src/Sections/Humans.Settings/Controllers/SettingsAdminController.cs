@@ -24,13 +24,23 @@ internal sealed class SettingsAdminController(
     ISettingsWriteService settingsService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
+    /// <summary>
+    /// Edits one row: the active one by default, or <paramref name="id"/> when the
+    /// caller names it. Inactive rows stay reachable that way — the carry screen
+    /// links every carried row here, and a save redirects back with its own id.
+    /// </summary>
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken ct = default)
+    public async Task<IActionResult> Index(Guid? id, CancellationToken ct = default)
     {
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
-        return View(active is null
-            ? new EventSettingsViewModel { IsActive = true }
-            : EventSettingsFormMapper.ToViewModel(active));
+        var settings = id is null
+            ? await settingsService.GetActiveEventSettingsAsync(ct)
+            : await settingsService.GetEventSettingsByIdAsync(id.Value, ct);
+
+        // No blank creatable form: event ids belong to the Shifts rows until the
+        // old columns are dropped, so a row is born by the carry, never here.
+        return settings is null
+            ? View("NoEvent")
+            : View(EventSettingsFormMapper.ToViewModel(settings));
     }
 
     [HttpPost("")]
@@ -51,6 +61,7 @@ internal sealed class SettingsAdminController(
 
         await settingsService.SaveEventSettingsAsync(parsed.Settings!, ct);
         SetSuccess("Event settings saved.");
-        return RedirectToAction(nameof(Index));
+        // By id, not bare: deactivating the row takes it off the default GET.
+        return RedirectToAction(nameof(Index), new { id = parsed.Settings!.Id });
     }
 }
