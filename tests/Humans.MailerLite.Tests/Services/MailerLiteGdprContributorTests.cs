@@ -51,6 +51,10 @@ public class MailerLiteGdprContributorTests
 
         await _mailerLite.Received(1)
             .DeleteSubscriberAsync("frank@nobodies.team", Arg.Any<CancellationToken>());
+        // Both, not either: the primary is added to the verified set, it does not replace it.
+        // Asserting only the primary passes an implementation that erases nothing else.
+        await _mailerLite.Received(1)
+            .DeleteSubscriberAsync("frank@gmail.com", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

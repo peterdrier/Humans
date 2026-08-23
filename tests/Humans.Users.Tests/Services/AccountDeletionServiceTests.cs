@@ -320,7 +320,9 @@ public class AccountDeletionServiceTests
         await _sectionContributor.Received(1).EraseForUserAsync(survivor, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
+    // Termination is the assertion here, so it is stated rather than left to the default
+    // timeout: a chain that loops fails this in seconds instead of burning the full 30.
+    [HumansFact(Timeout = 5000)]
     public async Task PurgeAsync_WithACircularMergeRecord_StillTerminates()
     {
         var userId = Guid.NewGuid();
