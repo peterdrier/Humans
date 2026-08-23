@@ -88,9 +88,22 @@ ATTR_RE = re.compile(
     r"(?<![-\w])(" + "|".join(USER_FACING_ATTRS) + r")\s*=\s*(\"([^\"]*)\"|'([^']*)')",
     re.IGNORECASE,
 )
-# `value=` is user-facing only on a button/submit; everywhere else it is form data.
+# `value=` is user-facing only on a control whose value is its own label — `<button>` and an
+# input explicitly typed submit/button/reset. On a radio, checkbox, hidden or (default) text
+# input the value is form data the user never reads: `Profile/Edit` posts `value="Volunteer"`
+# beside a localized label, and counting it as untranslated prose is a false positive.
 VALUE_ATTR_RE = re.compile(
-    r"<(?:button|input)\b[^>]*?\bvalue\s*=\s*\"([^\"]*)\"[^>]*>", re.IGNORECASE
+    r"<button\b[^>]*?\bvalue\s*=\s*\"(?P<button>[^\"]*)\"[^>]*>"
+    r"|<input\b(?=[^>]*\btype\s*=\s*[\"']?(?:submit|button|reset)\b)"
+    r"[^>]*?\bvalue\s*=\s*\"(?P<submit>[^\"]*)\"[^>]*>",
+    re.IGNORECASE,
+)
+# `placeholder="@(x ? "A" : "B")"` — the value regexes above stop at the first inner quote and
+# the tag is stripped whole afterwards, so both rendered literals would vanish. Matched up to
+# the `@(`, then read with the same balanced scan `_keep_expression_strings` uses.
+COND_ATTR_RE = re.compile(
+    r"(?<![-\w])(" + "|".join(USER_FACING_ATTRS) + r")\s*=\s*[\"']\s*@\(",
+    re.IGNORECASE,
 )
 VIEWDATA_TITLE_RE = re.compile(r"ViewData\s*\[\s*\"Title\"\s*\]\s*=\s*(.+)")
 
@@ -115,6 +128,8 @@ CONTROL_FLOW_KEYWORDS = (
 # A Razor expression: `@Model.Foo.Bar()`, `@item.Name`, `@r.Status`, `@Localizer["X"]`, `@("…")`
 RAZOR_EXPR = re.compile(r"@[A-Za-z_(][\w.]*")
 HTML_ENTITY = re.compile(r"&(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);")
+# `{Model.CampName}` inside an interpolated string — data, not the prose around it.
+INTERPOLATION_HOLE = re.compile(r"\{[^{}]*\}")
 # Residual text is user-facing only if it carries a word — two+ letters, or a capitalized one.
 WORDLIKE = re.compile(r"[A-Za-z]{2,}")
 # C# keywords and structural tokens that survive tag-stripping around a control-flow block.
@@ -207,6 +222,34 @@ def _is_literal(fragment: str) -> bool:
     return any(w.lower() not in CODE_NOISE for w in words)
 
 
+def _expression_literals(expression: str) -> list[str]:
+    """The user-facing string literals a C#/Razor expression renders.
+
+    Localized branches come out first, and an interpolation hole is replaced rather than kept:
+    `$"Edit Event — {Model.CampName}"` puts `Edit Event —` on the page, but the braces would
+    read as code to `_is_literal`.
+    """
+    found = []
+    for literal in STRING_LITERAL.findall(LOCALIZED_CALL.sub(" ", expression)):
+        text = INTERPOLATION_HOLE.sub(" ", literal)
+        if _is_literal(text):
+            found.append(" ".join(text.split()))
+    return found
+
+
+def _balanced_end(text: str, start: int) -> int:
+    """Index just past the `(`…`)` region opened at or after `start`."""
+    depth = 0
+    for j in range(start, len(text)):
+        if text[j] == "(":
+            depth += 1
+        elif text[j] == ")":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+    return len(text)
+
+
 def _keep_expression_strings(text: str) -> str:
     """Reduce each `@(…)` expression to the string literals Razor renders out of it.
 
@@ -219,17 +262,7 @@ def _keep_expression_strings(text: str) -> str:
     n = len(text)
     while i < n:
         if text.startswith("@(", i):
-            depth = 0
-            j = i + 1
-            while j < n:
-                if text[j] == "(":
-                    depth += 1
-                elif text[j] == ")":
-                    depth -= 1
-                    if depth == 0:
-                        j += 1
-                        break
-                j += 1
+            j = _balanced_end(text, i + 1)
             expression = LOCALIZED_CALL.sub(" ", text[i:j])
             out.append("\n" + "\n".join(STRING_LITERAL.findall(expression)) + "\n")
             i = j
@@ -267,11 +300,14 @@ def _literal_attrs(markup: str) -> list[str]:
         if _is_literal(RAZOR_EXPR.sub(" ", value)):
             found.append(f"{m.group(1)}={value.strip()}")
     for m in VALUE_ATTR_RE.finditer(markup):
-        value = m.group(1)
+        value = m.group("button") if m.group("button") is not None else m.group("submit")
         if LOCALIZED.search(value):
             continue
         if _is_literal(RAZOR_EXPR.sub(" ", value)):
             found.append(f"value={value.strip()}")
+    for m in COND_ATTR_RE.finditer(markup):
+        expression = markup[m.end() - 2:_balanced_end(markup, m.end() - 1)]
+        found.extend(f"{m.group(1)}={literal}" for literal in _expression_literals(expression))
     return found
 
 
@@ -288,13 +324,14 @@ def _literal_script_strings(scripts: str) -> list[str]:
 
 
 def _literal_titles(code: str) -> list[str]:
+    """Page titles the layout renders. A title assigned through a ternary or an interpolated
+    string is as visible as a bare one — `isEdit ? $"Edit Event — {Model.CampName}" : …` puts
+    two untranslated headings in the browser tab, and requiring the value to start with a
+    quote missed both."""
     found = []
     for m in VIEWDATA_TITLE_RE.finditer(code):
-        rhs = m.group(1).strip()
-        if LOCALIZED.search(rhs):
-            continue
-        if re.match(r'^\s*"', rhs):
-            found.append(f'ViewData["Title"]={rhs.rstrip(";")}')
+        rhs = m.group(1).strip().rstrip(";")
+        found.extend(f'ViewData["Title"]={literal}' for literal in _expression_literals(rhs))
     return found
 
 
