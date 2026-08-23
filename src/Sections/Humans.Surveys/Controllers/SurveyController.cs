@@ -412,6 +412,17 @@ internal sealed class SurveyController(
                     return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
                 }
 
+                if (terminal.Outcome == SurveyWizardOutcome.ValidationFailed)
+                {
+                    foreach (var id in terminal.MissingRequired)
+                    {
+                        ModelState.AddModelError(id.ToString(), localizer["Survey_QuestionRequired"]);
+                    }
+
+                    route.Save(HttpContext.Session, state);
+                    return await RenderPage(state, route, ct);
+                }
+
                 return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
             }
             state.CurrentPage = next.Value;
