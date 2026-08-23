@@ -173,21 +173,35 @@ internal sealed class VendorCommitmentService(
         {
             if (!await repo.AddPaymentAsync(commitmentId, payment, newStatus, now, ct))
                 return ExpenseMutationResult.Failure("Commitment not found.");
-
-            await auditLogService.LogAsync(
-                AuditAction.VendorCommitmentPaymentRecorded,
-                AuditEntityTypes.Commitment, commitmentId,
-                $"Payment of {amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR " +
-                $"recorded against commitment to {commitment.VendorName}.",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error recording payment on commitment {CommitmentId}", commitmentId);
             return ExpenseMutationResult.Failure(ex.Message);
         }
+
+        // The payment row is committed from here on, so nothing after it may report failure:
+        // the operator would be handed back the form and a normal retry would insert the
+        // payment a second time, overstating TotalPaid and possibly moving the status. The
+        // audit write is not allowed to cost us that, so it is logged and stepped over —
+        // ILogger is what surfaces it, the same channel every other swallowed write uses.
+        try
+        {
+            await auditLogService.LogAsync(
+                AuditAction.VendorCommitmentPaymentRecorded,
+                AuditEntityTypes.Commitment, commitmentId,
+                $"Payment of {amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR " +
+                $"recorded against commitment to {commitment.VendorName}.",
+                actorUserId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Payment {PaymentId} was recorded on commitment {CommitmentId} but its audit entry was not written",
+                payment.Id, commitmentId);
+        }
+
+        return ExpenseMutationResult.Success;
     }
 
     /// <summary>

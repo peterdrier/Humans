@@ -21,6 +21,11 @@ internal sealed class CommitmentIndexViewModel
 
 internal sealed class CommitmentAwaitingInvoiceViewModel
 {
+    // Payments carry a LocalDate; the clock carries an Instant. Both have to land in one
+    // calendar to be subtracted, and the association's is Madrid's — same zone the matching
+    // run reads Holded document dates in.
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
     public required IReadOnlyList<VendorCommitmentDto> Commitments { get; init; }
     public required IReadOnlyDictionary<Guid, string> CategoryNames { get; init; }
     /// <summary>Anchors the age half of the liability sort.</summary>
@@ -37,14 +42,19 @@ internal sealed class CommitmentAwaitingInvoiceViewModel
 
     /// <summary>
     /// Age × euros outstanding. Age counts from the first payment out, since that is when the
-    /// association started being owed an invoice. Days are offset by one so the amount still
-    /// discriminates on the day a payment is made; a bare multiply would score every same-day
-    /// liability zero, tiny and six-figure alike.
+    /// association started being owed an invoice — from <c>PaidOn</c>, the date the transfer
+    /// actually left, not <c>CreatedAt</c>, the moment someone typed it in. A transfer made
+    /// months ago and backfilled today is months old, and ranking it as a same-day liability
+    /// would bury the overdue invoice this list exists to surface. Days are offset by one so
+    /// the amount still discriminates on the day a payment is made; a bare multiply would
+    /// score every same-day liability zero, tiny and six-figure alike.
     /// </summary>
     private static decimal LiabilityWeight(VendorCommitmentDto c, Instant now)
     {
-        var oldestPayment = c.Payments.Count == 0 ? c.CreatedAt : c.Payments.Min(p => p.CreatedAt);
-        var days = (decimal)Math.Max(0d, (now - oldestPayment).TotalDays);
+        var oldest = c.Payments.Count == 0
+            ? now.InZone(MadridZone).Date
+            : c.Payments.Min(p => p.PaidOn);
+        var days = (decimal)Math.Max(0, Period.DaysBetween(oldest, now.InZone(MadridZone).Date));
         return (days + 1m) * c.TotalPaid;
     }
 }

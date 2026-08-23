@@ -14,6 +14,14 @@ public class CommitmentAwaitingInvoiceViewModelTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 1, 9, 0);
 
+    private static readonly LocalDate Today = new(2026, 6, 1);
+
+    /// <summary>
+    /// <paramref name="daysAgo"/> ages the payment by its <c>PaidOn</c> date — when the money
+    /// actually left — because that is what the liability sort is defined against. The row's
+    /// <c>CreatedAt</c> stays at <see cref="Now"/> so a test that means "old transfer" cannot
+    /// pass by accident on the data-entry timestamp instead.
+    /// </summary>
     private static VendorCommitmentDto Commitment(string vendor, decimal paid, int daysAgo) =>
         new()
         {
@@ -24,12 +32,11 @@ public class CommitmentAwaitingInvoiceViewModelTests
             Purpose = "Services",
             Status = VendorCommitmentStatus.Paid,
             CreatedByUserId = Guid.NewGuid(),
-            CreatedAt = Now - Duration.FromDays(daysAgo),
+            CreatedAt = Now,
             UpdatedAt = Now,
             Payments =
             [
-                new(Guid.NewGuid(), paid, new LocalDate(2026, 5, 30), null, Guid.NewGuid(),
-                    Now - Duration.FromDays(daysAgo)),
+                new(Guid.NewGuid(), paid, Today.PlusDays(-daysAgo), null, Guid.NewGuid(), Now),
             ],
         };
 
@@ -53,6 +60,20 @@ public class CommitmentAwaitingInvoiceViewModelTests
 
         Vm(freshLarger, oldSmaller).ByLiability.Select(c => c.Id)
             .Should().ContainInOrder(oldSmaller.Id, freshLarger.Id);
+    }
+
+    [HumansFact]
+    public void ByLiability_AgesFromTheTransferDate_NotWhenSomeoneTypedItIn()
+    {
+        // A transfer made months ago, entered today. Ranking it by CreatedAt would score it a
+        // same-day liability and bury it under a fresh larger one — the overdue invoice this
+        // list exists to surface would be the one you cannot see.
+        var backfilled = Commitment("Alba", 1_000m, daysAgo: 300);
+        var freshLarger = Commitment("Repsol", 1_100m, daysAgo: 0);
+        backfilled.CreatedAt.Should().Be(freshLarger.CreatedAt);
+
+        Vm(freshLarger, backfilled).ByLiability.Select(c => c.Id)
+            .Should().ContainInOrder(backfilled.Id, freshLarger.Id);
     }
 
     [HumansFact]

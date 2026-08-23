@@ -114,6 +114,25 @@ public sealed class VendorCommitmentServiceTests
     }
 
     [HumansFact]
+    public async Task RecordPaymentAsync_WhenTheAuditWriteFails_StillReportsThePaymentRecorded()
+    {
+        // The payment row is already committed. Reporting failure hands the operator back the
+        // form, and a normal retry inserts the payment twice — overstating TotalPaid on a
+        // finance record. A missing audit entry is the smaller loss, and it is logged.
+        var id = await RecordAsync(1_000m, "Alba");
+        _audit.LogAsync(
+                Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("audit down")));
+
+        var result = await _sut.RecordPaymentAsync(id, 400m, PaidOn, "TR-1", Guid.NewGuid(), Ct);
+
+        result.Succeeded.Should().BeTrue();
+        var commitment = await _sut.GetAsync(id, Ct);
+        commitment!.Payments.Should().ContainSingle().Which.Amount.Should().Be(400m);
+    }
+
+    [HumansFact]
     public async Task RecordPaymentAsync_RejectsANonPositiveAmount()
     {
         var id = await RecordAsync();
@@ -426,8 +445,13 @@ public sealed class VendorCommitmentServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveCandidateAsync_AfterTheCommitmentClosed_LinksNothing()
+    public async Task ResolveCandidateAsync_AfterTheCommitmentClosed_LeavesNoQueueBehind()
     {
+        // Two guards stand behind this, and asserting only "the resolve was refused" pins
+        // neither: the close sweep drops the row so the resolve finds nothing, and the
+        // repository's Closed guard refuses the link if it somehow does. Either alone
+        // returns Succeeded == false. The queue assertion is what separates them — a
+        // surviving row is still pending after a refused link, so it fails if the sweep goes.
         var id = await RecordAsync(4_024.30m, "Talleres Fandos");
         _holded.ListPurchaseDocumentsAsync(Ct).Returns(
         [
@@ -444,6 +468,8 @@ public sealed class VendorCommitmentServiceTests
         var commitment = await _sut.GetAsync(id, Ct);
         commitment!.Status.Should().Be(VendorCommitmentStatus.Closed);
         commitment.MatchedHoldedDocId.Should().BeNull();
+        // The operator is left with no review item that could only ever fail.
+        commitment.PendingCandidates.Should().BeEmpty();
     }
 
     [HumansFact]
