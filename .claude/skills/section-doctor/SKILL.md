@@ -326,8 +326,11 @@ python .claude/skills/section-doctor/loc-coverage.py --section <X>   # --json fo
 ```
 
 Literal user-facing strings against localized ones per `.cshtml`, worst coverage first. Use it
-for the sweep's param-route gaps, for view components (rendered into a page, never crawled as
-one), and on a run with no Docker or no compiler — where it is the only reading available.
+for the sweep's param-route gaps, for view components and `_*.cshtml` partials (rendered into a
+page, never crawled as one), and on a run with no Docker or no compiler — where it is the only
+reading available. It reads the text a `<script>` puts on the page too (`alert`, `.textContent`),
+because a localized string there already counts and dropping the literal ones would inflate the
+ratio rather than merely miss them.
 **Where both speak, the sweep wins**: it renders, this parses Razor, and a heuristic over markup
 mistakes dynamic data for prose in a way a bracket test does not.
 

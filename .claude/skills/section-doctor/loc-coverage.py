@@ -14,7 +14,8 @@ route's audience from the endpoint's real authorization metadata.
     `## Coverage gaps — parameterized routes` list. That gap is why #1115's own example
     leaked: eight of Expenses' eleven GET routes are `{id:guid}` routes, `/Expenses/{id}`
     among them.
-  * **View components**, rendered into a page and never crawled as one.
+  * **View components and partials**, rendered into a page and never crawled as one.
+    Ninety `_*.cshtml` partials carry user-facing text that no route of their own reaches.
   * **A run with no Docker or no compiler**, where the sweep cannot run at all.
 
 Plus the per-view ranking the sweep's per-route findings do not give: literal user-facing
@@ -52,6 +53,20 @@ from pathlib import Path
 # `@Localizer[...]`, `@SharedLocalizer[...]`, `@ContainersLocalizer[...]`, and the
 # `Localizer[...]` form inside an `@{ }` block.
 LOCALIZED = re.compile(r"\b[A-Za-z]*Localizer\s*\[")
+# The whole call, for removing localized branches before reading an expression's literals.
+LOCALIZED_CALL = re.compile(r"\b[A-Za-z]*Localizer\s*\[[^\]]*\]")
+STRING_LITERAL = re.compile(r"\"([^\"\\]*)\"")
+
+# --- user-facing strings a script emits ----------------------------------------------------
+# `<script>` bodies are not scanned as markup, but these sinks put text on the page, and a
+# localized string inside a script already counts toward the numerator — leaving these out
+# would inflate coverage rather than merely miss it.
+SCRIPT_SINKS = re.compile(
+    r"(?:\b(?:alert|confirm|prompt)\s*\(\s*|"
+    r"\.(?:textContent|innerText|innerHTML)\s*=\s*)"
+    r"(['\"])(.*?)(?<!\\)\1",
+    re.DOTALL,
+)
 
 # --- attributes whose value a user reads --------------------------------------------------
 USER_FACING_ATTRS = (
@@ -90,6 +105,9 @@ TAG = re.compile(r"<[^>]*>", re.DOTALL)
 # `@if (…)`, `@foreach (…)`, `@while (…)`, `@switch (…)`, `@using (…)`, `@await …(…)`
 CONTROL_FLOW = re.compile(
     r"@(?:if|else\s+if|foreach|for|while|switch|lock|using|try|catch|finally|else|do)\b"
+)
+CONTROL_FLOW_KEYWORDS = (
+    "@else if", "@if", "@foreach", "@for", "@while", "@switch", "@lock", "@using", "@catch",
 )
 # A Razor expression: `@Model.Foo.Bar()`, `@item.Name`, `@r.Status`, `@Localizer["X"]`, `@("…")`
 RAZOR_EXPR = re.compile(r"@[A-Za-z_(][\w.]*")
@@ -171,11 +189,45 @@ def _is_literal(fragment: str) -> bool:
     return any(w.lower() not in CODE_NOISE for w in words)
 
 
+def _keep_expression_strings(text: str) -> str:
+    """Reduce each `@(…)` expression to the string literals Razor renders out of it.
+
+    Dropping the whole expression would lose a rendered literal: `@(isEdit ? "Edit Event" :
+    "Submit an Event")` puts two untranslated headings on the page. Localized branches come
+    out first, so `@(x ? Localizer["A"] : Localizer["B"])` contributes nothing.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith("@(", i):
+            depth = 0
+            j = i + 1
+            while j < n:
+                if text[j] == "(":
+                    depth += 1
+                elif text[j] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        j += 1
+                        break
+                j += 1
+            expression = LOCALIZED_CALL.sub(" ", text[i:j])
+            out.append("\n" + "\n".join(STRING_LITERAL.findall(expression)) + "\n")
+            i = j
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
 def _literal_text_nodes(markup: str) -> list[str]:
     """Literal user-facing text nodes left after tags and Razor expressions come out."""
-    markup = _strip_balanced(markup, "@(", "(", ")")  # `@(…)` explicit expressions
+    markup = _keep_expression_strings(markup)
     markup = TAG.sub("\n", markup)
-    markup = CONTROL_FLOW.sub("\n", markup)
+    for keyword in CONTROL_FLOW_KEYWORDS:  # the keyword *and* its condition
+        markup = _strip_balanced(markup, keyword, "(", ")")
+    markup = CONTROL_FLOW.sub("\n", markup)  # the ones with no condition (`@else`, `@try`)
     # `@Localizer["Key"]` / `@Model.Foo` and any `[...]`/`(...)` they carry.
     markup = re.sub(r"@[A-Za-z_][\w.]*(?:\s*\[[^\]]*\])?(?:\s*\([^()]*\))?", "\n", markup)
     markup = RAZOR_EXPR.sub("\n", markup)
@@ -205,6 +257,18 @@ def _literal_attrs(markup: str) -> list[str]:
     return found
 
 
+def _literal_script_strings(scripts: str) -> list[str]:
+    """Text a script puts on the page — `alert(…)`, `.textContent = …` and friends."""
+    found = []
+    for m in SCRIPT_SINKS.finditer(scripts):
+        value = m.group(2)
+        if LOCALIZED.search(value):
+            continue
+        if _is_literal(RAZOR_EXPR.sub(" ", value)):
+            found.append(f"script: {' '.join(value.split())}")
+    return found
+
+
 def _literal_titles(code: str) -> list[str]:
     found = []
     for m in VIEWDATA_TITLE_RE.finditer(code):
@@ -222,12 +286,18 @@ def scan_view(path: Path) -> dict:
     # A localized string counts wherever it is written, `<script>` and `@functions` included.
     localized = len(LOCALIZED.findall(live))
 
+    scripts = "\n".join(m.group(0) for m in SCRIPT_STYLE.finditer(live))
     markup = DIRECTIVE.sub("", SCRIPT_STYLE.sub(" ", live))
     for pure_code in ("@functions", "@code"):
         markup = _strip_balanced(markup, pure_code, "{", "}")
     markup, code = _split_code_blocks(markup)
 
-    literals = _literal_text_nodes(markup) + _literal_attrs(markup) + _literal_titles(code)
+    literals = (
+        _literal_text_nodes(markup)
+        + _literal_attrs(markup)
+        + _literal_titles(code)
+        + _literal_script_strings(scripts)
+    )
     total = localized + len(literals)
     return {
         "literals": len(literals),
@@ -245,6 +315,7 @@ ROUTE_ATTR = re.compile(r'\[\s*Route\s*\(\s*"([^"]*)"')
 # there and not here goes on being ranked as member-facing. Change both in one commit.
 EXEMPT_ROUTES = ("Admin", "TeamAdmin", "Shifts/Dashboard")
 ADMIN_SEGMENT = {"admin", "teamadmin"}
+INFRASTRUCTURE_VIEWS = {"_ViewImports", "_ViewStart"}
 
 
 def controller_routes(section_dir: Path) -> dict[str, str]:
@@ -264,7 +335,13 @@ def route_for(view: Path, views_root: Path, routes: dict[str, str]) -> str:
     if not parts:
         return f"(shared)/{rel.name}"
     if parts[0] == "Shared":
-        return f"(component) {'/'.join(parts)}"
+        # A component is identified by its folder (the file is always Default.cshtml); a
+        # shared partial by its file name.
+        kind = "component" if len(parts) > 1 and parts[1] == "Components" else "shared"
+        label = "/".join(parts)
+        if view.stem != "Default":
+            label = f"{label}/{view.stem}"
+        return f"({kind}) {label}"
     # A view folder is not always its controller's name: `Views/Admin/Agent/Settings.cshtml`
     # is served by `AdminAgentController` (`[Route("Agent/Admin")]`), not `AgentController`.
     # Try the folder path as a controller name most-specific first, then its segments.
@@ -275,12 +352,12 @@ def route_for(view: Path, views_root: Path, routes: dict[str, str]) -> str:
 
 
 def bucket_for(route: str) -> str:
-    if route.startswith("(component)") or route.startswith("(shared)"):
+    if route.startswith(("(component)", "(shared)")):
         return "member-facing"
     clean = route.strip("/")
     if any(clean == r or clean.startswith(r + "/") for r in EXEMPT_ROUTES):
         return "exempt"
-    if any(seg.lower() in ADMIN_SEGMENT for seg in clean.split("/")[:-1]):
+    if any(seg.lower() in ADMIN_SEGMENT for seg in clean.split("/")):
         return "admin-route"
     return "member-facing"
 
@@ -308,15 +385,20 @@ def main() -> int:
     routes = controller_routes(section_dir)
     rows = []
     for view in sorted(views_root.rglob("*.cshtml")):
-        if view.name.startswith("_"):  # _ViewImports, _ViewStart, layout fragments
+        if view.stem in INFRASTRUCTURE_VIEWS:
             continue
         stats = scan_view(view)
         route = route_for(view, views_root, routes)
+        bucket = bucket_for(route)  # bucket by the parent route, before the partial marker
         rows.append(
             {
                 "path": str(view.relative_to(root)),
-                "route": route,
-                "bucket": bucket_for(route),
+                # A partial has no route of its own; it renders into the page at this one.
+                # A shared/component label already says it is not a page.
+                "route": f"(partial) {route}"
+                if view.name.startswith("_") and not route.startswith("(")
+                else route,
+                "bucket": bucket,
                 **stats,
             }
         )
