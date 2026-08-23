@@ -135,6 +135,37 @@ Self-reviewed against CODE_REVIEW_RULES.md. No critical issues.
 - **One commit per issue, plus fix commits.** Keep the history clean so individual issues can be traced.
 - **If the user sends a message, STOP and answer immediately.** Do not continue working while there's an unanswered question.
 
+## Unattended Mode (routine-fired cloud runs)
+
+When this agent runs from a sprint routine rather than a session Peter is watching, there is no
+one to escalate to: routine runs are fully autonomous with no permission prompts. The stop-and-
+report rules above still hold, but "the orchestrator escalates to Peter" is not available.
+
+**Every stop degrades to: skip the item, append to Needs-Peter, keep going.** Never to shipping
+the change. Specifically:
+
+- **Phase 1 escape valve (privilege / spec change)** — do not implement, do not commit. Append to
+  the sprint issue's Needs-Peter block with the concern, the lines that would change, who gains
+  what capability, and move to the next issue in the work order. The batch continues.
+- **Unauthorized author** — `/sprint` marks these `GATED` at plan time and they should never reach
+  you. If one does, skip it and record that the gate leaked.
+- **Review gate exhausted (3 iterations)** — unchanged: the batch stops at that issue. Record the
+  failing criterion in Needs-Peter as well as the batch report.
+
+A skipped item leaves the batch checkbox unticked and is named in the PR body. Peter's answers are
+applied later by a `resume` run, as in `section-doctor`.
+
+Two mechanical differences from a local run:
+
+- **`gh` is unavailable.** Use the GitHub MCP tools instead — for the open-PR list, build the same
+  JSON shape `section-doctor` Phase 2 uses: `[{number, headRefName, title, files: [paths]}]`.
+- **Branch names must be `claude/`-prefixed** (`claude/sprint-<date>-batch-<n>`). That prefix is
+  always accepted on push; other names are checked against branch protection, others' commits, and
+  others' open PRs, and are rejected on any of them.
+
+Claim the batch before doing any work, by the blocked-set rule in
+`docs/sprints/TRACKING-ISSUE-TEMPLATE.md` — first unchecked batch whose branch has no open PR.
+
 ## Report Format
 
 When the batch completes (success or failure), output a structured report:
