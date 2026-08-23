@@ -66,20 +66,23 @@ Group added files by folder — each folder is one DbContext chain (`src/Section
 
    (`-r` is required — without it, an existing folder prints as a single tree entry and there are no timestamps to compare.)
 
+   If `<folder>` doesn't exist on `upstream/main` because the batch renames it (`R` entries in the step-4 diff, e.g. SystemSettings→Settings), run the same command against the **old** path from the rename entry — the chain continues across the rename. Only a genuinely new context has no upstream chain to compare.
+
    A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/migration-regen-after-rebase.md`).
 
-2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears as `M` (or `A` when the section/folder itself is new or renamed) in the same diff. New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
+2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears in the same diff as `M`, as `A` (new folder), or as the destination of an `R` entry (renamed folder — a rename with a small content change is reported as `R<score>`, not `M`). New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
 
 3. **Chain converges** — the critical case is ≥2 new migrations in one folder (two fork PRs each added one): the second must have been generated on top of the first, not off the same base in parallel. Two-part check; **both** must pass:
 
    a. The model body between the `#pragma warning` markers is identical in the **newest** migration's `.Designer.cs` and the folder's snapshot:
 
    ```bash
-   diff <(awk '/#pragma warning disable/,/#pragma warning restore/' <newest>.Designer.cs) \
-        <(awk '/#pragma warning disable/,/#pragma warning restore/' <folder>/<Context>ModelSnapshot.cs)
+   MSYS_NO_PATHCONV=1 diff \
+     <(git show origin/main:<newest>.Designer.cs | awk '/#pragma warning disable/,/#pragma warning restore/') \
+     <(git show origin/main:<folder>/<Context>ModelSnapshot.cs | awk '/#pragma warning disable/,/#pragma warning restore/')
    ```
 
-   Empty output required. A diff means the merge kept the older branch's snapshot and lost the newer's model.
+   Empty output required. A diff means the merge kept the older branch's snapshot and lost the newer's model. Reading via `git show origin/main:` makes the check correct from any checkout — plain paths would silently compare whatever branch the current worktree happens to be on (`MSYS_NO_PATHCONV=1` stops Git Bash mangling the `ref:path` argument).
 
    b. The snapshot matches the compiled model — catches the other fork resolution, where the merge kept the newer branch's snapshot: Designer and snapshot are then byte-identical but *both* omit the earlier migration's model changes, so (a) alone passes. On a checkout of `origin/main` (the fork tip being promoted):
 
