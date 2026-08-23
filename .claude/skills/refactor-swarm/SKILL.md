@@ -38,7 +38,7 @@ Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 
   | `standard` (default) | 4–5 | 2 (A, B) | give up after 2 consecutive dry rounds | the reference run |
   | `deep` | 5–6 | 3 (A, B, C) | persist through 3 dry rounds + completeness critic | overnight, maximize deletion |
 
-  (Lane *count* is a dial; *which* sections is always derived from the Phase-0 Reforge rank minus in-flight work — never a fixed list.)
+  (Lane *count* is a dial; *which* sections is always derived from the Phase-0 Reforge rank — never a fixed list.)
 
 - **`--mode`** — `workflow` (default): parallel lanes in a background [Workflow](#orchestration-workflow-mode); `solo`: run lanes sequentially in-session (no Workflow tool, lower concurrency, easier to watch, far fewer tokens — good for 1–2 sections).
 - **`--lanes=N`** — override lane count.
@@ -48,7 +48,7 @@ Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 
 
 1. `git fetch origin`. Branch/baseline off **`origin/main`** (not local main).
 2. Build a baseline worktree and score it **built**: `dotnet build` then `reforge surface-score --all --top-symbols 200 --format Json`. Rank candidates per the **Section Refactor History** table in `docs/architecture/maintenance-log.md`: never-served sections first (current score descending), then largest growth since the last lane (Score − Post-Lane Score), tie-break by Last Lane ascending. Raw group total is an input, not the ranking key — score-only ranking re-serves the biggest sections and starves the small ones.
-3. **Exclude in-flight sections** — any section with an open PR or active branch touching its service/repository/read interface (`gh pr list`, `git branch -r`). Two lanes must never edit the same files, interfaces, repositories, or DI registration. Confirm per-section DI (`src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs`) so lanes don't collide on registration.
+3. **Open PRs and other branches are NOT exclusions** — plan against `origin/main` only; in-flight work rebases around the refactor (`memory/process/refactor-runs-origin-main-only.md`). Don't scan `gh pr list` / `git branch -r` to build an exclusion matrix. The only conflict constraint is between lanes: two lanes must never edit the same files, interfaces, repositories, or DI registration. Confirm per-section DI (`src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs`) so lanes don't collide on registration.
 4. Pick the top-N clean sections for the chosen intensity. Prefer repo-backed verticals with a canonical `<Section>Info`; connectors (Google/Email) are fine but yield deletion/read-split wins rather than DTO-fact wins.
 5. Create one worktree+branch per lane off the baseline sha: `refactor/<YYYY-MM-DD>-<section>-workflow-N` at `.worktrees/refactor-<YYYY-MM-DD>-<section>-workflow-N`. **Verify each worktree's branch + base sha before fan-out.**
 

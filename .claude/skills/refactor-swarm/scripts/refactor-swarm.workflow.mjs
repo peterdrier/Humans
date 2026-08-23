@@ -15,7 +15,7 @@ export const meta = {
 // TEMPLATE — the controller fills the block below AFTER Phase-0 recon.
 // DO NOT ship frozen values. Specifically:
 //   • BASE  — resolve at recon time: `git rev-parse origin/main`. Never a stale sha.
-//   • LANES — DERIVED from the recomputed Reforge rank minus in-flight sections
+//   • LANES — DERIVED from the recomputed Reforge rank (open PRs are not exclusions)
 //             (SKILL Phase 0). Not a fixed list. Create the worktrees during recon,
 //             then paste the resulting block here. Lane COUNT comes from --lanes /
 //             intensity; WHICH sections comes from the score + conflict scan.
