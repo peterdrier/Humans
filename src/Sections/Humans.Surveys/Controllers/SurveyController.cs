@@ -62,10 +62,11 @@ internal sealed class SurveyController(
             // Establish the wizard session from the resumable Identified draft and jump into the flow.
             var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
             resumeState.Started = true;
-            resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
+            var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
-            foreach (var a in ctx.DraftAnswers)
+            resumeState.DraftResponseId = identifiedStart.DraftResponseId;
+            foreach (var a in identifiedStart.DraftAnswers)
             {
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
                 {
@@ -125,9 +126,10 @@ internal sealed class SurveyController(
 
         if (anonymity == ResponseAnonymity.Identified)
         {
-            state.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
+            var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
+            state.DraftResponseId = identifiedStart.DraftResponseId;
         }
 
         // First advance past the intro flips the invitation's funnel Started flag (all invited tiers).

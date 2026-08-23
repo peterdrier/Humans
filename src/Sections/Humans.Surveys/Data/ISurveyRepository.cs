@@ -94,9 +94,6 @@ internal partial interface ISurveyRepository : IRepository
     Task SetDraftResumeContextAsync(
         Guid draftResponseId, SurveyInputMethod inputMethod, string culture, CancellationToken ct = default);
 
-    /// <summary>Deletes an in-progress Identified draft and its answers. No-op if the draft is gone.</summary>
-    Task DeleteDraftResponseAsync(Guid draftResponseId, CancellationToken ct = default);
-
     /// <summary>Inserts a response row and saves.</summary>
     Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
 
@@ -114,11 +111,31 @@ internal partial interface ISurveyRepository : IRepository
         string culture,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Atomically claims an incomplete participation row and persists its Identified response. When
+    /// <paramref name="draftResponseId"/> is present, that exact active draft is finalised; otherwise
+    /// <paramref name="response"/> is inserted. Returns false when the participation or draft lost a
+    /// concurrent representation-completion race.
+    /// </summary>
+    Task<bool> TryFinalizeIdentifiedResponseAsync(
+        Guid invitationId,
+        Guid? draftResponseId,
+        SurveyResponse response,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Atomically claims an incomplete participation row, inserts an unlinkable CompletionTracked
+    /// response, and retires any active Identified draft for the same Human. Returns false when
+    /// another representation already claimed completion.
+    /// </summary>
+    Task<bool> TryFinalizeCompletionTrackedResponseAsync(
+        Guid invitationId,
+        Guid userId,
+        SurveyResponse response,
+        CancellationToken ct = default);
+
     /// <summary>Inserts a response together with its answer graph and saves (CompletionTracked/Anonymous final submit).</summary>
     Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);
-
-    /// <summary>Sets an invitation's <c>Completed</c> flag (no timestamp — see entity). No-op if the invitation is gone.</summary>
-    Task SetInvitationCompletedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>Sets an invitation's <c>Started</c> flag (no timestamp). No-op if the invitation is gone.</summary>
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);

@@ -80,9 +80,10 @@ internal interface ISurveyService : IApplicationService
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
     /// Human. Identified is the only resumable tier. The participation id may name an emailed invitation
-    /// or an unsent public-link ledger row. Returns the draft response id.
+    /// or an unsent public-link ledger row. Returns the exact draft and answer snapshot selected by
+    /// that operation, so callers never combine a draft id with answers from a separate lookup.
     /// </summary>
-    Task<Guid> StartIdentifiedDraftAsync(
+    Task<SurveyIdentifiedStart> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,
@@ -279,6 +280,11 @@ internal sealed record SurveyPublicStart(
     Guid? DraftResponseId,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
     bool AlreadyCompleted);
+
+/// <summary>The exact Identified draft selected/created for a wizard start, with its answer snapshot.</summary>
+internal sealed record SurveyIdentifiedStart(
+    Guid DraftResponseId,
+    IReadOnlyList<SurveyDraftAnswer> DraftAnswers);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
 internal sealed record SurveyDraftAnswer(

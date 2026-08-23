@@ -271,16 +271,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task DeleteDraftResponseAsync(Guid draftResponseId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var draft = await ctx.SurveyResponses
-            .FirstOrDefaultAsync(response => response.Id == draftResponseId && response.SubmittedAt == null, ct);
-        if (draft is null) return;
-        ctx.SurveyResponses.Remove(draft);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -316,19 +306,122 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         return true;
     }
 
+    public async Task<bool> TryFinalizeIdentifiedResponseAsync(
+        Guid invitationId,
+        Guid? draftResponseId,
+        SurveyResponse response,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var transaction = await ctx.Database.BeginTransactionAsync(ct);
+
+        var claimed = await ctx.SurveyInvitations
+            .Where(invitation => invitation.Id == invitationId
+                                 && invitation.SurveyId == response.SurveyId
+                                 && invitation.UserId == response.UserId
+                                 && !invitation.Completed)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(invitation => invitation.Completed, true),
+                ct);
+        if (claimed != 1)
+        {
+            await transaction.RollbackAsync(ct);
+            return false;
+        }
+
+        if (draftResponseId is { } draftId)
+        {
+            var draft = await ctx.SurveyResponses
+                .Include(candidate => candidate.Answers)
+                .FirstOrDefaultAsync(
+                    candidate => candidate.Id == draftId
+                                 && candidate.SurveyId == response.SurveyId
+                                 && candidate.InvitationId == invitationId
+                                 && candidate.UserId == response.UserId
+                                 && candidate.Anonymity == ResponseAnonymity.Identified
+                                 && candidate.SubmittedAt == null,
+                    ct);
+            if (draft is null)
+            {
+                await transaction.RollbackAsync(ct);
+                return false;
+            }
+
+            ctx.SurveyAnswers.RemoveRange(draft.Answers);
+            foreach (var answer in response.Answers)
+            {
+                answer.Response = draft;
+                draft.Answers.Add(answer);
+            }
+
+            draft.InputMethod = response.InputMethod;
+            draft.Culture = response.Culture;
+            draft.SubmittedAt = response.SubmittedAt;
+
+            await ctx.SurveyResponses
+                .Where(candidate => candidate.SurveyId == response.SurveyId
+                                    && candidate.UserId == response.UserId
+                                    && candidate.Anonymity == ResponseAnonymity.Identified
+                                    && candidate.SubmittedAt == null
+                                    && candidate.Id != draft.Id)
+                .ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            await ctx.SurveyResponses
+                .Where(candidate => candidate.SurveyId == response.SurveyId
+                                    && candidate.UserId == response.UserId
+                                    && candidate.Anonymity == ResponseAnonymity.Identified
+                                    && candidate.SubmittedAt == null)
+                .ExecuteDeleteAsync(ct);
+            ctx.SurveyResponses.Add(response);
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> TryFinalizeCompletionTrackedResponseAsync(
+        Guid invitationId,
+        Guid userId,
+        SurveyResponse response,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var transaction = await ctx.Database.BeginTransactionAsync(ct);
+
+        var claimed = await ctx.SurveyInvitations
+            .Where(invitation => invitation.Id == invitationId
+                                 && invitation.SurveyId == response.SurveyId
+                                 && invitation.UserId == userId
+                                 && !invitation.Completed)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(invitation => invitation.Completed, true),
+                ct);
+        if (claimed != 1)
+        {
+            await transaction.RollbackAsync(ct);
+            return false;
+        }
+
+        await ctx.SurveyResponses
+            .Where(candidate => candidate.SurveyId == response.SurveyId
+                                && candidate.UserId == userId
+                                && candidate.Anonymity == ResponseAnonymity.Identified
+                                && candidate.SubmittedAt == null)
+            .ExecuteDeleteAsync(ct);
+
+        ctx.SurveyResponses.Add(response);
+        await ctx.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return true;
+    }
+
     public async Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.SurveyResponses.Add(response);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task SetInvitationCompletedAsync(Guid invitationId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
-        if (invitation is null) return;
-        invitation.Completed = true;
         await ctx.SaveChangesAsync(ct);
     }
 

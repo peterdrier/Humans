@@ -544,7 +544,7 @@ internal sealed class SurveyService(
             HasResumableDraft: draft is not null);
     }
 
-    public async Task<Guid> StartIdentifiedDraftAsync(
+    public async Task<SurveyIdentifiedStart> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,
@@ -561,7 +561,7 @@ internal sealed class SurveyService(
             {
                 await repo.SetDraftResumeContextAsync(existing.Id, inputMethod, culture, ct);
             }
-            return existing.Id;
+            return new SurveyIdentifiedStart(existing.Id, MapDraftAnswers(existing));
         }
 
         var response = new SurveyResponse
@@ -579,7 +579,7 @@ internal sealed class SurveyService(
 
         // No audit log for individual response activity (privacy — Deviation #10).
         await repo.AddResponseAsync(response, ct);
-        return response.Id;
+        return new SurveyIdentifiedStart(response.Id, []);
     }
 
     public async Task<SurveyPublicStart> StartPublicTrackedResponseAsync(
@@ -605,12 +605,12 @@ internal sealed class SurveyService(
 
         Guid? draftResponseId = null;
         IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
-        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (anonymity == ResponseAnonymity.Identified)
         {
-            draftResponseId = await StartIdentifiedDraftAsync(
+            var identifiedStart = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
+            draftResponseId = identifiedStart.DraftResponseId;
+            draftAnswers = identifiedStart.DraftAnswers;
         }
 
         return new SurveyPublicStart(
@@ -719,42 +719,51 @@ internal sealed class SurveyService(
             case ResponseAnonymity.Identified:
                 {
                     var now = clock.GetCurrentInstant();
-                    if (submission.DraftResponseId is { } draftId)
+                    var responseId = submission.DraftResponseId ?? Guid.NewGuid();
+                    var response = new SurveyResponse
                     {
-                        var saved = await repo.SaveDraftAnswersAsync(
-                            draftId,
-                            MapAnswers(draftId, visibleAnswers),
-                            submittedAt: now,
-                            submission.InputMethod,
-                            submission.Culture,
-                            ct);
-                        if (!saved)
+                        Id = responseId,
+                        SurveyId = submission.SurveyId,
+                        InvitationId = submission.InvitationId,
+                        UserId = submission.UserId,
+                        Anonymity = ResponseAnonymity.Identified,
+                        InputMethod = submission.InputMethod,
+                        Culture = submission.Culture,
+                        SubmittedAt = now,
+                        Answers = MapAnswers(responseId, visibleAnswers),
+                    };
+
+                    if (submission.InvitationId is { } invId)
+                    {
+                        var claimed = await repo.TryFinalizeIdentifiedResponseAsync(
+                            invId, submission.DraftResponseId, response, ct);
+                        if (!claimed)
                         {
                             throw new InvalidOperationException(
-                                "This identified response is no longer available.");
+                                "This tracked response has already been completed.");
                         }
                     }
                     else
                     {
-                        var responseId = Guid.NewGuid();
-                        var response = new SurveyResponse
+                        if (submission.DraftResponseId is { } draftId)
                         {
-                            Id = responseId,
-                            SurveyId = submission.SurveyId,
-                            InvitationId = submission.InvitationId,
-                            UserId = submission.UserId,
-                            Anonymity = ResponseAnonymity.Identified,
-                            InputMethod = submission.InputMethod,
-                            Culture = submission.Culture,
-                            SubmittedAt = now,
-                            Answers = MapAnswers(responseId, visibleAnswers),
-                        };
-                        await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-                    }
-
-                    if (submission.InvitationId is { } invId)
-                    {
-                        await repo.SetInvitationCompletedAsync(invId, ct);
+                            var saved = await repo.SaveDraftAnswersAsync(
+                                draftId,
+                                response.Answers.ToList(),
+                                submittedAt: now,
+                                submission.InputMethod,
+                                submission.Culture,
+                                ct);
+                            if (!saved)
+                            {
+                                throw new InvalidOperationException(
+                                    "This identified response is no longer available.");
+                            }
+                        }
+                        else
+                        {
+                            await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                        }
                     }
 
                     break;
@@ -776,24 +785,19 @@ internal sealed class SurveyService(
                         SubmittedAt = clock.GetCurrentInstant(),
                         Answers = MapAnswers(responseId, visibleAnswers),
                     };
-                    await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-
-                    if (submission.InvitationId is { } invId)
+                    if (submission.InvitationId is not { } invId
+                        || submission.UserId is not { } userId)
                     {
-                        await repo.SetInvitationCompletedAsync(invId, ct);
+                        throw new InvalidOperationException(
+                            "Completion-tracked responses require a participation identity.");
                     }
 
-                    // Choosing CompletionTracked only retires a personal draft once the unlinkable
-                    // response has actually completed. Until then, another active Identified tab
-                    // remains valid. A stale Identified finalisation fails safely if it loses this race.
-                    if (submission.UserId is { } userId)
+                    var claimed = await repo.TryFinalizeCompletionTrackedResponseAsync(
+                        invId, userId, response, ct);
+                    if (!claimed)
                     {
-                        var personalDraft = await repo.GetDraftResponseAsync(
-                            submission.SurveyId, userId, ct);
-                        if (personalDraft is not null)
-                        {
-                            await repo.DeleteDraftResponseAsync(personalDraft.Id, ct);
-                        }
+                        throw new InvalidOperationException(
+                            "This tracked response has already been completed.");
                     }
 
                     break;
