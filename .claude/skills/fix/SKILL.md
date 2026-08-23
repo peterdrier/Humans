@@ -26,7 +26,7 @@ Zero bot reviews but inline comments exist → round 1. The round is stated in t
 
 ## 2. Fetch unresolved findings
 
-Per the feedback-handling atom: three endpoints + GraphQL `reviewThreads`, both repos, skip `isResolved` / `isOutdated`. Also `gh pr diff <N>` and `gh pr view <N> --json body,title` — the diff hunks define "in scope", the body defines the PR's intent.
+Per the feedback-handling atom: three endpoints + GraphQL `reviewThreads`, both repos, skip `isResolved` / `isOutdated`. Also `gh pr diff <N> --repo <owner>/Humans` and `gh pr view <N> --repo <owner>/Humans --json body,title` (owner from §1 — fork and upstream reuse PR numbers) — the diff hunks define "in scope", the body defines the PR's intent.
 
 ## 3. Gates — run in order, first failure ends the finding
 
@@ -64,9 +64,9 @@ A re-flag of a finding already declined in an earlier round is not new evidence 
 
 ## 5. File an issue — only when reasonable
 
-`OUT-OF-SCOPE` and `DEFER` findings become issues **only** if all hold: real (passed gates 1–2), P2 or higher, and not already tracked (`gh issue list --search "<keywords>" --state all`). Otherwise decline with a one-line reason and no issue.
+`OUT-OF-SCOPE` and `DEFER` findings become issues **only** if all hold: real (passed gates 1–2), P2 or higher, and not already tracked (`gh issue list --repo nobodies-collective/Humans --search "<keywords>" --state all`). Otherwise decline with a one-line reason and no issue.
 
-Issue body: section label/line (`**Section:** X`), the reachable path from gate 2, link to the PR thread. Title states the bug, not the finding ("Camp roster export drops members without a ticket", not "Codex finding on PR 1234"). Never file P3s. Never file "consider refactoring".
+Issues live on `nobodies-collective/Humans` (search and create with `--repo`); the thread reply cites the owner-qualified ref (`nobodies-collective/Humans#N`, per `issue-refs-qualified`). Issue body: section label/line (`**Section:** X`), the reachable path from gate 2, link to the PR thread. Title states the bug, not the finding ("Camp roster export drops members without a ticket", not "Codex finding on PR 1234"). Never file P3s. Never file "consider refactoring".
 
 ## 6. Emit the triage table, then act
 
