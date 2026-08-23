@@ -409,7 +409,24 @@ public sealed class VendorCommitmentServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveCandidateAsync_CannotLinkIntoAClosedCommitment()
+    public async Task LinkPurchaseDocumentAsync_RefusesAClosedCommitment()
+    {
+        // Straight at the repository: the guard is the invariant, and going through
+        // ResolveCandidateAsync cannot reach it — CloseAsync has already dropped the row by
+        // then, so that route would pass with the guard deleted.
+        var id = await RecordAsync(4_024.30m, "Talleres Fandos");
+        (await _sut.CloseAsync(id, Guid.NewGuid(), Ct)).Succeeded.Should().BeTrue();
+
+        var linked = await _repo.LinkPurchaseDocumentAsync(id, "doc-1", "PC-doc-1", Now, Ct);
+
+        linked.Should().BeFalse();
+        var commitment = await _sut.GetAsync(id, Ct);
+        commitment!.Status.Should().Be(VendorCommitmentStatus.Closed);
+        commitment.MatchedHoldedDocId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ResolveCandidateAsync_AfterTheCommitmentClosed_LinksNothing()
     {
         var id = await RecordAsync(4_024.30m, "Talleres Fandos");
         _holded.ListPurchaseDocumentsAsync(Ct).Returns(

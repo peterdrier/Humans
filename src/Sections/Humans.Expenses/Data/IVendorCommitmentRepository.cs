@@ -31,14 +31,18 @@ internal interface IVendorCommitmentRepository : IRepository
         Guid commitmentId, string fileName, string contentType, string extension,
         Instant uploadedAt, CancellationToken ct = default);
 
-    /// <summary>Links the purchase document, moves the commitment to Invoiced and drops every other
-    /// commitment's pending review row for that document. False when the commitment does not exist,
-    /// already carries a document, or the document already backs another commitment.</summary>
+    /// <summary>Links the purchase document and moves the commitment to Invoiced. Also drops the
+    /// review rows the link makes unacceptable: every other commitment's row for this document, and
+    /// this commitment's rows for other documents. The row for this pair survives, for the caller to
+    /// resolve. False when the commitment does not exist, is Closed, already carries a document, or
+    /// the document already backs another commitment.</summary>
     Task<bool> LinkPurchaseDocumentAsync(
         Guid commitmentId, string holdedDocId, string holdedDocNumber,
         Instant matchedAt, CancellationToken ct = default);
 
-    /// <summary>Closes the commitment. False when it does not exist or is already Closed.</summary>
+    /// <summary>Closes the commitment and drops its unresolved review rows — a closed commitment
+    /// can no longer accept one. Resolved rows stay: those record a human's ruling. False when it
+    /// does not exist or is already Closed.</summary>
     Task<bool> CloseAsync(Guid commitmentId, Instant closedAt, CancellationToken ct = default);
 
     /// <summary>
