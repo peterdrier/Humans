@@ -46,17 +46,6 @@ else
 {
     Func<ExpenseReportDto, IHtmlContent> reportCell =
         @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
-    Func<ExpenseReportDto, IHtmlContent> submittedAtCell =
-        @<text>@(item.SubmittedAt.HasValue ? item.SubmittedAt.Value.ToDate() : "")</text>;
-    @* Requested is the receipts total; a capped report pays the cap instead, so all three columns
-       stay visible rather than collapsing into one. *@
-    Func<ExpenseReportDto, IHtmlContent> requestedCell = @<text>@item.Total.ToEuro()</text>;
-    Func<ExpenseReportDto, IHtmlContent> maxAmountCell =
-        @<text>@(item.MaxAmount is { } cap ? cap.ToEuro() : "")</text>;
-    Func<ExpenseReportDto, IHtmlContent> payableCell = @<text>
-        <span class="@(item.Payable < item.Total ? "fw-semibold text-danger" : "")">@item.Payable.ToEuro()</span>
-    </text>;
-
     @* One table per status rather than one status column: the queue is read as three separate
        piles of work, and grouping leaves each pile independently sortable and filterable. *@
     foreach (var group in Model.ByStatus)
@@ -68,10 +57,15 @@ else
             .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
             .Column(Localizer["Expenses_ColDepartment"].Value, r => Model.DepartmentNames.TryGetValue(r.BudgetCategoryId, out var dept) ? dept : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())
             .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n ? n[..80] + "…" : r.Note)
-            .Template(Localizer["Expenses_ColRequested"].Value, requestedCell, c => c.End())
-            .Template(Localizer["Expenses_MaxAmount"].Value, maxAmountCell, c => c.End())
-            .Template(Localizer["Expenses_ColPayable"].Value, payableCell, c => c.End())
-            .Template(Localizer["Expenses_ColSubmitted"].Value, submittedAtCell)
+            @* Requested is the receipts total; a capped report pays the cap instead, so all three
+               stay visible. Currency() rather than a template so they sort numerically — and a
+               populated Max amount is already the signal that Payable was cut. *@
+            .Column(Localizer["Expenses_ColRequested"].Value, r => r.Total, c => c.Currency().End())
+            .Column(Localizer["Expenses_MaxAmount"].Value, r => r.MaxAmount, c => c.Currency().End())
+            .Column(Localizer["Expenses_ColPayable"].Value, r => r.Payable, c => c.Currency().End())
+            @* A template column sorts on its rendered text, so "Aug" would sort before "Jan".
+               Date() hands the sorter the epoch value and formats the cell the same way. *@
+            .Column(Localizer["Expenses_ColSubmitted"].Value, r => r.SubmittedAt, c => c.Date())
             .Build();
 
         <h2 class="h5 mt-4 mb-2">
