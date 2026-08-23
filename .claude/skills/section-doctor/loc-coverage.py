@@ -285,13 +285,19 @@ def _literal_text_nodes(markup: str) -> list[str]:
     for keyword in CONTROL_FLOW_KEYWORDS:  # the keyword *and* its condition
         markup = _strip_balanced(markup, keyword, "(", ")")
     markup = CONTROL_FLOW.sub("\n", markup)  # the ones with no condition (`@else`, `@try`)
-    # `@Localizer["Key"]` / `@Model.Foo` and any `[...]`/`(...)` they carry.
-    markup = re.sub(r"@[A-Za-z_][\w.]*(?:\s*\[[^\]]*\])?(?:\s*\([^()]*\))?", "\n", markup)
+    # `@Localizer["Key"]` / `@Model.Foo` and any `[...]`/`(...)` they carry. `@await` and
+    # `@section` are consumed with what follows them: matching the keyword alone left
+    # `Html.PartialAsync("_CampCard", camp)` and `Scripts` behind as prose.
+    markup = re.sub(
+        r"@(?:await\s+|section\s+)?[A-Za-z_][\w.]*(?:\s*\[[^\]]*\])?(?:\s*\([^()]*\))?",
+        "\n", markup)
     markup = RAZOR_EXPR.sub("\n", markup)
     found = []
     for raw in re.split(r"[\n{}]", markup):
         # `@:` literal-line prefix, and the punctuation that separates real text from code.
-        frag = raw.replace("@:", "").strip(" \t;,|)(")
+        # Entities resolve before the strip, not after: stripping `;` first turned a lone
+        # `&middot;` into `&middot`, which no longer matched HTML_ENTITY and read as a word.
+        frag = HTML_ENTITY.sub(" ", raw.replace("@:", "")).strip(" \t;,|)(")
         if _is_literal(frag):
             found.append(" ".join(frag.split()))
     return found
