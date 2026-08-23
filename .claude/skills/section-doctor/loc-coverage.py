@@ -66,7 +66,13 @@ STRING_LITERAL = re.compile(r"\"([^\"\\]*)\"")
 # would inflate coverage rather than merely miss it.
 SCRIPT_SINKS = re.compile(
     r"(?:\b(?:alert|confirm|prompt)\s*\(\s*|"
-    r"\.(?:textContent|innerText|innerHTML)\s*=\s*)"
+    r"\.(?:textContent|innerText|innerHTML)\s*=\s*|"
+    # Config-object properties a widget renders as its own text: a chart series or axis
+    # label, a marker title. Only a plain quoted value — `label: someVar` and
+    # `label: function (ctx) {…}` are not prose, and neither is anything this cannot read
+    # as a whole string. Deliberately three property names, not a sweep of JS literals,
+    # which would count selectors, URLs and class names.
+    r"\b(?:title|label|text)\s*:\s*)"
     r"(['\"])(.*?)(?<!\\)\1",
     re.DOTALL,
 )
