@@ -297,21 +297,50 @@ and perfect parity says nothing about it: `/Expenses/{id}` was 575 lines with 11
 calls, all six resx files in agreement, and the page mostly untranslated
 (nobodies-collective/Humans#1115).
 
-Background command, per view, worst coverage first:
+**`LocalizationCoverageSweep` is the authoritative reading of that direction, and it already
+exists** — `tests/Humans.Integration.Tests/Localization/`, run bi-weekly by
+`.github/workflows/localization-sweep.yml`. It renders the app through a pseudo-localizer, so
+every localized string comes back bracketed and unbracketed prose on a member page *is* a
+hard-coded string; and it classifies each route's audience from the endpoint's real
+authorization metadata, which settles the judgment the atom leaves open — a page gated by a role
+or a non-`AppAccess` policy is `Restricted` however member-facing its URL looks. Prefer it, and
+read the section's rows out of its report rather than re-deriving them:
+
+```bash
+RUN_LOCALIZATION_SWEEP=1 dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
+  --filter "FullyQualifiedName~LocalizationCoverageSweep" -v quiet
+# → localization-sweep-report.md; the section's rows are the `### <url> (<Controller>/<Action>)`
+#   headings under "## Public pages" whose controller belongs to the section.
+```
+
+It needs Docker (Testcontainers) and a booted host, and it has one coverage gap that matters
+here: **a route with a required parameter is never crawled** — it lands in the report's
+`## Coverage gaps — parameterized routes` list. That gap is why the issue's own example leaked.
+Eight of Expenses' eleven GET routes are `{id:guid}` routes, `/Expenses/{id}` among them, so the
+sweep sees `/Expenses`, `/Expenses/New` and `/Expenses/Review` and nothing else.
+
+So the static pass covers what the sweep cannot reach, and adds the per-view ranking:
 
 ```bash
 python .claude/skills/section-doctor/loc-coverage.py --section <X>   # --json for the raw rows
 ```
 
-It resolves each view's **route** from its controller's `[Route(…)]` — not its file path, because
-`memory/code/localization-admin-exempt.md` exempts by route (`Admin/*`, `TeamAdmin/*`,
-`Shifts/Dashboard`) and `Views/Admin/Agent/Settings.cshtml` is served at `Agent/Admin/Settings`.
-Views on a route with an `Admin`/`TeamAdmin` segment are reported in their own table, unranked.
+Literal user-facing strings against localized ones per `.cshtml`, worst coverage first. Use it
+for the sweep's param-route gaps, for view components (rendered into a page, never crawled as
+one), and on a run with no Docker or no compiler — where it is the only reading available.
+**Where both speak, the sweep wins**: it renders, this parses Razor, and a heuristic over markup
+mistakes dynamic data for prose in a way a bracket test does not.
 
-The atom's other half is judgment, and judgment is the run's: a view rendered only to
-coordinators or finance admins reads as an admin function even on a member-facing route. The
-detector leaves those in the ranked table; the run passes on them and says why. **Report the
-count, don't backfill unless the run is *for* that** — the same standing rule as
+It resolves each view's **route** from its controller's `[Route(…)]` rather than its file path,
+because `memory/code/localization-admin-exempt.md` exempts by route (`Admin/*`, `TeamAdmin/*`,
+`Shifts/Dashboard`) and the two disagree — `Views/Admin/Agent/Settings.cshtml` is served at
+`Agent/Admin/Settings`. Views on a route with an `Admin`/`TeamAdmin` segment go in their own
+table, unranked. It has no view of authorization metadata, so the atom's judgment half stays the
+run's: a view rendered only to coordinators or finance admins reads as an admin function even on
+a member-facing route. The detector leaves those in the ranked table; the run passes on them and
+says why — or checks the sweep's audience for that route, which knows.
+
+**Report the count, don't backfill unless the run is *for* that** — the same standing rule as
 `resource-key-prefix`. Adding keys to a member-facing page is real work, and it is `## Needs
 Peter` material when it is not this run's headline.
 

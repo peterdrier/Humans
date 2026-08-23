@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
 """Localization coverage of a section's Razor views (nobodies-collective/Humans#1115).
 
-`SectionResourceParityTests` and the Prose & surface thread already cover the resx side:
-every key present in all six files, no dead resources, keys prefixed with the section.
-None of that sees the direction that actually leaks — user-facing view text that never
-became a key at all. `/Expenses/{id}` was 575 lines with 11 `@Localizer[...]` calls and
-perfect resx parity.
+`SectionResourceParityTests` covers the resx side — every key present in all six files —
+and says nothing about user-facing view text that never became a key at all.
+`LocalizationCoverageSweep` (tests/Humans.Integration.Tests/Localization/) is the
+authoritative reading of *that* direction: it renders the app through a pseudo-localizer,
+so unbracketed prose on a member page is a hard-coded string, and it classifies each
+route's audience from the endpoint's real authorization metadata.
 
-This counts the other direction: per `.cshtml`, literal user-facing strings against
-localized ones, worst coverage first.
+**Prefer the sweep.** This script exists for the three places it cannot reach:
+
+  * **Routes with a required parameter.** The sweep never crawls them — they land in its
+    `## Coverage gaps — parameterized routes` list. That gap is why #1115's own example
+    leaked: eight of Expenses' eleven GET routes are `{id:guid}` routes, `/Expenses/{id}`
+    among them.
+  * **View components**, rendered into a page and never crawled as one.
+  * **A run with no Docker or no compiler**, where the sweep cannot run at all.
+
+Plus the per-view ranking the sweep's per-route findings do not give: literal user-facing
+strings against localized ones per `.cshtml`, worst coverage first.
+
+Where both speak, the sweep wins — it renders, this parses Razor, and a heuristic over
+markup mistakes dynamic data for prose in a way a bracket test does not.
 
 Route-aware, because `memory/code/localization-admin-exempt.md` exempts by route and not
 by file path. Three buckets:
