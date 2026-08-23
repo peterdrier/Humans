@@ -6,13 +6,15 @@ Usage: python cost-report.py <branch-name> <phase-log-path>
 Finds this run's own session transcript under ~/.claude/projects (the file that
 mentions the run branch and was modified after the run started), sums per-API-call
 token usage bucketed by the phase boundaries in the phase log, adds one row per
-subagent transcript, and prints a markdown table with API-equivalent cost.
+subagent transcript (named by its `thread:` marker where it has one), and prints a
+markdown table with per-row model and API-equivalent cost.
 
 Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
 """
 import glob
 import json
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -48,8 +50,21 @@ def usage_entries(path):
             yield j.get("timestamp"), (j.get("message") or {}).get("model"), u
 
 
+def thread_name(path):
+    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
+            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
+            if m:
+                return m.group(1).strip()
+    return None
+
+
 def add(bucket, model, u):
     r = rate(model)
+    for key in RATES:
+        if key in (model or ""):
+            bucket.setdefault("models", set()).add(key)
     fresh = u.get("input_tokens", 0)
     out = u.get("output_tokens", 0)
     cw = u.get("cache_creation_input_tokens", 0)
@@ -99,23 +114,26 @@ def main():
     for p in glob.glob(own[: -len(".jsonl")] + "/subagents/*.jsonl"):
         if os.path.getmtime(p) < run_start:
             continue
-        label = "agent:" + os.path.basename(p)[len("agent-") : -len(".jsonl")]
+        label = "agent:" + (
+            thread_name(p) or os.path.basename(p)[len("agent-") : -len(".jsonl")]
+        )
         for _, model, u in usage_entries(p):
             add(rows.setdefault(label, {}), model, u)
 
-    print("| Component | Fresh in | Out | Cache write | Cache read | ~$ |")
-    print("|---|---|---|---|---|---|")
+    print("| Component | Model | Fresh in | Out | Cache write | Cache read | ~$ |")
+    print("|---|---|---|---|---|---|---|")
     total = [0, 0, 0, 0]
     usd = 0.0
     for label in sorted(rows):
         b = rows[label]
         f, o, cw, cr = b["tok"]
-        print(f"| {label} | {f:,} | {o:,} | {cw:,} | {cr:,} | {b['usd']:.2f} |")
+        models = "+".join(sorted(b.get("models", set()))) or "?"
+        print(f"| {label} | {models} | {f:,} | {o:,} | {cw:,} | {cr:,} | {b['usd']:.2f} |")
         for i, v in enumerate((f, o, cw, cr)):
             total[i] += v
         usd += b["usd"]
     print(
-        f"| **total** | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
+        f"| **total** | | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
         f"| **{usd:.2f}** |"
     )
     print()
