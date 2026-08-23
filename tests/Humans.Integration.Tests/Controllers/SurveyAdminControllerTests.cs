@@ -295,6 +295,7 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         var ct = Xunit.TestContext.Current.CancellationToken;
         var token = await GetCreateTokenAsync();
         var questionId = Guid.NewGuid();
+        var answerQuestionId = Guid.NewGuid();
         using var form = new MultipartFormDataContent();
         AddField("__RequestVerificationToken", token);
         AddField("Title[en]", $"Information integration survey {Guid.NewGuid():N}");
@@ -316,6 +317,12 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         var rainFile = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47]);
         rainFile.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         form.Add(rainFile, "Questions[information].InformationImages[rain].Upload", "rain.png");
+        AddField("Questions.Index", "answer");
+        AddField("Questions[answer].Id", answerQuestionId.ToString());
+        AddField("Questions[answer].PageNumber", "1");
+        AddField("Questions[answer].Type", nameof(SurveyQuestionType.ShortText));
+        AddField("Questions[answer].Prompt[en]", "Which date works?");
+        AddField("Questions[answer].IsRequired", "true");
 
         var saveResp = await Client.PostAsync("/Survey/Admin/Save", form, ct);
         var surveyId = ExtractSurveyId(saveResp);
@@ -324,10 +331,12 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
-            var question = (await db.Surveys.AsNoTracking()
+            var questions = (await db.Surveys.AsNoTracking()
                     .Include(survey => survey.Questions)
                     .SingleAsync(survey => survey.Id == surveyId, ct))
-                .Questions.Should().ContainSingle().Subject;
+                .Questions;
+            questions.Should().HaveCount(2);
+            var question = questions.Single(candidate => candidate.Id == questionId);
             question.Type.Should().Be(SurveyQuestionType.Information);
             question.IsRequired.Should().BeFalse();
             question.InformationImages.Should().HaveCount(2);
@@ -349,7 +358,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         html.Should().Contain("<figcaption class=\"small text-muted mt-1\">Fire risk</figcaption>");
         html.Should().Contain("<figcaption class=\"small text-muted mt-1\">Rain</figcaption>");
         html.Should().ContainAll(storagePaths.Select(storagePath => $"/{storagePath}"));
-        html.Should().NotContain("name=\"Answers[0].QuestionId\"");
+        html.Should().Contain($"name=\"Answers[0].QuestionId\" value=\"{answerQuestionId}\"");
+        html.Should().Contain("name=\"Answers[0].TextValue\"");
+        html.Should().NotContain("name=\"Answers[1].QuestionId\"");
 
         using (var scope = Factory.Services.CreateScope())
         {

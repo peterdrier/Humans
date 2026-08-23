@@ -1,5 +1,9 @@
 @model Humans.Surveys.Models.SurveyPageViewModel
 
+@{
+    var nextAnswerIndex = 0;
+}
+
 @for (var i = 0; i < Model.Questions.Count; i++)
 {
     var q = Model.Questions[i];
@@ -83,6 +87,7 @@
         continue;
     }
 
+    var answerIndex = nextAnswerIndex++;
     <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
         <legend class="form-label fw-semibold">
             @q.Prompt
@@ -107,9 +112,9 @@
                     var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
                     <div class="form-check">
                         <input class="form-check-input" type="radio"
-                               id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                               id="q@(answerIndex)_@opt.Value" name="Answers[@answerIndex].SelectedOptionValues"
                                value="@opt.Value" @(sel ? "checked" : null) />
-                        <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                        <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
                 break;
@@ -120,20 +125,20 @@
                     var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox"
-                               id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                               id="q@(answerIndex)_@opt.Value" name="Answers[@answerIndex].SelectedOptionValues"
                                value="@opt.Value" @(sel ? "checked" : null) />
-                        <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                        <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
                 break;
 
             case SurveyQuestionType.ShortText:
                 <input class="form-control" type="text"
-                       name="Answers[@i].TextValue" value="@q.TextValue" />
+                       name="Answers[@answerIndex].TextValue" value="@q.TextValue" />
                 break;
 
             case SurveyQuestionType.LongText:
-                <textarea class="form-control" rows="4" name="Answers[@i].TextValue">@q.TextValue</textarea>
+                <textarea class="form-control" rows="4" name="Answers[@answerIndex].TextValue">@q.TextValue</textarea>
                 break;
 
             case SurveyQuestionType.Rating:
@@ -150,9 +155,9 @@
                         {
                             var checkedRating = q.RatingValue == n;
                             <input type="radio" class="btn-check"
-                                   id="q@(i)_r@(n)" name="Answers[@i].RatingValue"
+                                   id="q@(answerIndex)_r@(n)" name="Answers[@answerIndex].RatingValue"
                                    value="@n" autocomplete="off" @(checkedRating ? "checked" : null) />
-                            <label class="btn btn-outline-primary" for="q@(i)_r@(n)">@n</label>
+                            <label class="btn btn-outline-primary" for="q@(answerIndex)_r@(n)">@n</label>
                         }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(q.RatingMaxLabel))
@@ -185,14 +190,14 @@
                                 <tr>
                                     <th scope="row">
                                         @row.Label
-                                        <input type="hidden" name="Answers[@i].GridRows[@rowIndex].RowValue" value="@row.Value" />
+                                        <input type="hidden" name="Answers[@answerIndex].GridRows[@rowIndex].RowValue" value="@row.Value" />
                                     </th>
                                     @foreach (var column in q.Options)
                                     {
                                         var selected = selectedColumns?.Contains(column.Value, StringComparer.Ordinal) == true;
                                         <td class="text-center">
                                             <input class="form-check-input" type="@(single ? "radio" : "checkbox")"
-                                                   name="Answers[@i].GridRows[@rowIndex].SelectedColumnValues"
+                                                   name="Answers[@answerIndex].GridRows[@rowIndex].SelectedColumnValues"
                                                    value="@column.Value"
                                                    aria-label="@($"{row.Label}: {column.Label}")"
                                                    @if (selected) { <text>checked</text> } />
@@ -211,7 +216,7 @@
            `legend + * { clear: left }`; an invisible input in that position prevents the
            first checkbox/radio/table from clearing the legend. Field order does not affect
            MVC's indexed answer binding. *@
-        <input type="hidden" name="Answers[@i].QuestionId" value="@q.Id" />
+        <input type="hidden" name="Answers[@answerIndex].QuestionId" value="@q.Id" />
 
         @if (hasError)
         {
