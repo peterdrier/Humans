@@ -154,7 +154,8 @@ failure would leave the failing implementation on the branch and carry it into t
 - **Review gate exhausted (3 iterations, Phase 2 / 2.5 / 3)** — unchanged from the rules above:
   **STOP.** The batch is blocked at that issue. Do not skip it, do not move to the next issue, do
   not open a PR. Record the failing criterion in Needs-Peter and in the batch report. A blocked
-  batch leaves its branch pushed and its checkbox unticked for a human to pick up.
+  batch leaves its branch pushed and its checkbox unticked for a human to pick up; nothing
+  re-dispatches it on its own, since the orchestrator chooses the batch (§ Input).
 
 If a gate fires after that issue already has a commit — the escape valve missed it during
 exploration and caught it during implementation — `git revert` or reset that issue's commits before
@@ -170,17 +171,11 @@ Two mechanical differences from a local run:
   - **Phase 4 PR creation** — `create_pull_request` (owner `peterdrier`, repo `Humans`, base
     `main`) replaces `gh pr create`. Push with plain `git push -u origin <branch>` first; only the
     PR call needs the MCP tool.
-  - **Open-PR list** (claim / blocked set) — `list_pull_requests` + `pull_request_read`
-    (`get_files`), assembled into the JSON shape `section-doctor` Phase 2 uses:
-    `[{number, headRefName, title, files: [paths]}]`.
   - **Tracking issue** — `issue_write` (method `update`) to tick a batch checkbox or append to the
     Needs-Peter block; `issue_read` to re-read it first, since another run may have edited it.
 - **Branch names must be `claude/`-prefixed** (`claude/sprint-<date>-batch-<n>`). That prefix is
   always accepted on push; other names are checked against branch protection, others' commits, and
   others' open PRs, and are rejected on any of them.
-
-Claim the batch before doing any work, by the blocked-set rule in
-`docs/sprints/TRACKING-ISSUE-TEMPLATE.md` — first unchecked batch whose branch has no open PR.
 
 ## Report Format
 

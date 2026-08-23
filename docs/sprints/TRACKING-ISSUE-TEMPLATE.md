@@ -47,11 +47,13 @@ one batch, sequenced. Record the partition in the body so a run can verify it.
 Size to the existing shape: small related issues group into one batch; a large issue is its own
 batch, split across subagents by the worker.
 
-## Claiming
+## Batch selection
 
-A run picks the **first unchecked batch whose branch has no open PR**. Compute the blocked set
-exactly as `section-doctor` Phase 2 does — from open PRs, not from a label, so a died-mid-run
-batch is reclaimable without cleanup. Never work a batch whose PR is already open.
+**The batch is an input, not a discovery.** The orchestrator passes the worker its batch number
+and work order (see [`batch-worker`](../../.claude/agents/batch-worker.md) § Input); a run never
+scans the tracking issue for the next unclaimed batch. So there is no claim, no lock, no blocked
+set, and no reclaim rule — two runs cannot race for the same batch, and a batch that stops for a
+human is simply not dispatched again until someone dispatches it.
 
 ## Gates — unattended
 
