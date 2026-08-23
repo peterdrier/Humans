@@ -43,9 +43,6 @@
   <data name="OnboardingReview_Title" xml:space="preserve">
     <value>Onboarding-Prüfwarteschlange</value>
   </data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
-    <value>Prüfung: {0}</value>
-  </data>
   <data name="OnboardingReview_NoPending" xml:space="preserve">
     <value>Keine Humans warten auf eine Prüfung.</value>
   </data>
@@ -69,9 +66,6 @@
   </data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve">
     <value>Hat Antrag</value>
-  </data>
-  <data name="OnboardingReview_Consents" xml:space="preserve">
-    <value>Einwilligungen</value>
   </data>
   <data name="OnboardingReview_Signed" xml:space="preserve">
     <value>unterzeichnet</value>
@@ -303,4 +297,7 @@
   <data name="Guest_TeamsDescription" xml:space="preserve">
     <value>Die Crews, die alles am Laufen halten — Sound, Sicherheit, Aufbau, alles</value>
   </data>
+  <data name="OnboardingReview_ReviewLink" xml:space="preserve"><value>Prüfen</value></data>
+  <data name="OnboardingReview_SelectRowLabel" xml:space="preserve"><value>{0} auswählen</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Möchtest du wirklich die Löschung deines Kontos beantragen? Du kannst bis zum Löschdatum abbrechen.</value></data>
 </root>

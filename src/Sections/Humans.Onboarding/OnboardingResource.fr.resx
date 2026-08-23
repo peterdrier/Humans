@@ -43,9 +43,6 @@
   <data name="OnboardingReview_Title" xml:space="preserve">
     <value>File d'attente d'intégration</value>
   </data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
-    <value>Examen : {0}</value>
-  </data>
   <data name="OnboardingReview_NoPending" xml:space="preserve">
     <value>Aucun human n'attend de révision.</value>
   </data>
@@ -69,9 +66,6 @@
   </data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve">
     <value>A une candidature</value>
-  </data>
-  <data name="OnboardingReview_Consents" xml:space="preserve">
-    <value>Consentements</value>
   </data>
   <data name="OnboardingReview_Signed" xml:space="preserve">
     <value>signé(s)</value>
@@ -303,4 +297,7 @@
   <data name="Guest_TeamsDescription" xml:space="preserve">
     <value>Les équipes qui font tourner la machine — son, sécurité, construction, tout</value>
   </data>
+  <data name="OnboardingReview_ReviewLink" xml:space="preserve"><value>Examiner</value></data>
+  <data name="OnboardingReview_SelectRowLabel" xml:space="preserve"><value>Sélectionner {0}</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Voulez-vous vraiment demander la suppression du compte ? Vous pouvez annuler avant la date de suppression.</value></data>
 </root>

@@ -43,9 +43,6 @@
   <data name="OnboardingReview_Title" xml:space="preserve">
     <value>Coda di revisione onboarding</value>
   </data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
-    <value>Revisione: {0}</value>
-  </data>
   <data name="OnboardingReview_NoPending" xml:space="preserve">
     <value>Nessun human in attesa di revisione.</value>
   </data>
@@ -69,9 +66,6 @@
   </data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve">
     <value>Ha una domanda</value>
-  </data>
-  <data name="OnboardingReview_Consents" xml:space="preserve">
-    <value>Consensi</value>
   </data>
   <data name="OnboardingReview_Signed" xml:space="preserve">
     <value>firmato/i</value>
@@ -303,4 +297,7 @@
   <data name="Guest_TeamsDescription" xml:space="preserve">
     <value>I team che fanno funzionare tutto — audio, sicurezza, costruzioni, tutto</value>
   </data>
+  <data name="OnboardingReview_ReviewLink" xml:space="preserve"><value>Rivedi</value></data>
+  <data name="OnboardingReview_SelectRowLabel" xml:space="preserve"><value>Seleziona {0}</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Vuoi davvero richiedere l'eliminazione dell'account? Puoi annullare prima della data di eliminazione.</value></data>
 </root>

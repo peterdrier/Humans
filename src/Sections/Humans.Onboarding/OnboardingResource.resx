@@ -37,7 +37,6 @@
   <!-- ======================== -->
   <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
   <data name="OnboardingReview_Title" xml:space="preserve"><value>Onboarding Review Queue</value></data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve"><value>Review: {0}</value></data>
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>Pending Review</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
@@ -46,7 +45,6 @@
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
   <data name="OnboardingReview_LegalName" xml:space="preserve"><value>Legal Name</value></data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve"><value>Has Application</value></data>
-  <data name="OnboardingReview_Consents" xml:space="preserve"><value>Consents</value></data>
   <data name="OnboardingReview_Signed" xml:space="preserve"><value>signed</value></data>
   <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
   <data name="OnboardingReview_PreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
@@ -140,4 +138,7 @@
   <data name="Guest_LegalDescription" xml:space="preserve"><value>Privacy policy, terms, consent docs — the boring but important stuff</value></data>
   <data name="Guest_Subtitle" xml:space="preserve"><value>Welcome to Humans — where Nobodies Collective manages everything for Elsewhere.</value></data>
   <data name="Guest_TeamsDescription" xml:space="preserve"><value>The crews that keep things running — sound, safety, builds, all of it</value></data>
+  <data name="OnboardingReview_ReviewLink" xml:space="preserve"><value>Review</value></data>
+  <data name="OnboardingReview_SelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Are you sure you want to request account deletion? You can cancel before the deletion date.</value></data>
 </root>

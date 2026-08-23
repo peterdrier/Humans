@@ -39,7 +39,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.LegalName" />
+                                           value="@item.UserId" aria-label="@Localizer["OnboardingReview_SelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -70,7 +70,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["OnboardingReview_ReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -96,7 +96,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.LegalName" />
+                                           value="@item.UserId" aria-label="@Localizer["OnboardingReview_SelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -128,7 +128,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["OnboardingReview_ReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -138,18 +138,11 @@
         }
 
         <div class="d-flex justify-content-end mb-4">
-            @if (hasSelectableReviews)
-            {
-                <button type="submit" class="btn btn-success">
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
-                </button>
-            }
-            else
-            {
-                <button type="submit" class="btn btn-success" disabled>
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
-                </button>
-            }
+            @* Rendered even with nothing selectable so the queue's shape is legible at a
+               glance; Razor omits the attribute entirely when the expression is false. *@
+            <button type="submit" class="btn btn-success" disabled="@(!hasSelectableReviews)">
+                <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+            </button>
         </div>
     </form>
 }
