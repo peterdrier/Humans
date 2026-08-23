@@ -192,7 +192,19 @@ internal sealed class SurveyBuilderViewModel
         AudienceType == SurveyAudienceType.Team ? AudienceTeamId : null,
         AudienceType == SurveyAudienceType.LoggedInSince ? ToStartOfDayInstant(AudienceLoggedInSince, zone) : null,
         string.IsNullOrWhiteSpace(PublicSlug) ? null : PublicSlug,
-        Questions.Select((q, i) => q.ToInput(i)).ToList());
+        ToQuestionInputsInPageOrder());
+
+    private IReadOnlyList<QuestionInput> ToQuestionInputsInPageOrder()
+    {
+        var nextOrderByPage = new Dictionary<int, int>();
+        return Questions.Select(question =>
+        {
+            var page = question.PageNumber <= 0 ? 1 : question.PageNumber;
+            var order = nextOrderByPage.GetValueOrDefault(page);
+            nextOrderByPage[page] = order + 1;
+            return question.ToInput(order);
+        }).ToList();
+    }
 
     public static SurveyBuilderViewModel FromDetail(SurveyDetail detail, IReadOnlyList<SurveyTeamOption> teams, DateTimeZone zone)
     {

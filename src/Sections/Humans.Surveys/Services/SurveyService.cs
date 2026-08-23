@@ -189,7 +189,6 @@ internal sealed class SurveyService(
             await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
             throw;
         }
-        await DeleteFilesBestEffortAsync(prepared.RemovedStoragePaths, CancellationToken.None);
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, "Updated survey", actorUserId);
     }
 
@@ -1504,7 +1503,6 @@ internal sealed class SurveyService(
             .SelectMany(question => question.InformationImages ?? [])
             .ToDictionary(image => image.Id)
             ?? new Dictionary<Guid, SurveyInformationImage>();
-        var keptExistingPaths = new HashSet<string>(StringComparer.Ordinal);
         var newStoragePaths = new List<string>();
         var preparedQuestions = new List<QuestionInput>(input.Questions.Count);
 
@@ -1557,7 +1555,6 @@ internal sealed class SurveyService(
                     if (requested.Id is { } existingId
                         && existingImages.TryGetValue(existingId, out var persisted))
                     {
-                        keptExistingPaths.Add(persisted.StoragePath);
                         preparedImages.Add(requested with
                         {
                             StoragePath = persisted.StoragePath,
@@ -1589,15 +1586,9 @@ internal sealed class SurveyService(
             throw;
         }
 
-        var removedStoragePaths = existingImages.Values
-            .Select(image => image.StoragePath)
-            .Where(path => !keptExistingPaths.Contains(path) && !newStoragePaths.Contains(path, StringComparer.Ordinal))
-            .ToList();
-
         return new PreparedInformationImages(
             input with { Questions = preparedQuestions },
-            newStoragePaths,
-            removedStoragePaths);
+            newStoragePaths);
     }
 
     private static void ValidateInformationImage(SurveyImageUpload upload)
@@ -1640,8 +1631,7 @@ internal sealed class SurveyService(
 
     private sealed record PreparedInformationImages(
         SurveyEditInput Input,
-        IReadOnlyList<string> NewStoragePaths,
-        IReadOnlyList<string> RemovedStoragePaths);
+        IReadOnlyList<string> NewStoragePaths);
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
     private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)

@@ -32,7 +32,9 @@
         <div class="row g-2 mb-2">
             <div class="col-auto">
                 <label class="form-label small mb-0">Page</label>
-                <input type="number" min="1" name="@(prefix).PageNumber" class="form-control form-control-sm" style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
+                <input type="number" min="1" name="@(prefix).PageNumber"
+                       class="form-control form-control-sm question-page-number"
+                       style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
             </div>
             <div class="col-auto">
                 <label class="form-label small mb-0">Type</label>

@@ -169,24 +169,26 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void ToEditInput_uses_the_posted_question_list_order()
+    public void ToEditInput_uses_the_posted_question_list_order_within_each_page()
     {
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
+        var thirdId = Guid.NewGuid();
         var vm = new SurveyBuilderViewModel
         {
             Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Survey" },
             Questions =
             [
-                new SurveyQuestionBuilderViewModel { Id = secondId, Prompt = Dict("Second") },
-                new SurveyQuestionBuilderViewModel { Id = firstId, Prompt = Dict("First") },
+                new SurveyQuestionBuilderViewModel { Id = secondId, PageNumber = 2, Prompt = Dict("Second") },
+                new SurveyQuestionBuilderViewModel { Id = firstId, PageNumber = 1, Prompt = Dict("First") },
+                new SurveyQuestionBuilderViewModel { Id = thirdId, PageNumber = 2, Prompt = Dict("Third") },
             ],
         };
 
         var questions = vm.ToEditInput(NodaTime.DateTimeZone.Utc).Questions;
 
-        questions.Select(question => question.Id).Should().ContainInOrder(secondId, firstId);
-        questions.Select(question => question.Order).Should().ContainInOrder(0, 1);
+        questions.Select(question => question.Id).Should().ContainInOrder(secondId, firstId, thirdId);
+        questions.Select(question => question.Order).Should().ContainInOrder(0, 0, 1);
     }
 
     private static LocalizedText L(string value)

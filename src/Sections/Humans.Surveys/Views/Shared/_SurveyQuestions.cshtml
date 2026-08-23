@@ -60,7 +60,10 @@
                              role="tabpanel"
                              aria-labelledby="@(tabGroupId)-tab-@imageIndex"
                              tabindex="0">
-                            <img src="@image.Url" alt="@image.AltText" class="img-fluid rounded" />
+                            <figure class="mb-0">
+                                <img src="@image.Url" alt="@image.AltText" class="img-fluid rounded" />
+                                <figcaption class="small text-muted mt-1">@image.Label</figcaption>
+                            </figure>
                         </div>
                     }
                 </div>

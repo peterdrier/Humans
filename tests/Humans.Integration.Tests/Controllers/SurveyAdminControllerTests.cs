@@ -346,6 +346,8 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         html.Should().Contain("Fire risk");
         html.Should().Contain("Rain");
         html.Should().Contain("data-bs-toggle=\"tab\"");
+        html.Should().Contain("<figcaption class=\"small text-muted mt-1\">Fire risk</figcaption>");
+        html.Should().Contain("<figcaption class=\"small text-muted mt-1\">Rain</figcaption>");
         html.Should().ContainAll(storagePaths.Select(storagePath => $"/{storagePath}"));
         html.Should().NotContain("name=\"Answers[0].QuestionId\"");
 

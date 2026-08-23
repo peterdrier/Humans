@@ -372,15 +372,22 @@
             // ── show-if clause editor ────────────────────────────────────────
             function questionCards() { return Array.from(container.querySelectorAll('.question-card')); }
 
+            function questionPage(card) {
+                const value = Number.parseInt(card.querySelector('.question-page-number')?.value || '1', 10);
+                return Number.isFinite(value) && value > 0 ? value : 1;
+            }
+
             function updateQuestionControls() {
                 const cards = questionCards();
                 cards.forEach((card, index) => {
                     const label = card.querySelector('.question-position-label');
                     const up = card.querySelector('.move-question-up');
                     const down = card.querySelector('.move-question-down');
+                    const samePageCards = cards.filter(candidate => questionPage(candidate) === questionPage(card));
+                    const pageIndex = samePageCards.indexOf(card);
                     if (label) label.textContent = 'Question ' + (index + 1);
-                    if (up) up.disabled = index === 0;
-                    if (down) down.disabled = index === cards.length - 1;
+                    if (up) up.disabled = pageIndex === 0;
+                    if (down) down.disabled = pageIndex === samePageCards.length - 1;
                 });
             }
 
@@ -395,6 +402,9 @@
                     card = container.lastElementChild;
                 }
                 initCard(card);
+                if (afterCard) {
+                    card.querySelector('.question-page-number').value = questionPage(afterCard);
+                }
                 applyCulture(card);
                 window.HumansMarkdownEditor?.init(card);
                 updateQuestionControls();
@@ -402,12 +412,15 @@
 
             function moveQuestion(button, direction) {
                 const card = button.closest('.question-card');
-                const sibling = direction < 0 ? card.previousElementSibling : card.nextElementSibling;
-                if (!sibling) return;
+                const samePageCards = questionCards()
+                    .filter(candidate => questionPage(candidate) === questionPage(card));
+                const index = samePageCards.indexOf(card);
+                const target = samePageCards[index + direction];
+                if (!target) return;
                 if (direction < 0) {
-                    container.insertBefore(card, sibling);
+                    container.insertBefore(card, target);
                 } else {
-                    container.insertBefore(sibling, card);
+                    container.insertBefore(card, target.nextElementSibling);
                 }
                 updateQuestionControls();
             }
@@ -572,6 +585,8 @@
             container.addEventListener('change', function (e) {
                 if (e.target.classList.contains('question-type')) {
                     applyTypeVisibility(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('question-page-number')) {
+                    updateQuestionControls();
                 } else if (e.target.classList.contains('showif-mode')) {
                     const card = e.target.closest('.question-card');
                     const conditional = e.target.value === 'conditional';

@@ -19,8 +19,8 @@ questions. It supports:
 - the existing page ordering and `ShowIf` visibility rule.
 
 The Markdown field uses the shared EasyMDE editor for both server-rendered and newly inserted items.
-Question cards can be inserted after any existing card and moved up or down; their posted DOM order
-becomes the persisted survey question order.
+Question cards can be inserted after any existing card and moved up or down within their page. Their
+posted DOM order becomes the persisted order within that page.
 
 Information items are never required and cannot be branching sources. They must contain Markdown or
 at least one image. Image labels and alt text must contain authored text.
@@ -55,8 +55,10 @@ Bytes use the shared `IFileStorage` under:
 `uploads/surveys/{surveyId}/{questionId}/{imageId}.{extension}`
 
 No private download endpoint or new storage abstraction is introduced. Replacing an image writes a
-fresh key before the database update; removed/replaced files are deleted after persistence succeeds.
-New files are cleaned up best-effort if validation or persistence fails.
+fresh key before the database update. Newly written files are cleaned up best-effort if validation or
+persistence fails. Removed/replaced files are retained: deleting them during an ordinary update can
+race with another in-flight editor that still references the previous key. A future storage
+maintenance job may garbage-collect keys after proving they are no longer referenced.
 
 ## Results, exports, and API
 

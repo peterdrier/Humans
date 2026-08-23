@@ -206,7 +206,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_deletes_removed_information_image_after_persisting()
+    public async Task UpdateAsync_does_not_delete_a_removed_image_that_a_concurrent_editor_may_restore()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         var questionId = Guid.NewGuid();
@@ -242,8 +242,8 @@ public class SurveyServiceTests
             survey.Id, Input(updated), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
-        await _fileStorage.Received(1).DeleteAsync(
-            "uploads/surveys/old.png", Arg.Any<CancellationToken>());
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
