@@ -42,7 +42,7 @@ rules:
             git ls-files -- "$d" | sed "s|^$d||" \
               | awk -F/ '{ if (NF>1) print $1"/"; else print $1 }' | sort -u \
               | grep -vE "^($ALLOWED)/$" \
-              | grep -vE '^(Section\.cs|.*\.csproj|[A-Za-z]+Resource\.cs|[A-Za-z]+Resource(\.[a-z]{2})?\.resx)$' \
+              | grep -vE '^(Section[A-Za-z]*\.cs|.*\.csproj|[A-Za-z]+Resource\.cs|[A-Za-z]+Resource(\.[a-z]{2})?\.resx)$' \
               | sed "s|^|$d|"
           done
       # 2. Every section carries its invariant doc.
@@ -66,6 +66,13 @@ rules:
       HoldedSectionOptions.cs loose at Humans.Holded's root; no Docs/ in Settings or
       TicketTailor. Jobs/ and ViewComponents/ are in the allowed set above but missing from
       the template's own list — the template is the home of this rule and needs that fix.
+      2026-08-23 (Peter, via /section-doctor on Onboarding): the root-file allow-regex was
+      Section\.cs, which flagged the sibling registration files 29 sections carry —
+      SectionAdminNav.cs, SectionChrome.cs, SectionJobs.cs, SectionPolicies.cs and four more
+      kinds — so the detector was reporting the codebase's own universal convention as a
+      violation. Widened to Section[A-Za-z]*\.cs. Note the intended direction is the other
+      way: those classes are to be merged back into Section.cs implementing several
+      interfaces, at which point the wider regex costs nothing and matches anyway.
 
   - id: resource-key-prefix
     title: >-

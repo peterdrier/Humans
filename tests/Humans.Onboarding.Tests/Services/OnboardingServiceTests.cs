@@ -264,6 +264,7 @@ public sealed class OnboardingServiceTests
 
         var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
+        result.Outcome.Should().Be(NextConsentStepOutcome.NothingLeftToSign);
         result.Next.Should().BeNull();
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -288,6 +289,7 @@ public sealed class OnboardingServiceTests
 
         var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
+        result.Outcome.Should().Be(NextConsentStepOutcome.Document);
         result.Next.Should().Be(detail);
         result.CurrentIndex.Should().Be(2); // 1 of 2 already signed → working on 2 of 2
         result.TotalRequired.Should().Be(2);
@@ -306,6 +308,9 @@ public sealed class OnboardingServiceTests
 
         var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
+        // Distinct from NothingLeftToSign: the caller must not hand this back to the step
+        // dispatcher, which would answer "consents" again and loop.
+        result.Outcome.Should().Be(NextConsentStepOutcome.DocumentUnavailable);
         result.Next.Should().BeNull();
         await _humanLifecycle.DidNotReceiveWithAnyArgs().RestoreConsentSuspensionAsync(default, Arg.Any<CancellationToken>());
     }

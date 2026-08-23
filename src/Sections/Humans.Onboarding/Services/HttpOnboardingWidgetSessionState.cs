@@ -2,9 +2,10 @@
 namespace Humans.Onboarding.Services;
 
 /// <summary>
-/// Web-layer implementation of <see cref="IOnboardingWidgetSessionState"/>.
-/// Reads the per-session "shift skip" flag set by <c>OnboardingWidgetController.Skip</c>
-/// from <see cref="HttpContext.Session"/>, keeping HTTP types out of the Application layer.
+/// The HTTP-facing half of <see cref="IOnboardingWidgetSessionState"/> — the only type in
+/// the section that reads <see cref="HttpContext"/> for state. Reads the per-session "shift
+/// skip" flag set by <c>OnboardingWidgetController.Skip</c>, keeping HTTP types out of
+/// <c>OnboardingWidgetState</c>.
 /// </summary>
 internal sealed class HttpOnboardingWidgetSessionState(IHttpContextAccessor http) : IOnboardingWidgetSessionState
 {

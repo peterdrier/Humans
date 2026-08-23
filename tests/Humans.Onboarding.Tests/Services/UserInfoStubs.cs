@@ -4,7 +4,7 @@ namespace Humans.Onboarding.Tests.Services;
 
 /// <summary>
 /// The two pure <c>UserInfo</c> projections these tests use, copied out of
-/// <c>Humans.Application.Tests</c>' <c>UserInfoStubHelpers</c>.
+/// <c>UserInfoStubHelpers</c> (now <c>tests/Humans.AuditLog.Tests/Infrastructure/</c>).
 /// </summary>
 /// <remarks>
 /// Copied rather than shared through <c>tests/Directory.Build.props</c> because the same

@@ -6,7 +6,12 @@ namespace Humans.Onboarding.ViewComponents;
 
 internal sealed record OnboardingProgressBannerViewModel(bool Show);
 
-public sealed class OnboardingProgressBannerViewComponent(
+/// <summary>
+/// The "continue setup" strip <c>SectionChrome</c> contributes to every authenticated page.
+/// Discovered by Shell's <c>SectionViewComponentFeatureProvider</c>, so it stays
+/// <c>internal</c> — the section exports only <c>Section</c> and <c>OnboardingResource</c>.
+/// </summary>
+internal sealed class OnboardingProgressBannerViewComponent(
     IOnboardingWidgetState state,
     ILogger<OnboardingProgressBannerViewComponent> logger) : ViewComponent
 {

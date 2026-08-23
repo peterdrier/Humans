@@ -117,7 +117,11 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
                 && m.RetryCount < maxRetries
                 && (m.NextRetryAt == null || m.NextRetryAt <= now)
                 && (m.PickedUpAt == null || m.PickedUpAt < staleThreshold))
-            .OrderBy(m => m.CreatedAt) // arch:db-sort-ok outbox FIFO claim batch (Take)
+            // Time-sensitive mail jumps the queue: a human is blocked on it, and the
+            // bulk mail it would otherwise queue behind drains at 1 send/second
+            // (nobodies-collective/Humans#1122). FIFO still holds within each class.
+            .OrderBy(m => TimeSensitiveTemplates.Names.Contains(m.TemplateName) ? 0 : 1) // arch:db-sort-ok outbox priority claim batch (Take)
+            .ThenBy(m => m.CreatedAt) // arch:db-sort-ok outbox FIFO within priority class (Take)
             .Take(batchSize)
             .ToListAsync(ct);
     }

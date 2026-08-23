@@ -5,13 +5,13 @@ namespace Humans.Onboarding.Contracts;
 /// <c>ErrorKey</c> for the failure the caller is expected to render.
 /// </summary>
 /// <remarks>
-/// On the leaf rather than inside the section because four services in
-/// <c>Humans.Application</c> return it — <c>IUserService.ApplyProfileOnboardingMutationAsync</c>,
-/// <c>IHumanLifecycleService</c>'s three lifecycle transitions,
-/// <c>IAccountDeletionService.CancelDeletionAsync</c>/<c>PurgeAsync</c> and
-/// <c>IRoleAssignmentService.AssignRoleAsync</c>/<c>EndRoleAsync</c>. Three of those four
-/// are Onboarding's own siblings in the three-concerns split
-/// (nobodies-collective/Humans#583, #584) that stayed in Base, so this really is the
-/// funnel's vocabulary rather than a Base result type wearing the section's name.
+/// On the leaf rather than inside the section because Users returns it from three separate
+/// surfaces — <c>IUserService.ApplyProfileOnboardingMutationAsync</c>,
+/// <c>IHumanLifecycleService</c>'s three lifecycle transitions, and
+/// <c>IAccountDeletionService.CancelDeletionAsync</c>/<c>PurgeAsync</c>. The last two are
+/// Onboarding's own siblings in the three-concerns split (nobodies-collective/Humans#583,
+/// #584), so this really is the funnel's vocabulary rather than a Base result type wearing
+/// the section's name. (<c>IRoleAssignmentService</c> is <em>not</em> one of them: Auth's
+/// assign/end pair returns its own <c>RoleAssignmentResult</c>.)
 /// </remarks>
 public record OnboardingResult(bool Success, string? ErrorKey = null);

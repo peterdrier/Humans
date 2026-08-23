@@ -5,8 +5,8 @@
 
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8 text-center">
-        <h1 class="mb-1">@Html.Raw(string.Format(Localizer["Guest_Greeting"].Value, Html.Encode(Model.DisplayName)))</h1>
-        <p class="text-muted">@Localizer["Guest_Subtitle"]</p>
+        <h1 class="mb-1">@Html.Raw(string.Format(Localizer["Onboarding_GuestGreeting"].Value, Html.Encode(Model.DisplayName)))</h1>
+        <p class="text-muted">@Localizer["Onboarding_GuestSubtitle"]</p>
     </div>
 </div>
 
@@ -15,20 +15,20 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow dashboard-callout">
             <div class="card-body text-center py-5 px-4">
-                <h2 class="display-5 fw-bold mb-3 dashboard-callout-title">@Localizer["Guest_GetInvolvedTitle"]</h2>
+                <h2 class="display-5 fw-bold mb-3 dashboard-callout-title">@Localizer["Onboarding_GuestGetInvolvedTitle"]</h2>
                 <p class="mb-2 dashboard-callout-copy">
-                    @Localizer["Guest_GetInvolvedDescription"]
+                    @Localizer["Onboarding_GuestGetInvolvedDescription"]
                 </p>
                 <ul class="list-unstyled mb-2 dashboard-callout-copy">
-                    <li>@Localizer["Guest_GetInvolvedBullet1"]</li>
-                    <li>@Localizer["Guest_GetInvolvedBullet2"]</li>
-                    <li>@Localizer["Guest_GetInvolvedBullet3"]</li>
+                    <li>@Localizer["Onboarding_GuestGetInvolvedBullet1"]</li>
+                    <li>@Localizer["Onboarding_GuestGetInvolvedBullet2"]</li>
+                    <li>@Localizer["Onboarding_GuestGetInvolvedBullet3"]</li>
                 </ul>
                 <p class="mb-3 dashboard-callout-muted">
-                    <small>@Localizer["Guest_GetInvolvedHint"]</small>
+                    <small>@Localizer["Onboarding_GuestGetInvolvedHint"]</small>
                 </p>
                 <a asp-controller="Profile" asp-action="Edit" class="btn btn-lg px-5 dashboard-callout-primary">
-                    <i class="fa-solid fa-arrow-right me-2"></i>@Localizer["Guest_CreateProfile"]
+                    <i class="fa-solid fa-arrow-right me-2"></i>@Localizer["Onboarding_GuestCreateProfile"]
                 </a>
             </div>
         </div>
@@ -42,15 +42,15 @@
 
 <div class="row justify-content-center mb-5">
     <div class="col-lg-8">
-        <h5 class="text-muted mb-1">@Localizer["Guest_Explore"]</h5>
-        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_ExploreSubtitle"]</p>
+        <h5 class="text-muted mb-1">@Localizer["Onboarding_GuestExplore"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Onboarding_GuestExploreSubtitle"]</p>
         <div class="row g-3">
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
                 Controller = "Camp",
                 Action = "Index",
                 Title = SharedLocalizer["Camp_Plural"].Value,
-                Description = Localizer["Guest_BarriosDescription"].Value,
+                Description = Localizer["Onboarding_GuestBarriosDescription"].Value,
                 IconCssClass = "fa-solid fa-campground fa-lg",
                 ColumnClass = "col-sm-4"
             })
@@ -59,7 +59,7 @@
                 Controller = "Team",
                 Action = "Index",
                 Title = SharedLocalizer["Nav_Teams"].Value,
-                Description = Localizer["Guest_TeamsDescription"].Value,
+                Description = Localizer["Onboarding_GuestTeamsDescription"].Value,
                 IconCssClass = "fa-solid fa-people-group fa-lg",
                 ColumnClass = "col-sm-4"
             })
@@ -67,8 +67,8 @@
             {
                 Controller = "Legal",
                 Action = "Index",
-                Title = Localizer["Guest_Legal"].Value,
-                Description = Localizer["Guest_LegalDescription"].Value,
+                Title = Localizer["Onboarding_GuestLegal"].Value,
+                Description = Localizer["Onboarding_GuestLegalDescription"].Value,
                 IconCssClass = "fa-solid fa-scale-balanced fa-lg",
                 ColumnClass = "col-sm-4"
             })
@@ -78,15 +78,15 @@
 
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
-        <h5 class="text-muted mb-1">@Localizer["Guest_AccountTitle"]</h5>
-        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_AccountSubtitle"]</p>
+        <h5 class="text-muted mb-1">@Localizer["Onboarding_GuestAccountTitle"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Onboarding_GuestAccountSubtitle"]</p>
         <div class="row g-3">
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
                 Controller = "GuestAccount",
                 Action = "CommunicationPreferences",
-                Title = Localizer["Guest_CommsTitle"].Value,
-                Description = Localizer["Guest_CommsDescription"].Value,
+                Title = Localizer["Onboarding_GuestCommsTitle"].Value,
+                Description = Localizer["Onboarding_GuestCommsDescription"].Value,
                 IconCssClass = "fa-solid fa-bell",
                 IconVariant = "info",
                 Compact = true
@@ -95,8 +95,8 @@
             {
                 Controller = "GuestData",
                 Action = "DownloadData",
-                Title = Localizer["Guest_DataTitle"].Value,
-                Description = Localizer["Guest_DataDescription"].Value,
+                Title = Localizer["Onboarding_GuestDataTitle"].Value,
+                Description = Localizer["Onboarding_GuestDataDescription"].Value,
                 IconCssClass = "fa-solid fa-download",
                 IconVariant = "info",
                 Compact = true
@@ -107,13 +107,13 @@
                 {
                     Controller = "GuestAccount",
                     Action = "RequestDeletion",
-                    Title = Localizer["Guest_DeleteTitle"].Value,
-                    Description = Localizer["Guest_DeleteDescription"].Value,
+                    Title = Localizer["Onboarding_GuestDeleteTitle"].Value,
+                    Description = Localizer["Onboarding_GuestDeleteDescription"].Value,
                     IconCssClass = "fa-solid fa-trash-can",
                     IconVariant = "danger",
                     Compact = true,
                     IsPost = true,
-                    ConfirmMessage = "Are you sure you want to request account deletion? This action can be cancelled before the deletion date."
+                    ConfirmMessage = Localizer["Onboarding_GuestDeleteAccountConfirm"].Value
                 })
             }
         </div>
@@ -130,25 +130,25 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <h6 class="mb-1">@Localizer["Guest_DeletionPendingTitle"]</h6>
+                        <h6 class="mb-1">@Localizer["Onboarding_GuestDeletionPendingTitle"]</h6>
                         <p class="mb-1 small text-muted">
-                            @Html.Raw(string.Format(Localizer["Guest_DeletionRequestedOn"].Value, "<strong>" + Html.Encode(Model.DeletionRequestedAt?.ToDate()) + "</strong>"))
+                            @Html.Raw(string.Format(Localizer["Onboarding_GuestDeletionRequestedOn"].Value, "<strong>" + Html.Encode(Model.DeletionRequestedAt?.ToDate()) + "</strong>"))
                         </p>
                         @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
                         {
                             <p class="mb-2 small text-muted">
-                                @Html.Raw(string.Format(Localizer["Guest_DeletionHeldUntil"].Value, "<strong>" + Html.Encode(Model.DeletionEligibleAfter?.ToDate()) + "</strong>"))
+                                @Html.Raw(string.Format(Localizer["Onboarding_GuestDeletionHeldUntil"].Value, "<strong>" + Html.Encode(Model.DeletionEligibleAfter?.ToDate()) + "</strong>"))
                             </p>
                         }
                         else
                         {
                             <p class="mb-2 small text-muted">
-                                @Html.Raw(string.Format(Localizer["Guest_DeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDate()) + "</strong>"))
+                                @Html.Raw(string.Format(Localizer["Onboarding_GuestDeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDate()) + "</strong>"))
                             </p>
                         }
                         <form asp-controller="GuestAccount" asp-action="CancelDeletion" method="post" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-success">
-                                <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Guest_DeletionCancelButton"]
+                                <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Onboarding_GuestDeletionCancelButton"]
                             </button>
                         </form>
                     </div>

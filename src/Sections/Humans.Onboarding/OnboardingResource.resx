@@ -36,50 +36,49 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
-  <data name="OnboardingReview_Title" xml:space="preserve"><value>Onboarding Review Queue</value></data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve"><value>Review: {0}</value></data>
-  <data name="OnboardingReview_NoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
-  <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>Pending Review</value></data>
-  <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
-  <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
-  <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Profile Summary</value></data>
-  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
-  <data name="OnboardingReview_LegalName" xml:space="preserve"><value>Legal Name</value></data>
-  <data name="OnboardingReview_HasApplication" xml:space="preserve"><value>Has Application</value></data>
-  <data name="OnboardingReview_Consents" xml:space="preserve"><value>Consents</value></data>
-  <data name="OnboardingReview_Signed" xml:space="preserve"><value>signed</value></data>
-  <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
-  <data name="OnboardingReview_PreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
-  <data name="OnboardingReview_Actions" xml:space="preserve"><value>Actions</value></data>
-  <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
-  <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Clear &amp; Approve</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Approves the profile review. Human joins Volunteers once legal documents are also signed.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>This will clear the profile review for this human. Continue?</value></data>
-  <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Flag for Review</value></data>
-  <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Reason for flagging...</value></data>
-  <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
-  <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profile review cleared.</value></data>
-  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
-  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
-  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
-  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
-  <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
-  <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Reject Signup</value></data>
-  <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
-  <data name="OnboardingReview_RejectConfirm" xml:space="preserve"><value>Are you sure you want to reject this human's signup? This cannot be undone.</value></data>
-  <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Rejecting will permanently deny this human's signup and send a notification email.</value></data>
-  <data name="OnboardingReview_Rejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
-  <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
-  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
-  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Complete</value></data>
-  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Pending</value></data>
-  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
-  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
-  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value></data>
+  <data name="Onboarding_ReviewTitle" xml:space="preserve"><value>Onboarding Review Queue</value></data>
+  <data name="Onboarding_ReviewNoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
+  <data name="Onboarding_ReviewPendingSection" xml:space="preserve"><value>Pending Review</value></data>
+  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
+  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
+  <data name="Onboarding_ReviewProfileSummary" xml:space="preserve"><value>Profile Summary</value></data>
+  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
+  <data name="Onboarding_ReviewLegalName" xml:space="preserve"><value>Legal Name</value></data>
+  <data name="Onboarding_ReviewHasApplication" xml:space="preserve"><value>Has Application</value></data>
+  <data name="Onboarding_ReviewSigned" xml:space="preserve"><value>signed</value></data>
+  <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
+  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
+  <data name="Onboarding_ReviewActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
+  <data name="Onboarding_ReviewClearButton" xml:space="preserve"><value>Clear &amp; Approve</value></data>
+  <data name="Onboarding_ReviewClearHelp" xml:space="preserve"><value>Approves the profile review. Human joins Volunteers once legal documents are also signed.</value></data>
+  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve"><value>This will clear the profile review for this human. Continue?</value></data>
+  <data name="Onboarding_ReviewFlagButton" xml:space="preserve"><value>Flag for Review</value></data>
+  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve"><value>Reason for flagging...</value></data>
+  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
+  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
+  <data name="Onboarding_ReviewCleared" xml:space="preserve"><value>Profile review cleared.</value></data>
+  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
+  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
+  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
+  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
+  <data name="Onboarding_ReviewFlagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
+  <data name="Onboarding_ReviewRejectButton" xml:space="preserve"><value>Reject Signup</value></data>
+  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
+  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve"><value>Are you sure you want to reject this human's signup? This cannot be undone.</value></data>
+  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve"><value>Rejecting will permanently deny this human's signup and send a notification email.</value></data>
+  <data name="Onboarding_ReviewRejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
+  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
+  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
+  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve"><value>Complete</value></data>
+  <data name="Onboarding_ReviewDocsPending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Onboarding_ReviewDocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
+  <data name="Onboarding_BannerText" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
+  <data name="Onboarding_BannerCta" xml:space="preserve"><value>Continue setup →</value></data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>The name everyone in the system sees. Uniqueness helps but isn't required, though it may be hard to find "Bob" among the few thousand humans here if someone comes looking for you.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>The name everyone will know you by.</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Onboarding_ConsentDocumentUnavailable" xml:space="preserve"><value>We couldn't load the next document you need to sign. Please try again shortly, or contact us if it keeps happening.</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>not</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>export this information, and would only disclose it if required by law or a formal audit.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Kept internally, visible only to Admins, and used only where Spanish law requires it — for example, our audit record that you agreed to the Volunteer Agreement on a specific date and time. We explicitly do</value></data>
@@ -102,41 +101,44 @@
   <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Could not sign up.</value></data>
   <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Could not sign up for date range.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Pick a shift</value></data>
-  <data name="Welcome_Title" xml:space="preserve"><value>Welcome</value></data>
-  <data name="Welcome_Heading" xml:space="preserve"><value>You're in.</value></data>
-  <data name="Welcome_Subtitle" xml:space="preserve"><value>Your ticket for Elsewhere 2026 is confirmed.</value></data>
-  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Now let's make this thing happen together.</value></data>
-  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere isn't a festival you show up to — it's one you help build. Every human picks shifts: setting up before, keeping things running during, and taking it all down after.</value></data>
-  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>To browse and sign up for shifts, you need a Humans account. It takes a couple of minutes.</value></data>
-  <data name="Welcome_CTA" xml:space="preserve"><value>Sign in or create account</value></data>
-  <data name="Welcome_Footer" xml:space="preserve"><value>Already have an account? Same button — sign in and you'll land straight on the shifts page.</value></data>
-  <data name="Welcome_Contact" xml:space="preserve"><value>Questions? Reach us at</value></data>
-  <data name="Guest_AccountSubtitle" xml:space="preserve"><value>Even without a profile, you can manage your account and data.</value></data>
-  <data name="Guest_AccountTitle" xml:space="preserve"><value>Your stuff</value></data>
-  <data name="Guest_BarriosDescription" xml:space="preserve"><value>The neighbourhoods people build and live in during the event</value></data>
-  <data name="Guest_CommsDescription" xml:space="preserve"><value>Choose which emails and notifications you get from us</value></data>
-  <data name="Guest_CommsTitle" xml:space="preserve"><value>Comms</value></data>
-  <data name="Guest_CreateProfile" xml:space="preserve"><value>Create my profile</value></data>
-  <data name="Guest_DataDescription" xml:space="preserve"><value>Download everything we have on you — it's yours</value></data>
-  <data name="Guest_DataTitle" xml:space="preserve"><value>Your data</value></data>
-  <data name="Guest_DeleteDescription" xml:space="preserve"><value>Request full account deletion — 30 days to change your mind</value></data>
-  <data name="Guest_DeleteTitle" xml:space="preserve"><value>Disappear</value></data>
-  <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>Changed my mind</value></data>
-  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>We'll delete everything after {0} — waiting until after the event.</value></data>
-  <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>You're on your way out</value></data>
-  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Requested on {0}.</value></data>
-  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Everything goes on {0}. For real.</value></data>
-  <data name="Guest_Explore" xml:space="preserve"><value>Look around</value></data>
-  <data name="Guest_ExploreSubtitle" xml:space="preserve"><value>No profile needed. Just curiosity.</value></data>
-  <data name="Guest_GetInvolvedBullet1" xml:space="preserve"><value>You can join teams</value></data>
-  <data name="Guest_GetInvolvedBullet2" xml:space="preserve"><value>You can grab shifts</value></data>
-  <data name="Guest_GetInvolvedBullet3" xml:space="preserve"><value>People actually know who you are</value></data>
-  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Right now you exist… but no one can see you. Create your profile and suddenly:</value></data>
-  <data name="Guest_GetInvolvedHint" xml:space="preserve"><value>Takes ~2 minutes.</value></data>
-  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Ready to stop being a ghost?</value></data>
-  <data name="Guest_Greeting" xml:space="preserve"><value>Hey, {0}.</value></data>
-  <data name="Guest_Legal" xml:space="preserve"><value>Legal</value></data>
-  <data name="Guest_LegalDescription" xml:space="preserve"><value>Privacy policy, terms, consent docs — the boring but important stuff</value></data>
-  <data name="Guest_Subtitle" xml:space="preserve"><value>Welcome to Humans — where Nobodies Collective manages everything for Elsewhere.</value></data>
-  <data name="Guest_TeamsDescription" xml:space="preserve"><value>The crews that keep things running — sound, safety, builds, all of it</value></data>
+  <data name="Onboarding_WelcomeTitle" xml:space="preserve"><value>Welcome</value></data>
+  <data name="Onboarding_WelcomeHeading" xml:space="preserve"><value>You're in.</value></data>
+  <data name="Onboarding_WelcomeSubtitle" xml:space="preserve"><value>Your ticket for Elsewhere 2026 is confirmed.</value></data>
+  <data name="Onboarding_WelcomeShiftsTitle" xml:space="preserve"><value>Now let's make this thing happen together.</value></data>
+  <data name="Onboarding_WelcomeShiftsBody" xml:space="preserve"><value>Elsewhere isn't a festival you show up to — it's one you help build. Every human picks shifts: setting up before, keeping things running during, and taking it all down after.</value></data>
+  <data name="Onboarding_WelcomeShiftsBody2" xml:space="preserve"><value>To browse and sign up for shifts, you need a Humans account. It takes a couple of minutes.</value></data>
+  <data name="Onboarding_WelcomeCTA" xml:space="preserve"><value>Sign in or create account</value></data>
+  <data name="Onboarding_WelcomeFooter" xml:space="preserve"><value>Already have an account? Same button — sign in and you'll land straight on the shifts page.</value></data>
+  <data name="Onboarding_WelcomeContact" xml:space="preserve"><value>Questions? Reach us at</value></data>
+  <data name="Onboarding_GuestAccountSubtitle" xml:space="preserve"><value>Even without a profile, you can manage your account and data.</value></data>
+  <data name="Onboarding_GuestAccountTitle" xml:space="preserve"><value>Your stuff</value></data>
+  <data name="Onboarding_GuestBarriosDescription" xml:space="preserve"><value>The neighbourhoods people build and live in during the event</value></data>
+  <data name="Onboarding_GuestCommsDescription" xml:space="preserve"><value>Choose which emails and notifications you get from us</value></data>
+  <data name="Onboarding_GuestCommsTitle" xml:space="preserve"><value>Comms</value></data>
+  <data name="Onboarding_GuestCreateProfile" xml:space="preserve"><value>Create my profile</value></data>
+  <data name="Onboarding_GuestDataDescription" xml:space="preserve"><value>Download everything we have on you — it's yours</value></data>
+  <data name="Onboarding_GuestDataTitle" xml:space="preserve"><value>Your data</value></data>
+  <data name="Onboarding_GuestDeleteDescription" xml:space="preserve"><value>Request full account deletion — 30 days to change your mind</value></data>
+  <data name="Onboarding_GuestDeleteTitle" xml:space="preserve"><value>Disappear</value></data>
+  <data name="Onboarding_GuestDeletionCancelButton" xml:space="preserve"><value>Changed my mind</value></data>
+  <data name="Onboarding_GuestDeletionHeldUntil" xml:space="preserve"><value>We'll delete everything after {0} — waiting until after the event.</value></data>
+  <data name="Onboarding_GuestDeletionPendingTitle" xml:space="preserve"><value>You're on your way out</value></data>
+  <data name="Onboarding_GuestDeletionRequestedOn" xml:space="preserve"><value>Requested on {0}.</value></data>
+  <data name="Onboarding_GuestDeletionScheduledFor" xml:space="preserve"><value>Everything goes on {0}. For real.</value></data>
+  <data name="Onboarding_GuestExplore" xml:space="preserve"><value>Look around</value></data>
+  <data name="Onboarding_GuestExploreSubtitle" xml:space="preserve"><value>No profile needed. Just curiosity.</value></data>
+  <data name="Onboarding_GuestGetInvolvedBullet1" xml:space="preserve"><value>You can join teams</value></data>
+  <data name="Onboarding_GuestGetInvolvedBullet2" xml:space="preserve"><value>You can grab shifts</value></data>
+  <data name="Onboarding_GuestGetInvolvedBullet3" xml:space="preserve"><value>People actually know who you are</value></data>
+  <data name="Onboarding_GuestGetInvolvedDescription" xml:space="preserve"><value>Right now you exist… but no one can see you. Create your profile and suddenly:</value></data>
+  <data name="Onboarding_GuestGetInvolvedHint" xml:space="preserve"><value>Takes ~2 minutes.</value></data>
+  <data name="Onboarding_GuestGetInvolvedTitle" xml:space="preserve"><value>Ready to stop being a ghost?</value></data>
+  <data name="Onboarding_GuestGreeting" xml:space="preserve"><value>Hey, {0}.</value></data>
+  <data name="Onboarding_GuestLegal" xml:space="preserve"><value>Legal</value></data>
+  <data name="Onboarding_GuestLegalDescription" xml:space="preserve"><value>Privacy policy, terms, consent docs — the boring but important stuff</value></data>
+  <data name="Onboarding_GuestSubtitle" xml:space="preserve"><value>Welcome to Humans — where Nobodies Collective manages everything for Elsewhere.</value></data>
+  <data name="Onboarding_GuestTeamsDescription" xml:space="preserve"><value>The crews that keep things running — sound, safety, builds, all of it</value></data>
+  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Review</value></data>
+  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Are you sure you want to request account deletion? You can cancel before the deletion date.</value></data>
 </root>

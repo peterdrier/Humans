@@ -6,13 +6,34 @@ namespace Humans.Onboarding.Services;
 
 internal sealed record BulkOnboardingResult(int ApprovedCount);
 
+/// <summary>How the consent step resolved. The three cases route three different ways.</summary>
+internal enum NextConsentStepOutcome
+{
+    /// <summary>There is a document to show; <c>Next</c> carries it.</summary>
+    Document,
+
+    /// <summary>
+    /// Everything required is signed. The consent-suspension self-heal has already run and
+    /// the caller can hand back to the dispatcher.
+    /// </summary>
+    NothingLeftToSign,
+
+    /// <summary>
+    /// A document is still unsigned but its detail could not be loaded. The caller must NOT
+    /// hand back to the dispatcher: the dispatcher's answer is still "consents", so the two
+    /// would bounce the user between them forever.
+    /// </summary>
+    DocumentUnavailable,
+}
+
 /// <summary>
 /// Next document the user must sign in the onboarding consent step.
-/// <see cref="Next"/> is null when nothing is left to sign (the consent-suspension
-/// self-heal has already run) or the document detail could not be loaded.
+/// <see cref="Next"/> is non-null exactly when <see cref="Outcome"/> is
+/// <see cref="NextConsentStepOutcome.Document"/>.
 /// <see cref="CurrentIndex"/> is 1-based progress within <see cref="TotalRequired"/>.
 /// </summary>
 internal sealed record NextConsentStepData(
+    NextConsentStepOutcome Outcome,
     ConsentReviewDetail? Next,
     int CurrentIndex,
     int TotalRequired);
@@ -48,7 +69,8 @@ internal interface IOnboardingService : IOnboardingIntake, IOrchestrator
     /// with 1-based progress ordinals for the widget. When nothing is left to sign,
     /// self-heals a consent-suspended user who is already compliant (e.g. the required
     /// set shrank after they were suspended — no fresh signature will ever fire the
-    /// restore in <c>SubmitConsentAsync</c>) and returns a null <c>Next</c>.
+    /// restore in <c>SubmitConsentAsync</c>). See <see cref="NextConsentStepOutcome"/>
+    /// for the three ways this resolves.
     /// </summary>
     Task<NextConsentStepData> GetNextUnsignedConsentAsync(
         Guid userId, CancellationToken ct = default);

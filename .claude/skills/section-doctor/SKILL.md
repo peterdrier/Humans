@@ -530,3 +530,69 @@ Present the open items inline, then apply each answer:
   after CI says so. Two new test files failed code-quality on collection-expression line breaks
   that the local build and the full test run both pass through; a green build is not the
   formatting gate.
+- 2026-08-22: check a repo-relative path with the repo-relative path. A bare test on the basename
+  `G5-SECTION-TEMPLATE.md` reported the live template missing and nearly produced a 65-file "fix";
+  the file was at `docs/sections/`. Resolve every asserted path from the worktree root.
+- 2026-08-22: write run files with a quoted heredoc or a file-write tool, never an unquoted one —
+  the run file's own sweep queue lost a code span to command substitution, because backticks inside
+  an unquoted heredoc are executed.
+- 2026-08-22: when a doc and the code disagree and the code looks wrong, change neither. Fixing the
+  doc to match a suspected defect cements it; the pair belongs in Needs-Peter together. Only sweep
+  a claim when the code is the side that is right.
+- 2026-08-22: with no compiler, C# doc-comment edits are still safe if they add no `<see cref>` and
+  the run verifies tag balance by parsing each `///` block as XML. `TreatWarningsAsErrors` is on and
+  CS1591 is suppressed but CS1574 is not, so a broken cref would break the build.
+- 2026-08-22: a feature doc's "Out of scope" list ages worse than its body — the drill-down Cantina
+  ships was sitting under "rejected as low-value" in the same file that documented its routes. Read
+  the out-of-scope list against the route table every time.
+- 2026-08-22: dead resource keys cluster where UI was removed, and they are the cheapest
+  full-coverage signal available without a compiler: diff the resx key set against the keys the
+  section's views actually reference.
+- 2026-08-22: a freshness trigger that resolves is not a freshness trigger that works. Cantina's
+  pointed at a Shifts interface file that exists and contains none of the code the doc asserts
+  about; check that each trigger path actually carries the claim, not merely that the path is live.
+- 2026-08-22: sweep a renamed concept by its abbreviations too. The `VolunteerEventProfile` sweep
+  cleared every full-name hit and left `VEP` standing in the same file, while also dropping the
+  freshness trigger that would have caught it later.
+- 2026-08-22: when a doc explains why an unused member exists, check that the explanation is true
+  before writing it. Two rounds were spent inventing rationales ("for the CSV") for daily payload
+  members that nothing reads; "nothing reads these" was both the correct answer and a finding.
+- 2026-08-22: when rewriting a spec to match reality, read the view, not the DTO. That run's new
+  acceptance criteria listed aggregates the payload carries and the page does not render; a
+  reviewer caught it, the run did not.
+- 2026-08-22: "never crosses the boundary" is almost always an overclaim for a section reading a
+  shared read-model. The honest form is "the field is carried, this code never reads it, and the
+  output record has no such property" — check which the code implements before repeating the claim.
+- 2026-08-23: a Needs-Peter ruling is a state change to a finding, and a finding is restated in the
+  findings list, the assessment summary, `## Skipped`, `## Size` and the PR body. Ticking is the
+  cheap half; propagating the changed status is the half that gets skipped. Two passes over one
+  queue both ticked correctly and both left four restatements stale.
+- 2026-08-23: resume must re-derive `## Size` before it finishes — the block is written at PR time
+  and every struck item invalidates it. Cantina's read net −94 against an actual net −135.
+- 2026-08-23: measure `## Size` against the PR's base sha, and name that sha in the table header.
+  The re-measurement meant to fix a stale Size block was itself taken against a commit on the
+  branch, so the corrected figures were also wrong; GitHub's own additions/deletions on the PR is
+  the free cross-check.
+- 2026-08-23: make `## Size` reconcile — component rows summing to the whole-branch row turns a
+  silent wrong number into a visible one. Neither wrong version of Cantina's table added up, and
+  nothing noticed until the rows were made to.
+- 2026-08-23: never freeze a figure that counts the commit writing it. A run file's own line count,
+  and the branch total containing it, are stale the instant they are typed; three successive
+  corrections failed on this. State the stable rows, and defer the self-referential ones to the
+  PR's own additions/deletions.
+- 2026-08-23: apply a ruling to the code comments, not just the prose docs. One ruling reached two
+  `.md` files and left six DTO doc comments describing the abolished case as real. Doc comments are
+  documentation and drift like it; grep the section's `.cs` files for the claim, not only its `.md`.
+- 2026-08-23: a reconciling Size table is the only bookkeeping that has ever caught its own error,
+  flagging a stated 515 deletions against an actual 516 within an hour of a commit that invalidated
+  an "exact and final" claim. Prose caught nothing, four times running. Make the rows sum, and never
+  write "final" about a branch that is still moving.
+- 2026-08-23: a comment-only edit to a `.cs` file is not score-neutral. Rewriting seven DTO doc
+  comments moved `locProd` from −56 to −49 and the branch's deletions from 515 to 516; a run that
+  calls such a change "docs only" and leaves its Size and reforge rows alone will misreport both.
+- 2026-08-23: when a review bot reports one stale claim, grep for its class before fixing the line.
+  Codex's `RollupItemDto` finding was one of seven instances of the same overclaim; fixing only the
+  reported line would have left six and looked resolved.
+- 2026-08-23: an environment caveat belongs to the session, not the run. "This run had no compiler"
+  was true when written and false an hour later, sitting above a section describing
+  compiler-confirmed strikes.

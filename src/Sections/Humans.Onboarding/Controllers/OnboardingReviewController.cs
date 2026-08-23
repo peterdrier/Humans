@@ -91,13 +91,13 @@ internal sealed class OnboardingReviewController(
             {
                 SetError(result.ErrorKey switch
                 {
-                    "AlreadyRejected" => localizer["OnboardingReview_AlreadyRejected"].Value,
+                    "AlreadyRejected" => localizer["Onboarding_ReviewAlreadyRejected"].Value,
                     _ => sharedLocalizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(localizer["OnboardingReview_Cleared"].Value);
+            SetSuccess(localizer["Onboarding_ReviewCleared"].Value);
         }
         catch (Exception ex)
         {
@@ -139,15 +139,15 @@ internal sealed class OnboardingReviewController(
     {
         if (result.ApprovedCount == 0)
         {
-            SetInfo(localizer["OnboardingReview_BulkClearedNone"].Value);
+            SetInfo(localizer["Onboarding_ReviewBulkClearedNone"].Value);
         }
         else if (result.ApprovedCount < selectedCount)
         {
-            SetSuccess(localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
+            SetSuccess(localizer["Onboarding_ReviewBulkClearedPartial", result.ApprovedCount, selectedCount].Value);
         }
         else
         {
-            SetSuccess(localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
+            SetSuccess(localizer["Onboarding_ReviewBulkCleared", result.ApprovedCount].Value);
         }
     }
 
@@ -171,7 +171,7 @@ internal sealed class OnboardingReviewController(
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(localizer["OnboardingReview_Flagged"].Value);
+            SetSuccess(localizer["Onboarding_ReviewFlagged"].Value);
         }
         catch (Exception ex)
         {
@@ -209,12 +209,12 @@ internal sealed class OnboardingReviewController(
     {
         if (result.Success)
         {
-            SetSuccess(localizer["OnboardingReview_Rejected"].Value);
+            SetSuccess(localizer["Onboarding_ReviewRejected"].Value);
             return;
         }
 
         SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-            ? localizer["OnboardingReview_AlreadyRejected"].Value
+            ? localizer["Onboarding_ReviewAlreadyRejected"].Value
             : sharedLocalizer["Common_Error"].Value);
     }
 

@@ -152,3 +152,11 @@ insp*.xml
 
 # Generated artifact of the localization-coverage sweep (tests/.../Localization). Re-created on each run.
 /localization-sweep-report.md
+
+# /section-doctor run scratch. Phase 1 writes .phase-log (the phase markers cost-report.py
+# reads) and Phase 2 writes .prs.json (the open-PR file lists the blocked-set build needs);
+# both are per-run state, not repo content. The skill says never commit them, and the
+# 2026-08-23 Onboarding run committed both anyway, because a strike's `git add -A` cannot
+# tell them apart from the files it does mean to stage. Ignored so it cannot happen again.
+/.phase-log
+/.prs.json

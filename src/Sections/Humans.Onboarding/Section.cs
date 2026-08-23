@@ -17,8 +17,9 @@ namespace Humans.Onboarding;
 /// <c>PeeledConfigurationNamespaces</c> row either.
 /// <para>
 /// One instance serves three registrations — the section's own full interface, the leaf's
-/// two-member intake contract, and the concrete type the controllers take — so the
-/// director's state and logging stay single-instance per request.
+/// two-member intake contract, and the concrete type, which exists only to be the thing the
+/// other two forward to — so the director's state and logging stay single-instance per
+/// request. No controller injects <c>OnboardingService</c> directly.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
