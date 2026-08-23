@@ -1,16 +1,17 @@
 # Sprint Tracking Issue — Template
 
-The queue for an unattended sprint run. `/sprint` (local) writes one of these to
-`peterdrier/Humans`; a routine fires a cloud session that works it.
+The queue for an unattended sprint run. [`plan-sprint`](../../.claude/skills/plan-sprint/SKILL.md)
+(local, Peter-gated) writes one of these to `peterdrier/Humans`; a routine fires a cloud session
+that works it via [`execute-sprint`](../../.claude/skills/execute-sprint/SKILL.md).
 
-Modelled on [`section-doctor`](../../.claude/skills/section-doctor/SKILL.md) — claim via
-blocked set, escalate via Needs-Peter, one PR per batch. Deviate only with a reason.
+Modelled on [`section-doctor`](../../.claude/skills/section-doctor/SKILL.md) — escalate via
+Needs-Peter, one PR per batch. Deviate only with a reason.
 
 ## Issue shape
 
 - **Title:** `sprint(YYYY-MM-DD): <n> batches, <m> issues`
 - **Labels:** `sprint`, `sprint:YYYY-MM-DD`
-- **Repo:** `peterdrier/Humans` only. Upstream issues are mirrored in by `/sprint`
+- **Repo:** `peterdrier/Humans` only. Upstream issues are mirrored in by `plan-sprint`
   (body **and** comments verbatim, per
   [`issue-fetch-protocol`](../../memory/process/issue-fetch-protocol.md)) with a
   `nobodies-collective/Humans#N` backref. Closing the upstream original stays manual.
@@ -63,7 +64,7 @@ Needs-Peter, keep going** — never to shipping the change. **Post-commit review
 stops:** a batch whose spec, reuse or code review is still failing after 3 iterations is blocked,
 opens no PR, and waits for a human.
 
-- **Unauthorized author** (not `peterdrier` / `swombat`) — `/sprint` marks the item `GATED`
+- **Unauthorized author** (not `peterdrier` / `swombat`) — `plan-sprint` marks the item `GATED`
   at plan time; the run skips it. Never worked unattended without per-issue approval.
 - **Privilege change** —
   [`privilege-changes-need-explicit-approval`](../../memory/process/privilege-changes-need-explicit-approval.md).

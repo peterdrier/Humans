@@ -8,7 +8,7 @@ description: "Use when a sprint tracking issue (label `sprint`) on peterdrier/Hu
 Cloud-side half of the sprint process (peterdrier/Humans#1468). [`plan-sprint`](../plan-sprint/SKILL.md)
 runs locally, Peter approves which batches go up, and it publishes a tracking issue per
 [`docs/sprints/TRACKING-ISSUE-TEMPLATE.md`](../../../docs/sprints/TRACKING-ISSUE-TEMPLATE.md).
-A routine fires a .NET cloud session on that issue; this skill claims and works batches —
+A routine fires a .NET cloud session on that issue; this skill works its batches —
 it is the unattended path only.
 
 Ground rules (template + [`batch-worker`](../../agents/batch-worker.md) Unattended Mode):
@@ -28,7 +28,7 @@ Ground rules (template + [`batch-worker`](../../agents/batch-worker.md) Unattend
    `date -u +%Y-%m-%dT%H:%M:%SZ > local/.run-start`.
 2. `git fetch origin main --quiet`.
 3. Toolchain gate: `dotnet build Humans.slnx -v quiet` must pass on `origin/main` before any
-   batch is claimed. If the build cannot run at all, comment that on the tracking issue and
+   batch is worked. If the build cannot run at all, comment that on the tracking issue and
    stop — an unattended run cannot fix its own environment, and there is no docs-only fallback
    for implementation work.
 
@@ -41,19 +41,23 @@ Parse the body: batches (checkbox, name, branch, numbered issues with author + g
 the `## File partition` block, the `## Needs-Peter` block. All refs are qualified
 (`owner/repo#N`); an unqualified ref is a plan error — skip that item to Needs-Peter.
 
-## Step 2: Claim a batch
+## Step 2: Determine the work list
 
-1. Open-PR list via MCP, as the JSON shape section-doctor Phase 2 uses:
-   `[{number, headRefName, title, files: [paths]}]`.
-2. Blocked set = batches whose branch already has an open PR. **Claim = first unchecked,
-   unblocked batch.** A batch that died mid-run has no open PR and is reclaimable with no
-   cleanup; never work a batch whose PR is already open.
-3. Nothing claimable → comment on the tracking issue (one line per batch: ticked / PR #N open /
-   all-GATED) and stop.
+**The batch is an input, not a discovery** (template § Batch selection) — no claim, no lock, no
+blocked set:
 
-## Step 3: Work the claimed batch
+- **Routine-fired on issue creation:** every batch is fresh — the work list is all batches, in
+  body order.
+- **Manual dispatch** ("run batch N of sprint issue #X"): the named batch(es) only. A batch that
+  stopped for a human is never re-dispatched on the run's own initiative.
 
-One batch at a time; when a batch's PR is open, return to Step 2 for the next claimable one.
+Idempotence only (not discovery): a batch whose box is already ticked, or whose branch already
+has an open PR, is skipped and noted. Nothing on the work list → comment why on the tracking
+issue and stop.
+
+## Step 3: Work the batches
+
+One batch at a time, in work-list order; when a batch's PR is open, move to the next.
 Parallel batches are a growth step — do not add them until several sequential runs are clean.
 
 1. `git checkout -B claude/sprint-<date>-batch-<n> origin/main`.
@@ -71,11 +75,13 @@ Parallel batches are a growth step — do not add them until several sequential 
    skip + record. Model explicit and tagged in the name (`batch-<n>-sonnet`): sonnet by
    default, opus-tier only where the batch carries architecture or deletion judgment.
    The worker implements and commits sequentially, one commit per issue; it never pushes.
-5. Orchestrator pushes and opens the PR via MCP:
+5. Orchestrator pushes and opens the PR via MCP (the worker never touches GitHub — its report
+   carries the PR body content):
    - Title: `sprint(<date>) batch <n>: <name>`.
-   - Body: one line per issue — completed issues get the qualified closing keyword
+   - Body: from the worker's report — completed issues get the qualified closing keyword
      `Fixes peterdrier/Humans#<N>`; skipped items are named with the reason; the batch's cost
-     row (Step 4) is appended once measured.
+     row (Step 4) is appended once measured. A `BLOCKED` batch gets no PR — its branch stays
+     pushed for a human.
 6. Update the tracking issue via MCP: tick the batch checkbox once the PR is open and the
    worker's review gates passed; append any new Needs-Peter entries (dated, one line of
    context + the question).
@@ -119,7 +125,8 @@ Also append each batch's own row to its PR body.
 
 ## Step 5: End of run
 
-The run is complete when every batch is ticked, PR-blocked, or GATED/Needs-Peter — and the run
+The run is complete when every batch on the work list is ticked, reported blocked (no PR), or
+skipped to Needs-Peter — and the run
 report comment is posted. Leftover Needs-Peter items are worked later by a `resume` run
 applying Peter's answers, as in section-doctor. Do not loop waiting for CI; do not merge.
 
