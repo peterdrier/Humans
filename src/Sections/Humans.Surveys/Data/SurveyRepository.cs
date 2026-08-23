@@ -131,13 +131,6 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             .ToListAsync(ct);
     }
 
-    public async Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.SurveyInvitations.Add(invitation);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<SurveyInvitation> GetOrCreateParticipationAsync(
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default)
     {
@@ -251,14 +244,18 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
                 ct);
     }
 
-    public async Task SetDraftInputMethodAsync(
-        Guid draftResponseId, SurveyInputMethod inputMethod, CancellationToken ct = default)
+    public async Task SetDraftResumeContextAsync(
+        Guid draftResponseId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var draft = await ctx.SurveyResponses
             .FirstOrDefaultAsync(response => response.Id == draftResponseId && response.SubmittedAt == null, ct);
         if (draft is null) return;
         draft.InputMethod = inputMethod;
+        draft.Culture = culture;
         await ctx.SaveChangesAsync(ct);
     }
 

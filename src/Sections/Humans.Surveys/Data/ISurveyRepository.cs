@@ -50,9 +50,6 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>All invitations for a survey (for the admin Send status list). No display ordering — caller sorts. Read-only.</summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
-    Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
-
     /// <summary>
     /// Gets or creates the one per-survey/user participation row. The unique database index is the
     /// authority when concurrent public-start requests race.
@@ -90,8 +87,9 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Updates the entry path stored on an in-progress Identified draft. No-op if the draft is gone.</summary>
-    Task SetDraftInputMethodAsync(Guid draftResponseId, SurveyInputMethod inputMethod, CancellationToken ct = default);
+    /// <summary>Updates the entry path and culture stored on an in-progress Identified draft. No-op if the draft is gone.</summary>
+    Task SetDraftResumeContextAsync(
+        Guid draftResponseId, SurveyInputMethod inputMethod, string culture, CancellationToken ct = default);
 
     /// <summary>Deletes an in-progress Identified draft and its answers. No-op if the draft is gone.</summary>
     Task DeleteDraftResponseAsync(Guid draftResponseId, CancellationToken ct = default);

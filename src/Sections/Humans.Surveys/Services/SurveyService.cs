@@ -376,26 +376,19 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            SurveyInvitation inv;
-            if (existingParticipation.TryGetValue(userId, out var existing))
+            var inv = existingParticipation.TryGetValue(userId, out var existing)
+                ? existing
+                : await repo.GetOrCreateParticipationAsync(surveyId, userId, now, ct);
+
+            // A public start may have created/completed this row after the wave snapshot.
+            // Never email a token that is already spent.
+            if (inv.Completed)
             {
-                inv = existing;
-                await repo.UpdateInvitationStatusAsync(
-                    inv.Id, EmailOutboxStatus.Queued, now, ct);
+                continue;
             }
-            else
-            {
-                inv = new SurveyInvitation
-                {
-                    Id = Guid.NewGuid(),
-                    SurveyId = surveyId,
-                    UserId = userId,
-                    SentAt = now,
-                    LatestEmailStatus = EmailOutboxStatus.Queued,
-                    CreatedAt = now,
-                };
-                await repo.AddInvitationAndSaveAsync(inv, ct);
-            }
+
+            await repo.UpdateInvitationStatusAsync(
+                inv.Id, EmailOutboxStatus.Queued, now, ct);
             invitationsCreated++;
 
             var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
@@ -565,9 +558,10 @@ internal sealed class SurveyService(
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
         {
-            if (existing.InputMethod != inputMethod)
+            if (existing.InputMethod != inputMethod
+                || !string.Equals(existing.Culture, culture, StringComparison.Ordinal))
             {
-                await repo.SetDraftInputMethodAsync(existing.Id, inputMethod, ct);
+                await repo.SetDraftResumeContextAsync(existing.Id, inputMethod, culture, ct);
             }
             return existing.Id;
         }
