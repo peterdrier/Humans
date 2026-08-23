@@ -26,7 +26,9 @@ Ground rules (template + [`batch-worker`](../../agents/batch-worker.md) Unattend
 
 1. `mkdir -p local` (gitignored, absent in a fresh clone) and record the start:
    `date -u +%Y-%m-%dT%H:%M:%SZ > local/.run-start`.
-2. `git fetch origin main --quiet`.
+2. `git fetch origin main --quiet`, then `git checkout --detach origin/main` — the gate below
+   and every batch branch start from the fetched baseline, never from whatever the clone happens
+   to have checked out (the tree is disposable).
 3. Toolchain gate: `dotnet build Humans.slnx -v quiet` must pass on `origin/main` before any
    batch is worked. If the build cannot run at all, comment that on the tracking issue and
    stop — an unattended run cannot fix its own environment, and there is no docs-only fallback
@@ -63,15 +65,19 @@ Parallel batches are a growth step — do not add them until several sequential 
 
 1. `git checkout -B claude/sprint-<date>-batch-<n> origin/main`. If that branch already exists
    on origin with **no open PR** — a prior run died between push and PR — this run replaces it:
-   push with `--force-with-lease` at step 5 (that content never reached review; without this
-   the re-push is rejected as non-fast-forward and the batch can never complete).
+   `git fetch origin claude/sprint-<date>-batch-<n>` first (the lease needs the remote ref's
+   fetched value or it rejects with `stale info`), then push with `--force-with-lease` at
+   step 5. That content never reached review; without this the re-push is rejected as
+   non-fast-forward and the batch can never complete.
 2. Fetch every `gate: clear` issue in the batch — body **and** comments — via MCP into
    `local/issue-<N>.txt` / `local/issue-<N>-comments.txt`. Comments are part of the spec;
    Peter's comments override the OP body.
 3. **Staleness pre-check per issue:** `git log origin/main --oneline --grep "#<N>"` plus a
    merged-PR search via MCP. A hit means *probably shipped* — verify the acceptance criteria
    against the tree; if all are met, comment the per-criterion file:line evidence on the issue
-   and close it via MCP. Never silently skip, never burn a worker discovering it.
+   and close it via MCP. Never silently skip, never burn a worker discovering it. If staleness
+   clears **every** issue in the batch, the batch is done — no worker, no empty PR: tick its box
+   with a note that all items had already shipped.
 4. Dispatch **one batch-worker subagent** for the batch, per
    [`.claude/agents/batch-worker.md`](../../agents/batch-worker.md) — Unattended Mode applies.
    Prompt contains: batch number/name, work order, spec file paths (worker reads the files),
@@ -86,9 +92,11 @@ Parallel batches are a growth step — do not add them until several sequential 
      `Fixes peterdrier/Humans#<N>`; skipped items are named with the reason; the batch's cost
      row (Step 4) is appended once measured. A `BLOCKED` batch gets no PR — its branch stays
      pushed for a human.
-6. Update the tracking issue via MCP: tick the batch checkbox once the PR is open and the
-   worker's review gates passed; append any new Needs-Peter entries (dated, one line of
-   context + the question).
+6. Update the tracking issue via MCP: tick the batch checkbox **only when nothing was
+   skipped** — every item shipped or was closed as already-done, PR open, review gates passed.
+   If any item was skipped (GATED, escape valve, blocked), the box stays unticked per the
+   template and each skipped item goes to Needs-Peter (dated, one line of context + the
+   question) — the sprint issue can still close with remainders sitting there.
 
 **Migration-flagged batches:** work only if `dotnet ef` runs in this environment and the
 migration generates cleanly; otherwise skip the whole batch to Needs-Peter. Never hand-edit a

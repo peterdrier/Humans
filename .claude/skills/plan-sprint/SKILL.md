@@ -29,8 +29,10 @@ Issues live on two repos (`memory/process/issue-home-routing.md`): **upstream**
 (bugs/tech-debt/agent-created). Sweep both; qualify every ref (`owner/repo#N`) in all output.
 
 ```bash
-gh issue list --repo nobodies-collective/Humans --state open --limit 50 --json number,title,body,labels,createdAt,comments,author
-gh issue list --repo peterdrier/Humans --state open --limit 50 --json number,title,body,labels,createdAt,comments,author
+gh issue list --repo nobodies-collective/Humans --state open --limit 200 --json number,title,body,labels,createdAt,comments,author
+gh issue list --repo peterdrier/Humans --state open --limit 200 --json number,title,body,labels,createdAt,comments,author
+# --limit is a hard cap, not a page size — if a repo ever returns exactly 200, raise it and re-run
+
 ```
 
 **Pipeline status** (origin = QA, upstream = production):
