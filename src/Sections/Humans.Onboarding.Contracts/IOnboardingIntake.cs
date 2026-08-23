@@ -28,7 +28,7 @@ public interface IOnboardingIntake
     /// <summary>
     /// Records the rejection on the profile, de-provisions the approval-gated system
     /// teams, and dispatches the rejection email and notification. Called from the
-    /// section's review queue and from Shell's <c>UsersAdminController</c>, which is why
+    /// section's review queue and from Users' <c>UsersAdminController</c>, which is why
     /// it is here rather than internal.
     /// </summary>
     Task<OnboardingResult> RejectSignupAsync(

@@ -17,22 +17,24 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build.
 /// </description></item>
 /// <item><description>
-/// The resx carve moved 67 keys out of <c>SharedResource</c>. A key the carve missed, or a call
-/// site left bound to the wrong set, renders the raw key in every language with no error — and
-/// two of those call sites are <b>outside</b> the section (Shell's <c>ShiftsController</c> and
-/// Governance's board-voting detail page both bind <c>IStringLocalizer&lt;OnboardingResource&gt;</c>
-/// now).
+/// The resx carve moved the <c>Onboarding*</c> prefixes out of <c>SharedResource</c>. A key the
+/// carve missed, or a call site left bound to the wrong set, renders the raw key in every language
+/// with no error — and two of those call sites are <b>outside</b> the section (Shifts'
+/// <c>ShiftsController</c> and Governance's board-voting detail page both bind
+/// <c>IStringLocalizer&lt;OnboardingResource&gt;</c> now). This class only sees the pages a fixture
+/// can reach and only the three carved prefixes; <c>OnboardingLocalizerBindingTests</c> is the
+/// static, every-call-site, every-prefix half of the same guard.
 /// </description></item>
 /// <item><description>
-/// The review pages' <c>&lt;vc:access-matrix&gt;</c> binds through <c>@@addTagHelper *, Humans.Interfaces</c>
-/// since the component moved there; <c>&lt;vc:profile-card&gt;</c> still reads a Shell-owned registry
-/// and is a <c>Component.InvokeAsync</c> call. An unresolvable invocation throws; a stray
+/// The review pages' <c>&lt;vc:access-matrix&gt;</c> binds through <c>@@addTagHelper *, Humans.Base</c>
+/// since the component lives there; <c>&lt;vc:profile-card&gt;</c> is Users' and is a
+/// <c>Component.InvokeAsync</c> call. An unresolvable invocation throws; a stray
 /// <c>&lt;vc:&gt;</c> renders as inert markup and only the <c>NotContain</c> assertion catches it.
 /// </description></item>
 /// <item><description>
 /// The progress banner moved <i>into</i> the section, so it is an <c>internal</c> view component
-/// discovered only by Shell's <c>SectionViewComponentFeatureProvider</c> — and Shell's
-/// <c>_Layout</c> invokes it on every authenticated page, so a miss 500s the whole app.
+/// discovered only by Shell's <c>SectionViewComponentFeatureProvider</c> — and <c>SectionChrome</c>
+/// puts it in the <c>AboveContent</c> slot of every authenticated page, so a miss 500s the whole app.
 /// </description></item>
 /// </list>
 /// <para>Onboarding ships no <c>wwwroot/</c>, so there is no static-asset half here.</para>
@@ -66,12 +68,12 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
 
         html.Should().Contain("Onboarding Review Queue");           // OnboardingReview_Title
         html.Should().Contain("No humans are waiting for review.");  // OnboardingReview_NoPending
-        // AccessMatrix moved into Humans.UI (nobodies-collective/Humans#1056), so the call site
+        // AccessMatrix lives in Humans.Base (nobodies-collective/Humans#1056), so the call site
         // is <vc:access-matrix section="OnboardingReview" />. An unbound <vc:> ships as inert
         // literal markup with a green build, so assert the modal id the component emits — the
         // bare section key would also match the page title and prove nothing.
         html.Should().Contain("sectionHelp-OnboardingReview",
-            "<vc:access-matrix> must bind through @addTagHelper *, Humans.Interfaces");
+            "<vc:access-matrix> must bind through @addTagHelper *, Humans.Base");
     }
 
     [HumansFact(Timeout = 120000)]
@@ -127,8 +129,8 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
 
         // The pills and the skip button are the section's copy; the rota tables below them come
         // from Shell's OnboardingShiftsList component, invoked by name because
-        // ShiftBrowseViewModel and ShiftBrowseMapper are Shifts' presentation and Shifts has not
-        // moved. An unresolvable Component.InvokeAsync throws, so a 200 here is the proof.
+        // ShiftBrowseViewModel and ShiftBrowseMapper are Shifts' presentation and live in
+        // Humans.Shifts. An unresolvable Component.InvokeAsync throws, so a 200 here is the proof.
         html.Should().Contain("Pick a shift");   // Onboarding_ShiftsTitle
         html.Should().Contain("Not right now");  // Onboarding_ShiftsNotNow
     }
@@ -139,10 +141,16 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // OnboardingProgressBannerViewComponent is internal to Humans.Onboarding and is invoked
-        // from Shell's _Layout on every authenticated page. Without
+        // OnboardingProgressBannerViewComponent is internal to Humans.Onboarding and is contributed
+        // to every authenticated page's AboveContent slot by SectionChrome. Without
         // SectionViewComponentFeatureProvider the invocation throws and this 500s — which is the
         // loud half of the pair; the silent half is the <vc:> assertion above.
+        //
+        // The NotContain below is the loud half only. This persona is fully onboarded, so the
+        // banner renders nothing at all and the assertion cannot fail on a misbound key — that is
+        // exactly how the two keys shipped bound to SharedResource. Catching that needs a
+        // mid-onboarding persona on the factory; until there is one,
+        // OnboardingLocalizerBindingTests is what actually guards the binding.
         var response = await Client.GetAsync("/Teams", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 

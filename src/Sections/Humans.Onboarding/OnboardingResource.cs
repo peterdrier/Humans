@@ -10,14 +10,20 @@ namespace Humans.Onboarding;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set is the 70 <c>Onboarding_*</c>, <c>OnboardingReview_*</c> and
+/// The set is the <c>Onboarding_*</c>, <c>OnboardingReview_*</c> and
 /// <c>OnboardingBanner_*</c> keys. Two callers outside the section render one apiece and
 /// inject <c>IStringLocalizer&lt;OnboardingResource&gt;</c> rather than the prefixes being
-/// split: Shell's <c>ShiftsController</c> name-gate message
+/// split: Shifts' <c>ShiftsController</c> name-gate message
 /// (<c>Onboarding_NameRequiredBeforeShifts</c>) and Governance's board-voting detail page,
 /// which reuses four <c>OnboardingReview_*</c> labels for the applicant summary
 /// (design §15 step 3b, Budget's "the key goes home" direction).
-/// <c>Nav_OnboardingReview</c> stays in <c>SharedResource</c>: its renderer is
-/// Shell's <c>AdminSidebarViewComponent</c>, which is Base chrome.
+/// <para>
+/// The sidebar's "Review" entry is <em>not</em> in this set and is not localized at all:
+/// <c>AdminNavItem.Label</c> is a raw string rendered as-is by Shell's
+/// <c>AdminSidebarViewComponent</c>, so <c>SectionAdminNav.cs</c> hard-codes English like
+/// every other section's contribution. <c>SharedResource</c>'s
+/// <c>Nav_OnboardingReview</c> is what the pre-contribution sidebar rendered and is now
+/// dead — dropping it belongs to a Base sweep, not to this section.
+/// </para>
 /// </remarks>
 public class OnboardingResource;

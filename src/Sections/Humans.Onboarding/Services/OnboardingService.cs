@@ -16,7 +16,7 @@ namespace Humans.Onboarding.Services;
 // Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
 // Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IApplicationDecisionService),
 // admin dashboard tiles (section-contributed chrome, nobodies-collective/Humans#1091), account
-// deletion (future IAccountDeletionService).
+// deletion (IAccountDeletionService, in Humans.Users).
 [CrossSectionWrite("Onboarding applies the profile mutation that completes signup.")]
 internal sealed class OnboardingService(
     IUserService userService,
