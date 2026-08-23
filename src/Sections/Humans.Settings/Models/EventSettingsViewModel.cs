@@ -24,7 +24,10 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [Required]
     public string GateOpeningDate { get; set; } = string.Empty;
 
-    public int BuildStartOffset { get; set; } = -14;
+    // The build window is [BuildStartOffset, 0) and the four sub-periods below
+    // partition it, so build starts on the first-crew day: -25, not the stale -14
+    // that sat after SetupWeekStartOffset and made the two rules unsatisfiable.
+    public int BuildStartOffset { get; set; } = -25;
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
 
@@ -55,11 +58,15 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (FirstCrewStartOffset < BuildStartOffset)
+        // The build window opens on the first-crew day at the latest — a first-crew
+        // boundary before it would name days no build shift can occupy.
+        if (BuildStartOffset > FirstCrewStartOffset)
         {
             yield return new ValidationResult(
-                $"First crew offset cannot be earlier than build start offset ({nameof(BuildStartOffset)}).",
-                [nameof(FirstCrewStartOffset)]);
+                $"Build starts at {BuildStartOffset} but first crew starts at {FirstCrewStartOffset}. "
+                + "The build window is split into the four sub-periods below, so build start must be "
+                + "the first crew day or earlier (more negative).",
+                [nameof(BuildStartOffset), nameof(FirstCrewStartOffset)]);
         }
 
         if (FirstCrewStartOffset >= SetupWeekStartOffset

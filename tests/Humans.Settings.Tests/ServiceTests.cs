@@ -37,7 +37,7 @@ public sealed class ServiceTests
             Year: 2026,
             TimeZoneId: "Europe/Madrid",
             GateOpeningDate: new LocalDate(2026, 7, 9),
-            BuildStartOffset: -14,
+            BuildStartOffset: -25,
             EventEndOffset: 6,
             StrikeEndOffset: 9,
             FirstCrewStartOffset: -25,
@@ -56,7 +56,7 @@ public sealed class ServiceTests
         Year = 2026,
         TimeZoneId = "Europe/Madrid",
         GateOpeningDate = new LocalDate(2026, 7, 9),
-        BuildStartOffset = -14,
+        BuildStartOffset = -25,
         EventEndOffset = 6,
         StrikeEndOffset = 9,
         FirstCrewStartOffset = -25,
@@ -83,7 +83,7 @@ public sealed class ServiceTests
         dto.Year.Should().Be(2026);
         dto.TimeZoneId.Should().Be("Europe/Madrid");
         dto.GateOpeningDate.Should().Be(new LocalDate(2026, 7, 9));
-        dto.BuildStartOffset.Should().Be(-14);
+        dto.BuildStartOffset.Should().Be(-25);
         dto.EventEndOffset.Should().Be(6);
         dto.StrikeEndOffset.Should().Be(9);
         dto.FirstCrewStartOffset.Should().Be(-25);
@@ -170,7 +170,7 @@ public sealed class ServiceTests
             Year: 2027,
             TimeZoneId: "Atlantic/Canary",
             GateOpeningDate: new LocalDate(2027, 7, 8),
-            BuildStartOffset: -12,
+            BuildStartOffset: -20,
             EventEndOffset: 5,
             StrikeEndOffset: 8,
             FirstCrewStartOffset: -20,
@@ -191,7 +191,7 @@ public sealed class ServiceTests
                 && e.Year == 2027
                 && e.TimeZoneId == "Atlantic/Canary"
                 && e.GateOpeningDate == new LocalDate(2027, 7, 8)
-                && e.BuildStartOffset == -12
+                && e.BuildStartOffset == -20
                 && e.EventEndOffset == 5
                 && e.StrikeEndOffset == 8
                 && e.FirstCrewStartOffset == -20
@@ -215,7 +215,7 @@ public sealed class ServiceTests
         Year: 2026,
         TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new LocalDate(2026, 7, 9),
-        BuildStartOffset: -14,
+        BuildStartOffset: -25,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
         FirstCrewStartOffset: -25,

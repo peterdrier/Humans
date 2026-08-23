@@ -29,9 +29,9 @@ internal sealed class EventSettingsCarryAdminController(
     {
         var carried = await carryService.CarryAsync(ct);
         if (carried == 0)
-            SetSuccess("Every event row is already here — nothing to carry.");
+            SetSuccess("Every event row is already here and in step — nothing to do.");
         else
-            SetSuccess($"Carried {carried} event row(s) into Settings.");
+            SetSuccess($"Carried or reconciled {carried} event row(s) in Settings.");
 
         logger.LogInformation("Event settings carry: wrote {Count} row(s) into settings_event", carried);
         return RedirectToAction(nameof(Index));

@@ -78,7 +78,20 @@ still resolve.
 **It preserves the at-most-one-`Active` invariant.** `BurnSettingsInfo` carries
 no active flag, so the carry calls `IBurnSettingsService.GetActiveAsync()` once
 and gives that id `Active`; every other cycle is written `Inactive`. Copying them
-all as `Active` would put several live cycles in the table at once.
+all as `Active` would put several live cycles in the table at once. Writes go in
+two passes — every `Inactive` row first, the `Active` one last — because
+`SaveEventSettingsAsync` refuses a second `Active` row, so the outgoing cycle has
+to step down before the incoming one takes over.
+
+**A rerun reconciles status, not values.** The active Shifts cycle can change
+between the first carry and the reader cutover, so an existence-only check would
+leave the retired cycle `Active` here forever and the cutover would select the
+wrong event. A row already present is re-saved only when its status disagrees
+with Shifts, and then only its `Status` changes — the app-wide values are the
+operator's from the first carry on, edited on `/Settings/Admin`, and are never
+re-copied from the Shifts row. `EventSettingsCarrySnapshot.PendingCount`
+(`RemainingCount` + `StaleStatusCount`) is what the screen offers to run, so the
+rerun affordance survives `RemainingCount == 0`.
 
 Retires with the old columns, taking the `Humans.Shifts.Contracts` project
 reference with it.
@@ -90,5 +103,12 @@ id so a row the operator just deactivated stays reachable, and with no row to
 show it renders `NoEvent.cshtml` pointing at the carry. The carry screen's row
 table links every carried row to `/Settings/Admin?id=…` — that is the lookup for
 inactive rows.
+
+The build window is `[BuildStartOffset, 0)` and the four sub-period boundaries
+partition it, so the form's rule is
+`BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent < FinishingWeekend < 0`.
+Build start therefore defaults to `-25`, the first-crew day; the older `-14`
+default sat *after* `SetupWeekStartOffset = -16`, which left the two rules with
+no satisfiable value and blocked every save.
 
 ---

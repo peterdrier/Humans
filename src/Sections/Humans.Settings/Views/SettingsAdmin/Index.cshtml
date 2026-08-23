@@ -62,7 +62,7 @@
                         </div>
                     </div>
                     <hr />
-                    <p class="small text-muted mb-2">Build sub-period boundaries — the dashboard splits the build window into four named sub-phases. Each offset is the inclusive start day of its sub-period; the next sub-period's start is the exclusive end. All four must be negative and ascending: BuildStartOffset ≤ FirstCrew ≤ Set-up week ≤ Pre-event week ≤ Finishing weekend &lt; 0.</p>
+                    <p class="small text-muted mb-2">Build sub-period boundaries — the dashboard splits the build window into four named sub-phases. Each offset is the inclusive start day of its sub-period; the next sub-period's start is the exclusive end. All four must be negative, and they partition the build window: BuildStartOffset ≤ First crew &lt; Set-up week &lt; Pre-event week &lt; Finishing weekend &lt; 0.</p>
                     <div class="row">
                         <div class="col-md-3 mb-3">
                             <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>

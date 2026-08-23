@@ -43,7 +43,7 @@ public sealed class SettingsAdminControllerTests
         Year: 2026,
         TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new LocalDate(2026, 7, 9),
-        BuildStartOffset: -14,
+        BuildStartOffset: -25,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
         FirstCrewStartOffset: -25,
