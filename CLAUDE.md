@@ -83,7 +83,7 @@ Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-ref
 
 ## Review Findings
 
-Reviewer findings (Codex, Claude bot, Gemini, humans) are **hypotheses, not a work list**. Triage each to Fix / Decline / Needs-Peter per [`review-finding-triage`](memory/process/review-finding-triage.md) *before* changing any code; fix only Fix verdicts. Thread mechanics: [`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md).
+Reviewer findings (Codex, Claude bot, Gemini, humans) are **hypotheses, not a work list**. Verify each against the code and judge whether it deserves a fix *before* changing anything — [`review-finding-triage`](memory/process/review-finding-triage.md). Every finding ends with a disposition reply in its thread (fixed / not fixing / issue opened): [`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md).
 
 ## Doc Freshness
 
