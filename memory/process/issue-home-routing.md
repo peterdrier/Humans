@@ -16,5 +16,5 @@ Existing issues stay where they are — no migration.
 
 - When creating an issue, pick the home repo by the list above and pass `--repo` explicitly.
 - When listing/searching the backlog (`/triage`, `/sprint`), sweep **both** repos.
-- Always qualify refs per [[issue-refs-qualified]] — auto-close keywords (`Fixes #N`) are the sharp edge: a bare `#N` in a fork commit re-resolves against upstream when promoted via `/pr-prod` and can close the wrong issue. Write `Fixes peterdrier/Humans#N` — the qualified form closes correctly from either repo.
+- Unqualified refs are never allowed, anywhere — always `owner/Humans#N` per [[issue-refs-qualified]]. Consumers (triage, sprint, spec review) must never default a bare `#N` to either repo: stop and resolve it. Auto-close keywords are the sharp edge — a bare `Fixes #N` in a fork commit re-resolves against upstream when promoted via `/pr-prod` and can close the wrong issue; `Fixes peterdrier/Humans#N` closes correctly from either repo.
 - Labels are cloned from upstream (2026-08-23); [[issues-need-section]] applies on both repos.

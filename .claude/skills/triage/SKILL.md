@@ -48,7 +48,7 @@ Both repos hold issues — see `memory/process/issue-home-routing.md`:
 
 - **Log-found bugs (Phase 1)** → `peterdrier/Humans` (engineering backlog)
 - **Community feedback promotions (Phases 3–4) and missing-capability design issues (Phase 5)** → `nobodies-collective/Humans` (teammate visibility)
-- **Duplicate searches and the close phase sweep both repos.** Always qualify refs (`owner/Humans#N`) per `memory/process/issue-refs-qualified.md`.
+- **Duplicate searches and the close phase sweep both repos.** Unqualified issue refs are never allowed — always `owner/Humans#N`, per `memory/process/issue-refs-qualified.md`. Never write a bare `#N`; never guess a repo for one.
 
 ---
 
@@ -191,12 +191,13 @@ gh issue list --repo nobodies-collective/Humans --state open \
 gh issue list --repo peterdrier/Humans --state open \
   --json number,title,labels,createdAt --limit 200
 
-# Issue numbers in production commits
+# Issue refs in production commits — keep the repo qualifier
 git fetch upstream main 2>/dev/null
-git log upstream/main --oneline | grep -oP '#\d+' | sort -un
+git log upstream/main --oneline | grep -oP '[\w.-]+/[\w.-]+#\d+' | sort -u   # qualified refs, per repo
+git log upstream/main --oneline | grep -oP '(?<![\w/])#\d+' | sort -un       # bare refs (legacy)
 ```
 
-Intersect: open issues referenced in `upstream/main` commits are candidates. Numbers overlap between repos — a qualified ref (`owner/Humans#N`) belongs to that owner; treat a bare `#N` as upstream (legacy convention) and only close a fork issue on a qualified match. If none, "No shipped issues to close." and proceed.
+Intersect per repo: a qualified ref (`owner/Humans#N`) is a candidate for that owner's issue `N`. Bare `#N` refs predate fork issues (enabled 2026-08-23) and can only mean upstream — match them against upstream only. Never write new bare refs, and never close a fork issue without a qualified match. If none, "No shipped issues to close." and proceed.
 
 ## Step 2.2: Cross-reference with reporters
 
