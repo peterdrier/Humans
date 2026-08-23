@@ -30,7 +30,7 @@ For each issue, extract:
 2. **Behavioral requirements** — specific behaviors described in the issue body (e.g., "shows X when Y", "matches against Z", "links to URL").
 3. **Negative requirements** — things explicitly excluded or warned against (e.g., "NOT aggregate data", "not just the primary email").
 
-List each criterion with an ID for tracking (e.g., `#264-AC1`, `#264-AC2`).
+List each criterion with an ID for tracking, carrying the owner (e.g., `nobodies-collective#264-AC1`, `peterdrier#265-AC1`).
 
 ### Step 3: Read the Implementation
 

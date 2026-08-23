@@ -1,7 +1,7 @@
 ---
 name: spec-review
 description: "Review code changes against linked GitHub issue specs to catch implementation drift — building something plausible but wrong. Checks each acceptance criterion against actual code."
-argument-hint: "PR 64 | #264 #265 | (no args = review current branch)"
+argument-hint: "PR 64 | nobodies-collective#264 peterdrier#265 | (no args = review current branch)"
 ---
 
 # Spec Compliance Review
@@ -14,7 +14,7 @@ Follow the full process documented in `.claude/agents/spec-compliance-reviewer.m
 
 `$ARGUMENTS` can be:
 - `PR <number>` — review an existing PR on peterdrier/Humans
-- `#NNN #NNN ...` — review current changes against specific issues; the repo qualifier is required (`peterdrier#NNN` or `nobodies-collective#NNN`). If a ref is unqualified, stop and ask which repo — never guess.
+- `owner#NNN owner#NNN ...` — review current changes against specific issues; the repo qualifier is required (`peterdrier#NNN` or `nobodies-collective#NNN`). If a ref is unqualified, stop and ask which repo — never guess.
 - Empty — scan recent commit messages for issue references and review against those
 
 ## Execution
