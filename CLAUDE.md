@@ -79,7 +79,7 @@ dotnet run --project src/Humans.Web
 
 All changes go on a **feature branch in a worktree** (`.worktrees/<name>`) → PR to `origin/main` (squash if multiple commits). Promote to prod by batching on `origin/main` → PR to `upstream/main` (rebase merge) — use `/pr-prod`. Per-PR preview deploys at `https://{pr_id}.n.burn.camp` (DB `humans_pr_{N}` cloned from QA, dropped on close; dev login enabled, Admin persona included). Version check: `GET /api/version`.
 
-Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-refs-qualified`](memory/process/issue-refs-qualified.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md) · [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md).
+Rules: [`always-open-a-pr`](memory/process/always-open-a-pr.md) · [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-refs-qualified`](memory/process/issue-refs-qualified.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md) · [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md).
 
 ## Review Findings
 

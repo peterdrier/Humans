@@ -135,6 +135,48 @@ Self-reviewed against CODE_REVIEW_RULES.md. No critical issues.
 - **One commit per issue, plus fix commits.** Keep the history clean so individual issues can be traced.
 - **If the user sends a message, STOP and answer immediately.** Do not continue working while there's an unanswered question.
 
+## Unattended Mode (routine-fired cloud runs)
+
+When this agent runs from a sprint routine rather than a session Peter is watching, there is no
+one to escalate to: routine runs are fully autonomous with no permission prompts. The stop-and-
+report rules above still hold, but "the orchestrator escalates to Peter" is not available.
+
+**Pre-implementation gates degrade to: skip the item, append to Needs-Peter, keep going.**
+**Post-commit review failures stay hard stops.** The distinction is whether code is already
+committed: Phase 1 step 5 commits each issue before Phase 2 reviews it, so a "skip" after a review
+failure would leave the failing implementation on the branch and carry it into the batch PR.
+
+- **Phase 1 escape valve (privilege / spec change)** — do not implement, do not commit. Append to
+  the sprint issue's Needs-Peter block with the concern, the lines that would change, who gains
+  what capability, and move to the next issue in the work order. The batch continues.
+- **Unauthorized author** — `/sprint` marks these `GATED` at plan time and they should never reach
+  you. If one does, skip it and record that the gate leaked.
+- **Review gate exhausted (3 iterations, Phase 2 / 2.5 / 3)** — unchanged from the rules above:
+  **STOP.** The batch is blocked at that issue. Do not skip it, do not move to the next issue, do
+  not open a PR. Record the failing criterion in Needs-Peter and in the batch report. A blocked
+  batch leaves its branch pushed and its checkbox unticked for a human to pick up; nothing
+  re-dispatches it on its own, since the orchestrator chooses the batch (§ Input).
+
+If a gate fires after that issue already has a commit — the escape valve missed it during
+exploration and caught it during implementation — `git revert` or reset that issue's commits before
+continuing, so the skipped work never reaches the PR.
+
+A skipped item leaves the batch checkbox unticked and is named in the PR body. Peter's answers are
+applied later by a `resume` run, as in `section-doctor`.
+
+Two mechanical differences from a local run:
+
+- **`gh` is unavailable.** Use the GitHub MCP tools for every GitHub operation, overriding the
+  `gh` invocations named above:
+  - **Phase 4 PR creation** — `create_pull_request` (owner `peterdrier`, repo `Humans`, base
+    `main`) replaces `gh pr create`. Push with plain `git push -u origin <branch>` first; only the
+    PR call needs the MCP tool.
+  - **Tracking issue** — `issue_write` (method `update`) to tick a batch checkbox or append to the
+    Needs-Peter block; `issue_read` to re-read it first, since another run may have edited it.
+- **Branch names must be `claude/`-prefixed** (`claude/sprint-<date>-batch-<n>`). That prefix is
+  always accepted on push; other names are checked against branch protection, others' commits, and
+  others' open PRs, and are rejected on any of them.
+
 ## Report Format
 
 When the batch completes (success or failure), output a structured report:

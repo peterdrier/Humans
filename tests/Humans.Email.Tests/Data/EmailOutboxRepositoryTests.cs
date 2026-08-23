@@ -5,6 +5,7 @@ using Humans.Email.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Xunit;
 
 namespace Humans.Email.Tests.Data;
 
@@ -228,6 +229,70 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetProcessingBatchAsync_PutsTimeSensitiveMessagesAheadOfABulkBacklog()
+    {
+        var now = _clock.GetCurrentInstant();
+        var stale = now - Duration.FromMinutes(5);
+
+        // 20 bulk messages queued first, then the magic link — FIFO alone would
+        // leave the login mail at the back (nobodies-collective/Humans#1122).
+        foreach (var i in Enumerable.Range(0, 20))
+        {
+            await _repo.AddAsync(
+                BuildMessage(createdAt: now - Duration.FromMinutes(20 - i), templateName: "survey_invitation"),
+                Xunit.TestContext.Current.CancellationToken);
+        }
+        var magicLink = BuildMessage(createdAt: now, templateName: "magic_link_login");
+        await _repo.AddAsync(magicLink, Xunit.TestContext.Current.CancellationToken);
+
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 5, ct: Xunit.TestContext.Current.CancellationToken);
+
+        batch[0].Id.Should().Be(magicLink.Id);
+    }
+
+    [HumansTheory]
+    [InlineData("magic_link_login")]
+    [InlineData("magic_link_signup")]
+    [InlineData("email_verification")]
+    [InlineData("workspace_credentials")]
+    public async Task GetProcessingBatchAsync_PrioritisesEveryTimeSensitiveTemplate(string templateName)
+    {
+        var now = _clock.GetCurrentInstant();
+        var stale = now - Duration.FromMinutes(5);
+
+        var bulk = BuildMessage(createdAt: now - Duration.FromMinutes(10), templateName: "survey_invitation");
+        var timeSensitive = BuildMessage(createdAt: now, templateName: templateName);
+        await _repo.AddAsync(bulk, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(timeSensitive, Xunit.TestContext.Current.CancellationToken);
+
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: Xunit.TestContext.Current.CancellationToken);
+
+        batch.Select(m => m.Id).Should().ContainInOrder(timeSensitive.Id, bulk.Id);
+    }
+
+    [HumansFact]
+    public async Task GetProcessingBatchAsync_KeepsFifoWithinEachPriorityClass()
+    {
+        var now = _clock.GetCurrentInstant();
+        var stale = now - Duration.FromMinutes(5);
+
+        var olderLink = BuildMessage(createdAt: now - Duration.FromMinutes(3), templateName: "magic_link_login");
+        var newerLink = BuildMessage(createdAt: now - Duration.FromMinutes(1), templateName: "email_verification");
+        var olderBulk = BuildMessage(createdAt: now - Duration.FromMinutes(30), templateName: "survey_invitation");
+        var newerBulk = BuildMessage(createdAt: now - Duration.FromMinutes(10), templateName: "reconsent_reminder");
+
+        foreach (var m in new[] { newerBulk, newerLink, olderBulk, olderLink })
+        {
+            await _repo.AddAsync(m, Xunit.TestContext.Current.CancellationToken);
+        }
+
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: Xunit.TestContext.Current.CancellationToken);
+
+        batch.Select(m => m.Id).Should()
+            .Equal(olderLink.Id, newerLink.Id, olderBulk.Id, newerBulk.Id);
+    }
+
+    [HumansFact]
     public async Task MarkPickedUpAsync_SetsPickedUpAtForAllIds()
     {
         var m1 = BuildMessage();
@@ -340,7 +405,8 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         EmailOutboxStatus status = EmailOutboxStatus.Queued,
         int retryCount = 0,
         Instant? sentAt = null,
-        Instant? createdAt = null) => new()
+        Instant? createdAt = null,
+        string templateName = "test") => new()
         {
             Id = Guid.NewGuid(),
             RecipientEmail = $"user-{Guid.NewGuid():N}@example.com",
@@ -348,7 +414,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
             Subject = "Hello",
             HtmlBody = "<p>Hi</p>",
             PlainTextBody = "Hi",
-            TemplateName = "test",
+            TemplateName = templateName,
             UserId = userId,
             Status = status,
             RetryCount = retryCount,
