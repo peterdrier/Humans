@@ -234,6 +234,61 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
     }
 
     [HumansFact(Timeout = 60000)]
+    public async Task Save_persists_the_posted_question_order()
+    {
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var createToken = await GetCreateTokenAsync();
+
+        var createResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", createToken),
+            ("Title[en]", $"Question order {Guid.NewGuid():N}"),
+            ("Questions.Index", "first"),
+            ("Questions[first].Id", firstId.ToString()),
+            ("Questions[first].PageNumber", "1"),
+            ("Questions[first].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[first].Prompt[en]", "First"),
+            ("Questions.Index", "second"),
+            ("Questions[second].Id", secondId.ToString()),
+            ("Questions[second].PageNumber", "1"),
+            ("Questions[second].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[second].Prompt[en]", "Second")), ct);
+        var surveyId = ExtractSurveyId(createResp);
+
+        var editResp = await Client.GetAsync($"/Survey/Admin/Edit/{surveyId}", ct);
+        var editToken = ExtractAntiForgeryToken(await editResp.Content.ReadAsStringAsync(ct));
+        var reorderResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
+            ("__RequestVerificationToken", editToken!),
+            ("Id", surveyId.ToString()),
+            ("Title[en]", "Question order updated"),
+            ("Questions.Index", "second"),
+            ("Questions[second].Id", secondId.ToString()),
+            ("Questions[second].PageNumber", "1"),
+            ("Questions[second].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[second].Prompt[en]", "Second"),
+            ("Questions.Index", "first"),
+            ("Questions[first].Id", firstId.ToString()),
+            ("Questions[first].PageNumber", "1"),
+            ("Questions[first].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[first].Prompt[en]", "First")), ct);
+
+        ((int)reorderResp.StatusCode).Should().BeOneOf(
+            (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
+        var questionIds = await db.SurveyQuestions.AsNoTracking()
+            .Where(question => question.SurveyId == surveyId)
+            .OrderBy(question => question.Order)
+            .Select(question => question.Id)
+            .ToListAsync(ct);
+
+        questionIds.Should().ContainInOrder(secondId, firstId);
+    }
+
+    [HumansFact(Timeout = 60000)]
     public async Task Save_uploads_and_preview_renders_an_information_block()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

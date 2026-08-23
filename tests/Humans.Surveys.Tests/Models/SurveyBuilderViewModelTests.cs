@@ -168,6 +168,30 @@ public sealed class SurveyBuilderViewModelTests
         mapped.AltText.Resolve("en", "en").Should().Be("Temperature forecast table");
     }
 
+    [HumansFact]
+    public void ToEditInput_uses_the_posted_question_list_order()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var vm = new SurveyBuilderViewModel
+        {
+            Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Survey" },
+            Questions =
+            [
+                new SurveyQuestionBuilderViewModel { Id = secondId, Prompt = Dict("Second") },
+                new SurveyQuestionBuilderViewModel { Id = firstId, Prompt = Dict("First") },
+            ],
+        };
+
+        var questions = vm.ToEditInput(NodaTime.DateTimeZone.Utc).Questions;
+
+        questions.Select(question => question.Id).Should().ContainInOrder(secondId, firstId);
+        questions.Select(question => question.Order).Should().ContainInOrder(0, 1);
+    }
+
     private static LocalizedText L(string value)
-        => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = value });
+        => new(Dict(value));
+
+    private static Dictionary<string, string> Dict(string value)
+        => new(StringComparer.Ordinal) { ["en"] = value };
 }

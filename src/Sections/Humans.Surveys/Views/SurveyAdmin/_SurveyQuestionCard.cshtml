@@ -9,9 +9,24 @@
     @* Always rendered: new questions get a client-generated id (Builder JS) so show-if clauses can
        reference them before the first save — the service honours supplied ids. *@
     <input type="hidden" name="@(prefix).Id" value="@q.Id" class="question-id" />
-    <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <strong class="small text-muted">Question</strong>
-        <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+        <strong class="small text-muted question-position-label">Question</strong>
+        <div class="d-flex flex-wrap gap-1">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Question order">
+                <button type="button" class="btn btn-outline-secondary move-question-up"
+                        title="Move question up" aria-label="Move question up">
+                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary move-question-down"
+                        title="Move question down" aria-label="Move question down">
+                    <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                </button>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-question-after">
+                + Add below
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+        </div>
     </div>
     <div class="card-body">
         <div class="row g-2 mb-2">

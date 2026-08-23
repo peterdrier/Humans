@@ -18,6 +18,10 @@ questions. It supports:
 - zero to five images, each with a localized tab label and localized alt text;
 - the existing page ordering and `ShowIf` visibility rule.
 
+The Markdown field uses the shared EasyMDE editor for both server-rendered and newly inserted items.
+Question cards can be inserted after any existing card and moved up or down; their posted DOM order
+becomes the persisted survey question order.
+
 Information items are never required and cannot be branching sources. They must contain Markdown or
 at least one image. Image labels and alt text must contain authored text.
 

@@ -372,6 +372,46 @@
             // ── show-if clause editor ────────────────────────────────────────
             function questionCards() { return Array.from(container.querySelectorAll('.question-card')); }
 
+            function updateQuestionControls() {
+                const cards = questionCards();
+                cards.forEach((card, index) => {
+                    const label = card.querySelector('.question-position-label');
+                    const up = card.querySelector('.move-question-up');
+                    const down = card.querySelector('.move-question-down');
+                    if (label) label.textContent = 'Question ' + (index + 1);
+                    if (up) up.disabled = index === 0;
+                    if (down) down.disabled = index === cards.length - 1;
+                });
+            }
+
+            function addQuestion(afterCard) {
+                const html = qTemplate.innerHTML.replaceAll('__QKEY__', freshKey('q'));
+                let card;
+                if (afterCard) {
+                    afterCard.insertAdjacentHTML('afterend', html);
+                    card = afterCard.nextElementSibling;
+                } else {
+                    container.insertAdjacentHTML('beforeend', html);
+                    card = container.lastElementChild;
+                }
+                initCard(card);
+                applyCulture(card);
+                window.HumansMarkdownEditor?.init(card);
+                updateQuestionControls();
+            }
+
+            function moveQuestion(button, direction) {
+                const card = button.closest('.question-card');
+                const sibling = direction < 0 ? card.previousElementSibling : card.nextElementSibling;
+                if (!sibling) return;
+                if (direction < 0) {
+                    container.insertBefore(card, sibling);
+                } else {
+                    container.insertBefore(sibling, card);
+                }
+                updateQuestionControls();
+            }
+
             function questionLabel(card, index) {
                 // The first localized field on a card is its Prompt.
                 const prompt = card.querySelector('.survey-localized-field');
@@ -461,11 +501,7 @@
 
             // ── events ───────────────────────────────────────────────────────
             document.getElementById('add-question').addEventListener('click', function () {
-                const html = qTemplate.innerHTML.replaceAll('__QKEY__', freshKey('q'));
-                container.insertAdjacentHTML('beforeend', html);
-                const card = container.lastElementChild;
-                initCard(card);
-                applyCulture(card);
+                addQuestion(null);
             });
 
             container.addEventListener('click', function (e) {
@@ -474,6 +510,13 @@
                     const id = card.querySelector('.question-id')?.value;
                     card.remove();
                     if (id) removeClauseRowsReferencing(id);
+                    updateQuestionControls();
+                } else if (e.target.closest('.move-question-up')) {
+                    moveQuestion(e.target, -1);
+                } else if (e.target.closest('.move-question-down')) {
+                    moveQuestion(e.target, 1);
+                } else if (e.target.closest('.add-question-after')) {
+                    addQuestion(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('add-option')) {
                     addOption(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-option')) {
@@ -559,6 +602,7 @@
             });
 
             questionCards().forEach(initCard);
+            updateQuestionControls();
             applyCulture();
             updateMissingBadges();
         })();
