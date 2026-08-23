@@ -7,6 +7,8 @@ description: Existing `@Localizer[...]` calls in admin views can stay, but don't
 
 The coordinator-facing `/Shifts/Dashboard` is an admin function — existing localization can stay, but new strings there do **not** need to be added to `ca`/`de`/`fr`/`it` resources.
 
-This exemption list is load-bearing for `/section-doctor`'s localization-coverage detector
-(`.claude/skills/section-doctor/loc-coverage.py`), which buckets views by route. Change the list
-here and the detector changes with it.
+`/section-doctor`'s localization-coverage detector
+(`.claude/skills/section-doctor/loc-coverage.py`) buckets views by route against this same list,
+as the hardcoded `EXEMPT_ROUTES` constant — it does not read this file. **The two are synced by
+hand:** change the routes here and change `EXEMPT_ROUTES` in the same commit, or the detector
+keeps ranking an exempt page as member-facing.

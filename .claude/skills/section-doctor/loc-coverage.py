@@ -240,7 +240,9 @@ def scan_view(path: Path) -> dict:
 
 # --- routes -------------------------------------------------------------------------------
 ROUTE_ATTR = re.compile(r'\[\s*Route\s*\(\s*"([^"]*)"')
-# `memory/code/localization-admin-exempt.md`: exempt as a whole route or as a route prefix.
+# Exempt as a whole route or as a route prefix. Hand-synced with the list in
+# `memory/code/localization-admin-exempt.md` — nothing here parses that file, so a route added
+# there and not here goes on being ranked as member-facing. Change both in one commit.
 EXEMPT_ROUTES = ("Admin", "TeamAdmin", "Shifts/Dashboard")
 ADMIN_SEGMENT = {"admin", "teamadmin"}
 
