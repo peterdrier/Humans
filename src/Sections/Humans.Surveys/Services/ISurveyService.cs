@@ -316,8 +316,8 @@ internal sealed record SurveyAnswerInput(
 internal sealed class SurveyWizardState
 {
     public Guid SurveyId { get; set; }
-    public Guid? InvitationId { get; set; }   // the token's invitation — all invited tiers (drives Started/Completed funnel flags)
-    public Guid? UserId { get; set; }          // the token's user — all invited tiers; the RESPONSE columns are written only for Identified (see submit)
+    public Guid? InvitationId { get; set; }   // invite or tracked-public participation row (drives Completed; Started is invite-path only)
+    public Guid? UserId { get; set; }          // tracked respondent; the RESPONSE columns are written only for Identified (see submit)
     public Guid? DraftResponseId { get; set; } // Identified draft only (set by StartIdentifiedDraftAsync)
     public ResponseAnonymity Anonymity { get; set; }
     public SurveyInputMethod InputMethod { get; set; } = SurveyInputMethod.UserSpecificLink;
@@ -325,6 +325,14 @@ internal sealed class SurveyWizardState
     public int CurrentPage { get; set; }
     public bool Started { get; set; }
     public Dictionary<string, SurveyWizardAnswer> Answers { get; set; } = new(StringComparer.Ordinal); // key = QuestionId.ToString()
+
+    /// <summary>
+    /// Fully Anonymous public state may continue without a principal. Tracked public state belongs
+    /// only to the same currently authenticated Human who created it.
+    /// </summary>
+    public bool IsPubliclyAccessibleBy(Guid? currentUserId)
+        => Anonymity == ResponseAnonymity.Anonymous
+           || (UserId is not null && UserId == currentUserId);
 }
 
 /// <summary>One captured answer in the wizard session.</summary>

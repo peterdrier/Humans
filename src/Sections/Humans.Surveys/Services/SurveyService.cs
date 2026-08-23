@@ -563,7 +563,14 @@ internal sealed class SurveyService(
     {
         // Idempotent: one in-progress Identified draft per Human, regardless of entry path.
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
-        if (existing is not null) return existing.Id;
+        if (existing is not null)
+        {
+            if (existing.InputMethod != inputMethod)
+            {
+                await repo.SetDraftInputMethodAsync(existing.Id, inputMethod, ct);
+            }
+            return existing.Id;
+        }
 
         var response = new SurveyResponse
         {
@@ -606,13 +613,18 @@ internal sealed class SurveyService(
 
         Guid? draftResponseId = null;
         IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
+        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
-            draftResponseId = existingDraft?.Id
-                ?? await StartIdentifiedDraftAsync(
-                    surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
+            draftResponseId = await StartIdentifiedDraftAsync(
+                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
             draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
+        }
+        else if (existingDraft is not null)
+        {
+            // Choosing CompletionTracked is an explicit move away from the personal-data tier.
+            // Retire the now-unreachable Identified draft and its answers before continuing.
+            await repo.DeleteDraftResponseAsync(existingDraft.Id, ct);
         }
 
         return new SurveyPublicStart(

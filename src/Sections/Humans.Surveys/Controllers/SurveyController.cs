@@ -279,6 +279,11 @@ internal sealed class SurveyController(
 
         var state = SurveyWizardSession.LoadBySlug(HttpContext.Session, slug);
         if (state is null) return RedirectToAction("Public", new { slug });
+        if (!state.IsPubliclyAccessibleBy(GetCurrentUserId()))
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return RedirectToAction("Public", new { slug });
+        }
         return await RenderPage(state, WizardRoute.Public(slug), ct);
     }
 
@@ -290,6 +295,11 @@ internal sealed class SurveyController(
 
         var state = SurveyWizardSession.LoadBySlug(HttpContext.Session, slug);
         if (state is null) return RedirectToAction("Public", new { slug });
+        if (!state.IsPubliclyAccessibleBy(GetCurrentUserId()))
+        {
+            SurveyWizardSession.ClearBySlug(HttpContext.Session, slug);
+            return RedirectToAction("Public", new { slug });
+        }
         return await ProcessPage(state, model, WizardRoute.Public(slug), ct);
     }
 

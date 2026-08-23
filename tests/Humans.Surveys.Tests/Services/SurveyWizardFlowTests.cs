@@ -37,6 +37,34 @@ public class SurveyWizardFlowTests
         new() { [q] = new AnswerState(values, null, null) };
 
     [HumansFact]
+    public void Public_tracked_state_is_accessible_only_to_its_owner()
+    {
+        var ownerId = Guid.NewGuid();
+        var state = new SurveyWizardState
+        {
+            Anonymity = ResponseAnonymity.Identified,
+            UserId = ownerId,
+        };
+
+        state.IsPubliclyAccessibleBy(ownerId).Should().BeTrue();
+        state.IsPubliclyAccessibleBy(Guid.NewGuid()).Should().BeFalse();
+        state.IsPubliclyAccessibleBy(null).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Public_anonymous_state_remains_accessible_without_a_principal()
+    {
+        var state = new SurveyWizardState
+        {
+            Anonymity = ResponseAnonymity.Anonymous,
+            UserId = null,
+        };
+
+        state.IsPubliclyAccessibleBy(null).Should().BeTrue();
+        state.IsPubliclyAccessibleBy(Guid.NewGuid()).Should().BeTrue();
+    }
+
+    [HumansFact]
     public void OrderedPages_returns_distinct_ascending_pages()
     {
         var questions = new[]

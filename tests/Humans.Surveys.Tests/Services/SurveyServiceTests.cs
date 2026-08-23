@@ -1436,6 +1436,32 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task StartIdentifiedDraftAsync_updates_the_entry_path_when_reusing_a_draft()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var existing = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            InputMethod = SurveyInputMethod.UserSpecificLink,
+        };
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var id = await CreateService().StartIdentifiedDraftAsync(
+            surveyId, Guid.NewGuid(), userId, SurveyInputMethod.Slug,
+            "en", TestContext.Current.CancellationToken);
+
+        id.Should().Be(existing.Id);
+        await _repo.Received(1).SetDraftInputMethodAsync(
+            existing.Id, SurveyInputMethod.Slug, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddResponseAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task StartIdentifiedDraftAsync_creates_identified_draft_when_none_exists()
     {
         var surveyId = Guid.NewGuid();
@@ -1525,6 +1551,41 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task StartPublicTrackedResponseAsync_completion_tracked_deletes_an_existing_identified_draft()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participation = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+        };
+        var draft = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            InputMethod = SurveyInputMethod.Slug,
+        };
+        _repo.GetOrCreateParticipationAsync(
+                surveyId, userId, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>())
+            .Returns(participation);
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>())
+            .Returns(draft);
+
+        var result = await CreateService().StartPublicTrackedResponseAsync(
+            surveyId, userId, ResponseAnonymity.CompletionTracked, "en",
+            TestContext.Current.CancellationToken);
+
+        result.DraftResponseId.Should().BeNull();
+        result.DraftAnswers.Should().BeEmpty();
+        await _repo.Received(1).DeleteDraftResponseAsync(
+            draft.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task StartPublicTrackedResponseAsync_completed_participation_refuses_another_tracked_start()
     {
         var surveyId = Guid.NewGuid();
@@ -1571,7 +1632,7 @@ public class SurveyServiceTests
             InvitationId = participation.Id,
             UserId = userId,
             Anonymity = ResponseAnonymity.Identified,
-            InputMethod = SurveyInputMethod.Slug,
+            InputMethod = SurveyInputMethod.UserSpecificLink,
             Answers =
             [
                 new SurveyAnswer
@@ -1597,6 +1658,8 @@ public class SurveyServiceTests
         result.DraftAnswers.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new SurveyDraftAnswer(
                 questionId, ["yes"], "saved", null));
+        await _repo.Received(1).SetDraftInputMethodAsync(
+            draft.Id, SurveyInputMethod.Slug, Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

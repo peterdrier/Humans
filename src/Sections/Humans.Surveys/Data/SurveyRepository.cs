@@ -251,6 +251,27 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
                 ct);
     }
 
+    public async Task SetDraftInputMethodAsync(
+        Guid draftResponseId, SurveyInputMethod inputMethod, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var draft = await ctx.SurveyResponses
+            .FirstOrDefaultAsync(response => response.Id == draftResponseId && response.SubmittedAt == null, ct);
+        if (draft is null) return;
+        draft.InputMethod = inputMethod;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteDraftResponseAsync(Guid draftResponseId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var draft = await ctx.SurveyResponses
+            .FirstOrDefaultAsync(response => response.Id == draftResponseId && response.SubmittedAt == null, ct);
+        if (draft is null) return;
+        ctx.SurveyResponses.Remove(draft);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
