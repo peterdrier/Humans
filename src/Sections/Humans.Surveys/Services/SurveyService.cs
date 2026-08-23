@@ -42,6 +42,8 @@ internal sealed class SurveyService(
     private const int InvitationEmailMessageMaxLength = 4000;
     private const int MaxInformationImages = 5;
     private const long MaxInformationImageBytes = 10 * 1024 * 1024;
+    private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
+        Instant.FromUnixTimeSeconds(0);
     private static readonly HashSet<string> AllowedInformationImageContentTypes =
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
     private static readonly HashSet<string> AllowedInformationImageExtensions =
@@ -544,7 +546,7 @@ internal sealed class SurveyService(
             HasResumableDraft: draft is not null);
     }
 
-    public async Task<SurveyIdentifiedStart> StartIdentifiedDraftAsync(
+    public async Task<SurveyIdentifiedStart?> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,
@@ -555,13 +557,9 @@ internal sealed class SurveyService(
         // No audit log for individual response activity (privacy — Deviation #10).
         var draft = await repo.GetOrCreateIdentifiedDraftAsync(
             surveyId, participationId, userId, inputMethod, culture, ct);
-        if (draft is null)
-        {
-            throw new InvalidOperationException(
-                "This tracked response has already been completed.");
-        }
-
-        return new SurveyIdentifiedStart(draft.Id, MapDraftAnswers(draft));
+        return draft is null
+            ? null
+            : new SurveyIdentifiedStart(draft.Id, MapDraftAnswers(draft));
     }
 
     public async Task<SurveyPublicStart> StartPublicTrackedResponseAsync(
@@ -577,8 +575,11 @@ internal sealed class SurveyService(
                 "Only identified or completion-tracked public responses need a participation ledger.");
         }
 
-        var participation = await repo.GetOrCreateParticipationAsync(
-            surveyId, userId, clock.GetCurrentInstant(), ct);
+        var participation = anonymity == ResponseAnonymity.CompletionTracked
+            ? await repo.GetOrCreateCompletionTrackedParticipationAsync(
+                surveyId, userId, NonCorrelatablePublicParticipationCreatedAt, ct)
+            : await repo.GetOrCreateParticipationAsync(
+                surveyId, userId, clock.GetCurrentInstant(), ct);
 
         if (participation.Completed)
         {
@@ -591,6 +592,11 @@ internal sealed class SurveyService(
         {
             var identifiedStart = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
+            if (identifiedStart is null)
+            {
+                return new SurveyPublicStart(
+                    participation.Id, null, [], AlreadyCompleted: true);
+            }
             draftResponseId = identifiedStart.DraftResponseId;
             draftAnswers = identifiedStart.DraftAnswers;
         }

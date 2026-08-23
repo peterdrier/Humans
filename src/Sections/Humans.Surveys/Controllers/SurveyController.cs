@@ -65,6 +65,10 @@ internal sealed class SurveyController(
             var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
+            if (identifiedStart is null)
+            {
+                return RedirectToAction("ThankYou", new { t });
+            }
             resumeState.DraftResponseId = identifiedStart.DraftResponseId;
             RestoreDraftAnswers(resumeState, identifiedStart.DraftAnswers);
             await surveyService.MarkInvitationStartedAsync(ctx.InvitationId, ct);
@@ -118,6 +122,10 @@ internal sealed class SurveyController(
             var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
+            if (identifiedStart is null)
+            {
+                return RedirectToAction("ThankYou", new { t = model.Token });
+            }
             state.DraftResponseId = identifiedStart.DraftResponseId;
             RestoreDraftAnswers(state, identifiedStart.DraftAnswers);
         }

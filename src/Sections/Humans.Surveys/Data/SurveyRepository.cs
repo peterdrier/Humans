@@ -133,11 +133,35 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
 
     public async Task<SurveyInvitation> GetOrCreateParticipationAsync(
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default)
+        => await GetOrCreateParticipationAsync(
+            surveyId, userId, createdAt, obscureUnsentCreatedAt: false, ct);
+
+    public async Task<SurveyInvitation> GetOrCreateCompletionTrackedParticipationAsync(
+        Guid surveyId, Guid userId, Instant nonCorrelatableCreatedAt, CancellationToken ct = default)
+        => await GetOrCreateParticipationAsync(
+            surveyId, userId, nonCorrelatableCreatedAt, obscureUnsentCreatedAt: true, ct);
+
+    private async Task<SurveyInvitation> GetOrCreateParticipationAsync(
+        Guid surveyId,
+        Guid userId,
+        Instant createdAt,
+        bool obscureUnsentCreatedAt,
+        CancellationToken ct)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var existing = await ctx.SurveyInvitations
             .FirstOrDefaultAsync(i => i.SurveyId == surveyId && i.UserId == userId, ct);
-        if (existing is not null) return existing;
+        if (existing is not null)
+        {
+            if (obscureUnsentCreatedAt
+                && existing.SentAt is null
+                && existing.CreatedAt != createdAt)
+            {
+                existing.CreatedAt = createdAt;
+                await ctx.SaveChangesAsync(ct);
+            }
+            return existing;
+        }
 
         var participation = new SurveyInvitation
         {
@@ -160,7 +184,17 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
             ctx.ChangeTracker.Clear();
             var raced = await ctx.SurveyInvitations
                 .FirstOrDefaultAsync(i => i.SurveyId == surveyId && i.UserId == userId, ct);
-            if (raced is not null) return raced;
+            if (raced is not null)
+            {
+                if (obscureUnsentCreatedAt
+                    && raced.SentAt is null
+                    && raced.CreatedAt != createdAt)
+                {
+                    raced.CreatedAt = createdAt;
+                    await ctx.SaveChangesAsync(ct);
+                }
+                return raced;
+            }
             throw;
         }
     }

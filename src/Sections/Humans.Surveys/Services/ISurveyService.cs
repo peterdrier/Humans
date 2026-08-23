@@ -83,7 +83,7 @@ internal interface ISurveyService : IApplicationService
     /// or an unsent public-link ledger row. Returns the exact draft and answer snapshot selected by
     /// that operation, so callers never combine a draft id with answers from a separate lookup.
     /// </summary>
-    Task<SurveyIdentifiedStart> StartIdentifiedDraftAsync(
+    Task<SurveyIdentifiedStart?> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,

@@ -48,6 +48,15 @@ public class SurveyServiceTests
                 UserId = (Guid)call[1]!,
                 CreatedAt = (Instant)call[2]!,
             });
+        _repo.GetOrCreateCompletionTrackedParticipationAsync(
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call => new SurveyInvitation
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = (Guid)call[0]!,
+                UserId = (Guid)call[1]!,
+                CreatedAt = (Instant)call[2]!,
+            });
         _repo.TryQueueInvitationAsync(
                 Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
@@ -1575,7 +1584,8 @@ public class SurveyServiceTests
             surveyId, Guid.NewGuid(), userId, SurveyInputMethod.UserSpecificLink,
             "en", TestContext.Current.CancellationToken);
 
-        result.DraftResponseId.Should().Be(existing.Id);
+        result.Should().NotBeNull();
+        result!.DraftResponseId.Should().Be(existing.Id);
     }
 
     [HumansFact]
@@ -1600,7 +1610,8 @@ public class SurveyServiceTests
             surveyId, Guid.NewGuid(), userId, SurveyInputMethod.Slug,
             "en", TestContext.Current.CancellationToken);
 
-        result.DraftResponseId.Should().Be(existing.Id);
+        result.Should().NotBeNull();
+        result!.DraftResponseId.Should().Be(existing.Id);
     }
 
     [HumansFact]
@@ -1626,7 +1637,8 @@ public class SurveyServiceTests
             surveyId, Guid.NewGuid(), userId, SurveyInputMethod.Slug,
             "es", TestContext.Current.CancellationToken);
 
-        result.DraftResponseId.Should().Be(existing.Id);
+        result.Should().NotBeNull();
+        result!.DraftResponseId.Should().Be(existing.Id);
     }
 
     [HumansFact]
@@ -1655,7 +1667,8 @@ public class SurveyServiceTests
             surveyId, invitationId, userId, SurveyInputMethod.UserSpecificLink,
             "es", TestContext.Current.CancellationToken);
 
-        result.DraftResponseId.Should().Be(created.Id);
+        result.Should().NotBeNull();
+        result!.DraftResponseId.Should().Be(created.Id);
         created.SurveyId.Should().Be(surveyId);
         created.InvitationId.Should().Be(invitationId);
         created.UserId.Should().Be(userId);
@@ -1720,8 +1733,8 @@ public class SurveyServiceTests
             SurveyId = surveyId,
             UserId = userId,
         };
-        _repo.GetOrCreateParticipationAsync(
-                surveyId, userId, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>())
+        _repo.GetOrCreateCompletionTrackedParticipationAsync(
+                surveyId, userId, Instant.FromUnixTimeSeconds(0), Arg.Any<CancellationToken>())
             .Returns(participation);
 
         var result = await CreateService().StartPublicTrackedResponseAsync(
@@ -1748,22 +1761,43 @@ public class SurveyServiceTests
             SurveyId = surveyId,
             UserId = userId,
         };
-        var draft = new SurveyResponse
-        {
-            Id = Guid.NewGuid(),
-            SurveyId = surveyId,
-            UserId = userId,
-            Anonymity = ResponseAnonymity.Identified,
-            InputMethod = SurveyInputMethod.Slug,
-        };
-        _repo.GetOrCreateParticipationAsync(
-                surveyId, userId, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>())
+        _repo.GetOrCreateCompletionTrackedParticipationAsync(
+                surveyId, userId, Instant.FromUnixTimeSeconds(0), Arg.Any<CancellationToken>())
             .Returns(participation);
 
         var result = await CreateService().StartPublicTrackedResponseAsync(
             surveyId, userId, ResponseAnonymity.CompletionTracked, "en",
             TestContext.Current.CancellationToken);
 
+        result.DraftResponseId.Should().BeNull();
+        result.DraftAnswers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task StartPublicTrackedResponseAsync_identified_losing_completion_race_returns_completed()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participation = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+        };
+        _repo.GetOrCreateParticipationAsync(
+                surveyId, userId, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>())
+            .Returns(participation);
+        _repo.GetOrCreateIdentifiedDraftAsync(
+                surveyId, participation.Id, userId, SurveyInputMethod.Slug,
+                "en", Arg.Any<CancellationToken>())
+            .Returns((SurveyResponse?)null);
+
+        var result = await CreateService().StartPublicTrackedResponseAsync(
+            surveyId, userId, ResponseAnonymity.Identified, "en",
+            TestContext.Current.CancellationToken);
+
+        result.AlreadyCompleted.Should().BeTrue();
+        result.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().BeNull();
         result.DraftAnswers.Should().BeEmpty();
     }

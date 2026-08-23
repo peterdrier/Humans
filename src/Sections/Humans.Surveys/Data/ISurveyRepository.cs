@@ -58,6 +58,13 @@ internal partial interface ISurveyRepository : IRepository
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets or creates a public CompletionTracked participation row, replacing <c>CreatedAt</c>
+    /// with a shared non-correlatable sentinel while the row remains unsent.
+    /// </summary>
+    Task<SurveyInvitation> GetOrCreateCompletionTrackedParticipationAsync(
+        Guid surveyId, Guid userId, Instant nonCorrelatableCreatedAt, CancellationToken ct = default);
+
+    /// <summary>
     /// Invitations due for the one-time 7-day reminder: their survey is <c>Open</c>, not yet
     /// <c>Completed</c>, no reminder sent yet, and sent on or before <paramref name="cutoff"/>. No
     /// display ordering. Read-only.
