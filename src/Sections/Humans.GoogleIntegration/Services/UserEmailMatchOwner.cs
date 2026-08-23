@@ -13,15 +13,17 @@ internal static class UserEmailMatchOwner
     /// Winner per address: verified &gt; most-recently-updated &gt; stable UserId. Without a
     /// deterministic pick an unverified duplicate can outrank the real owner, and whatever the
     /// sync attributes to that address lands on the wrong human — including in their GDPR export.
+    /// Keyed by <see cref="GmailAliasEmailComparer"/>: the row's stored address may be a Gmail
+    /// alias of the address Google reported, and the caller looks up by Google's form.
     /// </summary>
     public static Dictionary<string, UserEmailMatch> ByEmail(IEnumerable<UserEmailMatch> matches) =>
         matches
-            .GroupBy(m => m.Email, NormalizingEmailComparer.Instance)
+            .GroupBy(m => m.Email, GmailAliasEmailComparer.Instance)
             .ToDictionary(
                 g => g.Key,
                 g => g.OrderByDescending(m => m.IsVerified)
                     .ThenByDescending(m => m.UpdatedAt)
                     .ThenBy(m => m.UserId)
                     .First(),
-                NormalizingEmailComparer.Instance);
+                GmailAliasEmailComparer.Instance);
 }

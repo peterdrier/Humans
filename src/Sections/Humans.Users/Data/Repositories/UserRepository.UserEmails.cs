@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Base.Helpers;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Repositories;
@@ -227,11 +228,30 @@ internal sealed partial class UserRepository
         // suppression (MA0011) is fine — we already normalize on save.
 #pragma warning disable MA0011 // Use a CultureInfo overload — EF translates ToLower to Postgres lower()
         var lowered = emails.Select(e => e.ToLowerInvariant()).ToArray();
-        return await ctx.UserEmails
+        var exact = await ctx.UserEmails
             .AsNoTracking()
             .Where(ue => lowered.Contains(ue.Email.ToLower()))
             .ToListAsync(ct);
 #pragma warning restore MA0011
+
+        // Gmail alias fallback (nobodies-collective/Humans#1101): Google
+        // canonicalizes "+tag" and dots out of the local part before
+        // reporting an address, so a stored row like user+tag@gmail.com or
+        // us.er@gmail.com never exact-matches what Google hands back. Only
+        // the Gmail-domain rows the exact pass missed are re-checked,
+        // canonical-form to canonical-form — non-Gmail rows are untouched.
+        var exactIds = exact.Select(e => e.Id).ToHashSet();
+        var canonicalTargets = new HashSet<string>(emails, GmailAliasEmailComparer.Instance);
+
+        var gmailCandidates = await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => EF.Functions.ILike(ue.Email, "%@gmail.com") || EF.Functions.ILike(ue.Email, "%@googlemail.com"))
+            .ToListAsync(ct);
+
+        var aliasMatches = gmailCandidates.Where(ue =>
+            !exactIds.Contains(ue.Id) && canonicalTargets.Contains(ue.Email));
+
+        return exact.Concat(aliasMatches).ToList();
     }
 
     public async Task<bool> AnyUserEmailWithEmailAsync(string email, CancellationToken ct = default)

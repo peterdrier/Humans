@@ -1,0 +1,136 @@
+@model Humans.Settings.Models.EventSettingsViewModel
+@{
+    ViewData["Title"] = "Event Settings";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Event Settings</h1>
+    <small class="text-muted">Issue #1104</small>
+</div>
+
+<div class="alert alert-warning">
+    <strong>Staging only — these edits are not live yet.</strong>
+    Nothing reads this table: every section still reads the app-wide event values from the
+    Shifts-owned row, so <a asp-controller="Shifts" asp-action="Settings">/Shifts/Settings</a>
+    is where a change takes effect today. Editing here stages the value for
+    the cutover that repoints the readers (issue #1104, PR B). Until then, a change made here
+    alone does nothing, and a change made there alone will not be reflected here.
+</div>
+
+<p class="text-muted">
+    The app-wide event values. Shifts' own knobs (browsing switch, global volunteer cap,
+    reminder lead time) stay on the Shifts event settings screen and are not moving.
+    Editing <strong>@Model.EventName</strong> (@Model.GateOpeningDate).
+    <a asp-controller="EventSettingsCarryAdmin" asp-action="Index">All event rows</a>.
+</p>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+            <input type="hidden" asp-for="Id" />
+
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">General</h5></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="EventName" class="form-label">Event Name</label>
+                        <input asp-for="EventName" class="form-control" placeholder="e.g., Nowhere 2026" />
+                        <span asp-validation-for="EventName" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="TimeZoneId" class="form-label">Timezone (IANA)</label>
+                        <input asp-for="TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" />
+                        <span asp-validation-for="TimeZoneId" class="text-danger"></span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="GateOpeningDate" class="form-label">Gate Opening Date</label>
+                            <input asp-for="GateOpeningDate" type="date" class="form-control" />
+                            <span asp-validation-for="GateOpeningDate" class="text-danger"></span>
+                            <small class="form-text text-muted">The public year is this date's year.</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="BuildStartOffset" class="form-label">Build Start Offset</label>
+                            <input asp-for="BuildStartOffset" type="number" class="form-control" />
+                            <small class="form-text text-muted">Negative number (e.g., -14)</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="EventEndOffset" class="form-label">Event End Offset</label>
+                            <input asp-for="EventEndOffset" type="number" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="StrikeEndOffset" class="form-label">Strike End Offset</label>
+                            <input asp-for="StrikeEndOffset" type="number" class="form-control" />
+                        </div>
+                    </div>
+                    <hr />
+                    <p class="small text-muted mb-2">Build sub-period boundaries — the dashboard splits the build window into four named sub-phases. Each offset is the inclusive start day of its sub-period; the next sub-period's start is the exclusive end. All four must be negative, and they partition the build window: BuildStartOffset ≤ First crew &lt; Set-up week &lt; Pre-event week &lt; Finishing weekend &lt; 0.</p>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>
+                            <input asp-for="FirstCrewStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                            <small class="form-text text-muted">e.g., -25</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="SetupWeekStartOffset" class="form-label">Set-up Week Start</label>
+                            <input asp-for="SetupWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                            <small class="form-text text-muted">e.g., -16</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="PreEventWeekStartOffset" class="form-label">Pre-event Week Start</label>
+                            <input asp-for="PreEventWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                            <small class="form-text text-muted">e.g., -9</small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label asp-for="FinishingWeekendStartOffset" class="form-label">Finishing Weekend Start</label>
+                            <input asp-for="FinishingWeekendStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                            <small class="form-text text-muted">e.g., -4</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Early Entry</h5></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="EarlyEntryCapacityJson" class="form-label">EE Capacity (JSON: day offset → total capacity)</label>
+                        <textarea asp-for="EarlyEntryCapacityJson" class="form-control font-monospace" rows="4" placeholder='{"day_offset": capacity, ...}'></textarea>
+                        <span asp-validation-for="EarlyEntryCapacityJson" class="text-danger"></span>
+                        <small class="form-text text-muted">Step function: e.g., {"-14": 50, "-7": 100, "-3": 200}</small>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="BarriosEarlyEntryAllocationJson" class="form-label">Barrios EE Allocation (JSON, optional)</label>
+                        <textarea asp-for="BarriosEarlyEntryAllocationJson" class="form-control font-monospace" rows="3"></textarea>
+                        <span asp-validation-for="BarriosEarlyEntryAllocationJson" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="EarlyEntryClose" class="form-label">EE Close (UTC instant, optional)</label>
+                        <input asp-for="EarlyEntryClose" class="form-control" placeholder="2026-07-04T12:00:00Z" />
+                        <span asp-validation-for="EarlyEntryClose" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="form-check">
+                        <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">Active</label>
+                        <div class="form-text">At most one event row is active — it is the one every section reads.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>

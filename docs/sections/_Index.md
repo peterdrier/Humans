@@ -57,7 +57,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Stripe | `src/Sections/Humans.Stripe` | [Stripe.md](../../src/Sections/Humans.Stripe/Docs/Stripe.md) — the payments connector; owns no tables |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
-| System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
+| Settings | `src/Sections/Humans.Settings` (+ `.Contracts`) | — (no invariants doc; the `system_settings` key/value table plus `settings_event`, the app-wide event values) |
 | Ticket Tailor | `src/Sections/Humans.TicketTailor` | — (adapter section: one implementation of Base's `ITicketVendorService` port; publishes nothing, owns no tables) |
 | Shifts | `src/Sections/Humans.Shifts` | [Shifts.md](../../src/Sections/Humans.Shifts/Docs/Shifts.md) |
 | Teams | `src/Sections/Humans.Teams` | [Teams.md](../../src/Sections/Humans.Teams/Docs/Teams.md) |

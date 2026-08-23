@@ -210,6 +210,9 @@ namespace Humans.Surveys.Data.Migrations
                         .HasColumnType("jsonb")
                         .HasDefaultValueSql("'{}'::jsonb");
 
+                    b.Property<string>("InformationImages")
+                        .HasColumnType("jsonb");
+
                     b.Property<bool>("IsRequired")
                         .HasColumnType("boolean");
 

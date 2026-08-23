@@ -23,7 +23,9 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [Required]
     public string GateOpeningDate { get; set; } = string.Empty;
 
-    public int BuildStartOffset { get; set; } = -14;
+    // Build starts on the first-crew day; -14 sat after SetupWeekStartOffset and
+    // made this form's own two offset rules unsatisfiable.
+    public int BuildStartOffset { get; set; } = -25;
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
 

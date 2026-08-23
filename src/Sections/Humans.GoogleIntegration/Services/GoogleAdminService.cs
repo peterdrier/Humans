@@ -56,16 +56,9 @@ internal sealed class GoogleAdminService(
             var matches = await userEmailService.MatchByEmailsAsync(accountEmails, ct);
 
             // user_emails may have verified+unverified rows per address. Pick one winner: verified > most-recent > stable UserId.
-            var matchByEmail = matches
-                .GroupBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g
-                        .OrderByDescending(m => m.IsVerified)
-                        .ThenByDescending(m => m.UpdatedAt)
-                        .ThenBy(m => m.UserId)
-                        .First(),
-                    StringComparer.OrdinalIgnoreCase);
+            // Keyed by Gmail-alias identity — a row stored as an alias of the account's
+            // primary email must still resolve when looked up by Google's form.
+            var matchByEmail = UserEmailMatchOwner.ByEmail(matches);
 
             // Batch-load users for matched emails
             var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();

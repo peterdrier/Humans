@@ -463,11 +463,23 @@ internal sealed class CachingUserService(
         Guid targetUserId, CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
+
+        // Transitive: A merged into B, then B later merged into C leaves A's
+        // row pointing at B, not C. Walk the tombstone chain to a fixed point
+        // rather than one hop, so C's read picks up {A, B}. `ids.Add` guards
+        // against a cyclic MergedToUserId chain (shouldn't happen, but would
+        // otherwise loop forever).
         var ids = new HashSet<Guid>();
-        foreach (var u in Values)
+        var frontier = new HashSet<Guid> { targetUserId };
+        while (frontier.Count > 0)
         {
-            if (u.MergedToUserId == targetUserId)
-                ids.Add(u.Id);
+            var next = new HashSet<Guid>();
+            foreach (var u in Values)
+            {
+                if (u.MergedToUserId is { } mergedTo && frontier.Contains(mergedTo) && ids.Add(u.Id))
+                    next.Add(u.Id);
+            }
+            frontier = next;
         }
         return ids;
     }

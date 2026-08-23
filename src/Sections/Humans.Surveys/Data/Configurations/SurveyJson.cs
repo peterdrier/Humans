@@ -17,6 +17,13 @@ internal static class SurveyJson
     public static readonly JsonSerializerOptions Options = new();
 
     private sealed record GridRowDocument(string Value, Dictionary<string, string> Label);
+    private sealed record InformationImageDocument(
+        Guid Id,
+        string StoragePath,
+        string ContentType,
+        string FileName,
+        Dictionary<string, string> Label,
+        Dictionary<string, string> AltText);
 
     /// <summary>Maps a <see cref="LocalizedText"/> property to a jsonb column (culture→text dictionary).</summary>
     public static void LocalizedText<TEntity>(
@@ -55,5 +62,31 @@ internal static class SurveyJson
                 .Select(row => new SurveyGridRow(
                     row.Value,
                     new LocalizedText(row.Label)))
+                .ToList();
+
+    public static string? SerializeInformationImages(List<SurveyInformationImage>? images)
+        => images is null
+            ? null
+            : JsonSerializer.Serialize(
+                images.Select(image => new InformationImageDocument(
+                    image.Id,
+                    image.StoragePath,
+                    image.ContentType,
+                    image.FileName,
+                    new Dictionary<string, string>(image.Label.Values, StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(image.AltText.Values, StringComparer.OrdinalIgnoreCase))),
+                Options);
+
+    public static List<SurveyInformationImage>? DeserializeInformationImages(string? value)
+        => value is null
+            ? null
+            : JsonSerializer.Deserialize<List<InformationImageDocument>>(value, Options)?
+                .Select(image => new SurveyInformationImage(
+                    image.Id,
+                    image.StoragePath,
+                    image.ContentType,
+                    image.FileName,
+                    new LocalizedText(image.Label),
+                    new LocalizedText(image.AltText)))
                 .ToList();
 }

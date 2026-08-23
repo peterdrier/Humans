@@ -153,6 +153,7 @@ public class MarkdownEditorTagHelper(
         // Force class/rows/optional attributes onto the textarea regardless of asp-for shape.
         textarea.Attributes["class"] = cssClasses;
         textarea.Attributes["rows"] = Rows.ToString(CultureInfo.InvariantCulture);
+        textarea.Attributes["data-humans-markdown-editor"] = "true";
         if (Required)
         {
             textarea.Attributes["required"] = "required";
@@ -204,27 +205,28 @@ public class MarkdownEditorTagHelper(
             output.Content.AppendHtml(
                 $"<style{styleNonceAttr}>.editor-toolbar{{white-space:nowrap;overflow-x:auto;overflow-y:hidden;}}</style>");
 
-            // Render the help modal partial once per request so callers don't have to.
-            ((IViewContextAware)htmlHelper).Contextualize(ViewContext);
-            var modalHtml = await htmlHelper.PartialAsync("_MarkdownHelp");
-            using var modalWriter = new StringWriter(CultureInfo.InvariantCulture);
-            modalHtml.WriteTo(modalWriter, HtmlEncoder.Default);
-            output.Content.AppendHtml(modalWriter.ToString());
-        }
-
-        // Encode the textarea id for use inside a JS string literal.
-        var jsIdLiteral = JavaScriptEncoder.Default.Encode(uniqueId);
-
-        // Inline init script — defers EasyMDE construction until the asset script has loaded.
-        // We stamp the CSP nonce directly because this <script> is emitted as raw HTML via
-        // AppendHtml and never re-parsed by NonceTagHelper.
-        var initScript = $@"<script{nonceAttr}>
+            // Expose one shared initializer so client-side templates can upgrade Markdown
+            // textareas after inserting them into the DOM. Scripts contained inside HTML
+            // assigned through innerHTML do not execute, so per-element inline scripts alone
+            // are not sufficient for dynamic forms such as the survey builder.
+            output.Content.AppendHtml($@"<script{nonceAttr}>
 (function() {{
-    function initMde() {{
-        if (typeof EasyMDE === 'undefined') {{ return false; }}
-        var el = document.getElementById('{jsIdLiteral}');
-        if (!el || el.dataset.mdeInitialized === 'true') {{ return true; }}
-        el.dataset.mdeInitialized = 'true';
+    function editorElements(root) {{
+        if (!root) {{ return []; }}
+        var elements = [];
+        if (root.matches && root.matches('textarea[data-humans-markdown-editor=""true""]')) {{
+            elements.push(root);
+        }}
+        if (root.querySelectorAll) {{
+            elements.push.apply(
+                elements,
+                root.querySelectorAll('textarea[data-humans-markdown-editor=""true""]'));
+        }}
+        return elements;
+    }}
+
+    function createEditor(el) {{
+        if (!el || el.dataset.mdeInitialized === 'true') {{ return; }}
         try {{
             new EasyMDE({{
                 element: el,
@@ -255,10 +257,50 @@ public class MarkdownEditorTagHelper(
                     }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
             }});
+            el.dataset.mdeInitialized = 'true';
         }} catch (e) {{
             // Leave the bare textarea in place on failure.
             console.warn('EasyMDE initialization failed', e);
         }}
+    }}
+
+    function init(root) {{
+        var attempts = 0;
+        function tryInit() {{
+            attempts++;
+            if (typeof EasyMDE === 'undefined') {{
+                if (attempts <= 50) {{ setTimeout(tryInit, 100); }}
+                return;
+            }}
+            editorElements(root || document).forEach(createEditor);
+        }}
+        tryInit();
+    }}
+
+    window.HumansMarkdownEditor = {{ init: init }};
+}})();
+</script>");
+
+            // Render the help modal partial once per request so callers don't have to.
+            ((IViewContextAware)htmlHelper).Contextualize(ViewContext);
+            var modalHtml = await htmlHelper.PartialAsync("_MarkdownHelp");
+            using var modalWriter = new StringWriter(CultureInfo.InvariantCulture);
+            modalHtml.WriteTo(modalWriter, HtmlEncoder.Default);
+            output.Content.AppendHtml(modalWriter.ToString());
+        }
+
+        // Encode the textarea id for use inside a JS string literal.
+        var jsIdLiteral = JavaScriptEncoder.Default.Encode(uniqueId);
+
+        // Inline init script for server-rendered editors. Dynamic forms call the same shared
+        // initializer after inserting their template content.
+        var initScript = $@"<script{nonceAttr}>
+(function() {{
+    function initMde() {{
+        if (!window.HumansMarkdownEditor) {{ return false; }}
+        var el = document.getElementById('{jsIdLiteral}');
+        if (!el) {{ return true; }}
+        window.HumansMarkdownEditor.init(el);
         return true;
     }}
 

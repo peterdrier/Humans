@@ -8,7 +8,7 @@ namespace Humans.Email.Data;
 /// <summary>
 /// Repository for the <c>email_outbox_messages</c> table — the only
 /// non-test file that writes to the outbox DbSet. The email pause flag
-/// (<c>IsEmailSendingPaused</c>) now lives in the SystemSettings section,
+/// (<c>IsEmailSendingPaused</c>) now lives in the Settings section,
 /// accessed via <c>IEmailOutboxService.IsEmailPausedAsync</c>.
 /// </summary>
 /// <remarks>

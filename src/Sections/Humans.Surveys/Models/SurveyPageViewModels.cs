@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Models;
@@ -53,6 +54,7 @@ internal sealed class SurveyPageQuestion
     public Guid Id { get; init; }
     public SurveyQuestionType Type { get; init; }
     public string Prompt { get; init; } = string.Empty;
+    [MarkdownContent]
     public string HelpText { get; init; } = string.Empty;
     public bool IsRequired { get; init; }
     public int? RatingMin { get; init; }
@@ -62,6 +64,7 @@ internal sealed class SurveyPageQuestion
     public IReadOnlyList<SurveyPageOption> Options { get; init; } = [];
     public GridSelectionMode? GridSelectionMode { get; init; }
     public IReadOnlyList<SurveyPageGridRow> GridRows { get; init; } = [];
+    public IReadOnlyList<SurveyPageInformationImage> InformationImages { get; init; } = [];
 
     // Prior answer (for re-render after a validation failure or a Back navigation).
     public IReadOnlyList<string> SelectedOptionValues { get; init; } = [];
@@ -76,6 +79,9 @@ internal sealed record SurveyPageOption(string Value, string Label);
 
 /// <summary>One resolved Grid row.</summary>
 internal sealed record SurveyPageGridRow(string Value, string Label);
+
+/// <summary>One resolved, publicly served image in an Information survey item.</summary>
+internal sealed record SurveyPageInformationImage(Guid Id, string Url, string Label, string AltText);
 
 /// <summary>Pure presentation model for the shared author-preview notice.</summary>
 internal sealed record SurveyPreviewNoticeModel(
