@@ -6,6 +6,11 @@
 # detect "build:<CODE>" = distinct sites of that warning code in one fresh build log.
 # Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
 # last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
+# One-offs whose fix lives inside a single section go in that section's own
+# src/Sections/Humans.<X>/Docs/debt.yml instead of `inbox:` here (2026-08-24,
+# nobodies-collective/Humans#1120). The sweep pools both, so this only decides
+# where an item is written. `themes:` stays central — rotation state is global.
+# Entries already in `inbox:` are left where they are; rotation drains them.
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
 # HUM0009, HUM0020, HUM0025, HUM0032 (HUM0029 retired). The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
