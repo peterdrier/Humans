@@ -53,7 +53,7 @@
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.75.0.4218" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
     <!-- Resilience -->
     <PackageVersion Include="Polly" Version="8.7.0" />
     <!-- Observability -->
