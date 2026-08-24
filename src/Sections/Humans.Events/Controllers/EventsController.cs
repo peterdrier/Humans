@@ -469,19 +469,7 @@ internal sealed class EventsController(
         var categories = await guide.GetActiveCategoriesAsync();
         var venues = await guide.GetActiveVenuesAsync();
 
-        var eventDays = new List<EventDayOptionViewModel>();
-        if (eventSettings != null)
-        {
-            for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
-            {
-                var date = eventSettings.GateOpeningDate.PlusDays(offset);
-                eventDays.Add(new EventDayOptionViewModel
-                {
-                    DayOffset = offset,
-                    Label = date.ToWeekdayDayMonth()
-                });
-            }
-        }
+        var eventDays = eventSettings != null ? BuildEventDayOptions(eventSettings) : [];
 
         var model = new BrowseViewModel
         {
@@ -532,23 +520,7 @@ internal sealed class EventsController(
         model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
-
-        model.EventDays = [];
-        for (var offset = 0; offset <= burn.EventEndOffset; offset++)
-        {
-            var date = burn.GateOpeningDate.PlusDays(offset);
-            var dt = tz != null
-                ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
-                : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
-
-            model.EventDays.Add(new EventDayOptionViewModel
-            {
-                DayOffset = offset,
-                Label = date.ToWeekdayDayMonth(),
-                Date = dt
-            });
-        }
+        model.EventDays = BuildEventDayOptions(burn);
     }
 
     // ─── Barrio event actions (replaces /Barrios/{slug}/Events/*) ────────────
@@ -844,21 +816,7 @@ internal sealed class EventsController(
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
-        model.EventDays = [];
-        for (var offset = 0; offset <= burn.EventEndOffset; offset++)
-        {
-            var date = burn.GateOpeningDate.PlusDays(offset);
-            var dt = tz != null
-                ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
-                : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
-            model.EventDays.Add(new EventDayOptionViewModel
-            {
-                DayOffset = offset,
-                Label = date.ToWeekdayDayMonth(),
-                Date = dt
-            });
-        }
+        model.EventDays = BuildEventDayOptions(burn);
     }
 
     private async Task<BurnSettingsInfo?> LoadBurnSettingsAsync(EventGuideSettingsView? guideSettings)
