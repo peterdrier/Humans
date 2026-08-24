@@ -25,7 +25,7 @@ Numbered list. For each item:
 - **The question**, stated directly.
 - **Options with a recommendation**, where genuine options exist. One sentence per option.
 
-Only include questions that actually block or shape the work. Skip anything already answered earlier in the session, and anything you could resolve yourself by reading code or docs — go resolve those instead of asking.
+Only include questions that actually block or shape the work. Skip anything already answered earlier in the session. A question you could resolve yourself from code or docs isn't the user's to answer — omit it and list it as your own next step; don't do the digging during /ask (reporting only).
 
 ### 3. Assumptions made without asking
 
