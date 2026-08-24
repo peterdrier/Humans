@@ -379,11 +379,13 @@ in the ranked list, carrying the issue ref, a verdict of `close` / `edit` / `rel
 and the one-sentence reason — that is the finding's one prose description (Phase 5). The
 `## Needs Peter` checklist then cites it by number and adds no prose of its own.
 
-**Hard constraint: a run may not mutate any GitHub issue.** No close, no edit, no relabel, no
-comment on another issue — including issues this run's own findings duplicate, and including a
-`keep`. A run's only writes are its own run file and its own PR (whose body and description it
-owns). Every recommendation is enacted by Peter, after review; this sits on Phase 4's
+**Hard constraint: a run may not mutate an existing GitHub issue.** No close, no edit, no
+relabel, no comment on another issue — including issues this run's own findings duplicate, and
+including a `keep`. Every such verdict is enacted by Peter, after review; this sits on Phase 4's
 skip-and-queue list beside schema changes and surface additions.
+
+**Opening a new issue on `peterdrier/Humans` is allowed** — it is a write of the run's own,
+like its run file and its PR (whose body and description it owns). Never upstream.
 
 Cap the pass at the section's open issues — recommendations are per-issue one-liners, so a large
 backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
