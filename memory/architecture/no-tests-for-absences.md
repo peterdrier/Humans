@@ -64,6 +64,12 @@ analyzer could replace it.
 - **Containment of something the section really has** — the section references the Stripe
   SDK / Google SDK / Octokit, and the test pins which layer may name it. A new method
   returning a vendor type is a realistic accident, and it fails whoever wrote it.
+- **A privacy guard on data the section already holds.** `SurveyInvitation` has no
+  completion timestamp because one would correlate with the anonymous response's
+  `SubmittedAt` and re-identify the respondent; Cantina's roster DTOs carry no medical
+  field because the service holds `ProfileInfo.MedicalConditions` already. The absent
+  column is one property away from existing, and the harm is disclosure, not shape.
+  Judge these as security constraints, not architecture.
 
 The test: does the code *do* the thing you're checking, or are you checking that code was
 never written?

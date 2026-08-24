@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Localization;
 
@@ -13,11 +14,29 @@ namespace Humans.Surveys.Tests;
 /// <c>ISurveyService_InheritsISurveyServiceRead</c> test is gone with the interface: the read
 /// interface shipped empty and no section ever consumed it, so the assembly boundary plus the
 /// one-interface contracts leaf is the whole cross-section story now (design §15 step 5/11).
-/// The no-nav and completion-privacy assertions were dropped per
-/// memory/architecture/no-tests-for-absences.md — they asserted absence, not behaviour.
+/// The no-nav assertions were dropped per memory/architecture/no-tests-for-absences.md.
+/// The completion-timing one stays: it is a re-identification guard, not a shape claim.
 /// </remarks>
 public class SurveysArchitectureTests
 {
+    /// <summary>
+    /// A CompletionTracked invitation stays linked to its invitee while the response it
+    /// produced is anonymous. Any timestamp on the invitation correlates with that response's
+    /// <c>SubmittedAt</c> and re-identifies the respondent, so completion is a bare bool.
+    /// </summary>
+    [HumansFact]
+    public void SurveyInvitation_RecordsCompletionAsBoolWithNoTimestamp()
+    {
+        typeof(SurveyInvitation).GetProperty("CompletedAt").Should().BeNull(
+            because: "a precise completion time would correlate with an anon/completion-tracked response's " +
+                     "SubmittedAt and re-identify the invitee (plan Deviation #10)");
+        typeof(SurveyInvitation).GetProperty("UpdatedAt").Should().BeNull(
+            because: "no UpdatedAt on invitations — it would leak completion timing");
+
+        typeof(SurveyInvitation).GetProperty("Completed")!.PropertyType
+            .Should().Be(typeof(bool));
+    }
+
     [HumansFact]
     public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
     {
