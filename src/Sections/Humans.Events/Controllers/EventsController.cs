@@ -55,7 +55,7 @@ internal sealed class EventsController(
         foreach (var camp in managedCamps)
         {
             var summary = await guide.GetCampSubmissionsSummaryAsync(camp.Id);
-            var campName = camp.Active?.Name ?? camp.Slug;
+            var campName = ResolveCampDisplayName(camp);
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
                 CampId = camp.Id,
@@ -340,7 +340,7 @@ internal sealed class EventsController(
         {
             var e = f.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = camp?.Active?.Name ?? camp?.Slug;
+            var campName = ResolveCampName(camp);
 
             // One line per favourited occurrence: a day-specific favourite expands
             // to that single occurrence, a whole-event favourite to all of them.
@@ -437,7 +437,7 @@ internal sealed class EventsController(
         {
             var e = o.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = camp?.Active?.Name ?? camp?.Slug;
+            var campName = ResolveCampName(camp);
             var submitterName = e.CampId == null
                 ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
                 : null;
@@ -821,8 +821,9 @@ internal sealed class EventsController(
         return RedirectToAction(nameof(MySubmissions));
     }
 
-    private static string ResolveCampDisplayName(CampInfo camp) =>
-        camp.Active?.Name ?? camp.Slug;
+
+    // camp is non-null at every call site; Slug is always set, so a name always resolves.
+    private static string ResolveCampDisplayName(CampInfo camp) => ResolveCampName(camp)!;
 
     private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, BurnSettingsInfo burn)
     {

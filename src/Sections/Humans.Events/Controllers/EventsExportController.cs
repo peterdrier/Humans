@@ -42,8 +42,7 @@ internal sealed class EventsExportController(
         foreach (var e in events.OrderBy(e => e.StartAt))
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Active?.Name;
-            var campName = seasonName ?? camp?.Slug ?? "";
+            var campName = ResolveCampName(camp) ?? "";
             var venueName = e.VenueName ?? "";
             var submitterName = e.CampId == null
                 ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
@@ -100,8 +99,7 @@ internal sealed class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Active?.Name;
-            var campName = seasonName ?? camp?.Slug;
+            var campName = ResolveCampName(camp);
             var venueName = e.VenueName;
 
             foreach (var occ in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])

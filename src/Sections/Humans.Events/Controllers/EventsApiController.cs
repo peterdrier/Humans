@@ -14,6 +14,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
 using static Humans.Events.Helpers.EventsTimeHelpers;
+using static Humans.Events.Helpers.EventsLookupHelpers;
 
 namespace Humans.Events.Controllers;
 
@@ -50,7 +51,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
             if (categorySlug != null && !string.Equals(e.CategorySlug, categorySlug, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var campName = ResolveCampName(e.CampId, campsById);
+            var campName = ResolveCampNameById(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
             foreach (var occurrenceStart in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
@@ -78,7 +79,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
-        var campName = ResolveCampName(e.CampId, campsById);
+        var campName = ResolveCampNameById(e.CampId, campsById);
         var submitterName = e.CampId == null
             ? (await UserService.GetUserInfoAsync(e.SubmitterUserId))?.BurnerName
             : null;
@@ -100,10 +101,9 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Active?.Name;
                 return new GuideCampApiDto(
                     g.Key,
-                    seasonName ?? camp?.Slug,
+                    ResolveCampName(camp),
                     camp?.Slug);
             })
             .ToList();
@@ -126,7 +126,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
 
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var camp = campsById.GetValueOrDefault(id);
-        var campName = camp?.Active?.Name ?? camp?.Slug;
+        var campName = ResolveCampName(camp);
 
         return Ok(new GuideCampDetailApiDto(
             id,
@@ -216,7 +216,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         var results = favourites.SelectMany(f =>
         {
             var e = f.Event;
-            var campName = ResolveCampName(e.CampId, campsById);
+            var campName = ResolveCampNameById(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
             // One entry per favourited occurrence (day-specific favourites
@@ -281,12 +281,8 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         return camps1.ToDictionary(c => c.Id);
     }
 
-    private static string? ResolveCampName(Guid? campId, IReadOnlyDictionary<Guid, CampInfo> campsById)
-    {
-        if (campId is null) return null;
-        var camp = campsById.GetValueOrDefault(campId.Value);
-        return camp?.Active?.Name ?? camp?.Slug;
-    }
+    private static string? ResolveCampNameById(Guid? campId, IReadOnlyDictionary<Guid, CampInfo> campsById)
+        => campId is null ? null : ResolveCampName(campsById.GetValueOrDefault(campId.Value));
 
     // Individual events only — the published-guide host falls back to the submitter's burner name.
     private static string? ResolveSubmitterName(ApprovedEventView e, IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)

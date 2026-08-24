@@ -95,10 +95,9 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Active?.Name;
                 return new CampSubmissionRow
                 {
-                    CampName = seasonName ?? camp?.Slug ?? "Unknown",
+                    CampName = ResolveCampName(camp) ?? "Unknown",
                     SubmittedCount = g.Count(),
                     ApprovedCount = g.Count(e => e.Status == EventStatus.Approved),
                     PendingCount = g.Count(e => e.Status == EventStatus.Pending)
