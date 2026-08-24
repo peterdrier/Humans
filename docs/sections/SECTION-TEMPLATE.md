@@ -64,7 +64,7 @@ to one or two sentences. Field-level detail belongs under `## Data Model` below.
 
 **Indexes / constraints:** ...
 
-**Cross-section FKs:** `<Field>` → `<OtherSection.Entity>` (Other Section) — **FK only**, no navigation property.
+**Cross-section FKs:** `<Field>` → `<OtherSection.Entity>` (Other Section).
 
 ### <Enum owned by this section>
 
@@ -80,12 +80,9 @@ constraints, serialization rules) lives here.
 Rules:
 1. One section owns each entity. If another section needs to read it, it calls
    the owning section's public service interface — never joins the table.
-2. Cross-section FKs are scalar only; the navigation property MUST NOT be
-   declared on the entity. If legacy navs still exist, note them under
-   Architecture → Migration status (they are technical debt, not data model).
-3. Enums owned by this section live here too; a cross-section enum is
+2. Enums owned by this section live here too; a cross-section enum is
    documented by the section that hosts it (e.g. AuditLog for AuditAction).
-4. If the entity is append-only per design-rules §12, say so and name the
+3. If the entity is append-only per design-rules §12, say so and name the
    enforcement (DB trigger, repository shape, architecture test).
 -->
 
@@ -194,7 +191,7 @@ Use this single block; delete the (B) and (C) blocks below.
 - **Decorator decision** — one of:
   - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
-- **Cross-domain navs** — stripped or `[Obsolete]`-marked: <list>. Display stitching routes through `<IUserServiceRead.GetUserInfosAsync, ITeamServiceRead.GetTeamsAsync, …>`.
+- **Display stitching** — cross-section display data resolves through `<IUserServiceRead.GetUserInfosAsync, ITeamServiceRead.GetTeamsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/<Section>ArchitectureTests.cs` pins the shape.
 
@@ -211,7 +208,6 @@ Use all three sub-blocks below; delete the (A) and (C) blocks.
 
 - **`I<Section>Repository`** — owns <tables>
   - Aggregate-local navs kept: <list>
-  - Cross-domain navs stripped: <list with section of origin>
   - Append-only note (if §12 applies): ...
 
 #### Current violations
@@ -222,7 +218,6 @@ Keep to actual, observed call sites with file:line references. Group by:
 - Cross-section direct DbContext reads
 - Within-section cross-service direct DbContext reads (§2c)
 - Inline `IMemoryCache` usage in service methods
-- Cross-domain nav properties on this section's entities
 - §8 gaps (tables this section touches but §8 does not list)
 
 Strike-through items (`~~...~~`) and inline-annotate when a PR resolves them;
@@ -236,8 +231,6 @@ flips to Status (A).
   - `<file>.cs:<line>` — `<snippet>` (<other section>)
 - **Inline `IMemoryCache` usage in service methods:**
   - `<file>.cs:<line>` — `<snippet>`
-- **Cross-domain nav properties on this section's entities:**
-  - `<Entity>.<Nav>` → <other section>
 
 #### Touch-and-clean guidance
 

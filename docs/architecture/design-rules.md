@@ -92,8 +92,7 @@ Every domain has a narrow, entity-shaped **repository interface** and an EF-back
 2. **No cross-domain method signatures.** A repository for the Profile domain never takes a `Team`, returns a `User`, or accepts a filter that requires joining another domain's table. If a caller needs a compound shape, a composer at the service layer stitches it from multiple repositories.
 3. **Bulk-by-ids is first class.** Every repository exposes a `GetByIdsAsync(IReadOnlyCollection<Guid>)` returning a dictionary. This is what makes in-memory joins (§6) cheap.
 4. **`GetAllAsync` exists for store warmup.** At ~500 users it is trivial. Larger datasets would replace it with a streaming shape; at our scale it is strictly cheaper than lazy loading.
-5. **No cross-domain navigation properties in return shapes.** `Profile.User` is a cross-domain nav — callers get the FK (`Profile.UserId`) and resolve via `IUserRepository` if they need the User. Aggregate-local navs (`Profile.Languages`) are fine.
-6. **No logging of domain events, no audit, no `IClock`, no caching.** Just persistence. Side effects belong to the service.
+5. **No logging of domain events, no audit, no `IClock`, no caching.** Just persistence. Side effects belong to the service.
 
 ### 3b. Canonical Repository Shape
 
@@ -193,18 +192,6 @@ var rows = team.Members.Select(m => new TeamMemberRow(
 
 Three store reads, no SQL joins, cache ownership intact, each service cachable independently.
 
-### 6c. Cross-Domain Nav Properties
-
-Strip cross-domain navigation properties at the repository and entity boundary:
-
-- ❌ `Profile.User` (nav to User entity in another domain)
-- ✅ `Profile.UserId` (FK only)
-- ❌ `TeamMember.User` (nav to User)
-- ✅ `TeamMember.UserId` (FK only)
-- ❌ `CampMember.User`, `BoardVote.BoardMember`, etc.
-- ✅ The corresponding FKs
-- ✅ `Profile.Languages` (aggregate-local collection, fine — same domain)
-
 ### 6d. What You Give Up
 
 - **Server-side filter or sort on joined columns** (e.g., "teams ordered by coordinator's city"). At 500 users you filter and sort in memory — cheap.
@@ -214,7 +201,6 @@ Strip cross-domain navigation properties at the repository and entity boundary:
 
 - Cache ownership becomes tractable. Every domain owns its own store and its own invalidation.
 - Every table has exactly one writer (its repository) and one cache (its store).
-- Missing-`Include` bugs (lazy-load exceptions, over-fetching graphs) stop happening because there are no cross-domain navs to forget.
 - The table-ownership rule finally has teeth at query time, not just at write time.
 
 ## 7. Decorators vs In-Service Crosscuts
@@ -671,7 +657,7 @@ GoogleIntegration's cached projection, if it ever gains a decorator, is reconcil
 The section-by-section migration this section used to track is **complete** — every section lives in its own project (nobodies-collective/Humans#866), with services in `Humans.<Section>.Services` (`internal` per HUM0034) and, for table-owning sections, repositories in `Humans.<Section>.Data` behind the section's own `<Section>DbContext`. (Tableless sections — e.g. Onboarding, EarlyEntry, Gdpr, Guide — correctly ship neither.) The per-section migration history lives in git and the closed issues (#540–#556, #574–#576, #635, #866).
 
 - **11 caching decorators** (§15 pattern): `CachingUserService`, `CachingTeamService`, `CachingCampService`, `CachingEventService`, `CachingCalendarService`, `CachingConsentService`, `CachingRoleAssignmentService`, `CachingShiftViewService`, `CachingTicketQueryService`, `CachingLegalDocumentSyncService`, `CachingEarlyEntryService` — each in its section project. Every other section is Option A (no decorator).
-- **Cross-section reads stitch through service interfaces** (`IUserServiceRead.GetUserInfosAsync` for display names is the canonical example, §6b). Cross-domain `.Include()` is gone from every service; cross-section navigation properties and EF FK constraints are gone from every entity (nobodies-collective/Humans#992, #996) — cross-section linkage is a bare `Guid` column. The one surviving nav is `User.UserEmails`, which the `User.Email` override computes from (#635) — no longer cross-domain at all, since `User` and `UserEmail` are both `Humans.Users.Contracts` types on the same context. Each peeled section's `internal` DbContext enforces the rest structurally.
+- **Cross-section reads stitch through service interfaces** (`IUserServiceRead.GetUserInfosAsync` for display names is the canonical example, §6b). Cross-section linkage is a bare `Guid` column; each section's `internal` DbContext and internal entities enforce that structurally.
 - **Inline short-TTL `IMemoryCache`** remains appropriate for request-acceleration counters (nav badges, notification meters, claims, shift auth) — never for canonical domain data. `ApplicationServicesTakeNoMemoryCacheRule` allowlists the sanctioned users.
 - **`HumansMetricsService`** (`Humans.Web`, operational host service) reads its gauges through section read interfaces resolved per-scrape (`IUserServiceRead`, `ITeamServiceRead`, `IGoogleSyncServiceRead`, …); its former direct `IGoogleSyncOutboxRepository` resolve is gone. It still resolves a couple of full service interfaces (`IRoleAssignmentService`, `ITeamResourceService`) where the Read split hasn't landed — tracked in the debt ledger.
 - **External connectors** are their own sections (Stripe, TicketTailor, Holded) or section-internal SDK bridges (GoogleIntegration's `Services/Workspace/` clients, Email's MailKit processor). Only the owning section's csproj references the vendor SDK; contracts stay SDK-free. The one approved exception outside a section: `Humans.Base` references Octokit for the GitHub content sources (`GitHubGuideContentSource`, `GitHubCommunityKbContentSource`), a sanctioned G5 placement in Base.
