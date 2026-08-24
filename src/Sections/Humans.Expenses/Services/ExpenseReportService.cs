@@ -1351,4 +1351,26 @@ internal sealed class ExpenseReportService(
                     : (object?)null),
         ];
     }
+
+    // ─── IUserDataContributor (GDPR erasure) ───
+
+    private const string FiscalRetention =
+        "Retained in full, nothing erased: the voucher keeps the payee's legal name, their " +
+        "bank account (IBAN, stored unmasked — the export masks it, the row does not), the " +
+        "amounts and dates, the free-text note and per-line descriptions, the approval trail " +
+        "and any uploaded receipt. A reimbursement is an accounting voucher and Spanish law " +
+        "requires the books and their supporting documents be kept 6 years (Código de " +
+        "Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66) — an " +
+        "incomplete voucher is not a voucher. GDPR Art. 17(3)(b).";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.ExpenseReports] = FiscalRetention,
+            [GdprExportSections.ExpenseAuditLog] = FiscalRetention
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
 }

@@ -56,7 +56,8 @@ stay on so you don't miss anything important about getting in.
 Go to **Profile → Privacy** (`/Profile/Me/Privacy`) and choose **Download My
 Data**. You get a single file with **everything** the system holds about you —
 your account and emails, profile, contact details, team history, roles, consents,
-shift sign-ups, ticket info, notifications, and the log entries you appear in.
+shift sign-ups, ticket info, notifications, the emails we've sent you, and the
+log entries you appear in.
 It's there whenever you want it, no need to ask anyone.
 
 ## Delete your account
@@ -69,9 +70,16 @@ delete:
 - **For 30 days:** you can still sign in, and you can **change your mind and
   cancel** the deletion during this window.
 - **After 30 days:** your personal information is automatically erased
-  (anonymised) in the background.
-- Your Google access (drives, group emails) falls away on the normal sync cycle
-  once you've left your teams.
+  (anonymised) in the background, section by section — profile, contact details,
+  emails, photo, tickets, feedback, messages, survey answers, the lot.
+- **Your `@nobodies.team` account is suspended** as part of that, and your Google
+  access (drives, group emails) falls away on the normal sync cycle once you've
+  left your teams.
+- A few records survive, without your name attached: the association's register
+  of who was a member, held which role and covered which shift in which year
+  (Spanish association law), the accounting and expense books (Spanish tax and
+  commercial law), and the consent and audit logs that prove we were allowed to
+  hold your data in the first place — and that we erased it.
 
 So nothing is rushed, and you have a full month to undo it if you change your
 mind.

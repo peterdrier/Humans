@@ -16,6 +16,7 @@ indent_size = 4
 tab_width = 4
 end_of_line = lf
 
-# EF Core migrations are scaffolded code — skip formatting
-[**/Migrations/*.cs]
+# EF Core migrations are scaffolded code — skip formatting. `**.cs` rather than `*.cs` so the
+# Shell's nested Migrations/System/ is covered like every section's flat Data/Migrations/.
+[**/Migrations/**.cs]
 generated_code = true

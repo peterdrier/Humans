@@ -114,6 +114,15 @@ internal interface IFeedbackRepository : IRepository
     /// the total count of report + message rows attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
+    /// <summary>
+    /// GDPR Art. 17: hard-deletes the reports the user filed (their messages
+    /// cascade) and detaches the user from messages and triage fields on
+    /// reports filed by other people, whose text is not theirs to erase.
+    /// Returns the storage keys of the deleted reports' screenshots so the
+    /// caller can drop the files behind them.
+    /// </summary>
+    Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

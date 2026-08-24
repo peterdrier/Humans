@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -89,7 +90,8 @@ public sealed class FeedbackServiceTests
         _service = new FeedbackServiceImpl(
             _repository, userService, userEmailService, teamService,
             _emailService, _emailMessages, _notificationService,
-            Substitute.For<IAuditLogService>(), _navBadge, _cache, Clock,
+            Substitute.For<IAuditLogService>(), _navBadge,
+            Substitute.For<IFileStorage>(), _cache, Clock,
             NullLogger<FeedbackServiceImpl>.Instance);
     }
 

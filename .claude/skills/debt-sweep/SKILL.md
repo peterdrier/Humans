@@ -37,6 +37,10 @@ Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds oth
 ## Phase 2: Ledger + staleness check
 
 1. Read `docs/architecture/debt-ledger.yml`. Validate: `version: 1`; every theme has `id`, `title`, `detect`, `review` (`light`|`panel`; the `inbox` theme alone uses `per-item` — each inbox entry carries its own tier), `last_swept`, `remaining`. Optional: `parked: "<reason>"` (see Phase 3). Parse error → abort (no partial run), report to Peter.
+1b. **Read every section ledger too** — `src/Sections/*/Docs/debt.yml`, each `version: 1` plus an `inbox:` of the same entry shape (`memory/process/debt-ledger-additions.md`). Section-owned one-offs live there so the central ledger stays rotation state; the sweep pools them into one inbox and does not care where an item was written. A section file that fails to parse aborts the run like the central one. `themes:` exists only centrally — a section file declaring one is a parse error.
+```bash
+ls $WORKTREE/src/Sections/*/Docs/debt.yml 2>/dev/null   # absent is normal — most sections have none
+```
 2. **Staleness check (every run, cheap):**
    - Distinct `HUM####` ids in real `[Grandfathered(` attribute usages vs. ledger theme ids → each missing rule becomes a new theme (`last_swept: never`, `review: light` unless it is plainly a structural/judgment rule — then `panel`). **Anchor the grep to attribute syntax** — an unanchored `[Grandfathered(` also matches analyzer doc-comments and message strings, which seeds phantom themes:
      ```bash
@@ -59,10 +63,10 @@ Run this build once in Phase 3 (it doubles as the baseline build) and reuse the 
 
 ## Phase 3: Pick theme
 
-1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0` and skip any theme carrying a `parked:` value.
+1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0` and skip any theme carrying a `parked:` value. **The `inbox` theme is exempt from the zero-skip — re-run its `detect` first and use that count.** Its contents are appended between sweeps by processes that never touch the central `remaining` field (a `/section-doctor` run writing a section ledger, anyone adding a one-off), so a stale `0` there would retire the inbox permanently while real debt piled up in the files it pools. The detect is a `grep -c`; running it every time is free.
 2. Run the candidate's `detect` to confirm `remaining > 0`. If 0 → apply the drain rule (below), update the entry, take the next candidate.
 3. Enumerate the theme's concrete items (file list from grep, baseline lines, distinct warning sites). Order items so anything in a `recent_sections` section is worked **last**.
-4. Fold in `inbox` items that match the chosen theme.
+4. Fold in `inbox` items that match the chosen theme — from the central ledger **and** every section file, one pool. An item's file decides who edits it in Phase 5, never whether it is eligible here.
 
 **Parked themes:** a theme with a `parked: "<reason>"` value is off the table — Peter has decided the work must not happen yet. Rotation skips it, and `--theme=<parked-id>` **refuses**: report the `parked` reason and stop, never work it. Only Peter removes the field. Parking is orthogonal to `remaining` — a parked theme keeps its real count so `--inventory` stays honest, and it is **never retired or evicted**, at `remaining: 0` or otherwise: the entry is the park, and deleting it would let the staleness check re-create the theme unparked the moment the debt reappears.
 
@@ -86,7 +90,7 @@ Until budget exhausted or theme drained, per item (one item or one tight cluster
 Rules of the loop:
 
 - **Stop-and-ask classes are skip-and-ask classes here:** interface/public-surface additions (`interface-method-additions-are-debt`), DB schema work of any kind, privilege changes → skip the item, queue a Phase 7 question. Never block the loop waiting.
-- Off-theme debt discovered while working → append to ledger `inbox`, never chased.
+- Off-theme debt discovered while working → append to an `inbox`: the owning section's file when one section owns the fix (any section — writing another's ledger is intended), the central ledger otherwise. Never chased.
 - Mechanical edit fan-out is allowed via edit-only subagent workers (sonnet, named `<task>-sonnet`, absolute `$WORKTREE` paths, no git/build); the orchestrator owns all git and build commands.
 - An item that can't be made green after a genuine attempt → revert it cleanly, record, continue. Never leave the branch red between commits.
 
@@ -96,7 +100,7 @@ In the worktree:
 
 1. Theme entry: `last_swept: <today>`, `remaining:` from re-running `detect`, apply drain/retire rule.
 2. `recent_sections:` ← dominant sections of the last ~3 sweeps (this one included).
-3. Add Phase 2 staleness discoveries; append work-loop inbox items; remove inbox items completed this run; apply `--inventory` evictions.
+3. Add Phase 2 staleness discoveries; append work-loop inbox items; remove inbox items completed this run — **from whichever file holds each one**, central or section; apply `--inventory` evictions. A section file drained to its last entry keeps an empty `inbox: []` — **never delete the file**; deleting it is a destructive action needing Peter's per-instance approval (`memory/process/no-destructive-actions-without-approval.md`), and an empty ledger costs three lines.
 4. Overwrite `docs/debt/last-report.md`: timestamp, theme, budget used; items fixed (one line each: what + commit sha); items skipped + why (schema, interface-addition, panel-reject, budget); forbidden-move reverts; inbox additions; ledger changes (new themes, retirements, evictions).
 
 Commit ledger + report with the work (same PR).
@@ -144,7 +148,7 @@ Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`
 ## Adding debt to the ledger (any session, any time)
 
 - **Recurring class** → append a `themes:` entry with `last_swept: never` (rotation serves it next automatically). Pick `review:` honestly: `light` only when the fix is rule-prescribed and the verifier is mechanical.
-- **One-off item** → append to `inbox:` with `added: <date>` and a one-line `what:`.
+- **One-off item** → append to an `inbox:` with `added: <date>` and a one-line `what:` — `src/Sections/Humans.<X>/Docs/debt.yml` when the fix lives in one section, `docs/architecture/debt-ledger.yml` otherwise (`memory/process/debt-ledger-additions.md`).
 - Ledger-only changes ride the discovery PR or go direct to `origin/main` per `no-direct-to-main`.
 
 ## Standing constraints
@@ -154,7 +158,7 @@ Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`
 - **No analyzer suppressions** in any form (`no-analyzer-suppressions`).
 - **No data migrations / backfills** (`no-data-backfills`).
 - Explicit subagent models, tagged in name + description (sonnet workers, opus-tier panel reviewers).
-- The sweep touches only: the theme's item files, `docs/architecture/debt-ledger.yml`, and `docs/debt/last-report.md`.
+- The sweep touches only: the theme's item files, `docs/architecture/debt-ledger.yml`, the `src/Sections/*/Docs/debt.yml` files whose items it worked, and `docs/debt/last-report.md`.
 - After the run, update `docs/architecture/maintenance-log.md` per `maintenance-log-update` (separate from the sweep PR if needed).
 
 ## Failure modes

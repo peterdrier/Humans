@@ -78,7 +78,9 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Finance.Services.Service"),
         SectionType("Humans.Surveys.Services.SurveyService"),
         SectionType("Humans.Gate.Services.GateService"),
-        SectionType("Humans.GoogleIntegration.Services.GoogleSyncLogService")
+        SectionType("Humans.GoogleIntegration.Services.GoogleSyncLogService"),
+        SectionType("Humans.MailerLite.Services.MailerLiteGdprContributor"),
+        SectionType("Humans.Email.Services.EmailOutboxService")
     ];
 
     /// <summary>

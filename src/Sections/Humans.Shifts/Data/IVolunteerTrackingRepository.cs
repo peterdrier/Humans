@@ -30,6 +30,12 @@ internal interface IVolunteerTrackingRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>Returns general availability rows for a user, optionally restricted to one event.</summary>
+    /// <summary>
+    /// GDPR Art. 17: removes the user's general-availability rows and their
+    /// build-status rows. Returns the number of rows removed.
+    /// </summary>
+    Task<int> DeleteVolunteerTrackingForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
         Guid userId,
         Guid? eventSettingsId = null,

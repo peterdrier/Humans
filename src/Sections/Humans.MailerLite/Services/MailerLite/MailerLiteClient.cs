@@ -151,6 +151,29 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         return new BulkImportResult(Created: created, Updated: 0, Duplicates: 0, Errors: errors);
     }
 
+    public async Task DeleteSubscriberAsync(string email, CancellationToken ct = default)
+    {
+        using var resp = await SendAsync(
+            HttpMethod.Delete, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
+        // 404 = already gone at the remote — success, but the no-TTL snapshot here
+        // can still be holding the address, so the eviction runs either way.
+        if (resp.StatusCode != HttpStatusCode.NotFound)
+            resp.EnsureSuccessStatusCode();
+
+        await RemoveFromSubscribersCacheAsync(email, ct);
+    }
+
+    // Mirrors AppendToGroupsCacheAsync — merge under the gate so a concurrent
+    // EnsurePopulatedAsync can't clobber the removal.
+    private async Task RemoveFromSubscribersCacheAsync(string email, CancellationToken ct)
+    {
+        using var _ = await _gate.AcquireAsync(logger, ct);
+        if (_subscribers is not null)
+            _subscribers = _subscribers
+                .Where(s => !string.Equals(s.Email, email, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+    }
+
     private async Task RequireHumansGroupAsync(string groupId, CancellationToken ct)
     {
         var groups = await ListGroupsAsync(ct);

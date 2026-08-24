@@ -146,4 +146,15 @@ internal interface IEmailOutboxRepository : IRepository
     /// <paramref name="cutoff"/>. Returns the number of rows deleted.
     /// </summary>
     Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default);
+
+    // ==========================================================================
+    // GDPR Article 17 — used by EmailOutboxService.EraseForUserAsync
+    // ==========================================================================
+
+    /// <summary>
+    /// Deletes every outbox row attributed to <paramref name="userId"/>, whatever
+    /// its status — the rows carry the recipient's address, name and the rendered
+    /// message body. Returns the number of rows deleted.
+    /// </summary>
+    Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
 }

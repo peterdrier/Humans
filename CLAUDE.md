@@ -8,6 +8,10 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 @docs/architecture/peters-hard-rules.md
 
+**Peter's working rules — how to behave while working (think-before-coding, simplicity first, surgical changes, brevity). Same authority and same no-LLM-edits policy as the hard rules:**
+
+@docs/architecture/peters-working-rules.md
+
 **Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), per nobodies-collective/Humans#866 (G5), all 42 of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext` — deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
 
 The old four-layer hub projects are gone: `src/Humans.Domain`, `src/Humans.Application`, `src/Humans.Infrastructure` and `src/Humans.UI` were all deleted over the course of G5. **The layers are roles now, not projects,** and three kinds of project are left:

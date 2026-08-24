@@ -152,6 +152,18 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         return stale.Count;
     }
 
+    public async Task<int> DeleteConversationsForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // Same load+remove pattern as the retention purge — messages cascade with the conversation.
+        var owned = await db.AgentConversations
+            .Where(c => c.UserId == userId)
+            .ToListAsync(cancellationToken);
+        if (owned.Count == 0) return 0;
+        db.AgentConversations.RemoveRange(owned);
+        await db.SaveChangesAsync(cancellationToken);
+        return owned.Count;
+    }
+
     // ---- Admin status -----------------------------------------------------
 
     public async Task<IReadOnlyList<AgentStatusMessageRow>> ListMessagesSinceAsync(

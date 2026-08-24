@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Services;
@@ -35,6 +36,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             _communicationPreferenceRepository,
             AdminAuthorization,
             _claimsCacheInvalidator,
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
     }
@@ -144,7 +146,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task PurgeOwnDataAsync_RemovesUserEmailsThroughUserRepository()
+    public async Task ApplyExpiredDeletionAnonymizationAsync_RemovesUserEmailsThroughUserRepository()
     {
         var user = SeedUser(Guid.NewGuid(), "Purge Me");
         Db.UserEmails.Add(new UserEmail
@@ -157,9 +159,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var displayName = await _service.PurgeOwnDataAsync(user.Id, TestContext.Current.CancellationToken);
+        var result = await _service.ApplyExpiredDeletionAnonymizationAsync(
+            user.Id, TestContext.Current.CancellationToken);
 
-        displayName.Should().Be("Purge Me");
+        result!.OriginalDisplayName.Should().Be("Purge Me");
         var remaining = await Db.UserEmails.AsNoTracking()
             .Where(e => e.UserId == user.Id)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -645,6 +648,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
             _claimsCacheInvalidator,
+            Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance);
 }

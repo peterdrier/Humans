@@ -94,7 +94,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Invariants
 
-- Every outgoing email queued through `OutboxEmailService` writes a row to `email_outbox_messages` before any transport attempt. No "fire-and-forget" paths through `IEmailService` bypass the table — this is the audit trail for delivery.
+- Every outgoing email queued through `OutboxEmailService` writes a row to `email_outbox_messages` before any transport attempt — the audit trail for delivery. The single exception is `EmailMessage.DoNotPersist`, which hands the message straight to `IEmailTransport` and writes no row; it is set by exactly one template, `account_deleted`, because its recipient is a human the Article 17 cascade has just erased and a row would re-create their address, name and body. Such a message is never retried: retrying would mean keeping the address in order to retry with it.
 - `ProcessEmailOutboxJob` (Hangfire recurring, every minute — `*/1 * * * *`) selects rows with `SentAt IS NULL`, `RetryCount < OutboxMaxRetries`, `NextRetryAt <= now` (or null), and `PickedUpAt < now − 5 min` (or null). The batch is bounded by `OutboxBatchSize` and ordered **time-sensitive templates first, then FIFO by `CreatedAt` within each class** — see the priority invariant below. Selected rows are stamped `PickedUpAt = now` to block concurrent runs from picking the same rows, then sent one at a time through `IEmailTransport.SendAsync` with a 1-second throttle delay between successful sends.
 - While `IsEmailSendingPaused = "true"`, the job returns immediately — no rows are picked up.
 - **Time-sensitive mail jumps the queue.** `GetProcessingBatchAsync` orders rows whose `TemplateName` is one of `email_verification`, `magic_link_login`, `magic_link_signup`, `workspace_credentials` (`TimeSensitiveTemplates.Names`) ahead of every other row, then by `CreatedAt` within each of the two classes. Without this, a magic-link login lands behind whatever bulk mail is already queued and drains at the 1 send/second throttle — the user is locked out until the backlog clears (nobodies-collective/Humans#1122). No column and no schema change back this: it is ordering only, computed DB-side as a `CASE` in the `ORDER BY`. The same list drives `TriggerImmediate` on enqueue, so the two behaviours cannot drift.
@@ -104,14 +104,14 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is a section-internal abstraction so `OutboxEmailService` stays free of `IHostEnvironment`/configuration dependencies; the implementation (`BrandedEmailBodyComposer`) is section-internal too. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) lives in `Humans.Email/Contracts/`.
 - `IEmailPreviewServiceRead` is the only cross-section seam for side-effect-free final-body rendering. It delegates to the same internal `IEmailBodyComposer` as the outbox and accepts only always-send system messages; opt-outable messages require recipient-specific unsubscribe policy and are rejected.
-- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox` views.
+- `EmailOutboxService` is the section's `IUserDataContributor`. Article 15 exports the human's own outbox history under the `EmailOutbox` key — the same rows `/Profile/Me/Outbox` already shows them. Article 17 deletes **every** row with a matching `UserId`, whatever its status: the retention sweep only reaches `Sent` rows past the cutoff, so failed and queued rows would otherwise outlive the erasure. The deletion-confirmation mail that follows the cascade leaves no row to delete (`DoNotPersist`) — it is sent after the collapse, so its `UserId` would resolve to null and put it out of this contributor's reach.
 
 ## Negative Access Rules
 
 - Regular humans **cannot** view another human's outbox.
-- Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync` (which writes to the outbox).
+- Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync`, which owns the outbox-versus-direct decision.
 - The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxService.IsEmailPausedAsync`.
-- Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based) or admin discard. No service clears rows as a side-effect.
+- Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based), admin discard, or `EmailOutboxService.EraseForUserAsync` (GDPR Article 17). No service clears rows as a side-effect.
 
 ## Triggers
 

@@ -46,6 +46,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailBodyComposer _bodyComposer = Substitute.For<IEmailBodyComposer>();
+    private readonly IEmailTransport _transport = Substitute.For<IEmailTransport>();
 
     /// <summary>
     /// <c>email_outbox_messages</c> moved to <see cref="EmailDbContext"/> with
@@ -68,6 +69,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             _userEmailService,
             _bodyComposer,
             _immediate,
+            _transport,
             _metrics,
             Clock,
             _commPrefService,
@@ -84,8 +86,10 @@ public sealed class OutboxEmailServiceTests : IDisposable
         string? replyTo = null,
         bool triggerImmediate = false,
         Guid? userId = null,
-        Guid? campaignGrantId = null) =>
-        new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId, campaignGrantId);
+        Guid? campaignGrantId = null,
+        bool doNotPersist = false) =>
+        new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId,
+            campaignGrantId, doNotPersist);
 
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
@@ -101,6 +105,33 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.TemplateName.Should().Be("access_suspended");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
         msg.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_DoNotPersist_SendsThroughTransportAndWritesNoRow()
+    {
+        await _service.SendAsync(
+            Message(template: "account_deleted", html: "<p>Goodbye</p>", doNotPersist: true),
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _transport.Received(1).SendAsync(
+            "alice@example.com", "Alice", "Subject",
+            Arg.Is<string>(h => h.Contains("<p>Goodbye</p>")), "plain-text-stub",
+            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+
+        (await _emailDb.EmailOutboxMessages.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SendAsync_WithoutDoNotPersist_DoesNotCallTransportDirectly()
+    {
+        await _service.SendAsync(Message(), Xunit.TestContext.Current.CancellationToken);
+
+        await _transport.DidNotReceive().SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

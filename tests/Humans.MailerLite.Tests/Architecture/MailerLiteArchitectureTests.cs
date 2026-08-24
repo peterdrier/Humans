@@ -17,6 +17,7 @@ public class MailerLiteArchitectureTests
             nameof(IMailerLiteService.AssignSubscriberToGroupAsync),
             nameof(IMailerLiteService.UnassignSubscriberFromGroupAsync),
             nameof(IMailerLiteService.BulkImportSubscribersToGroupAsync),
+            nameof(IMailerLiteService.DeleteSubscriberAsync),
         };
 
         var writePrefixes = new[]
@@ -32,8 +33,8 @@ public class MailerLiteArchitectureTests
             .ToList();
 
         unexpectedWrites.Should().BeEmpty(
-            "IMailerLiteService writes are restricted to the four audience-management methods. " +
-            "New writes need their own architecture review.");
+            "IMailerLiteService writes are restricted to the four audience-management methods plus " +
+            "GDPR erasure's DeleteSubscriberAsync. New writes need their own architecture review.");
     }
 
     [HumansFact]

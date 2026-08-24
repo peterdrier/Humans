@@ -353,13 +353,40 @@ public class GoogleAdminServiceTests
     public async Task SuspendAccountAsync_SuspendsAndAudits()
     {
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+            "test@nobodies.team", _actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("suspended");
 
         await _workspaceUserService.Received(1)
             .SuspendAccountAsync("test@nobodies.team", Arg.Any<CancellationToken>());
+
+        // Admin-initiated suspend: the readable address belongs in the audit row.
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountSuspended,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("test@nobodies.team")), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SuspendAccountAsync_OmitEmailFromAudit_AuditsWithoutTheAddress()
+    {
+        // The GDPR erasure path sets this: the audit log survives erasure, so an
+        // address quoted here would re-seed the identity the cascade just removed.
+        var result = await _service.SuspendAccountAsync(
+            "erased@nobodies.team", _actorUserId, omitEmailFromAudit: true,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        await _workspaceUserService.Received(1)
+            .SuspendAccountAsync("erased@nobodies.team", Arg.Any<CancellationToken>());
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountSuspended,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(s => !s.Contains("erased@nobodies.team")), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -369,7 +396,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("API error"));
 
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+            "test@nobodies.team", _actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Failed to suspend");

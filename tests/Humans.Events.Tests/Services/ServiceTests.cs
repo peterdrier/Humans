@@ -717,6 +717,42 @@ public sealed class EventServiceTests
         };
     }
 
+    [HumansFact]
+    public async Task EraseForUserAsync_ClearsTheirHostButKeepsTheSubmission()
+    {
+        var userId = Guid.NewGuid();
+        var submission = ExistingEvent(Guid.NewGuid(), Guid.NewGuid(), EventStatus.Approved);
+        submission.SubmitterUserId = userId;
+        submission.Host = "Frank";
+        var someoneElses = ExistingEvent(Guid.NewGuid(), Guid.NewGuid(), EventStatus.Approved);
+        someoneElses.Host = "Nurse";
+        _repo.Events.Add(submission);
+        _repo.Events.Add(someoneElses);
+        _repo.Favourites.Add(new EventFavourite
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            GuideEventId = submission.Id,
+            CreatedAt = _clock.GetCurrentInstant(),
+        });
+
+        await _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        // The listing survives — event_moderation_actions references it under a Restrict FK and
+        // other people favourited it — but the name they ran it under does not.
+        _repo.Events.Should().Contain(submission);
+        submission.Host.Should().BeNull();
+        someoneElses.Host.Should().Be("Nurse");
+        _repo.Favourites.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void ErasureDeclaration_StatesWhatSurvivesRatherThanClaimingFullErasure()
+    {
+        _service.ErasureDeclaration[GdprExportSections.Events]
+            .Should().NotBeNull().And.Contain("Host");
+    }
+
     private sealed class FakeEventRepository : IEventRepository
     {
         public EventGuideSettings? Settings { get; set; }
@@ -966,5 +1002,27 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventFavourite>>(
                 Favourites.Where(f => f.UserId == userId).ToList());
+
+        public Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default)
+        {
+            var removed = Favourites.RemoveAll(f => f.UserId == userId);
+            if (Preference?.UserId == userId)
+            {
+                Preference = null;
+                removed++;
+            }
+            return Task.FromResult(removed);
+        }
+
+        public Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default)
+        {
+            var cleared = 0;
+            foreach (var submission in Events.Where(e => e.SubmitterUserId == userId && e.Host is not null))
+            {
+                submission.Host = null;
+                cleared++;
+            }
+            return Task.FromResult(cleared);
+        }
     }
 }

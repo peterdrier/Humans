@@ -1125,6 +1125,25 @@ internal sealed class SurveyService(
         return [new UserDataSlice(GdprExportSections.SurveyResponses, shaped)];
     }
 
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.SurveyResponses] =
+                "Partially retained: the invitation is deleted and the response is severed from " +
+                "the person (UserId and InvitationId dropped, Anonymity forced to Anonymous), but " +
+                "the answers themselves survive as an anonymous data point in the survey's " +
+                "results — GDPR Art. 17(3)(b). They are no longer attributable to anyone."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// The identity link is dropped and the response demoted to Anonymous — the
+    /// answers survive as anonymous research data that is no longer personal data.
+    /// </summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repo.AnonymizeResponsesForUserAsync(userId, ct);
+
     /// <summary>Aggregates one question across the submitted responses per its type (counts/distribution/free-text).</summary>
     private static QuestionAggregate BuildQuestionAggregate(
         SurveyQuestion question, IReadOnlyList<SurveyResponse> responses, string culture)

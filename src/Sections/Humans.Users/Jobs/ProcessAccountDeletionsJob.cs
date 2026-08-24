@@ -83,29 +83,34 @@ public class ProcessAccountDeletionsJob(
                     }
 
                     // Audit AFTER the business save has succeeded, per design-rules §7a.
+                    // The description must not name the human: the audit log is retained
+                    // through erasure, so writing their display name here would re-seed
+                    // the identity the cascade just removed. The user id is the subject.
                     await auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), userId,
-                        $"Account anonymized (was {summary.OriginalDisplayName})",
+                        "Account anonymized",
                         nameof(ProcessAccountDeletionsJob));
-
-                    foreach (var (signupId, shiftId) in summary.CancelledSignupIds)
-                    {
-                        await auditLogService.LogAsync(
-                            // Literal, not nameof: ShiftSignup is internal to Humans.Shifts
-                            // since its G5 move, and the discriminator is a persisted string
-                            // (memory/code/type-name-as-persisted-string.md).
-                            AuditAction.ShiftSignupCancelled, "ShiftSignup", signupId,
-                            $"Cancelled signup (account deletion) for shift {shiftId}",
-                            nameof(ProcessAccountDeletionsJob));
-                    }
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))
                     {
-                        await emailService.SendAsync(emailMessages.AccountDeleted(
-                            summary.OriginalEmail,
-                            summary.OriginalDisplayName,
-                            summary.PreferredLanguage),
-                            cancellationToken);
+                        // Courtesy confirmation to an address we have just erased. It sends
+                        // without an outbox row (AccountDeleted sets DoNotPersist), so a
+                        // transport failure is terminal — the erasure itself has already
+                        // succeeded and must not be reported as failed, nor retried.
+                        try
+                        {
+                            await emailService.SendAsync(emailMessages.AccountDeleted(
+                                summary.OriginalEmail,
+                                summary.OriginalDisplayName,
+                                summary.PreferredLanguage),
+                                cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex,
+                                "Account {UserId} was anonymized but its deletion confirmation " +
+                                "could not be delivered", userId);
+                        }
                     }
 
                     processed++;

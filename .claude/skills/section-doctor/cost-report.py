@@ -6,13 +6,21 @@ Usage: python cost-report.py <branch-name> <phase-log-path>
 Finds this run's own session transcript under ~/.claude/projects (the file that
 mentions the run branch and was modified after the run started), sums per-API-call
 token usage bucketed by the phase boundaries in the phase log, adds one row per
-subagent transcript, and prints a markdown table with API-equivalent cost.
+subagent transcript (named by its `thread:` marker where it has one), and prints a
+markdown table with per-row model and API-equivalent cost.
+
+Rows are named by what the run was DOING, not by phase number: each phase-log line
+is `<iso-ts> <phase-id> <label>` and the label becomes the row. Phase 4 writes one
+line per strike item, so the strike rows break down per item rather than collapsing
+into one bucket. The phase id is a trailing column. A line with no label falls back
+to its id, so an older phase log still reports.
 
 Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
 """
 import glob
 import json
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -37,6 +45,29 @@ def ts(s):
     return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
 
 
+def read_phase_log(path):
+    """`<iso-ts> <phase-id> [label...]` -> [(start_ts, phase_id, label)], time-ordered.
+
+    The label says what the run was doing; it is the row name. Older logs carry no
+    label, so the id stands in for one."""
+    out = []
+    for line in open(path, encoding="utf-8"):
+        parts = line.split(None, 2)
+        if len(parts) < 2:
+            continue
+        out.append((ts(parts[0]), parts[1], parts[2].strip() if len(parts) > 2 else parts[1]))
+    return sorted(out)
+
+
+def phase_at(t, phases):
+    """The (phase_id, label) in force at timestamp t."""
+    cur = phases[0]
+    for entry in phases:
+        if t >= entry[0]:
+            cur = entry
+    return cur[1], cur[2]
+
+
 def usage_entries(path):
     for line in open(path, encoding="utf-8", errors="ignore"):
         try:
@@ -48,8 +79,21 @@ def usage_entries(path):
             yield j.get("timestamp"), (j.get("message") or {}).get("model"), u
 
 
+def thread_name(path):
+    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
+            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
+            if m:
+                return m.group(1).strip()
+    return None
+
+
 def add(bucket, model, u):
     r = rate(model)
+    for key in RATES:
+        if key in (model or ""):
+            bucket.setdefault("models", set()).add(key)
     fresh = u.get("input_tokens", 0)
     out = u.get("output_tokens", 0)
     cw = u.get("cache_creation_input_tokens", 0)
@@ -64,10 +108,7 @@ def add(bucket, model, u):
 
 def main():
     branch, phase_log = sys.argv[1], sys.argv[2]
-    phases = []  # (start_ts, name)
-    for line in open(phase_log, encoding="utf-8"):
-        t, name = line.split(None, 1)
-        phases.append((ts(t), name.strip()))
+    phases = read_phase_log(phase_log)
     run_start = phases[0][0]
 
     own = None
@@ -84,38 +125,51 @@ def main():
         print("Cost: unmeasured (no session transcript found under ~/.claude/projects)")
         return
 
-    rows = {}  # label -> {tok, usd}
+    rows = {}  # key -> {tok, usd, models, phase, label, first}
+
+    def row(key, phase, label, t):
+        b = rows.setdefault(key, {"phase": phase, "label": label, "first": t})
+        b["first"] = min(b["first"], t)
+        return b
+
     for t, model, u in usage_entries(own):
         # entries before the phase log belong to whatever the session did earlier
         # (interactive invocation) — not to this run
         if not t or ts(t) < run_start:
             continue
-        label = f"main:{phases[0][1]}"
-        for start, name in phases:
-            if ts(t) >= start:
-                label = f"main:{name}"
-        add(rows.setdefault(label, {}), model, u)
+        pid, label = phase_at(ts(t), phases)
+        add(row(f"main:{pid}:{label}", pid, label, ts(t)), model, u)
 
     for p in glob.glob(own[: -len(".jsonl")] + "/subagents/*.jsonl"):
         if os.path.getmtime(p) < run_start:
             continue
-        label = "agent:" + os.path.basename(p)[len("agent-") : -len(".jsonl")]
-        for _, model, u in usage_entries(p):
-            add(rows.setdefault(label, {}), model, u)
+        entries = [e for e in usage_entries(p) if e[0]]
+        if not entries:
+            continue
+        start = min(ts(e[0]) for e in entries)
+        label = thread_name(p) or os.path.basename(p)[len("agent-") : -len(".jsonl")]
+        pid, _ = phase_at(max(start, run_start), phases)
+        b = row(f"agent:{pid}:{label}", pid, f"{label} (subagent)", start)
+        for _, model, u in entries:
+            add(b, model, u)
 
-    print("| Component | Fresh in | Out | Cache write | Cache read | ~$ |")
-    print("|---|---|---|---|---|---|")
+    print("| Component | Phase | Model | Fresh in | Out | Cache write | Cache read | ~$ |")
+    print("|---|---|---|---|---|---|---|---|")
     total = [0, 0, 0, 0]
     usd = 0.0
-    for label in sorted(rows):
-        b = rows[label]
+    for key in sorted(rows, key=lambda k: rows[k]["first"]):
+        b = rows[key]
         f, o, cw, cr = b["tok"]
-        print(f"| {label} | {f:,} | {o:,} | {cw:,} | {cr:,} | {b['usd']:.2f} |")
+        models = "+".join(sorted(b.get("models", set()))) or "?"
+        print(
+            f"| {b['label']} | {b['phase']} | {models} | {f:,} | {o:,} | {cw:,} "
+            f"| {cr:,} | {b['usd']:.2f} |"
+        )
         for i, v in enumerate((f, o, cw, cr)):
             total[i] += v
         usd += b["usd"]
     print(
-        f"| **total** | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
+        f"| **total** | | | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
         f"| **{usd:.2f}** |"
     )
     print()

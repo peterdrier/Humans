@@ -68,8 +68,10 @@ internal sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessa
     public EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null)
     {
         var content = renderer.RenderAccountDeleted(userName, culture);
+        // DoNotPersist: the recipient has just been erased, so an outbox row would
+        // re-create their address and name after Article 17 removed them.
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
-            "account_deleted");
+            "account_deleted", DoNotPersist: true);
     }
 
     public EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)

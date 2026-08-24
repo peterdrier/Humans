@@ -330,14 +330,6 @@ internal sealed partial class UserRepository : IUserRepository
         return deleted;
     }
 
-    public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == userId)
-            .ExecuteDeleteAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -450,37 +442,6 @@ internal sealed partial class UserRepository : IUserRepository
         ParticipationStatus.NotAttending => 1,
         _ => 0
     };
-
-    public async Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return null;
-
-        var displayName = user.DisplayName;
-        var burnerName = user.BurnerName;
-
-        // Drop external logins so a returning Google user can land on a fresh
-        // account, not this tombstone. See nobodies-collective/Humans#661.
-        var logins = await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == userId)
-            .ToListAsync(ct);
-        ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
-
-        user.DisplayName = $"Purged ({displayName})";
-
-        // #1097: purge does not touch the Profile, so the tombstone label has to win on the
-        // User side too — otherwise the resolver renders the purged human's real name.
-        // Legal name is left alone, matching purge's existing treatment of the Profile.
-        user.BurnerName = $"Purged ({burnerName ?? displayName})";
-
-        user.LockoutEnabled = true;
-        user.LockoutEnd = DateTimeOffset.MaxValue;
-
-        await ctx.SaveChangesAsync(ct);
-        return displayName;
-    }
 
     public async Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default)

@@ -41,9 +41,10 @@ under `src/Sections/` and can be reviewed as a unit.
    replanning unless the plan is exhausted or stale. (Not a fixed per-run checklist.)
 2. **One macro skill.** `/section-doctor` is the single entry point; the existing per-section
    skills become plays in its toolbox, named by plan items. They remain directly invocable.
-3. **Self-amending.** Every run ends with a retro; mechanical lessons queue in the run file's
-   sweep queue and the next replan applies them to the skill's own files (see decision 11);
-   rubric-level changes queue for Peter; durable rules graduate to `memory/` atoms the same way.
+3. **Self-proposing, never self-amending.** Every run ends with a retro; mechanical and
+   rubric-level lessons alike become Needs-Peter findings proposing a one-line edit, and reach the
+   skill only through Peter's answer. No run edits the skill's own files, in a sweep or otherwise.
+   Durable project rules still graduate to `memory/` atoms through the sweep queue.
 4. **Toolbox in:** section-align, audit-surface, section-read-split, trim-tests, simplify,
    reuse-review (run against the section's own surface, not a diff), the refactor-swarm per-lane
    process (`.codex/skills/humans-refactor`), debt-sweep (absorbed — its ledger becomes a planner
@@ -81,12 +82,12 @@ under `src/Sections/` and can be reviewed as a unit.
     `last-report.md` are deleted — the runs directory is the log, the newest file is the last
     report, and no generated index replaces them. `plan.md` carries no tick/status column;
     done-ness is derived (health.md date vs. plan anchor) so selection can be recomputed fresh
-    every run. Shared files (`plan.md`, the skill's own files, `debt-ledger.yml`, `memory/`) are
-    written only by replanning runs — rare (~once per cycle) and effectively serialized by the
-    schedule, with **no locking** (Peter's call): a rare overlap costs one hand-resolved
-    conflict. Other runs queue such writes in their run file's `## Sweep queue` for a later
-    replan to apply — sweeps are windowed by anchor commit and never edit the swept run files,
-    leaving `resume` their only post-merge editor. Daily runs no longer write
+    every run. Shared files (`debt-ledger.yml`, `memory/`) are written only in the sweep commit,
+    with **no locking** (Peter's call): a rare overlap costs one hand-resolved conflict. Other
+    runs queue such writes in their run file's `## Sweep queue` for a later run's sweep to apply —
+    idempotence is the only bookkeeping, and a sweep never edits the swept run files, leaving
+    `resume` their only post-merge editor. The skill's own files are on no run's write list at
+    all (decision 24). Daily runs no longer write
     `docs/architecture/maintenance-log.md` at all.
 
 ## Invocation
@@ -174,17 +175,18 @@ Old files get purged manually after a while. Sections:
 
 Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 
-## Assessment summary
+## Assessment summary      ← cites findings by number; never re-describes one
+### Findings, ranked       ← the one prose description of each finding; numbered once, stable
 ## File coverage          ← a disposition for every path in the 3a inventory; the list, not a summary
 ## Threads                ← which ran; for each that did not, why
-## Size                   ← lines vs the anchor for every section touched, and the net
 ## Worked
-## Skipped / queued        ← includes plan rows passed over as blocked (`<section> — open PR #N`)
+## Skipped / queued        ← by finding number; plus sections passed over as blocked (`<section> — open PR #N`)
 ## Retro
 ## Needs Peter
-- [ ] <one-line question>  ← authoritative in the PR body while open; here after merge
-## Sweep queue             ← shared-file writes; a later replan's window applies them (no ticks)
-- lesson: <dated one-liner for the skill's Lessons>
+- [ ] <one-line question>  ← `- [ ]` unanswered / `- [x]` answered; keyed to a finding number,
+                              never a queue position. Authoritative in the PR body while open;
+                              here after merge
+## Sweep queue             ← shared-file writes; a later run's sweep applies them (no ticks)
 - debt: <debt-ledger inbox entry>
 - memory: <bucket>/<name> — <rule>
 ```
@@ -196,8 +198,8 @@ stale. Staleness is a judgment call with a guideline: a merged change since the 
 materially reshapes an upcoming scheduled section (move, rename, major feature) justifies
 replanning; routine churn does not. Threshold expected to be tuned by the learning loop.
 
-**Replans are the only writers of shared files** (`plan.md`, the skill's files,
-`debt-ledger.yml`, `memory/`), and they are rare — a full-cycle plan outlasts ~2 weeks of
+**Replans are the only writers of shared files** (`plan.md`, `debt-ledger.yml`, `memory/` — never
+the skill's own files, decision 24), and they are rare — a full-cycle plan outlasts ~2 weeks of
 2×/day runs, invocations are scheduled one at a time, and later runs read the open replan's
 plan from its branch (newest anchor wins) instead of writing their own. There is **no lock**
 (Peter's call, PR #1366); a rare overlap costs one hand-resolved conflict, not corruption.
@@ -263,11 +265,10 @@ The plan is advisory — run-day findings can extend a section's stay.
 - **5 Bookkeeping** — exactly two writes, both conflict-free: the `health.md` history row and
   this run's own `docs/health/runs/<date>-<Section>.md` (all in the worktree, same PR). No
   shared file is touched; daily runs never write `maintenance-log.md`.
-- **6 Retro + self-amend** — what was planned vs. what helped, wasted motion, rubric misses —
-  written into the run file. Mechanical lessons → the run file's `## Sweep queue` as `lesson:`
-  items (the next replan applies them to the skill's files; never edited directly mid-run —
-  they are shared). Judgment lessons → Needs-Peter queue. Durable rules → sweep queue as
-  `memory:` items. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
+- **6 Retro + propose amendments** — what was planned vs. what helped, wasted motion, rubric
+  misses — written into the run file. Mechanical and judgment lessons alike → the Needs-Peter
+  queue as a proposed one-line edit naming the phase it governs; a run never edits the skill's
+  files, mid-run or in a sweep. Durable rules → sweep queue as `memory:` items. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
   after it.
 - **7 PR** — one PR per run to `peterdrier/Humans:main`. Body: assessment summary, worked/skipped,
   **Needs Peter** block — authoritative while the PR is open; the run file's copy carries it
@@ -302,8 +303,8 @@ PRs cannot conflict with each other or with concurrent doctor runs. No new asses
 - Section projects only (`src/Sections/`); pre-G5 remnants are out of scope.
 - A run touches only: the section's files, its callers where a play requires (e.g. read-split
   migrations), the section's `health.md`, and its own `docs/health/runs/` file. A replanning run
-  additionally touches: `plan.md`, the skill's own files, `debt-ledger.yml`, and `memory/` —
-  never the run files it sweeps. Nothing writes `maintenance-log.md`.
+  additionally touches: `plan.md`, `debt-ledger.yml`, and `memory/` — never the run files it
+  sweeps, and never the skill's own files (decision 24). Nothing writes `maintenance-log.md`.
 
 ## Relationship to existing skills — cutover checklist
 
@@ -352,7 +353,8 @@ Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His c
     thread and gets a recorded disposition. A file no thread claims is a hole in the thread set,
     not a file to skip. Only `*.Designer.cs` and `*DbContextModelSnapshot.cs` are exempt.
 15. **Size is measured and reported**, net across every section a run touched — growth caused by
-    cross-section consolidation is a win, and is stated as the trade it is.
+    cross-section consolidation is a win, and is stated as the trade it is. *(Superseded by 20:
+    the measure stands, the run file is not where it is written down.)*
 16. **Unrun threads are loud.** A thread that does not run says so and why. A thread earns removal
     from the toolbox only after several runs record it as "ran, found nothing" — never because one
     clean section did not get to it.
@@ -364,4 +366,66 @@ Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His c
 18. **The target is regenerated every run and diffed against the previous one.** The diff is
     signal in both directions — the section moved, or the earlier target was wrong — and which one
     goes in the retro.
+19. **Phase 3d threads are dispatched by default (#1465, 2026-08-24).** Item 9's "a few background
+    subagent threads" had hardened in `SKILL.md` into "judgment threads run on the main thread,
+    subagents only when a thread must read more than one context can hold". Measuring the
+    2026-08-23 Onboarding run priced that: $93.30 over 746 calls, cache reads $65.87 of it,
+    median context 184k from Phase 3 to the end. A thread reads a lot and returns a little, so
+    holding it on main taxes every later turn in the run — including Phases 4–9 and the review
+    tail. Small context is the dominant lever (~87%), not model choice (~40%). So Freshness,
+    Conformance, Tests, Prose & surface, History, Comments and Inbox dispatch with an explicit
+    tagged model; the spine (3a–3c), Shape, Behavior & bugs and 3e stay on main, and the
+    `## Threads` block records model and cost per thread so *that* stays a measurement rather
+    than an assumption.
 
+## Amendment, 2026-08-24 — the run stops narrating itself (peterdrier/Humans#1477)
+
+A small Cantina refactor (peterdrier/Humans#1453) took 26 commits and ~20% of a weekly review
+quota; seven post-resume pushes corrected the PR's own metadata, one of them to move `−56` to
+`−49` in a table nobody depends on. Two defects produced that: a finding restated in six places,
+and a `## Size` block whose subject was the diff containing it.
+
+20. **`## Size` is deleted, not fixed.** A run file cannot state its own line count — the commit
+    that writes the figure is a commit the figure must count — and a "comment-only" edit is not
+    score-neutral, so every correction guarantees the next one. GitHub's additions/deletions on
+    the PR and the PR Surface Report already compute every figure the block held, on every push,
+    and cannot go stale. The run links the PR. The one durable number a run keeps is the reforge
+    score, in `health.md` — stable, meaningful, and not a description of the diff. Supersedes 15.
+21. **No bookkeeping pushes after the PR opens.** A push must then change code, tests, or a doc a
+    reader depends on; never a commit whose entire content is a corrected figure or a restated
+    status about the branch. Corrections to the run file's narration of itself ride along with
+    the next substantive commit, or are skipped. This is the item that bounds the cost of every
+    other mistake in the list — each push is a CI run, a preview deploy, a surface report and a
+    review.
+22. **One prose description per finding, at a stable number.** The ranked findings list is the
+    single source of truth; the assessment summary, `## Skipped`, `## Needs Peter` and the PR body
+    cite the number. Numbers are assigned once and survive reordering, striking and abolition —
+    Needs-Peter items key to the finding number, never to queue position, because a
+    position-matched tick marks the wrong item as soon as either list is reordered. `- [ ]` /
+    `- [x]` is the checkbox format, written into the skill so `resume` cannot invent one.
+    Phase 3d's inbox recommendations enter the ranked list as numbered findings carrying their
+    verdict and reason, rather than writing that prose into the checklist a second time.
+23. **Four gates on existing steps.** Applying a ruling requires a grep of the branch for the
+    finding's distinguishing terms across `.cs` as well as `.md` — doc comments are documentation
+    and drift like it, and counting copies from memory always undercounts. The grep is a
+    completeness gate, not a licence to edit: only a ruling that makes the claim false sends the
+    run to the hits; a `keep`, `not a defect` or `deferred` leaves them standing. Either way the
+    ruling is recorded on the ranked finding — a rejected finding stops asserting a defect — and
+    the checklist only ticks. A review bot's finding
+    is a sample, not an instance: grep for the class of claim before fixing the reported line.
+    Before the PR, every new UI claim is traced to the view that renders it, not the DTO that
+    feeds it. Environment caveats are dated per-session lines, never standing banners — "this run
+    had no compiler" was false an hour after it was written.
+
+24. **Only Peter edits the skill.** Decision 3's self-amendment is withdrawn: no run edits
+    `SKILL.md`, mid-run or in a sweep, and `lesson:` leaves the sweep queue entirely. A lesson is
+    a Needs-Peter finding proposing a one-line edit that names the phase it governs, and reaches
+    the skill through Peter's answer alone. It is never a sweep-queue item — the sweep has no
+    anchor window, so it would re-ask the question on every later run, blind to the tick that
+    closed it. The skill is instructions, not a record: the `## Lessons` list is gone, its
+    entries folded into the phases they govern, and an issue reference earns its place only by
+    naming a live contract or a baseline a phase is bound to.
+25. **Finding numbers outlive 3e.** 3e numbers the ranked list; a finding raised later — a Phase 4
+    skip, a Phase 6 lesson, a Phase 7 measurement gap — takes the next unused number as it is
+    written, and no number is reused. One prose description per finding, where it was first
+    written; every other mention cites the number.

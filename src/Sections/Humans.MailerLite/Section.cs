@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
 using Humans.MailerLite.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Jobs;
@@ -72,6 +73,11 @@ public sealed class Section : ISection
                 new MediaTypeWithQualityHeaderValue("application/json"));
         });
         services.AddSingleton<IMailerLiteService, MailerLiteClient>();
+
+        // GDPR fan-out: MailerLite owns no user-scoped tables, but Article 17 erasure must
+        // still delete the person's MailerLite subscriber (design-rules §8a, #853).
+        services.AddScoped<MailerLiteGdprContributor>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MailerLiteGdprContributor>());
 
         // Import orchestrator — stateless plan+apply, injected by the Admin controller.
         services.AddScoped<IMailerLiteImportService, MailerLiteImportService>();

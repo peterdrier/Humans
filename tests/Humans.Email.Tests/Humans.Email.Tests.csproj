@@ -13,6 +13,12 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!--
+      DeletionConfirmationLeavesNoOutboxRowTests runs the real ProcessAccountDeletionsJob
+      against the real outbox: the Article 17 invariant it guards spans both sections and
+      the table under test is Email's.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 

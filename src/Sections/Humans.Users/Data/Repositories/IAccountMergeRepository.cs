@@ -40,6 +40,13 @@ internal interface IAccountMergeRepository : IRepository
     /// the source or the target, ordered by <c>CreatedAt</c> descending.
     /// Used by the GDPR export contributor.
     /// </summary>
+    /// <summary>
+    /// GDPR Art. 17: clears the requested email address and any admin notes on
+    /// every merge request naming this user. The row itself stays — the merge
+    /// chain is what keeps a tombstoned account's history resolvable.
+    /// </summary>
+    Task<int> ScrubPiiForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
         Guid userId, CancellationToken ct = default);
 

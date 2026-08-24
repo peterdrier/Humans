@@ -2,7 +2,9 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Base.Attributes;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
+using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
@@ -17,14 +19,15 @@ namespace Humans.Email.Services;
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
 /// processor job reads it through <see cref="IsEmailPausedAsync"/>. Also owns the
 /// retention cutoff <c>CleanupEmailOutboxJob</c> drives through
-/// <see cref="IEmailOutboxRetention"/>.
+/// <see cref="IEmailOutboxRetention"/>. Also the section's GDPR fan-out member:
+/// outbox rows are user-scoped personal data (address, name, rendered body).
 /// </summary>
 [CrossSectionWrite("Email owns the IsEmailSendingPaused flag; the Settings key/value store is where it is kept.")]
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
-    IClock clock) : IEmailOutboxService
+    IClock clock) : IEmailOutboxService, IUserDataContributor
 {
     private static readonly Duration Last24Hours = Duration.FromHours(24);
 
@@ -88,6 +91,47 @@ internal sealed class EmailOutboxService(
             SettingKeys.IsEmailSendingPaused,
             paused ? "true" : "false",
             cancellationToken);
+
+    // --- IUserDataContributor ---
+
+    /// <summary>
+    /// GDPR Article 15 slice — the same per-user outbox history the human already
+    /// reads at <c>/Profile/Me/Outbox</c>, uncapped.
+    /// </summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var messages = await repo.GetForUserAsync(userId, ct);
+
+        var shaped = messages.Select(m => new
+        {
+            m.RecipientEmail,
+            m.RecipientName,
+            m.Subject,
+            m.HtmlBody,
+            m.TemplateName,
+            m.Status,
+            CreatedAt = m.CreatedAt.ToIso8601(),
+            SentAt = m.SentAt.ToIso8601()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.EmailOutbox, shaped)];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.EmailOutbox] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// GDPR Article 17: drops every outbox row attributed to the human, whatever
+    /// its status. The retention sweep only reaches <c>Sent</c> rows past the
+    /// cutoff, so failed and queued rows would otherwise outlive the erasure.
+    /// </summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repo.DeleteForUserAsync(userId, ct);
 
     private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
         message.Id,

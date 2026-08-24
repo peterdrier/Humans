@@ -6,6 +6,11 @@
 # detect "build:<CODE>" = distinct sites of that warning code in one fresh build log.
 # Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
 # last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
+# One-offs whose fix lives inside a single section go in that section's own
+# src/Sections/Humans.<X>/Docs/debt.yml instead of `inbox:` here (2026-08-24,
+# nobodies-collective/Humans#1120). The sweep pools both, so this only decides
+# where an item is written. `themes:` stays central — rotation state is global.
+# Entries already in `inbox:` are left where they are; rotation drains them.
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
 # HUM0009, HUM0020, HUM0025, HUM0032 (HUM0029 retired). The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
@@ -255,7 +260,7 @@ themes:
       custom HUM_* warning ids spotted here should become their own theme.
   - id: inbox
     title: One-off inbox items
-    detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
+    detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
     remaining: 10
@@ -370,4 +375,10 @@ inbox:
     review: panel
   - added: 2026-08-20
     what: "Rota search rows pay a heavy read on a cold cache key. IShiftManagementServiceRead.GetRotaAsync (src/Sections/Humans.Shifts/Services/ShiftManagementService.cs) serves the global-search row through CachingShiftViewService's per-rota cache; on a miss that cache's inner ShiftViewService.GetRotaAsync (src/Sections/Humans.Shifts/Services/ShiftViewService.cs:119) loads RotaReadShape.View — event settings, shifts, signups and tags — to hand back two fields, Name and TeamId. Warm cost is zero (measured: GlobalSearchSectionRenderTests.Tripling_the_rows_costs_no_extra_query, 2 commands per /Search page regardless of row count), so this is a first-search-after-startup and post-invalidation cost only, bounded by the number of matched rotas. The two obvious fixes are both wrong: GetRotasAsync loops one id at a time so it batches nothing, and carrying Name/TeamId on RotaSearchHit re-introduces the display-field projection nobodies-collective/Humans#1062 deleted. The right fix is a header-shaped rota projection Shifts caches separately from the view — new state in that section, so its own pass. Found by Codex on peterdrier/Humans#1432."
+    review: panel
+  - added: 2026-08-21
+    what: "A deleted member keeps receiving MailerLite marketing email. GDPR Article 17 erasure (nobodies-collective/Humans#853) fans out over IUserDataContributor and reaches every section that owns user-scoped tables, but Humans.MailerLite owns none — MailerLiteSyncState is keyed by audience, not by user — so it has no contributor and the fan-out cannot reach it. IMailerLiteService has no delete method either (only create-group / assign / unassign / bulk-import), and the section's whole cross-section surface is IMailerLiteAudienceSync.SyncAllAudiencesAsync. Closing this needs three pieces of new surface and a shape decision Peter has not made: DeleteSubscriberAsync on MailerLiteClient, the same on IMailerLiteService, and some way for the erasure cascade to reach the section — either give MailerLite a contributor (which means inventing a GdprExportSections key for a category it does not export, and making the Article 15 export do a live HTTP call to the processor) or have the contributor that owns communication preferences call across. The unmet acceptance criterion on #853; deliberately left rather than guessed at."
+    review: panel
+  - added: 2026-08-21
+    what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel

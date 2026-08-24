@@ -204,6 +204,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
     private sealed record SeededRows(string TeamSlug, Guid TeamId, string CampSlug);
 
+    /// <summary>Seeds one matchable row per search bucket and returns the refs the assertions need.</summary>
     /// <param name="index">Distinguishes repeat seedings under one token; row 0 keeps the bare names the bind test asserts on.</param>
     private static async Task<SeededRows> SeedOneRowPerBucketAsync(
         string token, int index, IServiceProvider rootServices, CancellationToken ct)

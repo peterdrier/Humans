@@ -28,9 +28,16 @@ internal interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Suspends a @nobodies.team account.
     /// </summary>
+    /// <param name="omitEmailFromAudit">
+    /// Set by the GDPR erasure path: the audit log survives erasure, so naming the
+    /// address there would re-seed the identity the cascade is removing. That path
+    /// audits the suspend by actor id alone; an admin-initiated suspend keeps the
+    /// readable address.
+    /// </param>
     [ExternalWrite]
     Task<WorkspaceAccountActionResult> SuspendAccountAsync(
         string email, Guid actorUserId,
+        bool omitEmailFromAudit = false,
         CancellationToken ct = default);
 
     /// <summary>

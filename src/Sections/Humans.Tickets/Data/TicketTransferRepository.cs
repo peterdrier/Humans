@@ -38,6 +38,42 @@ internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var transfers = await ctx.TicketTransferRequests
+            .Where(r => r.SenderUserId == userId
+                     || r.ReceiverUserId == userId
+                     || r.DecidedByUserId == userId)
+            .ToListAsync(ct);
+        if (transfers.Count == 0) return 0;
+
+        foreach (var transfer in transfers)
+        {
+            // ReceiverLegalName / ReceiverEmail / SenderReason are init-only —
+            // write through the tracked entry.
+            var entry = ctx.Entry(transfer);
+            if (transfer.ReceiverUserId == userId)
+            {
+                entry.Property(nameof(TicketTransferRequest.ReceiverLegalName)).CurrentValue =
+                    TicketPiiTombstone.Name;
+                entry.Property(nameof(TicketTransferRequest.ReceiverEmail)).CurrentValue =
+                    TicketPiiTombstone.EmailFor(userId);
+            }
+            if (transfer.SenderUserId == userId)
+            {
+                entry.Property(nameof(TicketTransferRequest.SenderReason)).CurrentValue = string.Empty;
+            }
+            if (transfer.DecidedByUserId == userId)
+            {
+                transfer.AdminNotes = null;
+            }
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> CountPendingAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

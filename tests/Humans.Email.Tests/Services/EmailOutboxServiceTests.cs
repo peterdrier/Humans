@@ -3,6 +3,7 @@ using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
 using Humans.Base.Configuration;
+using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.Options;
 using Humans.Base.Enums;
@@ -76,6 +77,33 @@ public sealed class EmailOutboxServiceTests
             SettingKeys.IsEmailSendingPaused,
             "true",
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_EmitsTheOutboxSliceForTheHuman()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([BuildMessage(_now, userId)]);
+
+        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.EmailOutbox);
+        System.Text.Json.JsonSerializer.Serialize(slice.Data)
+            .Should().Contain("human@example.org");
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_DropsEveryRowForTheHuman()
+    {
+        // Not just the Sent ones the retention sweep reaches — failed and queued
+        // rows carry the same address, name and rendered body.
+        var userId = Guid.NewGuid();
+
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).DeleteForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     private static EmailOutboxMessage BuildMessage(Instant createdAt, Guid? userId = null) => new()

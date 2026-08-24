@@ -52,4 +52,14 @@ public static class GdprExportSections
     public const string SurveyResponses = "SurveyResponses";
     public const string GateScans = "GateScans";
     public const string GoogleSyncLog = "GoogleSyncLog";
+    public const string EmailOutbox = "EmailOutbox";
+
+    /// <summary>
+    /// Erasure-only: MailerLite owns no user-scoped tables, so
+    /// <c>MailerLiteGdprContributor.ContributeForUserAsync</c> never emits this key and it
+    /// never appears in an export. It exists so the section's Article 17 erasure account
+    /// (deleting the person's MailerLite subscriber, nobodies-collective/Humans#853) has a
+    /// key to declare — required by <c>GdprErasureCoverageTests</c>.
+    /// </summary>
+    public const string MailerLiteSubscriber = "MailerLiteSubscriber";
 }

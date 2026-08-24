@@ -10,18 +10,18 @@ Run before creating a PR, or against an existing PR, whenever the work is driven
 
 Accepts either:
 - A PR number on peterdrier/Humans: `spec-review PR 64`
-- A list of issue numbers on nobodies-collective/Humans: `spec-review #264 #265 #266`
+- A list of qualified issue refs: `spec-review nobodies-collective#264 peterdrier#265` — the repo qualifier is required; if a ref is unqualified, stop and ask which repo, never guess
 - No arguments: reviews staged/unstaged changes against issues mentioned in recent commit messages
 
 ## Process
 
 ### Step 1: Identify the Issues
 
-- If given a PR number, fetch the PR body and extract all referenced issue numbers (`#NNN`).
-- If given issue numbers directly, use those.
+- If given a PR number, fetch the PR body and extract all referenced issue refs.
+- If given issue refs directly, use those.
 - If no arguments, scan `git log` for the current branch's commits and extract issue references.
 
-For each issue number, fetch the full issue body from `nobodies-collective/Humans` using `gh issue view`.
+Both repos hold issues (`memory/process/issue-home-routing.md`). For each issue, fetch the body from the repo its qualified ref names (`owner#N` / `owner/Humans#N`) via `gh issue view <N> --repo <owner>/Humans`. An unqualified ref is an input error: stop and ask, never default a repo.
 
 ### Step 2: Extract Acceptance Criteria
 
@@ -30,7 +30,7 @@ For each issue, extract:
 2. **Behavioral requirements** — specific behaviors described in the issue body (e.g., "shows X when Y", "matches against Z", "links to URL").
 3. **Negative requirements** — things explicitly excluded or warned against (e.g., "NOT aggregate data", "not just the primary email").
 
-List each criterion with an ID for tracking (e.g., `#264-AC1`, `#264-AC2`).
+List each criterion with an ID for tracking, carrying the owner (e.g., `nobodies-collective#264-AC1`, `peterdrier#265-AC1`).
 
 ### Step 3: Read the Implementation
 

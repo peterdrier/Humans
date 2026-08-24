@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
@@ -17,6 +18,7 @@ internal sealed class UserService(
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
+    IFileStorage fileStorage,
     IClock clock,
     ILogger<UserService> logger) : IUserService, IUserDataContributor
 {
@@ -145,21 +147,6 @@ internal sealed class UserService(
             "CachingUserService. If this is being called on the inner UserService " +
             "it indicates a DI registration mistake — IUserService should resolve " +
             "to CachingUserService.");
-
-    public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (await repo.GetByIdAsync(userId, ct) is null)
-            return null;
-
-        await repo.RemoveAllUserEmailsForUserAndSaveAsync(userId, ct);
-        var displayName = await repo.PurgeAsync(userId, ct);
-        if (displayName is null)
-            return null;
-
-        logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
-
-        return displayName;
-    }
 
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
@@ -1063,6 +1050,62 @@ internal sealed class UserService(
         ];
     }
 
+    // --- IUserDataContributor — GDPR erasure ---
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.Account] =
+                "Partially retained: the User row survives as a tombstone (its id, the display " +
+                "name \"Deleted User\" and a deleted-<id>@deleted.local address) so every other " +
+                "section's user-id reference stays resolvable and the erasure itself remains " +
+                "provable — GDPR Art. 5(2) accountability. Every identity field on it is " +
+                "overwritten and the account is locked out permanently.",
+            [GdprExportSections.EventParticipations] =
+                "Retained: the year and status of each participation, keyed to the tombstoned " +
+                "user id, is the association's register of who was a member in which year — " +
+                "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
+            [GdprExportSections.Profile] = null,
+            [GdprExportSections.ContactFields] = null,
+            [GdprExportSections.UserEmails] = null,
+            [GdprExportSections.VolunteerHistory] = null,
+            [GdprExportSections.Languages] = null,
+            [GdprExportSections.CommunicationPreferences] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// Anonymizes the profile (contact fields and volunteer history go with it),
+    /// removes the profile-picture bytes, clears the Article 9 health/diet fields
+    /// and the language + communication-preference rows, then collapses the User
+    /// aggregate's identity and drops every UserEmail and external login.
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
+        if (profileAnonymization.Anonymized &&
+            profileAnonymization.ProfileId is { } profileId &&
+            profileAnonymization.PreviousProfilePictureContentType is { } contentType)
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(
+                    ProfilePictureStorageKeys.ProfilePictureKey(profileId, contentType), ct);
+            }
+            catch (Exception ex)
+            {
+                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
+                logger.LogError(ex,
+                    "Failed to delete profile picture during GDPR erasure for user {UserId}", userId);
+            }
+        }
+
+        await repo.EraseProfileExtrasForUserAsync(userId, ct);
+        await communicationPreferenceRepo.DeleteAllForUserAsync(userId, ct);
+        await ApplyExpiredDeletionAnonymizationAsync(userId, ct);
+    }
+
     private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
         var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
@@ -1246,9 +1289,6 @@ internal sealed class UserService(
         await repo.RemoveAllUserEmailsForUsersAndSaveAsync(userIds, ct);
         return await repo.DeleteUsersAsync(userIds, ct);
     }
-
-    public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(

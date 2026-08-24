@@ -142,12 +142,6 @@ internal partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
-    /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
-    /// </summary>
-    Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
     /// row for each of the given users, grouped by <c>UserId</c>. Users without
     /// any external login are absent from the dictionary. Used by the admin
@@ -191,29 +185,6 @@ internal partial interface IUserRepository : IRepository
     /// </summary>
     Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default);
-
-    /// <summary>
-    /// Purges (anonymizes + locks out) a user: removes all AspNetUserLogins
-    /// rows for the user, overwrites <c>Email</c>/
-    /// <c>NormalizedEmail</c>/<c>UserName</c>/<c>NormalizedUserName</c> with a
-    /// sentinel <c>purged-{guid}@deleted.local</c> address, prepends "Purged"
-    /// to the display name, and permanently locks out the account. Atomic:
-    /// login removal and user anonymization happen in one
-    /// <c>SaveChangesAsync</c>. Returns the original display name if the user
-    /// was purged; null if the user did not exist.
-    /// </summary>
-    /// <remarks>
-    /// Used by <c>IUserService.PurgeAsync</c>. <c>IUserService</c> removes
-    /// <c>UserEmail</c> rows through this repository before calling
-    /// this method so the unique-index constraint does not block a future
-    /// account creation reusing the same email. Also removes
-    /// <c>AspNetUserLogins</c> rows so a
-    /// re-signup via the same Google identity is not blocked by an orphan login
-    /// pointing at a tombstoned, locked-out user. Does not touch Profile or
-    /// other section-owned rows — those are either retained (audit) or removed
-    /// by cascades.
-    /// </remarks>
-    Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.

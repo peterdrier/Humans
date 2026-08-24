@@ -28,6 +28,16 @@ namespace Humans.Email.Contracts;
 /// because the grant's user — not an email lookup — is authoritative.
 /// </param>
 /// <param name="CampaignGrantId">Links a campaign-code email to its grant for status tracking.</param>
+/// <param name="DoNotPersist">
+/// When true the message is handed straight to the transport and no
+/// <c>email_outbox_messages</c> row is written — so it is never retried, and the
+/// recipient's address, name and body are never stored. Reserved for mail whose
+/// recipient is a human the system is erasing under GDPR Article 17: an outbox row
+/// would recreate exactly the personal data the cascade just removed, and would
+/// outlive it (the retention sweep only reaches <c>Sent</c> rows past the cutoff).
+/// Retrying is not an option worth having here — it would mean keeping the address
+/// in order to retry with it.
+/// </param>
 public sealed record EmailMessage(
     string RecipientEmail,
     string? RecipientName,
@@ -38,4 +48,5 @@ public sealed record EmailMessage(
     string? ReplyTo = null,
     bool TriggerImmediate = false,
     Guid? UserId = null,
-    Guid? CampaignGrantId = null);
+    Guid? CampaignGrantId = null,
+    bool DoNotPersist = false);

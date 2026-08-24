@@ -174,6 +174,9 @@ internal interface ICampaignRepository : IRepository
     /// Returns the count of grants attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
+    /// <summary>GDPR Art. 17: removes every grant held by the user.</summary>
+    Task<int> DeleteGrantsForUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<int> ReassignGrantsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

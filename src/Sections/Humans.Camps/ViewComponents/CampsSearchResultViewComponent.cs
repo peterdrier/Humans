@@ -17,6 +17,7 @@ namespace Humans.Camps.ViewComponents;
 /// </remarks>
 public sealed class CampsSearchResultViewComponent(ICampServiceRead camps) : ViewComponent
 {
+    /// <summary>Renders the row, or nothing when the camp no longer resolves.</summary>
     /// <param name="campId">The matched camp.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid campId)
     {

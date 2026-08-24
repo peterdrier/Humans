@@ -481,4 +481,34 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .Where(f => f.UserId == userId)
             .ToListAsync(ct);
     }
+
+    public async Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var favourites = await ctx.EventFavourites.Where(f => f.UserId == userId).ToListAsync(ct);
+        var preferences = await ctx.EventPreferences.Where(p => p.UserId == userId).ToListAsync(ct);
+        if (favourites.Count == 0 && preferences.Count == 0) return 0;
+
+        ctx.EventFavourites.RemoveRange(favourites);
+        ctx.EventPreferences.RemoveRange(preferences);
+        await ctx.SaveChangesAsync(ct);
+        return favourites.Count + preferences.Count;
+    }
+
+    public async Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var submissions = await ctx.Events
+            .Where(e => e.SubmitterUserId == userId && e.Host != null)
+            .ToListAsync(ct);
+        if (submissions.Count == 0) return 0;
+
+        foreach (var submission in submissions)
+            submission.Host = null;
+
+        await ctx.SaveChangesAsync(ct);
+        return submissions.Count;
+    }
 }

@@ -764,15 +764,6 @@ internal sealed class CachingUserService(
         return count;
     }
 
-    public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.PurgeOwnDataAsync(userId, ct));
-        // Refresh whether or not the row existed; RefreshEntryAsync removes
-        // the entry when the user is gone.
-        await RefreshEntryAsync(userId, ct);
-        return result;
-    }
-
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -803,13 +794,6 @@ internal sealed class CachingUserService(
         {
             DeleteKey(userId);
         }
-        return deleted;
-    }
-
-    public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        var deleted = await WithInnerAsync(inner => inner.DeleteAllExternalLoginsForUserAsync(userId, ct));
-        if (deleted > 0) await RefreshEntryAsync(userId, ct);
         return deleted;
     }
 

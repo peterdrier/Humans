@@ -193,4 +193,17 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         return toDelete.Count;
     }
 
+    public async Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Load-then-RemoveRange for the same InMemory-provider reason as above.
+        var toDelete = await ctx.EmailOutboxMessages
+            .Where(m => m.UserId == userId)
+            .ToListAsync(ct);
+        if (toDelete.Count == 0) return 0;
+        ctx.EmailOutboxMessages.RemoveRange(toDelete);
+        await ctx.SaveChangesAsync(ct);
+        return toDelete.Count;
+    }
+
 }

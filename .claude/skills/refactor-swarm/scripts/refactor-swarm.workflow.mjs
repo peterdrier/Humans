@@ -15,7 +15,7 @@ export const meta = {
 // TEMPLATE — the controller fills the block below AFTER Phase-0 recon.
 // DO NOT ship frozen values. Specifically:
 //   • BASE  — resolve at recon time: `git rev-parse origin/main`. Never a stale sha.
-//   • LANES — DERIVED from the recomputed Reforge rank minus in-flight sections
+//   • LANES — DERIVED from the recomputed Reforge rank (open PRs are not exclusions)
 //             (SKILL Phase 0). Not a fixed list. Create the worktrees during recon,
 //             then paste the resulting block here. Lane COUNT comes from --lanes /
 //             intensity; WHICH sections comes from the score + conflict scan.
@@ -58,9 +58,9 @@ const ok = (x) => x && !x.__error
 // ---------------------------------------------------------------------------
 const HARD_RULES = (L) => `
 ABSOLUTE CONSTRAINTS (Humans repo, peters-hard-rules.md is the constitution):
-- Worktree: operate ONLY inside ${L.wt} (branch ${L.branch}). Every git command MUST be \`git -C "${L.wt}" ...\`. Every file you Read/Edit/Write/Grep MUST be under ${L.wt}. Never read, edit, or commit anything under ${ROOT}/src or any OTHER worktree. Never run a bare \`git\` (no -C) — it could hit the main checkout / main branch which auto-deploys.
+- Worktree: operate ONLY inside ${L.wt} (branch ${L.branch}). Your FIRST Bash call is \`cd "${L.wt}"\` on its own; every git command after that is plain \`git ...\` — never \`git -C\` (memory/process/never-use-git-dash-c.md). Every file you Read/Edit/Write/Grep MUST be under ${L.wt}. Never read, edit, or commit anything under ${ROOT}/src or any OTHER worktree — the main checkout / main branch auto-deploys.
 - NO database/persistence changes of any kind: no EF migrations, no migration edits, no DbContext/model/schema/OnModelCreating changes, no entity persistence-shape changes, no JSON serialization attribute changes. This refactor is repository-layer-and-above ONLY.
-- NO \`rm -rf\` and no destructive shell deletes. To discard an experiment use \`git -C "${L.wt}" reset --hard HEAD\` then \`git -C "${L.wt}" clean -fd\` (git-native, worktree-scoped). To remove a worktree use \`git worktree remove\`.
+- NO \`rm -rf\` and no destructive shell deletes. To discard an experiment use \`git reset --hard HEAD\` then \`git clean -fd\` (git-native, worktree-scoped). To remove a worktree use \`git worktree remove\`.
 - NO bypass flags: never --no-verify, never suppress analyzers, never delete/weaken tests to make something pass.
 - Layering (DbContext -> Repository -> Service -> Controller): only the repository touches its tables; services derive from IApplicationService and call only their own repositories + other sections' public read interfaces; controllers hold no logic beyond parse/call/format; caching decorators call the inner service, never the repository.
 - Section isolation: never reach into another section's repository, DbContext, or entity graph. Cross-section reads go through I<Section>ServiceRead and the canonical <Section>Info DTO facts. Cross-section dependence on a write/full service is high debt — only legitimate when truly orchestrating a mutation.
@@ -213,7 +213,7 @@ function implPrompt(L, i, ledger, accepted, rejected, hint, prevJson) {
   return `You are the IMPLEMENT agent for the ${L.section} refactor lane, iteration ${i}. Worktree: ${L.wt} (branch ${L.branch}).
 ${HARD_RULES(L)}
 
-STEP 0 (mandatory clean base): run \`git -C "${L.wt}" reset --hard HEAD\` then \`git -C "${L.wt}" clean -fd\`. Then assert \`git -C "${L.wt}" rev-parse --abbrev-ref HEAD\` equals "${L.branch}" — if it does not, return outcome="no-candidate" with notes explaining the mismatch and do nothing else.
+STEP 0 (mandatory clean base): run \`git reset --hard HEAD\` then \`git clean -fd\`. Then assert \`git rev-parse --abbrev-ref HEAD\` equals "${L.branch}" — if it does not, return outcome="no-candidate" with notes explaining the mismatch and do nothing else.
 
 Section thesis:
 ${ledger.thesis}
@@ -240,7 +240,7 @@ Then verify, all with absolute worktree paths:
    python "${L.wt}/${DELTA}" --before-all "${prevJson}" --after-all "${scratch(L)}/stage${String(i).padStart(2, '0')}-all.json" --section "${L.group}"
    Capture its full stdout into deltaText. Set sectionBefore/After/Delta, overallBefore/After, outsideIncrease (= outside_after - outside_before), and weightedValue from that output.
 
-If the build or tests fail and you cannot fix them quickly within this one candidate, reset (\`git -C "${L.wt}" reset --hard HEAD\`; \`git -C "${L.wt}" clean -fd\`) and return outcome="build-or-test-failed" with notes. If no candidate in the ledger is still worth doing (exhausted / only speculative / blocked by hard limits), return outcome="no-candidate" and stasis=true. Otherwise return outcome="changed" with all fields filled and a clear structuralSummary describing WHAT changed structurally (which concept deleted, which consumers re-routed, etc.). LEAVE THE CHANGE UNCOMMITTED — a review panel runs next.`
+If the build or tests fail and you cannot fix them quickly within this one candidate, reset (\`git reset --hard HEAD\`; \`git clean -fd\`) and return outcome="build-or-test-failed" with notes. If no candidate in the ledger is still worth doing (exhausted / only speculative / blocked by hard limits), return outcome="no-candidate" and stasis=true. Otherwise return outcome="changed" with all fields filled and a clear structuralSummary describing WHAT changed structurally (which concept deleted, which consumers re-routed, etc.). LEAVE THE CHANGE UNCOMMITTED — a review panel runs next.`
 }
 
 function reviewPrompt(L, stage, lens) {
@@ -253,9 +253,11 @@ function reviewPrompt(L, stage, lens) {
 
 You DO NOT receive and MUST NOT consider the Reforge score change. A lower score is NOT a reason to accept. Judge ONLY the structural change. The implementer is incentivized to game a number; assume the change may be gaming until the diff proves a genuine structural improvement you can name in one sentence.
 
+Your FIRST Bash call is \`cd "${L.wt}"\` on its own — every command below runs from inside that worktree (never \`git -C\`).
+
 Inspect (read-only — do not edit anything):
-- The uncommitted diff:  git -C "${L.wt}" --no-pager diff
-- New untracked files:   git -C "${L.wt}" status --porcelain   (read any new files under ${L.wt})
+- The uncommitted diff:  git --no-pager diff
+- New untracked files:   git status --porcelain   (read any new files under ${L.wt})
 - The section thesis and the implementer's claims below.
 
 Section thesis:
@@ -271,7 +273,7 @@ function commitPrompt(L, stage, panel, i) {
   return `You are the COMMIT agent for the ${L.section} lane. The review panel ACCEPTED the change. Commit and push it.
 ${HARD_RULES(L)}
 
-SAFETY: first assert \`git -C "${L.wt}" rev-parse --abbrev-ref HEAD\` == "${L.branch}". If not, return committed=false with the error. NEVER run git without -C "${L.wt}".
+SAFETY: after \`cd "${L.wt}"\`, assert \`git rev-parse --abbrev-ref HEAD\` == "${L.branch}". If not, return committed=false with the error. NEVER run git before that cd.
 
 Write this commit message to "${msgPath}" (create dir with mkdir -p), then commit with it:
 
@@ -290,18 +292,18 @@ Verification:
 - Reforge: ${L.group} after = ${stage.sectionAfter}
 
 Then:
-  git -C "${L.wt}" add -A
-  git -C "${L.wt}" status --porcelain   (confirm ONLY intended ${L.section} source files are staged; nothing under local/ or other sections; if anything unexpected is staged, unstage it and fix before committing)
-  git -C "${L.wt}" commit -F "${msgPath}"
-  git -C "${L.wt}" push -u origin "${L.branch}"
-Return committed/sha/pushed. The sha is \`git -C "${L.wt}" rev-parse HEAD\`.`
+  git add -A
+  git status --porcelain   (confirm ONLY intended ${L.section} source files are staged; nothing under local/ or other sections; if anything unexpected is staged, unstage it and fix before committing)
+  git commit -F "${msgPath}"
+  git push -u origin "${L.branch}"
+Return committed/sha/pushed. The sha is \`git rev-parse HEAD\`.`
 }
 
 function prPrompt(L, accepted, rejected, thesis) {
   const bodyPath = `${scratch(L)}/pr-body.md`
   return `You are the PR agent for the ${L.section} lane. Open a DRAFT PR for branch ${L.branch} (already pushed) into main on the fork.
 ${HARD_RULES(L)}
-Confirm the branch is pushed and up to date: \`git -C "${L.wt}" status\`, \`git -C "${L.wt}" log --oneline origin/main..${L.branch}\`. If there are unpushed commits, push them: \`git -C "${L.wt}" push -u origin "${L.branch}"\`.
+Confirm the branch is pushed and up to date: \`git status\`, \`git log --oneline origin/main..${L.branch}\`. If there are unpushed commits, push them: \`git push -u origin "${L.branch}"\`.
 
 Write a PR body to "${bodyPath}" summarizing: the section thesis, each accepted commit (subject + concept deleted + Reforge target before->after + weighted value + panel verdict), cumulative ${L.group} score movement (origin/main baseline -> final), candidates rejected and why, and remaining high-value work not done. End the body with the standard footer line.
 

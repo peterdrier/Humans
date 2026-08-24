@@ -477,37 +477,6 @@ public sealed class UserRepositoryTests : IDisposable
     // ↔ googlemail) is in UserService and is tested there.
 
     // ==========================================================================
-    // PurgeAsync — deletes AspNetUserLogins (issue #661)
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task PurgeAsync_RemovesAspNetUserLoginsForUser()
-    {
-        var user = await SeedUserAsync();
-        var other = await SeedUserAsync();
-        AddLogin(user.Id, "Google", "fred-google-sub");
-        AddLogin(other.Id, "Google", "other-google-sub");
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var displayName = await _repo.PurgeAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        displayName.Should().NotBeNull();
-        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        remaining.Should().ContainSingle()
-            .Which.UserId.Should().Be(other.Id);
-    }
-
-    [HumansFact]
-    public async Task PurgeAsync_NoLogins_StillPurgesUser()
-    {
-        var user = await SeedUserAsync();
-
-        var displayName = await _repo.PurgeAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
-
-        displayName.Should().Be("Seeded User");
-    }
-
-    // ==========================================================================
     // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins (issue #661)
     // ==========================================================================
 

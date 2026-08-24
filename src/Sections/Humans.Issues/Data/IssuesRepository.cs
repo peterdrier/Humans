@@ -136,6 +136,40 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+
+        // Own issues go entirely — comments cascade off the issue FK.
+        var ownIssues = await db.Issues
+            .Where(i => i.ReporterUserId == userId)
+            .ToListAsync(ct);
+        db.Issues.RemoveRange(ownIssues);
+
+        var ownIssueIds = ownIssues.Select(i => i.Id).ToHashSet();
+
+        // Comments on other people's issues are that issue's content — detach the author.
+        var comments = await db.IssueComments
+            .Where(c => c.SenderUserId == userId)
+            .ToListAsync(ct);
+        foreach (var comment in comments.Where(c => !ownIssueIds.Contains(c.IssueId)))
+        {
+            db.Entry(comment).Property(nameof(IssueComment.SenderUserId)).CurrentValue = null;
+        }
+
+        var triaged = await db.Issues
+            .Where(i => i.AssigneeUserId == userId || i.ResolvedByUserId == userId)
+            .ToListAsync(ct);
+        foreach (var issue in triaged.Where(i => !ownIssueIds.Contains(i.Id)))
+        {
+            if (issue.AssigneeUserId == userId) issue.AssigneeUserId = null;
+            if (issue.ResolvedByUserId == userId) issue.ResolvedByUserId = null;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return ownIssueIds.ToList();
+    }
+
     public async Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default)
     {

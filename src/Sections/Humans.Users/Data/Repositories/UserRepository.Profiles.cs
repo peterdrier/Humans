@@ -157,6 +157,37 @@ internal sealed partial class UserRepository
     public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         AnonymizeProfileInternalAsync(userId, "Deleted", "User", ct);
 
+    public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var profile = await ctx.Profiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        if (profile is not null)
+        {
+            // Article 9 special-category data — health and diet. Not touched by the
+            // shared anonymization path because the merge fold must not drop them.
+            profile.DietaryPreference = null;
+            profile.Allergies = [];
+            profile.Intolerances = [];
+            profile.AllergyOtherText = null;
+            profile.IntoleranceOtherText = null;
+            profile.MedicalConditions = null;
+            profile.ConsentCheckNotes = null;
+            profile.RejectionReason = null;
+
+            // Bank details. Deletion-only for the same reason as above — the merge
+            // fold keeps the source IBAN so the surviving account can still be paid.
+            profile.Iban = null;
+
+            var languages = await ctx.ProfileLanguages
+                .Where(pl => pl.ProfileId == profile.Id)
+                .ToListAsync(ct);
+            ctx.ProfileLanguages.RemoveRange(languages);
+        }
+
+        return await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlySet<Guid>> SuspendManyAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)

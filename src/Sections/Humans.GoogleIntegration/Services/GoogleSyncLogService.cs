@@ -4,6 +4,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Domain;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
 namespace Humans.GoogleIntegration.Services;
@@ -13,6 +14,8 @@ internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
     ITeamResourceService teamResourceService,
     IUserServiceRead userService,
+    IUserEmailService userEmailService,
+    IServiceProvider serviceProvider,
     IClock clock,
     ILogger<GoogleSyncLogService> logger)
     : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
@@ -82,6 +85,51 @@ internal sealed class GoogleSyncLogService(
         var entries = await repo.GetAllByUserIdsContributorAsync(
             await UserIdsWithMergedSourcesAsync(userId, ct), ct);
         return [new UserDataSlice(GdprExportSections.GoogleSyncLog, await ToViewsAsync(entries, ct))];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.GoogleSyncLog] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// GDPR Article 17: suspends the human's @nobodies.team Workspace account —
+    /// the external processor holds their mail — then drops every sync-log row
+    /// that names them. The suspend runs first because it needs the address the
+    /// Users section is about to drop.
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var workspaceEmail = await userEmailService.GetNobodiesTeamEmailAsync(userId, ct);
+        if (workspaceEmail is not null)
+        {
+            // Resolved here, not injected: GoogleAdminService -> IGoogleSyncService ->
+            // IGoogleSyncLogService closes a constructor cycle back onto this class.
+            // Same lazy-resolve the section already uses in GoogleWorkspaceSyncService.
+            var googleAdminService = serviceProvider.GetRequiredService<IGoogleAdminService>();
+
+            // actorUserId = the human being erased: the deletion job acts on their request.
+            // omitEmailFromAudit: the audit log survives erasure, so it must not name them.
+            var result = await googleAdminService.SuspendAccountAsync(
+                workspaceEmail, userId, omitEmailFromAudit: true, ct);
+            if (!result.Success)
+            {
+                logger.LogError(
+                    "GDPR erasure could not suspend the Workspace account {Email} for user {UserId}: {Error}",
+                    workspaceEmail, userId, result.ErrorMessage);
+
+                // Abort rather than continue: the Users contributor runs last and drops
+                // the address, so a swallowed failure here is unretryable — the mailbox
+                // stays live at the processor with nothing left to resolve it from.
+                throw new InvalidOperationException(
+                    $"GDPR erasure could not suspend Workspace account {workspaceEmail}: {result.ErrorMessage}");
+            }
+        }
+
+        await repo.DeleteByUserIdsAsync(await UserIdsWithMergedSourcesAsync(userId, ct), ct);
     }
 
     /// <summary>Chain-follows merge tombstones so a merged human keeps their trail.</summary>

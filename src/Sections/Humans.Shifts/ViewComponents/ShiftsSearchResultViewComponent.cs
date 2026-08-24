@@ -20,6 +20,7 @@ public sealed class ShiftsSearchResultViewComponent(
     IShiftManagementServiceRead shifts,
     ITeamServiceRead teams) : ViewComponent
 {
+    /// <summary>Renders the row, or nothing when the rota no longer resolves.</summary>
     /// <param name="rotaId">The matched rota.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid rotaId)
     {

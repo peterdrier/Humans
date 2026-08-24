@@ -227,6 +227,7 @@ internal sealed class GoogleAdminService(
 
     public async Task<WorkspaceAccountActionResult> SuspendAccountAsync(
         string email, Guid actorUserId,
+        bool omitEmailFromAudit = false,
         CancellationToken ct = default)
     {
         try
@@ -238,7 +239,9 @@ internal sealed class GoogleAdminService(
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
-                $"Suspended @{NobodiesTeamDomain} account: {email}",
+                omitEmailFromAudit
+                    ? $"Suspended @{NobodiesTeamDomain} account under GDPR erasure"
+                    : $"Suspended @{NobodiesTeamDomain} account: {email}",
                 actorUserId);
 
             return new WorkspaceAccountActionResult(true,
