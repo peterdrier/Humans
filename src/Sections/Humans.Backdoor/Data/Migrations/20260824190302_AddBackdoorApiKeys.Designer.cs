@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Backdoor.Data.Migrations
 {
     [DbContext(typeof(BackdoorDbContext))]
-    [Migration("20260824150313_AddBackdoorApiKeys")]
+    [Migration("20260824190302_AddBackdoorApiKeys")]
     partial class AddBackdoorApiKeys
     {
         /// <inheritdoc />
@@ -35,7 +35,7 @@ namespace Humans.Backdoor.Data.Migrations
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedByUserId")
+                    b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("DisplayPrefix")

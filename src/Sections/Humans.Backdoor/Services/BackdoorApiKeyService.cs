@@ -188,7 +188,8 @@ internal sealed class BackdoorApiKeyService(
 
     /// <summary>
     /// Keys the person owned are hard-deleted — a machine credential has no basis to outlive
-    /// its owner — and they are detached as the revoker of anyone else's key.
+    /// its owner — and they are detached as the creator or revoker of anyone else's key, so
+    /// nothing of them survives on a row that is not theirs.
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.EraseForUserAsync(userId, ct);

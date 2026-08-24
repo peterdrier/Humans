@@ -22,7 +22,7 @@ namespace Humans.Backdoor.Data.Migrations
                     DisplayPrefix = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     Label = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
-                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     LastUsedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
                     RevokedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
                     RevokedByUserId = table.Column<Guid>(type: "uuid", nullable: true)

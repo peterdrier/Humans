@@ -31,7 +31,12 @@ internal sealed class BackdoorApiKey
 
     public Instant CreatedAt { get; set; }
 
-    public Guid CreatedByUserId { get; set; }
+    /// <summary>
+    /// The admin who allocated the key. Nullable so GDPR erasure can detach a deleted admin
+    /// from a key that still belongs to someone else — the same detach-don't-retain shape as
+    /// <see cref="RevokedByUserId"/>. Who issued what is separately in the audit log.
+    /// </summary>
+    public Guid? CreatedByUserId { get; set; }
 
     /// <summary>Stamped on every authenticated request, so dormant keys are visible.</summary>
     public Instant? LastUsedAt { get; set; }

@@ -83,7 +83,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - On revoke: an audit entry (`BackdoorApiKeyRevoked`) and `RevokedAt`/`RevokedByUserId` stamped.
 - On rotate: revoke of the old key, then issue of a replacement carrying the same owner and label — two audit entries.
 - On every successful authentication: `LastUsedAt` stamped on the key. A key whose owner is no longer eligible authenticates nothing and is not stamped.
-- On GDPR erasure: the human's keys are hard-deleted and they are detached as the revoker of anyone else's.
+- On GDPR erasure: the human's keys are hard-deleted, and they are detached as the creator or revoker of anyone else's — the row belongs to its owner, not to the admin who handled it.
 - On account merge: the eliminated account's keys, and its actor columns, fold onto the survivor.
 
 ## Cross-Section Dependencies
