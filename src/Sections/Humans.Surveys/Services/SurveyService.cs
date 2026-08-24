@@ -43,7 +43,7 @@ internal sealed class SurveyService(
     private const int MaxInformationImages = 5;
     private const long MaxInformationImageBytes = 10 * 1024 * 1024;
     private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
-        Instant.FromUnixTimeSeconds(0);
+        Instant.FromUtc(1970, 1, 1, 0, 0);
     private static readonly HashSet<string> AllowedInformationImageContentTypes =
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
     private static readonly HashSet<string> AllowedInformationImageExtensions =
@@ -356,11 +356,7 @@ internal sealed class SurveyService(
             .Except(alreadyInvited)
             .Except(completedPublicParticipants)
             .ToList();
-        var existingParticipation = participationRows
-            .GroupBy(invitation => invitation.UserId)
-            .ToDictionary(
-                group => group.Key,
-                group => group.OrderByDescending(invitation => invitation.CreatedAt).First());
+        var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
 
         var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
         var users = await userService.GetUserInfosAsync(netNew, ct);
@@ -378,17 +374,26 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            var inv = existingParticipation.TryGetValue(userId, out var existing)
-                ? existing
-                : await repo.GetOrCreateParticipationAsync(surveyId, userId, now, ct);
-
-            // The conditional update is the authority: a public completion or another wave may
-            // have changed this row after our detached snapshot.
-            if (!await repo.TryQueueInvitationAsync(inv.Id, now, ct))
+            SurveyInvitation inv;
+            if (existingParticipation.TryGetValue(userId, out var existing))
             {
-                continue;
+                inv = existing;
+                await repo.UpdateInvitationStatusAsync(
+                    inv.Id, EmailOutboxStatus.Queued, now, ct);
             }
-
+            else
+            {
+                inv = new SurveyInvitation
+                {
+                    Id = Guid.NewGuid(),
+                    SurveyId = surveyId,
+                    UserId = userId,
+                    SentAt = now,
+                    LatestEmailStatus = EmailOutboxStatus.Queued,
+                    CreatedAt = now,
+                };
+                await repo.AddInvitationAndSaveAsync(inv, ct);
+            }
             invitationsCreated++;
 
             var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
@@ -413,7 +418,7 @@ internal sealed class SurveyService(
                 logger.LogError(ex,
                     "Failed to enqueue survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
                     userId, inv.Id, surveyId);
-                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, ct);
+                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, ct);
                 failed++;
             }
         }
@@ -546,7 +551,7 @@ internal sealed class SurveyService(
             HasResumableDraft: draft is not null);
     }
 
-    public async Task<SurveyIdentifiedStart?> StartIdentifiedDraftAsync(
+    public async Task<Guid> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,
@@ -554,15 +559,32 @@ internal sealed class SurveyService(
         string culture,
         CancellationToken ct = default)
     {
+        // Idempotent: one in-progress Identified draft per Human, regardless of entry path.
+        var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
+        if (existing is not null)
+        {
+            return existing.Id;
+        }
+
+        var response = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            InvitationId = participationId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            InputMethod = inputMethod,
+            Culture = culture,
+            SubmittedAt = null,
+            Answers = [],
+        };
+
         // No audit log for individual response activity (privacy — Deviation #10).
-        var draft = await repo.GetOrCreateIdentifiedDraftAsync(
-            surveyId, participationId, userId, inputMethod, culture, ct);
-        return draft is null
-            ? null
-            : new SurveyIdentifiedStart(draft.Id, MapDraftAnswers(draft));
+        await repo.AddResponseAsync(response, ct);
+        return response.Id;
     }
 
-    public async Task<SurveyPublicStart> StartPublicTrackedResponseAsync(
+    public async Task<SurveyPublicStart?> StartPublicTrackedResponseAsync(
         Guid surveyId,
         Guid userId,
         ResponseAnonymity anonymity,
@@ -575,34 +597,27 @@ internal sealed class SurveyService(
                 "Only identified or completion-tracked public responses need a participation ledger.");
         }
 
-        var participation = anonymity == ResponseAnonymity.CompletionTracked
-            ? await repo.GetOrCreateCompletionTrackedParticipationAsync(
-                surveyId, userId, NonCorrelatablePublicParticipationCreatedAt, ct)
-            : await repo.GetOrCreateParticipationAsync(
-                surveyId, userId, clock.GetCurrentInstant(), ct);
+        var createdAt = anonymity == ResponseAnonymity.CompletionTracked
+            ? NonCorrelatablePublicParticipationCreatedAt
+            : clock.GetCurrentInstant();
+        var participation = await repo.GetOrCreateParticipationAsync(
+            surveyId, userId, createdAt, ct);
 
         if (participation.Completed)
         {
-            return new SurveyPublicStart(participation.Id, null, [], AlreadyCompleted: true);
+            return null;
         }
 
         Guid? draftResponseId = null;
         IReadOnlyList<SurveyDraftAnswer> draftAnswers = [];
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var identifiedStart = await StartIdentifiedDraftAsync(
+            var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
+            draftResponseId = await StartIdentifiedDraftAsync(
                 surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-            if (identifiedStart is null)
-            {
-                return new SurveyPublicStart(
-                    participation.Id, null, [], AlreadyCompleted: true);
-            }
-            draftResponseId = identifiedStart.DraftResponseId;
-            draftAnswers = identifiedStart.DraftAnswers;
+            draftAnswers = existingDraft is null ? [] : MapDraftAnswers(existingDraft);
         }
-
-        return new SurveyPublicStart(
-            participation.Id, draftResponseId, draftAnswers, AlreadyCompleted: false);
+        return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
     }
 
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
@@ -629,7 +644,7 @@ internal sealed class SurveyService(
     public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
         => repo.IncrementPublicStartedAsync(surveyId, ct);
 
-    public Task<bool> SaveDraftAnswersAsync(
+    public Task SaveDraftAnswersAsync(
         Guid draftResponseId,
         IReadOnlyList<SurveyAnswerInput> answers,
         SurveyInputMethod inputMethod,
@@ -638,7 +653,6 @@ internal sealed class SurveyService(
         => repo.SaveDraftAnswersAsync(
             draftResponseId,
             MapAnswers(draftResponseId, answers),
-            submittedAt: null,
             inputMethod,
             culture,
             ct);
@@ -646,19 +660,12 @@ internal sealed class SurveyService(
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
         var prepared = await PrepareSubmissionAsync(submission, ct);
-        if (prepared.AlreadyCompleted)
-        {
-            throw new InvalidOperationException("This invitation has already submitted a response.");
-        }
         if (prepared.MissingRequired.Count > 0)
         {
             throw new InvalidOperationException("Required survey questions are unanswered.");
         }
 
-        if (!await PersistResponseAsync(submission, prepared.VisibleAnswers, ct))
-        {
-            throw new InvalidOperationException("This tracked response has already been completed.");
-        }
+        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
     }
 
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
@@ -682,7 +689,7 @@ internal sealed class SurveyService(
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
             if (invitation?.Completed == true)
             {
-                return new SubmissionPreparation([], [], [], AlreadyCompleted: true);
+                throw new InvalidOperationException("This invitation has already submitted a response.");
             }
         }
 
@@ -704,7 +711,7 @@ internal sealed class SurveyService(
         return new SubmissionPreparation(visibleAnswers, questions, missingRequired);
     }
 
-    private async Task<bool> PersistResponseAsync(
+    private async Task PersistResponseAsync(
         SurveySubmission submission,
         IReadOnlyList<SurveyAnswerInput> visibleAnswers,
         CancellationToken ct)
@@ -714,52 +721,20 @@ internal sealed class SurveyService(
             case ResponseAnonymity.Identified:
                 {
                     var now = clock.GetCurrentInstant();
-                    var responseId = submission.DraftResponseId ?? Guid.NewGuid();
-                    var response = new SurveyResponse
-                    {
-                        Id = responseId,
-                        SurveyId = submission.SurveyId,
-                        InvitationId = submission.InvitationId,
-                        UserId = submission.UserId,
-                        Anonymity = ResponseAnonymity.Identified,
-                        InputMethod = submission.InputMethod,
-                        Culture = submission.Culture,
-                        SubmittedAt = now,
-                        Answers = MapAnswers(responseId, visibleAnswers),
-                    };
+                    var invitationId = submission.InvitationId
+                        ?? throw new InvalidOperationException("Identified responses require a participation identity.");
+                    var draftId = submission.DraftResponseId
+                        ?? throw new InvalidOperationException("Identified responses require an active draft.");
+                    await repo.FinalizeIdentifiedResponseAsync(
+                        invitationId,
+                        draftId,
+                        MapAnswers(draftId, visibleAnswers),
+                        now,
+                        submission.InputMethod,
+                        submission.Culture,
+                        ct);
 
-                    if (submission.InvitationId is { } invId)
-                    {
-                        var claimed = await repo.TryFinalizeIdentifiedResponseAsync(
-                            invId, submission.DraftResponseId, response, ct);
-                        if (!claimed)
-                        {
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        if (submission.DraftResponseId is { } draftId)
-                        {
-                            var saved = await repo.SaveDraftAnswersAsync(
-                                draftId,
-                                response.Answers.ToList(),
-                                submittedAt: now,
-                                submission.InputMethod,
-                                submission.Culture,
-                                ct);
-                            if (!saved)
-                            {
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-                        }
-                    }
-
-                    return true;
+                    break;
                 }
 
             case ResponseAnonymity.CompletionTracked:
@@ -778,21 +753,16 @@ internal sealed class SurveyService(
                         SubmittedAt = clock.GetCurrentInstant(),
                         Answers = MapAnswers(responseId, visibleAnswers),
                     };
-                    if (submission.InvitationId is not { } invId
-                        || submission.UserId is not { } userId)
-                    {
-                        throw new InvalidOperationException(
+                    var invitationId = submission.InvitationId
+                        ?? throw new InvalidOperationException(
                             "Completion-tracked responses require a participation identity.");
-                    }
+                    var userId = submission.UserId
+                        ?? throw new InvalidOperationException(
+                            "Completion-tracked responses require a participation identity.");
+                    await repo.FinalizeCompletionTrackedResponseAsync(
+                        invitationId, userId, response, ct);
 
-                    var claimed = await repo.TryFinalizeCompletionTrackedResponseAsync(
-                        invId, userId, response, ct);
-                    if (!claimed)
-                    {
-                        return false;
-                    }
-
-                    return true;
+                    break;
                 }
 
             case ResponseAnonymity.Anonymous:
@@ -813,7 +783,7 @@ internal sealed class SurveyService(
                     };
                     // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
                     await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-                    return true;
+                    break;
                 }
         }
     }
@@ -900,19 +870,12 @@ internal sealed class SurveyService(
         // Identified per-page autosave (replace-all; the draft stays in-progress) on either entry path.
         if (state.Anonymity == ResponseAnonymity.Identified && state.DraftResponseId is { } draftId)
         {
-            var saved = await SaveDraftAnswersAsync(
+            await SaveDraftAnswersAsync(
                 draftId,
                 SurveyWizardFlow.ToAnswerInputs(state.Answers),
                 state.InputMethod,
                 state.Culture,
                 ct);
-            if (!saved)
-            {
-                // Another tab completed this participation after the page loaded. Treat the losing
-                // wizard as complete: the controller clears its stale session and redirects to the
-                // same thank-you outcome without writing over the winning response.
-                return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
-            }
         }
 
         // Re-validate required-visible on this page; a Back navigation skips validation.
@@ -961,17 +924,13 @@ internal sealed class SurveyService(
         var submission = new SurveySubmission(
             state.SurveyId,
             state.InvitationId,
-            state.Anonymity == ResponseAnonymity.Anonymous ? null : state.UserId,
+            state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
             state.DraftResponseId,
             state.Anonymity,
             state.InputMethod,
             state.Culture,
             SurveyWizardFlow.ToAnswerInputs(state.Answers));
         var prepared = await PrepareSubmissionAsync(submission, ct);
-        if (prepared.AlreadyCompleted)
-        {
-            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
-        }
         if (prepared.MissingRequired.Count > 0)
         {
             ReplaceWizardAnswers(state, prepared.VisibleAnswers);
@@ -1453,8 +1412,7 @@ internal sealed class SurveyService(
     private sealed record SubmissionPreparation(
         IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
         IReadOnlyList<QuestionInput> Questions,
-        IReadOnlyList<Guid> MissingRequired,
-        bool AlreadyCompleted = false);
+        IReadOnlyList<Guid> MissingRequired);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer

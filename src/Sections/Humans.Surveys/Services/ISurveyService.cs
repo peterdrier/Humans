@@ -80,10 +80,9 @@ internal interface ISurveyService : IApplicationService
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
     /// Human. Identified is the only resumable tier. The participation id may name an emailed invitation
-    /// or an unsent public-link ledger row. Returns the exact draft and answer snapshot selected by
-    /// that operation, so callers never combine a draft id with answers from a separate lookup.
+    /// or an unsent public-link ledger row. Returns the draft response id.
     /// </summary>
-    Task<SurveyIdentifiedStart?> StartIdentifiedDraftAsync(
+    Task<Guid> StartIdentifiedDraftAsync(
         Guid surveyId,
         Guid participationId,
         Guid userId,
@@ -102,10 +101,10 @@ internal interface ISurveyService : IApplicationService
 
     /// <summary>
     /// Gets or creates the logged-in Human's per-survey participation ledger for a public-link
-    /// Identified/CompletionTracked start. Returns an existing completion instead of opening a second
-    /// tracked response. Identified additionally creates/resumes its draft.
+    /// Identified/CompletionTracked start. Returns null when that participation is already complete.
+    /// Identified additionally creates/resumes its draft.
     /// </summary>
-    Task<SurveyPublicStart> StartPublicTrackedResponseAsync(
+    Task<SurveyPublicStart?> StartPublicTrackedResponseAsync(
         Guid surveyId,
         Guid userId,
         ResponseAnonymity anonymity,
@@ -116,11 +115,11 @@ internal interface ISurveyService : IApplicationService
     Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>
-    /// Replaces the answers on an in-progress Identified draft (per-page autosave), together with
-    /// the active session's entry path and culture. Returns false if the draft is no longer active.
-    /// Branching is not re-applied here — final submit is authoritative.
+    /// Replaces the answers on an in-progress Identified draft (per-page autosave), together with the
+    /// current entry path and culture. The draft's <c>SubmittedAt</c> stays null. Branching is not
+    /// re-applied here — final submit is authoritative.
     /// </summary>
-    Task<bool> SaveDraftAnswersAsync(
+    Task SaveDraftAnswersAsync(
         Guid draftResponseId,
         IReadOnlyList<SurveyAnswerInput> answers,
         SurveyInputMethod inputMethod,
@@ -271,19 +270,12 @@ internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definitio
 
 /// <summary>
 /// The logged-in public-link start result. <c>ParticipationId</c> is the existing or newly-created
-/// survey/user ledger row; <c>DraftResponseId</c> is present only for Identified; an already-completed
-/// ledger redirects to the survey's thank-you page rather than opening another tracked response.
+/// survey/user ledger row; <c>DraftResponseId</c> is present only for Identified.
 /// <c>DraftAnswers</c> restores an existing Identified public draft into the wizard session.
 /// </summary>
 internal sealed record SurveyPublicStart(
     Guid ParticipationId,
     Guid? DraftResponseId,
-    IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
-    bool AlreadyCompleted);
-
-/// <summary>The exact Identified draft selected/created for a wizard start, with its answer snapshot.</summary>
-internal sealed record SurveyIdentifiedStart(
-    Guid DraftResponseId,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>

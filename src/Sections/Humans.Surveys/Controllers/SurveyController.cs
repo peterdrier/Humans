@@ -62,16 +62,22 @@ internal sealed class SurveyController(
             // Establish the wizard session from the resumable Identified draft and jump into the flow.
             var resumeState = BuildState(ctx, ResponseAnonymity.Identified, culture);
             resumeState.Started = true;
-            var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
+            resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
-            if (identifiedStart is null)
+            foreach (var a in ctx.DraftAnswers)
             {
-                return RedirectToAction("ThankYou", new { t });
+                resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
+                {
+                    SelectedOptionValues = a.SelectedOptionValues.ToList(),
+                    GridSelections = a.GridSelections?.ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToList(),
+                        StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
+                    TextValue = a.TextValue,
+                    RatingValue = a.RatingValue,
+                };
             }
-            resumeState.DraftResponseId = identifiedStart.DraftResponseId;
-            RestoreDraftAnswers(resumeState, identifiedStart.DraftAnswers);
-            await surveyService.MarkInvitationStartedAsync(ctx.InvitationId, ct);
 
             resumeState.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
                 editable.Questions, SurveyWizardFlow.ToAnswerStates(resumeState.Answers)) ?? 0;
@@ -119,15 +125,9 @@ internal sealed class SurveyController(
 
         if (anonymity == ResponseAnonymity.Identified)
         {
-            var identifiedStart = await surveyService.StartIdentifiedDraftAsync(
+            state.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
-            if (identifiedStart is null)
-            {
-                return RedirectToAction("ThankYou", new { t = model.Token });
-            }
-            state.DraftResponseId = identifiedStart.DraftResponseId;
-            RestoreDraftAnswers(state, identifiedStart.DraftAnswers);
         }
 
         // First advance past the intro flips the invitation's funnel Started flag (all invited tiers).
@@ -139,25 +139,6 @@ internal sealed class SurveyController(
 
         SurveyWizardSession.Save(HttpContext.Session, model.Token, state);
         return RedirectToAction("Page", new { t = model.Token });
-    }
-
-    private static void RestoreDraftAnswers(
-        SurveyWizardState state,
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers)
-    {
-        foreach (var answer in draftAnswers)
-        {
-            state.Answers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
-            {
-                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
-                GridSelections = answer.GridSelections?.ToDictionary(
-                    pair => pair.Key,
-                    pair => pair.Value.ToList(),
-                    StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
-                TextValue = answer.TextValue,
-                RatingValue = answer.RatingValue,
-            };
-        }
     }
 
     [HttpGet("Answer/Page")]
@@ -244,7 +225,7 @@ internal sealed class SurveyController(
         {
             var tracked = await surveyService.StartPublicTrackedResponseAsync(
                 ctx.SurveyId, userId!.Value, resolvedAnonymity, resolvedCulture, ct);
-            if (tracked.AlreadyCompleted)
+            if (tracked is null)
             {
                 return RedirectToAction("PublicThankYou", new { slug });
             }
@@ -402,37 +383,7 @@ internal sealed class SurveyController(
         if (visible.Count == 0)
         {
             var next = SurveyWizardFlow.NextVisiblePage(editable.Questions, state.CurrentPage, answerStates);
-            if (next is null)
-            {
-                // A survey may legitimately have no questions (or an edit may leave no visible
-                // page). Complete through the same service boundary instead of showing thank-you
-                // while leaving tracked participation/drafts unfinished.
-                var terminal = await surveyService.AdvanceWizardAsync(
-                    state, state.CurrentPage, back: false, [], ct);
-                if (terminal.Outcome == SurveyWizardOutcome.Submitted)
-                {
-                    route.Clear(HttpContext.Session);
-                    return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
-                }
-
-                if (terminal.Outcome == SurveyWizardOutcome.NotFound)
-                {
-                    return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
-                }
-
-                if (terminal.Outcome == SurveyWizardOutcome.ValidationFailed)
-                {
-                    foreach (var id in terminal.MissingRequired)
-                    {
-                        ModelState.AddModelError(id.ToString(), localizer["Survey_QuestionRequired"]);
-                    }
-
-                    route.Save(HttpContext.Session, state);
-                    return await RenderPage(state, route, ct);
-                }
-
-                return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
-            }
+            if (next is null) return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
             state.CurrentPage = next.Value;
             route.Save(HttpContext.Session, state);
             visible = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, state.CurrentPage, answerStates);

@@ -13,5 +13,5 @@ internal sealed class SurveyInvitation
     public Instant? ReminderSentAt { get; set; }
     public bool Completed { get; set; }   // flag only — NO completion timestamp (a precise time would correlate with an anon/completion-tracked response's SubmittedAt and unmask)
     public bool Started { get; set; }     // funnel "started" — set on first advance past intro; bool only, no timestamp
-    public Instant CreatedAt { get; set; }
+    public Instant CreatedAt { get; init; }
 }

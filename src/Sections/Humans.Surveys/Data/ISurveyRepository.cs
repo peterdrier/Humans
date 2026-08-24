@@ -50,19 +50,15 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>All invitations for a survey (for the admin Send status list). No display ordering — caller sorts. Read-only.</summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
+    Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
+
     /// <summary>
     /// Gets or creates the one per-survey/user participation row. The unique database index is the
     /// authority when concurrent public-start requests race.
     /// </summary>
     Task<SurveyInvitation> GetOrCreateParticipationAsync(
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets or creates a public CompletionTracked participation row, replacing <c>CreatedAt</c>
-    /// with a shared non-correlatable sentinel while the row remains unsent.
-    /// </summary>
-    Task<SurveyInvitation> GetOrCreateCompletionTrackedParticipationAsync(
-        Guid surveyId, Guid userId, Instant nonCorrelatableCreatedAt, CancellationToken ct = default);
 
     /// <summary>
     /// Invitations due for the one-time 7-day reminder: their survey is <c>Open</c>, not yet
@@ -75,14 +71,11 @@ internal partial interface ISurveyRepository : IRepository
     Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomically upgrades an unsent, incomplete participation row into a queued emailed invitation.
-    /// Returns false if the row is gone, already sent, or completed, so a racing completion/wave
-    /// cannot send a duplicate or already-spent token.
+    /// Sets an invitation's <c>LatestEmailStatus</c>. A first <c>Queued</c> transition also stamps
+    /// <c>SentAt</c>, upgrading a public-link participation row into an emailed invitation.
+    /// No-op if the invitation does not exist.
     /// </summary>
-    Task<bool> TryQueueInvitationAsync(Guid id, Instant at, CancellationToken ct = default);
-
-    /// <summary>Sets an invitation's latest email status. No-op if the invitation does not exist.</summary>
-    Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, CancellationToken ct = default);
+    Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
 
     // ── Answering (wizard entry) ────────────────────────────────────────────
     /// <summary>A single invitation by id, or null if it does not exist. Read-only.</summary>
@@ -97,58 +90,47 @@ internal partial interface ISurveyRepository : IRepository
     /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets or creates the Human's Identified draft while locking the shared participation row.
-    /// Returns null if completion already won. The returned response includes the authoritative
-    /// answer snapshot selected by this operation.
-    /// </summary>
-    Task<SurveyResponse?> GetOrCreateIdentifiedDraftAsync(
-        Guid surveyId,
-        Guid participationId,
-        Guid userId,
-        SurveyInputMethod inputMethod,
-        string culture,
-        CancellationToken ct = default);
+    /// <summary>Inserts a response row and saves.</summary>
+    Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
 
     // ── Answering (submit) ──────────────────────────────────────────────────
     /// <summary>
-    /// Replaces an in-progress draft's answers with <paramref name="answers"/> and stamps the
-    /// submitting session's entry path and culture. When <paramref name="submittedAt"/> is non-null
-    /// it also finalises the Identified response. Returns false if the draft is gone or already final.
+    /// Replaces a draft response's answers with <paramref name="answers"/> (load tracked, remove
+    /// existing, add new), stamps the current entry path and culture, and saves. No-op if the response
+    /// has already been submitted.
     /// </summary>
-    Task<bool> SaveDraftAnswersAsync(
+    Task SaveDraftAnswersAsync(
         Guid draftResponseId,
         IReadOnlyList<SurveyAnswer> answers,
-        Instant? submittedAt,
         SurveyInputMethod inputMethod,
         string culture,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Atomically claims an incomplete participation row and persists its Identified response. When
-    /// <paramref name="draftResponseId"/> is present, that exact active draft is finalised; otherwise
-    /// <paramref name="response"/> is inserted. Returns false when the participation or draft lost a
-    /// concurrent representation-completion race.
-    /// </summary>
-    Task<bool> TryFinalizeIdentifiedResponseAsync(
-        Guid invitationId,
-        Guid? draftResponseId,
-        SurveyResponse response,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Atomically claims an incomplete participation row, inserts an unlinkable CompletionTracked
-    /// response, and retires any active Identified draft for the same Human. Returns false when
-    /// another representation already claimed completion.
-    /// </summary>
-    Task<bool> TryFinalizeCompletionTrackedResponseAsync(
-        Guid invitationId,
-        Guid userId,
-        SurveyResponse response,
         CancellationToken ct = default);
 
     /// <summary>Inserts a response together with its answer graph and saves (CompletionTracked/Anonymous final submit).</summary>
     Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);
+
+    /// <summary>
+    /// Finalises an Identified draft and marks its participation complete in one save. No-op if the
+    /// participation is already complete.
+    /// </summary>
+    Task FinalizeIdentifiedResponseAsync(
+        Guid invitationId,
+        Guid draftResponseId,
+        IReadOnlyList<SurveyAnswer> answers,
+        Instant submittedAt,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stores an unlinkable CompletionTracked response, retires any Identified draft, and marks the
+    /// participation complete in one save. No-op if the participation is already complete.
+    /// </summary>
+    Task FinalizeCompletionTrackedResponseAsync(
+        Guid invitationId,
+        Guid userId,
+        SurveyResponse response,
+        CancellationToken ct = default);
 
     /// <summary>Sets an invitation's <c>Started</c> flag (no timestamp). No-op if the invitation is gone.</summary>
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
