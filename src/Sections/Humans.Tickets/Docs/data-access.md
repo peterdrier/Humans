@@ -52,17 +52,23 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 | Table | R/W |
 |-------|-----|
-| TicketOrders | R |
-| TicketAttendees | R |
+| TicketOrders | R/W (W: GDPR Art. 17 erasure tombstones `BuyerName`/`BuyerEmail`) |
+| TicketAttendees | R/W (W: GDPR Art. 17 erasure tombstones `AttendeeName`/`AttendeeEmail`) |
 | TicketSyncStates | R |
-| TicketTransferRequests | R (approved transfers joined into the orders projection — void attendees carry recipient/decided-at) |
+| TicketTransferRequests | R/W (R: approved transfers joined into the orders projection — void attendees carry recipient/decided-at; W: GDPR erasure scrubs receiver name/email + free-text reason/notes, via `ITicketTransferRepository.ErasePiiForUserAsync`) |
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetService`, `ICampaignServiceRead` (read-split surface), `IUserService`,
-`IUserEmailService`, `ITeamServiceRead` (read-split surface),
-`IShiftManagementService`, plus `IClock`. Implements `IUserDataContributor`
-(the GDPR contributor is the inner, one per section).
+`IBudgetServiceRead`, `ICampaignServiceRead` (read-split surface), `IUserServiceRead`,
+`IUserService`, `IUserEmailService`, `ITeamServiceRead` (read-split surface),
+`IShiftManagementService`, `IBurnSettingsService`, plus `IClock`. Implements
+`IUserDataContributor` (the GDPR contributor is the inner, one per section):
+`EraseForUserAsync` erases via `ITicketRepository.EraseUserPiiAsync` +
+`ITicketTransferRepository.ErasePiiForUserAsync` (order/attendee/transfer rows
+stay as sales/chain-of-custody records — Código de Comercio Art. 30, Ley
+58/2003 Art. 66, GDPR Art. 17(3)(b) — only identifiers are tombstoned), then
+calls `ITicketCacheInvalidator.InvalidateAll()` since the warmed `Tickets.Orders`
+projection carries the now-stale names/emails.
 
 `ComputeUserTicketCountAsync` matches a user's tickets by fetching the
 user's verified emails (`IUserEmailService.GetVerifiedEmailsForUserAsync`)
@@ -178,6 +184,20 @@ orchestration over `IUserServiceRead`, `IShiftManagementService`,
 
 `TicketAttendeeOwnership` is a stateless helper (current-owner predicate),
 no DI dependencies.
+
+### GateTerminalAccountSeeder (Scoped)
+
+No repository, no `IApplicationService`-derived interface (plain class, not
+part of the verifier's service inventory). Provisions and manages the shared
+gate-terminal account (`SystemUserIds.GateTerminal` — a real `User` row, not
+a person) the first time a ticket admin sets its password from
+`/Tickets/Admin/Gate`. `[CrossSectionWrite]`-marked: creates the Identity
+user via `UserManager<User>`, saves its profile through Users' canonical
+`IProfileEditorService.SaveProfileAsync`, clears its consent check via
+`IUserService.ApplyProfileOnboardingMutationAsync`, invalidates user-access
+cache and `IUserInfoInvalidator`, and logs via `IAuditLogService`. No direct
+DB or cache access of its own — every mutation goes through another
+section's public service surface.
 
 ### TicketVendorGateway (Scoped)
 

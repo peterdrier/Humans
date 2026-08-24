@@ -283,6 +283,29 @@ caller, pinned by HUM0005), `IMagicLinkService`
 (`FindUserByVerifiedEmailAsync`), and `IClock`. No direct DB access, no
 `IMemoryCache`. Implements `IExternalLoginService`.
 
+### UserNameSyncService (Scoped)
+
+Repository: `IUserRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Users | R |
+| Profiles | R/W (re-persists the Profile row to run the User↔Profile dual-write sync) |
+
+Operator-driven BurnerName/legal-name backfill: finds `User`/`Profile`
+pairs where the User row is missing a name the Profile carries, then
+re-saves the Profile through the normal dual-write path. Cross-section
+calls via `IUserService` (`GetAllUserInfosAsync`, for email display only).
+No `IMemoryCache`.
+
+### UsersAudienceService (Scoped)
+
+No repository. Pure read orchestration over `IUserService`
+(`GetAllUserInfosAsync`) and Tickets' `ITicketServiceRead`
+(`GetTicketOrdersAsync`) to segment accounts by profile-completion /
+ticket-purchase status for the admin audience dashboard. No direct DB
+access, no cache.
+
 ---
 
 

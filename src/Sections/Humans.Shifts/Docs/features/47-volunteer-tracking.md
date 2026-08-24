@@ -127,6 +127,11 @@ All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackin
 
 An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator download the tracking data as `.xlsx`, filtered by department, period (Build/Event/Strike, with a Build sub-period breakdown), or an explicit date range. `VolunteerTrackingController.ExportXlsx` resolves the requested range and hands it to `IVolunteerTrackingExportService` → `VolunteerTrackingXlsxBuilder`.
 
+### Profile embed — single-volunteer strip
+
+<!-- wheat: docs/superpowers/specs/2026-05-27-coordinator-availability-on-profile-design.md -->
+`VolunteerBuildStripViewComponent` (`Humans.Shifts.Contracts`) renders one volunteer's row of `_VolunteerHeatmap.cshtml` as `<vc:volunteer-build-strip user-id="…">` on `/Profile/{id}` — gated by the same coordinator check as `<vc:shift-signups>` (`!IsOwnProfile && CanViewShiftSignups`); never shown on a human's own profile. `HeatmapPartialModel.ShowAvailabilityControls` distinguishes the two hosts: `true` on the profile (adds a Mark/Unmark-available popover toggle driven by a per-cell `DeclaredAvailable` flag, orthogonal to `VolunteerCellState`), `false` on the tracking page (cohort heatmap unchanged).
+
 ## Routes
 
 | Route | Method | Auth | Purpose |

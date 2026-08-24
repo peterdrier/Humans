@@ -122,6 +122,8 @@ graph LR
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
+    GSyncHistMig[GoogleSyncHistoryMigrationService]:::google
+    GSyncLog[GoogleSyncLogService]:::google
 
     Onboard[OnboardingService]:::onboarding
     OnboardWidget[OnboardingWidgetState]:::onboarding
@@ -140,6 +142,7 @@ graph LR
     Merge[AccountMergeService]:::users
     DupAcct[DuplicateAccountService]:::users
     ExtLogin[ExternalLoginService]:::users
+    UsersAudience[UsersAudienceService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
     MagicLink[MagicLinkService]:::auth
@@ -170,7 +173,8 @@ graph LR
     EarlyEntry[EarlyEntryService]:::earlyentry
     Gate[GateService]:::gate
     Survey[SurveyService]:::surveys
-    SettingsSvc[Settings Service]:::settings
+    SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
+    SettingsSvc[SettingsWriteService]:::settings
     SettingsCarry[EventSettingsCarryService]:::settings
     Guide[GuideRoleResolver]:::guide
 
@@ -506,6 +510,22 @@ graph LR
     %% Guide
     Guide --> Team
 
+    %% GoogleIntegration → AuditLog / Users
+    GSyncHistMig --> Audit
+    GSyncLog --> User
+    GSyncLog --> UEmail
+
+    %% Settings → Shifts
+    SettingsSvc --> BurnSettings
+
+    %% Surveys → Users / Email
+    SurveyPrevEmail --> User
+    SurveyPrevEmail --> UEmail
+    SurveyPrevEmail --> Email
+
+    %% Users → Tickets
+    UsersAudience --> TicketQ
+
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles
     %% ═══════════════════════════════════
@@ -530,9 +550,9 @@ graph LR
     GSyncSvc -. "lazy" .-> TRes
 
     %% ── Edge styling ──
-    %% Lazy edges colored + thickened. Eager count: 269 (indices 0..268);
-    %% the 18 lazy edges are indices 269..286. Recompute whenever edges change.
-    linkStyle 269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286 stroke:#f97316,stroke-width:2.5px
+    %% Lazy edges colored + thickened. Eager count: 279 (indices 0..278);
+    %% the 18 lazy edges are indices 279..296. Recompute whenever edges change.
+    linkStyle 279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Services with no cross-section edges
@@ -543,7 +563,8 @@ interfaces / infra connectors, which this graph doesn't chart):
 `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentAnthropicBalanceProvider`,
 `GdprExportService` (fans `IUserDataContributor`), `GoogleWorkspaceUserService`,
 `SyncSettingsService`, `GuideContentService`, `MailerLiteService`, `StripeService`,
-`TicketVendorService`.
+`TicketVendorService`, `EmailPreviewService` (only dep is Email's own `IEmailBodyComposer`),
+`UserNameSyncService` (only deps are Users' own `IUserRepository` and `IUserService`).
 
 ## Cycles broken by lazy-resolution
 

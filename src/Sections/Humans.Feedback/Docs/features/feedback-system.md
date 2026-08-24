@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
-  src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
+  src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Feedback entities, controller routes, API surface, or status transitions may have changed; verify the auth matrix and routes table. The section is retired — if any change reintroduces a creation path or a reporter-facing view, this spec is wrong.
@@ -161,7 +161,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, supplied by `AdminNavTree` via `PillCounts.FeedbackQueue`, plus the `/Admin` dashboard tile — both `AdminOnly`. `NavBadgesViewComponent` does **not** serve this: it has no `feedback` queue and returns zero for that value
+- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, contributed via `SectionAdminNav.PillCounts.FeedbackQueue` and rendered by `AdminSidebarViewComponent` (which composes every section's `ISectionAdminNav`), plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`. There is no more central `NavBadgesViewComponent`; nav badges are now a per-section contribution, not a hard-coded Shell component
 - **All authenticated users:** nothing. The "My Feedback" profile-dropdown link was removed
 - **Floating button:** removed from the Help widget; the widget's remaining report action is "Create issue"
 
@@ -169,5 +169,5 @@ Since #977:
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
 - Audit log (`AuditLogEntry`) — tracks status changes
-- `AdminNavTree` / `PillCounts.FeedbackQueue` — renders the actionable count on the admin sidebar item. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
+- `SectionAdminNav` / `PillCounts.FeedbackQueue` — Feedback's contribution to the admin sidebar item, rendered by `AdminSidebarViewComponent`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`

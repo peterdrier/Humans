@@ -10,7 +10,7 @@ what's overdue.
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-07-30 | 2026-08-06 | Weekly | — | `dotnet list package --vulnerable`. 2026-07-30: 8 advisories fixed after a 4-week gap that turned CI red repo-wide. |
-| Freshness sweep (diff) | 2026-08-18 | 2026-08-19 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. |
+| Freshness sweep (diff) | 2026-08-24 | 2026-08-25 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-08-24: 6-day anchor gap, whole marked corpus dirty; `authorization-inventory.sh` had been silently exiting 2 (dead `Humans.Web/Authorization/Requirements/` + `pipefail`) and had stopped verifying entirely. |
 | Section doctor | 2026-08-17 | — | 1–2×/day | — | `/section-doctor` — frozen row (nobodies-collective/Humans#1069); each run writes `docs/health/runs/<date>-<Section>.md`. |
 | Debt sweep | 2026-06-14 | 2026-06-15 | Daily | — | `/debt-sweep` — ledger `docs/architecture/debt-ledger.yml`, report `docs/debt/last-report.md`. Last: PR #1010. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |

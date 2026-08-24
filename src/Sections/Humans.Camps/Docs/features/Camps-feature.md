@@ -420,10 +420,11 @@ Transitions:
 - Pending → Rejected (admin rejects)
 - Pending → Withdrawn (lead withdraws)
 - Active → Withdrawn (lead withdraws)
+- Active → Full (lead or CampAdmin marks full via `MarkFull`)
 - Full → Active (CampAdmin reactivates)
 - Withdrawn → Pending (lead or CampAdmin rejoins; requires re-approval)
 
-Note: nothing in the app currently transitions a season *into* `Full` — `SetSeasonFullAsync` was dropped as a zero-caller dead method (commit b4710bf01, 2026-05-03). `Full` still exists as a readable/reactivatable status (for seasons that reached it before the method was removed, or set directly), but there is no in-app "mark full" action today. This is a **known gap, not an intended retirement** — a reachable `Full` is an intended requirement; see nobodies-collective/Humans#1070.
+Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.SetSeasonStatusAsync` → `CampSeason.SetStatus`, a plain field flip with no transition validation).
 
 ## Authorization
 
@@ -461,6 +462,7 @@ Note: nothing in the app currently transitions a season *into* `Full` — `SetSe
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
 | `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
+| `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampAdmin marks an Active season Full |
 | `POST /Camps/{slug}/Rejoin/{seasonId}` | Lead or CampAdmin rejoins a Withdrawn season (back to Pending) |
 | `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
 | `POST /Camps/{slug}/HistoricalNames/Remove/{nameId}` | Remove a historical name |

@@ -118,6 +118,11 @@ repair_line() {
 repaired=0
 unresolved=0
 declare -A dirty_docs
+# Seed and unset so the array is *declared with storage* — on Bash < 4.4 an
+# associative array that never held a key expands as unbound under `set -u`,
+# crashing the clean case (zero unresolved triggers) with no SUMMARY line.
+dirty_docs["__seed__"]=1
+unset "dirty_docs[__seed__]"
 
 for f in $(editorial_docs); do
   triggers=$(doc_trigger_lines "$f")
@@ -141,9 +146,24 @@ for f in $(editorial_docs); do
   done <<< "$triggers"
 done
 
-echo "SUMMARY repaired=$repaired unresolved=$unresolved docs_forced_dirty=${#dirty_docs[@]}"
-for d in "${!dirty_docs[@]}"; do
-  echo "FORCE-DIRTY $d"
-done
+# `${#dirty_docs[@]}` / `${!dirty_docs[@]}` on an associative array that never had a
+# key assigned is an unbound-variable error under `set -u` in Bash < 4.4 (Git Bash on
+# Windows ships one). So the clean case — zero unresolved triggers, the state every
+# sweep is working toward — crashed instead of printing SUMMARY, exactly when the
+# script has nothing to report. `${x[@]:-}` makes the empty expansion safe.
+forced=0
+forced_list=""
+if [ ${#dirty_docs[@]} -gt 0 ] 2>/dev/null; then
+  forced=${#dirty_docs[@]}
+  forced_list=$(printf '%s
+' "${!dirty_docs[@]}")
+fi
+echo "SUMMARY repaired=$repaired unresolved=$unresolved docs_forced_dirty=$forced"
+if [ -n "$forced_list" ]; then
+  while IFS= read -r d; do
+    [ -z "$d" ] && continue
+    echo "FORCE-DIRTY $d"
+  done <<< "$forced_list"
+fi
 
 exit 0

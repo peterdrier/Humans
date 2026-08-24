@@ -235,30 +235,43 @@ public interface IGoogleGroupSync
 
 ### SyncAction Enum
 ```
-Preview       = 0  // Compute diff only, make no changes
-AddOnly       = 1  // Compute diff and execute adds only
-AddAndRemove  = 2  // Compute diff and execute adds + removes
+Preview  = 0  // Compute diff only, make no changes
+Execute  = 1  // Compute diff and apply — adds/removes gated by the per-service SyncMode
 ```
 
-Used as a parameter in sync methods (not persisted). The reconciliation job maps its persisted `SyncMode` setting to the appropriate `SyncAction` at runtime.
+Used as a parameter in sync methods (not persisted). Both scheduled jobs and manual Admin UI actions pass `SyncAction.Execute`; the persisted `SyncMode` (`None` / `AddOnly` / `AddAndRemove`) is checked inside the sync methods at execution time to decide which mutations, if any, actually run.
 
 ### SyncPreviewResult / ResourceSyncDiff
 ```csharp
 public class ResourceSyncDiff
 {
     public Guid ResourceId { get; init; }
-    public string ResourceName, ResourceType, TeamName, GoogleId, Url, ErrorMessage;
-    public List<string> MembersToAdd { get; init; } = [];
-    public List<string> MembersToRemove { get; init; } = [];
-    public bool IsInSync => MembersToAdd.Count == 0 && MembersToRemove.Count == 0 && ErrorMessage == null;
+    public string ResourceName, ResourceType { get; init; } = string.Empty;
+    public string? GoogleId, Url, ErrorMessage, PermissionLevel { get; init; }
+    public List<TeamLink> LinkedTeams { get; init; } = [];   // all teams linking this resource
+    public List<MemberSyncStatus> Members { get; init; } = [];
+
+    // Convenience properties, derived from Members
+    public List<string> MembersToAdd => Members.Where(m => m.State == MemberSyncState.Missing).Select(m => m.Email).ToList();
+    public List<string> MembersToRemove => Members.Where(m => m.State == MemberSyncState.Extra).Select(m => m.Email).ToList();
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole) && ErrorMessage is null;
 }
+
+public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
+
+public record MemberSyncStatus(
+    string Email, string DisplayName, MemberSyncState State, List<TeamLink> TeamLinks,
+    string? CurrentRole = null, string? ExpectedRole = null, Guid? UserId = null, string? ProfilePictureUrl = null);
+
+public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole }
 
 public class SyncPreviewResult
 {
     public List<ResourceSyncDiff> Diffs { get; init; } = [];
     public int TotalResources => Diffs.Count;
     public int InSyncCount => Diffs.Count(d => d.IsInSync);
-    public int DriftCount => Diffs.Count(d => !d.IsInSync);
+    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage is null);
+    public int ErrorCount => Diffs.Count(d => d.ErrorMessage is not null);
 }
 ```
 
@@ -541,8 +554,9 @@ Stub vs. real implementation is selected automatically based on whether `GoogleW
 ```
 Schedule: 3:00 AM daily (mode-gated via SyncSettings)
 Purpose: Full reconciliation of all Google resources with DB state
-Process: Reads SyncMode per service from sync_service_settings, then calls
-         SyncResourcesByTypeAsync with the appropriate SyncAction
+Process: Calls SyncResourcesByTypeAsync / ReconcileAllAsync with SyncAction.Execute
+         for every service; each service checks its own persisted SyncMode
+         internally to decide whether adds/removes actually apply
 ```
 
 **Mode-gated behavior:**

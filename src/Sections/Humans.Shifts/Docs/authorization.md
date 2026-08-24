@@ -19,3 +19,9 @@
 | `ShiftProfileController` (`[Route("Profile")]`) | Class | `[Authorize]` (authenticated) | — (`Me/ShiftInfo` GET/POST, the self-service shift-info panel embedded on the profile page) |
 
 `EarlyEntryRosterController` lives in `Humans.EarlyEntry` — see that section's authorization doc.
+
+## Resource-Based Authorization Handler
+
+| Handler | Requirement | Resource | Path |
+|---|---|---|---|
+| `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | none (role + coordinator-team-ids claims check) | `Authorization/IsAnyTeamManagerOrCoordinatorHandler.cs` (registered in the section's own `Section.cs` DI; backs `PolicyNames.ShiftDepartmentManager`) |

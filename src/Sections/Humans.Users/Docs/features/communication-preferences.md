@@ -2,7 +2,7 @@
   src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
-  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users/Domain/CommunicationPreference.cs
   src/Sections/Humans.Users/Data/Configurations/CommunicationPreferenceConfiguration.cs
 -->
 <!-- freshness:flag-on-change

@@ -3,7 +3,7 @@
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
-  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Sections/Humans.Governance.Contracts/MembershipStatusLabels.cs
   src/Sections/Humans.Governance/Services/TermExpiryCalculator.cs

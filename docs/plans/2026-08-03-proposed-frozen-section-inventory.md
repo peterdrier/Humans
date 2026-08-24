@@ -94,7 +94,7 @@ model), Platform (config bucket, dissolved).
    Gdpr, Search (the G0 first-audit checklist item's scope caveat tracks this).~~
    **Done 2026-08-05** — all five scorecards live in
    [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/) and the section tracker in
-   [`2026-06-13-q3-transition-plan.md`](2026-06-13-q3-transition-plan.md) links them.
+   the Q3 transition plan (historical, deleted) linked them.
    Their own gap lists carry what each audit found; don't requeue the audits here.
 3. `docs/sections/` file renames: `LegalAndConsent.md` → `Consent.md`,
    `Survey.md` → `Surveys.md` (+ link sweeps).

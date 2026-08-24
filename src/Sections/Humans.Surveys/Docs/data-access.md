@@ -54,6 +54,17 @@ A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
 column) resolves from the cached `UserInfo.LastLoginAt` via the existing
 `IUserServiceRead` fan-out.
 
+### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
+
+No repository, no `IMemoryCache`. Orchestrator (`IOrchestrator`) — sends a
+side-effect-free survey invitation preview to the requesting Board/Admin
+user, reusing the production invitation template/transport but creating no
+invitation, response, or funnel row. Calls `ISurveyService` (own section,
+for the survey content), `IUserEmailService` / `IUserServiceRead` (Users),
+`IEmailService` / `IEmailMessageFactory` / `IEmailPreviewServiceRead` (Email
+— all via public service interfaces), plus `SurveyPreviewTokenProvider`
+(local, HMAC preview tokens).
+
 ### SurveyBranchingEvaluator / SurveyWizardFlow
 
 Pure static helpers — no DI dependencies, no DB access. `SurveyBranchingEvaluator`

@@ -3,7 +3,7 @@
 #
 # Two-way check:
 #   1. Every leading-4-hex GUID block found in
-#      src/Humans.Domain/Constants/ + src/Humans.Infrastructure/Data/Configurations/
+#      src/Humans.Base/Constants/ + src/Sections/*/Data/
 #      must appear as a row in the "Current Reservations" table.
 #   2. Every block listed in the doc must either correspond to a source block
 #      OR be the documented "0000" sentinel (which is intentionally
@@ -20,8 +20,8 @@ fi
 
 # Source blocks: every distinct leading-4-hex segment of `00000000-0000-0000-XXXX-...`
 SRC_BLOCKS=$(grep -rEho '"00000000-0000-0000-([0-9a-fA-F]{4})-' \
-    src/Humans.Domain/Constants/ \
-    src/Humans.Infrastructure/Data/Configurations/ 2>/dev/null \
+    src/Humans.Base/Constants/ \
+    src/Sections/*/Data/ 2>/dev/null \
   | sed -E 's/.*-([0-9a-fA-F]{4})-$/\1/' \
   | sort -u)
 

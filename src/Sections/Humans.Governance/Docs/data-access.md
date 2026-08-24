@@ -40,6 +40,21 @@ Cross-section calls via `IUserService`, `IRoleAssignmentService`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 `IEmailMessageFactory`. Implements `IApplicationDecisionService` (which
 extends `IApplicationServiceRead`), `IUserDataContributor`, `IUserMerge`.
+`EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
+which clears the applicant's own free text (motivation, additional info,
+contribution, role understanding) and reviewer prose on `Applications` and
+`ApplicationStateHistories`, plus notes on `BoardVotes` the user cast as a
+Board member — the tier/status/date skeleton stays (Ley Orgánica 1/2002
+Art. 14, GDPR Art. 17(3)(b)).
+
+### GovernanceMetricsService (Hosted, `PolledGaugeService`)
+
+No repository, no cache, not part of the `IApplicationService` inventory
+(a `System.Diagnostics.Metrics` gauge publisher, not a section service).
+Polls `IMembershipCalculatorRead`, `IApplicationServiceRead`,
+`IUserServiceRead` on a timer to publish `humans.asociados`,
+`humans.applications_pending`, `humans.pending_consents`,
+`humans.consent_deadline_approaching`.
 
 ### MembershipCalculator (Scoped)
 

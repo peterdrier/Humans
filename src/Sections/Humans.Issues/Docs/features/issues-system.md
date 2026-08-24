@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Issues/**
   src/Sections/Humans.Issues.Contracts/**
-  src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Issues entities, controller routes, API surface, status transitions, section routing, or handler-vs-reporter auth rules may have changed; verify the auth matrix and routes table.
@@ -41,7 +40,7 @@ Issues **superseded** Feedback (`src/Sections/Humans.Feedback/Docs/features/feed
 - Detail view shows full description, screenshot, reporter link with admin popover (handlers only), assignee, GitHub link, timestamps, due date, resolved-by
 - Handlers can update status (Triage / Open / InProgress / Resolved / WontFix / Duplicate), assignee, section, and GitHub issue number from the detail panel via auto-submitting selects
 - `Section` is editable in any non-terminal state — re-routing an issue is just changing its `Section` string
-- Nav badge on "Issues" link shows count of actionable items via `NavBadges` ViewComponent (queue = `issues`); the per-viewer count comes from `IssuesService.GetActionableCountForViewerAsync`
+- Nav badge on "Issues" link shows count of actionable items via the section's own `IssuesUserMenuViewComponent` chrome contribution; the per-viewer count comes from `IssuesService.GetActionableCountForViewerAsync`
 
 ### US-28.3: API Access for Claude Code
 
@@ -157,7 +156,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 ## Navigation
 
-- **Top nav:** "Issues" link visible to all authenticated users; nav badge (`NavBadges` ViewComponent, queue `issues`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
+- **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `SectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
 - **Floating widget:** Shell's `HelpWidget` view component renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
 - **`/Debug/Configuration`:** shows whether `ISSUES_API_KEY` is configured.
 
@@ -167,5 +166,5 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - Email outbox (`EmailOutboxMessage`) — used for comment notification emails.
 - Notifications (`37-notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
-- `NavBadges` ViewComponent — extended with the `issues` queue for actionable item count.
+- `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count (Shell's former `NavBadges` ViewComponent dissolved into per-section chrome at nobodies-collective/Humans#1091).
 - Role management — `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `VolunteerCoordinator`, `HumanAdmin`, `NoInfoAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

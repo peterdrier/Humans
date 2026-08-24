@@ -166,6 +166,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - On **Holded push success**: audit entry `ExpenseHoldedPushed` written (actor: the job). On **write-off**: `ExpenseHoldedFailed`. On **finance re-queue**: `ExpenseHoldedRequeued` (actor: the admin). These carry the push history past outbox-row cleanup — the outbox columns themselves are not readable outside the database.
 - **`HoldedExpenseOutboxJob`** runs every minute.
 - **GDPR export** (`IUserDataContributor`): contributes `ExpenseReports` and `ExpenseAuditLog` slices. Chain-follows merge tombstones. (Historical `ExpenseSepaSent` / `ExpenseSepaReopened` / `ExpensePaid` audit entries are still surfaced for accounts that have them — the audit log is immutable; only the writers were removed.)
+- **Article 17 erasure retains everything, by design.** `EraseForUserAsync` is a no-op; `ErasureDeclaration` maps both `ExpenseReports` and `ExpenseAuditLog` to the same fiscal-retention reason — a reimbursement is an accounting voucher, and Spanish law requires the books and supporting documents (payee legal name, IBAN unmasked in the row, amounts, dates, notes, approval trail, receipts) be kept 6 years (Código de Comercio Art. 30) / 4 years for tax purposes (Ley 58/2003 Art. 66), GDPR Art. 17(3)(b).
 
 ## Cross-Section Dependencies
 

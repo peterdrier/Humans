@@ -1,6 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Web/Extensions/RecurringJobExtensions.cs
+  src/Sections/*/SectionJobs.cs
   src/Sections/*/Jobs/*Job.cs
+  src/Humans.Base/Interfaces/ISectionJobs.cs
 -->
 <!-- freshness:flag-on-change
   Job catalog, schedules, sync-mode gating, and per-job process descriptions — review whenever a job is added, removed, renamed, or has its schedule/behavior changed.
@@ -247,9 +249,11 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
 ## Hangfire Configuration
 
 ### Registration (Program.cs)
+
+`Program.cs` only configures the Hangfire server itself — storage and the dashboard — and calls `app.UseHumansRecurringJobs()` at startup:
+
 ```csharp
-// Configure Hangfire
-builder.Services.AddHangfire(config => config
+builder.Services.AddHangfire((sp, config) => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
@@ -257,20 +261,29 @@ builder.Services.AddHangfire(config => config
         options.UseNpgsqlConnection(connectionString)));
 
 builder.Services.AddHangfireServer();
-
-// Register jobs
-builder.Services.AddScoped<SystemTeamSyncJob>();
-builder.Services.AddScoped<SyncLegalDocumentsJob>();
-// ... etc
-
-// Schedule recurring jobs — one line per job in RecurringJobExtensions.BuildRollCall,
-// which is the whole list of jobs the app knows how to run.
-Add<SyncLegalDocumentsJob>("consent-legal-document-sync", "0 4 * * *");
+// ...
+app.UseHumansRecurringJobs();
 ```
 
-Job ids are section-first (`consent-legal-document-sync`, `issues-cleanup`, `tickets-vendor-sync`) so the owning section is obvious from the id alone.
+There is no central roll-call and no `AddScoped<...Job>()` list in `Program.cs`. Each section implements `ISectionJobs.Jobs(IServiceProvider)`, yielding a `RecurringJobDescriptor(Id, JobType, Cron)` per job it owns — job types are DI-registered by that section's own `Section.cs`, not by Shell. `RecurringJobExtensions.ContributedJobs` discovers every `ISectionJobs` implementation and flattens their descriptors into the one set Shell schedules and sweeps:
 
-Startup schedules every job in the roll-call and then deletes any stored Hangfire schedule whose id is not in it. Renaming or deleting a job therefore needs nothing beyond editing the roll-call — the old entry goes away on the next boot, taking its dashboard history with it. An opt-in job keeps its place in the roll-call even when its schedule is switched off, so turning one off never gets it swept away.
+```csharp
+// src/Sections/Humans.Consent/SectionJobs.cs
+internal sealed class SectionJobs : ISectionJobs
+{
+    public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "consent-reconsent-reminders", typeof(SendReConsentReminderJob), "0 4 * * *");
+        yield return new RecurringJobDescriptor(
+            "consent-legal-document-sync", typeof(SyncLegalDocumentsJob), "0 4 * * *");
+    }
+}
+```
+
+Job ids are section-first (`consent-legal-document-sync`, `issues-cleanup`, `tickets-vendor-sync`) so the owning section is obvious from the id alone. Ids are stored in Hangfire and must never change — a rename is a new job plus a swept-away old one.
+
+Startup schedules every contributed job and then deletes any stored Hangfire schedule whose id is not in the contributed set (skipped if any job failed to register, since a stale entry might be the only working copy of a schedule that couldn't be rewritten). Renaming or deleting a job therefore needs nothing beyond editing its section's `SectionJobs.Jobs` — the old entry goes away on the next boot, taking its dashboard history with it. An opt-in job (empty `Cron`) keeps its place in the contributed set even when its schedule is switched off, so turning one off never gets it swept away; `RecurringJob.RemoveIfExists` drops any stored schedule left from when it was on.
 
 ### Dashboard
 - URL: `/hangfire`

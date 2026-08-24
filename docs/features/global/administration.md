@@ -115,6 +115,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | Route | Auth | Description |
 |-------|------|-------------|
 | `/Google/SyncSettings` | Admin | GET/POST: Per-service sync mode configuration |
+| `/Google/SyncSystemTeams` | Admin | POST: Manually trigger `SystemTeamSyncJob`, recalculating Volunteers/Coordinators/Board membership (button on `/Google` Overview) |
 | `/Google/SyncResults` | Admin | GET: Results of last sync check |
 | `/Google/CheckGroupSettings` | Admin | POST: Check Google Group settings for drift |
 | `/Google/GroupSettingsResults` | Admin | GET: Display group settings drift results |
@@ -175,35 +176,39 @@ The single unified account-merge surface (PR #899 consolidation). It combines du
 
 ## Dashboard Metrics
 
-### AdminDashboardViewModel
-```csharp
-public sealed record AdminDashboardViewModel(
-    string GreetingFirstName,
-    int TotalUsers,
-    int ActiveProfileUsers,
-    int TicketHolders,
-    int ShiftCoveragePercent,
-    int? ShiftFilledOf,
-    int? ShiftTotalOf,
-    int OpenFeedback,
-    int OnlineNow,
-    int OnlineLastHour,
-    int OnlineLast24h,
-    IReadOnlyList<DepartmentCoverage> StaffingByDepartment,
-    IReadOnlyList<DashboardActivityRow> RecentActivity,
-    DashboardApplicationStats AppStats,
-    IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
-    UserSetMembership SetMembership,
-    int TotalTeams,
-    int TotalAuditEvents,
-    int TotalEmails,
-    int StoreOrders,
-    decimal StoreTotalEur,
-    int ExpenseReports,
-    decimal ExpenseTotalEur);
-```
+Since nobodies-collective/Humans#1091 the dashboard has no view model and `AdminController.Index` is a bare `View()`. `Views/Admin/Index.cshtml` renders `<vc:admin-summary />` (the greeting/strapline and tile strip) plus `<vc:chrome-slot name="admin-dashboard" />` (section-contributed cards). `IDashboardService` and `IAdminDashboardService` are both gone entirely.
 
-`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), the active event from `IBurnSettingsService.GetActiveAsync`, shift coverage from `IShiftManagementServiceRead.GetOverallCoverageAsync`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
+### Tiles — `AdminSummaryViewComponent`
+
+Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (key, label, icon, an async value delegate, optional policy, weight); Shell adds its own three presence tiles. All are merged, ordered by weight, policy-checked, and rendered in one strip — a tile whose value delegate returns `null` (nothing to show) or whose policy check fails is skipped, and one section's failure is logged and skipped rather than taking the dashboard down.
+
+| Tile key | Label | Section | Policy | Notes |
+|---|---|---|---|---|
+| `users.total` | Total users | Users | — | `IUserServiceRead` snapshot count |
+| `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
+| `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
+| `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagementServiceRead.GetOverallCoverageAsync` |
+| `feedback.open` | Open feedback | Feedback | AdminOnly | `IFeedbackServiceRead.GetActionableCountAsync` — Board/domain admins don't see it (nobodies-collective/Humans#977) |
+| `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
+| `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
+| `shell.online.day` | Active (24h) | Shell | — | `IUserActivityTracker`, 24-hour window |
+| `teams.total` | Teams | Teams | — | `ITeamServiceRead.GetTeamsAsync` count |
+| `auditlog.total` | Audit events | Audit Log | — | `IAuditViewerService.GetPageAsync`'s `TotalCount` |
+| `email.outbox` | Emails | Email | — | `IEmailOutboxServiceRead.GetOutboxStatsAsync` total |
+| `store.orders` | Store orders | Store | StoreCatalogAdmin | `IStoreServiceRead.GetStoreSummaryAsync` for the active event year; blank with no active event |
+| `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportServiceRead.GetAllAsync`, all statuses |
+
+### Cards — `admin-dashboard` chrome slot
+
+Sections also contribute richer cards into the `admin-dashboard` chrome slot (`ChromeSlots.AdminDashboard`) via `ISectionChrome`; a card with nothing to show renders empty.
+
+| Card | Section | Content |
+|---|---|---|
+| Recent activity | Audit Log | Last 24h of audit history (AdminOnly) |
+| User set membership | Debug | Venn + UpSet plot over Active ∪ Ticketed ∪ Shifted, etc. |
+| Tier applications | Governance | Colaborador/Asociado application counts |
+| Staffing by department | Shifts | Event-wide coverage plus a per-department breakdown |
+| Preferred language | Users | Language distribution across Active ∪ MissingConsents users |
 
 ## Member Management
 
@@ -386,16 +391,16 @@ _logger.LogInformation(
 - Team creation/modification
 - Role assignments
 
-## Quick Actions (Dashboard)
+## Quick Actions (Sidebar)
 
-### Admin Dashboard (`/Admin`)
+Not on the `/Admin` dashboard itself (that renders only the tile strip and section cards above) — reached via the admin sidebar's Google and Diagnostics groups instead.
 
-| Action | Link | Badge |
+| Action | Link | Group |
 |--------|------|-------|
-| Sync Settings | `/Google/SyncSettings` | - |
-| Configuration Status | `/Debug/Configuration` | - |
-| Background Jobs | `/hangfire` | - |
-| Check Group Settings | `/Google/CheckGroupSettings` | - |
+| Sync Settings | `/Google/SyncSettings` | Google |
+| Configuration Status | `/Debug/Configuration` | Diagnostics |
+| Background Jobs | `/hangfire` | Diagnostics |
+| Check Group Settings | `/Google/CheckGroupSettings` | POST action on the Google "Overview" (`/Google`) page, not a sidebar link |
 
 ### Settings (admin sidebar)
 
@@ -409,10 +414,8 @@ Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*`
 ## System Health
 
 ### Dashboard Indicators
-- **Database Connection**: Green if responsive
-- **Background Jobs**: Green if Hangfire server active
-- **Health Check URL**: `/health/ready`
-- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Coordinators, and Board teams. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
+- **Health Check URL**: `/health/ready` (Diagnostics sidebar group, not a dashboard indicator)
+- **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for Volunteers, Coordinators, and Board teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
 
 ### Prometheus Metrics
 - Available at `/metrics`

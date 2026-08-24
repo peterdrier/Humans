@@ -1426,7 +1426,7 @@ serialized PR, which satisfies the reason for the rule.
 - [`docs/sections/G5-SECTION-TEMPLATE.md`](../../sections/G5-SECTION-TEMPLATE.md) — **the living
   recipe** (extracted from §15, 2026-08-09)
 - nobodies-collective/Humans#1013 — the keystone analyzer (§10)
-- `docs/plans/2026-06-13-q3-transition-plan.md` — pillar #2, gate ladder G5 predicates
+- Q3 transition plan (historical, deleted) — pillar #2, gate ladder G5 predicates
 - `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` — the G4 recipe PR A follows
 - `docs/plans/2026-08-03-g0-first-audit/Store.md` — Store's G1/G3 audit (its G3 predicate-1 row is
   void per §5)

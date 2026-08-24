@@ -7,7 +7,7 @@
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Base/Authorization/RoleChecks.cs
-  src/Humans.Web/Authorization/Requirements/**
+  src/Sections/**/Authorization/**/*.cs
   src/Humans.Base/Models/AccessMatrixDefinitions.cs
   src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
 -->

@@ -43,7 +43,7 @@
 
 The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`.
 
-The budget and camp-role endpoints are reached from the admin sidebar's **Dev** group (`AdminNavTree.cs`), whose two items carry `EnvironmentGate: env => !env.IsProduction()` — so they render on local and QA but never in production.
+The budget and camp-role endpoints are reached from the admin sidebar's **Dev** group (Development's `SectionAdminNav.cs`), whose two items carry `EnvironmentGate: env => !env.IsProduction()` — so they render on local and QA but never in production.
 
 ## Guardrails for Dev Seeders
 

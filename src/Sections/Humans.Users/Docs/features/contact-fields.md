@@ -3,7 +3,7 @@
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Views/Profile/Emails.cshtml
-  src/Sections/Humans.Users.Contracts/ContactField.cs
+  src/Sections/Humans.Users/Domain/ContactField.cs
   src/Sections/Humans.Users.Contracts/UserEmail.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->

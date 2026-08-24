@@ -4,7 +4,7 @@
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs
   src/Sections/Humans.Users/Views/Profile/**
-  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users/Data/Configurations/**
   src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
 -->
@@ -87,7 +87,6 @@ Profile
 ├── EmergencyContactRelationship: string? (100) [board only]
 ├── AdminNotes: string? (4000) [admin only]
 ├── NoPriorBurnExperience: bool (default false)
-├── State: (shadow column — superseded by User.State; no C# property, pending a drop)
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```
@@ -111,11 +110,12 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-Profile includes a computed `MembershipStatus` property:
+`MembershipStatus` is no longer computed on `Profile` — it moved to Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`), computed from RoleAssignments and ConsentRecords:
 
 | Status | Description | Visual |
 |--------|-------------|--------|
 | **Active** | Has roles + all consents signed | Green badge |
+| **Pending** | Pending approval or incomplete requirements | — |
 | **Inactive** | Has roles but missing consents | Yellow badge |
 | **Suspended** | Admin-suspended | Red badge |
 | **None** | No active roles | Gray badge |

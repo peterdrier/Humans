@@ -8,6 +8,11 @@ version: 1
 # update method (script or prompt).
 mechanical:
   - id: dev-stats
+    # RUN AFTER `reforge-history`. generate-stats.sh reads docs/reforge-history.csv
+    # for its semantic class/interface counts and silently regex-falls-back for any
+    # day the CSV does not yet cover — run it first and every new day in the window
+    # gets the weaker fallback number, permanently. The 2026-08-24 sweep hit exactly
+    # this (regex-fallback=6 days) and had to revert and re-run.
     target: docs/development-stats.md
     triggers:
       - "src/**/*.cs"

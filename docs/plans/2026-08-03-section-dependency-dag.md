@@ -1,7 +1,7 @@
 # Section Dependency DAG — G0 Audit
 
 > Generated 2026-08-03 for the **G0** gate of
-> [`2026-06-13-q3-transition-plan.md`](2026-06-13-q3-transition-plan.md), from Reforge
+> the Q3 transition plan (historical, deleted), from Reforge
 > semantic queries (`reforge injected`, `reforge dependencies`) against the solution at
 > commit `5a9bbe198`. Section membership taken from `reforge.surface-score.json`.
 > Cross-checked against the existing service-level graph in
@@ -69,7 +69,7 @@ blocker; the section inventory is already frozen**:
 - Correct the `Guide`, `Debug` and `Scanner` paths off the dissolved `Platform` bucket.
 
 Separately, the transition plan's own **Section tracker** (in
-`2026-06-13-q3-transition-plan.md`) has drifted from `reforge.surface-score.json`:
+the Q3 transition plan, historical/deleted) had drifted from `reforge.surface-score.json`:
 
 | Plan tracker row | Reality in `reforge.surface-score.json` / code | Recommendation |
 |---|---|---|

@@ -135,7 +135,7 @@ The technical services the business verticals use. Per the hard rules these are 
 | **Auth** | `AccountController` (Shell) | `MagicLinkService` (`Humans.Auth.Services` — a cross-section orchestrator that lives in its own section; see below) | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* (`Humans.Auth.Services`) | `RoleAssignmentRepository` / `IRoleAssignmentRepository` (`Humans.Auth.Data`) | `role_assignments` |
 | **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
 | **GDPR** | — (export download via Shell's `ProfileController` / `GuestController`) | `GdprExportService` (`Humans.Gdpr.Services`, internal) | — | — | — (owns no tables; fans out to every `IUserDataContributor` on `Humans.Gdpr.Contracts`) |
-| **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavTree`, `AdminSidebarViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |
+| **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavComposition`, `AdminSidebarViewComponent`, `AdminSummaryViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |
 
 ## Notes & known drift
 

@@ -25,6 +25,15 @@ run startup warmup, no DB access — fan out over the readers /
 `IAgentSettingsService` via `IServiceScopeFactory`. `AgentRateLimitStore`,
 `AgentRetentionRunStore`, `AgentSettingsStore` are in-memory stores backing
 the rate-limit / retention / settings caches — no DB access of their own.
+
+The four preload readers cache their file-content reads in `IMemoryCache`
+(no DB, `HoldForever` — cleared only by process restart or an
+admin-triggered reload): `AgentSectionDocReader` (`agent:section:{key}`),
+`AgentFeatureSpecReader` (`agent:feature:index`, `agent:feature:{stem}`),
+`CommunityFaqReader` (`agent:community-kb:index`,
+`agent:community-kb:doc:{stem}`), `AgentPreloadCorpusBuilder`
+(`agent:preload:{config}`). `AgentPreloadAugmentor` itself is pure
+static-content formatting — no cache, no DB.
 `AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
 `IBurnSettingsService` for its tool surface.
 

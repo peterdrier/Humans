@@ -47,7 +47,7 @@ Aggregate-local: `TicketAttendee.TicketOrder`.
 
 ### TicketSyncState
 
-**Table:** `ticket_sync_states`
+**Table:** `ticket_sync_state`
 
 Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId` records the event currently being synced. `LastSyncAt` doubles as the resume cursor passed to the vendor's `updated_at.gte` filter on the next run. `SyncStatus` is `Idle` / `Running` / `Error`; if a sync is found stuck in `Running` for >30 min, `GetDashboardStatsAsync` auto-resets it to `Error` with a stale-state message. `FullResync` clears `LastSyncAt` so the next run pulls all orders again.
 

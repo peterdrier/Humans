@@ -67,7 +67,7 @@ Repository **implementations** (the classes that talk to `DbContext`) live in th
 
 Every application context is `internal sealed` (issue #750). External access is via the section's repository interface, which lives in that section's `Data/` folder alongside the implementation and may **not** be declared under `Contracts/` (HUM0035). Persistence wiring is via the extension methods in `Humans.Web.Extensions.PersistenceServiceCollectionExtensions` (`AddHumansPersistence`, `PersistKeysToSystemDbContext`) — renamed from `InfrastructureServiceCollectionExtensions` when Web's `Infrastructure/` folder dissolved, to stop colliding with the roll-call class of that name. The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access the contexts directly via `InternalsVisibleTo`.
 
-**There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Sections/Humans.<Section>/Data/Migrations/`, and `src/Humans.Web/Migrations/System/` for the platform context. There are **28 section contexts plus `SystemDbContext`**. `HumansDbContext` and its root migration chain were deleted at peel 15 (nobodies-collective/Humans#858); the merged Users+Profiles section (`UsersDbContext`) carries the Identity base. Consequences:
+**There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Sections/Humans.<Section>/Data/Migrations/`, and `src/Humans.Web/Migrations/System/` for the platform context. There are **29 section contexts plus `SystemDbContext`**. `HumansDbContext` and its root migration chain were deleted at peel 15 (nobodies-collective/Humans#858); the merged Users+Profiles section (`UsersDbContext`) carries the Identity base. Consequences:
 
 - **One design-time factory per context**, each next to its context: every section's in its own project under `Humans.<Section>.Data` (`AgentDbContextFactory`, `HoldedDbContextFactory`, …), and `SystemDbContextFactory` in `Humans.Web/Data/`. Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
 - **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` (`Humans.Base/Data/`) is the single source for both the runtime registration (`AddSectionDbContext`) and the design-time factories.
@@ -268,7 +268,7 @@ The 29 table-owning sections are listed below. The other 13 section projects own
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel). `HumanLifecycleService` (suspend/unsuspend state-machine) moved to **Users** at G5 lane 4b-2d — Peter, 2026-08-14: membership machinery is Users, never Governance — and is published via `Humans.Users.Contracts` | *(no owned tables — orchestrator over Profiles, Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampRoleService`, `CampContactService` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
-| **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_placements` |
+| **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_images`, `container_placements` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
@@ -362,11 +362,11 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 | Seam | Contributes | Composed/rendered by |
 |---|---|---|
 | `ISectionNav` | Member top-nav links | `SectionNavViewComponent` |
-| `ISectionAdminNav` | Admin sidebar groups/items | `AdminNavComposition.Compose` (merges into `AdminNavTree`'s groups by `AdminNavGroup.GroupKey`) |
-| `ISectionAdminTiles` | Admin dashboard summary tiles | admin dashboard (a `null` tile value renders nothing, not a zero) — consumer ships with lane #1078, not yet wired |
+| `ISectionAdminNav` | Admin sidebar groups/items | `AdminNavComposition.Compose` (merges contributions into shared groups by `AdminNavGroup.GroupKey`; rendered by `AdminSidebarViewComponent`) |
+| `ISectionAdminTiles` | Admin dashboard summary tiles | `AdminSummaryViewComponent` (a `null` tile value renders nothing, not a zero) |
 | `ISectionChrome` | Layout-embedded view components | `ChromeSlotViewComponent`, named slots (`ChromeSlots`) |
 | `ISectionMemberDashboard` | Member-dashboard view components | `ChromeSlotViewComponent`, same slots |
-| `ISectionThingsToDo` | Member things-to-do entries | things-to-do list (returning nothing is the normal case) — consumer ships with lane #1078, not yet wired |
+| `ISectionThingsToDo` | Member things-to-do entries | `ThingsToDoViewComponent` (returning nothing is the normal case) |
 | `ISectionJobs` | Hangfire recurring-job descriptors (id, type, cron) | `RecurringJobExtensions.UseHumansRecurringJobs` — merges into the roll-call, drives the stale-job sweep |
 | `ISectionHealthChecks` | Health checks | builder-time, against `IHealthChecksBuilder` |
 | `ISectionEndpoints` | Endpoint mapping (SignalR hubs, etc.) | endpoint-mapping time, against `IEndpointRouteBuilder` — necessarily later than `ISection.Register`, which has neither an `IHostEnvironment` nor a route builder to hand a section |
@@ -476,12 +476,14 @@ await _budgetService.DeleteLineItemAsync(id);
 | `BudgetAuthorizationHandler` (`Humans.Budget.Authorization`) | `BudgetOperationRequirement` | `BudgetCategorySnapshot` | Finance role + coordinator checks |
 | `CampAuthorizationHandler` (`Humans.Camps.Authorization`) | `CampOperationRequirement` | `CampInfo` / `Camp` / `Guid` (untyped — the handler accepts all three) | Lead/CampAdmin checks |
 | `RoleAssignmentAuthorizationHandler` (`Humans.Auth.Authorization`) | `RoleAssignmentOperationRequirement` | `string` (role name) | Who can assign which roles |
-| `HumanAdminOnlyHandler` (`Humans.Web.Authorization.Requirements` — one of three still in the Shell, alongside `CampComplianceAccessHandler` and `IsAnyTeamManagerOrCoordinatorHandler`) | `HumanAdminOnlyRequirement` | — | Admin profile operations |
+| `HumanAdminOnlyHandler` (`Humans.Users.Authorization`) | `HumanAdminOnlyRequirement` | — | Admin profile operations |
 | `UserEmailAuthorizationHandler` (`Humans.Users.Authorization`) | `UserEmailOperationRequirement` | `Guid` (owning user id) | Who may manage another human's email addresses |
 | `ContainerAuthorizationHandler` (`Humans.Containers.Authorization`) | `ContainerOperationRequirement` | `ContainerAuthorizationTarget` | Container placement/edit rights |
 | `ExpenseReportAuthorizationHandler` (`Humans.Expenses.Authorization`) | `ExpenseReportOperationRequirement` | `ExpenseReportDto` | Submitter / approver / finance checks |
 | `IssuesAuthorizationHandler` (`Humans.Issues.Authorization`) | `IssuesOperationRequirement` | `IssueDetail` | Reporter / assignee / admin checks |
 | `OrderAuthorizationHandler` (`Humans.Store.Authorization`) | `OrderOperationRequirement` | `OrderDto` / `OrderCreateContext` / `OrderLineContext` | Camp-lead, coordinator, and store-admin checks (implements `IAuthorizationHandler` directly to span the three resource shapes) |
+
+**No authorization handler is left in the Shell.** The two resource-less handlers went to their sections with the rest: `CampComplianceAccessHandler` (`Humans.Camps.Authorization`) and `IsAnyTeamManagerOrCoordinatorHandler` (`Humans.Shifts.Authorization`).
 
 ### Rules
 
@@ -535,7 +537,7 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 
 ## 14. DTO and ViewModel Boundary
 
-- **Domain entities** live in their section's `Domain/` folder, or in its `.Contracts` leaf when another section needs the shape (`Humans.Users.Contracts.User`, `.Profile`). They are mutable, have identity, and carry invariants. Entities never reference EF types.
+- **Domain entities** live in their section's `Domain/` folder, or in its `.Contracts` leaf when another section needs the shape (`Humans.Users.Contracts.User`; `Profile` is section-internal, in `Humans.Users.Domain`). They are mutable, have identity, and carry invariants. Entities never reference EF types.
 - **DTOs** live in their section's `Services/Dtos/` or `Contracts/` folder. They are read-optimized shapes for specific use cases (admin tables, API responses, view data). Services return DTOs when the shape is call-specific and the entity does not match; they return entities when the caller needs the full aggregate.
 - **ViewModels** live in their section's `Models/` folder (or are inlined in controllers). Controllers map DTOs or entities to view models for Razor. The section-agnostic ones — the generic table models and `PagerViewModel` — are now under `Humans.Base.Models`, in the base assembly (§1).
 - **Domain entities should not leak into Razor views** when a DTO would provide better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation in the old model is not.
@@ -659,5 +661,5 @@ The section-by-section migration this section used to track is **complete** — 
 - **11 caching decorators** (§15 pattern): `CachingUserService`, `CachingTeamService`, `CachingCampService`, `CachingEventService`, `CachingCalendarService`, `CachingConsentService`, `CachingRoleAssignmentService`, `CachingShiftViewService`, `CachingTicketQueryService`, `CachingLegalDocumentSyncService`, `CachingEarlyEntryService` — each in its section project. Every other section is Option A (no decorator).
 - **Cross-section reads stitch through service interfaces** (`IUserServiceRead.GetUserInfosAsync` for display names is the canonical example, §6b). Cross-section linkage is a bare `Guid` column; each section's `internal` DbContext and internal entities enforce that structurally.
 - **Inline short-TTL `IMemoryCache`** remains appropriate for request-acceleration counters (nav badges, notification meters, claims, shift auth) — never for canonical domain data. `ApplicationServicesTakeNoMemoryCacheRule` allowlists the sanctioned users.
-- **`HumansMetricsService`** (`Humans.Web`, operational host service) reads its gauges through section read interfaces resolved per-scrape (`IUserServiceRead`, `ITeamServiceRead`, `IGoogleSyncServiceRead`, …); its former direct `IGoogleSyncOutboxRepository` resolve is gone. It still resolves a couple of full service interfaces (`IRoleAssignmentService`, `ITeamResourceService`) where the Read split hasn't landed — tracked in the debt ledger.
+- **`HumansMetricsService`** (`Humans.Web`, operational host service) reads its gauges through section read interfaces resolved per-scrape — now just `IUserServiceRead.GetAllUserInfosAsync`, off the cached `UserInfo` snapshot. Its former direct `IGoogleSyncOutboxRepository` resolve and its full-service resolves are gone.
 - **External connectors** are their own sections (Stripe, TicketTailor, Holded) or section-internal SDK bridges (GoogleIntegration's `Services/Workspace/` clients, Email's MailKit processor). Only the owning section's csproj references the vendor SDK; contracts stay SDK-free. The one approved exception outside a section: `Humans.Base` references Octokit for the GitHub content sources (`GitHubGuideContentSource`, `GitHubCommunityKbContentSource`), a sanctioned G5 placement in Base.

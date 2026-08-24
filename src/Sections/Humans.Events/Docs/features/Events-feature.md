@@ -8,6 +8,15 @@
 
 # Event Guide Management
 
+> **Naming note:** this spec predates the G5 project split (nobodies-collective/Humans#866) and
+> still uses the original entity/route names (`GuideEvent`, `GuideSettings`, `GuideCamp`,
+> `GuideSharedVenue`, `ModerationAction`, `UserGuidePreference`, `UserEventFavourite`,
+> `/Admin/Guide*`). The shipped names are `Event`, `EventGuideSettings`, `EventVenue`,
+> `EventModerationAction`, `EventPreference`, `EventFavourite`, and admin routes live under
+> `/Events/Admin/*`; camp events are anchored directly via `Event.CampId` — there is no separate
+> `GuideCamp` entity. [`Events.md`](../Events.md) is the authoritative current-state doc; where
+> this spec and shipped behaviour disagree, that doc wins.
+
 ## Business Context
 
 Elsewhere publishes a digital event guide (currently a standalone PWA) listing all scheduled events, theme camps, and communal locations during the event. The guide management system moves content submission, moderation, and publication into Humans so that camp organisers and individual humans can submit events through one platform, moderators have a structured review queue, and the PWA is served from Humans' API rather than a manually maintained static file.
