@@ -1261,7 +1261,6 @@
   <data name="About_Cat_Markdown" xml:space="preserve"><value>Markdown</value></data>
   <data name="About_Cat_Observability" xml:space="preserve"><value>Observabilidad</value></data>
   <data name="About_Cat_Payments" xml:space="preserve"><value>Pagos</value></data>
-  <data name="About_Cat_Resilience" xml:space="preserve"><value>Resiliencia</value></data>
   <data name="About_Cat_Sanitization" xml:space="preserve"><value>Saneamiento</value></data>
   <data name="About_Cat_Spreadsheet" xml:space="preserve"><value>Hoja de cálculo</value></data>
   <data name="About_Cat_StateMachine" xml:space="preserve"><value>Máquina de estados</value></data>

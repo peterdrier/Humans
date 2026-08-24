@@ -7,7 +7,7 @@
 | New anchor | `81080d53e` (upstream/main, 2026-08-24) |
 | Worktree base | `183a09fd2` (origin/main) |
 | Changed files in window | 3196 |
-| Mechanical entries dirty | 10 of 10 |
+| Mechanical entries dirty | 9 of 9 |
 | Editorial docs dirty | 144 of 144 marked |
 | Unmarked editorial candidates | 43 |
 
@@ -204,8 +204,15 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
   sections**". The seam lanes have been shrinking that set, so 26 is likely stale, but the
   number is not statically measurable with confidence: a `using`-directive scan of
   `src/Humans.Web` gives 5, a loose text scan gives 18 (it picks up prose in comments —
-  it counts `Search` and `Tour`, which this very doc says Shell no longer names). Getting
-  the real number needs the app's own reference scan. Left untouched.
+  it counts `Search` and `Tour`, which this very doc says Shell no longer names), and
+  scanning the built `Humans.Web.dll` for `Humans.*` strings gives all 42 — but that last
+  one is not the `AssemblyRef` table it looks like: `Views/_ViewImports.cshtml` names only
+  `Humans.Users.Contracts`, so the full alphabetical run of every section almost certainly
+  comes from the embedded PDB's compilation-reference list (every reference *passed to*
+  the compiler), not from what Shell actually consumes. Getting the real number needs the
+  app's own reference scan — `SectionActivation.ShellDependencies` already computes it but
+  nothing logs it, whereas `SectionDiscoveryExtensions.cs:43` already logs the active and
+  discovered counts at startup. Left untouched.
 - `docs/sections/_Index.md` — the per-section summary table was verified row-by-row against
   `src/Sections/*` (all 42 present and correctly located), but a full cell-by-cell
   regeneration of its content columns was out of scope against ~1989 matched files. Next
@@ -215,6 +222,17 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
   results" exception, but that view contains no `fetch()`; it is a pure Razor result row.
   It may be deliberate as the documented page-pattern counterpart to `<vc:human-search>`
   per `memory/architecture/person-search.md`. Left in place.
+- `src/Sections/Humans.Email/Docs/Email.md` — the Architecture section still counts
+  `IEmailService`'s callers as "nine `Humans.Application` services, six
+  `Humans.Infrastructure` jobs". Both projects were deleted in G5, so the sentence names
+  homes that no longer exist and the counts cannot be trusted either. Pre-existing drift
+  outside this window's changed files; needs a recount against `src/Sections/*`, not a
+  find-and-replace of the project names.
+- `src/Sections/Humans.Gate/Docs/features/Events-feature.md` — still written against the
+  pre-G5 entity names (`GuideEvent`, `GuideCamp`, `GuideSharedVenue`,
+  `UserGuidePreference`, `UserEventFavourite`, `ModerationAction`, `GuideSettings`) and a
+  stale `/Admin/Guide*` route. The lane added a naming-note banner rather than rewriting
+  ~200 lines of prose in a sweep. A rename pass over this one doc is its own piece of work.
 - `docs/guide/Calendar.md` — an anonymous iCal feed exists and is undocumented.
   Pre-existing, outside this window's changed files.
 - `docs/guide/CityPlanning.md` — container multi-image support landed in this window, but
@@ -227,6 +245,11 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
   sanctioned home as `Humans.Application.Extensions.DateFormattingExtensions`; the
   analyzer's own `HomeTypeFullName` constant says `Humans.Base.Extensions.DateFormattingExtensions`.
   Fixed the notes to match the code.
+- `src/Humans.Base/Resources/SharedResource*.resx` (6 files) — this sweep's own
+  `about-page-packages` regen deleted the dead Polly card from `Views/About/Index.cshtml`,
+  which was the only consumer of `About_Cat_Resilience`. Verified zero remaining references
+  repo-wide and removed the now-orphaned key from all six locales. An orphan this sweep
+  created, so this sweep cleans it up.
 
 **Not fixed, reported:** four `src/Humans.Web` C# files still name deleted projects in
 comments — `AuthorizationPolicyExtensions.cs:98` (`Humans.Interfaces`),
