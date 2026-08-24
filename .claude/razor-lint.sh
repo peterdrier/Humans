@@ -12,7 +12,8 @@
 #   file...        Check specific files (supports .cshtml and .cs)
 #
 # Checks (WARNING level — should fix):
-#   1. Boolean attribute trap: disabled="@var" instead of disabled="@(cond ? "disabled" : null)"
+#   1. Boolean attribute trap: disabled="@var" or disabled="@(expr)" instead of
+#      disabled="@(cond ? "disabled" : null)"
 #   2. Bootstrap Icons: bi bi-* classes (should be Font Awesome 6)
 #   3. Inline event handlers: onclick=, onsubmit= etc. (CSP violation)
 #
@@ -39,18 +40,24 @@ emit() {
     if [ "$level" = "INFO" ]; then ((INFOS++)) || true; fi
 }
 
+# HTML boolean attributes: any truthy-looking value (including "False") activates them.
+BOOL_ATTRS='disabled|readonly|checked|selected|required|multiple|autofocus'
+
 lint_cshtml() {
     local file="$1"
 
     # --- WARNING checks ---
 
     # 1. Boolean attribute trap
-    # Dangerous: disabled="@someVar" renders disabled="True" or disabled="False" — BOTH disable the element.
-    # Safe: disabled="@(condition ? "disabled" : null)" — Razor removes the attribute when value is null.
-    # Match: boolean attr followed by ="@ then NOT ( (which indicates a Razor expression block).
+    # Dangerous: disabled="@someVar" AND disabled="@(someExpr)" both render disabled="True"/"False"
+    # — either value disables the element.
+    # Safe: disabled="@(condition ? "disabled" : null)" — Razor omits the attribute when value is null.
+    # Match every `attr="@`, then subtract the sanctioned ternary-to-null form. Keying the include
+    # on the character after `@` cannot work: the dangerous and the safe form both write `@(`.
+    # `[^@]` skips `@@(`, Razor's escaped literal — that is prose about the rule, not code.
     while IFS=: read -r num _rest; do
         emit "WARNING" "$file" "$num" "Boolean attribute trap — use: attr=\"@(cond ? \\\"attr\\\" : null)\""
-    done < <(grep -nEi '\s(disabled|readonly|checked|selected|required|multiple|autofocus)="@[^(]' "$file" 2>/dev/null || true)
+    done < <(grep -nEi "\s($BOOL_ATTRS)=\"@[^@]" "$file" 2>/dev/null         | grep -vEi "\s($BOOL_ATTRS)=\"@\(.*\?.*:[[:space:]]*(null|\"\")[[:space:]]*\)\"" || true)
 
     # 2. Bootstrap Icons (project uses Font Awesome 6 only)
     while IFS=: read -r num _rest; do
