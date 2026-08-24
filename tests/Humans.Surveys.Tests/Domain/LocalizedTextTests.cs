@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Surveys.Domain;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests.Domain;
 

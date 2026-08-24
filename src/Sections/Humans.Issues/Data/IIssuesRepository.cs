@@ -1,4 +1,5 @@
-using Humans.Issues.Services.Dtos;
+using Humans.Issues.Services;
+using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;

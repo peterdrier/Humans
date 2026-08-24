@@ -99,7 +99,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 Two controllers serve this section:
 
 - `IssuesController` (`/Issues`, `/Issues/New`, `/Issues/{id}`, `/Issues/{id}/Comments`, `/Issues/{id}/Status`, `/Issues/{id}/Assignee`, `/Issues/{id}/Section`, `/Issues/{id}/GitHubIssue`) — cookie-authenticated humans.
-- `IssuesApiController` (`/api/issues/*`) — API-key authenticated; no user session. Used by Claude Code agents and external integrations.
+- `BackdoorIssuesController` (`/api/backdoor/issues/*`) — API-key authenticated; no user session. Used by Claude Code agents and external integrations.
 
 `Issue.Section` selects which roles see the issue in their queue (see `IssueSectionRouting.RolesFor`); a null section is Admin-only. Section is editable by handlers as long as the issue is non-terminal — re-routing an issue is just changing its `Section` string.
 
@@ -110,7 +110,7 @@ Two controllers serve this section:
 | Any authenticated human | Submit an issue (with optional screenshot). View, comment on, and reopen by commenting on issues they reported. Cannot triage or change status. |
 | Section role-holder (e.g., `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, …) | All reporter capabilities. Additionally: list, view, comment on, change status, assign, change section, link GitHub issue **on issues whose `Section` maps to their role** (per `IssueSectionRouting.RolesFor`). |
 | Admin | All section-role-holder capabilities, on every section including null-section issues. |
-| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/issues/*` (no user session required; the section's own `IssuesApiKeyAuthFilter`, over the `IssuesApi` config section, enforces the key). |
+| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/backdoor/issues/*`. The controller lives in `Humans.Backdoor` and calls this section through `IIssueTriage` (nobodies-collective/Humans#1128); the key resolves to a human, who is recorded as the actor on every write. |
 
 ## Invariants
 
@@ -130,7 +130,7 @@ Two controllers serve this section:
 - A regular human **cannot** see issues they did not report — even in sections they do not own.
 - A section role-holder **cannot** see, comment on, or mutate issues whose `Section` does not map to one of their roles. (Their elevated access is scoped to their section; null-section issues are Admin-only.)
 - A regular human **cannot** change an issue's status, assignee, section, or GitHub link — even on issues they reported. (They may comment, and that comment may auto-reopen a terminal issue, but the status field itself is handler-only.)
-- An API client **cannot** call `/Issues/*` (the cookie-authenticated controller) — and a cookie-authenticated user **cannot** call `/api/issues/*` without an API key.
+- An API client **cannot** call `/Issues/*` (the cookie-authenticated controller) — and a cookie-authenticated user **cannot** call `/api/backdoor/issues/*` without an API key.
 
 ## Triggers
 

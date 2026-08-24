@@ -325,18 +325,18 @@ Anonymous and completion-tracked responses export their answers with **no** user
 
 ### 13.3 Analysis API (key-authed, read-only) — the "Claude reads the responses" surface
 
-Mirrors the existing **Issues API** pattern exactly (`X-Api-Key` header; **503** if the key env var is unset, **401** if invalid), so the tooling and the `/triage`-style skill story are consistent.
+Mirrors the rest of the machine surface exactly (`X-Api-Key` header; **401** when the header is missing, or the key is unknown or revoked), so the tooling and the `/triage`-style skill story are consistent. Since nobodies-collective/Humans#1128 the controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead`.
 
 | Route | Purpose |
 |-------|---------|
-| `GET /api/surveys` | List surveys (id, title, status, response/invite counts). |
-| `GET /api/surveys/{id}` | Survey definition — questions, options, types, branching — so the reader knows the shape. |
-| `GET /api/surveys/{id}/responses` | All responses + answers. **`?format=md`** returns a token-lean **Markdown table** (one row per response — the compact shape for an agent reading the bulk); default is JSON. `?anonymity=`, `?since=`, `?limit=&cursor=` paging. (`?translateFreeText=` is part of the deferred translation slice, §6.2.) |
-| `GET /api/surveys/{id}/aggregates` | Pre-computed per-question aggregates **plus the participation funnel** — started vs finished counts split by input method (`UserSpecificLink` vs `Slug`) — the cheap path when the consumer only needs counts. |
+| `GET /api/backdoor/surveys` | List surveys (id, title, status, response/invite counts). |
+| `GET /api/backdoor/surveys/{id}` | Survey definition — questions, options, types, branching — so the reader knows the shape. |
+| `GET /api/backdoor/surveys/{id}/responses` | All responses + answers. **`?format=md`** returns a token-lean **Markdown table** (one row per response — the compact shape for an agent reading the bulk); default is JSON. `?anonymity=`, `?since=`, `?limit=&cursor=` paging. (`?translateFreeText=` is part of the deferred translation slice, §6.2.) |
+| `GET /api/backdoor/surveys/{id}/aggregates` | Pre-computed per-question aggregates **plus the participation funnel** — started vs finished counts split by input method (`UserSpecificLink` vs `Slug`) — the cheap path when the consumer only needs counts. |
 
 - **Read-only.** No write routes. The API never creates issues, never mutates a survey — extraction of bugs/work items from the app-feedback survey is a **human+Claude step done elsewhere**, deliberately out of this section.
 - **Identity exposure follows anonymity tier**: `Identified` responses include the respondent's user id + display name; `CompletionTracked`/`Anonymous` responses expose answers only. Enforced server-side regardless of query params.
-- **Env var:** `SURVEY_API_KEY` (+ an `/Admin/Configuration` set/unset indicator, mirroring `ISSUES_API_KEY`).
+- **Key:** the caller's personal Backdoor key, allocated and revoked at `/Admin/BackdoorKeys`. No per-API env var.
 - **Stable shape:** enums serialised as strings; question/option `Value`s are the culture-neutral join keys so an agent can correlate answers across languages without translating choice labels.
 
 ### 13.4 What this deliberately does NOT include
@@ -387,7 +387,7 @@ The §15 open questions are now settled. Each resolution below is binding for v1
 - Seven days after send, un-completed invitations receive exactly one reminder email; completed (Identified/Completion-tracked) invitees receive none.
 - Results view shows per-question aggregates and a per-respondent drill-down limited to Identified responses; CSV **and JSON** export work (free-text served as-submitted).
 - _(Fast-follow — deferred per §14/§15.6)_ The results view (and API) can translate free-text answers into a chosen culture on read, without persisting the translation.
-- `GET /api/surveys/{id}/responses` with a valid `SURVEY_API_KEY` returns responses + answers (paged); identity fields appear only for Identified responses; the survey definition endpoint exposes question/option `Value`s as stable join keys. Missing/invalid key → 503/401.
+- `GET /api/backdoor/surveys/{id}/responses` with a valid key returns responses + answers (paged); identity fields appear only for Identified responses; the survey definition endpoint exposes question/option `Value`s as stable join keys. Missing/invalid key → 401.
 - No in-app code clusters, summarises, charts, or auto-files anything from responses — synthesis is external over the API/export.
 - A user's GDPR export includes their Identified responses and omits anonymous/completion-tracked ones.
 - Architecture tests pin: no EF in `Humans.Application.Survey`, `survey_*` tables owned solely by `SurveyRepository`, all cross-section access via service interfaces.

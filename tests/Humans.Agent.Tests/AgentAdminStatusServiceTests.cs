@@ -8,6 +8,7 @@ using NSubstitute;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
+using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

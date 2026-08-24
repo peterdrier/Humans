@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
-using Humans.Feedback.Services.Dtos;
+using Humans.Feedback.Contracts;
 using Humans.Base.Models;
 using Humans.Teams.Contracts;
 using Humans.Base.Authorization;

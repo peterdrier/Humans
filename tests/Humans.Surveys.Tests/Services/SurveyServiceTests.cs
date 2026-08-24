@@ -18,6 +18,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests.Services;
 

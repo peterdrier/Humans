@@ -5,6 +5,7 @@ using Humans.Feedback.Domain;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Feedback.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 

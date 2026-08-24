@@ -8,7 +8,6 @@ using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 using Humans.Issues.Models;
 using Humans.Issues.Services;
-using Humans.Issues.Services.Dtos;
 using Humans.Base.Models;
 using Humans.Users.Contracts;
 

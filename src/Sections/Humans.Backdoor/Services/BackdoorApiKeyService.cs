@@ -1,0 +1,139 @@
+using System.Security.Cryptography;
+using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
+using Humans.Backdoor.Data;
+using Humans.Backdoor.Domain;
+using NodaTime;
+
+namespace Humans.Backdoor.Services;
+
+internal sealed class BackdoorApiKeyService(
+    IBackdoorApiKeyRepository repository,
+    IRoleAssignmentService roles,
+    IAuditLogService audit,
+    IClock clock,
+    ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService
+{
+    /// <summary>Human-readable marker so a leaked key is recognisable in a log or a paste.</summary>
+    private const string KeyPrefix = "hmn_";
+
+    /// <summary>Bytes of entropy behind each key — 256 bits, base64url-encoded to 43 chars.</summary>
+    private const int KeyEntropyBytes = 32;
+
+    /// <summary>Leading characters kept in the clear so a human can tell their rows apart.</summary>
+    private const int DisplayPrefixLength = 12;
+
+    public async Task<BackdoorKeyIssueResult> IssueAsync(
+        Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+            return BackdoorKeyIssueResult.Failed("A label is required.");
+
+        if (!await IsEligibleAsync(ownerUserId, ct))
+        {
+            logger.LogWarning(
+                "Backdoor key issue refused for {OwnerUserId}: not an Admin or Board member", ownerUserId);
+            return BackdoorKeyIssueResult.Failed("Keys can only be issued to a full Admin or a Board member.");
+        }
+
+        var plaintext = await PersistNewKeyAsync(ownerUserId, label.Trim(), actorUserId, ct);
+        return BackdoorKeyIssueResult.Success(plaintext);
+    }
+
+    public async Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var key = await repository.GetByIdAsync(keyId, ct);
+        if (key is null || !key.IsActive)
+        {
+            logger.LogWarning("Backdoor key {KeyId} not revocable: missing or already revoked", keyId);
+            return false;
+        }
+
+        var revoked = await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct);
+        if (revoked)
+            await AuditAsync(AuditAction.BackdoorApiKeyRevoked, key, actorUserId, "revoked");
+
+        return revoked;
+    }
+
+    public async Task<BackdoorKeyIssueResult> RotateAsync(
+        Guid keyId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var key = await repository.GetByIdAsync(keyId, ct);
+        if (key is null || !key.IsActive)
+        {
+            logger.LogWarning("Backdoor key {KeyId} not rotatable: missing or already revoked", keyId);
+            return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
+        }
+
+        // Eligibility is re-checked on rotation, not just at first issue: an owner who has
+        // since lost Admin/Board does not get a fresh credential out of a rotate.
+        if (!await IsEligibleAsync(key.UserId, ct))
+            return BackdoorKeyIssueResult.Failed("The key's owner is no longer a full Admin or a Board member.");
+
+        if (!await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct))
+            return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
+
+        await AuditAsync(AuditAction.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
+
+        var plaintext = await PersistNewKeyAsync(key.UserId, key.Label, actorUserId, ct);
+        return BackdoorKeyIssueResult.Success(plaintext);
+    }
+
+    public async Task<IReadOnlyList<BackdoorKeyRow>> ListAsync(CancellationToken ct = default)
+    {
+        var keys = await repository.GetAllAsync(ct);
+        return [.. keys.Select(k => new BackdoorKeyRow(
+            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt))];
+    }
+
+    public async Task<Guid?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(presentedKey)) return null;
+
+        var key = await repository.FindActiveByHashAsync(Hash(presentedKey), ct);
+        if (key is null) return null;
+
+        await repository.TouchAsync(key.Id, clock.GetCurrentInstant(), ct);
+        return key.UserId;
+    }
+
+    private async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct) =>
+        await roles.IsUserAdminAsync(userId, ct) || await roles.IsUserBoardMemberAsync(userId, ct);
+
+    private async Task<string> PersistNewKeyAsync(
+        Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct)
+    {
+        var plaintext = KeyPrefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
+        var key = new BackdoorApiKey
+        {
+            Id = Guid.NewGuid(),
+            UserId = ownerUserId,
+            KeyHash = Hash(plaintext),
+            DisplayPrefix = plaintext[..DisplayPrefixLength],
+            Label = label,
+            CreatedAt = clock.GetCurrentInstant(),
+            CreatedByUserId = actorUserId,
+        };
+
+        await repository.AddAsync(key, ct);
+        await AuditAsync(AuditAction.BackdoorApiKeyIssued, key, actorUserId, "issued");
+        return plaintext;
+    }
+
+    private Task AuditAsync(AuditAction action, BackdoorApiKey key, Guid actorUserId, string verb) =>
+        audit.LogAsync(
+            action,
+            AuditEntityTypes.BackdoorApiKey,
+            key.Id,
+            $"Backdoor API key '{key.Label}' ({key.DisplayPrefix}…) {verb}",
+            actorUserId,
+            relatedEntityId: key.UserId,
+            relatedEntityType: AuditEntityTypes.User);
+
+    private static string Hash(string plaintext) =>
+        Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(plaintext)));
+
+    private static string Base64UrlEncode(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+}

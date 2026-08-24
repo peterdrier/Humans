@@ -1,0 +1,116 @@
+@model BackdoorKeysViewModel
+@using System.Globalization
+@using NodaTime
+@{
+    ViewData["Title"] = "API keys";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    string Stamp(Instant? at) => at is null
+        ? "never"
+        : at.Value.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+}
+
+<page-header title="API keys" subtitle="Personal keys for /api/backdoor/*" />
+
+@if (Model.NewPlaintextKey is not null)
+{
+    <div class="alert alert-success" role="alert">
+        <h2 class="h6"><i class="fa-solid fa-key me-1"></i>Copy this key now</h2>
+        <p class="mb-2">It is stored only as a hash — this is the one and only time it is shown.</p>
+        <code class="user-select-all d-block p-2 bg-body-secondary rounded">@Model.NewPlaintextKey</code>
+    </div>
+}
+
+<div class="mb-3 text-muted small">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    A key is a person, not a service: every <code>/api/backdoor/*</code> request is attributed to
+    its owner, and every write records them as the actor. Keys go only to full Admins and Board
+    members. Send it in the <code>X-Api-Key</code> header.
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Allocate a key</div>
+    <div class="card-body">
+        <form asp-action="Issue" method="post" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label" for="ownerUserId">Owner</label>
+                <select class="form-select" id="ownerUserId" name="ownerUserId" required>
+                    @foreach (var candidate in Model.EligibleUsers)
+                    {
+                        <option value="@candidate.UserId">@candidate.DisplayName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label" for="label">Label</label>
+                <input class="form-control" id="label" name="label" maxlength="100" required
+                       placeholder="e.g. laptop triage agent" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-plus me-1"></i>Allocate
+                </button>
+            </div>
+        </form>
+        @if (Model.EligibleUsers.Count == 0)
+        {
+            <p class="text-muted small mt-2 mb-0">Nobody currently holds Admin or Board, so no key can be issued.</p>
+        }
+    </div>
+</div>
+
+@if (Model.Keys.Count == 0)
+{
+    <p class="text-muted">No keys have been issued.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Owner</th>
+                    <th scope="col">Label</th>
+                    <th scope="col">Key</th>
+                    <th scope="col">Created</th>
+                    <th scope="col">Last used</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var key in Model.Keys)
+                {
+                    <tr class="@(key.IsActive ? null : "text-muted")">
+                        <td>@key.OwnerName</td>
+                        <td>@key.Label</td>
+                        <td><code>@key.DisplayPrefix…</code></td>
+                        <td>@Stamp(key.CreatedAt)</td>
+                        <td>@Stamp(key.LastUsedAt)</td>
+                        <td>
+                            @if (key.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Revoked @Stamp(key.RevokedAt)</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (key.IsActive)
+                            {
+                                <form asp-action="Rotate" asp-route-id="@key.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Rotate</button>
+                                </form>
+                                <form asp-action="Revoke" asp-route-id="@key.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

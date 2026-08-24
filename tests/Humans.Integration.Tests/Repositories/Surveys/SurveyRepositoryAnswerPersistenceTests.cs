@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Integration.Tests.Repositories.Surveys;
 

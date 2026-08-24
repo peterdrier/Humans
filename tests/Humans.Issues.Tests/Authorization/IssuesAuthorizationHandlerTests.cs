@@ -4,7 +4,6 @@ using Humans.Base.Constants;
 using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
-using Humans.Issues.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using Xunit;

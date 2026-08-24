@@ -4,6 +4,7 @@ using Humans.Feedback.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Feedback.Contracts;
 
 namespace Humans.Feedback.Tests.Data;
 

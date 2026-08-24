@@ -150,7 +150,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   net-new recipients can be opened there before the separate invitation confirmation.
 - **`/Survey/Answer?t={token}`** — `SurveyController` invited wizard (token carries identity; never the current principal).
 - **`/Survey/{slug}`** — `SurveyController` public wizard: logged-out visitors are Anonymous; logged-in Humans choose how they are represented. Literal segments `Admin`/`Answer` are **reserved slugs** and resolve before `{slug}`.
-- **`/api/surveys/*`** — `SurveysApiController` (key-authed, read-only).
+- **`/api/backdoor/surveys/*`** — `SurveysApiController` (key-authed, read-only).
 
 ## Actors & Roles
 
@@ -159,7 +159,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | BoardOrAdmin (`PolicyNames.BoardOrAdmin`) | Author surveys (builder), open/close, send invitations, view results + Identified drill-down, export CSV/JSON. |
 | Invited member | Answer their invited survey via the tokenised link; choose anonymity tier when `AllowAnonymous`; resume an unfinished Identified draft. Reachable even for non-members (`Survey` is in `MembershipRequiredFilter.ExemptControllers`; answer actions are `[AllowAnonymous]`). |
 | Public visitor | Logged out: always Anonymous. Logged in: choose Identified, CompletionTracked, or Anonymous. All public-link responses use `InputMethod=Slug`. |
-| API (key auth) | List surveys, get a definition, read responses (`?format=md`/json) and aggregates via `/api/surveys` — read-only; key from `SURVEY_API_KEY` (`SurveyApiKeyAuthFilter`; 503 when unset, 401 when wrong). |
+| API (key auth) | List surveys, get a definition, read responses (`?format=md`/json) and aggregates via `/api/backdoor/surveys` — read-only. The controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead` (nobodies-collective/Humans#1128); the key is the caller's personal one, 401 when missing, unknown or revoked. |
 
 ## Invariants
 

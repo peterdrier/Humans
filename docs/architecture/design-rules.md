@@ -264,6 +264,7 @@ The 29 table-owning sections are listed below. The other 13 section projects own
 | **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService`, `ExternalLoginService`, `AccountDeletionService`, `HumanLifecycleService` (G5 project `Humans.Users`, published via `Humans.Users.Contracts`) | `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`, `account_merge_requests` — the ASP.NET Identity tables are renamed to the PostgreSQL snake_case convention in `UsersDbContext.OnModelCreating`, which also carries the Identity base since peel 15 |
 | **Teams** | `TeamService`, `TeamPageService` (composer — owns no tables) — G5 project `Humans.Teams`, published via `Humans.Teams.Contracts` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
 | **Auth** | `RoleAssignmentService` (G5 project `Humans.Auth`, published via `Humans.Auth.Contracts`), `MagicLinkService` (owns no tables; `Humans.Auth.Services`, published via `Humans.Auth.Contracts.IMagicLinkService`) | `role_assignments` |
+| **Backdoor** | `BackdoorApiKeyService` (G5 project `Humans.Backdoor`; section-internal — nothing outside Backdoor consumes it, so there is no contracts leaf) | `backdoor_api_keys` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_history`, `board_votes` |
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel). `HumanLifecycleService` (suspend/unsuspend state-machine) moved to **Users** at G5 lane 4b-2d — Peter, 2026-08-14: membership machinery is Users, never Governance — and is published via `Humans.Users.Contracts` | *(no owned tables — orchestrator over Profiles, Consent, Teams, Governance)* |
@@ -447,6 +448,7 @@ Some services are used across all sections. They own their own tables but are in
 | Service | Purpose | Owned Tables |
 |---------|---------|--------------|
 | `RoleAssignmentService` | Temporal role memberships (Auth section) — the gateway for all role queries | `role_assignments` |
+| `BackdoorApiKeyService` | Personal machine-API keys behind `/api/backdoor/*` — issue, rotate, revoke, resolve a presented key to its owner | `backdoor_api_keys` |
 | `AuditLogService` | Append-only audit trail for user actions | `audit_log` |
 | `EmailOutboxService` | Queue and track transactional emails | `email_outbox_messages` |
 | `NotificationService` | In-app notifications (G5 project `Humans.Notifications`) | `notifications`, `notification_recipients` |

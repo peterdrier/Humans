@@ -8,7 +8,6 @@ using Humans.Base.Caching;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
-using Humans.Feedback.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
@@ -40,7 +39,7 @@ internal sealed class FeedbackService(
     IFileStorage fileStorage,
     IMemoryCache cache,
     IClock clock,
-    ILogger<FeedbackService> logger) : IFeedbackServiceRead, IUserDataContributor, IUserMerge
+    ILogger<FeedbackService> logger) : IFeedbackServiceRead, IFeedbackTriage, IUserDataContributor, IUserMerge
 {
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
@@ -124,7 +123,7 @@ internal sealed class FeedbackService(
         await repository.SaveTrackedReportAsync(report, cancellationToken);
     }
 
-    public async Task<FeedbackMessage> PostMessageAsync(
+    public async Task<FeedbackMessageInfo> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default)
     {
@@ -154,7 +153,9 @@ internal sealed class FeedbackService(
         navBadge.Invalidate();
         logger.LogInformation(
             "Feedback admin reply posted on {ReportId} by {UserId}", reportId, senderUserId);
-        return message;
+        return new FeedbackMessageInfo(
+            message.Id, message.FeedbackReportId, message.SenderUserId,
+            SenderName: null, message.Content, message.CreatedAt);
     }
 
     private async Task SendAdminResponseEmailAsync(

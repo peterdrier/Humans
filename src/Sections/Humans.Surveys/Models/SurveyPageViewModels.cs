@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Surveys.Domain;
 

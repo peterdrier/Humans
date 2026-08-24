@@ -64,6 +64,7 @@ env:
     TeamsDbContext:src/Sections/Humans.Teams
     StoreDbContext:src/Sections/Humans.Store
     MailerLiteDbContext:src/Sections/Humans.MailerLite
+    BackdoorDbContext:src/Sections/Humans.Backdoor
 
 jobs:
   build:

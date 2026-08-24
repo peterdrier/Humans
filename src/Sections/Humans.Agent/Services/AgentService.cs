@@ -376,7 +376,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     {
                         issueProposal = proposal;
                         // The route_to_issue slug in FetchedDocs is the handoff marker
-                        // (AgentRepository handoffsOnly / AgentApiController.IsHandoff),
+                        // (AgentRepository handoffsOnly / AgentMessageSnapshot.IsHandoff),
                         // so record it only when the proposal actually reaches the user —
                         // failed dispatches must not inflate handoff counts.
                         fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));

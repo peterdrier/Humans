@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Issues.Domain;
 using Humans.Issues.Models;
 using Xunit;
+using Humans.Issues.Contracts;
 
 namespace Humans.Issues.Tests.Models;
 

@@ -48,7 +48,7 @@ internal interface IAgentRepository : IRepository
     /// Admin-listing variant of <see cref="ListAllConversationsAsync"/> that
     /// eagerly loads each conversation's messages so callers can compute
     /// per-conversation aggregates (refusal/handoff counts, last-message
-    /// preview) without N+1 round trips. Used by <c>/api/agent/conversations</c>.
+    /// preview) without N+1 round trips. Used by <c>/api/backdoor/agent/conversations</c>.
     /// </summary>
     Task<IReadOnlyList<AgentConversation>> ListAllConversationsWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,

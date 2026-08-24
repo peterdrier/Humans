@@ -27,6 +27,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!--
+      AuditAction: IssueAuditEvent carries it, and the thread is on the leaf now that the
+      Backdoor machine API reads it (nobodies-collective/Humans#1128). AuditLog.Contracts
+      references Humans.Base only, so the chain still terminates.
+    -->
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Instant/LocalDate on the issue read models. -->
+    <PackageReference Include="NodaTime" />
   </ItemGroup>
 
 </Project>

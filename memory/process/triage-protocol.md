@@ -7,7 +7,7 @@ description: When running `/triage` (or any feedback-handling work), fetch the f
 
 ## 1. Fetch full message history for every report
 
-`GET /api/feedback/{id}/messages` for **every** report being triaged — not just the ones the list endpoint flags as having messages. The list endpoint's `messageCount` / `lastAdminMessageAt` can be stale or lag behind recent activity.
+`GET /api/backdoor/feedback/{id}/messages` for **every** report being triaged — not just the ones the list endpoint flags as having messages. The list endpoint's `messageCount` / `lastAdminMessageAt` can be stale or lag behind recent activity.
 
 **Why it matters:** Peter may have responded to a report manually between the list fetch and the triage session. Drafting a fresh response without checking leads to:
 - Duplicate messages to the reporter (unprofessional)

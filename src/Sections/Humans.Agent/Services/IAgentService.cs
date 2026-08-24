@@ -1,12 +1,13 @@
 using Humans.Gdpr.Contracts;
 using NodaTime;
+using Humans.Agent.Contracts;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 
-internal interface IAgentService : IApplicationService, IUserDataContributor
+internal interface IAgentService : IApplicationService, IUserDataContributor, IAgentTranscriptRead
 {
     IAsyncEnumerable<AgentTurnToken> AskAsync(AgentTurnRequest request, CancellationToken cancellationToken);
 
@@ -37,19 +38,6 @@ internal interface IAgentService : IApplicationService, IUserDataContributor
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Admin-only listing of all conversations with messages eagerly loaded so
-    /// callers can compute per-conversation aggregates without N+1 round trips.
-    /// Used by <c>/api/agent/conversations</c>.
-    /// </summary>
-    Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
-        CancellationToken cancellationToken);
-
-    /// <summary>Admin-only fetch of a single conversation with messages eagerly loaded.</summary>
-    Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(
-        Guid id, CancellationToken cancellationToken);
-
-    /// <summary>
     /// Admin-only diagnostic: regenerates what would be sent to Anthropic for the
     /// next turn of a conversation, *with the current code and current state*.
     /// Returns null if the conversation does not exist. The preview is never stored.
@@ -58,15 +46,6 @@ internal interface IAgentService : IApplicationService, IUserDataContributor
         Guid conversationId, CancellationToken cancellationToken);
 }
 
-internal sealed record AgentConversationTranscriptSnapshot(
-    Guid Id,
-    Guid UserId,
-    string Locale,
-    Instant StartedAt,
-    Instant LastMessageAt,
-    int MessageCount,
-    IReadOnlyList<AgentMessageSnapshot> Messages);
-
 internal sealed record AgentConversationListSnapshot(
     Guid Id,
     Guid UserId,
@@ -74,18 +53,3 @@ internal sealed record AgentConversationListSnapshot(
     Instant StartedAt,
     Instant LastMessageAt,
     int MessageCount);
-
-internal sealed record AgentMessageSnapshot(
-    Guid Id,
-    Guid ConversationId,
-    AgentRole Role,
-    string Content,
-    Instant CreatedAt,
-    int PromptTokens,
-    int OutputTokens,
-    int CachedTokens,
-    string Model,
-    int DurationMs,
-    string[] FetchedDocs,
-    string? RefusalReason,
-    Guid? HandedOffToFeedbackId);

@@ -8,6 +8,7 @@ using NSubstitute;
 using Xunit;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
+using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

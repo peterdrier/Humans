@@ -1,3 +1,5 @@
+using Humans.Surveys.Contracts;
+
 
 namespace Humans.Surveys.Domain;
 

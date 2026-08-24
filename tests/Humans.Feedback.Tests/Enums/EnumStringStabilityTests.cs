@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Feedback.Domain;
+using Humans.Feedback.Contracts;
 
 namespace Humans.Feedback.Tests.Enums;
 

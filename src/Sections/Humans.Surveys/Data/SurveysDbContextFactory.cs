@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Base.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;

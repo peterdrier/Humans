@@ -69,6 +69,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.MailerLite.Data.IMailerLiteRepository")] = "MailerLite",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
+            [SectionRepository("Humans.Backdoor.Data.IBackdoorApiKeyRepository")] = "Backdoor",
             [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [SectionRepository("Humans.GoogleIntegration.Data.ISyncSettingsRepository")] = "GoogleIntegration",

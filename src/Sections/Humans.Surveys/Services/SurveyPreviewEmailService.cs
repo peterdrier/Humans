@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;

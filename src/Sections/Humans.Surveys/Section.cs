@@ -3,7 +3,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
-using Humans.Surveys.Filters;
 using Humans.Surveys.Jobs;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Configuration;
@@ -32,19 +31,13 @@ public sealed class Section : ISection
         services.AddScoped<SurveyService>();
         services.AddScoped<ISurveyService>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyReminderSender>(sp => sp.GetRequiredService<SurveyService>());
+        services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<SurveyService>());
         // Owns the user-scoped survey_responses/survey_invitations tables → GDPR export
         // contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
         services.AddScoped<SurveyPreviewTokenProvider>();
         services.AddScoped<ISurveyPreviewEmailService, SurveyPreviewEmailService>();
-
-        // Survey analysis API key. Missing/empty key is a runtime 503 at the filter, not a startup failure.
-        services.Configure<SurveyApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("SURVEY_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<SurveyApiKeyAuthFilter>();
 
         services.AddScoped<SendSurveyReminderJob>();
     }

@@ -10,6 +10,7 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 

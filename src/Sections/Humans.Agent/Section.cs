@@ -1,7 +1,6 @@
 using Humans.Agent.Authorization;
 using Humans.Agent.Contracts;
 using Humans.Agent.Data;
-using Humans.Agent.Filters;
 using Humans.Agent.Jobs;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
@@ -87,6 +86,7 @@ public sealed class Section : ISection
         services.AddScoped<AgentService>();
         services.AddScoped<IAgentService>(sp => sp.GetRequiredService<AgentService>());
         services.AddScoped<IAgentConversationRetention>(sp => sp.GetRequiredService<AgentService>());
+        services.AddScoped<IAgentTranscriptRead>(sp => sp.GetRequiredService<AgentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AgentService>());
 
         services.AddHostedService<AgentSettingsStoreWarmupHostedService>();
@@ -96,14 +96,6 @@ public sealed class Section : ISection
         // with it (design §15 step 6). There is no named policy — AgentController passes the
         // requirement directly, the shape Store/Expenses/Containers already use.
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
-
-        // Agent API key — gates GET /api/agent (read-only chat-history review).
-        // Bound to its own env var so a leaked feedback/log key cannot read transcripts.
-        services.Configure<AgentApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("AGENT_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<AgentApiKeyAuthFilter>();
 
         services.AddScoped<AgentConversationRetentionJob>();
     }

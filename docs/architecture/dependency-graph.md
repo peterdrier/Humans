@@ -65,6 +65,8 @@ graph LR
     Metrics[HumansMetricsService]:::crosscut
 
     %% ── Section services (only those with cross-section edges) ──
+    Backdoor[BackdoorApiKeyService]:::crosscut
+
     Prof[ProfileService]:::profiles
     ProfEdit[ProfileEditorService]:::profiles
     CF[ContactFieldService]:::profiles
@@ -183,6 +185,10 @@ graph LR
     AuditViewer --> User
     AuditViewer --> Team
     AuditViewer --> TRes
+
+    %% Backdoor (machine-API keys)
+    Backdoor --> Role
+    Backdoor --> Audit
 
     %% Profiles
     Prof --> User

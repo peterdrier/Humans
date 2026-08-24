@@ -1,0 +1,12 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2. *@
+@using Humans.Backdoor
+@using Humans.Backdoor.Controllers
+@using Humans.Backdoor.Models
+@using Humans.Base
+@using Humans.Base.Extensions
+@using Humans.Base.Models
+@* Backdoor carries no resource set, for the same reason Debug does not: every string on
+   its one page is English admin plumbing copy, read only by full Admins. *@
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base

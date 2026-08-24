@@ -1,3 +1,4 @@
+using Humans.Feedback.Contracts;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Humans.Teams.Contracts;

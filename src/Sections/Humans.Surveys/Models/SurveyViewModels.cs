@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Surveys.Services;
@@ -298,7 +299,7 @@ internal sealed class SurveyQuestionBuilderViewModel
         ShowIfCombine = q.ShowIf?.Combine ?? BranchCombine.All,
         ShowIfClauses = q.ShowIf?.Clauses.Select(SurveyBranchClauseBuilderViewModel.FromClause).ToList() ?? [],
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
-        GridSelectionMode = q.GridSelectionMode ?? Humans.Surveys.Domain.GridSelectionMode.Single,
+        GridSelectionMode = q.GridSelectionMode ?? Humans.Surveys.Contracts.GridSelectionMode.Single,
         GridRows = q.GridRows?.Select(SurveyGridRowBuilderViewModel.FromInput).ToList() ?? [],
         InformationImages = q.InformationImages?
             .Select(SurveyInformationImageBuilderViewModel.FromInput)

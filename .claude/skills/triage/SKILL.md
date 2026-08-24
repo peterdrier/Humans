@@ -11,8 +11,8 @@ Five phases run in priority order:
 1. **Logs phase** — pull recent log events, triage errors/warnings into issues
 2. **Close phase** — find open issues whose fixes shipped to production, close them, notify reporters
 3. **Feedback phase** — triage new feedback reports into GitHub issues (legacy; feedback is being retired in favor of in-app Issues)
-4. **Issues phase** — triage non-terminal in-app Issues (`/api/issues`) — the going-forward replacement for feedback
-5. **Agent phase** — pull the full agent conversation history (`/api/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `src/Humans.UI/Models/SectionHelpContent.cs` (the hardcoded knowledge base the agent reads via the `fetch_section_guide` tool)
+4. **Issues phase** — triage non-terminal in-app Issues (`/api/backdoor/issues`) — the going-forward replacement for feedback
+5. **Agent phase** — pull the full agent conversation history (`/api/backdoor/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `src/Humans.UI/Models/SectionHelpContent.cs` (the hardcoded knowledge base the agent reads via the `fetch_section_guide` tool)
 
 ## Arguments
 
@@ -34,9 +34,11 @@ Env vars (set in `.claude/settings.local.json`):
 - `HUMANS_API_URL` / `HUMANS_API_KEY` — production
 - `HUMANS_QA_API_URL` / `HUMANS_QA_API_KEY` — QA
 
-PR preview environments use QA API key. For separate log keys, add `HUMANS_LOG_API_KEY` / `HUMANS_QA_LOG_API_KEY`. For separate Issues-API keys (the `IssuesApi:ApiKey` config slot is distinct from `FeedbackApi:ApiKey`), add `HUMANS_ISSUES_API_KEY` / `HUMANS_QA_ISSUES_API_KEY` — the issues phase falls back to `HUMANS_API_KEY` / `HUMANS_QA_API_KEY` when not set. The agent phase has the same pattern: `HUMANS_AGENT_API_KEY` / `HUMANS_QA_AGENT_API_KEY` bound to the `AgentApi:ApiKey` config slot, falling back to `HUMANS_API_KEY` / `HUMANS_QA_API_KEY`. If required vars are missing, tell the user and stop.
+PR preview environments use the QA key.
 
-**503 from any endpoint = "key not configured on server"** (the filter returns 503 when its bound `ApiKey` setting is empty). Surface this in the phase summary as "skipped: server key not configured" — don't treat it as a failure; the operator may need to wire that key in the next deploy. **401 = wrong key** — try the dedicated env var if you only had `HUMANS_API_KEY`.
+**One key opens every phase.** Since nobodies-collective/Humans#1128 all five machine APIs live under `/api/backdoor/*` behind a single `X-Api-Key` gate, and the key is *personal*: an admin allocates it to a human at `/Admin/BackdoorKeys`, and every request — including every comment and status change this skill posts — is recorded as that person. There are no per-API keys and no per-API fallbacks; if `HUMANS_API_KEY` / `HUMANS_QA_API_KEY` are missing, tell the user and stop.
+
+**401 from any endpoint** means the header is missing, or the key is unknown or revoked — the server does not distinguish them. Ask the user to check the key at `/Admin/BackdoorKeys`; a revoked one is replaced by rotating, never recovered. There is no 503 "not configured" case any more: keys are rows, not deploy-time config.
 
 ## Trust and Safety
 
@@ -60,17 +62,17 @@ Skip if `close`, `open`, `issues`, or `agent` in arguments (without `logs`).
 
 | Arguments | Base URL | API Key |
 |-----------|----------|---------|
-| *(none)* or `logs` | `$HUMANS_API_URL` | `$HUMANS_LOG_API_KEY` or `$HUMANS_API_KEY` |
-| `qa` or `logs qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
-| `logs <PR#>` | `https://<PR#>.n.burn.camp` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
+| *(none)* or `logs` | `$HUMANS_API_URL` | `$HUMANS_API_KEY` |
+| `qa` or `logs qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_API_KEY` |
+| `logs <PR#>` | `https://<PR#>.n.burn.camp` | `$HUMANS_QA_API_KEY` |
 
 Always note the environment in output (e.g., "Logs from **production**").
 
 ## Step 1.2: Fetch log events
 
 ```bash
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Error"
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Warning"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/logs?count=200&minLevel=Error"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/logs?count=200&minLevel=Warning"
 ```
 
 Warning response includes errors — use error response as definitive, subtract from warnings. Each entry: `timestamp`, `level`, `message`, `exception` (nullable). If both empty: "No log events found." and proceed.
@@ -205,12 +207,11 @@ Fetch reports linked to GH issues from **both** systems — each may need a "fix
 
 ```bash
 # Legacy feedback (Acknowledged = linked, awaiting fix)
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/feedback?status=Acknowledged"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/feedback?status=Acknowledged"
 
 # In-app issues (promoted issues sit in Open/InProgress with gitHubIssueNumber set)
-ISSUES_KEY="${HUMANS_ISSUES_API_KEY:-$HUMANS_API_KEY}"
-curl -sf -H "X-Api-Key: $ISSUES_KEY" "$BASE_URL/api/issues?status=Open&limit=200"
-curl -sf -H "X-Api-Key: $ISSUES_KEY" "$BASE_URL/api/issues?status=InProgress&limit=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/issues?status=Open&limit=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/issues?status=InProgress&limit=200"
 ```
 
 Build a `gitHubIssueNumber` → reporter(s) lookup across both sources (in-app issues: only those with `gitHubIssueNumber` set). `gitHubIssueNumber` is number-only and reporter promotions always go upstream (`issue-home-routing`), so **apply this lookup to upstream candidates only** — never match a fork issue's number against it (overlapping number spaces would notify the wrong reporter). Also scan GH issue bodies for `fb:` / `iss:` IDs as fallback.
@@ -245,18 +246,18 @@ If a reporter is linked: draft a brief friendly response ("This has been fixed a
 # Legacy feedback reporter
 jq -n --arg msg "$MESSAGE" '{content: $msg}' | \
   curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/feedback/{id}/messages"
+    -d @- "$BASE_URL/api/backdoor/feedback/{id}/messages"
 
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Resolved"}' "$BASE_URL/api/feedback/{id}/status"
+  -d '{"status": "Resolved"}' "$BASE_URL/api/backdoor/feedback/{id}/status"
 
 # In-app issues reporter
 jq -n --arg msg "$MESSAGE" '{content: $msg}' | \
-  curl -sf -X POST -H "X-Api-Key: $ISSUES_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/issues/{id}/comments"
+  curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
+    -d @- "$BASE_URL/api/backdoor/issues/{id}/comments"
 
-curl -sf -X PATCH -H "X-Api-Key: $ISSUES_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Resolved"}' "$BASE_URL/api/issues/{id}/status"
+curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{"status": "Resolved"}' "$BASE_URL/api/backdoor/issues/{id}/status"
 ```
 
 ## Step 2.5: Summary
@@ -274,7 +275,7 @@ Skip if `close`, `logs`, `issues`, or `agent` in arguments (without `open`).
 ## Step 3.1: Fetch pending feedback
 
 ```bash
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/feedback?status=Open"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/feedback?status=Open"
 # if `all`: also fetch status=Acknowledged and merge
 ```
 
@@ -342,7 +343,7 @@ Present inline and ask which to take (do not use `AskUserQuestion`):
 ```bash
 jq -n --arg msg "$MESSAGE" '{content: $msg}' | \
   curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/feedback/{id}/messages"
+    -d @- "$BASE_URL/api/backdoor/feedback/{id}/messages"
 ```
 
 ### Action: Create Issue (or Create Issue + Respond)
@@ -393,10 +394,10 @@ gh issue create --repo nobodies-collective/Humans \
 After creating, link feedback and update status:
 ```bash
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"issueNumber": <number>}' "$BASE_URL/api/feedback/{id}/github-issue"
+  -d '{"issueNumber": <number>}' "$BASE_URL/api/backdoor/feedback/{id}/github-issue"
 
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Acknowledged"}' "$BASE_URL/api/feedback/{id}/status"
+  -d '{"status": "Acknowledged"}' "$BASE_URL/api/backdoor/feedback/{id}/status"
 ```
 
 If Create Issue + Respond: draft response referencing issue number ("We've logged this as #{number}"), present for review, send via messages endpoint.
@@ -432,12 +433,12 @@ Label: `needs-owner-review` (privilege) or `blocked:needs-design` (spec). Omit `
    ```bash
    jq -n --arg msg "<approved>" '{content: $msg}' | \
      curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-       -d @- "$BASE_URL/api/feedback/{id}/messages"
+       -d @- "$BASE_URL/api/backdoor/feedback/{id}/messages"
    ```
 3. Update status:
    ```bash
    curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-     -d '{"status": "Resolved"}' "$BASE_URL/api/feedback/{id}/status"
+     -d '{"status": "Resolved"}' "$BASE_URL/api/backdoor/feedback/{id}/status"
    ```
 
 ### Action: Won't Fix
@@ -470,8 +471,8 @@ In-app Issues live in the app DB (table `Issues`) and are the going-forward repl
 
 | Arguments | Base URL | API Key |
 |-----------|----------|---------|
-| *(none)* or `issues` | `$HUMANS_API_URL` | `$HUMANS_ISSUES_API_KEY` or `$HUMANS_API_KEY` |
-| `qa` or `issues qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_ISSUES_API_KEY` or `$HUMANS_QA_API_KEY` |
+| *(none)* or `issues` | `$HUMANS_API_URL` | `$HUMANS_API_KEY` |
+| `qa` or `issues qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_API_KEY` |
 
 Always note the environment in output.
 
@@ -480,10 +481,10 @@ Always note the environment in output.
 The list endpoint takes a single `status` value, so fetch each non-terminal status separately and merge. The endpoint default limit is 50; pass `limit=200` for safety.
 
 ```bash
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/issues?status=Triage&limit=200"
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/issues?status=Open&limit=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/issues?status=Triage&limit=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/issues?status=Open&limit=200"
 # only if `all` in args:
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/issues?status=InProgress&limit=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/issues?status=InProgress&limit=200"
 ```
 
 Default scope: `Triage` + `Open` (untouched + awaiting work). `all` includes `InProgress` (work already started — usually skip during a triage pass).
@@ -497,7 +498,7 @@ Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_misma
 Before presenting anything, research ALL issues in parallel. For each:
 
 1. Identify relevant code area (`pageUrl` + `section` + description → controller/view/service)
-2. Pull the full thread to see prior comments: `GET /api/issues/{id}` (includes thread)
+2. Pull the full thread to see prior comments: `GET /api/backdoor/issues/{id}` (includes thread)
 3. Check related GitHub issues in both repos: `gh issue list --repo nobodies-collective/Humans --search "{keywords}" --limit 5` and `gh issue list --repo peterdrier/Humans --search "{keywords}" --limit 5`
 4. If `gitHubIssueNumber` is already set, fetch that GH issue's state (open/closed, recent commits referencing it)
 5. Form a diagnosis
@@ -606,10 +607,10 @@ After creating, link + advance status:
 ```bash
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --argjson n <number> '{gitHubIssueNumber: $n}')" \
-  "$BASE_URL/api/issues/{id}/github-issue"
+  "$BASE_URL/api/backdoor/issues/{id}/github-issue"
 
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Open"}' "$BASE_URL/api/issues/{id}/status"
+  -d '{"status": "Open"}' "$BASE_URL/api/backdoor/issues/{id}/status"
 ```
 
 If option 2 (Promote + Respond): draft an in-app comment referencing the GH issue number ("We've tracked this as #{n} — I'll post back here when it ships."), present for approval, then:
@@ -617,7 +618,7 @@ If option 2 (Promote + Respond): draft an in-app comment referencing the GH issu
 ```bash
 jq -n --arg msg "$MESSAGE" '{content: $msg}' | \
   curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/issues/{id}/comments"
+    -d @- "$BASE_URL/api/backdoor/issues/{id}/comments"
 ```
 
 ### Action: Respond & Resolve (option 3)
@@ -629,10 +630,10 @@ jq -n --arg msg "$MESSAGE" '{content: $msg}' | \
 ```bash
 jq -n --arg msg "<approved>" '{content: $msg}' | \
   curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/issues/{id}/comments"
+    -d @- "$BASE_URL/api/backdoor/issues/{id}/comments"
 
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Resolved"}' "$BASE_URL/api/issues/{id}/status"
+  -d '{"status": "Resolved"}' "$BASE_URL/api/backdoor/issues/{id}/status"
 ```
 
 ### Action: Won't Fix (option 4)
@@ -641,7 +642,7 @@ Ask Peter inline if a comment is wanted. If yes: draft, present, send via `/comm
 
 ```bash
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "WontFix"}' "$BASE_URL/api/issues/{id}/status"
+  -d '{"status": "WontFix"}' "$BASE_URL/api/backdoor/issues/{id}/status"
 ```
 
 ### Action: Mark Duplicate (option 5)
@@ -651,10 +652,10 @@ Comment first (always — duplicate target must be recorded), then status:
 ```bash
 jq -n --arg msg "Duplicate of iss:{otherShortId}." '{content: $msg}' | \
   curl -sf -X POST -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-    -d @- "$BASE_URL/api/issues/{id}/comments"
+    -d @- "$BASE_URL/api/backdoor/issues/{id}/comments"
 
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"status": "Duplicate"}' "$BASE_URL/api/issues/{id}/status"
+  -d '{"status": "Duplicate"}' "$BASE_URL/api/backdoor/issues/{id}/status"
 ```
 
 ### Action: Surface to Peter (option 6)
@@ -669,12 +670,12 @@ Adjust metadata only:
 # section
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg s '<section>' '{section: $s}')" \
-  "$BASE_URL/api/issues/{id}/section"
+  "$BASE_URL/api/backdoor/issues/{id}/section"
 
 # assignee
 curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg a '<guid>' '{assigneeUserId: $a}')" \
-  "$BASE_URL/api/issues/{id}/assignee"
+  "$BASE_URL/api/backdoor/issues/{id}/assignee"
 ```
 
 ### Action: Skip (option 8)
@@ -706,8 +707,8 @@ Review the **full conversation list**, not a refusal filter — see the dead-cou
 
 | Arguments | Base URL | API Key |
 |-----------|----------|---------|
-| *(none)* or `agent` | `$HUMANS_API_URL` | `$HUMANS_AGENT_API_KEY` or `$HUMANS_API_KEY` |
-| `qa` or `agent qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_AGENT_API_KEY` or `$HUMANS_QA_API_KEY` |
+| *(none)* or `agent` | `$HUMANS_API_URL` | `$HUMANS_API_KEY` |
+| `qa` or `agent qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_API_KEY` |
 
 Always note the environment in output (e.g., "Agent phase from **QA**").
 
@@ -716,21 +717,21 @@ Always note the environment in output (e.g., "Agent phase from **QA**").
 > **Dead counters (verified 2026-07-13, prod):** `refusalCount` and `handoffCount` are 0 on every conversation — the flags are never populated at save time, so `refusalsOnly=true` always returns an empty list and `handoffsOnly=true` only matches legacy feedback handoffs (`HandedOffToFeedbackId != null`, which `route_to_issue` never sets). Tracked in nobodies-collective/Humans#931. Until that ships, **do not use either filter** — pull everything and cluster from the question stream. Issue handoffs still surface through Phase 4 (in-app Issues with KB-gap flags).
 
 ```bash
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations?take=200"
 # take is clamped to 200 server-side; page with skip:
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=200&skip=200"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations?take=200&skip=200"
 ```
 
-`take` is clamped to 200 (`AgentApiController.List`); older rows are reached only via `skip`. If a page comes back with exactly `take` rows, fetch the next one (`skip=200`, `skip=400`, …) until a page returns fewer than `take` rows or you're past the last triage run's date. Merge pages before clustering.
+`take` is clamped to 200 (`BackdoorAgentController.List`); older rows are reached only via `skip`. If a page comes back with exactly `take` rows, fetch the next one (`skip=200`, `skip=400`, …) until a page returns fewer than `take` rows or you're past the last triage run's date. Merge pages before clustering.
 
 Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-conversations.json`.
 
-503 → server key not configured; skip phase with note ("Agent phase skipped — `AgentApi:ApiKey` not wired on server."). 401 → wrong key; try the dedicated env var.
+401 → the header is missing, or the key is unknown or revoked. Stop and tell the user to check `/Admin/BackdoorKeys`; there is no per-phase key to fall back to.
 
 A summary row is enough for clustering — pull the per-message detail only for conversations that land in a proposed FAQ cluster:
 
 ```bash
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations/{id}/messages"
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations/{id}/messages"
 ```
 
 ## Step 5.2: Cluster repeated questions

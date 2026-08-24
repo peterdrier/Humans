@@ -6,6 +6,7 @@ using Humans.Agent.Services.Preload;
 
 using Humans.Shifts.Contracts;
 using Xunit;
+using Humans.Agent.Contracts;
 namespace Humans.Agent.Tests;
 
 public class AgentToolDispatcherTests

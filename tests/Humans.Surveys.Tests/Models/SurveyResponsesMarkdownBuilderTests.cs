@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Models;
 using NodaTime;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests.Models;
 

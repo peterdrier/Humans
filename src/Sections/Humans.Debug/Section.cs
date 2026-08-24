@@ -9,8 +9,8 @@ namespace Humans.Debug;
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
-/// <see cref="Register"/> carries only the /api/logs credential wiring: every dependency the
-/// diagnostics pages read is a Base singleton registered by its owner —
+/// <see cref="Register"/> is empty: every dependency the diagnostics pages read is a Base
+/// singleton registered by its owner —
 /// <c>IClientStatsTracker</c>, <c>IHttpStatusTracker</c>, <c>ConfigurationRegistry</c>,
 /// <c>QueryStatistics</c>, <c>ICacheStatsProvider</c>, the <c>ICacheStats</c> decorator fan-in
 /// and <c>IAdminDatabaseDiagnosticsService</c>. The section owns no tables, so there is no
@@ -23,12 +23,8 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // /api/logs key (separate credential from feedback) — the section owns its
-        // own API surface's auth filter (nobodies-collective/Humans#1091).
-        services.Configure<LogApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("LOG_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<LogApiKeyAuthFilter>();
+        // Nothing to register: every dependency the diagnostics pages read is a Base
+        // singleton owned by someone else, and the log-reading API moved to Backdoor
+        // (nobodies-collective/Humans#1128). The class still ships — see the remarks.
     }
 }

@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Surveys.Jobs;
 

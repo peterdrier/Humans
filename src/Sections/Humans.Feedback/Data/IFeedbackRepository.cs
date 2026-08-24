@@ -1,3 +1,4 @@
+using Humans.Feedback.Contracts;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Feedback.Domain;
 using NodaTime;

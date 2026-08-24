@@ -6,7 +6,6 @@ using Humans.Base.Hosting;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Authorization;
-using Humans.Issues.Filters;
 using Humans.Issues.Jobs;
 using Humans.Issues.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +32,7 @@ public sealed class Section : ISection
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
+        services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
         // Owns the user-scoped issues / issue_comments tables → GDPR export contributor
         // (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
@@ -41,14 +41,6 @@ public sealed class Section : ISection
         // Resource-based handler for IssuesOperationRequirement.Handle. The *policies*
         // stay in Shell's AuthorizationPolicyExtensions; only the handler moves (design §8).
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
-
-        // Issues API key. Missing/empty key is a runtime 503 at the filter,
-        // not a startup failure.
-        services.Configure<IssuesApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("ISSUES_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<IssuesApiKeyAuthFilter>();
 
         services.AddScoped<CleanupIssuesJob>();
     }

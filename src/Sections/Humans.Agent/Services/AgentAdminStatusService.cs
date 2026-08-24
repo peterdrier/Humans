@@ -1,3 +1,4 @@
+using Humans.Agent.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
 using NodaTime;

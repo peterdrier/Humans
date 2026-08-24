@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Surveys.Domain;
 using Humans.Base.Enums;

@@ -16,6 +16,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using FeedbackServiceImpl = Humans.Feedback.Services.FeedbackService;
+using Humans.Feedback.Contracts;
 
 namespace Humans.Feedback.Tests.Services;
 

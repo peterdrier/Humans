@@ -1,5 +1,6 @@
+using Humans.Issues.Services;
 using Humans.Issues.Domain;
-using Humans.Issues.Services.Dtos;
+using Humans.Issues.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

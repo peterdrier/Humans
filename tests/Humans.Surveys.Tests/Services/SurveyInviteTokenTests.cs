@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.DataProtection;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests.Services;
 

@@ -1,3 +1,4 @@
+using Humans.Feedback.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Feedback.Domain;

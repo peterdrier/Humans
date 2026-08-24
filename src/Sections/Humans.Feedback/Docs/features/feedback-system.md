@@ -52,15 +52,15 @@ Every creation path below was deleted: the floating widget item and its modal, `
 **As** Claude Code (or another external tool), **I want** to query and manage feedback via a REST API, **so that** I can integrate feedback into automated workflows.
 
 **Acceptance Criteria:**
-- `GET /api/feedback` — list with optional status/category/limit filters
-- `GET /api/feedback/{id}` — single report detail with messages
-- `GET /api/feedback/{id}/messages` — list conversation messages
-- `POST /api/feedback/{id}/messages` — post a message to the conversation thread
-- `PATCH /api/feedback/{id}/status` — update status (accepts string enum names)
-- `PATCH /api/feedback/{id}/assignment` — set assignee user and/or team (either may be null to clear)
-- `PATCH /api/feedback/{id}/github-issue` — link GitHub issue
-- All endpoints require `X-Api-Key` header (configured via `FEEDBACK_API_KEY` env var)
-- 503 if API key not configured, 401 if key invalid
+- `GET /api/backdoor/feedback` — list with optional status/category/limit filters
+- `GET /api/backdoor/feedback/{id}` — single report detail with messages
+- `GET /api/backdoor/feedback/{id}/messages` — list conversation messages
+- `POST /api/backdoor/feedback/{id}/messages` — post a message to the conversation thread
+- `PATCH /api/backdoor/feedback/{id}/status` — update status (accepts string enum names)
+- `PATCH /api/backdoor/feedback/{id}/assignment` — set assignee user and/or team (either may be null to clear)
+- `PATCH /api/backdoor/feedback/{id}/github-issue` — link GitHub issue
+- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Admin/BackdoorKeys` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
+- 401 if the header is missing, or the key is unknown or revoked
 - Enum values serialized as strings consistently (GET and PATCH)
 - Reporter context included: name, email, userId, preferred language
 - Message tracking: count on list, full message history on detail
@@ -121,8 +121,8 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `POST /Feedback/{id}/Status` | `[Authorize(Policy = AdminOnly)]` |
 | `POST /Feedback/{id}/Assignment` | `[Authorize(Policy = AdminOnly)]` |
 | `POST /Feedback/{id}/GitHubIssue` | `[Authorize(Policy = AdminOnly)]` |
-| `GET /api/feedback` | API key (`X-Api-Key` header) |
-| `* /api/feedback/*` | API key (`X-Api-Key` header) |
+| `GET /api/backdoor/feedback` | API key (`X-Api-Key` header) |
+| `* /api/backdoor/feedback/*` | API key (`X-Api-Key` header) |
 
 `POST /Feedback` is gone — the controller has no root-`POST` route at all.
 
@@ -138,15 +138,15 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `POST /Feedback/{id}/Status` | FeedbackController | UpdateStatus |
 | `POST /Feedback/{id}/Assignment` | FeedbackController | UpdateAssignment |
 | `POST /Feedback/{id}/GitHubIssue` | FeedbackController | SetGitHubIssue |
-| `GET /api/feedback` | FeedbackApiController | List |
-| `GET /api/feedback/{id}` | FeedbackApiController | Get |
-| `GET /api/feedback/{id}/messages` | FeedbackApiController | GetMessages |
-| `POST /api/feedback/{id}/messages` | FeedbackApiController | PostMessage |
-| `PATCH /api/feedback/{id}/status` | FeedbackApiController | UpdateStatus |
-| `PATCH /api/feedback/{id}/assignment` | FeedbackApiController | UpdateAssignment |
-| `PATCH /api/feedback/{id}/github-issue` | FeedbackApiController | SetGitHubIssue |
+| `GET /api/backdoor/feedback` | BackdoorFeedbackController | List |
+| `GET /api/backdoor/feedback/{id}` | BackdoorFeedbackController | Get |
+| `GET /api/backdoor/feedback/{id}/messages` | BackdoorFeedbackController | GetMessages |
+| `POST /api/backdoor/feedback/{id}/messages` | BackdoorFeedbackController | PostMessage |
+| `PATCH /api/backdoor/feedback/{id}/status` | BackdoorFeedbackController | UpdateStatus |
+| `PATCH /api/backdoor/feedback/{id}/assignment` | BackdoorFeedbackController | UpdateAssignment |
+| `PATCH /api/backdoor/feedback/{id}/github-issue` | BackdoorFeedbackController | SetGitHubIssue |
 
-Removed routes: `POST /Feedback` (Submit, removed by #977); and from an earlier version, `PATCH /api/feedback/{id}/notes`, `POST /api/feedback/{id}/respond`, and all `/Admin/Feedback/*` routes.
+Removed routes: `POST /Feedback` (Submit, removed by #977); and from an earlier version, `PATCH /api/backdoor/feedback/{id}/notes`, `POST /api/backdoor/feedback/{id}/respond`, and all `/Admin/Feedback/*` routes.
 
 ## Claude Code Triage Integration (#147)
 
@@ -154,8 +154,8 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 - **`/whats` integration:** When `HUMANS_API_URL` and `HUMANS_API_KEY` env vars are set, `/whats` checks for pending feedback and surfaces the count in its status output. Humans-project-specific; other projects skip this step.
 - **`/triage` skill:** Interactive triage of pending reports — for each report, choose to respond, create a GitHub issue (on `nobodies-collective/Humans`), mark won't fix, or skip. Issues are linked back to the feedback report via the API.
-- **Environment setup:** `FEEDBACK_API_KEY` env var on the server, `HUMANS_API_KEY`/`HUMANS_API_URL` in `.claude/settings.local.json` (gitignored).
-- **Admin visibility:** `FEEDBACK_API_KEY` status shown on `/Debug/Configuration` diagnostics page.
+- **Environment setup:** `HUMANS_API_KEY`/`HUMANS_API_URL` in `.claude/settings.local.json` (gitignored). The server holds no key of its own — keys are rows in `backdoor_api_keys`.
+- **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Admin/BackdoorKeys`.
 
 ## Navigation
 

@@ -175,9 +175,11 @@ public class EndpointAuthorizationTests
     }
 
     [HumansFact]
-    public void FeedbackApiController_OnlyPostsMessages()
+    public void BackdoorFeedbackController_OnlyPostsMessages()
     {
-        var postTemplates = SectionType("Humans.Feedback.Controllers.FeedbackApiController")
+        // The machine surface moved to Humans.Backdoor with #1128; Feedback still accepts
+        // no new reports, over the API least of all.
+        var postTemplates = SectionType("Humans.Backdoor.Controllers.BackdoorFeedbackController")
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
             .Where(a => a is not null)

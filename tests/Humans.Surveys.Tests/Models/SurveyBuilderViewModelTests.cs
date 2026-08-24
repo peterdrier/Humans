@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Models;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests.Models;
 

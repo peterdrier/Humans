@@ -105,7 +105,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`. |
-| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/feedback` (no user session required; the section's own `FeedbackApiKeyAuthFilter`, over the `FeedbackApi` config section, enforces the key). No report-creation endpoint. |
+| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/backdoor/feedback`. The controller lives in `Humans.Backdoor` and calls this section through `IFeedbackTriage` (nobodies-collective/Humans#1128); the key resolves to a human, so an API reply is attributed exactly like one typed in the UI. No report-creation endpoint. |
 
 `RoleNames.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` and role group `RoleGroups.FeedbackAdminOrAdmin` were deleted with the lockdown.
 

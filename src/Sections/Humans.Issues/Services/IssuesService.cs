@@ -14,7 +14,6 @@ using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
-using Humans.Issues.Services.Dtos;
 
 namespace Humans.Issues.Services;
 
@@ -300,7 +299,7 @@ internal sealed class IssuesService(
 
     // ─── Mutations ───
 
-    public async Task<IssueComment> PostCommentAsync(
+    public async Task<IssueCommentInfo> PostCommentAsync(
         Guid issueId,
         Guid? senderUserId,
         string content,
@@ -359,7 +358,23 @@ internal sealed class IssuesService(
             await UpdateStatusAsync(issueId, IssueStatus.Resolved, senderUserId, ct);
         }
 
-        return comment;
+        return new IssueCommentInfo(comment.Id, comment.Content, comment.CreatedAt);
+    }
+
+    public async Task<Guid> CreateIssueAsync(
+        Guid reporterUserId,
+        IssueCategory category,
+        string title,
+        string description,
+        string? section,
+        LocalDate? dueDate = null,
+        CancellationToken ct = default)
+    {
+        var issue = await SubmitIssueAsync(
+            reporterUserId, category, title, description, section,
+            pageUrl: null, userAgent: null, additionalContext: null, screenshot: null,
+            dueDate: dueDate, ct: ct);
+        return issue.Id;
     }
 
     public async Task UpdateStatusAsync(

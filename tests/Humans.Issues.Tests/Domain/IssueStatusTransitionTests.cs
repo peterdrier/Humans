@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Issues.Domain;
+using Humans.Issues.Contracts;
 
 namespace Humans.Issues.Tests.Domain;
 

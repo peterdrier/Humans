@@ -1,3 +1,4 @@
+using Humans.Surveys.Contracts;
 using NodaTime;
 
 namespace Humans.Surveys.Domain;

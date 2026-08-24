@@ -46,7 +46,7 @@ Highest-leverage targets:
 - **Test logs.** "For each failed test: `[name] file.cs:line — reason`. Skip stack traces, skip passes."
 - **Diff inspection** for large changes: "Summarize each file's changes at the conceptual level, one bullet per file."
 - **File shape discovery.** "Read X. List public method signatures + line numbers. Skip bodies." Saves Opus from pulling 800 lines just to refresh the mental model.
-- **Long log file scans** (`/api/logs`, hangfire dumps): "Find errors matching <pattern>. Return as `timestamp message`. Drop everything else."
+- **Long log file scans** (`/api/backdoor/logs`, hangfire dumps): "Find errors matching <pattern>. Return as `timestamp message`. Drop everything else."
 
 Rules for vacuum prompts:
 

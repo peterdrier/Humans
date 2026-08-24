@@ -2,7 +2,6 @@ using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
-using Humans.Feedback.Filters;
 using Humans.Feedback.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -27,16 +26,10 @@ public sealed class Section : ISection
         services.AddSingleton<IFeedbackRepository, FeedbackRepository>();
         services.AddScoped<FeedbackService>();
         services.AddScoped<IFeedbackServiceRead>(sp => sp.GetRequiredService<FeedbackService>());
+        services.AddScoped<IFeedbackTriage>(sp => sp.GetRequiredService<FeedbackService>());
         // Owns the user-scoped feedback_reports / feedback_messages tables → GDPR export
         // contributor and account-merge fold participant (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<FeedbackService>());
-
-        // Feedback API key
-        services.Configure<FeedbackApiSettings>(opts =>
-        {
-            opts.ApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY") ?? string.Empty;
-        });
-        services.AddScoped<FeedbackApiKeyAuthFilter>();
     }
 }

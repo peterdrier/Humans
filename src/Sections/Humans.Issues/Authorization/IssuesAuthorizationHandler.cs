@@ -1,6 +1,6 @@
 using Humans.Base.Constants;
 using Humans.Issues.Domain;
-using Humans.Issues.Services.Dtos;
+using Humans.Issues.Contracts;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Issues.Authorization;

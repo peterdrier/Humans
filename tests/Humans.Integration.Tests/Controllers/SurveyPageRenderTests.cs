@@ -4,6 +4,7 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 

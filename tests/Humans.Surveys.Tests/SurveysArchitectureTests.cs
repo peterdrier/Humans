@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Localization;
+using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Tests;
 

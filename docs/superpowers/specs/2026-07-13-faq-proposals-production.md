@@ -1,6 +1,6 @@
 # FAQ Proposals — Agent Triage, Production (2026-07-13)
 
-Source: 100 agent conversations (2026-06-03 → 2026-07-12) pulled via `/api/agent/conversations`,
+Source: 100 agent conversations (2026-06-03 → 2026-07-12) pulled via `/api/backdoor/agent/conversations`,
 cross-referenced with the in-app Issues backlog. `refusalCount`/`handoffCount` were 0 on every
 conversation (counters never populated), so clusters were built from the raw question stream plus
 spot-read transcripts.

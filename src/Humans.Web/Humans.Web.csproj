@@ -31,6 +31,7 @@
     <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />

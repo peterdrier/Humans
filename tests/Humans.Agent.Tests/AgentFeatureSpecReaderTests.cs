@@ -4,6 +4,7 @@ using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

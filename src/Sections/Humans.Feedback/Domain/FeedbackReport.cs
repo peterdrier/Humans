@@ -1,3 +1,4 @@
+using Humans.Feedback.Contracts;
 using NodaTime;
 
 namespace Humans.Feedback.Domain;

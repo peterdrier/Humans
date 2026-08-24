@@ -207,4 +207,8 @@ public enum AuditAction
     ExpenseHoldedPushed,
     ExpenseHoldedFailed,
     ExpenseHoldedRequeued,
+    // Backdoor personal machine-API key lifecycle (nobodies-collective/Humans#1128).
+    // Rotation is recorded as a revoke of the old key followed by an issue of the new one.
+    BackdoorApiKeyIssued,
+    BackdoorApiKeyRevoked,
 }

@@ -1,3 +1,4 @@
+using Humans.Agent.Contracts;
 using Humans.Agent.Authorization;
 using Humans.Base.Controllers;
 using System.Globalization;
