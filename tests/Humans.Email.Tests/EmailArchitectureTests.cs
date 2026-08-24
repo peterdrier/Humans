@@ -62,6 +62,24 @@ public class EmailArchitectureTests
 
     // ── Connector abstractions ──────────────────────────────────────────────
 
+    /// <summary>
+    /// The section carries Hangfire.Core (HangfireImmediateOutboxProcessor and the two jobs
+    /// name it), so a Hangfire parameter on the service compiles. Scheduling stays behind
+    /// IImmediateOutboxProcessor — containment of a dependency the section really has.
+    /// </summary>
+    [HumansFact]
+    public void OutboxEmailService_HasNoHangfireDependency()
+    {
+        var ctor = typeof(OutboxEmailService).GetConstructors().Single();
+        var hangfireParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
+                .StartsWith("Hangfire", StringComparison.Ordinal));
+
+        hangfireParam.Should().BeNull(
+            because: "IImmediateOutboxProcessor abstracts the dispatch — a direct Hangfire "
+                   + "parameter bypasses the connector boundary");
+    }
+
     [HumansFact]
     public void ConnectorAbstractions_SitOnTheSideTheirImplementationLivesOn()
     {

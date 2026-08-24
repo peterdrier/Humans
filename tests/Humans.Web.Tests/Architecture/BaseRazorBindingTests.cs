@@ -71,6 +71,54 @@ public class BaseRazorBindingTests
             + "helpers ships as inert literal markup with a green build and no runtime error");
     }
 
+    /// <summary>
+    /// Every <c>@addTagHelper *, X</c> in the tree names an assembly that still exists. Razor
+    /// ignores a directive naming a missing assembly in silence, so the tag helpers it was
+    /// meant to open ship as inert markup on a green build — the same failure shape the test
+    /// above guards, arriving through a deleted project instead of a missed directive.
+    /// Generalized from a check that named <c>Humans.UI</c> specifically: the rule is that no
+    /// directive names a dead assembly, not that one particular dead name stays gone.
+    /// </summary>
+    [HumansFact]
+    public void EveryAddTagHelperDirectiveNamesAnAssemblyThatExists()
+    {
+        var src = SrcRoot();
+
+        var projects = Directory
+            .EnumerateFiles(src, "*.csproj", SearchOption.AllDirectories)
+            .Select(Path.GetFileNameWithoutExtension)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var directives = RazorFiles(src)
+            .Where(f => string.Equals(Path.GetFileName(f), "_ViewImports.cshtml", StringComparison.Ordinal))
+            .SelectMany(f => File.ReadLines(f).Select(line => (File: f, Line: line)))
+            .Select(x => (x.File, Assembly: AssemblyNamedBy(x.Line)))
+            .Where(x => x.Assembly is not null)
+            .ToList();
+
+        directives.Should().NotBeEmpty(
+            "the scan must find the directives it is guarding — an empty sweep is a broken sweep");
+
+        directives
+            .Where(x => x.Assembly!.StartsWith("Humans.", StringComparison.Ordinal)
+                     && !projects.Contains(x.Assembly))
+            .Select(x => $"{x.File} -> {x.Assembly}")
+            .Should().BeEmpty(
+                "a directive naming an assembly that no longer exists resolves to nothing in "
+                + "silence and hides that the real one is missing");
+    }
+
+    /// <summary>The assembly in <c>@addTagHelper *, Assembly</c>, or null if the line is not one.</summary>
+    private static string? AssemblyNamedBy(string line)
+    {
+        var trimmed = line.Trim();
+        if (!trimmed.StartsWith("@addTagHelper ", StringComparison.Ordinal))
+            return null;
+
+        var comma = trimmed.LastIndexOf(',');
+        return comma < 0 ? null : trimmed[(comma + 1)..].Trim();
+    }
+
     // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
     private static bool BindsBase(string viewPath, string srcRoot)
     {
