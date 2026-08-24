@@ -70,7 +70,8 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Tickets.Services.TicketQueryService"),
         SectionType("Humans.Campaigns.Services.CampaignService"),
         SectionType("Humans.Camps.Services.CampService"),
-        SectionType("Humans.Events.Services.EventService"),
+        // The caching decorator, not EventService: erasure edits cached rows.
+        SectionType("Humans.Events.Services.CachingEventService"),
         SectionType("Humans.AuditLog.Services.AuditLogService"),
         SectionType("Humans.Budget.Services.BudgetService"),
         SectionType("Humans.Agent.Services.AgentService"),
