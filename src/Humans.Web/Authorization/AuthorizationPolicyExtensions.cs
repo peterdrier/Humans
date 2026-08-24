@@ -95,7 +95,7 @@ public static class AuthorizationPolicyExtensions
             // Humans.Users reach the gate through the policy name alone, so Auth's Contracts
             // leaf never has to carry an IAuthorizationRequirement. ("Framework-free leaf" was
             // the old wording; G5 lane 3c measured it false — the leaf resolves
-            // Microsoft.AspNetCore.App transitively through Humans.Interfaces. Keeping the
+            // Microsoft.AspNetCore.App transitively through Humans.Base. Keeping the
             // requirement out is a choice.)
             options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
                 policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));

@@ -200,28 +200,15 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
 
 ## Flagged for human review
 
-- `docs/features/global/section-activation.md` — "Shell pins **26 of the 42 shipped
-  sections**". The seam lanes have been shrinking that set, so 26 is likely stale, but the
-  number is not statically measurable with confidence: a `using`-directive scan of
-  `src/Humans.Web` gives 5, a loose text scan gives 18 (it picks up prose in comments —
-  it counts `Search` and `Tour`, which this very doc says Shell no longer names), and
-  scanning the built `Humans.Web.dll` for `Humans.*` strings gives all 42 — but that last
-  one is not the `AssemblyRef` table it looks like: `Views/_ViewImports.cshtml` names only
-  `Humans.Users.Contracts`, so the full alphabetical run of every section almost certainly
-  comes from the embedded PDB's compilation-reference list (every reference *passed to*
-  the compiler), not from what Shell actually consumes. Getting the real number needs the
-  app's own reference scan — `SectionActivation.ShellDependencies` already computes it but
-  nothing logs it, whereas `SectionDiscoveryExtensions.cs:43` already logs the active and
-  discovered counts at startup. Left untouched.
-- `docs/sections/_Index.md` — the per-section summary table was verified row-by-row against
-  `src/Sections/*` (all 42 present and correctly located), but a full cell-by-cell
-  regeneration of its content columns was out of scope against ~1989 matched files. Next
-  sweep, or a dedicated pass.
-- `docs/architecture/conventions.md` — the `fetch()`-exceptions table lists
-  `Humans.Users/Views/Shared/Components/UserSearchResult/Default.cshtml` as a "Search
-  results" exception, but that view contains no `fetch()`; it is a pure Razor result row.
-  It may be deliberate as the documented page-pattern counterpart to `<vc:human-search>`
-  per `memory/architecture/person-search.md`. Left in place.
+- `docs/sections/_Index.md` — the section rows were verified against `src/Sections/*` (all
+  42 present and correctly located), but the two six-column tables (Controllers /
+  Orchestrators / Services / Repositories / Tables, lines 85-139) were not verified
+  cell-by-cell: that is several hundred hand-typed class names against ~1989 matched files.
+  Their Services / Repositories / Tables columns duplicate the mechanically generated
+  per-section `src/Sections/*/Docs/data-access.md` (38 of them), which is the shape
+  `no-derived-aggregates-in-docs` warns about — a hand-maintained copy of content that
+  already has a generator. Raised with Peter; awaiting a call on whether those columns
+  should exist at all.
 - `src/Sections/Humans.Email/Docs/Email.md` — the Architecture section still counts
   `IEmailService`'s callers as "nine `Humans.Application` services, six
   `Humans.Infrastructure` jobs". Both projects were deleted in G5, so the sentence names
@@ -251,13 +238,40 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
   repo-wide and removed the now-orphaned key from all six locales. An orphan this sweep
   created, so this sweep cleans it up.
 
-**Not fixed, reported:** four `src/Humans.Web` C# files still name deleted projects in
-comments — `AuthorizationPolicyExtensions.cs:98` (`Humans.Interfaces`),
-`TicketVendorInfrastructureExtensions.cs:11` (`Humans.Application`),
-`InfrastructureServiceCollectionExtensions.cs:53-59` (`Humans.Infrastructure`,
-`Humans.Application`), `PersistenceServiceCollectionExtensions.cs:13-15`
-(`Humans.Interfaces`, `Humans.Infrastructure`). Source comments are outside this sweep's
-declared scope.
+**Stale project names in `src/Humans.Web` comments** (Peter's call, 2026-08-24: fix them
+here). Source comments are outside the sweep's declared scope, so these rode in only on an
+explicit go-ahead. Each was repointed at where the type actually lives now, verified before
+editing:
+
+- `Authorization/AuthorizationPolicyExtensions.cs:98` — `Humans.Interfaces` → `Humans.Base`.
+- `Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs:11` — the ticket-vendor
+  port was said to live in `Humans.Application`; `ITicketVendorService` and
+  `TicketVendorSettings` are both in `src/Sections/Humans.Tickets/Contracts/`.
+- `Extensions/InfrastructureServiceCollectionExtensions.cs:53-54,59` — the badge-cache
+  invalidators were called `Humans.Infrastructure` implementations of `Humans.Application`
+  interfaces; all four impls are in `Humans.Base/Caching/MemoryCacheInvalidators.cs` and all
+  four interfaces in `Humans.Base/Interfaces/Caching/`.
+- `Extensions/PersistenceServiceCollectionExtensions.cs:13-15` — **left alone deliberately.**
+  Both mentions are historical narrative that names the deleted projects correctly as past
+  events ("came here at lane 5b-6, which deleted `Humans.Infrastructure`"), and line 13
+  already glosses the rename as "Humans.Interfaces (Base)". Rewriting accurate history to
+  use today's names would make it wrong.
+
+## Resolved by Peter after the PR opened
+
+- **`docs/features/global/section-activation.md` — the "26 of the 42" count is gone.** Peter:
+  counts in docs only burn update cycles, and `no-derived-aggregates-in-docs` (HARD RULE)
+  already covers it. The paragraph now carries the judgment — Shell still pins a large
+  minority, the seam lanes shrink it — and points readers at
+  `SectionActivation.ShellDependencies`, which computes the set, instead of a number typed
+  here. The doc's `flag-on-change` marker was updated to say the pinned set is described
+  qualitatively and its count must never be written down, so a future sweep does not
+  helpfully put a number back.
+- **`docs/architecture/conventions.md` — the `UserSearchResult` row is removed.** Peter:
+  search became component-based so each section renders its own result appropriately, which
+  makes the row stale. Verified before deleting — the view has zero `fetch()` and zero
+  `<script>`; it is pure Razor delegating to `<vc:human>`, so it never belonged in a table
+  of "the following use `fetch()`".
 
 ## Unmarked editorial
 
