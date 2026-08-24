@@ -6,8 +6,12 @@ argument-hint: "[resume] [--section=<Name>] [--budget=2.5h]"
 
 # Section Doctor
 
-Full design: `docs/superpowers/specs/2026-08-17-section-doctor-design.md`. This file is
-self-amending — run sweeps apply merged run lessons here; keep those edits terse and dated.
+Full design: `docs/superpowers/specs/2026-08-17-section-doctor-design.md`.
+
+**Only Peter edits this file.** A run proposes — it records lessons in its run file and its
+Needs-Peter block — and never amends its own instructions, in a sweep or otherwise. It is
+instructions, not a record: no shas, no issue numbers, no accounts of past runs. That history
+lives in the run files and the design spec.
 
 ## Purpose
 
@@ -71,6 +75,16 @@ not deliverables, and a strike that runs `git add -A` commits anything sitting i
 one of them derives from `$TS` alone, and why `$TS` is also the branch name: `section-doctor/$TS`
 is recoverable with `git rev-parse --abbrev-ref HEAD` at any point in the run.
 
+**Shell rules that break a run when missed:**
+
+- Write multi-line content — commit messages, run files — with `git commit -F <file>` or a
+  file-write tool, or a **quoted** heredoc. An unquoted heredoc executes backticks inside it, and
+  PowerShell here-string syntax (`@'…'@`) silently becomes part of the subject line under Git Bash.
+- Never run `dotnet build` and `dotnet test` against the same worktree at once — the test host
+  holds the output DLLs and the build burns MSB3026 retry rounds on locked files. One at a time.
+- Resolve every asserted path from the worktree root. A bare basename test reports a live file
+  missing and invites a repo-wide "fix" for a file that was never gone.
+
 Getting a toolchain is the *environment's* job, not this skill's — a local run and the
 scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already there. Never
 install one. Stryker is **not** part of that toolchain: when `dotnet stryker` is unavailable,
@@ -100,6 +114,9 @@ WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # cd here; all commands run i
 
 Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Scope every
 Glob/Grep to `$WORKTREE`.
+
+**Scope history checks to a named branch or ref, never `git log --all`** — on a run with a blocked
+branch set, `--all` surfaces commit subjects from that set and is not blindfold-safe.
 
 Start the phase log now. Phase 7's cost report buckets the session transcript by these
 timestamps, and names each row by the **label**, not the phase id — a table of phase numbers
@@ -184,6 +201,10 @@ to them.
 Take the selected section (or `--section`, which skips the selector but never the blocked
 set — check it with `select-section.py --prs "$RUNDIR/prs.json" --blocked-only`). Sections
 are `src/Sections/` projects only.
+
+**A low reforge score is not evidence the section is healthy.** The score measures structure, never
+correctness — the lowest-scoring section in the solution was failing open on access control. Nothing
+in the ranking rubric surfaces that, so never read a good score as a reason to look less hard.
 
 **Never work a section in the blocked set.** A section with an open section-doctor PR has
 unmerged strikes that today's run cannot see — re-doctoring it duplicates work and produces
@@ -312,9 +333,24 @@ each one.
 | **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | subagent (sonnet) |
 | **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | subagent (sonnet) |
 
-**Every thread that does not run says so in the run file, with why.** A silent skip is how the
-2026-08-18 run left the whole mutation dimension unmeasured with nothing flagging it. A thread
-earns removal from this table only when several runs record it as "ran, found nothing".
+**Every thread that does not run says so in the run file, with why.** A silent skip leaves a whole
+dimension unmeasured with nothing flagging it. A thread earns removal from this table only when
+several runs record it as "ran, found nothing".
+
+**Per-thread rules worth the line:**
+
+- **Behavior & bugs** — read the section's auth paths by hand. A doc-code contradiction on gating
+  is invisible to grep and to every other thread.
+- **Tests** — always build the invariant matrix, including when the section looks well tested; the
+  gaps it finds are the invariants nobody thought to doubt. A new test that does not move the
+  mutants it was written for is not passing, it is undiscriminating — re-run the tool thread
+  against new tests before the PR. Stryker's `--coverage-analysis` is config-only, not a CLI flag,
+  and a section-scoped run must exclude `Data/Migrations` or migration bodies swamp the score.
+- **Freshness** — a trigger that resolves is not a trigger that works: check each path actually
+  carries the claim, not merely that it is live. Read a feature doc's "Out of scope" list against
+  its route table every time; it ages worse than the body.
+- **Prose & surface** — diff the resx key set against the keys the section's views reference. Dead
+  keys cluster where UI was removed, and it is the cheapest full-coverage signal without a compiler.
 
 #### Open-issue review (Inbox)
 
@@ -520,11 +556,18 @@ worktree/PR, three bookkeeping writes:
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
-  it — `lesson:` → this skill's Lessons, `debt:` → the owning section's
+  it — `debt:` → the owning section's
   `src/Sections/Humans.<X>/Docs/debt.yml` where one section owns the fix and
   `docs/architecture/debt-ledger.yml` otherwise, `memory:` → the named
   atom + INDEX line — skipping any item already present in its target (idempotence is the only
-  bookkeeping; there is no anchor window). **Never edit the swept run files** — resume is
+  bookkeeping; there is no anchor window).
+
+  **The sweep never edits this skill.** `lesson:` items are not applied here or anywhere else by
+  a run: a `lesson:` carries into the run's `## Needs Peter` block as a proposed one-line edit
+  naming the phase it governs, and reaches the skill only through Peter's answer (Phase 8 inline,
+  or `resume` applying it later). **No unattended run edits its own instructions** — a skill that
+  rewrites itself while nobody is reading drifts with nothing to catch it, and the lessons it
+  appends are exactly the war stories that do not belong in instructions. **Never edit the swept run files** — resume is
   their only post-merge editor, which is what keeps resume conflict-free. Two piled-up
   unmerged runs can occasionally sweep the same item; the cost is one hand-resolved conflict,
   not corruption (the no-locking trade of PR #1366).
@@ -533,7 +576,7 @@ The runs directory **is** the log and the newest file **is** the last report. Th
 `log.md`, `last-report.md`, or generated index — never recreate them — and daily runs never
 touch `docs/architecture/maintenance-log.md`.
 
-## Phase 6: Retro + self-amend
+## Phase 6: Retro + propose amendments
 
 Four questions, answered honestly in the run file: what did the selector/rubric get wrong, what was
 wasted motion, what did the assessment miss that striking revealed, and **what does the target
@@ -541,9 +584,11 @@ diff say** — 3c regenerated the target and diffed it against the previous run'
 either the section moved or the earlier target was wrong, and which one it was is worth a line.
 Then:
 
-- **Mechanical lessons** → this run's `## Sweep queue` as `lesson:` one-liners; a later run's
-  sweep applies them to this skill's files after this run merges. Never edit the skill's files
-  directly mid-run — they are shared, and a concurrent run's edit is a guaranteed conflict.
+- **Mechanical lessons** → this run's `## Sweep queue` as `lesson:` one-liners, each **naming the
+  phase it governs**, and carried into `## Needs Peter` as a proposed edit. Recording a lesson is
+  the run's job; applying it to this skill is Peter's — never edit the skill's files directly,
+  mid-run or in a sweep. A lesson that names no phase is a war story: leave it in the run file,
+  which is where a run's history belongs.
 - **Judgment lessons** (rubric axes, thresholds, play choices) → the Needs-Peter block.
 - **Durable project rules** → `## Sweep queue` as `memory: <bucket>/<name> — <rule>`.
 
@@ -679,8 +724,9 @@ undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - **A run touches only:** the section's files (+ callers where a play requires), the section's
   `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, and — in
-  the sweep commit only (Phase 5) — this skill's files, the debt ledgers (central, and any
-  section's whose debt the sweep is routing), `memory/`; never the run files it sweeps. Run
+  the sweep commit only (Phase 5) — the debt ledgers (central, and any
+  section's whose debt the sweep is routing), `memory/`; never the run files it sweeps, and
+  **never this skill's own files** (Peter edits those; a run proposes in Needs-Peter). Run
   scratch goes to `$RUNDIR`, outside the worktree entirely. Nothing writes
   `docs/architecture/maintenance-log.md`.
 - **Every GitHub issue is read-only to every run.** No close, edit, relabel or comment, on any
@@ -690,109 +736,38 @@ undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
   Rows are added and removed only at Peter's direction; a run that wants one proposes it in its
   Needs-Peter block.
 
-## Lessons
+## Lessons — pending placement
 
-(Applied here by run sweeps from merged run files' `lesson:` items — dated one-liners.)
+Not a log and not a destination: **no run writes this section.** These are rules that have not yet
+been folded into the phase that governs them; each one moves there, or is dropped, when Peter next
+edits this file. Nothing gets appended here.
 
-- 2026-08-16: resx/XML edits must be structure-aware (python/XML tooling), never line-based sed
-  — neutral resx was one-line-per-entry but all 5 language variants were multi-line; sed
-  corrupted them and only the build caught it.
-- 2026-08-16: keep a by-hand read of the section's auth paths in the assessment — the doc-code
-  contradiction on phase gating was invisible to grep and to every lane.
-- 2026-08-16 (retro round 2, Peter): the shakedown run stopped at 40 of 150 minutes with
-  strikeable items still ranked — hence the drain-the-list rule; and absorbed abilities were
-  going unused (Stryker, InspectCode, invariant matrix, claim sweep, runtime verify, inbox) —
-  hence the expanded lanes above.
-- 2026-08-17: **for a section whose input is content, run the real shipped content through the
-  real pipeline during the assessment.** Guide's two defects (an admin block served to anonymous;
-  two admin roles locked out of their own blocks) were both invisible to grep, to unit tests and
-  to every code-reading lane — they only appeared when the 28 real `docs/guide/*.md` files went
-  through the actual renderer and filter. Add a lane that feeds production content to the section.
-- 2026-08-17: **a low reforge score is not evidence the section is healthy.** Guide scores 8, the
-  lowest of any section, and was failing open on access control. The replan rubric ranks by score
-  growth and staleness; nothing in it would ever have surfaced Guide. Treat the score as a measure
-  of structure only, never of correctness.
-- 2026-08-17: never run `dotnet build` and `dotnet test` against the same worktree concurrently —
-  the test host holds the output DLLs and the build burns MSB3026 retry rounds on locked files.
-  One at a time per worktree.
-- 2026-08-17: commit messages via Bash must use `git commit -F <file>`; PowerShell here-string
-  syntax (`@'…'@`) silently becomes part of the subject line under Git Bash.
-- 2026-08-17: every dispatched lane missed the run window, and the Phase 4.4 reviewer gate could
-  not be obtained **at all** — four attempts across three agents (two `general-purpose` opus, one
-  `feature-dev:code-reviewer` opus), briefs shortened each time down to "reply with exactly three
-  lines", every one idling without an answer. Don't let a lane block a strike: give each a
-  deadline and work the ranked list meanwhile. When the gate does not report, work its checklist
-  on the main thread and **label it self-review in the PR and the Needs-Peter queue** — never
-  imply a review happened, and don't spend the run re-spawning reviewers.
-- 2026-08-17: lanes that report *after* the PR opens are still worth working — the run's PR is
-  open, so take a second pass and commit to it rather than dropping the findings. The tests lane's
-  invariant matrix caught an untested negative access rule (`POST /Guide/Refresh`) that the whole
-  first pass missed. **Always build the matrix**, even when the section looks well tested; the
-  gaps it finds are the invariants nobody thought to doubt.
-- 2026-08-18: a new test that does not move the mutants it was written for is not passing, it is
-  not discriminating. Re-run the tool thread against the new tests before the PR; Finance's
-  creditor-block boundary test passed for the wrong reason because the list unions three sources.
-- 2026-08-18: Stryker's `--coverage-analysis` is config-only, not a CLI flag, and a section-scoped
-  run must exclude `Data/Migrations` — migration bodies were 292 of 599 surviving mutants and made
-  the score unreadable. Write the config first.
-- 2026-08-18: when the reviewer gate cannot be obtained (there: a session-level instruction against
-  dispatching agents), say so in the commit message as well as the run file. A commit that lands
-  unreviewed should say so where the diff is read, not only where the run is.
-- 2026-08-18: `git log --all` is not blindfold-safe — on a run with a blocked branch set it
-  surfaced a commit subject from that set during an unrelated history check. Scope history checks
-  to a named branch or ref, never `--all`.
-- 2026-08-18: `dotnet ef migrations add/remove --no-build` reads whatever assembly the startup
-  project last built, so it generated an empty migration and then `remove --force` walked back an
-  already-merged one. Always full-build before either command; recover a mis-removal with
-  `git checkout` of the Migrations folder, never by hand-editing.
-- 2026-08-18: fixing a doc's headline stale claim is not fixing the doc. `Finance.md`'s route table
-  was corrected while eight smaller claims in the same file survived, four of them describing a
-  read-split that had already shipped. When a section doc is opened at all, read it end to end
-  against the code and fix every claim, not the worst one.
-- 2026-08-18: rebuild a section doc's Cross-Section Dependencies from its `.csproj` project
-  references, not from prose. `Finance.md` listed a Tickets dependency the section has not had
-  since the controller split, and named `IBudgetService` (read+write) where the code injects
-  `IBudgetServiceRead`.
-- 2026-08-18: run `dotnet format whitespace Humans.slnx --verify-no-changes` before the PR, not
-  after CI says so. Two new test files failed code-quality on collection-expression line breaks
-  that the local build and the full test run both pass through; a green build is not the
-  formatting gate.
-- 2026-08-22: check a repo-relative path with the repo-relative path. A bare test on the basename
-  `G5-SECTION-TEMPLATE.md` reported the live template missing and nearly produced a 65-file "fix";
-  the file was at `docs/sections/`. Resolve every asserted path from the worktree root.
-- 2026-08-22: write run files with a quoted heredoc or a file-write tool, never an unquoted one —
-  the run file's own sweep queue lost a code span to command substitution, because backticks inside
-  an unquoted heredoc are executed.
-- 2026-08-22: when a doc and the code disagree and the code looks wrong, change neither. Fixing the
-  doc to match a suspected defect cements it; the pair belongs in Needs-Peter together. Only sweep
-  a claim when the code is the side that is right.
-- 2026-08-22: with no compiler, C# doc-comment edits are still safe if they add no `<see cref>` and
-  the run verifies tag balance by parsing each `///` block as XML. `TreatWarningsAsErrors` is on and
-  CS1591 is suppressed but CS1574 is not, so a broken cref would break the build.
-- 2026-08-22: a feature doc's "Out of scope" list ages worse than its body — the drill-down Cantina
-  ships was sitting under "rejected as low-value" in the same file that documented its routes. Read
-  the out-of-scope list against the route table every time.
-- 2026-08-22: dead resource keys cluster where UI was removed, and they are the cheapest
-  full-coverage signal available without a compiler: diff the resx key set against the keys the
-  section's views actually reference.
-- 2026-08-22: a freshness trigger that resolves is not a freshness trigger that works. Cantina's
-  pointed at a Shifts interface file that exists and contains none of the code the doc asserts
-  about; check that each trigger path actually carries the claim, not merely that the path is live.
-- 2026-08-22: sweep a renamed concept by its abbreviations too. The `VolunteerEventProfile` sweep
-  cleared every full-name hit and left `VEP` standing in the same file, while also dropping the
-  freshness trigger that would have caught it later.
-- 2026-08-22: when a doc explains why an unused member exists, check that the explanation is true
-  before writing it. Two rounds were spent inventing rationales ("for the CSV") for daily payload
-  members that nothing reads; "nothing reads these" was both the correct answer and a finding.
-- 2026-08-22: "never crosses the boundary" is almost always an overclaim for a section reading a
-  shared read-model. The honest form is "the field is carried, this code never reads it, and the
-  output record has no such property" — check which the code implements before repeating the claim.
-- 2026-08-23: a Needs-Peter ruling is a state change to a finding, so a finding gets exactly one
-  prose description (Phase 5). Ticking is the cheap half; propagating the changed status is the
-  half that gets skipped.
-- 2026-08-23: never freeze a figure that counts the commit writing it, and never write "final"
-  about a branch that is still moving — which is why the run file no longer describes its own
-  diff at all.
-- 2026-08-23: a comment-only edit to a `.cs` file is not score-neutral. Rewriting seven DTO doc
-  comments moved `locProd` from −56 to −49; a run that calls such a change "docs only" and leaves
-  its reforge row alone will misreport it.
+- **Phase 4** — resx/XML edits must be structure-aware (python/XML tooling), never line-based sed.
+  Neutral resx is one entry per line but the language variants are multi-line, so sed corrupts them
+  and only the build catches it.
+- **Phase 4** — full-build before `dotnet ef migrations add` or `remove`. With `--no-build` they
+  read whatever assembly the startup project last built, which generates empty migrations and lets
+  `remove --force` walk back an already-merged one. Recover a mis-removal with `git checkout` of
+  the Migrations folder, never by hand-editing.
+- **Phase 4** — with no compiler, C# doc-comment edits are safe only if they add no `<see cref>`
+  and the run verifies tag balance by parsing each `///` block as XML. CS1591 is suppressed but
+  CS1574 is not, and `TreatWarningsAsErrors` is on.
+- **Phase 4** — fixing a doc's headline stale claim is not fixing the doc. When a section doc is
+  opened at all, read it end to end against the code and fix every claim, not the worst one.
+- **Phase 4** — rebuild a section doc's Cross-Section Dependencies from its `.csproj` project
+  references, not from prose.
+- **Phase 4** — sweep a renamed concept by its abbreviations too, and update the freshness trigger
+  in the same pass.
+- **Phase 4** — when a doc and the code disagree and the code looks wrong, change neither; the pair
+  goes to Needs-Peter together. Fixing the doc to match a suspected defect cements it.
+- **Phase 4** — when a doc explains why an unused member exists, verify the explanation before
+  writing it. "Nothing reads these" is often both the correct answer and a finding.
+- **Phase 4** — "never crosses the boundary" is almost always an overclaim for a section reading a
+  shared read-model. The honest form names what is carried, what this code reads, and what the
+  output record exposes.
+- **Phase 4/5** — a comment-only edit to a `.cs` file is not score-neutral: a doc comment on
+  production code is production LOC. A run that calls such a change "docs only" misreports it.
+- **Phase 7** — run `dotnet format whitespace Humans.slnx --verify-no-changes` before the PR, not
+  after CI says so. A green build is not the formatting gate.
+- **Phase 4** — when a reviewer gate cannot be obtained, say so in the commit message as well as
+  the run file. A commit that lands unreviewed should say so where the diff is read.
