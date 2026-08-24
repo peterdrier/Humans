@@ -707,7 +707,11 @@ internal sealed class DevPersonaSeeder(
             .FirstOrDefault(r => string.Equals(PascalToKebab(r), slug, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string PascalToKebab(string pascal)
+    /// <summary>
+    /// Persona slug in kebab-case. Shared with <c>DevLoginController</c> so the persona
+    /// list, the sign-in route and the seeder-side reverse lookup cannot disagree.
+    /// </summary>
+    internal static string PascalToKebab(string pascal)
     {
         var sb = new StringBuilder(pascal.Length + 4);
         for (var i = 0; i < pascal.Length; i++)

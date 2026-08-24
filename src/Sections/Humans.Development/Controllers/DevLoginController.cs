@@ -221,22 +221,10 @@ internal sealed class DevLoginController(
 
         foreach (var role in roles)
         {
-            list.Add(new(PascalToKebab(role), PascalToDisplay(role)));
+            list.Add(new(DevPersonaSeeder.PascalToKebab(role), PascalToDisplay(role)));
         }
 
         return list;
-    }
-
-    private static string PascalToKebab(string pascal)
-    {
-        var sb = new StringBuilder(pascal.Length + 4);
-        for (var i = 0; i < pascal.Length; i++)
-        {
-            if (i > 0 && char.IsUpper(pascal[i]))
-                sb.Append('-');
-            sb.Append(char.ToLowerInvariant(pascal[i]));
-        }
-        return sb.ToString();
     }
 
     private static string PascalToDisplay(string pascal)
