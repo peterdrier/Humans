@@ -5,11 +5,23 @@ Empty on purpose.
 `Contracts/` holds everything consumed from outside the section (G5-SECTION-TEMPLATE.md
 step 5b). Development is a pure **consumer**: it owns no tables, exposes no service interface,
 and its two controllers return `IActionResult`. Everything it does, it does through other
-sections' surfaces — `IUserService`, `IProfileEditorService`, `IUserEmailService`,
-`IContactFieldService`, `IRoleAssignmentService`, `ITeamService`, `ISystemTeamSync`,
-`ICampService`, `ICampRoleService`, `IShiftManagementService`, `IShiftSignupService`,
-`IAuditLogService`, plus `IConsentSubmission`, `IMembershipCalculatorRead`,
-`CityPlanningOptions` and `IBudgetDemoSeeder` on four contracts leaves.
+sections' surfaces:
+
+- **Users:** `UserManager<User>`, `SignInManager<User>`, `IUserService`, `IUserServiceRead`,
+  `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator`,
+  `IHumanLifecycleService`.
+- **Auth:** `IRoleAssignmentService`.
+- **Teams:** `ITeamService`, `ITeamSeeding`, `ISystemTeamSync`.
+- **Camps:** `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding`.
+- **Shifts:** `IShiftSeeding`, `IBurnSettingsService`, `IShiftSignupSeeding`.
+- **AuditLog:** `IAuditLogService`.
+- **Consent (leaf):** `IConsentSubmission`.
+- **Governance (leaf):** `IMembershipCalculatorRead`.
+- **CityPlanning (leaf):** `CityPlanningOptions`.
+- **Budget (leaf):** `IBudgetDemoSeeder`.
+
+The `Docs/Development.md` Cross-Section Dependencies table is the authoritative catalogue;
+this list is the same set grouped by owning section for the "why this folder is empty" answer.
 
 Two things outside the section still reach it, and neither is a reference to a Development
 type:
