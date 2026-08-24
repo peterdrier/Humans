@@ -17,7 +17,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 - **Section** is a free-form string drawn from `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning, Scanner) or `null`. Stored as a string so the routing table can change without migrations. Null-section issues fall to the Admin queue only.
 - A **Handler** is a user who can triage, assign, change status of, or comment as a non-reporter on an issue: `Admin`, or any role listed by `IssueSectionRouting.RolesFor(issue.Section)`.
 - **Ball-in-court** is **derived**, not stored: compare the latest comment's `SenderUserId` to `Issue.ReporterUserId`. There is no boolean column for "needs reply" — it is computed at read time.
-- The Detail view's **activity thread has no event table**: status/assignee/section/GitHub-link events are reconstructed at read time from the audit log (the four `AuditAction.Issue*` values, fetched via `IAuditLogService`) and merged chronologically with `IssueComment` rows in `IssuesService`. The audit log is the source of truth for inline events — do not add an issue-events schema.
+- The Detail view's **activity thread has no event table**: creation and status/assignee/section/GitHub-link events are reconstructed at read time from the audit log (the `AuditAction.Issue*` values, fetched via `IAuditLogService`) and merged chronologically with `IssueComment` rows in `IssuesService`. The audit log is the source of truth for inline events — do not add an issue-events schema.
 - **Issue status** tracks the lifecycle: Triage, Open, InProgress, Resolved, WontFix, Duplicate. Resolved/WontFix/Duplicate are terminal.
 
 ## Data Model
@@ -123,6 +123,7 @@ Two controllers serve this section:
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
 - Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
+- Creation is audited only on the machine path (`CreateIssueAsync`, `AuditAction.IssueCreated`), where the filer and the reporter can differ and the entry is the filer's only durable record. The in-app reporter is their own filer, so `Issue.ReporterUserId` says it all and `SubmitIssueAsync` writes no creation audit.
 - API-initiated changes are audit-logged with actor `null` (the API-key path has no user identity); the audit row's metadata records that the change came from the API.
 
 ## Negative Access Rules
@@ -150,7 +151,7 @@ Two controllers serve this section:
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.IssueComment` — comment-thread emails (queued through the outbox in production).
 - **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
-- **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
+- **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueCreated`, `AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count) — both invalidated whenever the actionable count for a viewer could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under `GdprExportSections.Issues`.
 

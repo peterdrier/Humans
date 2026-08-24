@@ -179,6 +179,37 @@ public sealed class IssuesServiceTests
     // ==========================================================================
 
     [HumansFact]
+    public async Task CreateIssueAsync_audits_the_filer_and_the_thread_surfaces_it()
+    {
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "r@r.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var filerId = Guid.NewGuid();
+
+        var issueId = await _service.CreateIssueAsync(
+            reporterId, IssueCategory.Bug, "Title", "Desc",
+            section: IssueSectionRouting.Tickets,
+            actorUserId: filerId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // The issue row records only the reporter, so the audit entry is the filer's one record.
+        await AuditLog.Received().LogAsync(
+            AuditAction.IssueCreated,
+            nameof(Issue),
+            issueId,
+            Arg.Is<string>(d => d.Contains(reporterId.ToString(), StringComparison.Ordinal)),
+            filerId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+
+        await _service.GetThreadAsync(issueId, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received().GetFilteredEntriesAsync(
+            Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<AuditAction>?>(a => a != null && a.Contains(AuditAction.IssueCreated)),
+            Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SubmitIssueAsync_lands_in_Triage_and_invalidates_nav_badge()
     {
         var userId = Guid.NewGuid();

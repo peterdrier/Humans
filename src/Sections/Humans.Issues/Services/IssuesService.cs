@@ -246,13 +246,16 @@ internal sealed class IssuesService(
         var issue = await repo.GetByIdAsync(issueId, ct)
             ?? throw new InvalidOperationException($"Issue {issueId} not found");
 
-        // Audit entries for the four Issue-related actions.
+        // Audit entries for the Issue-related actions. IssueCreated is written only by the
+        // machine path, where the filer and the reporter can differ, so it is the one place
+        // the thread can say who actually filed it.
         var auditEntries = await audit.GetFilteredEntriesAsync(
             entityType: AuditEntityTypes.Issue,
             entityId: issueId,
             userId: null,
             actions:
             [
+                AuditAction.IssueCreated,
                 AuditAction.IssueStatusChanged,
                 AuditAction.IssueAssigneeChanged,
                 AuditAction.IssueSectionChanged,
