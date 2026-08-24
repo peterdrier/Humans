@@ -25,9 +25,17 @@ internal sealed record BackdoorKeyListItem(
     string DisplayPrefix,
     Instant CreatedAt,
     Instant? LastUsedAt,
-    Instant? RevokedAt)
+    Instant? RevokedAt,
+    bool OwnerEligible)
 {
-    public bool IsActive => RevokedAt is null;
+    public bool IsRevoked => RevokedAt is not null;
+
+    /// <summary>
+    /// Whether the key actually opens the API. Not the same as unrevoked: eligibility is
+    /// re-checked on every request, so a key whose owner was suspended or lost Admin/Board is
+    /// refused while its row still carries no <c>RevokedAt</c>.
+    /// </summary>
+    public bool IsUsable => RevokedAt is null && OwnerEligible;
 }
 
 internal sealed record BackdoorKeyCandidate(Guid UserId, string DisplayName);

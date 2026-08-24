@@ -98,6 +98,14 @@ internal sealed class BackdoorController(
 
         var infos = await UserService.GetUserInfosAsync([.. eligibleIds.Union(rows.Select(r => r.UserId))], ct);
 
+        // A role assignment outlives a suspension, so the role sets alone name accounts the
+        // service refuses. Narrowing them by state gives the same two-part test
+        // IBackdoorApiKeyService applies at issue and on every authentication — used both to
+        // populate the dropdown and to tell a working key from an unrevoked but refused one.
+        var eligibleOwnerIds = eligibleIds
+            .Where(id => infos.GetValueOrDefault(id)?.State == UserState.Active)
+            .ToHashSet();
+
         return new BackdoorKeysViewModel
         {
             // Newest first — a display sort, so it lives here rather than in the repository.
@@ -109,13 +117,10 @@ internal sealed class BackdoorController(
                 r.DisplayPrefix,
                 r.CreatedAt,
                 r.LastUsedAt,
-                r.RevokedAt))],
-            // A role assignment outlives a suspension, so the role sets alone would offer
-            // accounts the service refuses. The state half of eligibility is applied here too.
-            EligibleUsers = [.. eligibleIds
-                .Select(id => (Id: id, Info: infos.GetValueOrDefault(id)))
-                .Where(u => u.Info?.State == UserState.Active)
-                .Select(u => new BackdoorKeyCandidate(u.Id, u.Info!.BurnerName))
+                r.RevokedAt,
+                eligibleOwnerIds.Contains(r.UserId)))],
+            EligibleUsers = [.. eligibleOwnerIds
+                .Select(id => new BackdoorKeyCandidate(id, infos[id].BurnerName))
                 .OrderBy(c => c.DisplayName, StringComparer.CurrentCulture)],
             NewPlaintextKey = newPlaintextKey,
         };

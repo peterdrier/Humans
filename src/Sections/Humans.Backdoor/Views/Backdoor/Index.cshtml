@@ -81,28 +81,35 @@ else
             <tbody>
                 @foreach (var key in Model.Keys)
                 {
-                    <tr class="@(key.IsActive ? null : "text-muted")">
+                    <tr class="@(key.IsUsable ? null : "text-muted")">
                         <td>@key.OwnerName</td>
                         <td>@key.Label</td>
                         <td><code>@key.DisplayPrefix…</code></td>
                         <td>@Stamp(key.CreatedAt)</td>
                         <td>@Stamp(key.LastUsedAt)</td>
                         <td>
-                            @if (key.IsActive)
-                            {
-                                <span class="badge bg-success">Active</span>
-                            }
-                            else
+                            @if (key.IsRevoked)
                             {
                                 <span class="badge bg-secondary">Revoked @Stamp(key.RevokedAt)</span>
                             }
+                            else if (!key.OwnerEligible)
+                            {
+                                <span class="badge bg-warning text-dark" title="Its owner is not an active Admin or Board member, so every request with it is refused.">Disabled</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
                         </td>
                         <td class="text-end">
-                            @if (key.IsActive)
+                            @if (key.IsUsable)
                             {
                                 <form asp-action="Rotate" asp-route-id="@key.Id" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rotate</button>
                                 </form>
+                            }
+                            @if (!key.IsRevoked)
+                            {
                                 <form asp-action="Revoke" asp-route-id="@key.Id" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
                                 </form>
