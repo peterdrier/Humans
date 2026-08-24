@@ -98,4 +98,4 @@ these are the ones this shape rests on.)
 
 | Run | Date | Reforge | Notes |
 |---|---|---|---|
-| 1 | 2026-08-24 | 258 (loc=6367, cogP95=9, cogMax=35) | first pass — PR pending |
+| 1 | 2026-08-24 | 258 (loc=6367, cogP95=9, cogMax=35) | first pass — peterdrier/Humans#1483 |
