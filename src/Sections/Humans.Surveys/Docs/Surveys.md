@@ -210,7 +210,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Negative Access Rules
 
-- No code outside `SurveyRepository` (and `SurveyService` above it) **cannot** read/write `survey_*` tables; other sections **cannot** inject `ISurveyRepository` (pinned by `SurveyArchitectureTests`).
+- No code outside `SurveyRepository` (and `SurveyService` above it) **cannot** read/write `survey_*` tables; other sections **cannot** inject `ISurveyRepository` — it is `internal` (HUM0034), so cross-section injection does not compile.
 - Survey code **cannot** reach into other sections' data or repositories — cross-section data comes **only** through `IUserServiceRead`/`ITeamServiceRead`/`ITicketServiceRead`/`IShiftView`/`IUserEmailService`.
 - Results, exports, and the API **cannot** expose respondent identity for CompletionTracked or Anonymous responses — `UserId`/`UserName` are populated **only** for Identified rows (enforced server-side regardless of API params).
 - The system **cannot** store a completion timestamp for CompletionTracked responses (timing side-channel).
@@ -254,7 +254,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (the clean `FeedbackReport.AgentConversationId` precedent / `memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints** — Survey was born clean rather than inheriting the `[Obsolete]`-nav pattern `Issue`/`Feedback`/`Camp` originally shipped with (all three have since stripped those navs too — nobodies-collective/Humans#1188 for Issues, #996 for Feedback). The service resolves display data via the cross-section read interfaces and returns DTOs.
 - **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketServiceRead`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider`).
-- **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape and the `ISurveyRepository` consumer allow-list. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal.
+- **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape. HUM0025 enforces single-owner table access; cross-section repository injection does not compile, `ISurveyRepository` being internal — a per-consumer allow-list test would only assert absence ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ### Cross-section read interface
 

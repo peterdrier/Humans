@@ -60,18 +60,6 @@ public class EmailArchitectureTests
             because: "triggering an immediate outbox run uses Hangfire's IBackgroundJobClient — Application layer takes the abstraction rather than the Hangfire type");
     }
 
-    [HumansFact]
-    public void OutboxEmailService_HasNoHangfireDependency()
-    {
-        var ctor = typeof(OutboxEmailService).GetConstructors().Single();
-        var hangfireParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Hangfire", StringComparison.Ordinal));
-
-        hangfireParam.Should().BeNull(
-            because: "Application layer must not reference Hangfire types directly — IImmediateOutboxProcessor abstracts the dispatch");
-    }
-
     // ── Connector abstractions ──────────────────────────────────────────────
 
     [HumansFact]

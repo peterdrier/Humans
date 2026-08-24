@@ -40,34 +40,6 @@ public class ShiftViewArchitectureTests
         typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftViewInvalidator>();
     }
 
-    [HumansFact]
-    public void CachingShiftViewService_DoesNotReferenceEntityFrameworkCore()
-    {
-        // The decorator owns dict caches and resolves the inner via
-        // IServiceScopeFactory — it must never reach for DbContext, EF types,
-        // or anything in the Microsoft.EntityFrameworkCore.* tree.
-        var ctor = typeof(CachingShiftViewService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => (p.ParameterType.Namespace ?? string.Empty)
-                    .StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal),
-                because: "decorator stays EF-free; repositories live behind the keyed inner ShiftViewService");
-
-        // Field types
-        var fieldTypes = typeof(CachingShiftViewService)
-            .GetFields(System.Reflection.BindingFlags.Instance |
-                       System.Reflection.BindingFlags.Public |
-                       System.Reflection.BindingFlags.NonPublic)
-            .Select(f => f.FieldType)
-            .ToList();
-
-        fieldTypes
-            .Should().NotContain(
-                t => (t.Namespace ?? string.Empty)
-                    .StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal),
-                because: "decorator must not hold EF types as fields");
-    }
-
     // ── IShiftView contract ──────────────────────────────────────────────────
 
     [HumansFact]

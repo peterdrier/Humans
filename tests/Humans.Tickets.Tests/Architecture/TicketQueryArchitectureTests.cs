@@ -79,22 +79,6 @@ public class TicketQueryArchitectureTests
     }
 
     [HumansFact]
-    public void TicketQueryService_DoesNotImplementITicketCacheInvalidator()
-    {
-        typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(TicketQueryService))
-            .Should().BeFalse(
-                because: "cache eviction belongs on the Singleton decorator seam, not on the scoped inner service or the ticket read/query contract");
-    }
-
-    [HumansFact]
-    public void ITicketServiceRead_DoesNotExposeHasCurrentEventTicketAsync()
-    {
-        typeof(ITicketServiceRead).GetMethod("HasCurrentEventTicketAsync")
-            .Should().BeNull(
-                because: "current-event ticket status is carried by UserTicketHoldings instead of a separate read method");
-    }
-
-    [HumansFact]
     public void TicketSyncService_TakesITicketCacheInvalidator()
     {
         // The Tickets-section write site (sync job + IUserMerge fold) must

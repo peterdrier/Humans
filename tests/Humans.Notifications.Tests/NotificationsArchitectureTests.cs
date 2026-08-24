@@ -26,7 +26,7 @@ public class NotificationsArchitectureTests
     // ApplicationServicesTakeNoDbContextRule for every Application service.
 
     [HumansFact]
-    public void NotificationService_TakesRecipientResolver_NotDbContext()
+    public void NotificationService_TakesRecipientResolver()
     {
         // The NotificationService reaches teams and role holders via a thin
         // recipient-resolver adapter rather than directly injecting
@@ -38,8 +38,6 @@ public class NotificationsArchitectureTests
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
         paramTypeNames.Should().Contain("INotificationRecipientResolver");
-        paramTypeNames.Should().NotContain("ITeamService");
-        paramTypeNames.Should().NotContain("IRoleAssignmentService");
     }
 
     // ── NotificationInboxService ─────────────────────────────────────────────
