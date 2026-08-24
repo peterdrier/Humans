@@ -16,6 +16,7 @@ namespace Humans.Users.ViewComponents;
 /// </remarks>
 public sealed class UserSearchResultViewComponent : ViewComponent
 {
+    /// <summary>Renders the row from the ids and match context the caller already holds.</summary>
     /// <param name="userId">The matched human.</param>
     /// <param name="matchField">Which bucket matched ("Name", "Bio", …).</param>
     /// <param name="matchSnippet">Highlighted long-form excerpt, when there is one.</param>

@@ -21,6 +21,7 @@ public sealed record RecurringJobDescriptor(string Id, Type JobType, string Cron
 /// <summary>The recurring jobs a section owns. Shell schedules and sweeps the merged set.</summary>
 public interface ISectionJobs : ISectionContribution
 {
+    /// <summary>The section's recurring jobs, built at registration time.</summary>
     /// <param name="services">Root provider — resolve <c>IConfiguration</c> or
     /// <c>ConfigurationRegistry</c> from it for cron values that come from settings.</param>
     IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services);

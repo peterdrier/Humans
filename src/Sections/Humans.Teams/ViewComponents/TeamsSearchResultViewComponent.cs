@@ -17,6 +17,7 @@ namespace Humans.Teams.ViewComponents;
 /// </remarks>
 public sealed class TeamsSearchResultViewComponent(ITeamServiceRead teams) : ViewComponent
 {
+    /// <summary>Renders the row, or nothing when the team no longer resolves.</summary>
     /// <param name="teamId">The matched team.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid teamId)
     {

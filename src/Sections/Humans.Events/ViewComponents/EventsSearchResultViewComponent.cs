@@ -18,6 +18,7 @@ namespace Humans.Events.ViewComponents;
 /// </remarks>
 public sealed class EventsSearchResultViewComponent(IEventServiceRead events) : ViewComponent
 {
+    /// <summary>Renders the row, or nothing when the event no longer resolves as approved.</summary>
     /// <param name="eventId">The matched approved event.</param>
     public async Task<IViewComponentResult> InvokeAsync(Guid eventId)
     {
