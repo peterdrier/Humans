@@ -21,7 +21,6 @@ namespace Humans.Events.Controllers;
 internal sealed class EventsExportController(
     IEventService guide,
     ICampServiceRead camps,
-    IUserServiceRead users,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -36,6 +35,8 @@ internal sealed class EventsExportController(
             : null;
         var tz = GetTimeZone(eventSettings);
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+        var submitters = await LoadSubmittersAsync(
+            UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct());
 
         var rows = new List<object?[]>();
         foreach (var e in events.OrderBy(e => e.StartAt))
@@ -44,12 +45,9 @@ internal sealed class EventsExportController(
             var seasonName = camp?.Active?.Name;
             var campName = seasonName ?? camp?.Slug ?? "";
             var venueName = e.VenueName ?? "";
-            var submitterName = "";
-            if (e.CampId == null)
-            {
-                var submitter = await users.GetUserInfoAsync(e.SubmitterUserId);
-                submitterName = submitter?.BurnerName ?? "";
-            }
+            var submitterName = e.CampId == null
+                ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
+                : "";
 
             foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
             {
