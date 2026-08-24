@@ -96,10 +96,10 @@ through and owns nothing but sorting and file naming.
 
 - **No caching decorator on the roster.** The page is a low-traffic coordinator surface and the
   numbers must be live; the expensive part (user reads) already rides the Users cache.
-- **No repository, no `DbContext`, no EF reference.** The section owns no tables *today*, and
-  the architecture test `SectionAssemblyDoesNotReferenceEntityFrameworkCore` pins that. This is
-  a description of the current shape, not a principle to defend —
-  nobodies-collective/Humans#1113 deliberately reverses it, and that test changes with it.
+- **No repository, no `DbContext`, no EF reference.** The section owns no tables *today* —
+  documentation, not a pinned assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
+  This is a description of the current shape, not a principle to defend —
+  nobodies-collective/Humans#1113 deliberately reverses it.
 - **No `MIN(DayOffset) GROUP BY UserId` query for the first-confirmed-shift scan.** It would be
   cheaper than the per-day loop, and it was rejected on purpose: it needs a new repository and a
   new cross-section interface method, and Cantina is not allowed to reach a repository. The

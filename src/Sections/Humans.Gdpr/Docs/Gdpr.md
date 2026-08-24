@@ -84,8 +84,8 @@ it would be a URL change, which is out of scope here too.
 - **No cross-section database reads.** A contributor reads only its own
   section's tables; data from another section arrives through that section's
   own contributor, never through an `Include` chain.
-- **The orchestrator owns no tables and injects no repository or `DbContext`** —
-  pinned by `GdprArchitectureTests`.
+- **The orchestrator owns no tables and injects no repository or `DbContext`**
+  ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md): documentation, not a pinned assertion).
 
 ## Negative Access Rules
 
@@ -136,10 +136,9 @@ sealed`) behind the public `IGdprExportService` on the leaf.
   consumer-in-Base test: Base does not merely call this section, it
   **implements** its contract.
 - No `Resources/` folder and no `GdprResource`: the section has no page copy at
-  all, so `SectionResourceTypes()` returns one fewer marker.
-  `GdprArchitectureTests.SectionTypesTakeNoStringLocalizer` is the structural
-  guard (Gate's strict form — no type here may take `IStringLocalizer<T>` for
-  any `T`).
+  all, so `SectionResourceTypes()` returns one fewer marker, and no type here
+  takes `IStringLocalizer<T>` for any `T` (Gate's strict form) — documentation,
+  not a pinned assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 - The contributor forwarding factories deliberately did **not** move into
   `Section.Register`: each
   `AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<X>())` belongs to

@@ -2,7 +2,7 @@
   src/Sections/Humans.Monitor/**
 -->
 <!-- freshness:flag-on-change
-  Monitor's reference set is its whole reason to exist — review MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes when any ProjectReference is added.
+  Monitor's reference set is its whole reason to exist — review the reference list in Invariants below when any ProjectReference is added.
 -->
 
 # Monitor — Section Invariants
@@ -49,7 +49,7 @@ horizontal.** It is a leaf consumer: it sits above both and nothing sits above i
 **Monitor owns no tables.** No `DbContext`, no repository, no migrations, no G4 gate. It reads
 Google through GoogleIntegration's connector abstraction, writes audit through
 `IAuditLogService`, renders the sync log through `<vc:google-sync-log>`, and stores its one piece of state
-(the last-run timestamp) in SystemSettings. `MonitorArchitectureTests.SectionOwnsNoDbContext` pins this.
+(the last-run timestamp) in SystemSettings ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md): documentation, not a pinned assertion).
 
 ## Actors / Roles
 
@@ -64,11 +64,11 @@ registration moves into the section, policy registration does not).
 
 ## Invariants
 
-- **Monitor's reference set is the section's justification and is asserted, not documented.**
-  `MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes` fixes it at
+- **Monitor's reference set is the section's justification.** It is
   `Humans.AuditLog.Contracts` + `Humans.SystemSettings.Contracts` (GoogleIntegration is still
   Base-resident and arrives via `Humans.Application`). Every name added there is a section
-  Monitor now couples to.
+  Monitor now couples to — documentation, not a pinned assertion
+  ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 - **Nothing depends on Monitor except Shell naming the job.** Its whole outward surface is
   `IDriveActivityMonitorService` in `Contracts/` — one method, returning `int` — consumed by
   `DriveActivityMonitorJob` beside it, home since the G5 jobs move
@@ -79,9 +79,8 @@ registration moves into the section, policy registration does not).
   section's public types only under `Contracts/`.
 - **The scan is best-effort and never throws to its caller.** `CheckDriveActivity` catches,
   logs at Error, and shows the operator an error banner; the recurring job records a failed run.
-- **No resource set.** One admin-only English page.
-  `MonitorArchitectureTests.SectionTypesTakeNoStringLocalizer` pins it, so the day someone adds
-  copy the build says "carve a resource set first".
+- **No resource set.** One admin-only English page — documentation, not a pinned
+  assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 
 ## Negative access rules
 
