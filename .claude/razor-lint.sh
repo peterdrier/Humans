@@ -40,8 +40,19 @@ emit() {
     if [ "$level" = "INFO" ]; then ((INFOS++)) || true; fi
 }
 
-# HTML boolean attributes: any truthy-looking value (including "False") activates them.
+# HTML boolean attributes: ANY value activates them, "False" and "" included. Only an absent
+# attribute is off, which is why the sanctioned form yields null rather than a falsy string.
 BOOL_ATTRS='disabled|readonly|checked|selected|required|multiple|autofocus'
+
+# One whole `attr="@…"` occurrence. The value is either a Razor expression block (one nesting
+# level, quoted strings allowed inside) or a bare quote-free expression.
+BOOL_ATTR_SPAN='[[:space:]](BOOL_ATTRS)="@(\(([^()"]|"[^"]*"|\([^()]*\))*\)|[^"]*)"'
+BOOL_ATTR_SPAN=${BOOL_ATTR_SPAN/BOOL_ATTRS/$BOOL_ATTRS}
+
+# The two forms that are NOT the trap: Razor's escaped `@@` (prose about the rule), and the
+# sanctioned ternary whose false arm is `null`. The false arm is what carries the safety — the
+# true arm's literal is irrelevant, since any present value activates the attribute.
+BOOL_ATTR_SAFE='="@@|="@\(.*\?.*:[[:space:]]*null[[:space:]]*\)"$'
 
 lint_cshtml() {
     local file="$1"
@@ -51,13 +62,14 @@ lint_cshtml() {
     # 1. Boolean attribute trap
     # Dangerous: disabled="@someVar" AND disabled="@(someExpr)" both render disabled="True"/"False"
     # — either value disables the element.
-    # Safe: disabled="@(condition ? "disabled" : null)" — Razor omits the attribute when value is null.
-    # Match every `attr="@`, then subtract the sanctioned ternary-to-null form. Keying the include
-    # on the character after `@` cannot work: the dangerous and the safe form both write `@(`.
-    # `[^@]` skips `@@(`, Razor's escaped literal — that is prose about the rule, not code.
+    # Safe: disabled="@(condition ? "disabled" : null)" — Razor omits the attribute when null.
+    # Keying the include on the character after `@` cannot work: the dangerous and the safe form
+    # both write `@(`. So extract each occurrence and judge it on its own — a per-LINE exclusion
+    # would let one already-fixed attribute suppress an unsafe one sharing its line.
     while IFS=: read -r num _rest; do
         emit "WARNING" "$file" "$num" "Boolean attribute trap — use: attr=\"@(cond ? \\\"attr\\\" : null)\""
-    done < <(grep -nEi "\s($BOOL_ATTRS)=\"@[^@]" "$file" 2>/dev/null         | grep -vEi "\s($BOOL_ATTRS)=\"@\(.*\?.*:[[:space:]]*(null|\"\")[[:space:]]*\)\"" || true)
+    done < <(grep -noEi "$BOOL_ATTR_SPAN" "$file" 2>/dev/null \
+        | grep -vEi "$BOOL_ATTR_SAFE" || true)
 
     # 2. Bootstrap Icons (project uses Font Awesome 6 only)
     while IFS=: read -r num _rest; do

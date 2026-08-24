@@ -419,10 +419,16 @@ failing either is not a decision, and a block padded with non-decisions buries t
 
 **Debt found and not fixed goes to a ledger, not a run file** — a run file is a dated artifact
 nobody re-reads (`memory/process/debt-ledger-additions.md`). *In-section*: append to
-`src/Sections/Humans.<X>/Docs/debt.yml`, creating it if absent — the run owns that file, and the
-blocked set guarantees no second writer. *Off-section*: this run's sweep queue (`debt:`), never
-chased and never written to another section's file mid-assessment; Phase 5's sweep routes it to
-the owning ledger after this run merges.
+`src/Sections/Humans.<X>/Docs/debt.yml`, creating it if absent. *Off-section*: this run's sweep
+queue (`debt:`), never chased and never written to another section's file — Phase 5's sweep routes
+it to the **central** ledger's `inbox:`, not to the owning section's.
+
+**A section's `Docs/debt.yml` is written by that section's own run and by nothing else in this
+skill** — appends only. Routing off-section finds to the central inbox is what keeps that true:
+were the sweep allowed to write section X's ledger, a run on Y could edit it while a run on X was
+appending to it, and the blocked set does not prevent that (it only stops a second run *selecting*
+X). `/debt-sweep` still deletes entries it drains from any ledger; that is one process, editing
+merged state, and is the same no-locking trade the rest of the sweep machinery takes.
 
 ## Phase 5: Bookkeeping
 
@@ -472,10 +478,10 @@ worktree/PR, three bookkeeping writes:
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
-  it — `lesson:` → this skill's Lessons, `debt:` → the owning section's
-  `src/Sections/Humans.<X>/Docs/debt.yml` where one section owns the fix and
-  `docs/architecture/debt-ledger.yml` otherwise, `memory:` → the named
-  atom + INDEX line — skipping any item already present in its target (idempotence is the only
+  it — `lesson:` → this skill's Lessons, `debt:` → `docs/architecture/debt-ledger.yml`'s `inbox:`
+  (**always the central one** — a sweep never writes a section's ledger, which is what keeps each
+  section file single-writer; `/debt-sweep` pools both, so the item is served either way),
+  `memory:` → the named atom + INDEX line — skipping any item already present in its target (idempotence is the only
   bookkeeping; there is no anchor window). **Never edit the swept run files** — resume is
   their only post-merge editor, which is what keeps resume conflict-free. Two piled-up
   unmerged runs can occasionally sweep the same item; the cost is one hand-resolved conflict,
@@ -601,9 +607,10 @@ Present the open items inline, then apply each answer:
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - **A run touches only:** the section's files (+ callers where a play requires), the section's
   `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, and — in
-  the sweep commit only (Phase 5) — this skill's files, the debt ledgers (central and any
-  section's), `memory/`; never the run files it sweeps. Run scratch goes to `$RUNDIR`, outside
-  the worktree entirely. Nothing writes `docs/architecture/maintenance-log.md`.
+  the sweep commit only (Phase 5) — this skill's files, `docs/architecture/debt-ledger.yml`,
+  `memory/`; never the run files it sweeps, and **never another section's `Docs/debt.yml`**. Run
+  scratch goes to `$RUNDIR`, outside the worktree entirely. Nothing writes
+  `docs/architecture/maintenance-log.md`.
 - **Every GitHub issue is read-only to every run.** No close, edit, relabel or comment, on any
   issue, ever — 3d's Inbox review recommends and Peter enacts. A run's only GitHub writes are its
   own PR.

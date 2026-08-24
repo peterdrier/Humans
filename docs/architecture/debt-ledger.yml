@@ -260,7 +260,7 @@ themes:
       custom HUM_* warning ids spotted here should become their own theme.
   - id: inbox
     title: One-off inbox items
-    detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
+    detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
     remaining: 10
