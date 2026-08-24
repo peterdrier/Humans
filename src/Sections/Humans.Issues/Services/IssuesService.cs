@@ -368,12 +368,23 @@ internal sealed class IssuesService(
         string description,
         string? section,
         LocalDate? dueDate = null,
+        Guid? actorUserId = null,
         CancellationToken ct = default)
     {
         var issue = await SubmitIssueAsync(
             reporterUserId, category, title, description, section,
             pageUrl: null, userAgent: null, additionalContext: null, screenshot: null,
             dueDate: dueDate, ct: ct);
+
+        // The in-app reporter is their own actor, so the issue row's ReporterUserId is the
+        // whole story there and creation goes unaudited. Here the two can differ, and the
+        // audit entry is the only place the filer is written down.
+        await LogAuditAsync(
+            AuditAction.IssueCreated, issue.Id, actorUserId,
+            actorUserId == reporterUserId
+                ? "Issue filed"
+                : $"Issue filed on behalf of {reporterUserId}");
+
         return issue.Id;
     }
 

@@ -13,6 +13,7 @@ namespace Humans.Backdoor.Services;
 internal sealed class BackdoorApiKeyService(
     IBackdoorApiKeyRepository repository,
     IRoleAssignmentService roles,
+    IUserServiceRead users,
     IAuditLogService audit,
     IClock clock,
     ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService, IUserDataContributor, IUserMerge
@@ -35,8 +36,9 @@ internal sealed class BackdoorApiKeyService(
         if (!await IsEligibleAsync(ownerUserId, ct))
         {
             logger.LogWarning(
-                "Backdoor key issue refused for {OwnerUserId}: not an Admin or Board member", ownerUserId);
-            return BackdoorKeyIssueResult.Failed("Keys can only be issued to a full Admin or a Board member.");
+                "Backdoor key issue refused for {OwnerUserId}: not an active Admin or Board member", ownerUserId);
+            return BackdoorKeyIssueResult.Failed(
+                "Keys can only be issued to a full Admin or a Board member with an active account.");
         }
 
         var plaintext = await PersistNewKeyAsync(ownerUserId, label.Trim(), actorUserId, ct);
@@ -70,9 +72,10 @@ internal sealed class BackdoorApiKeyService(
         }
 
         // Eligibility is re-checked on rotation, not just at first issue: an owner who has
-        // since lost Admin/Board does not get a fresh credential out of a rotate.
+        // since lost Admin/Board, or been suspended, does not get a fresh credential out of a rotate.
         if (!await IsEligibleAsync(key.UserId, ct))
-            return BackdoorKeyIssueResult.Failed("The key's owner is no longer a full Admin or a Board member.");
+            return BackdoorKeyIssueResult.Failed(
+                "The key's owner is no longer a full Admin or a Board member with an active account.");
 
         if (!await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct))
             return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
@@ -93,7 +96,8 @@ internal sealed class BackdoorApiKeyService(
     /// <remarks>
     /// Eligibility is re-checked here, not just at issue time: an Admin or Board assignment
     /// can expire, be revoked, or be swept by <c>RevokeAllActiveAsync</c> when the account
-    /// requests deletion, and a key that outlived its role would otherwise keep working.
+    /// requests deletion, the account itself can be suspended, and a key that outlived
+    /// either would otherwise keep working.
     /// Refusal is deliberate rather than auto-revocation — a restored role restores the key,
     /// and a transient gap must not destroy a credential.
     /// </remarks>
@@ -107,7 +111,7 @@ internal sealed class BackdoorApiKeyService(
         if (!await IsEligibleAsync(key.UserId, ct))
         {
             logger.LogWarning(
-                "Backdoor key {KeyId} refused: owner {OwnerUserId} is no longer an Admin or Board member",
+                "Backdoor key {KeyId} refused: owner {OwnerUserId} is no longer an active Admin or Board member",
                 key.Id, key.UserId);
             return null;
         }
@@ -116,8 +120,20 @@ internal sealed class BackdoorApiKeyService(
         return key.UserId;
     }
 
-    private async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct) =>
-        await roles.IsUserAdminAsync(userId, ct) || await roles.IsUserBoardMemberAsync(userId, ct);
+    /// <summary>
+    /// Who may hold a working key: a full Admin or a Board member whose account still has
+    /// app access. The account-state half is not redundant with the role half — suspension
+    /// (<c>HumanLifecycleService.SuspendAsync</c>) moves <c>users.State</c> and deliberately
+    /// leaves role assignments standing, so a role-only test would keep authenticating a
+    /// suspended admin's key while the rest of the app shows them the account-status wall.
+    /// </summary>
+    private async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await users.GetUserInfoAsync(userId, ct);
+        if (user is null || user.State != UserState.Active) return false;
+
+        return await roles.IsUserAdminAsync(userId, ct) || await roles.IsUserBoardMemberAsync(userId, ct);
+    }
 
     private async Task<string> PersistNewKeyAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct)

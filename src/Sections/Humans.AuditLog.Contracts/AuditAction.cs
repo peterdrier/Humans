@@ -214,4 +214,8 @@ public enum AuditAction
     // Linking a feedback report to a GitHub issue — the last Feedback mutation that
     // recorded no actor (nobodies-collective/Humans#1128).
     FeedbackGitHubLinked,
+    // Filing an issue through the machine API, where the filer and the reporter can differ
+    // (nobodies-collective/Humans#1128). The in-app reporter is their own filer, so that path
+    // still records creation on the issue row alone.
+    IssueCreated,
 }

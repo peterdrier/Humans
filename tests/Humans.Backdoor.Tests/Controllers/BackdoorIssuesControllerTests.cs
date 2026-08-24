@@ -242,12 +242,13 @@ public class BackdoorIssuesControllerTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task Create_creates_issue_with_specified_reporter_and_returns_Id()
+    public async Task Create_files_for_the_named_reporter_and_records_the_key_owner_as_filer()
     {
         var reporterId = Guid.NewGuid();
         var newIssueId = Guid.NewGuid();
         _issues.CreateIssueAsync(
-                reporterId, IssueCategory.Bug, "T", "D", "Tickets", null, Arg.Any<CancellationToken>())
+                reporterId, IssueCategory.Bug, "T", "D", "Tickets", null, KeyOwnerId,
+                Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(newIssueId));
 
         var result = await _sut.Create(new ApiCreateIssueModel
@@ -261,6 +262,17 @@ public class BackdoorIssuesControllerTests
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value!.GetType().GetProperty("id")!.GetValue(ok.Value).Should().Be(newIssueId);
+
+        // The reporter is caller-supplied and can be anyone; the filer is the key owner.
+        await _issues.Received(1).CreateIssueAsync(
+            reporterUserId: reporterId,
+            category: IssueCategory.Bug,
+            title: "T",
+            description: "D",
+            section: "Tickets",
+            dueDate: null,
+            actorUserId: KeyOwnerId,
+            ct: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -5,6 +5,7 @@ using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Backdoor.Services;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -22,6 +23,7 @@ public class BackdoorApiKeyServiceTests
 
     private readonly IBackdoorApiKeyRepository _repository = Substitute.For<IBackdoorApiKeyRepository>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly BackdoorApiKeyService _sut;
 
@@ -31,14 +33,19 @@ public class BackdoorApiKeyServiceTests
     public BackdoorApiKeyServiceTests()
     {
         _sut = new BackdoorApiKeyService(
-            _repository, _roles, _audit, new FakeClock(Now),
+            _repository, _roles, _users, _audit, new FakeClock(Now),
             NullLogger<BackdoorApiKeyService>.Instance);
     }
 
-    private void MakeEligible(Guid userId, bool admin = true, bool board = false)
+    private void MakeEligible(
+        Guid userId, bool admin = true, bool board = false, UserState state = UserState.Active)
     {
         _roles.IsUserAdminAsync(userId, Arg.Any<CancellationToken>()).Returns(admin);
         _roles.IsUserBoardMemberAsync(userId, Arg.Any<CancellationToken>()).Returns(board);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = userId, State = state, PreferredLanguage = "en" },
+                [], [], [], profile: null, [])));
     }
 
     // ==========================================================================
@@ -228,6 +235,31 @@ public class BackdoorApiKeyServiceTests
         (await _sut.ResolveOwnerAsync(string.Empty)).Should().BeNull();
 
         await _repository.DidNotReceiveWithAnyArgs().FindActiveByHashAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task ResolveOwner_refuses_a_key_whose_owner_is_suspended()
+    {
+        var key = ExistingKey();
+        _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
+        // Suspension moves users.State and leaves the Admin assignment standing, so the role
+        // half of the predicate still says yes.
+        MakeEligible(_owner, admin: true, state: UserState.AdminSuspended);
+
+        (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
+
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default, default);
+    }
+
+    [HumansFact]
+    public async Task Issue_to_a_suspended_admin_is_refused()
+    {
+        MakeEligible(_owner, admin: true, state: UserState.Suspended);
+
+        var result = await _sut.IssueAsync(_owner, "triage agent", _actor);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
     }
 
     [HumansFact]

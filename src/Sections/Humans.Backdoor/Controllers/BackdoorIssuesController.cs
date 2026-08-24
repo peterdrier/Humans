@@ -84,7 +84,8 @@ internal sealed class BackdoorIssuesController(
                 title: model.Title,
                 description: model.Description,
                 section: model.Section,
-                dueDate: model.DueDate);
+                dueDate: model.DueDate,
+                actorUserId: ActorUserId);
 
             logger.LogInformation("Issue {IssueId} created via API for reporter {ReporterId}", issueId, model.ReporterUserId);
             return Ok(new { id = issueId });
