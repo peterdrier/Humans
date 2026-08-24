@@ -62,9 +62,13 @@ mkdir -p "$RUNDIR"
 Parse args; record start time (`date -u`).
 
 **Run scratch never lives in the worktree.** The phase log and the open-PR JSON are working notes,
-not deliverables, and a strike that runs `git add -A` commits anything sitting in the tree.
-`$RUNDIR` derives from `$TS`, so it is re-derivable from the branch name in any later turn. The
+not deliverables, and a strike that runs `git add -A` commits anything sitting in the tree. The
 `.gitignore` entries for `/.phase-log` and `/.prs.json` stay as a backstop.
+
+**None of these variables survive between tool calls** — shell state is per-call, so `$TS`,
+`$RUNDIR` and `$WORKTREE` must be re-set at the top of any call that uses them. That is why every
+one of them derives from `$TS` alone, and why `$TS` is also the branch name: `section-doctor/$TS`
+is recoverable with `git rev-parse --abbrev-ref HEAD` at any point in the run.
 
 Getting a toolchain is the *environment's* job, not this skill's — a local run and the
 scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already there. Never
@@ -96,15 +100,27 @@ timestamps, and names each row by the **label**, not the phase id — a table of
 tells its reader nothing about where the run's money went:
 
 ```bash
-mark() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $1 $2" >> "$RUNDIR/phase-log"; }
-mark phase1 worktree
+RUNDIR="${TMPDIR:-/tmp}/section-doctor/$TS"   # re-derive; nothing carries over between calls
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) phase1 worktree" >> "$RUNDIR/phase-log"
 ```
 
-**Every later phase opens with its own `mark`, through Phase 7** — `phase2 select section`,
-`phase3 assess`, `phase5 bookkeeping`, `phase6 retro`, `phase7 PR`. Phase 4 marks **once per
-strike item** (`mark phase4 "strike: <what>"`), which turns the run's biggest row into a per-item
-breakdown. A phase that does not mark is a phase nobody can price — its spend silently joins the
-row above it.
+**Write the line out in full at every phase boundary, through Phase 7.** Shell state does not
+survive between tool calls — a `mark()` helper defined here is gone by the next call, and so are
+`$RUNDIR`, `$TS` and `$WORKTREE`. Re-derive the path (or paste it literally) each time rather than
+relying on a variable set in an earlier call:
+
+| Phase | Line to append |
+|---|---|
+| 2 | `phase2 select section` |
+| 3 | `phase3 assess` |
+| 4 | `phase4 strike: <what>` — **once per strike item**, which turns the run's biggest row into a per-item breakdown |
+| 5 | `phase5 bookkeeping` |
+| 6 | `phase6 retro` |
+| 7 | `phase7 PR` |
+
+A phase that does not append is a phase nobody can price — its spend silently joins the row above
+it. If a marker was missed, append it late rather than not at all and say so in `## Threads`; an
+out-of-order log is still bucketed correctly (the report sorts by timestamp), a missing one is not.
 
 ## Phase 2: Select the section
 
@@ -424,15 +440,14 @@ failing either is not a decision, and a block padded with non-decisions buries t
 **Debt found and not fixed goes to a ledger, not a run file** — a run file is a dated artifact
 nobody re-reads (`memory/process/debt-ledger-additions.md`). *In-section*: append to
 `src/Sections/Humans.<X>/Docs/debt.yml`, creating it if absent. *Off-section*: this run's sweep
-queue (`debt:`), never chased and never written to another section's file — Phase 5's sweep routes
-it to the **central** ledger's `inbox:`, not to the owning section's.
+queue (`debt:`), never chased mid-assessment; Phase 5's sweep writes it to the **owning section's**
+ledger after this run merges — debt belongs where the next reader of that section will meet it.
 
-**A section's `Docs/debt.yml` is written by that section's own run and by nothing else in this
-skill** — appends only. Routing off-section finds to the central inbox is what keeps that true:
-were the sweep allowed to write section X's ledger, a run on Y could edit it while a run on X was
-appending to it, and the blocked set does not prevent that (it only stops a second run *selecting*
-X). `/debt-sweep` still deletes entries it drains from any ledger; that is one process, editing
-merged state, and is the same no-locking trade the rest of the sweep machinery takes.
+**Section ledgers have no single writer, by design.** A sweep writes the ledger of whichever
+section owns the debt, so two runs can touch one ledger and their PRs can conflict. Appending to
+a YAML list rarely collides, and a conflict here is one hand-resolved hunk — the same no-locking
+trade the rest of the sweep machinery takes. Don't add locking, ownership checks, or a routing
+detour to avoid it.
 
 ## Phase 5: Bookkeeping
 
@@ -482,10 +497,10 @@ worktree/PR, three bookkeeping writes:
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
-  it — `lesson:` → this skill's Lessons, `debt:` → `docs/architecture/debt-ledger.yml`'s `inbox:`
-  (**always the central one** — a sweep never writes a section's ledger, which is what keeps each
-  section file single-writer; `/debt-sweep` pools both, so the item is served either way),
-  `memory:` → the named atom + INDEX line — skipping any item already present in its target (idempotence is the only
+  it — `lesson:` → this skill's Lessons, `debt:` → the owning section's
+  `src/Sections/Humans.<X>/Docs/debt.yml` where one section owns the fix and
+  `docs/architecture/debt-ledger.yml` otherwise, `memory:` → the named
+  atom + INDEX line — skipping any item already present in its target (idempotence is the only
   bookkeeping; there is no anchor window). **Never edit the swept run files** — resume is
   their only post-merge editor, which is what keeps resume conflict-free. Two piled-up
   unmerged runs can occasionally sweep the same item; the cost is one hand-resolved conflict,
@@ -611,8 +626,8 @@ Present the open items inline, then apply each answer:
 - Explicit tagged model on every subagent. Never leave the branch red between commits.
 - **A run touches only:** the section's files (+ callers where a play requires), the section's
   `Docs/health.md` and `Docs/debt.yml`, its own `docs/health/runs/<date>-<Section>.md`, and — in
-  the sweep commit only (Phase 5) — this skill's files, `docs/architecture/debt-ledger.yml`,
-  `memory/`; never the run files it sweeps, and **never another section's `Docs/debt.yml`**. Run
+  the sweep commit only (Phase 5) — this skill's files, the debt ledgers (central, and any
+  section's whose debt the sweep is routing), `memory/`; never the run files it sweeps. Run
   scratch goes to `$RUNDIR`, outside the worktree entirely. Nothing writes
   `docs/architecture/maintenance-log.md`.
 - **Every GitHub issue is read-only to every run.** No close, edit, relabel or comment, on any

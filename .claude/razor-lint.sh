@@ -44,15 +44,16 @@ emit() {
 # attribute is off, which is why the sanctioned form yields null rather than a falsy string.
 BOOL_ATTRS='disabled|readonly|checked|selected|required|multiple|autofocus'
 
-# One whole `attr="@…"` occurrence. The value is either a Razor expression block (one nesting
-# level, quoted strings allowed inside) or a bare quote-free expression.
-BOOL_ATTR_SPAN='[[:space:]](BOOL_ATTRS)="@(\(([^()"]|"[^"]*"|\([^()]*\))*\)|[^"]*)"'
-BOOL_ATTR_SPAN=${BOOL_ATTR_SPAN/BOOL_ATTRS/$BOOL_ATTRS}
-
-# The two forms that are NOT the trap: Razor's escaped `@@` (prose about the rule), and the
-# sanctioned ternary whose false arm is `null`. The false arm is what carries the safety — the
-# true arm's literal is irrelevant, since any present value activates the attribute.
-BOOL_ATTR_SAFE='="@@|="@\(.*\?.*:[[:space:]]*null[[:space:]]*\)"$'
+# Each occurrence is judged on its own — a per-LINE test would let one already-fixed attribute
+# suppress an unsafe one sharing its line. An occurrence runs from its `attr="@` to the next
+# `="@` on the line (any attribute, not just a boolean one) or to end of line.
+#
+# It is safe if that slice holds Razor's escaped `@@` (prose about the rule) or ends the value
+# with `: null)"`. Nothing here parses parentheses: the false arm is what carries the safety, so
+# the test is what the expression ENDS with, and arbitrarily nested calls in the condition —
+# `@(string.IsNullOrEmpty(Model.Name.Trim()) ? "disabled" : null)` — pass without a nesting limit.
+BOOL_ATTR_START="[[:space:]]($BOOL_ATTRS)=\"@"
+BOOL_ATTR_SAFE='="@@|:[[:space:]]*null[[:space:]]*\)[[:space:]]*"'
 
 lint_cshtml() {
     local file="$1"
@@ -61,15 +62,37 @@ lint_cshtml() {
 
     # 1. Boolean attribute trap
     # Dangerous: disabled="@someVar" AND disabled="@(someExpr)" both render disabled="True"/"False"
-    # — either value disables the element.
+    # — either value activates the attribute.
     # Safe: disabled="@(condition ? "disabled" : null)" — Razor omits the attribute when null.
     # Keying the include on the character after `@` cannot work: the dangerous and the safe form
-    # both write `@(`. So extract each occurrence and judge it on its own — a per-LINE exclusion
-    # would let one already-fixed attribute suppress an unsafe one sharing its line.
+    # both write `@(`. See the BOOL_ATTR_* definitions above for how an occurrence is sliced.
     while IFS=: read -r num _rest; do
         emit "WARNING" "$file" "$num" "Boolean attribute trap — use: attr=\"@(cond ? \\\"attr\\\" : null)\""
-    done < <(grep -noEi "$BOOL_ATTR_SPAN" "$file" 2>/dev/null \
-        | grep -vEi "$BOOL_ATTR_SAFE" || true)
+    done < <(awk -v start="$BOOL_ATTR_START" -v safe="$BOOL_ATTR_SAFE" '
+        {
+            # tolower preserves byte offsets, so we match case-insensitively without gawk IGNORECASE
+            line = tolower($0)
+
+            # every `="@` on the line — these bound one attribute value from the next
+            nb = 0; off = 0; s = line
+            while (match(s, "=\"@")) {
+                nb++; bound[nb] = off + RSTART
+                off += RSTART + 2; s = substr(line, off + 1)
+            }
+
+            # each boolean-attribute occurrence, sliced to the next boundary after its own
+            off = 0; s = line
+            while (match(s, start)) {
+                from = off + RSTART
+                off = from + RLENGTH - 1     # past this occurrence own `="@`
+                s = substr(line, off + 1)
+                end = length(line) + 1
+                for (i = 1; i <= nb; i++) if (bound[i] > off) { end = bound[i]; break }
+                slice = substr(line, from, end - from)
+                if (slice !~ safe) print NR ":" slice
+            }
+        }
+    ' "$file" 2>/dev/null || true)
 
     # 2. Bootstrap Icons (project uses Font Awesome 6 only)
     while IFS=: read -r num _rest; do

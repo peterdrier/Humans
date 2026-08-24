@@ -90,7 +90,7 @@ Until budget exhausted or theme drained, per item (one item or one tight cluster
 Rules of the loop:
 
 - **Stop-and-ask classes are skip-and-ask classes here:** interface/public-surface additions (`interface-method-additions-are-debt`), DB schema work of any kind, privilege changes → skip the item, queue a Phase 7 question. Never block the loop waiting.
-- Off-theme debt discovered while working → append to an `inbox`: the section's own file when the fix lives in the section this item is being worked in, the central ledger otherwise. Never chased.
+- Off-theme debt discovered while working → append to an `inbox`: the owning section's file when one section owns the fix (any section — writing another's ledger is intended), the central ledger otherwise. Never chased.
 - Mechanical edit fan-out is allowed via edit-only subagent workers (sonnet, named `<task>-sonnet`, absolute `$WORKTREE` paths, no git/build); the orchestrator owns all git and build commands.
 - An item that can't be made green after a genuine attempt → revert it cleanly, record, continue. Never leave the branch red between commits.
 
