@@ -36,9 +36,9 @@ Env vars (set in `.claude/settings.local.json`):
 
 PR preview environments use the QA key.
 
-**One key opens every phase.** Since nobodies-collective/Humans#1128 all five machine APIs live under `/api/backdoor/*` behind a single `X-Api-Key` gate, and the key is *personal*: an admin allocates it to a human at `/Admin/BackdoorKeys`, and every request — including every comment and status change this skill posts — is recorded as that person. There are no per-API keys and no per-API fallbacks; if `HUMANS_API_KEY` / `HUMANS_QA_API_KEY` are missing, tell the user and stop.
+**One key opens every phase.** Since nobodies-collective/Humans#1128 all five machine APIs live under `/api/backdoor/*` behind a single `X-Api-Key` gate, and the key is *personal*: an admin allocates it to a human at `/Backdoor`, and every request — including every comment and status change this skill posts — is recorded as that person. There are no per-API keys and no per-API fallbacks; if `HUMANS_API_KEY` / `HUMANS_QA_API_KEY` are missing, tell the user and stop.
 
-**401 from any endpoint** means the header is missing, or the key is unknown or revoked — the server does not distinguish them. Ask the user to check the key at `/Admin/BackdoorKeys`; a revoked one is replaced by rotating, never recovered. There is no 503 "not configured" case any more: keys are rows, not deploy-time config.
+**401 from any endpoint** means the header is missing, or the key is unknown or revoked — the server does not distinguish them. Ask the user to check the key at `/Backdoor`; a revoked one is replaced by rotating, never recovered. There is no 503 "not configured" case any more: keys are rows, not deploy-time config.
 
 ## Trust and Safety
 
@@ -726,7 +726,7 @@ curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations?ta
 
 Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-conversations.json`.
 
-401 → the header is missing, or the key is unknown or revoked. Stop and tell the user to check `/Admin/BackdoorKeys`; there is no per-phase key to fall back to.
+401 → the header is missing, or the key is unknown or revoked. Stop and tell the user to check `/Backdoor`; there is no per-phase key to fall back to.
 
 A summary row is enough for clustering — pull the per-message detail only for conversations that land in a proposed FAQ cluster:
 

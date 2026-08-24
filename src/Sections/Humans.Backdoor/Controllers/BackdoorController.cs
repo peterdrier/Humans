@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// The admin page behind <c>/Admin/BackdoorKeys</c>: allocate, rotate and revoke the personal
+/// The section's one page, at <c>/Backdoor</c>: allocate, rotate and revoke the personal
 /// keys that open <c>/api/backdoor/*</c> (nobodies-collective/Humans#1128).
 /// </summary>
 /// <remarks>
@@ -19,8 +19,8 @@ namespace Humans.Backdoor.Controllers;
 /// stored, so a lost key is rotated, not recovered.
 /// </remarks>
 [Authorize(Policy = PolicyNames.AdminOnly)]
-[Route("Admin/BackdoorKeys")]
-internal sealed class BackdoorKeysController(
+[Route("Backdoor")]
+internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
     IRoleAssignmentService roles,
     IUserServiceRead users) : HumansControllerBase(users)

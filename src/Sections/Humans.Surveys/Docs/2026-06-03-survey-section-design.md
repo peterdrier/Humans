@@ -336,7 +336,7 @@ Mirrors the rest of the machine surface exactly (`X-Api-Key` header; **401** whe
 
 - **Read-only.** No write routes. The API never creates issues, never mutates a survey — extraction of bugs/work items from the app-feedback survey is a **human+Claude step done elsewhere**, deliberately out of this section.
 - **Identity exposure follows anonymity tier**: `Identified` responses include the respondent's user id + display name; `CompletionTracked`/`Anonymous` responses expose answers only. Enforced server-side regardless of query params.
-- **Key:** the caller's personal Backdoor key, allocated and revoked at `/Admin/BackdoorKeys`. No per-API env var.
+- **Key:** the caller's personal Backdoor key, allocated and revoked at `/Backdoor`. No per-API env var.
 - **Stable shape:** enums serialised as strings; question/option `Value`s are the culture-neutral join keys so an agent can correlate answers across languages without translating choice labels.
 
 ### 13.4 What this deliberately does NOT include

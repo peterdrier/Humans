@@ -91,7 +91,7 @@ See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 ### Run technical operations (Admin only)
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked.
-- **API keys** (`/Admin/BackdoorKeys`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue, feedback and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once.
+- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue, feedback and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.

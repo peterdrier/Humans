@@ -93,7 +93,7 @@ internal static class ConfigurationMetadataExtensions
             // The five machine-API keys that used to live here (FEEDBACK_API_KEY,
             // ISSUES_API_KEY, SURVEY_API_KEY, LOG_API_KEY, AGENT_API_KEY) are gone:
             // /api/backdoor/* authenticates against per-person rows an admin allocates at
-            // /Admin/BackdoorKeys, not against deploy-time environment variables
+            // /Backdoor, not against deploy-time environment variables
             // (nobodies-collective/Humans#1128).
             configRegistry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);

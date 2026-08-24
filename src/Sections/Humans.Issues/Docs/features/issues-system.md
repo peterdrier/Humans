@@ -57,7 +57,7 @@ Issues **superseded** Feedback (`src/Sections/Humans.Feedback/Docs/features/feed
 - `PATCH /api/backdoor/issues/{id}/assignee` — set/clear assignee
 - `PATCH /api/backdoor/issues/{id}/section` — change section (re-route)
 - `PATCH /api/backdoor/issues/{id}/github-issue` — link GitHub issue
-- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Admin/BackdoorKeys` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
+- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Backdoor` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
 - 401 if the header is missing, or the key is unknown or revoked
 - Enum values serialized as strings consistently (GET and PATCH)
 - Handler / reporter context included in responses: name, email, userId, preferred language
@@ -149,17 +149,17 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-l
 
 The Issues API is the read/write surface Claude Code agents use to triage and follow up on issues during dev sessions. This replaces the older `/triage` skill that worked exclusively against the Feedback API.
 
-- **API key:** a personal key allocated at `/Admin/BackdoorKeys`. `BackdoorApiKeyAuthFilter` (in `Humans.Backdoor`) enforces the `X-Api-Key` header on every `/api/backdoor/*` route, resolves it to its owner and installs them as the request principal. 401 when the header is missing, or the key is unknown or revoked — the two are deliberately indistinguishable.
+- **API key:** a personal key allocated at `/Backdoor`. `BackdoorApiKeyAuthFilter` (in `Humans.Backdoor`) enforces the `X-Api-Key` header on every `/api/backdoor/*` route, resolves it to its owner and installs them as the request principal. 401 when the header is missing, or the key is unknown or revoked — the two are deliberately indistinguishable.
 - **Workflow:** an agent calls `GET /api/backdoor/issues?status=Triage` to pull the current triage queue, optionally narrowed by `section=` for per-section sweeps. For each issue it can `POST /api/backdoor/issues/{id}/comments` to ask a clarifying question, `PATCH /api/backdoor/issues/{id}/status` to advance through the lifecycle, `PATCH /api/backdoor/issues/{id}/assignee` to route the issue to a human, `PATCH /api/backdoor/issues/{id}/section` to re-route, or `PATCH /api/backdoor/issues/{id}/github-issue` to link a freshly-created GitHub issue.
 - **Audit:** API-initiated changes are audit-logged (`AuditAction.IssueStatusChanged`, etc.). Because the API path has no user session, the actor is recorded as `null` and the audit metadata records that the change came from the API.
 - **Local config:** `HUMANS_API_URL` / `HUMANS_API_KEY` go in `.claude/settings.local.json` (gitignored) so the agent picks them up without leaking the key into the repo. One key covers the whole machine surface.
-- **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Admin/BackdoorKeys`.
+- **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Backdoor`.
 
 ## Navigation
 
 - **Top nav:** "Issues" link visible to all authenticated users; nav badge (`NavBadges` ViewComponent, queue `issues`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
 - **Floating widget:** Shell's `HelpWidget` view component renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
-- **`/Admin/BackdoorKeys`:** allocate, rotate and revoke the keys that open this API.
+- **`/Backdoor`:** allocate, rotate and revoke the keys that open this API.
 
 ## Related Features
 

@@ -13,20 +13,20 @@ using NSubstitute;
 namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
-/// The admin page at <c>/Admin/BackdoorKeys</c>. Covers the one thing it decides on its own:
+/// The section's one page, at <c>/Backdoor</c>. Covers the one thing it decides on its own:
 /// which humans the allocate dropdown offers (nobodies-collective/Humans#1128).
 /// </summary>
-public class BackdoorKeysControllerTests
+public class BackdoorControllerTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly BackdoorKeysController _sut;
+    private readonly BackdoorController _sut;
 
     private readonly Guid _activeAdmin = Guid.NewGuid();
     private readonly Guid _suspendedAdmin = Guid.NewGuid();
 
-    public BackdoorKeysControllerTests()
+    public BackdoorControllerTests()
     {
         _keys.ListAsync(Arg.Any<CancellationToken>()).Returns([]);
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
@@ -41,7 +41,7 @@ public class BackdoorKeysControllerTests
                     [_suspendedAdmin] = Info(_suspendedAdmin, UserState.AdminSuspended),
                 }));
 
-        _sut = new BackdoorKeysController(_keys, _roles, _users)
+        _sut = new BackdoorController(_keys, _roles, _users)
         {
             TempData = new TempDataDictionary(
                 new DefaultHttpContext(), Substitute.For<ITempDataProvider>()),

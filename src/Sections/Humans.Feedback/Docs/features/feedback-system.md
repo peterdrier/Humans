@@ -59,7 +59,7 @@ Every creation path below was deleted: the floating widget item and its modal, `
 - `PATCH /api/backdoor/feedback/{id}/status` — update status (accepts string enum names)
 - `PATCH /api/backdoor/feedback/{id}/assignment` — set assignee user and/or team (either may be null to clear)
 - `PATCH /api/backdoor/feedback/{id}/github-issue` — link GitHub issue
-- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Admin/BackdoorKeys` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
+- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Backdoor` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
 - 401 if the header is missing, or the key is unknown or revoked
 - Enum values serialized as strings consistently (GET and PATCH)
 - Reporter context included: name, email, userId, preferred language
@@ -155,7 +155,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 - **`/whats` integration:** When `HUMANS_API_URL` and `HUMANS_API_KEY` env vars are set, `/whats` checks for pending feedback and surfaces the count in its status output. Humans-project-specific; other projects skip this step.
 - **`/triage` skill:** Interactive triage of pending reports — for each report, choose to respond, create a GitHub issue (on `nobodies-collective/Humans`), mark won't fix, or skip. Issues are linked back to the feedback report via the API.
 - **Environment setup:** `HUMANS_API_KEY`/`HUMANS_API_URL` in `.claude/settings.local.json` (gitignored). The server holds no key of its own — keys are rows in `backdoor_api_keys`.
-- **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Admin/BackdoorKeys`.
+- **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Backdoor`.
 
 ## Navigation
 

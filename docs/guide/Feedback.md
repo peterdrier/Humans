@@ -58,8 +58,8 @@ Once work is shipped (or the report is declined), set status to Resolved or Won'
 
 ## Automation
 
-`/api/backdoor/feedback` is key-authenticated (`X-Api-Key`), with the personal key an admin allocated to you at `/Admin/BackdoorKeys`. It covers the same triage the UI does — list reports, read one and its messages, post a message, and change status, assignment, or the linked GitHub issue — but it has no report-creation endpoint. A message posted through it is an admin reply, exactly as one posted in the UI.
+`/api/backdoor/feedback` is key-authenticated (`X-Api-Key`), with the personal key an admin allocated to you at `/Backdoor`. It covers the same triage the UI does — list reports, read one and its messages, post a message, and change status, assignment, or the linked GitHub issue — but it has no report-creation endpoint. A message posted through it is an admin reply, exactly as one posted in the UI.
 
 ## Related sections
 
-- [Admin](Admin.md) — roles are assigned via the admin role pages; API keys are allocated at `/Admin/BackdoorKeys`
+- [Admin](Admin.md) — roles are assigned via the admin role pages; API keys are allocated at `/Backdoor`

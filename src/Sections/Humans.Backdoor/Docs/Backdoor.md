@@ -47,7 +47,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage` |
 | `/api/backdoor/feedback` | read + write | The feedback queue, via `IFeedbackTriage` |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |
-| `/Admin/BackdoorKeys` | Admin UI | Allocate, rotate and revoke keys |
+| `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
 
 Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. There is no cookie path in and no anonymous endpoint.
 
@@ -57,7 +57,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 |-------|--------------|
 | Holder of an active key | Everything the five APIs expose, acting as themselves |
 | Board member | May be issued a key |
-| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Admin/BackdoorKeys` |
+| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` |
 
 ## Invariants
 
