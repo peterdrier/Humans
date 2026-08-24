@@ -25,7 +25,8 @@ A run is judged on three things:
 - **Did the section get smaller and clearer without losing anything?** Line count is a fair proxy
   for the token weight every future reader, human or agent, pays to work here. Growth needs a
   stated reason — and cross-section consolidation is a good one, so the figure that matters is the
-  **net across every section the run touched**, not a per-section floor.
+  **net across every section the run touched**, not a per-section floor. That figure is GitHub's
+  diff stats on the run's PR; the run file never restates it (Phase 5).
 - **Was every file actually looked at?** A finding-driven pass finds only what sits next to what
   it already suspects. Full coverage is what makes this a review rather than a sweep — and it is
   where the bugs come from: Guide's and Finance's defects both surfaced because something read
@@ -83,6 +84,11 @@ thread as skipped-with-reason (3d's rule), and let the PR's CI be the compile ga
 that *fails* is not this — that is a normal broken build, diagnosed like any other. Say so in
 the run file's header and in the PR body — a run that could not build and does not say so
 reads as a run that found nothing to build.
+
+**Every environment caveat is a dated per-session line, never a standing banner** —
+`2026-08-24 07:10Z session: no compiler in this container`. The caveat belongs to the session,
+not the run: the next session on this branch gets a different environment, and a banner reading
+"this run had no compiler" ends up sitting above compiler-confirmed strikes within the hour.
 
 ## Phase 1: Worktree
 
@@ -266,8 +272,9 @@ the wall-clock / token / fragility balance:
 - **Tool threads run as background commands** — Stryker, InspectCode, reforge, conformance
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
   main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
-  scoped to the section being doctored — its `loc=`/`cogP95=`/`cogMax=` fields are the source
-  for Phase 5's `## Size` snapshot, on every run, not only the selector's solution-wide call.
+  scoped to the section being doctored, on every run, not only the selector's solution-wide call.
+  Its score and `loc=`/`cogP95=`/`cogMax=` fields are the run's one durable number, and land in
+  the section's `Docs/health.md` (Phase 5).
 - **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
   and returns a little, and reading it on the main thread permanently raises the price of every
   later turn in the run — the 2026-08-23 Onboarding run held ~184k context from Phase 3 to the
@@ -458,14 +465,28 @@ worktree/PR, three bookkeeping writes:
   one open run per section, so it cannot collide).
 - **This run's own file** — `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (UTC date from the run
   timestamp; if the path already exists at the branch point, suffix `-<HHMMZ>`). Sections:
-  run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, worked,
-  skipped + why (including sections passed over as blocked), retro (Phase 6), `## Needs Peter`
-  checklist — Phase 4's skipped classes plus 3d's open-issue recommendations, each
-  `<ref> — <close|edit|relabel|keep> — <reason>` — and `## Sweep queue` (`lesson:` / `debt:` /
-  `memory:` items as plain bullets — a later run's sweep applies them after this run merges;
-  nothing ever ticks them).
+  run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, the ranked
+  findings list, worked, skipped + why (including sections passed over as blocked), retro
+  (Phase 6), `## Needs Peter` checklist — **`- [ ]` unanswered, `- [x]` answered and applied,
+  one item per line** — holding Phase 4's skipped classes plus 3d's open-issue recommendations,
+  each `<ref> — <close|edit|relabel|keep> — <reason>` — and `## Sweep queue` (`lesson:` /
+  `debt:` / `memory:` items as plain bullets — a later run's sweep applies them after this run
+  merges; nothing ever ticks them).
 
-  Plus three blocks that make the Purpose's three tests answerable rather than assertable:
+  **One prose description per finding, in the ranked list, and nowhere else.** The assessment
+  summary, `## Skipped`, `## Needs Peter` and the PR body cite a finding by number and add
+  nothing a later ruling could invalidate. A Needs-Peter ruling is a state change to a finding —
+  "not a defect", "done", "filed", "deferred" — and it has to land in exactly one place or the
+  copies drift (peterdrier/Humans#1477: five consecutive passes over one queue, each ticking
+  correctly and each leaving four restatements stale).
+
+  **Finding numbers are assigned once, at 3e, and never change** — not on a reorder, not when an
+  item is struck, not when a ruling abolishes it. Key Needs-Peter items and PR-body references to
+  the finding number, never to queue position: the two diverge the moment either list is
+  reordered, and a position-matched tick marks the wrong item.
+
+  Plus two blocks that make the Purpose's tests answerable rather than assertable — the size
+  test is answered by the PR's own diff stats:
 
   - **`## File coverage`** — a disposition for every path in the 3a inventory: `reviewed`,
     `changed` or `generated`. Not a summary; the list.
@@ -483,17 +504,19 @@ worktree/PR, three bookkeeping writes:
     than a coarse one. (Phase 4 is the opposite case — it marks per strike item, so its rows are
     already per-item and need no such caveat.) The Shape/Behavior question is settled by whole-run
     totals against the baseline (Phase 7), not by attributing turns to lenses that interleave.
-  - **`## Size`** — line count against the run's anchor for every section touched, and the net.
-    Growth is reported with its reason, and consolidation that grows this section while shrinking
-    another is stated as the trade it is. Include the section's reforge metrics snapshot (`loc`,
-    `cogP95`, `cogMax`) from 3d's reforge tool thread, so the run file states size/complexity at
-    assessment time, not just the git-diff delta.
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
   list the same file carries ("15 contract methods" above the table of them, "52 paths" above
-  the coverage list). Measurements with a generator — Stryker scores, `git diff` line counts,
-  reforge — stay; both 2026-08-18 Finance runs typed self-counts, and the one that was wrong
-  nearly sent a refactor at a method with a live external caller.
+  the coverage list). Measurements with a generator — Stryker scores, reforge — stay; both
+  2026-08-18 Finance runs typed self-counts, and the one that was wrong nearly sent a refactor
+  at a method with a live external caller.
+
+  **The run file never describes its own diff.** No size block, no insertions/deletions, no line
+  count of the branch or of the file itself: the commit that writes such a figure is a commit the
+  figure must count, so it is stale on write and no care fixes that. Link the PR instead —
+  GitHub's additions/deletions and the PR Surface Report are recomputed on every push and cannot
+  be wrong. The section's reforge score is the one durable number a run keeps, and its home is
+  `health.md`, not a description of the diff.
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
@@ -529,15 +552,22 @@ Phase 7's own PR-number backfill commit.
 
 ## Phase 7: PR
 
+**Self-review the run's own new prose first.** Every claim this run wrote about what a page
+shows — run file, PR body, section doc, spec, comment — is traced back to the `.cshtml` that
+renders it, not to the DTO that feeds it. A payload carrying a field is not a page displaying it.
+Eight of Cantina's review findings were against text that run had just written, and a reviewer
+here is not free.
+
 ```bash
 git push -u origin section-doctor/$TS
 gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <headline>" --body ...
 ```
 
 Body: assessment summary, worked/skipped bullets, a **`## Cost`** table (below), and a
-**`## Needs Peter`** block — terse, numbered, answerable in a word or two. **The PR body is the
-authoritative queue while the PR is open** (resume reads it from there); the run file's copy
-carries it forward after merge. One PR per run; never merge.
+**`## Needs Peter`** block — terse, numbered, answerable in a word or two, **citing findings by
+number rather than re-describing them** (Phase 5). **The PR body is the authoritative queue while
+the PR is open** (resume reads it from there); the run file's copy carries it forward after merge.
+One PR per run; never merge.
 
 **Cost report** — before creating the PR, run:
 
@@ -567,18 +597,30 @@ unverified — if the first routine run reports unmeasured, note it in Needs-Pet
 Then backfill the real PR number over every `pending` reference (run file header, health history
 row), commit, push again.
 
+**That backfill is the last bookkeeping push.** From here a push must change code, tests, or a
+doc a reader depends on. **Never push a commit whose entire content is a corrected figure or a
+restated status about the branch** — such a correction rides along with the next substantive
+commit, or is skipped. Every push costs a CI run, a preview deploy, a surface report and a review
+quota; five of peterdrier/Humans#1453's seven post-resume pushes bought only arithmetic about
+themselves (peterdrier/Humans#1477).
+
 ## Phase 8: Inline round (interactive runs only)
 
 If Peter is present, present the Needs-Peter items inline now (terse, numbered, plain prose —
 never AskUserQuestion) and apply answers as new commits + push, ticking each answered item in
-both the PR body and the run file. Unattended morning runs skip this; `resume` covers it.
-Unanswered items carry forward — never re-asked.
+both the PR body and the run file — Resume mode's grep gate applies here too. Unattended morning
+runs skip this; `resume` covers it. Unanswered items carry forward — never re-asked.
 
 ## Phase 9: Stand down — the worktree stays
 
 **Stop working. Do not remove the worktree.** A run ends when its PR is merged or closed, not when
 it is opened — review arrives after Phase 7 (a BLOCK, bot findings, Peter working the Needs-Peter
 queue) and every one of those is answered by committing to this branch.
+
+**A review bot's finding is a sample, not an instance.** Before fixing the reported line, grep the
+branch for the class of claim it is an example of — the type, the method, the abolished case. Every
+peterdrier/Humans#1453 finding investigated by class had siblings and the last had six; fixing only
+the reported line leaves the rest and looks resolved.
 
 Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
 session needs is already derivable: the branch is `section-doctor/$TS`, its worktree is
@@ -605,10 +647,16 @@ or strike work.
    ```
    Each PR body's `## Needs Peter` block (authoritative for unmerged runs; their run files
    only exist on the PR branch).
-2. **Merged runs:** unticked `## Needs Peter` entries in `docs/health/runs/*.md` on
+2. **Merged runs:** unticked (`- [ ]`) `## Needs Peter` entries in `docs/health/runs/*.md` on
    `origin/main`.
 
-Present the open items inline, then apply each answer:
+Present the open items inline, then apply each answer. **A ruling is not applied until a grep
+says it is** — before ticking, grep the branch for the finding's distinguishing terms (the issue
+it was filed under, the method or type name, the abolished case) across **`.cs` as well as
+`.md`**, and fix every hit. Doc comments are documentation and drift exactly like it; counting
+the copies from memory always undercounts, and one grep for `AnonymizeProfileInternalAsync` found
+in a single command the copy five careful passes had missed. Then tick the item — `- [ ]` becomes
+`- [x]`:
 
 - **Open-PR item** — commits on that item's PR branch (reuse its worktree, or recreate from the
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
@@ -734,42 +782,16 @@ Present the open items inline, then apply each answer:
 - 2026-08-22: when a doc explains why an unused member exists, check that the explanation is true
   before writing it. Two rounds were spent inventing rationales ("for the CSV") for daily payload
   members that nothing reads; "nothing reads these" was both the correct answer and a finding.
-- 2026-08-22: when rewriting a spec to match reality, read the view, not the DTO. That run's new
-  acceptance criteria listed aggregates the payload carries and the page does not render; a
-  reviewer caught it, the run did not.
 - 2026-08-22: "never crosses the boundary" is almost always an overclaim for a section reading a
   shared read-model. The honest form is "the field is carried, this code never reads it, and the
   output record has no such property" — check which the code implements before repeating the claim.
-- 2026-08-23: a Needs-Peter ruling is a state change to a finding, and a finding is restated in the
-  findings list, the assessment summary, `## Skipped`, `## Size` and the PR body. Ticking is the
-  cheap half; propagating the changed status is the half that gets skipped. Two passes over one
-  queue both ticked correctly and both left four restatements stale.
-- 2026-08-23: resume must re-derive `## Size` before it finishes — the block is written at PR time
-  and every struck item invalidates it. Cantina's read net −94 against an actual net −135.
-- 2026-08-23: measure `## Size` against the PR's base sha, and name that sha in the table header.
-  The re-measurement meant to fix a stale Size block was itself taken against a commit on the
-  branch, so the corrected figures were also wrong; GitHub's own additions/deletions on the PR is
-  the free cross-check.
-- 2026-08-23: make `## Size` reconcile — component rows summing to the whole-branch row turns a
-  silent wrong number into a visible one. Neither wrong version of Cantina's table added up, and
-  nothing noticed until the rows were made to.
-- 2026-08-23: never freeze a figure that counts the commit writing it. A run file's own line count,
-  and the branch total containing it, are stale the instant they are typed; three successive
-  corrections failed on this. State the stable rows, and defer the self-referential ones to the
-  PR's own additions/deletions.
-- 2026-08-23: apply a ruling to the code comments, not just the prose docs. One ruling reached two
-  `.md` files and left six DTO doc comments describing the abolished case as real. Doc comments are
-  documentation and drift like it; grep the section's `.cs` files for the claim, not only its `.md`.
-- 2026-08-23: a reconciling Size table is the only bookkeeping that has ever caught its own error,
-  flagging a stated 515 deletions against an actual 516 within an hour of a commit that invalidated
-  an "exact and final" claim. Prose caught nothing, four times running. Make the rows sum, and never
-  write "final" about a branch that is still moving.
+- 2026-08-23: a Needs-Peter ruling is a state change to a finding, so a finding gets exactly one
+  prose description (Phase 5). Ticking is the cheap half; propagating the changed status is the
+  half that gets skipped — two passes over one queue both ticked correctly and both left four
+  restatements stale.
+- 2026-08-23: never freeze a figure that counts the commit writing it, and never write "final"
+  about a branch that is still moving. Three successive corrections failed on this — which is why
+  the run file no longer describes its own diff at all (peterdrier/Humans#1477).
 - 2026-08-23: a comment-only edit to a `.cs` file is not score-neutral. Rewriting seven DTO doc
-  comments moved `locProd` from −56 to −49 and the branch's deletions from 515 to 516; a run that
-  calls such a change "docs only" and leaves its Size and reforge rows alone will misreport both.
-- 2026-08-23: when a review bot reports one stale claim, grep for its class before fixing the line.
-  Codex's `RollupItemDto` finding was one of seven instances of the same overclaim; fixing only the
-  reported line would have left six and looked resolved.
-- 2026-08-23: an environment caveat belongs to the session, not the run. "This run had no compiler"
-  was true when written and false an hour later, sitting above a section describing
-  compiler-confirmed strikes.
+  comments moved `locProd` from −56 to −49; a run that calls such a change "docs only" and leaves
+  its reforge row alone will misreport it.

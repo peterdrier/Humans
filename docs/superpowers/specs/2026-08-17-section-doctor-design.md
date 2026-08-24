@@ -174,15 +174,17 @@ Old files get purged manually after a while. Sections:
 
 Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 
-## Assessment summary
+## Assessment summary      ← cites findings by number; never re-describes one
+### Findings, ranked       ← the one prose description of each finding; numbered once, stable
 ## File coverage          ← a disposition for every path in the 3a inventory; the list, not a summary
 ## Threads                ← which ran; for each that did not, why
-## Size                   ← lines vs the anchor for every section touched, and the net
 ## Worked
-## Skipped / queued        ← includes plan rows passed over as blocked (`<section> — open PR #N`)
+## Skipped / queued        ← by finding number; plus sections passed over as blocked (`<section> — open PR #N`)
 ## Retro
 ## Needs Peter
-- [ ] <one-line question>  ← authoritative in the PR body while open; here after merge
+- [ ] <one-line question>  ← `- [ ]` unanswered / `- [x]` answered; keyed to a finding number,
+                              never a queue position. Authoritative in the PR body while open;
+                              here after merge
 ## Sweep queue             ← shared-file writes; a later replan's window applies them (no ticks)
 - lesson: <dated one-liner for the skill's Lessons>
 - debt: <debt-ledger inbox entry>
@@ -352,7 +354,8 @@ Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His c
     thread and gets a recorded disposition. A file no thread claims is a hole in the thread set,
     not a file to skip. Only `*.Designer.cs` and `*DbContextModelSnapshot.cs` are exempt.
 15. **Size is measured and reported**, net across every section a run touched — growth caused by
-    cross-section consolidation is a win, and is stated as the trade it is.
+    cross-section consolidation is a win, and is stated as the trade it is. *(Superseded by 20:
+    the measure stands, the run file is not where it is written down.)*
 16. **Unrun threads are loud.** A thread that does not run says so and why. A thread earns removal
     from the toolbox only after several runs record it as "ran, found nothing" — never because one
     clean section did not get to it.
@@ -375,4 +378,37 @@ Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His c
     tagged model; the spine (3a–3c), Shape, Behavior & bugs and 3e stay on main, and the
     `## Threads` block records model and cost per thread so *that* stays a measurement rather
     than an assumption.
+
+## Amendment, 2026-08-24 — the run stops narrating itself (peterdrier/Humans#1477)
+
+A small Cantina refactor (peterdrier/Humans#1453) took 26 commits and ~20% of a weekly review
+quota; seven post-resume pushes corrected the PR's own metadata, one of them to move `−56` to
+`−49` in a table nobody depends on. Two defects produced that: a finding restated in six places,
+and a `## Size` block whose subject was the diff containing it.
+
+20. **`## Size` is deleted, not fixed.** A run file cannot state its own line count — the commit
+    that writes the figure is a commit the figure must count — and a "comment-only" edit is not
+    score-neutral, so every correction guarantees the next one. GitHub's additions/deletions on
+    the PR and the PR Surface Report already compute every figure the block held, on every push,
+    and cannot go stale. The run links the PR. The one durable number a run keeps is the reforge
+    score, in `health.md` — stable, meaningful, and not a description of the diff. Supersedes 15.
+21. **No bookkeeping pushes after the PR opens.** A push must then change code, tests, or a doc a
+    reader depends on; never a commit whose entire content is a corrected figure or a restated
+    status about the branch. Corrections to the run file's narration of itself ride along with
+    the next substantive commit, or are skipped. This is the item that bounds the cost of every
+    other mistake in the list — each push is a CI run, a preview deploy, a surface report and a
+    review.
+22. **One prose description per finding, at a stable number.** The ranked findings list is the
+    single source of truth; the assessment summary, `## Skipped`, `## Needs Peter` and the PR body
+    cite the number. Numbers are assigned once and survive reordering, striking and abolition —
+    Needs-Peter items key to the finding number, never to queue position, because a
+    position-matched tick marks the wrong item as soon as either list is reordered. `- [ ]` /
+    `- [x]` is the checkbox format, written into the skill so `resume` cannot invent one.
+23. **Four gates on existing steps.** Applying a ruling requires a grep of the branch for the
+    finding's distinguishing terms across `.cs` as well as `.md` — doc comments are documentation
+    and drift like it, and counting copies from memory always undercounts. A review bot's finding
+    is a sample, not an instance: grep for the class of claim before fixing the reported line.
+    Before the PR, every new UI claim is traced to the view that renders it, not the DTO that
+    feeds it. Environment caveats are dated per-session lines, never standing banners — "this run
+    had no compiler" was false an hour after it was written.
 
