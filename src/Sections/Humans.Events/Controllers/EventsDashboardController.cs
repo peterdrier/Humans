@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 using Humans.Base.Authorization;
 using Humans.Events.Contracts;
@@ -108,13 +109,5 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
             .ToList();
 
         return View(model);
-    }
-
-    private static int ComputeDayOffset(Instant instant, LocalDate gateOpeningDate, DateTimeZone? tz)
-    {
-        LocalDate eventDate = tz != null
-            ? instant.InZone(tz).Date
-            : LocalDate.FromDateTime(instant.ToDateTimeUtc());
-        return Period.Between(gateOpeningDate, eventDate, PeriodUnits.Days).Days;
     }
 }

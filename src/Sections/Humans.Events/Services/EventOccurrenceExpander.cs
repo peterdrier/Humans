@@ -1,5 +1,6 @@
 using NodaTime;
 using Humans.Events.Contracts;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.Services;
 
@@ -38,7 +39,7 @@ internal static class EventOccurrenceExpander
 
             foreach (var startInstant in occurrences)
             {
-                var dayOffset = ResolveDayOffset(startInstant, gateOpeningDate, timeZone);
+                var dayOffset = ComputeDayOffset(startInstant, gateOpeningDate, timeZone);
                 if (filterDays != null && !filterDays.Contains(dayOffset)) continue;
 
                 // Hearts on recurring-event cards favourite that day's occurrence;
@@ -57,15 +58,5 @@ internal static class EventOccurrenceExpander
         }
 
         return items;
-    }
-
-    private static int ResolveDayOffset(Instant startInstant, LocalDate? gateOpeningDate, DateTimeZone? timeZone)
-    {
-        if (gateOpeningDate == null) return 0;
-
-        var eventDate = timeZone != null
-            ? startInstant.InZone(timeZone).Date
-            : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
-        return Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
     }
 }

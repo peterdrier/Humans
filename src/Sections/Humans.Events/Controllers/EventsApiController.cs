@@ -13,6 +13,7 @@ using NodaTime.Text;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.Controllers;
 
@@ -334,12 +335,5 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
             locationNote,
             campId == null ? (host ?? submitterName) : host,
             priorityRank);
-    }
-
-    private static int ComputeDayOffset(Instant instant, LocalDate? gateOpeningDate, DateTimeZone? tz)
-    {
-        if (gateOpeningDate == null) return 0;
-        var eventDate = tz != null ? instant.InZone(tz).Date : LocalDate.FromDateTime(instant.ToDateTimeUtc());
-        return Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
     }
 }
