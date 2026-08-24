@@ -90,8 +90,9 @@ internal sealed class BackdoorKeysController(
     {
         var rows = await keys.ListAsync(ct);
 
-        // Admins ∪ Board — the same set IBackdoorApiKeyService enforces on issue, so the
-        // dropdown can never offer someone the service would refuse.
+        // Admins ∪ Board, narrowed below to active accounts — the same test
+        // IBackdoorApiKeyService enforces on issue, so the dropdown can never offer someone
+        // the service would refuse.
         var eligibleIds = new HashSet<Guid>(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct));
         eligibleIds.UnionWith(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct));
 
@@ -109,8 +110,12 @@ internal sealed class BackdoorKeysController(
                 r.CreatedAt,
                 r.LastUsedAt,
                 r.RevokedAt))],
+            // A role assignment outlives a suspension, so the role sets alone would offer
+            // accounts the service refuses. The state half of eligibility is applied here too.
             EligibleUsers = [.. eligibleIds
-                .Select(id => new BackdoorKeyCandidate(id, infos.GetValueOrDefault(id)?.BurnerName ?? "(unknown)"))
+                .Select(id => (Id: id, Info: infos.GetValueOrDefault(id)))
+                .Where(u => u.Info?.State == UserState.Active)
+                .Select(u => new BackdoorKeyCandidate(u.Id, u.Info!.BurnerName))
                 .OrderBy(c => c.DisplayName, StringComparer.CurrentCulture)],
             NewPlaintextKey = newPlaintextKey,
         };
