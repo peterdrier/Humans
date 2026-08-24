@@ -87,7 +87,7 @@ Rules: [`always-open-a-pr`](memory/process/always-open-a-pr.md) · [`no-direct-t
 
 ## Review Findings
 
-Reviewer findings (Codex, Claude bot, Gemini, humans) are **hypotheses, not a work list**. Verify each against the code and judge whether it deserves a fix *before* changing anything — [`review-finding-triage`](memory/process/review-finding-triage.md). Every finding ends with a disposition reply in its thread (fixed / not fixing / issue opened): [`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md).
+Reviewer findings (Codex, Claude bot, Gemini, humans) are **hypotheses, not a work list**. Verify each against the code and judge whether it deserves a fix *before* changing anything — [`review-finding-triage`](memory/process/review-finding-triage.md). Every finding ends with a disposition reply in its thread (fixed / not fixing / issue opened): [`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md). Before acting on any CI or review event on a PR you opened, read [`.claude/skills/steward/SKILL.md`](.claude/skills/steward/SKILL.md) — unattended rounds are capped at five post-PR commits ([`review-round-budget`](memory/process/review-round-budget.md)).
 
 ## Doc Freshness
 
