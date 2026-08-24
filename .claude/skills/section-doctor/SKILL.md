@@ -334,9 +334,10 @@ So review each one against **this run's own target shape and inventory**, on fou
   changes the answer or the scope?
 - **Spec quality** — are the acceptance criteria still meaningful? Is the section label present?
 
-Output is a **recommendation, never an action.** One line per reviewed issue in the run file's
-`## Needs Peter` checklist: the issue ref, a verdict of `close` / `edit` / `relabel` / `keep`, and
-the one-sentence reason.
+Output is a **recommendation, never an action.** Each reviewed issue becomes a numbered finding
+in the ranked list, carrying the issue ref, a verdict of `close` / `edit` / `relabel` / `keep`,
+and the one-sentence reason — that is the finding's one prose description (Phase 5). The
+`## Needs Peter` checklist then cites it by number and adds no prose of its own.
 
 **Hard constraint: a run may not mutate any GitHub issue.** No close, no edit, no relabel, no
 comment on another issue — including issues this run's own findings duplicate, and including a
@@ -469,7 +470,7 @@ worktree/PR, three bookkeeping writes:
   findings list, worked, skipped + why (including sections passed over as blocked), retro
   (Phase 6), `## Needs Peter` checklist — **`- [ ]` unanswered, `- [x]` answered and applied,
   one item per line** — holding Phase 4's skipped classes plus 3d's open-issue recommendations,
-  each `<ref> — <close|edit|relabel|keep> — <reason>` — and `## Sweep queue` (`lesson:` /
+  each `<finding #> — <the question, in a phrase>` — and `## Sweep queue` (`lesson:` /
   `debt:` / `memory:` items as plain bullets — a later run's sweep applies them after this run
   merges; nothing ever ticks them).
 
@@ -653,10 +654,13 @@ or strike work.
 Present the open items inline, then apply each answer. **A ruling is not applied until a grep
 says it is** — before ticking, grep the branch for the finding's distinguishing terms (the issue
 it was filed under, the method or type name, the abolished case) across **`.cs` as well as
-`.md`**, and fix every hit. Doc comments are documentation and drift exactly like it; counting
-the copies from memory always undercounts, and one grep for `AnonymizeProfileInternalAsync` found
-in a single command the copy five careful passes had missed. Then tick the item — `- [ ]` becomes
-`- [x]`:
+`.md`**. The grep is a completeness gate, not a licence to edit: only a ruling that makes the
+claim false — the case abolished, the method gone, the defect fixed — sends you to the hits, and
+then every hit is corrected, not just the one that prompted the finding. A `keep`, `not a defect`
+or `deferred` leaves the text standing and only ticks the item. Doc comments are documentation
+and drift exactly like it; counting the copies from memory always undercounts, and one grep for
+`AnonymizeProfileInternalAsync` found in a single command the copy five careful passes had missed.
+Then tick the item — `- [ ]` becomes `- [x]`:
 
 - **Open-PR item** — commits on that item's PR branch (reuse its worktree, or recreate from the
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
