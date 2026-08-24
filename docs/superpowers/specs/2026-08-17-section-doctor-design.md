@@ -364,4 +364,15 @@ Design dialogue with Peter after the Finance run (peterdrier/Humans#1367). His c
 18. **The target is regenerated every run and diffed against the previous one.** The diff is
     signal in both directions — the section moved, or the earlier target was wrong — and which one
     goes in the retro.
+19. **Phase 3d threads are dispatched by default (#1465, 2026-08-24).** Item 9's "a few background
+    subagent threads" had hardened in `SKILL.md` into "judgment threads run on the main thread,
+    subagents only when a thread must read more than one context can hold". Measuring the
+    2026-08-23 Onboarding run priced that: $93.30 over 746 calls, cache reads $65.87 of it,
+    median context 184k from Phase 3 to the end. A thread reads a lot and returns a little, so
+    holding it on main taxes every later turn in the run — including Phases 4–9 and the review
+    tail. Small context is the dominant lever (~87%), not model choice (~40%). So Freshness,
+    Conformance, Tests, Prose & surface, History, Comments and Inbox dispatch with an explicit
+    tagged model; the spine (3a–3c), Shape, Behavior & bugs and 3e stay on main, and the
+    `## Threads` block records model and cost per thread so *that* stays a measurement rather
+    than an assumption.
 

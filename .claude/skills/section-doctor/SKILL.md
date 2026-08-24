@@ -226,31 +226,49 @@ across runs on a section that keeps changing is a target nobody is really derivi
 
 Each thread is a lens over the **same complete inventory**, and each reports a disposition for
 every file it claims. They run concurrently, but *how* a thread runs follows from what it is —
-this is the wall-clock / token / fragility balance, and subagent lanes have historically been the
-fragile part (two runs running, every dispatched lane missed the window):
+the wall-clock / token / fragility balance:
 
 - **Tool threads run as background commands** — Stryker, InspectCode, reforge, conformance
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
   main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
   scoped to the section being doctored — its `loc=`/`cogP95=`/`cogMax=` fields are the source
   for Phase 5's `## Size` snapshot, on every run, not only the selector's solution-wide call.
-- **Judgment threads run on the main thread** — shape, behavior, prose. They are the expensive
-  reading this whole run exists to do.
-- **Subagents only when a thread must read more than one context can hold**, and then with an
-  explicit tagged model and a deadline. A thread that misses its deadline does not block the
-  strike loop: work its checklist on the main thread and label it self-run in the run file.
+- **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
+  and returns a little, and reading it on the main thread permanently raises the price of every
+  later turn in the run — the 2026-08-23 Onboarding run held ~184k context from Phase 3 to the
+  end, and cache reads alone were $65.87 of $93.30. **Small context dominates model choice**:
+  moving a thread off main saves ~87%, swapping its model ~40%. Each dispatched thread gets an
+  explicit tagged model (table below) and a deadline.
+- **Only the spine and the two judgment threads stay on main** — 3a–3c, Shape, Behavior & bugs,
+  and 3e. They are the reading this run exists to do, and a wrong call there costs a real finding.
+  Whether they *must* stay is an open measurement, not a settled rule: the run-over-run figure
+  that answers it is the whole-run total against the baseline (Phase 7), because Phase 3's
+  main-thread cost is one shared bucket and does not split per lens. Don't move them on a hunch
+  in either direction — move them on a run that dispatched them and came out cheaper without
+  losing findings.
+
+**Dispatch contract** — every dispatched thread gets, verbatim: 3c's target (all six parts plus
+the load-bearing weirdness list), its slice of the 3a inventory, and its row's lens from the table.
+It returns a **structured findings list plus a disposition for every file it claimed**, never
+prose, and **never edits anything** — striking is Phase 4's job on main. Prompt line one is
+`thread: <Name>` so the cost report can name the row.
+
+**A dispatched thread that misses its deadline does not block the strike loop:** work its
+checklist on the main thread and label it self-run in the run file. That is the degrade path —
+files are never silently dropped, because the coverage block still demands a disposition for
+each one.
 
 | Thread | Lens | Runs as |
 |---|---|---|
 | **Shape** | `/simplify`'s method against the target: shape mismatches, duplicated pipelines, pass-throughs, over-general options, dead and over-exposed surface, per-method external-caller counts | main |
 | **Behavior & bugs** | Does it do what it claims? Walk each flow against the target's invariants. Where the section consumes authored content (markdown, resx, templates, seed data), run the **real shipped content through the real pipeline** — a defect whose trigger is the shape of an input file is invisible to every code-reading thread | main |
-| **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | main |
-| **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + main |
-| **Tests** | Mutation score (Stryker, section-scoped — only when Stryker is installed); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + main |
-| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + main |
-| **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | main |
-| **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | main |
-| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | main |
+| **Freshness** | The section's docs vs code: claims that no longer hold, `freshness:triggers` globs that still resolve, and triggers that watch *everything the doc asserts about* — including another section's file where the doc names it. A fixed claim gets swept everywhere it appears | subagent (sonnet) |
+| **Conformance** | `docs/architecture/section-conformance.yml` — the per-section rules nothing enforces yet. Detectors are mechanical; the judgment is what to do about a hit | background + subagent (haiku) |
+| **Tests** | Mutation score (Stryker, section-scoped — only when Stryker is installed); the invariant coverage matrix — every invariant, negative access rule and trigger in the target mapped to a pinning test; redundant and asserting-the-mock tests | background + subagent (sonnet) |
+| **Prose & surface** | InspectCode Tier 1/2; docs that are 500 words where 50 would do; dead resources, missing translations, resource keys not prefixed with the section name (`resource-key-prefix`, cleanup — report the count, don't backfill unless the run is *for* that); nav quality — dead ends, missing backlinks, discoverability from `AdminNavTree` | background + subagent (haiku) |
+| **History** | Prose narrating a prior state: a deleted/renamed project or type, a migration/lane number, "used to live in X", "the first section to Y", a dated run post-mortem, rationale for a decision no longer contested. **Cut test: keep only if it changes what a reader does** — a live constraint, a non-obvious invariant, a landmine that bites if reverted. A load-bearing "why" moves to the issue, linked, not narrated in the file | subagent (sonnet) |
+| **Comments** | Every comment in the section's inventory, rewritten or deleted. Cut what restates the next line, decision history, hedging, reassurance addressed to the next agent. **Cut test: a comment survives only if it carries something the code cannot say** | subagent (sonnet) |
+| **Inbox** | Section-tagged `debt-ledger.yml` items, open GitHub issues, in-app issues. Work or rank them — and **review** the open issues for validity / consistency / freshness / spec quality (below); off-section finds go to the run's sweep queue as `debt:`, never written to the ledger directly | subagent (sonnet) |
 
 **Every thread that does not run says so in the run file, with why.** A silent skip is how the
 2026-08-18 run left the whole mutation dimension unmeasured with nothing flagging it. A thread
@@ -370,8 +388,19 @@ worktree/PR, three bookkeeping writes:
 
   - **`## File coverage`** — a disposition for every path in the 3a inventory: `reviewed`,
     `changed` or `generated`. Not a summary; the list.
-  - **`## Threads`** — which threads ran, and for each that did not, why. A silent skip is a
-    failed run, not a quiet one.
+  - **`## Threads`** — one row per thread: how it ran (main / subagent / self-run after a missed
+    deadline), its model, its findings count, and its cost from the Phase 7 report. For each that
+    did not run, why — a silent skip is a failed run, not a quiet one. The model and cost columns
+    are what make "did the cheaper thread lose findings?" answerable across runs
+    (nobodies-collective/Humans#1465); a run that leaves them blank has decided that question for
+    every run after it.
+
+    **A dispatched thread has its own cost; the main-run threads share one.** The phase log has a
+    single `phase3` boundary, so every main-thread call in Phase 3 lands in one `main:phase3`
+    bucket — spine, Shape and Behavior & bugs together. Write that one figure in each main row and
+    mark it `shared`. Never split it per lens: the split would be invented, and an invented number
+    is worse here than a coarse one. The Shape/Behavior question is settled by whole-run totals
+    against the baseline (Phase 7), not by attributing turns to lenses that interleave.
   - **`## Size`** — line count against the run's anchor for every section touched, and the net.
     Growth is reported with its reason, and consolidation that grows this section while shrinking
     another is stated as the trade it is. Include the section's reforge metrics snapshot (`loc`,
@@ -434,11 +463,13 @@ python .claude/skills/section-doctor/cost-report.py section-doctor/$TS $WORKTREE
 
 It finds this run's own session transcript under `~/.claude/projects` (the model never sees its
 own usage in-band, but the harness logs every API call's tokens there), buckets the main thread
-by the phase log, adds one row per subagent transcript, and prints a markdown table with
-API-equivalent $. The table is a **Phase 1 → PR-creation cutoff, not a run total** — the PR
+by the phase log, adds one row per subagent transcript (named by the `thread:` marker its
+prompt opens with), and prints a markdown table with per-row model and API-equivalent $. The table is a **Phase 1 → PR-creation cutoff, not a run total** — the PR
 create/backfill calls and any Phase 8 work land after measurement (the footer says so). Paste
-it as `## Cost` into the PR body and the run file (run-file copy lands
-with the backfill commit). The script never fails the run — on any discovery problem it prints
+it as `## Cost` into the PR body and the run file, and fill Phase 5's `## Threads` model/cost
+columns from the same report (both land with the backfill commit). Compare the total against the
+2026-08-23 Onboarding baseline of **$93.30 / 746 calls / 184k median context**
+(nobodies-collective/Humans#1465) and say in one line whether dispatch moved it. The script never fails the run — on any discovery problem it prints
 `Cost: unmeasured (...)`; use that line as the table. Cloud-environment transcript layout is
 unverified — if the first routine run reports unmeasured, note it in Needs-Peter.
 

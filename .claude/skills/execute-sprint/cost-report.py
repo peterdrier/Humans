@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Cost report for a section-doctor run (Phase 7).
+"""Cost report for an execute-sprint run (Step 4).
 
-Usage: python cost-report.py <branch-name> <phase-log-path>
+Usage: python cost-report.py <sprint-date> <run-start-iso>
 
 Finds this run's own session transcript under ~/.claude/projects (the file that
-mentions the run branch and was modified after the run started), sums per-API-call
-token usage bucketed by the phase boundaries in the phase log, adds one row per
-subagent transcript (named by its `thread:` marker where it has one), and prints a
-markdown table with per-row model and API-equivalent cost.
+mentions a `claude/sprint-<date>-batch-` branch and was modified after the run
+started), sums per-API-call token usage, and prints a markdown table with
+API-equivalent cost: the main thread as `orchestrator`, each subagent transcript
+assigned to the batch whose branch name appears in it.
 
-Exits 0 with "Cost: unmeasured (...)" on any discovery failure — never fail the run.
+Adapted from .claude/skills/section-doctor/cost-report.py (phase buckets swapped
+for batch grouping). Exits 0 with "Cost: unmeasured (...)" on any discovery
+failure — never fail the run.
 """
 import glob
 import json
@@ -50,21 +52,8 @@ def usage_entries(path):
             yield j.get("timestamp"), (j.get("message") or {}).get("model"), u
 
 
-def thread_name(path):
-    """The `thread: <Name>` marker a dispatched Phase 3d prompt opens with (SKILL.md §3d)."""
-    with open(path, encoding="utf-8", errors="ignore") as f:
-        for line in list(f)[:3]:  # the prompt is the first record; don't match a later mention
-            m = re.search(r'thread:\s*([A-Za-z][A-Za-z &]*)', line)
-            if m:
-                return m.group(1).strip()
-    return None
-
-
 def add(bucket, model, u):
     r = rate(model)
-    for key in RATES:
-        if key in (model or ""):
-            bucket.setdefault("models", set()).add(key)
     fresh = u.get("input_tokens", 0)
     out = u.get("output_tokens", 0)
     cw = u.get("cache_creation_input_tokens", 0)
@@ -78,17 +67,15 @@ def add(bucket, model, u):
 
 
 def main():
-    branch, phase_log = sys.argv[1], sys.argv[2]
-    phases = []  # (start_ts, name)
-    for line in open(phase_log, encoding="utf-8"):
-        t, name = line.split(None, 1)
-        phases.append((ts(t), name.strip()))
-    run_start = phases[0][0]
+    date, run_start_iso = sys.argv[1], sys.argv[2]
+    run_start = ts(run_start_iso.strip())
+    branch_prefix = f"claude/sprint-{date}-batch-"
+    batch_re = re.compile(re.escape(branch_prefix) + r"(\d+)")
 
     own = None
     for p in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
         try:
-            if os.path.getmtime(p) >= run_start and branch in open(
+            if os.path.getmtime(p) >= run_start and branch_prefix in open(
                 p, encoding="utf-8", errors="ignore"
             ).read():
                 own = p
@@ -101,45 +88,39 @@ def main():
 
     rows = {}  # label -> {tok, usd}
     for t, model, u in usage_entries(own):
-        # entries before the phase log belong to whatever the session did earlier
-        # (interactive invocation) — not to this run
+        # entries before .run-start belong to whatever the session did earlier
         if not t or ts(t) < run_start:
             continue
-        label = f"main:{phases[0][1]}"
-        for start, name in phases:
-            if ts(t) >= start:
-                label = f"main:{name}"
-        add(rows.setdefault(label, {}), model, u)
+        add(rows.setdefault("orchestrator", {}), model, u)
 
     for p in glob.glob(own[: -len(".jsonl")] + "/subagents/*.jsonl"):
         if os.path.getmtime(p) < run_start:
             continue
-        label = "agent:" + (
-            thread_name(p) or os.path.basename(p)[len("agent-") : -len(".jsonl")]
-        )
+        m = batch_re.search(open(p, encoding="utf-8", errors="ignore").read())
+        agent_id = os.path.basename(p)[len("agent-") : -len(".jsonl")]
+        label = f"batch-{m.group(1)}" if m else f"agent:{agent_id}"
         for _, model, u in usage_entries(p):
             add(rows.setdefault(label, {}), model, u)
 
-    print("| Component | Model | Fresh in | Out | Cache write | Cache read | ~$ |")
-    print("|---|---|---|---|---|---|---|")
+    print("| Component | Fresh in | Out | Cache write | Cache read | ~$ |")
+    print("|---|---|---|---|---|---|")
     total = [0, 0, 0, 0]
     usd = 0.0
     for label in sorted(rows):
         b = rows[label]
         f, o, cw, cr = b["tok"]
-        models = "+".join(sorted(b.get("models", set()))) or "?"
-        print(f"| {label} | {models} | {f:,} | {o:,} | {cw:,} | {cr:,} | {b['usd']:.2f} |")
+        print(f"| {label} | {f:,} | {o:,} | {cw:,} | {cr:,} | {b['usd']:.2f} |")
         for i, v in enumerate((f, o, cw, cr)):
             total[i] += v
         usd += b["usd"]
     print(
-        f"| **total** | | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
+        f"| **total** | {total[0]:,} | {total[1]:,} | {total[2]:,} | {total[3]:,} "
         f"| **{usd:.2f}** |"
     )
     print()
     print(
-        "API-equivalent $, list rates; run under subscription quota. "
-        "Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded."
+        "API-equivalent $, list rates. Measured from local/.run-start to report time; "
+        "the report comment itself lands after measurement."
     )
 
 
