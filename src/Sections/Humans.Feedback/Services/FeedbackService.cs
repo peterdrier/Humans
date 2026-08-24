@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Base.Extensions;
@@ -112,7 +113,8 @@ internal sealed class FeedbackService(
     }
 
     public async Task SetGitHubIssueNumberAsync(
-        Guid id, int? issueNumber, CancellationToken cancellationToken = default)
+        Guid id, int? issueNumber, Guid? actorUserId,
+        CancellationToken cancellationToken = default)
     {
         var report = await repository.FindForMutationAsync(id, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
@@ -121,6 +123,22 @@ internal sealed class FeedbackService(
         report.UpdatedAt = clock.GetCurrentInstant();
 
         await repository.SaveTrackedReportAsync(report, cancellationToken);
+
+        // Audit after the business save so a rollback never leaves a ghost audit row.
+        var description =
+            $"Feedback {id} GitHub link: {(issueNumber.HasValue ? issueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}";
+        if (actorUserId.HasValue)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.FeedbackGitHubLinked, AuditEntityTypes.FeedbackReport, id,
+                description, actorUserId.Value);
+        }
+        else
+        {
+            await auditLogService.LogAsync(
+                AuditAction.FeedbackGitHubLinked, AuditEntityTypes.FeedbackReport, id,
+                description, "API");
+        }
     }
 
     public async Task<FeedbackMessageInfo> PostMessageAsync(

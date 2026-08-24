@@ -37,5 +37,7 @@ public interface IFeedbackTriage : IApplicationService
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
-    Task SetGitHubIssueNumberAsync(Guid id, int? issueNumber, CancellationToken cancellationToken = default);
+    Task SetGitHubIssueNumberAsync(
+        Guid id, int? issueNumber, Guid? actorUserId,
+        CancellationToken cancellationToken = default);
 }

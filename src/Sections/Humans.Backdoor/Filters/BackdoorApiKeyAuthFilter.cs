@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -22,7 +23,7 @@ internal sealed class BackdoorApiKeyAuthFilter(IBackdoorApiKeyService keys) : IA
     public const string ApiKeyHeaderName = "X-Api-Key";
 
     /// <summary>The <c>AuthenticationType</c> stamped on the identity a key produces.</summary>
-    public const string AuthenticationScheme = "BackdoorApiKey";
+    public const string AuthenticationScheme = BackdoorAuthentication.SchemeName;
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {

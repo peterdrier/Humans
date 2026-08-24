@@ -14,7 +14,7 @@ namespace Humans.Backdoor.Controllers;
 /// (nobodies-collective/Humans#1128).
 /// </summary>
 /// <remarks>
-/// Replies and status changes carry <c>ActorUserId</c> — the human the presented key belongs
+/// Every mutation carries <c>ActorUserId</c> — the human the presented key belongs
 /// to, resolved by <see cref="BackdoorApiKeyAuthFilter"/>. Before #1128 they passed
 /// <c>null</c>, so an API reply showed up in the thread as nobody.
 /// </remarks>
@@ -160,7 +160,7 @@ internal sealed class BackdoorFeedbackController(
     {
         try
         {
-            await feedback.SetGitHubIssueNumberAsync(id, model.IssueNumber);
+            await feedback.SetGitHubIssueNumberAsync(id, model.IssueNumber, ActorUserId);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException)

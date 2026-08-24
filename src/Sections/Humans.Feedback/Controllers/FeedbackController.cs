@@ -216,7 +216,10 @@ internal sealed class FeedbackController(
     {
         try
         {
-            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
+            var (userMissing, user) = await RequireCurrentUserAsync();
+            if (userMissing is not null) return userMissing;
+
+            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber, user.Id);
             SetSuccess("GitHub issue linked.");
         }
         catch (InvalidOperationException)

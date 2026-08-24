@@ -211,4 +211,7 @@ public enum AuditAction
     // Rotation is recorded as a revoke of the old key followed by an issue of the new one.
     BackdoorApiKeyIssued,
     BackdoorApiKeyRevoked,
+    // Linking a feedback report to a GitHub issue — the last Feedback mutation that
+    // recorded no actor (nobodies-collective/Humans#1128).
+    FeedbackGitHubLinked,
 }

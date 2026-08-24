@@ -67,6 +67,14 @@ public sealed class NameRequiredFilter(IUserServiceRead userService) : IAsyncAct
             return;
         }
 
+        // Machine requests carry a Backdoor API key, not a browsing session — a JSON client
+        // cannot fill in the name form (nobodies-collective/Humans#1128).
+        if (MembershipRequiredFilter.IsMachineRequest(user))
+        {
+            await next();
+            return;
+        }
+
         if (context.ActionDescriptor is ControllerActionDescriptor cad &&
             (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
              cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))

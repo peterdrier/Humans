@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
+using Humans.Backdoor.Contracts;
 using Humans.Base.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
@@ -127,10 +128,11 @@ public class MembershipRequiredFilterTests
         string actionName,
         UserState? state,
         bool authenticated = true,
-        string? role = null)
+        string? role = null,
+        string authenticationType = "test")
     {
         var sut = new MembershipRequiredFilter();
-        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role);
+        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType);
         var nextCalled = false;
 
         await sut.OnActionExecutionAsync(ctx, () =>
@@ -140,6 +142,21 @@ public class MembershipRequiredFilterTests
         });
 
         return (ctx.Result, nextCalled);
+    }
+
+    /// <summary>
+    /// A Backdoor API key never passes through claims transformation, so its principal carries no
+    /// state claim. The gate must let it through rather than redirect a JSON client to the
+    /// onboarding page (nobodies-collective/Humans#1128).
+    /// </summary>
+    [HumansFact]
+    public async Task Backdoor_key_principal_reaches_a_non_exempt_controller_without_a_state_claim()
+    {
+        var (result, nextCalled) = await RunAsync(
+            "Home", "Index", state: null, authenticationType: BackdoorAuthentication.SchemeName);
+
+        Assert.True(nextCalled, "Machine requests must not be routed to onboarding");
+        Assert.Null(result);
     }
 
     private static void AssertRedirect(IActionResult? result, string action, string controller)
@@ -154,7 +171,8 @@ public class MembershipRequiredFilterTests
         string actionName,
         bool authenticated,
         UserState? state,
-        string? role)
+        string? role,
+        string authenticationType)
     {
         ClaimsIdentity identity;
         if (authenticated)
@@ -168,7 +186,7 @@ public class MembershipRequiredFilterTests
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
-            identity = new ClaimsIdentity(claims, authenticationType: "test");
+            identity = new ClaimsIdentity(claims, authenticationType);
         }
         else
         {

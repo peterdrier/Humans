@@ -66,6 +66,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A key is only ever issued to a full Admin or a Board member — checked at issue *and* re-checked at rotation, so losing the role means losing the ability to refresh the credential.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
+- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so it carries no role or state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
 
 ## Negative Access Rules
 
@@ -93,7 +94,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Users**: `IUserServiceRead.GetUserInfosAsync` for display names on the admin page and on the API's issue/feedback projections.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 
-Nothing depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle.
+No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle. The Shell reads one constant from it, `BackdoorAuthentication.SchemeName`, so its onboarding gates can tell a machine request from a browsing session.
 
 ## Architecture
 

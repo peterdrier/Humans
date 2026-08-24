@@ -118,7 +118,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
 - A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
-- Status changes and assignment changes are audit-logged via `AuditAction.FeedbackStatusChanged` and `AuditAction.FeedbackAssignmentChanged`. API-initiated changes are logged with actor `"API"`.
+- Status changes, assignment changes and GitHub links are audit-logged via `AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged` and `AuditAction.FeedbackGitHubLinked`. Every mutation takes the acting user; the `"API"` actor string remains only as the fallback for a caller that resolved to nobody.
 - Admin replies send the response email **before** persisting the new message — if SMTP throws, the message and `LastAdminMessageAt` are never committed, so the request can be retried without duplicating the admin reply. The in-app notification is best-effort post-save.
 
 ## Negative Access Rules
@@ -141,7 +141,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — assigned-team display names.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
 - **Notifications:** `INotificationService.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
-- **Audit Log:** `IAuditLogService.LogAsync` — status and assignment changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`).
+- **Audit Log:** `IAuditLogService.LogAsync` — status, assignment and GitHub-link changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`, `AuditAction.FeedbackGitHubLinked`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
 - **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
