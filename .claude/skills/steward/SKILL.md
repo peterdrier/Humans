@@ -19,14 +19,18 @@ hours after the last, and the context that would have told you *this is round se
 has been compacted away by the time you read this. Derive the number from the PR — it is
 the only thing in the loop that remembers:
 
-    created=$(gh pr view <N> --json createdAt --jq .createdAt)
-    gh pr view <N> --json commits --jq "[.commits[] | select(.committedDate > \"$created\")] | length"
+    created=$(gh pr view <N> --repo <owner>/Humans --json createdAt --jq .createdAt)
+    gh pr view <N> --repo <owner>/Humans --json commits --jq "[.commits[] | select(.committedDate > \"$created\")] | length"
+
+Always pass `--repo` with the owner the PR actually lives on — fork and upstream reuse
+PR numbers ([`issue-refs-qualified`](../../../memory/process/issue-refs-qualified.md)),
+and a bare call reads the ambient clone's same-numbered PR instead.
 
 The unattended ceiling is **five post-PR commits per PR**. Then act on where you stand:
 
 | Spent | What to do |
 |---|---|
-| **0–2** | Normal round. Verify, judge, fix in scope, one commit. |
+| **0–3** | Normal round. Verify, judge, fix in scope, one commit. |
 | **4** | This is the last commit. Read *every* open finding first, then spend it on the most serious one — not the first one, and not the easiest one. Say in the commit message that the budget is now spent. |
 | **5+** | Do not triage, do not draft a patch, do not go looking for a change small enough to be worth it. Post one comment (what is open, what you'd do about each, what you need decided), unsubscribe from PR activity, drop any check-in schedule, stop. |
 
