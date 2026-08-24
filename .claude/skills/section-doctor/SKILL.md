@@ -389,6 +389,14 @@ Cap the pass at the section's open issues — recommendations are per-issue one-
 backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
 `## Threads` like every other thread; a review that did not happen says so, with why.
 
+**Prove reach first; suspend the pass when there is none.** Issues live on
+`nobodies-collective/Humans`. A cloud run's GitHub scope is `peterdrier/Humans` only, and
+`search_issues` returns 0 there **silently** — indistinguishable from a clean backlog. So before
+any issue work, `issue_read` one known-open `nobodies-collective/Humans` issue. On failure the
+open-issue half is suspended, not attempted: the ledger and in-app halves of the Inbox thread
+still run, `## Threads` records `Inbox: partial — open issues unreachable (scope:
+peterdrier/Humans)`, and no run may report an empty or complete issue review it could not perform.
+
 ### 3e. Merge, rank, and check independence
 
 One value-ranked list across all threads — value is bug surface removed, concepts removed, and
