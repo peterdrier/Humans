@@ -67,8 +67,8 @@ mechanical:
       docs/features/ now holds only global/, the cross-section specs.
       Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
       GettingStarted.md, Glossary.md, and the dated design records matching
-      src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
-      map of which section's doc lives where — read it first and agree with it.
+      src/Sections/*/Docs/20*.md. Every section's doc lives at the derivable path
+      src/Sections/Humans.<Section>/Docs/<Section>.md — there is no index doc.
 
       For each .md file, derive a one-line description from the first paragraph
       of the file (or the H1 + first sentence if the first paragraph is too long).

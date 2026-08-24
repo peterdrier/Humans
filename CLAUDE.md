@@ -54,7 +54,7 @@ The `Application` entity is for **Colaborador/Asociado tier applications only**.
 
 Each major section of the app has a terse invariant doc defining: concepts, data model, actors/roles, invariants, negative access rules, triggers, cross-section dependencies, architecture status. Every section follows [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).
 
-A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries that doc inside the project — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). Everything not yet moved is still in [`docs/sections/`](docs/sections/), and [`docs/sections/_Index.md`](docs/sections/_Index.md) is the map to both.
+Every section carries that doc inside its own project (nobodies-collective/Humans#866, G5) at `src/Sections/Humans.<Section>/Docs/<Section>.md` — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). The path is derivable from the section name, so there is no index doc; `ls src/Sections` is the list. Each section's generated data-access map sits beside it at `Docs/data-access.md`, which is what to grep to find the section owning a given service, repository or table.
 
 `/` (Home) and `/Admin/*` are Shell frames, not sections — decided in nobodies-collective/Humans#1091: they stay in `Humans.Web`, thin toward pure composition (their page bodies are section-contributed), and their services belong to the sections they act on.
 

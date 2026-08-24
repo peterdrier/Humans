@@ -200,15 +200,6 @@ ref in `profile-search-detail.md` was left intact — that husk was not deleted 
 
 ## Flagged for human review
 
-- `docs/sections/_Index.md` — the section rows were verified against `src/Sections/*` (all
-  42 present and correctly located), but the two six-column tables (Controllers /
-  Orchestrators / Services / Repositories / Tables, lines 85-139) were not verified
-  cell-by-cell: that is several hundred hand-typed class names against ~1989 matched files.
-  Their Services / Repositories / Tables columns duplicate the mechanically generated
-  per-section `src/Sections/*/Docs/data-access.md` (38 of them), which is the shape
-  `no-derived-aggregates-in-docs` warns about — a hand-maintained copy of content that
-  already has a generator. Raised with Peter; awaiting a call on whether those columns
-  should exist at all.
 - `src/Sections/Humans.Email/Docs/Email.md` — the Architecture section still counts
   `IEmailService`'s callers as "nine `Humans.Application` services, six
   `Humans.Infrastructure` jobs". Both projects were deleted in G5, so the sentence names
@@ -258,6 +249,42 @@ editing:
   use today's names would make it wrong.
 
 ## Resolved by Peter after the PR opened
+
+- **`docs/sections/_Index.md` is deleted (145 lines).** Peter's call, and the evidence
+  supported it. The three-column table (Section / Project / Invariants doc) was pure
+  derivation — every section's doc is at `src/Sections/Humans.<Section>/Docs/<Section>.md`,
+  so `ls src/Sections` is the same information. The two six-column tables (Controllers /
+  Orchestrators / Services / Repositories / Tables) held several hundred hand-typed class
+  names whose Services / Repositories / Tables columns duplicate the *generated* per-section
+  `src/Sections/*/Docs/data-access.md` — the exact shape `no-derived-aggregates-in-docs`
+  warns about.
+
+  The copies had already drifted into contradicting their sources: the AuditLog row said the
+  read path injects Users', Teams' and GoogleIntegration's read interfaces, while
+  `AuditLog.md` records that nobodies-collective/Humans#1059 removed the Teams and
+  GoogleIntegration references, leaving Users and Gdpr. `G5-SECTION-TEMPLATE.md` also
+  carried a standing correction telling readers not to misread the Orchestrators column —
+  a doc that needs a "do not misread me" note is a liability.
+
+  Nothing was migrated out. All four "Notes & known drift" items already had better homes:
+  `/Admin/*` is not a vertical section and `SystemDbContext` is not a section are both in
+  `CLAUDE.md`; `event_participations` ownership is settled at `design-rules.md:264`; and the
+  "§8 still lists `google_resources`/`TeamResourceService` under Teams" note was *itself*
+  stale — `design-rules.md:285` already files both under Google Integration, explicitly
+  noting "not Teams". Per Peter, a doc is not the proper home for a drift list anyway:
+  drift gets fixed at its source or filed as an issue, and that stale §8 note is exactly
+  what a "known drift" section decays into.
+
+  Inbound references retargeted: `CLAUDE.md` (now states the derivable path and points at
+  `data-access.md` for owner lookups), `docs/README.md` (row removed),
+  `memory/architecture/governance-scope.md` + `memory/INDEX.md` (owner lookup is now a grep
+  of `src/Sections/*/Docs/data-access.md`), `docs/sections/admin-shell.md`,
+  `docs/architecture/freshness-catalog.yml`, and three places in
+  `docs/sections/G5-SECTION-TEMPLATE.md` — whose Orchestrators-column warning was rewritten
+  to keep its durable point ("is an orchestrator" is not "can't move"; an orchestrator may
+  live in the section it orchestrates for) without the dead column. References inside
+  `docs/superpowers/**` were left as the historical records they are. All nine mechanical
+  verifiers still pass.
 
 - **`docs/features/global/section-activation.md` — the "26 of the 42" count is gone.** Peter:
   counts in docs only burn update cycles, and `no-derived-aggregates-in-docs` (HARD RULE)
