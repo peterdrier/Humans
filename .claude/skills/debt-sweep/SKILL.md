@@ -63,7 +63,7 @@ Run this build once in Phase 3 (it doubles as the baseline build) and reuse the 
 
 ## Phase 3: Pick theme
 
-1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0` and skip any theme carrying a `parked:` value.
+1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0` and skip any theme carrying a `parked:` value. **The `inbox` theme is exempt from the zero-skip — re-run its `detect` first and use that count.** Its contents are appended between sweeps by processes that never touch the central `remaining` field (a `/section-doctor` run writing a section ledger, anyone adding a one-off), so a stale `0` there would retire the inbox permanently while real debt piled up in the files it pools. The detect is a `grep -c`; running it every time is free.
 2. Run the candidate's `detect` to confirm `remaining > 0`. If 0 → apply the drain rule (below), update the entry, take the next candidate.
 3. Enumerate the theme's concrete items (file list from grep, baseline lines, distinct warning sites). Order items so anything in a `recent_sections` section is worked **last**.
 4. Fold in `inbox` items that match the chosen theme — from the central ledger **and** every section file, one pool. An item's file decides who edits it in Phase 5, never whether it is eligible here.
@@ -100,7 +100,7 @@ In the worktree:
 
 1. Theme entry: `last_swept: <today>`, `remaining:` from re-running `detect`, apply drain/retire rule.
 2. `recent_sections:` ← dominant sections of the last ~3 sweeps (this one included).
-3. Add Phase 2 staleness discoveries; append work-loop inbox items; remove inbox items completed this run — **from whichever file holds each one**, central or section; apply `--inventory` evictions. A section file whose last entry is removed is deleted with it.
+3. Add Phase 2 staleness discoveries; append work-loop inbox items; remove inbox items completed this run — **from whichever file holds each one**, central or section; apply `--inventory` evictions. A section file drained to its last entry keeps an empty `inbox: []` — **never delete the file**; deleting it is a destructive action needing Peter's per-instance approval (`memory/process/no-destructive-actions-without-approval.md`), and an empty ledger costs three lines.
 4. Overwrite `docs/debt/last-report.md`: timestamp, theme, budget used; items fixed (one line each: what + commit sha); items skipped + why (schema, interface-addition, panel-reject, budget); forbidden-move reverts; inbox additions; ledger changes (new themes, retirements, evictions).
 
 Commit ledger + report with the work (same PR).

@@ -580,8 +580,11 @@ Unanswered items carry forward — never re-asked.
 it is opened — review arrives after Phase 7 (a BLOCK, bot findings, Peter working the Needs-Peter
 queue) and every one of those is answered by committing to this branch.
 
-Phase 9 is bookkeeping only: record the branch, the PR number and `$WORKTREE`'s path in the run
-file header. `$RUNDIR` is scratch; leave it for the OS to reclaim.
+Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
+session needs is already derivable: the branch is `section-doctor/$TS`, its worktree is
+`$REPO_ROOT/.worktrees/section-doctor-$TS`, and the PR number is in the run file. `$RUNDIR` is
+scratch; leave it for the OS to reclaim. **Leave the worktree clean** — an uncommitted edit here
+never reaches the PR and makes the retained worktree dirty for whoever picks the review up.
 
 **Teardown happens when the PR reaches terminal state** — by `/merged`, or by hand with
 `git worktree remove $WORKTREE` from `$REPO_ROOT` (never a recursive delete).
