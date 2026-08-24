@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Events.Contracts;
+using Humans.Gdpr.Contracts;
 
 namespace Humans.Events.Services;
 
@@ -39,7 +40,8 @@ namespace Humans.Events.Services;
 /// </remarks>
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingEventService> logger) : IEventService, IEventViewInvalidator, IHostedService
+    ILogger<CachingEventService> logger)
+    : IEventService, IEventViewInvalidator, IUserDataContributor, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventService"/>
@@ -381,9 +383,6 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetFavouritesWithEventsAsync(userId, ct));
 
-    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
-        WithInner(inner => inner.ToggleFavouriteAsync(userId, eventId, dayOffset, ct));
-
     public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
         WithInner(inner => inner.AddFavouriteAsync(userId, eventId, dayOffset, ct));
 
@@ -446,6 +445,23 @@ internal sealed class CachingEventService(
 
     public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
         RefreshSettingsAsync(ct);
+
+    // ==========================================================================
+    // IUserDataContributor — GDPR export + erasure
+    // ==========================================================================
+    // Carried by the decorator, not the inner service: erasure clears the person's
+    // Host name on events that stay in the guide, and those rows are in _eventCache.
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => EventService.Erasure;
+
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await WithInner(inner => inner.EraseForUserAsync(userId, ct));
+        await RefreshAllEventsAsync(ct);
+    }
 
     // ==========================================================================
     // Warmup — composition forces the decorator to own IHostedService directly.

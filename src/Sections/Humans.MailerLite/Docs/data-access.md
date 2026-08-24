@@ -17,7 +17,7 @@ services.
 `IAuditLogService`. Inbound import slice — reads MailerLite subscribers
 and provisions matching accounts. No cache.
 
-### MailerLiteService (Scoped)
+### MailerLiteService (Singleton, class `MailerLiteClient`)
 
 No repository. `MailerLiteClient` is the MailerLite HTTP port, built over
 `IHttpClientFactory`: account and group reads (`GetAccountSummaryAsync`,
@@ -25,7 +25,16 @@ No repository. `MailerLiteClient` is the MailerLite HTTP port, built over
 (`ListSubscribersAsync`, `GetSubscriberAsync`), and the group-membership
 writes the audience sync drives (`AssignSubscriberToGroupAsync`,
 `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`,
-`RefreshAsync`). Retry timing uses `IClock`. No DB access, no cache.
+`RefreshAsync`). Retry timing uses `IClock`. No DB access, no `IMemoryCache`
+(the client holds its own in-process subscriber/group state as a Singleton).
+
+### MailerLiteGdprContributor (Scoped)
+
+No repository, no cache. Implements `IUserDataContributor` — the section owns
+no user-scoped tables, so `ContributeForUserAsync` (Article 15) always
+returns empty; `EraseForUserAsync` (Article 17) deletes the MailerLite
+subscriber under every verified address via `IMailerLiteService`. Depends on
+`IMailerLiteService`, `IUserEmailService`.
 
 ### MailerLiteAudienceSyncService (Scoped)
 
@@ -43,8 +52,8 @@ Audience-membership computation classes under `MailerLite/Audiences/`:
 `MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerLiteAudienceBase`,
 `HasShiftInPeriodAudienceBase`.
 No repository; compute over read-split / section service interfaces
-(`ITicketServiceRead`, `IShiftSignupService`, `IShiftManagementService`,
-etc.). No direct DB access, no cache.
+(`ITicketServiceRead`, `IShiftView`, `IUserServiceRead`). No direct DB
+access, no cache.
 
 ---
 

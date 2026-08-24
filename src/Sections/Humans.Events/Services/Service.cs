@@ -24,7 +24,9 @@ internal sealed class EventService(
     IEmailMessageFactory emailMessages,
     IClock clock,
     ILogger<EventService> logger)
-    : IEventService, IUserDataContributor, ICalendarFeedContributor
+    // IUserDataContributor is implemented by CachingEventService, which delegates here —
+    // erasure edits cached rows, so the fan-out has to run through the decorator.
+    : IEventService, ICalendarFeedContributor
 {
     // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
 
@@ -587,9 +589,6 @@ internal sealed class EventService(
             f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event))).ToList();
     }
 
-    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
-        => repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset), ct);
-
     public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
         => repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
 
@@ -843,7 +842,9 @@ internal sealed class EventService(
         return [new UserDataSlice(GdprExportSections.Events, shaped)];
     }
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+    // internal: CachingEventService carries IUserDataContributor and returns this table
+    // from an uninitialized instance, so it has to be static and reachable from there.
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [GdprExportSections.Events] =

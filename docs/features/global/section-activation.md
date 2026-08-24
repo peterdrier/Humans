@@ -6,7 +6,7 @@
   src/Humans.Web/Hosting/SectionViewComponentFeatureProvider.cs
 -->
 <!-- freshness:flag-on-change
-  What startup validates and the count of sections Shell itself pins — review whenever activation, discovery, or a Shell-to-section reference changes.
+  What startup validates and which sections Shell itself pins — review whenever activation, discovery, or a Shell-to-section reference changes. Describe the pinned set qualitatively; never write its count (memory/process/no-derived-aggregates-in-docs.md).
 -->
 
 # Section Activation
@@ -69,12 +69,13 @@ nobodies-collective/Humans#1090 found two shapes of this and closed most of it:
   `HumansCampControllerBase`) or a generic runtime-availability mechanism; both are
   design decisions, tracked in #1090.
 
-Shell pins **26 of the 42 shipped sections** today, so those 26 plus the transitive closure
-of what they consume cannot be deactivated — which leaves activation useful mainly for the
-sections Shell does not name. That number is the epic's debt measure, not a design target:
-each seam lane (nobodies-collective/Humans#1073 and its lanes) removes Shell references by
-moving nav, tiles, chrome and policies behind `ISectionContribution` seams, and the pinned
-set shrinks with it.
+Shell still pins a large minority of the shipped sections, and those plus the transitive
+closure of what they consume cannot be deactivated — which leaves activation useful mainly
+for the sections Shell does not name. How big that pinned set is measures the epic's debt,
+not a design target: each seam lane (nobodies-collective/Humans#1073 and its lanes) removes
+Shell references by moving nav, tiles, chrome and policies behind `ISectionContribution`
+seams, and the pinned set shrinks with it. `SectionActivation.ShellDependencies` is what
+actually computes the set — read it there rather than trusting a number written down here.
 
 ## What a deactivated section contributes
 

@@ -3,7 +3,7 @@
 **Issue:** nobodies-collective/Humans#992, tasks 1 and 3.
 **Anchor:** `origin/main` `37eb40d99`, analysed 2026-08-07.
 **Scope:** read-only inventory. No migration is written here. Conditions 2 and 4 of the
-FK-cut carve-out (`2026-06-13-q3-transition-plan.md`, *FK-cut carve-out*) gate the migration
+FK-cut carve-out (now `docs/architecture/conventions.md` §Cross-Section FK Columns) gates the migration
 and are not this document's subject.
 
 > **ACTED ON 2026-08-08.** Re-derived at `origin/main` `04dd8bc8c`:
@@ -491,7 +491,7 @@ being tracked and would otherwise be re-derived.
    exit condition the props comment at `:51-55` already states. That entry is cleanup after the
    fact, not the thing that makes the boundary permanent.
 2. **Condition 4's cited example is stale.** The plan
-   (`2026-06-13-q3-transition-plan.md:209-217`) and the issue both cite `LegalDocument.Team` as
+   (the Q3 transition plan, since deleted — historical) and the issue both cite `LegalDocument.Team` as
    an unstripped live nav. It no longer exists: `LegalDocument.cs:25` carries only
    `public Guid TeamId`, and `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync`
    (`LegalDocumentRepository.cs:87-93`) filters `teamIds.Contains(d.TeamId)` with a comment

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 using Humans.Base.Authorization;
 using Humans.Events.Contracts;
@@ -94,10 +95,9 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
             .Select(g =>
             {
                 var camp = campsById.GetValueOrDefault(g.Key);
-                var seasonName = camp?.Active?.Name;
                 return new CampSubmissionRow
                 {
-                    CampName = seasonName ?? camp?.Slug ?? "Unknown",
+                    CampName = ResolveCampName(camp) ?? "Unknown",
                     SubmittedCount = g.Count(),
                     ApprovedCount = g.Count(e => e.Status == EventStatus.Approved),
                     PendingCount = g.Count(e => e.Status == EventStatus.Pending)
@@ -108,13 +108,5 @@ internal sealed class EventsDashboardController(IEventService guide, ICampServic
             .ToList();
 
         return View(model);
-    }
-
-    private static int ComputeDayOffset(Instant instant, LocalDate gateOpeningDate, DateTimeZone? tz)
-    {
-        LocalDate eventDate = tz != null
-            ? instant.InZone(tz).Date
-            : LocalDate.FromDateTime(instant.ToDateTimeUtc());
-        return Period.Between(gateOpeningDate, eventDate, PeriodUnits.Days).Days;
     }
 }

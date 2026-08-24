@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Debug/**
-  src/Humans.Web/ViewComponents/AdminNavTree.cs
+  src/Humans.Web/ViewComponents/AdminNavComposition.cs
 -->
 
 # Debug - Section Invariants
@@ -73,7 +73,7 @@ Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatus
 **Status:** (G5) Own project at `src/Sections/Humans.Debug` (nobodies-collective/Humans#866). Previously (B), legacy diagnostics migrated from `/Admin/*` to `/Debug/*` in the 2026-06 route cleanup.
 
 - `DebugController` is `internal sealed` in `Humans.Debug.Controllers`, routed by Shell's `SectionControllerFeatureProvider`; it consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics, all of them Base singletons registered by their owners.
-- `Section.Register` is **empty**, and the class ships anyway: `ISection` is what puts the assembly in the discovered-sections log. `Contracts/` is an empty folder - nothing outside the section names a Debug type, and `AdminNavTree` reaches the pages by controller *name*.
+- `Section.Register` is **empty**, and the class ships anyway: `ISection` is what puts the assembly in the discovered-sections log. `Contracts/` is an empty folder - nothing outside the section names a Debug type. The section's own `SectionAdminNav` (`ISectionAdminNav`) contributes its sidebar entries by controller/action *name*, merged into the Shell nav by `AdminNavComposition` (nobodies-collective/Humans#1077).
 - The section references `Humans.Base` despite owning no tables: it names `QueryStatistics` (`Humans.Base.Data`) and `InMemoryLogSink` (`Humans.Base.Logging`; lives here rather than in `Humans.Web` because Shell's `LogApiController` reads it too and a section cannot be referenced from Shell's own code). `TrackingMemoryCache` is no longer named directly — `DebugController` reaches active cache-entry counts through `ICacheStatsProvider.GetActiveEntryCounts()` instead of downcasting to the concrete type.
 - `TranslationsGalleryModelBuilder` did *not* move in: it enumerates `SharedResource` and `CultureCatalog`, both `Humans.UI` vocabulary, and `SharedResourceParityTests` asserts translation parity through it. It lives in `Humans.UI/Models`. `FormatGalleryModelBuilder` did move in - its only consumer is `/Debug/FormatGallery`.
 - **Decorator decision - no caching decorator.** Owns no data; the trackers are already in-memory singletons.

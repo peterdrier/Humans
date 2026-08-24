@@ -67,9 +67,21 @@ for PATH_CTRL in $CONTROLLERS; do
 done
 
 # 2. AuthorizationHandler subclasses.
-HANDLERS=$(grep -rlE 'AuthorizationHandler<' \
-    src/Humans.Web/Authorization/Requirements/ \
-    src/Sections/*/Authorization/ 2>/dev/null | sort -u)
+#
+# Search only directories that exist. `grep -r` over a missing directory exits 2,
+# and under `set -o pipefail` that aborted the whole script before any check
+# printed — a silent exit 2 that read as "no findings". This bit the 2026-08-24
+# sweep: src/Humans.Web/Authorization/Requirements/ had been emptied by the G5
+# move (every handler now lives in its own section's Authorization/ folder) and
+# the verifier had stopped running entirely without ever saying so.
+HANDLER_DIRS=()
+for D in src/Humans.Web/Authorization/ src/Sections/*/Authorization/; do
+  [ -d "$D" ] && HANDLER_DIRS+=("$D")
+done
+HANDLERS=""
+if [ ${#HANDLER_DIRS[@]} -gt 0 ]; then
+  HANDLERS=$(grep -rlE 'AuthorizationHandler<' "${HANDLER_DIRS[@]}" 2>/dev/null | sort -u || true)
+fi
 
 MISSING_HND=""
 MISS_HND_COUNT=0

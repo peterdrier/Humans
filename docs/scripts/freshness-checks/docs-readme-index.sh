@@ -30,7 +30,10 @@ count_md() {
   find "$dir" "${find_args[@]}" 2>/dev/null | wc -l
 }
 
-SECTIONS_SRC=$(count_md docs/sections SECTION-TEMPLATE.md)
+# Both templates are on the catalog's ignore list; excluding only the first left
+# G5-SECTION-TEMPLATE.md counted as a source doc, so this check demanded a README
+# row for a file the sweep is told to skip and could never PASS.
+SECTIONS_SRC=$(count_md docs/sections SECTION-TEMPLATE.md G5-SECTION-TEMPLATE.md)
 FEATURES_SRC=$(count_md docs/features)
 GUIDE_SRC=$(count_md docs/guide README.md GettingStarted.md Glossary.md)
 

@@ -87,9 +87,9 @@ At `/Google/Sync` (TeamsAdmin, Board, Admin can view; Admin-only to execute) the
 
 At `/Google/Accounts`, list every workspace account, search humans by name, and link orphaned accounts. To provision a new account, open the human detail page at `/Users/Admin/{id}` and use the **Provision Email** action on the Nobodies email badge — the app creates the Google account, sets a temporary password, sends credentials to the human's personal email, and auto-links the new address as the Google service email.
 
-### Check group settings and email mismatches
+### Check group settings and email renames
 
-From `/Google`, **Check Group Settings** lists every group whose settings (who-can-post, membership visibility, external members, archive) have drifted from expected values; the nightly reconciliation job also remediates drift automatically when Groups sync is not `None`. **Check Email Mismatches** surfaces humans whose Google service email does not match what Google has on file.
+From `/Google`, **Check Group Settings** lists every group whose settings (who-can-post, membership visibility, external members, archive) have drifted from expected values; the nightly reconciliation job also remediates drift automatically when Groups sync is not `None`. **Check Email Renames** surfaces humans whose stored Google service email no longer matches Google Directory's record (`/Google/EmailRenames`). Separately, **Email flag violations** (`/Google/EmailFlagViolations`) lists users whose email rows break the one-verified-Google-email / one-primary-email rules — open the user's email grid to fix.
 
 ### Monitor Drive activity
 

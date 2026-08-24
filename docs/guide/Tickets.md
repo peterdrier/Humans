@@ -68,6 +68,8 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera to scan a ticket's barcode and shows the holder, ticket type, and status — and, for a voided ticket, who it was transferred to and when. Only the current event's tickets match; an older barcode reads as not found. It is read-only — it never checks anyone in.
 
+The gate laptop signs in with a shared, admin-free account to reach the lookup tool. Ticket Admin and Admin set or rotate its password at `/Tickets/Admin/Gate`; the laptop then signs in at `/Account/GateLogin`. Rotating the password signs out any existing gate sessions within half an hour.
+
 ### Trigger a sync
 
 Sync runs on a schedule (every 5 minutes in the shipped configuration); Ticket Admins and Admins can also trigger one manually with the **Sync Now** button at the bottom of the dashboard. A sync pulls new and updated orders, attendees, and gate check-ins from the vendor since the last successful sync (using `LastSyncAt` as the cursor), upserts them, re-runs email matching, enriches paid orders with Stripe fee data when a payment-intent id is present, recomputes VAT using the VIP split, marks used vendor codes as redeemed on their campaign grants, and reconciles `EventParticipation` rows for matched users.

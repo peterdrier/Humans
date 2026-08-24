@@ -9,7 +9,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Event Guide Management](../src/Sections/Humans.Events/Docs/features/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
 | [In-App Guide Browser](../src/Sections/Humans.Guide/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
 | [Google Group Membership Sync](../src/Sections/Humans.GoogleIntegration/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
-| [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
+| [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/Shifts/Dashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
 | [Agent Section](../src/Sections/Humans.Agent/Docs/features/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
 | [F-12: Audit Log](../src/Sections/Humans.AuditLog/Docs/features/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
@@ -32,6 +32,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
 | [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
 | [Global Search (`/Search`)](features/global/global-search.md) | Single-entry magnifying-glass search that fans out across humans, teams, camps, shifts, and (when `Features:Events` is on) approved events |
+| [Section Activation](features/global/section-activation.md) | `ISection.IsActive` defaults to true so every section assembly ships active by default; a section opts itself out by overriding it, with no configuration key or name list |
 | [F-13: Drive Activity Monitoring](../src/Sections/Humans.GoogleIntegration/Docs/features/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
 | [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
 | [Google Removal Notifications](../src/Sections/Humans.GoogleIntegration/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
@@ -51,7 +52,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Communication Preferences](../src/Sections/Humans.Users/Docs/features/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
 | [Feature 29: Contact Accounts](../src/Sections/Humans.Users/Docs/features/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
 | [Contact Fields with Granular Visibility](../src/Sections/Humans.Users/Docs/features/contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
-| [Dietary & Medical Nudge Modal](../src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md) | Placeholder for a dashboard nudge collecting dietary, allergy, and medical info for 6+ hour cantina-fed shifts |
+| [Dietary & Medical Nudge Modal](../src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md) | Dashboard nudge collecting dietary, allergy, and medical info once a human has a qualifying 6+ hour cantina-fed shift signup |
 | [Email Management](../src/Sections/Humans.Users/Docs/features/preferred-email.md) | Multiple email addresses per user with per-email verification, visibility, and notification targeting |
 | [Profile Pictures & Birthday Calendar](../src/Sections/Humans.Users/Docs/features/profile-pictures-birthdays.md) | Custom avatar uploads superseding Google OAuth photos, plus a community birthday calendar |
 | [Profile Search Detail (Picker Row Enrichment)](../src/Sections/Humans.Users/Docs/features/profile-search-detail.md) | Second-line context plus avatar in the shared human picker so Playa-name collisions can be disambiguated |
@@ -60,6 +61,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Scanner — Barcode (Phase 1)](../src/Sections/Humans.Scanner/Docs/features/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
 | [Scanner — Gate Terminal Login](../src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md) | Shared gate-terminal account (well-known GUID, no email or roles) so any shift volunteer can operate the ticket-lookup kiosk without tying the device to a personal login or granting admin powers |
 | [Coordinator Roles](../src/Sections/Humans.Shifts/Docs/features/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
+| [Day Filter](../src/Sections/Humans.Shifts/Docs/features/day-filter.md) | Dropdown on `/Shifts` letting volunteers jump to a specific calendar day, filtering the shift list and surfacing open shifts first |
 | [Department Coverage Pies](../src/Sections/Humans.Shifts/Docs/features/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
 | [Email a Rota](../src/Sections/Humans.Shifts/Docs/features/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
 | [Post-Event Stats Dashboard](../src/Sections/Humans.Shifts/Docs/features/post-event-stats.md) | Post-event no-show and completion-rate breakdown by department and period for coordinators and admins |
@@ -68,6 +70,11 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Shift Signup Visibility](../src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
 | [Workload Dashboard](../src/Sections/Humans.Shifts/Docs/features/workload-dashboard.md) | Cross-event "who is doing how much" view sliced three ways to spot burnout candidates, idle volunteers, and under-staffed departments |
 | [Store](../src/Sections/Humans.Store/Docs/features/Store-feature.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
+| [Grid Survey Questions](../src/Sections/Humans.Surveys/Docs/features/grid-questions.md) | Grid question type letting authors ask one compact question across labelled rows and a shared set of labelled columns, with single- or multi-select per row |
+| [Survey Information Blocks](../src/Sections/Humans.Surveys/Docs/features/survey-information-blocks.md) | Non-question Information items authors can place inline in a survey to show respondents supporting context (e.g. forecasts) right before the question that needs it |
+| [Survey Intro Markdown](../src/Sections/Humans.Surveys/Docs/features/survey-intro-markdown.md) | Markdown-rendered respondent intro copy so authored paragraphs, emphasis, links, and lists survive instead of collapsing to a single HTML-encoded line |
+| [Custom Survey Invitation Email Copy](../src/Sections/Humans.Surveys/Docs/features/survey-invitation-email-copy.md) | Optional per-survey, per-language invitation email subject and Markdown message authored in the builder, layered inside the standard branded invitation frame |
+| [Survey Preview and Preview Email](../src/Sections/Humans.Surveys/Docs/features/survey-preview.md) | In-browser preview of the respondent experience and a preview invitation email, so authors can verify a survey before opening it or sending to a real audience |
 | [Hidden Teams](../src/Sections/Humans.Teams/Docs/features/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
 | [Teams & Working Groups](../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
 | [Test System Reliability](testing/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
@@ -82,7 +89,6 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 
 | Document | Description |
 |----------|-------------|
-| [Sections Index](sections/_Index.md) | Code-derived map of every section to its concrete controllers, orchestrators, services, repositories, and tables |
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |

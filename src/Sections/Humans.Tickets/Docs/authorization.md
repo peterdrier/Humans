@@ -12,8 +12,7 @@
 | `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsOnsiteAdminController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |
-
-`TicketsGateAdminController` (gate credential management, `/Tickets/Admin/Gate`) stays in `src/Humans.Web` per design; see the global inventory.
+| `TicketsGateAdminController` (`/Tickets/Admin/Gate`) | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` (gate-terminal credential management; `Index` and `SetPassword` inherit the class policy) |
 
 ### `IAuthorizationService.AuthorizeAsync` note
 

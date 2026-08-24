@@ -83,16 +83,13 @@ internal interface IEventRepository : IRepository
     // ── Favourites ────────────────────────────────────────────────────────
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
-    Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     /// <summary>
-    /// Adds <paramref name="newFavourite"/> if no matching favourite exists, removes the matches otherwise.
-    /// A favourite matches on the same day offset or on a whole-event (null) row; a whole-event toggle
-    /// matches every row for the event. Returns whether the favourite now exists.
+    /// Adds only when absent. A favourite matches on the same day offset or on a whole-event
+    /// (null) row; a whole-event reference matches every row for the event. Returns false if a
+    /// matching favourite already existed.
     /// </summary>
-    Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default);
-    /// <summary>Adds only when absent (same match rule as toggle). Returns false if a favourite already existed.</summary>
     Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default);
-    /// <summary>Removes matching favourites (same match rule as toggle). Returns false if none existed.</summary>
+    /// <summary>Removes matching favourites (same match rule as add). Returns false if none existed.</summary>
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
     // ── Preferences ───────────────────────────────────────────────────────

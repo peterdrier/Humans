@@ -163,13 +163,29 @@ def main():
         return 2
 
     # Feature-active sections sink to the tier bottom: median over the rest, unless only they remain.
-    ranked = sorted((s for s in never if s not in active), key=score) or sorted(never, key=score)
-    pick = ranked[(len(ranked) - 1) // 2]
+    def median_pick(tier):
+        ranked = sorted((s for s in tier if s not in active), key=score) or sorted(tier, key=score)
+        return ranked[(len(ranked) - 1) // 2]
+
+    pick = median_pick(never)
     print("\nSECTION: %s" % pick)
     print("TIER: never-doctored")
     print("RATIONALE: median (lower-middle) of %d never-doctored section(s) by %s after setting"
-          % (len(ranked), "reforge score" if "fallback" not in source else "loc"))
+          % (len([s for s in never if s not in active]) or len(never),
+             "reforge score" if "fallback" not in source else "loc"))
     print("  aside %d feature-active; pool %d, blocked %d." % (len([s for s in never if s in active]), len(pool), len(blocked)))
+
+    # Non-binding forecast: the next 4 picks if nothing else changes (each pick blocks itself).
+    # Purely informational for the PR body; never stored, and later runs recompute from scratch.
+    upcoming, future = [], [s for s in never if s != pick]
+    while len(upcoming) < 4 and future:
+        nxt = median_pick(future)
+        upcoming.append(nxt)
+        future.remove(nxt)
+    line = ", ".join(upcoming) if upcoming else "none"
+    if len(upcoming) < 4:
+        line += " -- never-doctored tier exhausts; then previously-doctored (judgment)"
+    print("UPCOMING: %s" % line)
     return 0
 
 

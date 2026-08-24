@@ -4,6 +4,7 @@ using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
 
 namespace Humans.Events.Services;
 
@@ -105,7 +106,6 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     // dayOffset selects one occurrence of a recurring event; null means the whole event.
-    Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
@@ -123,6 +123,13 @@ internal interface IEventService : IApplicationService, IEventServiceRead
     // (part of the moderation workflow). submitterEditUrl is the caller's routing
     // concern; null opts out of the notification.
     Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
+
+    // ── GDPR ──────────────────────────────────────────────────────────────
+    // IUserDataContributor is carried by CachingEventService (erasure edits cached
+    // rows); these two are how it reaches the inner service, so they sit here rather
+    // than only on the concrete type.
+    Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
+    Task EraseForUserAsync(Guid userId, CancellationToken ct);
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);

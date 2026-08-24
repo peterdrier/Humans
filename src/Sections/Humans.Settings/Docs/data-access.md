@@ -66,7 +66,7 @@ third — new thing, migrate to it, retire the old thing
 row), `Inactive`, `Deleted`. Deleting is a status change, never a row removal —
 other sections store the row's `Id`.
 
-## EventSettingsCarryService (Scoped)
+### EventSettingsCarryService (Scoped)
 
 No repository of its own. Reads the Shifts rows it copies from through
 `IBurnSettingsService` (`Humans.Shifts.Contracts`) — an ordinary cross-section

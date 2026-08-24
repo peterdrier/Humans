@@ -14,10 +14,13 @@ set -euo pipefail
 DOC="src/Humans.Web/Views/About/Index.cshtml"
 PROPS="Directory.Packages.props"
 
-# Packages intentionally excluded from About — design-time-only tools declared
-# with <PrivateAssets>all</PrivateAssets> that don't ship in the published
-# output. Lowercased package names, one per line.
-IGNORE_PACKAGES="microsoft.entityframeworkcore.design"
+# Packages intentionally excluded from About — build/design-time-only tools that
+# don't ship in the published output: <PrivateAssets>all</PrivateAssets> tools,
+# and the Roslyn SDK that only src/Humans.Analyzers compiles against (the About
+# page lists what the running app is made of, not the analyzer toolchain).
+# Lowercased package names, one per line.
+IGNORE_PACKAGES="microsoft.entityframeworkcore.design
+microsoft.codeanalysis.csharp"
 
 if [ ! -f "$DOC" ]; then
   echo "FAIL [about-page-packages]: $DOC does not exist"

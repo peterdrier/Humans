@@ -264,8 +264,7 @@ internal sealed class EventsModerationController(
     private async Task<string?> ResolveCampNameAsync(Guid campId, BurnSettingsInfo eventSettings)
     {
         var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year);
-        var camp = campsById.GetValueOrDefault(campId);
-        return camp?.Active?.Name ?? camp?.Slug;
+        return ResolveCampName(campsById.GetValueOrDefault(campId));
     }
 
     private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, BurnSettingsInfo burn)
@@ -382,8 +381,7 @@ internal sealed class EventsModerationController(
         var submitterName = submitter?.BurnerName ?? submitter?.Email ?? "Unknown";
 
         var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-        var seasonName = camp?.Active?.Name;
-        var campName = seasonName ?? camp?.Slug;
+        var campName = ResolveCampName(camp);
 
         return new ModerationEventRowViewModel
         {

@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.40.0" />
+    <PackageVersion Include="Anthropic" Version="12.42.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
@@ -53,7 +53,7 @@
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.75.0.4218" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
     <!-- Resilience -->
     <PackageVersion Include="Polly" Version="8.7.0" />
     <!-- Observability -->
@@ -90,11 +90,11 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.141" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.177" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
-    <PackageVersion Include="AwesomeAssertions" Version="9.5.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageVersion Include="NodaTime.Testing" Version="3.3.2" />
     <PackageVersion Include="NSubstitute" Version="6.1.0" />

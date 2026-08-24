@@ -39,6 +39,19 @@ path (the interface collapsed to one method). Cross-section calls via
 `IHumansMetrics`, `ICommunicationPreferenceService`, plus `IClock`. No
 `IMemoryCache`.
 
+### EmailPreviewService (Scoped)
+
+No repository — side-effect-free preview only, via the same
+`IEmailBodyComposer` the outbox uses to render the send body.
+
+| Table | R/W |
+|-------|-----|
+| (none) | — |
+
+Implements `IEmailPreviewServiceRead`. `RenderSystemMessage` composes an
+`EmailMessage` (system-category only) into a `RenderedEmailPreview` without
+touching `EmailOutboxMessages` or any repository. No `IMemoryCache`.
+
 ---
 
 

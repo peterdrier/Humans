@@ -35,11 +35,10 @@ public sealed class Section : ISection
 
         // Inner Service — Scoped + keyed. Single keyed registration is the
         // concrete Service instance, exposed as IEventService (keyed) for the
-        // decorator and unkeyed IUserDataContributor for GDPR aggregation.
+        // decorator.
         services.AddKeyedScoped<IEventService, EventService>(CachingEventService.InnerServiceKey);
         services.AddScoped<EventService>(sp =>
             (EventService)sp.GetRequiredKeyedService<IEventService>(CachingEventService.InnerServiceKey));
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EventService>());
         services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventService>());
 
         // CachingEventService — Singleton so the cache persists across
@@ -58,6 +57,10 @@ public sealed class Section : ISection
         // that backs IEventService (§15e CRITICAL).
         services.AddSingleton<IEventViewInvalidator>(sp =>
             sp.GetRequiredService<CachingEventService>());
+
+        // GDPR fan-out binds to the decorator, not the inner: erasure clears the
+        // person's Host name on events that stay in the guide, and those rows are cached.
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingEventService>());
 
         // Surface Events cache diagnostics on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);

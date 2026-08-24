@@ -29,9 +29,8 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | `AdminController` (`src/Humans.Web`) | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
 | `AdminController.Index` | Action | `Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
 | `AdminController` runtime guards | In-method | `authorizationService.AuthorizeAsync(User, PolicyNames.StoreCatalogAdmin)` / `..FinanceAdminOrAdmin` | Drive `canSeeStoreTile` / `canSeeExpenseTile` dashboard-tile flags |
-| `WidgetGalleryController` (`src/Humans.Web`) | Class | `Admin` | `PolicyNames.AdminOnly` |
 
-`/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above).
+`/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above). `WidgetGalleryController` moved to `Humans.Debug` — see that section's authorization doc.
 
 ### About / Home / Account / Misc
 
@@ -45,23 +44,13 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | `AccountController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
 | `AccountController.GateLogin` (GET/POST) | Action | (no `[Authorize]`) | — (shared kiosk credential login at `/Account/GateLogin`; IP-throttled via `GateLoginThrottle`; never gated by role — the gate-terminal account holds no roles) |
 | `LanguageController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
-| `WelcomeController` (`src/Humans.Web`) | Class | `AllowAnonymous` | — |
-| `ColorPaletteController` (`src/Humans.Web`) | Class | `AllowAnonymous` | — |
-| `TicketsGateAdminController` (`src/Humans.Web`) | Class | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | — (gate-terminal credential management at `/Tickets/Admin/Gate`; `Index` and `SetPassword` inherit the class policy) |
 
-### Guest Section
-
-| Controller | Scope | Roles | Source |
-|---|---|---|---|
-| `GuestController` (`src/Humans.Web`) | Class | `[Authorize]` (authenticated) | — (dashboard for profileless accounts — comms preferences, GDPR export/deletion, ticket status; `Index`, `DownloadData`, `RequestDeletion`, `CancelDeletion` all inherit `[Authorize]` with no override) |
-| `GuestController.CommunicationPreferences` (GET/POST) | Action | `AllowAnonymous` (token-validated) | Override (see WARNING in source) |
-| `GuestController.UpdatePreference` | Action | `AllowAnonymous` (token-validated) | Override |
+`WelcomeController` and `GuestController` moved to `Humans.Onboarding` (#1091) — see that section's authorization doc. `ColorPaletteController` and `LogApiController` moved to `Humans.Debug`, `TicketsGateAdminController` moved to `Humans.Tickets` — see those sections' authorization docs.
 
 ### Public / API
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `LogApiController` (`src/Humans.Web`) | Class | `[ServiceFilter(typeof(LogApiKeyAuthFilter))]` (API-key auth) | `LogApiKeyAuthFilter` |
 | `TimezoneApiController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
 | `HangfireAuthorizationFilter` (`src/Humans.Web`) | Filter | `RoleChecks.IsAdmin(User)` | Admin only |
 

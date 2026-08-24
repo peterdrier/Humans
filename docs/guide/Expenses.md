@@ -19,8 +19,7 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 - **New report** (`/Expenses/New`) — start a new draft
 - **Report detail** (`/Expenses/{id}`) — one report: its items, receipts, status, and history
 - **Edit a draft** (`/Expenses/{id}/Edit`) — change a report while it's still a draft
-- **Coordinator queue** (`/Expenses/Coordinator`) — reports waiting for your sign-off (coordinators)
-- **Finance review** (`/Expenses/Review`) — reports waiting for approval (Finance Admin and Admin)
+- **Review queue** (`/Expenses/Review`) — reports waiting for your sign-off or approval; one page shared by coordinators, Finance Admin, and Admin, scoped to what each can act on
 
 ## As a Volunteer
 
@@ -30,7 +29,7 @@ Go to `/Expenses/New` to start a draft. A report is a container — you add item
 
 ### Add items and attach receipts
 
-Add each thing you spent money on as an item, and attach the receipt or supporting document when you add it. Every purchase item needs a receipt before you can submit.
+For each thing you spent money on, add an item to the report. You're asked to pick one of two kinds: an **invoice** — a business (ZZP/autónomo) bills the association directly, made out to the NCA — or a **receipt**, where you paid yourself and want reimbursing. Invoices are preferred (the association can reclaim the VAT); receipts are for when an invoice wasn't possible or the amount is small. Attach the invoice file when you add it, then attach the receipts behind it as proof for the approver. A receipt item needs its own attachment before you can submit.
 
 ### Travel items (mileage and per diem)
 
@@ -58,7 +57,7 @@ Once one of your reports has reached the org's accounting system, **My expenses*
 
 ## As a Coordinator
 
-If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Coordinator` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. This step only happens when the report's category actually has a coordinator assigned.
+If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. This step only happens when the report's category actually has a coordinator assigned.
 
 Coordinators can't approve — that requires Finance Admin.
 

@@ -73,9 +73,10 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | ShiftSignups | R/W |
 | Shifts | R (via repo) |
 | Rotas | R (via repo) |
-| VolunteerEventProfiles | R/W (via repo) |
-| VolunteerTagPreferences | R (via repo) |
-| GeneralAvailability | R (via `IVolunteerTrackingRepository`, GDPR export) |
+| VolunteerEventProfiles | R/W (via repo, incl. GDPR erasure) |
+| VolunteerTagPreferences | R/W (via repo, incl. GDPR erasure) |
+| GeneralAvailability | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
+| VolunteerBuildStatuses | W (via `IVolunteerTrackingRepository`, GDPR erasure) |
 
 Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
@@ -83,7 +84,11 @@ Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
 (lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).
 Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift
-signups; Cancelled/Bailed/NoShow history excluded). No `IMemoryCache`.
+signups; Cancelled/Bailed/NoShow history excluded). `EraseForUserAsync`
+(GDPR Art. 17) cancels active signups, then deletes the user's volunteer
+event profile, availability/build-status rows (via
+`IVolunteerTrackingRepository.DeleteVolunteerTrackingForUserAsync`), and
+shift-tag preferences. No `IMemoryCache`.
 
 ### VolunteerTrackingService (Scoped)
 

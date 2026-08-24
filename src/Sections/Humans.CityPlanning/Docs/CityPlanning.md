@@ -118,6 +118,7 @@ The container entity CRUD for barrio leads is served by `ContainerController` at
 | `GET /api/city-planning/containers/{year}` | Container placement map state for the year |
 | `GET /api/city-planning/containers/{year}/export.geojson` | Export all container placements as GeoJSON |
 | `PUT /api/city-planning/containers/{id}/placement/{year}` | Save or update a container placement |
+| `PUT /api/city-planning/containers/{id}/placement/{year}/notes` | Set placement notes and/or sketch image (multipart form) |
 | `DELETE /api/city-planning/containers/{id}/placement/{year}` | Clear a container placement |
 
 **SignalR — `CityPlanningHub` (`/hubs/city-planning`)**

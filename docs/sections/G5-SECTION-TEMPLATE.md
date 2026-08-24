@@ -96,7 +96,7 @@ visibility flip in one diff is unreviewable.
 - [ ] **The section is actually unmoved.** The §858 peel roster is a list of *DbContexts*,
       not a list of sections, and a context can ride into another section's project — Legal's
       lane was a no-op for exactly that reason. One line settles it:
-      `ls src/Sections | grep -i <section>`, plus a look at `docs/sections/_Index.md`.
+      `ls src/Sections | grep -i <section>` settles it.
 - [ ] **A horizontal section (Auth, Audit, GDPR, Notifications) may reference a vertical's
       `.Contracts` leaf. It may not reference the vertical's *section project*.** This
       supersedes the rule that stood here until 2026-08-14, which read
@@ -111,13 +111,11 @@ visibility flip in one diff is unreviewable.
       grep for the *section-project* reference the move would force, not for leaf names. A
       leaf reference is a line in the csproj with a reason attached; a section reference is
       the thing that cycles.
-      - **Do not read `docs/sections/_Index.md`'s Orchestrators column as a can't-move list.**
-        It is a list of service classes that inject no `I*Repository`, which is a statement
-        about the hard rules' orchestrator/service split — not about where the class may live.
-        This checklist used to say the column "is a pre-computed list of the services that
-        cannot move into a horizontal", citing Auth's `MagicLinkService` row. That was wrong
-        twice over, and lane 4b-2i moved the service it named. An orchestrator may live in the
-        section it orchestrates for (proven: Auth, AuditLog).
+      - **"Is an orchestrator" is not "can't move".** That a service injects no
+        `I*Repository` is a statement about the hard rules' orchestrator/service split, not
+        about where the class may live. An orchestrator may live in the section it
+        orchestrates for (proven: Auth, AuditLog — lane 4b-2i moved `MagicLinkService` into
+        `Humans.Auth`).
       - **A controller does not follow its section's service, and a service coming home does
         not pull its controller in either.** `AccountController` is Auth's by every doc; run
         the "read the controller" test below and every one of its actions writes Users' or
@@ -1381,7 +1379,7 @@ Git Bash.)
    cross-section specs belong in `docs/features/global/`.
    Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
-   **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
+   any `memory/` atom citing them, the
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and

@@ -6,11 +6,11 @@
   src/Sections/Humans.Users/Services/**
   src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Gdpr/Services/**
-  src/Sections/Humans.Users.Contracts/Profile.cs
-  src/Sections/Humans.Users.Contracts/ProfileLanguage.cs
-  src/Sections/Humans.Users.Contracts/ContactField.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
+  src/Sections/Humans.Users/Domain/ProfileLanguage.cs
+  src/Sections/Humans.Users/Domain/ContactField.cs
   src/Sections/Humans.Users.Contracts/UserEmail.cs
-  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users/Domain/CommunicationPreference.cs
   src/Sections/Humans.Users.Contracts/User.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->

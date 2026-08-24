@@ -66,9 +66,9 @@ Stored as **string** (`HasConversion<string>()`, `HasMaxLength(20)`). The `Faile
 
 | Key | Purpose |
 |-----|---------|
-| `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxService.IsEmailPausedAsync` / `SetEmailPausedAsync`, which delegate to `ISystemSettingsService` (the SystemSettings section owns the `system_settings` table). The processor job also reads it through `IEmailOutboxService.IsEmailPausedAsync`. |
+| `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxService.IsEmailPausedAsync` / `SetEmailPausedAsync`, which delegate to `ISettingsService` (the Settings section owns the `system_settings` table). The processor job also reads it through `IEmailOutboxService.IsEmailPausedAsync`. |
 
-Per design-rules §8, each `system_settings` key is owned by its consuming section. Email owns this key (its semantics and the only reads/writes); persistence routes through `ISystemSettingsService`. Do not touch this key from any other section.
+Per design-rules §8, each `system_settings` key is owned by its consuming section. Email owns this key (its semantics and the only reads/writes); persistence routes through `ISettingsService`. Do not touch this key from any other section.
 
 ## Routing
 
@@ -133,7 +133,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
 - **Onboarding:** `IOnboardingService` sends welcome emails through this section on Volunteer activation.
-- **SystemSettings:** `ISystemSettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the SystemSettings section owns the table).
+- **Settings:** `ISettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the Settings section owns the table).
 
 ## Architecture
 
@@ -143,7 +143,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 **Status:** (A) Migrated.
 
 - The section lives at `src/Sections/Humans.Email` with its cross-section surface on the `Humans.Email.Contracts` leaf project (nobodies-collective/Humans#866, G5). Everything else — the entity, the repository, the renderer, the body composer, the SMTP transport, the outbox admin surface — is `internal`.
-- `IEmailOutboxRepository` (impl `src/Sections/Humans.Email/Data/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. `TimeSensitiveTemplates` (`Domain/`) holds the four template names that both the factory (`TriggerImmediate`) and the repository (batch priority ordering) key off. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISystemSettingsService` (SystemSettings section owns the table). Registered Singleton via `IDbContextFactory<EmailDbContext>` (peeled out of `HumansDbContext` in #858) so it can be injected into Application services and the recurring job alike.
+- `IEmailOutboxRepository` (impl `src/Sections/Humans.Email/Data/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. `TimeSensitiveTemplates` (`Domain/`) holds the four template names that both the factory (`TriggerImmediate`) and the repository (batch priority ordering) key off. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISettingsService` (Settings section owns the table). Registered Singleton via `IDbContextFactory<EmailDbContext>` (peeled out of `HumansDbContext` in #858) so it can be injected into Application services and the recurring job alike.
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
 - **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId`, `CampaignGrantId`, and `ShiftSignupId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav (#992 cut the FK, #996 cut the last navs). A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`; the shift-signup dedup query filters on `ShiftSignupId` directly.
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
@@ -162,7 +162,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **Section-internal abstractions** (`Humans.Email.Services`): `IEmailOutboxService` (admin surface, consumed only by `EmailController`), `IEmailRenderer` / `EmailRenderer`, `IEmailBodyComposer` / `BrandedEmailBodyComposer`, `IEmailTransport` / `SmtpEmailTransport` / `StubEmailTransport`.
 - **`EmailSettings` stays in `Humans.Base.Configuration` and is bound in Shell**, not in `Section.Register`: Auth's `MagicLinkUrlBuilder`, Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's own `SmtpHealthCheck` all read it. It is Base configuration the section is merely named after.
 - **`EmailOutboxStatus` stays in `Humans.Base.Enums`.** Campaigns' `CampaignGrant.LatestEmailStatus` and Surveys' `SurveyInvitation` persist it on their own tables, so it is shared Base vocabulary rather than section-internal; its `Enum_EmailOutboxStatus_*` resource keys stay in `SharedResource` with it.
-- **Resource set:** the 70 `Email_*` keys moved into `Humans.Email/EmailResource.{resx,es,ca,de,fr,it}` with `EmailRenderer`, their one and only renderer. They are *not* this section's page copy — the two admin views carry no localized string at all.
+- **Resource set:** the 71 `Email_*` keys moved into `Humans.Email/EmailResource.{resx,es,ca,de,fr,it}` with `EmailRenderer`, their one and only renderer. They are *not* this section's page copy — the two admin views carry no localized string at all.
 - **Architecture test:** `tests/Humans.Email.Tests/EmailArchitectureTests.cs` pins the `OutboxEmailService` constructor shape, which side of the boundary each connector abstraction sits on, the one-method `IEmailService` surface, and that no section type localizes through anything but `EmailResource`. `tests/Humans.Integration.Tests/Controllers/EmailPageRenderTests.cs` is the step-12 render guard.
 
 ### Touch-and-clean guidance

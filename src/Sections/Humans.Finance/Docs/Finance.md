@@ -203,7 +203,7 @@ Derived from `Humans.Finance.csproj`'s project references — four contracts lea
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetServiceRead.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
 - **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors`.
-- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding.
+- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding, and for Article 17 erasure — `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps `HoldedCreditorAccount` to `null` (erased in full). The invoices themselves live in Holded and are fiscal records outside this section's ownership.
 
 No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
 

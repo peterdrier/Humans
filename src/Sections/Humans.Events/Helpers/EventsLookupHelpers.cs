@@ -39,6 +39,11 @@ internal static class EventsLookupHelpers
         return days;
     }
 
+    /// <summary>
+    /// A camp's display name for the guide: its active season name, else its slug.
+    /// </summary>
+    public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
+
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
         IUserServiceRead users, IEnumerable<Guid> userIds)
     {

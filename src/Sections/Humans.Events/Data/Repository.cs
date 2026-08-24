@@ -387,29 +387,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .ToListAsync(ct);
     }
 
-    public async Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventFavourites.AsNoTracking()
-            .AnyAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
-    }
-
-    public async Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await MatchingFavourites(ctx, userId, eventId, newFavourite.DayOffset).ToListAsync(ct);
-        if (existing.Count > 0)
-        {
-            ctx.EventFavourites.RemoveRange(existing);
-            await ctx.SaveChangesAsync(ct);
-            return false;
-        }
-
-        ctx.EventFavourites.Add(newFavourite);
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

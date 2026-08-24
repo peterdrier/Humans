@@ -21,7 +21,6 @@ namespace Humans.Events.Controllers;
 internal sealed class EventsExportController(
     IEventService guide,
     ICampServiceRead camps,
-    IUserServiceRead users,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -36,20 +35,18 @@ internal sealed class EventsExportController(
             : null;
         var tz = GetTimeZone(eventSettings);
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+        var submitters = await LoadSubmittersAsync(
+            UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct());
 
         var rows = new List<object?[]>();
         foreach (var e in events.OrderBy(e => e.StartAt))
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Active?.Name;
-            var campName = seasonName ?? camp?.Slug ?? "";
+            var campName = ResolveCampName(camp) ?? "";
             var venueName = e.VenueName ?? "";
-            var submitterName = "";
-            if (e.CampId == null)
-            {
-                var submitter = await users.GetUserInfoAsync(e.SubmitterUserId);
-                submitterName = submitter?.BurnerName ?? "";
-            }
+            var submitterName = e.CampId == null
+                ? submitters.GetValueOrDefault(e.SubmitterUserId)?.BurnerName ?? ""
+                : "";
 
             foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
             {
@@ -102,8 +99,7 @@ internal sealed class EventsExportController(
         foreach (var e in events)
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var seasonName = camp?.Active?.Name;
-            var campName = seasonName ?? camp?.Slug;
+            var campName = ResolveCampName(camp);
             var venueName = e.VenueName;
 
             foreach (var occ in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])

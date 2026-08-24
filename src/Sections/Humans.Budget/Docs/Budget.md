@@ -83,7 +83,7 @@ Third-level category holding the allocated amount.
 
 **Indexes:** `(BudgetGroupId, SortOrder)`; `TeamId` (filtered: not null).
 
-**Cross-section FKs:** `TeamId` → Teams domain — **FK only**, no navigation property (the `[Obsolete]`-marked `BudgetCategory.Team` nav was deleted in nobodies-collective/Humans#1188; callers resolve via `ITeamService`).
+**Cross-section FKs:** `TeamId` → Teams domain — **FK only**, no navigation property (the `[Obsolete]`-marked `BudgetCategory.Team` nav was deleted in nobodies-collective/Humans#1188; callers resolve via `ITeamServiceRead`).
 
 **Aggregate-local navs:** `BudgetCategory.BudgetGroup`, `BudgetCategory.LineItems`.
 
@@ -219,9 +219,9 @@ Stored as string via `HasConversion<string>()`.
 
 ## Cross-Section Dependencies
 
-- **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
+- **Teams:** `ITeamServiceRead.GetTeamsAsync` — team lookups for the department picker and `HasBudget`-filtered budgetable-team lists; `BudgetService.GetEffectiveCoordinatorTeamIdsAsync` derives the coordinator scope itself (department + child teams) over the same read model rather than calling a dedicated Teams-side method.
 - **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`) is Budget's own service — it reads paid orders via `ITicketServiceRead` and calls the section's internal `IBudgetService` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync` / `GetTicketingProjectionEntriesAsync`). Budget has no code path that reads Tickets tables directly. `SyncActualsAsync` is exposed only via the internal `ITicketingBudgetService` (`Humans.Budget.Services`, Peter's ruling 43), for the nightly `TicketingBudgetSyncJob` (`Humans.Budget/Jobs/` since G5 lane 5b-3). (The dedicated `ITicketingBudgetRepository` added for PR #545b was removed in #815.)
-- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — actor display names for audit log. `IUserServiceRead.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
 ## Architecture
@@ -235,13 +235,13 @@ Stored as string via `HasConversion<string>()`.
 - `BudgetRepository` (impl `src/Sections/Humans.Budget/Data/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory<BudgetDbContext>`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
 - **Cross-domain navs removed:** `BudgetAuditLog.ActorUser` and `BudgetCategory.Team` were deleted outright (nobodies-collective/Humans#1188), not just `[Obsolete]`-marked; both FKs are now scalar-only. `BudgetLineItem.ResponsibleTeam` is gone the same way — the entity carries `ResponsibleTeamId` only, and the Finance CategoryDetail view renders a stitched-in `ResponsibleTeamName`.
-- **Cross-section calls** route through `ITeamService` (two narrow methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`) and `IUserServiceRead.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetService.SyncTicketingActualsAsync`, called by the Tickets-section `TicketingBudgetService` bridge.
+- **Cross-section calls** route through `ITeamServiceRead.GetTeamsAsync` (team lookups; coordinator scope is computed in-section over the same read model, see Cross-Section Dependencies) and `IUserServiceRead.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetService.SyncTicketingActualsAsync`, called by the Tickets-section `TicketingBudgetService` bridge.
 - **Controller split under `/Finance`.** `BudgetAdminController` (`Humans.Budget.Controllers`) owns Budget's own admin surface — years, groups, categories, line items, ticketing projection, cash flow, audit log — at `[Route("Finance")]`. It shares that route prefix with `Humans.Finance.Controllers.FinanceController` (own project, nobodies-collective/Humans#866, G5), which owns only the Holded/creditor actions; the two controllers' action templates are disjoint. See [`src/Sections/Humans.Finance/Docs/Finance.md`](../../Humans.Finance/Docs/Finance.md) for the Finance side.
 - **Architecture test** — `tests/Humans.Budget.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for the `TicketingBudgetService` bridge (it asserts the constructor takes no Store type). `tests/Humans.Integration.Tests/Controllers/BudgetPageRenderTests.cs` is the standing G5 step-12 check: every page renders with no raw `Budget_` key and no unbound `<vc:>` tag, in English and Spanish. General architecture coverage (`HUM0009`, `HUM0034`) applies to Budget code paths — `HUM0024` and `HUM0021` were retired in nobodies-collective/Humans#1278. No dedicated `BudgetArchitectureTests.cs` file exists.
 - **Repository shape** — `budget_audit_logs` is append-only; repository exposes `AddAuditLogAsync` / `GetXxxAuditLogAsync` only (§12).
 
 ### Touch-and-clean guidance
 
-- Do **not** re-add cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`) or `.Include()` calls that traverse into any non-Budget entity. If you need a team name or actor display name alongside budget data, load the Budget aggregate first, then call `ITeamService` / `IUserService` to stitch the labels in memory.
-- New cross-section reads must go through the owning service interface (`ITeamService`, `IUserService`) — never `_dbContext`. Treat any new `DbContext` touch of another section's table as a regression.
+- Do **not** re-add cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`) or `.Include()` calls that traverse into any non-Budget entity. If you need a team name or actor display name alongside budget data, load the Budget aggregate first, then call `ITeamServiceRead` / `IUserServiceRead` to stitch the labels in memory.
+- New cross-section reads must go through the owning service interface (`ITeamServiceRead`, `IUserServiceRead`) — never `_dbContext`. Treat any new `DbContext` touch of another section's table as a regression.
 - Keep new audit-log writes using `AddAsync`-only semantics — never `Update` or `Remove` a `BudgetAuditLog` row, even in cleanup code (§12).

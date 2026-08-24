@@ -1,7 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Admin/**
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
-  src/Humans.Web/ViewComponents/AdminNavTree.cs
+  src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
+  src/Humans.Web/ViewComponents/AdminNavComposition.cs
   src/Sections/Humans.Users/Views/UsersAdmin/AdminList.cshtml
   src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
   src/Sections/Humans.Users/Views/UsersAdminAccountMerges/**
@@ -31,11 +32,11 @@ The Admin section is the global control panel: managing humans (suspending, reje
 
 Admin is layered. **Board** and **HumanAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, and reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camp Admin, and Ticket Admin are separate roles covered in their own section guides.
 
-![TODO: screenshot — Admin dashboard home showing humans summary, recent audit entries, and sync status]
+![TODO: screenshot — Admin dashboard home showing the stat tile strip and sync status]
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging, and below a divider the system groups Google, Agent, Legal, Diagnostics, Dev, Design, Temp). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging, and below a divider the system groups Google, Agent, Legal, Diagnostics, Dev, Design, Settings, Temp). Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Users/Admin/{id}/Outbox` — per-human email outbox.
@@ -60,7 +61,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The summary tiles — humans in review, open feedback, pending shifts, and recent audit activity — give you a fast read on what needs attention, and the recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. The open-feedback count is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
 
 ### Manage humans
 

@@ -123,7 +123,7 @@ This section is **fan-in**: almost every other section calls in, but this sectio
 
 Inbound (other sections → Notifications):
 
-- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient` rows during account merge fold.
+- **Profiles:** `AccountMergeService.AcceptAsync` fans out to `NotificationService` via `IUserMerge.ReassignAsync` (re-FKs `NotificationRecipient` rows) and calls `INotificationService.InvalidateBadgeCachesForUsers` directly after commit to evict both users' badge caches.
 - **Camps:** `CampService` and `CampRoleService` inject `INotificationEmitter` to emit `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, and `CampRoleAssigned` notifications.
 - **Issues:** `IssuesService` injects `INotificationService` to emit `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, and `IssueSubmitted` notifications.
 
@@ -132,7 +132,7 @@ Inbound (other sections → Notifications):
 
 - **Materialized recipients at dispatch time.** Each `NotificationRecipient` row is created when the alert fires. The membership of a target group ("Coordinators of Geeks") is resolved *then*, not at query time. This captures "who was responsible when the alert fired" — late-added team members do not retroactively see older notifications, which is the intended behavior. Same pattern as the email outbox.
 - **Caller decides resolution scope.** Group-targeted notifications (role) create one `Notification` shared by all recipients — "any one of you handle this" — so the resolved state collapses to a single row. Individual-targeted notifications create one `Notification` per user — "each of you needs to see this" — so per-user dismissal is real. No `GroupKey` concept; the choice is explicit at the dispatch call site.
-- **Page-load badge refresh, not real-time push.** At ~500 users with a 2-minute cache, a WebSocket / SSE channel is overengineered. The badge re-computes when the user navigates. The existing `NavBadgesViewComponent` works this way for every other queue.
+- **Page-load badge refresh, not real-time push.** At ~500 users with a 2-minute cache, a WebSocket / SSE channel is overengineered. The badge re-computes when the user navigates. Every other section's nav badge (e.g. Issues' own `IssuesUserMenuViewComponent`, since Shell's `NavBadgesViewComponent` was dissolved into per-section chrome at nobodies-collective/Humans#1091) works this way too.
 - **Daily digests stay as email.** `SendBoardDailyDigestAsync` / `SendAdminDailyDigestAsync` are *summaries*, not individual work items, and don't map onto the resolve/dismiss model. Don't migrate them.
 
 ## Architecture

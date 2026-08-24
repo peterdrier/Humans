@@ -4,7 +4,7 @@
   src/Humans.Web/Services/HumansMetricsService.cs
   src/Humans.Web/Middleware/UserActivityTrackingMiddleware.cs
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Views/Shared/_DashboardStats.cshtml
+  src/Humans.Web/ViewComponents/AdminSummaryViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Window set (5m/1h/24h), in-memory-only guarantee, middleware pipeline position, and what gets dropped vs. what's a real signal — review when any of these change.

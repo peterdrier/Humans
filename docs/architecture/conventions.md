@@ -164,7 +164,7 @@ Promote a partial to a view component when any of these apply:
 
 Keep as a partial when the rendering is genuinely pure (badges, alerts, validation script tags, language chooser, role/dietary badges driven from a model already loaded by the page).
 
-**Caching at this scale:** view components must **not** inject or use `IMemoryCache` — a documented project rule ([`../../memory/code/viewcomponent-no-cache.md`](../../memory/code/viewcomponent-no-cache.md)), upheld by review rather than tooling: a dedicated analyzer is described in [`roslyn-analysis.md`](roslyn-analysis.md) §"View components may not inject `IMemoryCache`" but is **not yet built** (`Current coverage: none`). When a view component renders an aggregate count that warrants a short cache, the cache lives inline in the owning service (1–2 minute TTL) and that service owns invalidation on writes that affect the aggregate; the view component is a thin pass-through. (`NavBadgesViewComponent` works this way — the voting / issue counts cache inside `ApplicationDecisionService` / `IssuesService`. The feedback count follows the same pattern, cached inside `FeedbackService`, but since #977 it is rendered by `AdminNavTree` via `PillCounts.FeedbackQueue` rather than by `NavBadgesViewComponent`, which no longer has a `feedback` queue.)
+**Caching at this scale:** view components must **not** inject or use `IMemoryCache` — a documented project rule ([`../../memory/code/viewcomponent-no-cache.md`](../../memory/code/viewcomponent-no-cache.md)), upheld by review rather than tooling: a dedicated analyzer is described in [`roslyn-analysis.md`](roslyn-analysis.md) §"View components may not inject `IMemoryCache`" but is **not yet built** (`Current coverage: none`). When a view component renders an aggregate count that warrants a short cache, the cache lives inline in the owning service (1–2 minute TTL) and that service owns invalidation on writes that affect the aggregate; the view component is a thin pass-through. (The admin-sidebar pill counts work this way — each is a `PillCount` delegate on the owning section's `SectionAdminNav` contribution, rendered by `AdminSidebarViewComponent`, and the delegate only calls that section's read interface. The short cache lives in the owning service: the voting count inside `ApplicationDecisionService`, the feedback count inside `FeedbackService`.)
 
 **Conventions:**
 
@@ -196,7 +196,6 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | File | Purpose | Exception type |
 |------|---------|----------------|
 | `Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
-| `Sections/Humans.Users/Views/Shared/Components/UserSearchResult/Default.cshtml` (`<vc:user-search-result>`) | Person search result row (page-style card) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
 | `Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `Humans.Teams/Views/TeamAdmin/Roles.cshtml` | Role-grid save without reload | Progressive enhancement |
@@ -210,8 +209,8 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Gate/wwwroot/js/gate/gate.js` (`Views/Gate/Index.cshtml`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
 | `Humans.Users/Views/Profile/Edit.cshtml` | Burner-name collision count on keystroke | Search input |
 | `Humans.Users/Views/Profile/CommunicationPreferences.cshtml` | Per-preference toggle POST without reload | Progressive enhancement |
-| `Humans.Web/Views/Guest/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
-| `Humans.Web/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
+| `Humans.Users/Views/GuestAccount/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
+| `Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
 | `Humans.Agent/wwwroot/js/agent/widget.js` | Streamed answer from `/Agent/Ask` (SSE) | Progressive enhancement |
 | `Humans.CityPlanning/wwwroot/js/city-planning/**` | Barrio, container and overview maps read and write `/api/city-planning/*` | Interactive map |
 | `Humans.Web/wwwroot/js/site.js` | Timezone, notification popup, profile popover | Utility |
@@ -219,6 +218,16 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 Paths are relative to `src/` (`src/Sections/` for the section projects).
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.
+
+## List Tables
+
+<!-- wheat: docs/superpowers/specs/2026-06-10-table-component-design.md -->
+Every list table renders through `TableModel.For(rows).Column(...).Build()` (`Humans.Base.Models.Tables`) + `<partial name="_Table" model="table" />` (`Humans.Base/Views/Shared/_Table.cshtml`) — never a hand-authored `<table>`. One column model drives sorting, filtering, and formatting instead of each view re-inventing them.
+
+- **Formats** (`CellFormat`): `Text` (default, null → em-dash), `Date`/`DateTime` (via the date-formatting home above), `Currency`/`Number` (`N2`/`#,##0.##`, no currency symbol — Peter's call), `EnumBadge` (via `EnumBadgeMap`, unmapped values fall back to `bg-secondary`), `BoolIcon`, `Template` (escape hatch for `<vc:>`/`asp-*` cells).
+- **`EnumBadgeMap`** is the single enum→badge-color registry — views never inline a `switch` for badge color. A section moved into its own project (G5) pushes its enum rows in via `Section.Register` (`Humans.Base` cannot name a moved section's enum — see `memory/architecture/base-ui-registries-are-section-populated.md`); un-moved sections' enums are hardcoded in the map's literal.
+- **Client mode** (default) sorts/filters in-browser via the `site.js` `data-sortable-table` engine; **server mode** (`.ServerMode(...)`) emits sort-link/filter-form query params for controller-driven paging — same column declarations either way.
+- Column declaration lives in the view (a code block), not the controller: custom cells need Razor (`<vc:human>`, `Url.Action`); splitting a column list from its templates across two files was rejected as the alternative.
 
 ## Testing
 

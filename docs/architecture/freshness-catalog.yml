@@ -8,6 +8,11 @@ version: 1
 # update method (script or prompt).
 mechanical:
   - id: dev-stats
+    # RUN AFTER `reforge-history`. generate-stats.sh reads docs/reforge-history.csv
+    # for its semantic class/interface counts and silently regex-falls-back for any
+    # day the CSV does not yet cover — run it first and every new day in the window
+    # gets the weaker fallback number, permanently. The 2026-08-24 sweep hit exactly
+    # this (regex-fallback=6 days) and had to revert and re-run.
     target: docs/development-stats.md
     triggers:
       - "src/**/*.cs"
@@ -62,8 +67,8 @@ mechanical:
       docs/features/ now holds only global/, the cross-section specs.
       Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
       GettingStarted.md, Glossary.md, and the dated design records matching
-      src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
-      map of which section's doc lives where — read it first and agree with it.
+      src/Sections/*/Docs/20*.md. Every section's doc lives at the derivable path
+      src/Sections/Humans.<Section>/Docs/<Section>.md — there is no index doc.
 
       For each .md file, derive a one-line description from the first paragraph
       of the file (or the H1 + first sentence if the first paragraph is too long).

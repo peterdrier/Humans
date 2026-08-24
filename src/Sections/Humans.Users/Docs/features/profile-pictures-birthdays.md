@@ -3,7 +3,7 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
-  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change

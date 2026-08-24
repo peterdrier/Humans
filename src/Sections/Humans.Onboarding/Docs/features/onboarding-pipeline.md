@@ -15,7 +15,7 @@
   src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
   src/Sections/Humans.Onboarding/Views/Shared/Components/OnboardingProgressBanner/**
   src/Sections/Humans.Onboarding/ViewComponents/OnboardingProgressBannerViewComponent.cs
-  src/Sections/Humans.Users.Contracts/Profile.cs
+  src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Governance/Domain/Application.cs
 -->
 <!-- freshness:flag-on-change

@@ -25,9 +25,13 @@
 | `UsersAdminDebugController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `UserController` | Class | `[Authorize]` (authenticated) | — (account-status wall + cancel-deletion landings at `/User`; exempt from `MembershipRequiredFilter` since these ARE the redirect targets — each action self-checks the caller's `UserState`) |
 | `UnsubscribeController` | Class | (no class-level `[Authorize]`) | — |
+| `GuestAccountController` | Class | `[Authorize]` (authenticated) | — (profileless-account self-service: comms preferences, GDPR erasure; moved from Shell's `GuestController`, #1091) |
+| `GuestAccountController.CommunicationPreferences` (GET) / `UpdatePreference` (POST) | Action | `AllowAnonymous` | Override (accepts an unsubscribe token in place of a session; see `EndpointAuthorizationTests` allowlist) |
+| `UserNameBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` (BurnerName/legal-name backfill onto `User`, #1097; idempotent, retires once done) |
 
 ## Resource-Based Authorization Handler
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
+| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: HumanAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `PolicyNames.HumanAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |

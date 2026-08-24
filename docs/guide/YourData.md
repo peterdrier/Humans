@@ -7,8 +7,8 @@
   src/Sections/Humans.Users/Services/ContactFieldService.cs
   src/Sections/Humans.Users/Services/CommunicationPreferenceService.cs
   src/Sections/Humans.Users/Jobs/ProcessAccountDeletionsJob.cs
-  src/Sections/Humans.Users.Contracts/ContactField.cs
-  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users/Domain/ContactField.cs
+  src/Sections/Humans.Users/Domain/CommunicationPreference.cs
 -->
 <!-- freshness:flag-on-change
   Per-field visibility options, communication preference categories, data export contents, and the 30-day deletion/cancel window. Review when privacy views, GDPR export, or account deletion flows change.

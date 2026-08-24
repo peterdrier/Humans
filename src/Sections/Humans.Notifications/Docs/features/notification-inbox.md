@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Notifications/**
   src/Sections/Humans.Notifications.Contracts/**
-  src/Sections/Humans.Users.Contracts/CommunicationPreference.cs
+  src/Sections/Humans.Users/Domain/CommunicationPreference.cs
   src/Sections/Humans.Notifications/Jobs/CleanupNotificationsJob.cs
 -->
 <!-- freshness:flag-on-change
@@ -96,8 +96,8 @@ All authenticated users can access their own notifications. No role-based restri
 | ShiftCoverageGap | Actionable | Dept coordinators | VolunteerUpdates | Confirmed count drops below min |
 | ShiftSignupChange | Informational | Dept coordinators | VolunteerUpdates | Signup confirmed/bailed |
 | ShiftAssigned | Informational | The volunteer | VolunteerUpdates | Coordinator voluntells a shift |
-| ConsentReviewNeeded | Actionable | ConsentCoordinator role | System | New human completes consents |
-| ApplicationSubmitted | Actionable | Board role | Governance | Tier application submitted |
+| ConsentReviewNeeded | Actionable | ConsentCoordinator role | System | *Retired* — no new rows emit this source; historical rows only |
+| ApplicationSubmitted | Actionable | Board role | Governance | *Retired* — no new rows emit this source; historical rows only |
 | ApplicationApproved | Informational | The applicant | Governance | Board approves application |
 | ApplicationRejected | Informational | The applicant | Governance | Board rejects application |
 | VolunteerApproved | Informational | The user | Governance | Profile cleared for membership |
@@ -119,8 +119,8 @@ All authenticated users can access their own notifications. No role-based restri
 | CampRoleAssigned | Informational | The user | System | Camp role assigned |
 | IssueComment | Informational | Issue participants | System | Comment added to an issue |
 | IssueStatusChanged | Informational | Issue participants | System | Issue status changed |
-| IssueAssigned | Informational | The assignee | System | Issue assigned to a user |
-| IssueSubmitted | Actionable | Admin role | System | New issue submitted |
+| IssueAssigned | Actionable | The assignee | System | Issue assigned to a user |
+| IssueSubmitted | Actionable | Admins + section role-holders | System | New issue submitted |
 
 ## Related Features
 

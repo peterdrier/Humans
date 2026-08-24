@@ -1,5 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Web/ViewComponents/AdminNavTree.cs
+  src/Humans.Web/ViewComponents/AdminNavComposition.cs
+  src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
+  src/Humans.Web/ViewComponents/AdminSummaryViewComponent.cs
+  src/Humans.Base/Interfaces/ISectionAdminNav.cs
+  src/Sections/*/SectionAdminNav.cs
+  src/Sections/*/SectionAdminTiles.cs
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
 -->
@@ -11,9 +16,9 @@ Frame-only section. Provides the shared admin sidebar, breadcrumb, and dashboard
 ## Concepts
 
 - The **Admin Shell** is the persistent layout wrapper rendered for the admin dashboard and section admin pages: top-nav, left sidebar, breadcrumb, and page container.
-- The **Sidebar** is the left navigation panel inside the admin shell. It is divided into named groups; each group contains one or more items. Items and groups are filtered at render time by the current user's roles. Groups are filed by owning section (per `docs/sections/_Index.md`), not by label similarity. Groups marked `System: true` (AdminOnly plumbing: Google, Agent, Legal, Diagnostics, Dev, Design, Temp) render below a divider and start collapsed on desktop unless they contain the active page; user toggles persist in `localStorage`. Below 768px the sidebar renders as a two-tier horizontal strip: group chips on top, the selected group's items beneath.
+- The **Sidebar** is the left navigation panel inside the admin shell. It is divided into named groups; each group contains one or more items. Items and groups are filtered at render time by the current user's roles. Groups are filed by owning section (the section whose `src/Sections/Humans.<Section>/Docs/` covers the feature), not by label similarity. Groups marked `System: true` (AdminOnly plumbing: Google, Agent, Legal, Diagnostics, Settings, Dev, Design, Temp) render below a divider and start collapsed on desktop unless they contain the active page; user toggles persist in `localStorage`. Below 768px the sidebar renders as a two-tier horizontal strip: group chips on top, the selected group's items beneath.
 - The **Breadcrumb** is the per-page path strip rendered inside the admin shell header. Each page sets its own breadcrumb via the shared `AdminShell` layout.
-- The **Dashboard skeleton** is the top-level `/Admin` landing page. It aggregates summary stats from multiple sections (humans in review, open feedback, pending shifts, recent audit events) via service calls.
+- The **Dashboard skeleton** is the top-level `/Admin` landing page. It renders `AdminSummaryViewComponent` (the greeting/strapline plus a tile strip merged from every section's `ISectionAdminTiles` contribution, interleaved with Shell's own presence tiles) and a `chrome-slot` for the `admin-dashboard` slot, into which sections contribute cards (`ISectionChrome`).
 
 ## Data Model
 
@@ -25,7 +30,7 @@ The `/Admin` route is the shared dashboard. The `AdminLayout.cshtml` layout is s
 
 ## Actors & Roles
 
-Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging; system zone (collapsed by default): Google, Agent, Legal, Diagnostics, Dev (env-gated to `!IsProduction()`), Design, Temp. Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging; system zone (collapsed by default): Google, Agent, Legal, Diagnostics, Settings, Dev (env-gated to `!IsProduction()`), Design, Temp. Each section contributes its groups via `ISectionAdminNav.Groups()` (`src/Sections/*/SectionAdminNav.cs`); `AdminNavComposition.Compose` merges same-key groups from different sections (e.g. "Tickets", "Money") and sorts by weight. The per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
@@ -63,14 +68,20 @@ None — this section is a pure rendering surface with no DB writes and no side 
 
 ## Cross-Section Dependencies
 
-- **Users:** `IUserServiceRead` — user snapshot for the totals / active / ticket-holder stat tiles.
-- **Feedback:** `Humans.Feedback.Contracts.IFeedbackServiceRead` — actionable report count for the dashboard stat tile and the Feedback sidebar pill.
-- **Shifts:** `IShiftManagementService` — active event plus overall shift coverage for the dashboard stat tiles.
-- **Audit Log:** `IAuditViewerService.GetRecentAsync(8)` — recent audit entries for the dashboard activity feed.
-- **Governance:** `Humans.Governance.Contracts.IApplicationServiceRead` — unvoted-application count for the Voting sidebar pill.
-- **Admin Dashboard:** `IAdminDashboardService` — aggregated stat DTO for the dashboard landing page. Reads only — no writes.
+None directly — since nobodies-collective/Humans#1091, the shell names no section. Nav groups (`ISectionAdminNav`), dashboard tiles (`ISectionAdminTiles`) and dashboard cards (`ISectionChrome`, `admin-dashboard` slot) are section-contributed and merged by Shell's composition/rendering code, which reaches no section service directly. The tiles and cards are owned by (and call the service interfaces of) their contributing sections:
 
-All of these are read-side section contracts (`I*ServiceRead` / `I*Contracts`) called from the controller and the nav tree — the shell holds no repository and writes nothing.
+- **Users:** `users.total` / `users.profiles` / `users.tickets` tiles (`IUserServiceRead`); the "Preferred language" card.
+- **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementServiceRead`).
+- **Feedback:** `feedback.open` tile, AdminOnly (`IFeedbackServiceRead`).
+- **Teams:** `teams.total` tile (`ITeamServiceRead`).
+- **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
+- **Email:** `email.outbox` tile (`IEmailOutboxServiceRead`).
+- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (`IStoreServiceRead`).
+- **Expenses:** `expenses.reports` tile, gated to `FinanceAdminOrAdmin` (`IExpenseReportServiceRead`).
+- **Governance:** the "Tier applications" card (`IApplicationServiceRead`); also contributes the Voting sidebar pill's unvoted-application count.
+- **Debug:** the "User set membership" (Venn/UpSet) card.
+
+Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. All section-owned pieces read through public read-side contracts (`I*ServiceRead` / `I*Contracts`) — the shell holds no repository and writes nothing.
 
 ## Architecture
 

@@ -16,7 +16,7 @@ Orchestrates Humans ↔ MailerLite synchronisation. Inbound import + outbound au
 - **Import plan** — the classified result of pulling the MailerLite `Website` group's subscribers and matching against Humans's user/email/preference state, plus a Humans-side pass that flags Marketing opt-ins the prior whole-account import wrongly set (see **Reset**). Built fresh on every preview/commit; never persisted between runs.
 - **Apply** — executes an import plan: creates contacts, attaches verified users, deletes unverified UserEmail rows that block contact creation, updates Marketing preferences per the conflict rule, resets (deletes → null) Marketing flags caught by the reset pass, writes one summary audit.
 - **Reset (marketing flag)** — a Humans-side cleanup decision: a Marketing opt-in written by the erroneous whole-account import (`UpdateSource = "MailerLiteSync"`, opted-in, no prior consent) on someone **not** in the `Website` group is deleted, reverting the category to "no preference" (null) — never to opt-out. GDPR remediation; cutoff for "prior consent" is hardcoded in `MailerLiteImportService.BadImportCutoff`.
-- **Audience** — a code-defined `IMailerLiteAudience` implementation whose `MailerLiteGroupName` starts with `"Humans - "`. Membership is computed from Humans state and synced into the ML group by `MailerLiteAudienceSyncService` (daily Hangfire job + on-demand admin button). All audiences derive from `MailerLiteAudienceBase`, which applies a universal Marketing opt-out exclusion (see Invariants).
+- **Audience** — a code-defined `IMailerLiteAudience` implementation whose `MailerLiteGroupName` starts with `"Humans - "`. Membership is computed from Humans state and synced into the ML group by `MailerLiteAudienceSyncService` (opt-in Hangfire job, no default schedule — enabled by setting `MailerLite:AudienceSyncCron` — + on-demand admin button). All audiences derive from `MailerLiteAudienceBase`, which applies a universal Marketing opt-out exclusion (see Invariants).
 
 ## Data Model
 
@@ -54,8 +54,8 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
-- `IMailerLiteService` exposes reads + four narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`. The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
-- Every outbound write targets an ML group whose `Name` starts with `"Humans - "`. `MailerLiteClient` runtime-rejects writes against non-`"Humans - "` groups with `InvalidOperationException`. Pinned by `MailerLiteClientWriteGuardTests`.
+- `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
+- The four audience-management writes target an ML group whose `Name` starts with `"Humans - "`; `MailerLiteClient` runtime-rejects those against non-`"Humans - "` groups with `InvalidOperationException` (pinned by `MailerLiteClientWriteGuardTests`). `DeleteSubscriberAsync` is exempt — erasure removes the person outright regardless of group membership.
 - All `IMailerLiteAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerLiteArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
 - Every audience excludes humans who have **explicitly opted out** of Marketing (`UserInfo.MarketingOptedOut == true`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter `== false` filter. Pinned by `MailerLiteAudienceBaseTests`.
 - `MailerLiteImportService` and `MailerLiteAudienceSyncService` reach `mailerlite_sync_states` only through `IMailerLiteRepository`; nothing outside `Data/` holds a `MailerLiteDbContext`.
@@ -84,7 +84,7 @@ All routes are `AdminOnly`.
 - When admin commits an import → one `MailerLiteReconciliationCompleted` audit entry with counts (no PII).
 - When `ApplyAsync` flips `Marketing.OptedOut` → existing `CommunicationPreferenceChanged` audit fires through `CommunicationPreferenceService`.
 - When `ApplyAsync` creates a contact → existing `ContactCreated` audit through `AccountProvisioningService`.
-- When `MailerLiteAudienceSyncService.SyncAsync` runs (via the daily Hangfire job or the on-demand admin button) → one `MailerLiteAudienceSyncCompleted` audit entry with counts (no PII). Per-row ML mutations are not separately audited.
+- When `MailerLiteAudienceSyncService.SyncAsync` runs (via the opt-in Hangfire job — `MailerLite:AudienceSyncCron`, unset by default — or the on-demand admin button) → one `MailerLiteAudienceSyncCompleted` audit entry with counts (no PII). Per-row ML mutations are not separately audited.
 
 ## Cross-Section Dependencies
 
@@ -94,10 +94,11 @@ All routes are `AdminOnly`.
 - **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`). The per-period `HasShiftSetupAudience` / `HasShiftEventAudience` / `HasShiftStrikeAudience` add the shift's `DayOffset`-derived period via `ShiftUserView.HasShiftInPeriod` (Setup = Build).
 - **Users**: `IUserService.GetAllUserInfosAsync` — read by `MailerLiteAudienceBase` to drop explicit Marketing opt-outs from *every* audience, and by `MarketingAudience` / `MarketingNoTicketAudience` to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`).
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
+- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email via `IMailerLiteService.DeleteSubscriberAsync`.
 
 ## Architecture
 
-**Owning services:** `MailerLiteImportService`, `MailerLiteAudienceSyncService`, `MailerLiteClient`
+**Owning services:** `MailerLiteImportService`, `MailerLiteAudienceSyncService`, `MailerLiteClient`, `MailerLiteGdprContributor`
 **Owned tables:** `mailerlite_sync_states` (`MailerLiteDbContext` / `IMailerLiteRepository`)
 **Status:** (G5) Own project — `src/Sections/Humans.MailerLite`, moved 2026-08-11 (nobodies-collective/Humans#866); the `Humans.MailerLite.Contracts` leaf later folded into the project's `Contracts/` folder. Born §15-compliant on 2026-05-12; outbound + audience framework added 2026-05-14.
 

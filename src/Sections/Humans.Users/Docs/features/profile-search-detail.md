@@ -45,7 +45,7 @@ This feature adds a second line of context to each row and an avatar thumbnail, 
 ## Data Model
 
 No new entities. Reads from:
-- `Profile` / `User` / `Profile.ProfilePictureData` — already projected into the cached `FullProfile` snapshot.
+- `Profile` / `User` — already projected into the cached `UserInfo` snapshot.
 - `UserEmail` rows (visibility-filtered).
 - `ContactField` rows (visibility-filtered).
 - `RoleAssignment` (board check is upstream of the visibility ladder, not surfaced here directly).

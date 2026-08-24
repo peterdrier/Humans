@@ -75,11 +75,12 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a `FinanceAdmin`, **I want** to emit one Holded factura per order once the camp's purchases are finalized, **so that** the camp gets a single consolidated invoice rather than line-item-by-line-item paperwork.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, counterparty fields must all be present, `IssuedInvoiceId` must be null.
-- Calls Holded's invoice-create API with the lines + counterparty and writes a `Invoice` row with `OrderId`, `HoldedDocId`, `HoldedDocNumber`, `IssuedAt`, `IssuedByUserId`, plus the full request and response payloads (jsonb) for audit.
-- Sets the order's `State = InvoiceIssued` and `IssuedInvoiceId` to the new invoice id.
-- Idempotent: re-posting against an already-issued order returns 409 / clear error; partial failures (Holded returns success but DB write fails, or vice versa) recover deterministically — see the design spec for the exact protocol.
-- *Note: implementation of US-30.5 is paused — Holded integration is scheduled for a follow-up PR ~1 month out.*
+- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured.
+- Before issuing, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog (#816), so the document and the order agree forever after.
+- Issues a full Holded `invoice` (with an upserted `client` contact) when the counterparty has name, address, and a tax id; otherwise a contact-less `sales-receipt`, allowed only at or below `Store:SimplifiedInvoiceThresholdEur` (default €400) — above it issuance is refused rather than downgraded. Each line resolves its Holded revenue account from the product's `HoldedRevenueAccountNum`; deposit lines post tax-0 to `Store:DepositLiabilityAccountNum`.
+- The document is approved (a Holded draft books no revenue) and read back for its `document_number`, then written to an `Invoice` row (`OrderId`, `HoldedDocId`, `HoldedDocNumber`, `IssuedAt`, `IssuedByUserId`, full request/response payloads) in the same save that sets the order's `State = InvoiceIssued` and `IssuedInvoiceId`.
+- Idempotent: re-issuing an already-issued order throws. If an earlier attempt created a Holded document but failed before the local save, the retry recovers that same document by tag instead of creating a second one — and refuses if the order changed since.
+- Implemented per nobodies-collective/Humans#1029.
 
 ### US-30.6: Treasury Sync (Background)
 
@@ -181,5 +182,5 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - [`memory/architecture/refunds-manual-via-dashboard.md`](../../../../../memory/architecture/refunds-manual-via-dashboard.md) — money-out is dashboard-manual
 - [`memory/code/stripe-restricted-keys.md`](../../../../../memory/code/stripe-restricted-keys.md) — production keys must be RAKs
 - [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
-- `20-camps.md` — `CampSeason` is the order's owning aggregate
-- `24-ticket-vendor-integration.md` — sibling Stripe integration; same RAK + dashboard-only-refunds discipline
+- [`Camps.md`](../../../Humans.Camps/Docs/Camps.md) — `CampSeason` is the order's owning aggregate
+- [`ticket-vendor-integration.md`](../../../Humans.Tickets/Docs/features/ticket-vendor-integration.md) — sibling Stripe integration; same RAK + dashboard-only-refunds discipline
