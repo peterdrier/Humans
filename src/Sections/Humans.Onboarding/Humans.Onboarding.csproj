@@ -26,7 +26,6 @@
       No data-access reference of any kind: the section owns no tables, so there is no
       DbContext to register and nothing here names an EF type (Scanner's and MailerLite's
       shape - decide the reference from what the section names, not from the SDK).
-      OnboardingArchitectureTests.NoTypeInTheSection_TakesADbContextOrStore holds the line.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />

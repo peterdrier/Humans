@@ -61,7 +61,7 @@ Aggregate-local nav `DocumentVersion.LegalDocument` kept. Aggregate-local nav `D
 
 ### ConsentRecord
 
-Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. Architecture test `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods` (`tests/Humans.Consent.Tests/Architecture/ConsentArchitectureTests.cs`) pins the interface-level constraint.
+Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. `IConsentRepository` exposes only `Add`/`Get` methods to match.
 
 **Table:** `consent_records`
 

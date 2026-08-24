@@ -27,9 +27,8 @@
     the one type that is plumbing has exactly one caller, in Shell. The rule that is actually
     mechanical here is the ProjectReference set below — see Humans.Interfaces.csproj for the
     single invariant (zero Humans.* ProjectReferences on Base; external packages unrestricted,
-    Peter 2026-08-15). Enforcement of "this leaf names no ASP.NET type" now lives entirely in
-    AuthArchitectureTests.ContractsLeafNamesNoAspNetType, which inspects the emitted assembly's
-    referenced-assembly list. Delete that test and nothing else is watching.
+    Peter 2026-08-15). "This leaf names no ASP.NET type" is a property of what the code names,
+    not a pinned assertion.
 
     AssignRoleAsync/EndRoleAsync return the section's own RoleAssignmentResult rather than
     Humans.Onboarding.Contracts.OnboardingResult, which they returned in Base.

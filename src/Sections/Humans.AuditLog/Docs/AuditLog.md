@@ -22,7 +22,7 @@ Append-only system audit trail: who did what, when, to which entity. Used by eve
 
 ### AuditLogEntry
 
-Append-only per design-rules §12. Enforced at two layers: the architecture test `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` (no Update/Delete/Remove methods on `IAuditLogRepository`), and the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` (both calling `prevent_audit_log_modification()`, which raises an exception on any UPDATE or DELETE against `audit_log`). They were introduced in `20260212152552_Initial` and are re-created by the section's own baseline `Migrations/AuditLog/20260810193154_BaselineAuditLog` when `AuditLogDbContext` was peeled out (nobodies-collective/Humans#858).
+Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` (both calling `prevent_audit_log_modification()`, which raises an exception on any UPDATE or DELETE against `audit_log`). They were introduced in `20260212152552_Initial` and are re-created by the section's own baseline `Migrations/AuditLog/20260810193154_BaselineAuditLog` when `AuditLogDbContext` was peeled out (nobodies-collective/Humans#858).
 
 **Table:** `audit_log` (DbSet `AuditLogEntries`, `AuditLogDbContext`, history `__EFMigrationsHistory_AuditLog`)
 

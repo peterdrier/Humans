@@ -34,7 +34,6 @@
       folder (G5 jobs move, nobodies-collective/Humans#866). That is what makes
       Monitor -> GoogleIntegration + AuditLog legal where AuditLog -> GoogleIntegration was
       not: AuditLog is a horizontal (peters-hard-rules.md), and Monitor is not.
-      MonitorArchitectureTests.SectionReferencesOnlyBaseAndTheLeavesItConsumes pins it.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
