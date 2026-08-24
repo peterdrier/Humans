@@ -1,0 +1,10 @@
+# Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-24
+    what: "Four misbound IStringLocalizer<T> resource keys in Users: Profile_EmailDeleted, Profile_EmailVisibilityUpdated and Profile_NotificationTargetUpdated in Humans.Users/Controllers/ProfileController.cs bind UsersResource but the keys live in SharedResource; Admin_SortBy in Humans.Users/Views/UsersAdmin/AdminList.cshtml binds UsersResource but the key lives in SharedResource. Each renders as its own key name to the user in all six languages (the localizer returns the key when the lookup misses, green build, no log line). Found by /section-doctor on Onboarding 2026-08-23 via that run's new binding-sweep pass."
+    review: light
+  - added: 2026-08-24
+    what: "Two data-access blocks in src/Sections/Humans.Onboarding/Docs describe Users-owned services (HumanLifecycleService and NonCompliantMemberSuspension) rather than Onboarding-owned ones, and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them today. Left with a pointer in the source doc rather than moved because the section-doctor concurrency contract forbids a run writing another section's file. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light

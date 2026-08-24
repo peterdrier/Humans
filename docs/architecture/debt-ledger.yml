@@ -382,3 +382,12 @@ inbox:
   - added: 2026-08-21
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
+  - added: 2026-08-24
+    what: "Eight Nav_* keys in SharedResource are named nowhere under src/ or tests/: Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, Nav_OnboardingReview. Dead because the admin sidebar takes raw strings (AdminNavItem.Label rendered as-is by Shell's AdminSidebarViewComponent, all 29 sections hard-code English). The English-only admin sidebar is Peter's decision (per Onboarding 2026-08-23 decision entry), but that decision governs the sidebar, not keeping dead keys — these are still deletable. Base owns SharedResource. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light
+  - added: 2026-08-24
+    what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while sibling SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Humans.Onboarding.Tests files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger through the base class would delete both copies. Base owns HumansControllerBase. Found by /section-doctor on Onboarding 2026-08-23."
+    review: light
+  - added: 2026-08-24
+    what: "/Profile/Edit is stale in three places outside Users. The live route is /Profile/Me/Edit. Sites: a comment in src/Sections/Humans.Consent/Controllers/ConsentController.cs, a doc comment in tests/Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. Cross-section (Consent + a repo-level skill). Found by /section-doctor on Onboarding 2026-08-23."
+    review: light
