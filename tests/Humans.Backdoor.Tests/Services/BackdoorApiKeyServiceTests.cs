@@ -4,6 +4,7 @@ using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Backdoor.Services;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -227,6 +228,73 @@ public class BackdoorApiKeyServiceTests
         (await _sut.ResolveOwnerAsync(string.Empty)).Should().BeNull();
 
         await _repository.DidNotReceiveWithAnyArgs().FindActiveByHashAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task ResolveOwner_refuses_a_key_whose_owner_lost_both_roles()
+    {
+        var key = ExistingKey();
+        _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
+        MakeEligible(_owner, admin: false, board: false);
+
+        (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
+
+        // Refused, not revoked — restoring the role restores the key.
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default, default);
+    }
+
+    // ==========================================================================
+    // User-data fan-outs
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task Export_lists_the_owner_keys_without_the_hash()
+    {
+        var key = ExistingKey();
+        _repository.GetForUserAsync(_owner, Arg.Any<CancellationToken>()).Returns([key]);
+
+        var slices = await _sut.ContributeForUserAsync(_owner, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.BackdoorApiKeys);
+        System.Text.Json.JsonSerializer.Serialize(slice.Data)
+            .Should().Contain("triage agent").And.NotContain(key.KeyHash);
+    }
+
+    [HumansFact]
+    public async Task Export_slice_is_null_when_the_human_holds_no_key()
+    {
+        _repository.GetForUserAsync(_owner, Arg.Any<CancellationToken>()).Returns([]);
+
+        var slices = await _sut.ContributeForUserAsync(_owner, Xunit.TestContext.Current.CancellationToken);
+
+        slices.Should().ContainSingle().Which.Data.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void Erasure_declares_backdoor_keys_fully_erased()
+    {
+        _sut.ErasureDeclaration.Should().ContainKey(GdprExportSections.BackdoorApiKeys)
+            .WhoseValue.Should().BeNull("a credential has no basis to outlive its owner");
+    }
+
+    [HumansFact]
+    public async Task Erase_hard_deletes_through_the_repository()
+    {
+        await _sut.EraseForUserAsync(_owner, Xunit.TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).EraseForUserAsync(_owner, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Merge_folds_the_eliminated_account_keys_onto_the_survivor()
+    {
+        var survivor = Guid.NewGuid();
+
+        await _sut.ReassignAsync(_owner, survivor, _actor, Now, Xunit.TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).ReassignToUserAsync(_owner, survivor, Arg.Any<CancellationToken>());
     }
 
     private BackdoorApiKey ExistingKey() => new()

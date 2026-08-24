@@ -55,4 +55,42 @@ internal sealed class BackdoorApiKeyRepository(IDbContextFactory<BackdoorDbConte
             .Where(k => k.Id == id)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.LastUsedAt, at), ct);
     }
+
+    public async Task<IReadOnlyList<BackdoorApiKey>> GetForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.ApiKeys
+            .AsNoTracking()
+            .Where(k => k.UserId == userId)
+            .ToListAsync(ct);
+    }
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        await ctx.ApiKeys.Where(k => k.UserId == userId).ExecuteDeleteAsync(ct);
+
+        // Someone else's key they happened to revoke: drop the back-reference, keep the row.
+        await ctx.ApiKeys
+            .Where(k => k.RevokedByUserId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedByUserId, (Guid?)null), ct);
+    }
+
+    public async Task ReassignToUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        await ctx.ApiKeys
+            .Where(k => k.UserId == fromUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.UserId, toUserId), ct);
+
+        await ctx.ApiKeys
+            .Where(k => k.CreatedByUserId == fromUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.CreatedByUserId, toUserId), ct);
+
+        await ctx.ApiKeys
+            .Where(k => k.RevokedByUserId == fromUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedByUserId, (Guid?)toUserId), ct);
+    }
 }

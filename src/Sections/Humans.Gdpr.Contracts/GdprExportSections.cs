@@ -62,4 +62,5 @@ public static class GdprExportSections
     /// key to declare — required by <c>GdprErasureCoverageTests</c>.
     /// </summary>
     public const string MailerLiteSubscriber = "MailerLiteSubscriber";
+    public const string BackdoorApiKeys = "BackdoorApiKeys";
 }

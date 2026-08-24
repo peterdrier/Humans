@@ -1,3 +1,5 @@
+using Humans.Users.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Filters;
 using Humans.Backdoor.Services;
@@ -27,7 +29,12 @@ public sealed class Section : ISection
         // §15 repository pattern: Singleton + IDbContextFactory (§15b) so the repository
         // owns context lifetime.
         services.AddSingleton<IBackdoorApiKeyRepository, BackdoorApiKeyRepository>();
-        services.AddScoped<IBackdoorApiKeyService, BackdoorApiKeyService>();
+        services.AddScoped<BackdoorApiKeyService>();
+        services.AddScoped<IBackdoorApiKeyService>(sp => sp.GetRequiredService<BackdoorApiKeyService>());
+        // Owns the user-scoped backdoor_api_keys table → GDPR export contributor and
+        // account-merge fold participant (design-rules §8a).
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BackdoorApiKeyService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<BackdoorApiKeyService>());
 
         // [ServiceFilter] resolves the filter from the container, so it must be registered.
         services.AddScoped<BackdoorApiKeyAuthFilter>();

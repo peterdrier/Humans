@@ -3,6 +3,9 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
+using Humans.Base.Extensions;
+using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Backdoor.Services;
@@ -12,7 +15,7 @@ internal sealed class BackdoorApiKeyService(
     IRoleAssignmentService roles,
     IAuditLogService audit,
     IClock clock,
-    ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService
+    ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService, IUserDataContributor, IUserMerge
 {
     /// <summary>Human-readable marker so a leaked key is recognisable in a log or a paste.</summary>
     private const string KeyPrefix = "hmn_";
@@ -87,12 +90,27 @@ internal sealed class BackdoorApiKeyService(
             k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt))];
     }
 
+    /// <remarks>
+    /// Eligibility is re-checked here, not just at issue time: an Admin or Board assignment
+    /// can expire, be revoked, or be swept by <c>RevokeAllActiveAsync</c> when the account
+    /// requests deletion, and a key that outlived its role would otherwise keep working.
+    /// Refusal is deliberate rather than auto-revocation — a restored role restores the key,
+    /// and a transient gap must not destroy a credential.
+    /// </remarks>
     public async Task<Guid?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(presentedKey)) return null;
 
         var key = await repository.FindActiveByHashAsync(Hash(presentedKey), ct);
         if (key is null) return null;
+
+        if (!await IsEligibleAsync(key.UserId, ct))
+        {
+            logger.LogWarning(
+                "Backdoor key {KeyId} refused: owner {OwnerUserId} is no longer an Admin or Board member",
+                key.Id, key.UserId);
+            return null;
+        }
 
         await repository.TouchAsync(key.Id, clock.GetCurrentInstant(), ct);
         return key.UserId;
@@ -136,4 +154,50 @@ internal sealed class BackdoorApiKeyService(
 
     private static string Base64UrlEncode(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    // ── User-data fan-outs (design-rules §8a) ───────────────────────────────
+    // backdoor_api_keys is user-keyed, so the section owes Article 15, Article 17 and the
+    // account-merge fold. The hash is never exported: it is the credential itself.
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var keys = await repository.GetForUserAsync(userId, ct);
+
+        var shaped = keys
+            .OrderByDescending(k => k.CreatedAt)
+            .Select(k => new
+            {
+                k.Label,
+                k.DisplayPrefix,
+                CreatedAt = k.CreatedAt.ToIso8601(),
+                LastUsedAt = k.LastUsedAt.ToIso8601(),
+                RevokedAt = k.RevokedAt.ToIso8601(),
+            })
+            .ToList();
+
+        return [new UserDataSlice(GdprExportSections.BackdoorApiKeys, shaped.Count == 0 ? null : shaped)];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [GdprExportSections.BackdoorApiKeys] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>
+    /// Keys the person owned are hard-deleted — a machine credential has no basis to outlive
+    /// its owner — and they are detached as the revoker of anyone else's key.
+    /// </summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repository.EraseForUserAsync(userId, ct);
+
+    /// <summary>
+    /// Folds the eliminated account's keys onto the survivor. A key whose new owner holds
+    /// neither role simply stops authenticating — <see cref="ResolveOwnerAsync"/> re-checks.
+    /// </summary>
+    public Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, ct);
 }

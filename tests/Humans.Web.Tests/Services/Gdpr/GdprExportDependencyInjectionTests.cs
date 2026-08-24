@@ -80,7 +80,8 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Gate.Services.GateService"),
         SectionType("Humans.GoogleIntegration.Services.GoogleSyncLogService"),
         SectionType("Humans.MailerLite.Services.MailerLiteGdprContributor"),
-        SectionType("Humans.Email.Services.EmailOutboxService")
+        SectionType("Humans.Email.Services.EmailOutboxService"),
+        SectionType("Humans.Backdoor.Services.BackdoorApiKeyService")
     ];
 
     /// <summary>

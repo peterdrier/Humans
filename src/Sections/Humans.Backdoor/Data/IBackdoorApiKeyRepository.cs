@@ -31,4 +31,16 @@ internal interface IBackdoorApiKeyRepository : IRepository
 
     /// <summary>Stamps <c>LastUsedAt</c>. Fire-and-forget from the auth filter.</summary>
     Task TouchAsync(Guid id, Instant at, CancellationToken ct = default);
+
+    /// <summary>Every row belonging to one human, unordered — the GDPR export slice.</summary>
+    Task<IReadOnlyList<BackdoorApiKey>> GetForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Hard-deletes every key owned by <paramref name="userId"/> and detaches them as the
+    /// revoker of anyone else's key. Article 17 — a credential has no basis to outlive its owner.
+    /// </summary>
+    Task EraseForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Re-points owner and actor columns from the eliminated user onto the survivor.</summary>
+    Task ReassignToUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default);
 }

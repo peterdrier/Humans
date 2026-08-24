@@ -28,6 +28,7 @@
   src/Sections/Humans.GoogleIntegration/Services/GoogleSyncLogService.cs
   src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
   src/Sections/Humans.Email/Services/EmailOutboxService.cs
+  src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -89,7 +90,7 @@ change.
 │    ExpenseReportService      HoldedFinanceService │
 │    GateService               GoogleSyncLogService │
 │    EmailOutboxService                             │
-│    MailerLiteGdprContributor                      │
+│    MailerLiteGdprContributor BackdoorApiKeyService │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -159,6 +160,7 @@ service has no data for this user are omitted.
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
 | `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Profile/Me/Outbox`. |
+| `BackdoorApiKeys` | `BackdoorApiKeyService` | Array of `{ Label, DisplayPrefix, CreatedAt, LastUsedAt, RevokedAt }` — the machine-API keys allocated to the human; null when they hold none. The stored hash is never exported: it is the credential itself. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.
