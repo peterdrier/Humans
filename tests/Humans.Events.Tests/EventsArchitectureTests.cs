@@ -54,11 +54,11 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventService_ImplementsIUserDataContributor()
+    public void CachingEventService_ImplementsIUserDataContributor()
     {
-        typeof(IUserDataContributor).IsAssignableFrom(typeof(EventService))
+        typeof(IUserDataContributor).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
-                because: "EventService owns event_favourites and event_preferences (user-scoped tables); it must contribute to the GDPR Article 15 export");
+                because: "the section owns event_favourites and event_preferences (user-scoped tables) and must contribute to the GDPR Article 15 export; the decorator carries it because erasure edits rows the cache serves");
     }
 
     [HumansFact]

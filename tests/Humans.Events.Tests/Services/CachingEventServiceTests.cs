@@ -133,6 +133,24 @@ public sealed class CachingEventServiceTests
         hit.Score.Should().Be(StringSearchExtensions.ExactNameScore);
     }
 
+    [HumansFact]
+    public async Task EraseForUserAsync_RefreshesTheCachedEvents()
+    {
+        // The submitted event stays in the guide with its Host name cleared, so
+        // erasure edits a row the cache is already serving.
+        var before = Approved("Sunset Yoga") with { Host = "Ada" };
+        SeedApproved(before);
+        (await _service.GetApprovedEventByIdAsync(before.Id, TestContext.Current.CancellationToken))!
+            .Host.Should().Be("Ada");
+
+        SeedApproved(before with { Host = null });
+        await _service.EraseForUserAsync(before.SubmitterUserId, TestContext.Current.CancellationToken);
+
+        await _inner.Received(1).EraseForUserAsync(before.SubmitterUserId, Arg.Any<CancellationToken>());
+        (await _service.GetApprovedEventByIdAsync(before.Id, TestContext.Current.CancellationToken))!
+            .Host.Should().BeNull();
+    }
+
     private static ApprovedEventView Approved(string title, string description = "Anything at all") => new(
         Id: Guid.NewGuid(), CampId: null, GuideSharedVenueId: null, SubmitterUserId: Guid.NewGuid(),
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
