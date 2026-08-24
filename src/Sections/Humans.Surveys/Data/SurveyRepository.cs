@@ -275,7 +275,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         foreach (var answer in answers)
         {
             answer.Response = draft;
-            draft.Answers.Add(answer);
+            ctx.SurveyAnswers.Add(answer);
         }
 
         draft.InputMethod = inputMethod;
@@ -317,7 +317,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContex
         foreach (var answer in answers)
         {
             answer.Response = draft;
-            draft.Answers.Add(answer);
+            ctx.SurveyAnswers.Add(answer);
         }
 
         draft.InputMethod = inputMethod;
