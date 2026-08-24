@@ -340,7 +340,6 @@ Output for each section pass: a `Redundancy candidates` subsection in the plan l
 | `Repository_Implementations_LiveInInfrastructure` | per-section namespace tests |
 
 Section-specific tests are reserved for **section-specific invariants** that don't generalize:
-- Append-only repo shape (only some sections — `IAuditLogRepository_HasNoUpdateOrDeleteMethods`).
 - Single-writer DbSet rule (`Only<Section>Repository_References_<DbSet>` — Roslyn or reflection scan).
 - Domain-specific authorization handler shape.
 

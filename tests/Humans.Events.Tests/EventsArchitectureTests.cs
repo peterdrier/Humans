@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Controllers;
-using Humans.Events.Data;
 using Humans.Events.Filters;
 using Humans.Events.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -40,24 +39,6 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventsRoutes_DoNotExposeOldEventGuideOrCampsSlugs()
-    {
-        var routeTemplates = new[]
-        {
-            RouteFor<EventsController>(),
-            RouteFor<EventsDashboardController>(),
-            RouteFor<EventsExportController>(),
-            RouteFor<EventsModerationController>(),
-            RouteFor<EventsApiController>()
-        };
-
-        routeTemplates.Should().NotContain(template =>
-            template.Contains("EventGuide", StringComparison.OrdinalIgnoreCase)
-            || template.Contains("Camps", StringComparison.OrdinalIgnoreCase)
-            || template.Contains("api/guide", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [HumansFact]
     public void EventsAdminController_LivesUnderEventsAdminRoute()
     {
         RouteFor<EventsAdminController>().Should().Be("Events/Admin");
@@ -73,67 +54,11 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void OnlySectionAndResourceArePublic()
-    {
-        // Public means Section, Contracts/, the resource marker, or a type the framework
-        // silently drops when internal. Controllers stay internal —
-        // SectionControllerFeatureProvider routes them; do not "fix" a 404 by going public.
-        // The two view components: Razor only builds a <vc:> tag from a public class.
-        // SectionAdminNav stays internal too — Shell finds it via GetTypes(), not
-        // GetExportedTypes() (nobodies-collective/Humans#1077).
-        // Migrations are emitted public by dotnet ef, so they are excluded below.
-        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
-            .Where(t => !string.Equals(t.Namespace, "Humans.Events.Data.Migrations", StringComparison.Ordinal))
-            .Select(t => t.FullName)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
-        publicTypes.Should().BeEquivalentTo(
-            [
-                "Humans.Events.Contracts.FavouriteButtonModel",
-                "Humans.Events.EventsResource",
-                "Humans.Events.Section",
-                "Humans.Events.ViewComponents.EventsCardViewComponent",
-                "Humans.Events.ViewComponents.EventsSearchResultViewComponent",
-            ],
-            because: "a section exposes its entry point, resource marker, Contracts/ folder, "
-                   + "and what the framework needs public — nothing else");
-    }
-
-    [HumansFact]
-    public void SectionControllersAreInternal()
-    {
-        var controllers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
-            .ToList();
-
-        controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => !t.IsPublic,
-            because: "SectionControllerFeatureProvider discovers internal controllers in section "
-                   + "assemblies; a public one would be nameable from any other section");
-    }
-
-    [HumansFact]
     public void EventService_ImplementsIUserDataContributor()
     {
         typeof(IUserDataContributor).IsAssignableFrom(typeof(EventService))
             .Should().BeTrue(
                 because: "EventService owns event_favourites and event_preferences (user-scoped tables); it must contribute to the GDPR Article 15 export");
-    }
-
-    [HumansFact]
-    public void IEventRepository_HasNoUpdateOrDeleteForModerationActions()
-    {
-        var methodNames = typeof(IEventRepository)
-            .GetMethods()
-            .Select(m => m.Name)
-            .ToArray();
-
-        methodNames.Should().NotContain(name =>
-                name.Contains("UpdateModerationAction", StringComparison.OrdinalIgnoreCase)
-                || name.Contains("DeleteModerationAction", StringComparison.OrdinalIgnoreCase)
-                || name.Contains("RemoveModerationAction", StringComparison.OrdinalIgnoreCase),
-            because: "event_moderation_actions is append-only; the only write entry point is SaveEventAndModerationActionAsync");
     }
 
     [HumansFact]

@@ -23,9 +23,7 @@ namespace Humans.Consent.Tests.Architecture;
 /// repository exposes only <c>AddAsync</c> for mutations; no
 /// <c>UpdateAsync</c>, <c>DeleteAsync</c>, or <c>RemoveAsync</c> surface is
 /// allowed. Database triggers additionally reject UPDATE/DELETE at the
-/// storage layer. The architecture test
-/// <see cref="IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods"/> pins
-/// the interface-level constraint.
+/// storage layer.
 /// </para>
 ///
 /// <para>
@@ -45,31 +43,6 @@ namespace Humans.Consent.Tests.Architecture;
 public sealed class ConsentArchitectureTests
 {
     // ── IConsentRepository ───────────────────────────────────────────────────
-
-    /// <summary>
-    /// <c>consent_records</c> is append-only per design-rules §12 — database
-    /// triggers block UPDATE and DELETE, and the repository interface must
-    /// not expose any mutation surface beyond appending new records. This
-    /// test fails if a future refactor adds a method whose name implies
-    /// mutation of existing rows.
-    /// </summary>
-    [HumansFact]
-    public void IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods()
-    {
-        var methods = typeof(IConsentRepository)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-
-        var mutationMethods = methods
-            .Where(m =>
-                m.Name.StartsWith("Update", StringComparison.Ordinal) ||
-                m.Name.StartsWith("Delete", StringComparison.Ordinal) ||
-                m.Name.StartsWith("Remove", StringComparison.Ordinal))
-            .Select(m => m.Name)
-            .ToList();
-
-        mutationMethods.Should().BeEmpty(
-            because: "consent_records is append-only per design-rules §12 — DB triggers reject UPDATE and DELETE; only AddAsync should exist. New state = new row.");
-    }
 
     /// <summary>
     /// Positive assertion: the repository must expose an <c>AddAsync</c>

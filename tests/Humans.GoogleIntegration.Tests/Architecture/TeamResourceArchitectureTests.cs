@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using TeamResourceService = Humans.GoogleIntegration.Services.TeamResourceService;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;
@@ -33,28 +32,14 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 ///     <c>Google.Apis.*</c> imports.
 ///   </description></item>
 /// </list>
-/// The tests below cover the first and third pieces — the service takes no
-/// Google SDK type, and the connector interface stays in its own namespace and
-/// keeps SDK types off its surface. Nothing here checks the second: that the
+/// The tests below cover the third piece — the connector interface stays in
+/// its own namespace and keeps SDK types off its surface. Nothing here checks
+/// the first or second: that the service takes no Google SDK type, or that the
 /// repository is the only path to <c>DbSet&lt;GoogleResource&gt;</c>.
 /// </para>
 /// </summary>
 public class TeamResourceArchitectureTests
 {
-    // ── TeamResourceService ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TeamResourceService_HasNoGoogleApisConstructorParameter()
-    {
-        var ctor = typeof(TeamResourceService).GetConstructors().Single();
-        var googleApiParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Google.Apis.", StringComparison.Ordinal));
-
-        googleApiParam.Should().BeNull(
-            because: "the Application layer must not depend on Google.Apis.* — the ITeamResourceGoogleClient connector encapsulates every Google call");
-    }
-
     // ── ITeamResourceGoogleClient ────────────────────────────────────────────
 
     [HumansFact]

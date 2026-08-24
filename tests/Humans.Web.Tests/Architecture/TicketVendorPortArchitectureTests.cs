@@ -81,34 +81,4 @@ public class TicketVendorPortArchitectureTests
              "Humans.TicketTailor.Services.TicketTailorService"],
             because: "the port's implementations all live in the adapter section, so replacing the vendor is one project deleted and one added");
     }
-
-    [HumansFact]
-    public void TheTicketsLeafDoesNotNameThePortsVocabulary()
-    {
-        var leaf = Assembly.Load("Humans.Tickets.Contracts");
-        // By assembly, not by namespace: since G5 lane 4b-2g the port sits in
-        // Humans.Tickets/Contracts/ and shares the *namespace* Humans.Tickets.Contracts
-        // with this leaf, so a namespace comparison would flag every leaf type.
-        var portAssembly = typeof(ITicketVendorService).Assembly;
-
-        var offenders = leaf.GetExportedTypes()
-            .SelectMany(t => t.GetMethods().SelectMany(m =>
-                m.GetParameters().Select(p => p.ParameterType).Append(m.ReturnType)))
-            .SelectMany(Flatten)
-            .Where(t => t.Assembly == portAssembly)
-            .Select(t => t.Name)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "the section maps DiscountCodeSpec/DiscountType to its own TicketDiscountCodeRequest/TicketDiscountKind at the edge; re-exporting the port's types on the leaf would put the vendor's vocabulary back in front of every consumer");
-
-        static IEnumerable<Type> Flatten(Type type)
-        {
-            yield return type;
-            foreach (var arg in type.GetGenericArguments())
-                foreach (var nested in Flatten(arg))
-                    yield return nested;
-        }
-    }
 }

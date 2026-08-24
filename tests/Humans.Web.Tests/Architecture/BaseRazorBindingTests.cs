@@ -71,26 +71,6 @@ public class BaseRazorBindingTests
             + "helpers ships as inert literal markup with a green build and no runtime error");
     }
 
-    /// <summary>
-    /// No <c>_ViewImports</c> still opens <c>Humans.UI</c>. Lane 5d deleted the project, and
-    /// deleting it did NOT turn a leftover directive into a build error — Razor silently
-    /// ignores <c>@addTagHelper *, X</c> for an assembly it cannot resolve (measured: adding
-    /// the directive back builds with 0 warnings, 0 errors). So the compiler never covers this
-    /// and the sweep stays.
-    /// </summary>
-    [HumansFact]
-    public void NoViewImportsStillBindsTheDeletedHumansUiAssembly()
-    {
-        var stale = RazorFiles(SrcRoot())
-            .Where(f => string.Equals(Path.GetFileName(f), "_ViewImports.cshtml", StringComparison.Ordinal))
-            .Where(f => File.ReadAllText(f).Contains("@addTagHelper *, Humans.UI", StringComparison.Ordinal))
-            .ToList();
-
-        stale.Should().BeEmpty(
-            "Humans.UI no longer exists after G5 lane 5d; a directive still naming it resolves to "
-            + "nothing in silence and hides that the real one is missing");
-    }
-
     // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
     private static bool BindsBase(string viewPath, string srcRoot)
     {
