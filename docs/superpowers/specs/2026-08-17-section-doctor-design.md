@@ -82,12 +82,12 @@ under `src/Sections/` and can be reviewed as a unit.
     `last-report.md` are deleted — the runs directory is the log, the newest file is the last
     report, and no generated index replaces them. `plan.md` carries no tick/status column;
     done-ness is derived (health.md date vs. plan anchor) so selection can be recomputed fresh
-    every run. Shared files (`plan.md`, the skill's own files, `debt-ledger.yml`, `memory/`) are
-    written only by replanning runs — rare (~once per cycle) and effectively serialized by the
-    schedule, with **no locking** (Peter's call): a rare overlap costs one hand-resolved
-    conflict. Other runs queue such writes in their run file's `## Sweep queue` for a later
-    replan to apply — sweeps are windowed by anchor commit and never edit the swept run files,
-    leaving `resume` their only post-merge editor. Daily runs no longer write
+    every run. Shared files (`debt-ledger.yml`, `memory/`) are written only in the sweep commit,
+    with **no locking** (Peter's call): a rare overlap costs one hand-resolved conflict. Other
+    runs queue such writes in their run file's `## Sweep queue` for a later run's sweep to apply —
+    idempotence is the only bookkeeping, and a sweep never edits the swept run files, leaving
+    `resume` their only post-merge editor. The skill's own files are on no run's write list at
+    all (decision 24). Daily runs no longer write
     `docs/architecture/maintenance-log.md` at all.
 
 ## Invocation
@@ -198,8 +198,8 @@ stale. Staleness is a judgment call with a guideline: a merged change since the 
 materially reshapes an upcoming scheduled section (move, rename, major feature) justifies
 replanning; routine churn does not. Threshold expected to be tuned by the learning loop.
 
-**Replans are the only writers of shared files** (`plan.md`, the skill's files,
-`debt-ledger.yml`, `memory/`), and they are rare — a full-cycle plan outlasts ~2 weeks of
+**Replans are the only writers of shared files** (`plan.md`, `debt-ledger.yml`, `memory/` — never
+the skill's own files, decision 24), and they are rare — a full-cycle plan outlasts ~2 weeks of
 2×/day runs, invocations are scheduled one at a time, and later runs read the open replan's
 plan from its branch (newest anchor wins) instead of writing their own. There is **no lock**
 (Peter's call, PR #1366); a rare overlap costs one hand-resolved conflict, not corruption.
@@ -303,8 +303,8 @@ PRs cannot conflict with each other or with concurrent doctor runs. No new asses
 - Section projects only (`src/Sections/`); pre-G5 remnants are out of scope.
 - A run touches only: the section's files, its callers where a play requires (e.g. read-split
   migrations), the section's `health.md`, and its own `docs/health/runs/` file. A replanning run
-  additionally touches: `plan.md`, the skill's own files, `debt-ledger.yml`, and `memory/` —
-  never the run files it sweeps. Nothing writes `maintenance-log.md`.
+  additionally touches: `plan.md`, `debt-ledger.yml`, and `memory/` — never the run files it
+  sweeps, and never the skill's own files (decision 24). Nothing writes `maintenance-log.md`.
 
 ## Relationship to existing skills — cutover checklist
 
