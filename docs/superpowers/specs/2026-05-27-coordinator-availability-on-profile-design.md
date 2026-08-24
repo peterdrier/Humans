@@ -184,7 +184,7 @@ TDD on the regression-prone service logic; lighter coverage on wiring.
 - The strip renders only inside the existing `!IsOwnProfile && CanViewShiftSignups` block (same gate as `<vc:shift-signups>`). No own-profile / non-coordinator path renders it. (Covered by the existing `CanViewShiftSignups` computation + tests; the new `<vc:>` tag sits inside that proven gate.)
 
 ### Cross-section compliance
-- By construction: the strip's only cross-section read is `IVolunteerTrackingServiceRead` (full interface never injected outside Shifts), mirroring `ShiftSignupsViewComponent`'s use of `ITeamServiceRead`. No new bespoke architecture test — per the constitution, call-site boundary rules are analyzer territory, not tests; the existing `ProfileArchitectureTests` / `ServiceBoundaryArchitectureTests` must stay green.
+- By construction: the strip's only cross-section read is `IVolunteerTrackingServiceRead` (full interface never injected outside Shifts), mirroring `ShiftSignupsViewComponent`'s use of `ITeamServiceRead`. No new bespoke architecture test — per the constitution, call-site boundary rules are analyzer territory, not tests; the existing `ServiceBoundaryArchitectureTests` must stay green.
 
 ## Out of scope / assumptions
 

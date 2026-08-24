@@ -1,8 +1,5 @@
-using Humans.Auth.Contracts;
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Data;
 using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,73 +30,6 @@ public class UserArchitectureTests
             because: "canonical User data is not IMemoryCache-backed");
         paramTypes.Should().NotContain(typeof(IUserInfoInvalidator),
             because: "cache repair belongs to the CachingUserService decorator, not the storage service");
-    }
-
-    [HumansFact]
-    public void UserService_has_no_serviceprovider_or_higher_level_section_edges()
-    {
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var parameters = ctor.GetParameters();
-        var paramTypes = parameters.Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().NotContain(typeof(IServiceProvider),
-            because: "lazy IServiceProvider escape hatches hide DI cycles");
-        paramTypes.Should().NotContain(typeof(ITeamService));
-        paramTypes.Should().NotContain(typeof(IRoleAssignmentService));
-        // IShiftSignupService / IShiftManagementService are internal to Humans.Shifts
-        // since its G5 move, so a typeof row would not compile. Assert the assembly
-        // instead — strictly stronger: UserService may name Humans.Shifts.Contracts, but
-        // nothing inside the section itself (nobodies-collective/Humans#866).
-        parameters.Should().NotContain(
-            p => p.ParameterType.Assembly.GetName().Name == "Humans.Shifts",
-            because: "Base must reach the Shifts section only through its contracts leaf");
-        paramTypes.Should().NotContain(typeof(IProfilePictureService));
-    }
-
-    [HumansFact]
-    public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
-    {
-        // This test scans METHOD NAMES on the service/repo interfaces — it
-        // enforces "don't bake provider-specific verbs into the surface".
-        // ReconcileOAuthIdentityAsync (issue nobodies-collective/Humans#697)
-        // is the one allowed exception: "OAuth" here is categorical (the
-        // OAuth-callback write channel, distinct from user-driven email
-        // management), not provider-specific. The orthogonal "only
-        // AccountController may CALL ReconcileOAuthIdentityAsync" caller
-        // restriction is the Roslyn analyzer pin tracked in #695 — not in
-        // scope for this test.
-        var allow = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "ReconcileOAuthIdentityAsync",
-        };
-
-        var offenders = new List<string>();
-        var typesToScan = new[]
-        {
-            typeof(IUserEmailService),
-            typeof(UserRepository),
-            typeof(IUserRepository),
-        };
-
-        foreach (var t in typesToScan)
-        {
-            foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
-                if (!allow.Contains(m.Name)
-                    && m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
-                    offenders.Add($"{t.Name}.{m.Name} (method)");
-            }
-
-            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
-                if (p.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
-                    offenders.Add($"{t.Name}.{p.Name} (property)");
-            }
-        }
-
-        offenders.Should().BeEmpty(
-            because: "provider-specific operations are parameterized via a Provider arg. Offenders: {0}",
-            string.Join("; ", offenders));
     }
 
     // ── IUserServiceRead split (memory/architecture/section-read-write-split.md) ──
@@ -143,33 +73,6 @@ public class UserArchitectureTests
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void User_HasNoCrossDomainNavigationProperties()
-    {
-        var userType = typeof(User);
-        var declaredProps = userType
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Select(p => p.Name)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var forbidden = new[]
-        {
-            "Profile",
-            "RoleAssignments",
-            "ConsentRecords",
-            "Applications",
-            "TeamMemberships",
-            "CommunicationPreferences",
-        };
-
-        forbidden.Where(declaredProps.Contains).Should().BeEmpty(
-            because: "cross-section access goes through the owning section service");
-        userType
-            .GetMethod("GetEffectiveEmail", BindingFlags.Public | BindingFlags.Instance)
-            .Should().BeNull(
-                because: "User.Email owns the effective-email computation");
     }
 
     [HumansFact]

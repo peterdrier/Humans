@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Repositories;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
@@ -26,18 +25,5 @@ public class TeamPageArchitectureTests
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void TeamPageService_HasNoRepositoryDependencies()
-    {
-        // Orchestrator-no-repository guard. HUM0026 covers IOrchestrator implementers;
-        // this class is not one.
-        var ctor = typeof(TeamPageService).GetConstructors().Single();
-        var repoParam = ctor.GetParameters()
-            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
-
-        repoParam.Should().BeNull(
-            because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
     }
 }

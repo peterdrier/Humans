@@ -900,10 +900,12 @@ Git Bash.)
        `ViewComponent`. Only `Humans.Events.Contracts`, `Humans.Onboarding.Contracts` and
        `Humans.Users.Contracts` — the three with no path to Base — resolve `Microsoft.NETCore.App`
        alone. **Do not use framework-freeness as a placement oracle.** Decide the split on what
-       cross-section consumers should have to see, and if you want the property enforced, write
-       the test (`AuthArchitectureTests.ContractsLeafNamesNoAspNetType` is the shape: it inspects
-       the emitted assembly's referenced-assembly list). Every placement this oracle previously
-       justified was re-checked in 3c and stands on other grounds; none moved.
+       cross-section consumers should have to see; if you want a leaf's ASP.NET-freeness
+       enforced, that's a universal analyzer keyed off convention, not a per-section test — a
+       test asserting one assembly lacks a reference is forbidden by
+       [`no-tests-for-absences`](../../memory/architecture/no-tests-for-absences.md). Every
+       placement this oracle previously justified was re-checked in 3c and stands on other
+       grounds; none moved.
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
