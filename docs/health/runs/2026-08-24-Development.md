@@ -186,23 +186,20 @@ invented number.
 
 ## Needs Peter
 
-- [ ] 1 — Add pinning tests for the two invariants `Development.md` claims
-  `DevelopmentArchitectureTests` pins but doesn't: (a) constructors of
-  `DevPersonaSeeder`, `DevelopmentCampRoleSeeder`, `DevelopmentDashboardSeeder`
-  and both controllers take no `DbContext` and no `IRepository`; (b) no type
-  in `Humans.Development` binds `IStringLocalizer<T>` for any `T`. Steward
-  today: reflection over the loaded assembly, mirroring Gate's
-  architecture-tests shape. Doc has been corrected in the meantime.
-- [ ] 2 — Decide the section-wide policy on `HUM_USER_DISPLAYNAME` at
-  creation-time sites (`DevPersonaSeeder.cs:104,324`,
-  `DevelopmentDashboardSeeder.cs:258`). Options: (a) leave as-is — these are
-  named-legitimate consumers in the analyzer message and warnings are
-  survivable; (b) add per-call `#pragma warning disable HUM_USER_DISPLAYNAME`
-  with a comment naming the "creation-time fallback" branch; (c) widen the
-  analyzer's allowlist to recognise `new User { … DisplayName = X, BurnerName
-  = X }` as the same value. Cross-cutting — every seeder in the repo faces
-  this.
-- [ ] 3 — Phase 5's sweep transcribes another run's `debt:` text into a
+- [x] 1 — **Declined (Peter, 2026-08-24).** Proposed pinning tests for the two
+  invariants `Development.md` claimed `DevelopmentArchitectureTests` pins but
+  doesn't: (a) no `DbContext`/`IRepository` in the seeder and controller
+  constructors; (b) no `IStringLocalizer<T>` binding anywhere in
+  `Humans.Development`. Both rejected — a test asserting a section has no
+  database tables is absurd. Doc was corrected in this run; nothing further.
+- [x] 2 — **Answered (Peter, 2026-08-24): `HUM_USER_DISPLAYNAME` is being
+  retired.** No section policy needed; the three warnings
+  (`DevPersonaSeeder.cs:104,324`, `DevelopmentDashboardSeeder.cs:258`) go away
+  with the analyzer. The run had asked whether to leave them, `#pragma` them,
+  or widen the allowlist; none applies.
+- [ ] 3 — **Note only (Peter, 2026-08-24): a run never edits the skill, and
+  neither does this note — it stands for later review when Peter edits the
+  skill himself.** Phase 5's sweep transcribes another run's `debt:` text into a
   ledger without re-deriving it, and finding #7 shows that ships a wrong
   diagnosis into `/debt-sweep`'s input. Proposed edit, governing **Phase 5
   (the sweep)**: before writing a swept `debt:` item, verify its central
