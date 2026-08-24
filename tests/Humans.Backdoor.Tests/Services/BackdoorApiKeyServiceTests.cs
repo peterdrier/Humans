@@ -107,6 +107,19 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
+    public async Task Issue_refuses_a_label_longer_than_the_column()
+    {
+        MakeEligible(_owner);
+
+        // The form caps this at 100, but the endpoint is reachable without the form and the
+        // column is varchar(100) — an unvalidated label would be a 500 from the insert.
+        var result = await _sut.IssueAsync(_owner, new string('x', 101), _actor);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [HumansFact]
     public async Task Issue_records_an_audit_entry_naming_the_owner()
     {
         MakeEligible(_owner);

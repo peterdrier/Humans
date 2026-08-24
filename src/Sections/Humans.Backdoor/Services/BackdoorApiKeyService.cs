@@ -27,11 +27,19 @@ internal sealed class BackdoorApiKeyService(
     /// <summary>Leading characters kept in the clear so a human can tell their rows apart.</summary>
     private const int DisplayPrefixLength = 12;
 
+    /// <summary>Matches the <c>varchar(100)</c> Label column, so an over-long label is a
+    /// validation message rather than a Postgres error from the insert.</summary>
+    private const int MaxLabelLength = 100;
+
     public async Task<BackdoorKeyIssueResult> IssueAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(label))
             return BackdoorKeyIssueResult.Failed("A label is required.");
+
+        label = label.Trim();
+        if (label.Length > MaxLabelLength)
+            return BackdoorKeyIssueResult.Failed($"A label must be {MaxLabelLength} characters or fewer.");
 
         if (!await IsEligibleAsync(ownerUserId, ct))
         {
@@ -41,7 +49,7 @@ internal sealed class BackdoorApiKeyService(
                 "Keys can only be issued to a full Admin or a Board member with an active account.");
         }
 
-        var plaintext = await PersistNewKeyAsync(ownerUserId, label.Trim(), actorUserId, ct);
+        var plaintext = await PersistNewKeyAsync(ownerUserId, label, actorUserId, ct);
         return BackdoorKeyIssueResult.Success(plaintext);
     }
 
