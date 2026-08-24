@@ -380,12 +380,16 @@ executed after it. Budget checks are real
    grep -n 'dotnet test' -A4 .github/workflows/*.yml | grep -i 'filter\|dotnet test'
    ```
 
-   `build.yml` runs `--filter "FullyQualifiedName!~Humans.Integration.Tests"`, so every test in
-   that project is excluded on every branch; the only workflow that runs the project at all
-   (`localization-sweep.yml`, cron 1st & 15th) filters to `~LocalizationCoverageSweep`. A test
-   added there executes nowhere — a local run without Docker proves nothing about it either.
-   **Unreachable → say so in the run file and in the commit, and queue it**; never report it as
-   covered.
+   `build.yml` runs `--filter "FullyQualifiedName!~Humans.Integration.Tests"`. **That exclusion is
+   deliberate and permanent** — `Humans.Integration.Tests` is the home of tests that cannot run
+   under CI at all, because they integrate with external things CI does not have
+   (`memory/process/integration-tests-are-not-ci-tests.md`). A test put there runs nowhere on any
+   branch, and that is the correct home only for a test which genuinely needs a live external
+   dependency. A test that must actually run belongs in `tests/Humans.<Section>.Tests/`.
+
+   **Unreachable → move it, or say plainly in the run file and the commit that it does not run**;
+   never report it as covered by CI. Never propose a CI job for that project, and never count its
+   tests as a coverage gap — the rule above settles it.
 4. Non-mechanical changes (deletions beyond plainly-dead code, structural moves) → second-opinion
    reviewer subagent, opus-tier, score-blind, default-reject: "name the concept that improved in
    one sentence." Reject → rework once; second reject → revert, record.
