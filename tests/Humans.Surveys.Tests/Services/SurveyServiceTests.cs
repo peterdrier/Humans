@@ -1852,7 +1852,8 @@ public class SurveyServiceTests
 
         var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("This invitation has already submitted a response.");
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(),
@@ -2001,6 +2002,29 @@ public class SurveyServiceTests
         result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
         await _repo.Received(1).FinalizeCompletionTrackedResponseAsync(
             invitationId, userId, Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_returns_submitted_when_invitation_already_completed()
+    {
+        var survey = SurveyForWizard(out var q1Id, out var q2Id);
+        var invitation = InvitationFor(survey.Id, Guid.NewGuid());
+        invitation.Completed = true;
+        var state = WizardState(survey.Id, invitation.Id);
+        state.Anonymity = ResponseAnonymity.CompletionTracked;
+        state.UserId = invitation.UserId;
+        state.Answers[q1Id.ToString()] = new SurveyWizardAnswer { SelectedOptionValues = ["yes"] };
+        state.CurrentPage = 2;
+        state.Started = true;
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 2, back: false, [TextAns(q2Id, "done")], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+        await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -660,6 +660,10 @@ internal sealed class SurveyService(
     public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
     {
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.AlreadyCompleted)
+        {
+            throw new InvalidOperationException("This invitation has already submitted a response.");
+        }
         if (prepared.MissingRequired.Count > 0)
         {
             throw new InvalidOperationException("Required survey questions are unanswered.");
@@ -689,7 +693,7 @@ internal sealed class SurveyService(
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
             if (invitation?.Completed == true)
             {
-                throw new InvalidOperationException("This invitation has already submitted a response.");
+                return new SubmissionPreparation([], [], [], AlreadyCompleted: true);
             }
         }
 
@@ -708,7 +712,7 @@ internal sealed class SurveyService(
             .ToList();
         var missingRequired = SurveyWizardFlow.RequiredUnanswered(allVisible, answerStates);
 
-        return new SubmissionPreparation(visibleAnswers, questions, missingRequired);
+        return new SubmissionPreparation(visibleAnswers, questions, missingRequired, AlreadyCompleted: false);
     }
 
     private async Task PersistResponseAsync(
@@ -931,6 +935,10 @@ internal sealed class SurveyService(
             state.Culture,
             SurveyWizardFlow.ToAnswerInputs(state.Answers));
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.AlreadyCompleted)
+        {
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
+        }
         if (prepared.MissingRequired.Count > 0)
         {
             ReplaceWizardAnswers(state, prepared.VisibleAnswers);
@@ -1431,7 +1439,8 @@ internal sealed class SurveyService(
     private sealed record SubmissionPreparation(
         IReadOnlyList<SurveyAnswerInput> VisibleAnswers,
         IReadOnlyList<QuestionInput> Questions,
-        IReadOnlyList<Guid> MissingRequired);
+        IReadOnlyList<Guid> MissingRequired,
+        bool AlreadyCompleted);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer
