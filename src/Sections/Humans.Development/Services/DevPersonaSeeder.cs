@@ -70,7 +70,7 @@ internal sealed class DevPersonaSeeder(
 
         var email = $"dev-{slug}@localhost";
 
-        // Legacy personas may exist with old hardcoded GUIDs â€” reuse them.
+        // Legacy personas may exist with old hardcoded GUIDs — reuse them.
         var byEmailUserId = await userEmailService.GetUserIdByVerifiedEmailAsync(email);
         if (byEmailUserId is not null)
         {
@@ -313,7 +313,7 @@ internal sealed class DevPersonaSeeder(
     }
 
     /// <summary>
-    /// Seeds a profileless user â€” just User + UserEmail, no Profile, no teams, no roles.
+    /// Seeds a profileless user — just User + UserEmail, no Profile, no teams, no roles.
     /// Used for testing the Guest dashboard and profileless account flows.
     /// </summary>
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
@@ -684,7 +684,7 @@ internal sealed class DevPersonaSeeder(
         string.Equals(slug, "city-planning", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Deterministic GUID from persona slug â€” stable across restarts for idempotent seeding.
+    /// Deterministic GUID from persona slug — stable across restarts for idempotent seeding.
     /// </summary>
     public static Guid PersonaGuid(string slug)
     {
