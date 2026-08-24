@@ -455,15 +455,40 @@ executed after it. Budget checks are real
    one sentence." Reject → rework once; second reject → revert, record.
 5. **Doc fixes sweep the claim — by literal string, repo-wide**: when a strike removes or
    renames a route, type, method or path, or fixes a claim naming one, grep the whole repo for
-   the exact string and fix or enumerate every hit in the run file. Sweeping only the docs you
-   remember is how `POST /Finance/Creditors/Resync` survived in `authorization-inventory.md`
-   and `controller-architecture-audit.md` after two 2026-08-18 runs each removed it from
-   `Finance.md`.
+   the exact string and fix or enumerate every hit in the run file. Sweep the abbreviations too —
+   clearing every full-name hit and leaving the initialism standing in the same file is the usual
+   miss — and update the freshness trigger in the same pass.
+
+   Once a section doc is open at all, read it **end to end** against the code: fixing its headline
+   stale claim and leaving the smaller ones is not fixing the doc. Rebuild its Cross-Section
+   Dependencies from the `.csproj` project references, never from the prose. Verify any explanation
+   of why an unused member exists before writing it down — "nothing reads these" is often both the
+   true answer and a finding. Distrust "never crosses the boundary": for a section reading a shared
+   read-model the honest form names what is carried, what this code reads, and what the output
+   record exposes.
+
+   **When the doc and the code disagree and the code looks wrong, change neither** — the pair goes
+   to Needs-Peter together. Editing the doc to match a suspected defect cements it.
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
    (`dotnet run` + browser/test-site) before the PR — a green build does not prove a cshtml/JS
    change works.
 7. Commit `doctor(<section>): <what>`. Full `dotnet test Humans.slnx -v quiet` before each push;
-   push every 3–5 items.
+   push every 3–5 items. When a reviewer gate could not be obtained, say so in the commit message
+   as well as the run file — a commit that lands unreviewed should say so where the diff is read.
+
+**File-format rules that only the build catches:**
+
+- **resx/XML edits are structure-aware** (python/XML tooling), never line-based sed. Neutral resx
+  is one entry per line but the language variants are multi-line, so sed corrupts them silently.
+- **Full-build before `dotnet ef migrations add` or `remove`.** With `--no-build` they read
+  whatever assembly the startup project last built, which generates empty migrations and lets
+  `remove --force` walk back an already-merged one. Recover a mis-removal with `git checkout` of
+  the Migrations folder, never by hand-editing.
+- **With no compiler, a C# doc-comment edit is safe only** if it adds no `<see cref>` and the run
+  verifies tag balance by parsing each `///` block as XML. CS1591 is suppressed, CS1574 is not,
+  and `TreatWarningsAsErrors` is on.
+- **A comment-only `.cs` edit is not score-neutral** — a doc comment on production code is
+  production LOC. Never call such a change "docs only".
 
 **Skip-and-queue classes** (never block the loop): schema/EF changes of any kind, public/interface
 surface *additions*, privilege changes, **mutating a GitHub issue** (closing, editing, relabelling
@@ -600,8 +625,11 @@ Phase 7's own PR-number backfill commit.
 **Self-review the run's own new prose first.** Every claim this run wrote about what a page
 shows — run file, PR body, section doc, spec, comment — is traced back to the `.cshtml` that
 renders it, not to the DTO that feeds it. A payload carrying a field is not a page displaying it.
-Eight of Cantina's review findings were against text that run had just written, and a reviewer
-here is not free.
+A reviewer here is not free, and text the run wrote this session is the text most likely to be wrong.
+
+**Run `dotnet format whitespace Humans.slnx --verify-no-changes` before pushing, not after CI says
+so.** A green build is not the formatting gate — collection-expression line breaks pass the build
+and the full test run, and fail code-quality.
 
 ```bash
 git push -u origin section-doctor/$TS
@@ -736,38 +764,3 @@ undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
   Rows are added and removed only at Peter's direction; a run that wants one proposes it in its
   Needs-Peter block.
 
-## Lessons — pending placement
-
-Not a log and not a destination: **no run writes this section.** These are rules that have not yet
-been folded into the phase that governs them; each one moves there, or is dropped, when Peter next
-edits this file. Nothing gets appended here.
-
-- **Phase 4** — resx/XML edits must be structure-aware (python/XML tooling), never line-based sed.
-  Neutral resx is one entry per line but the language variants are multi-line, so sed corrupts them
-  and only the build catches it.
-- **Phase 4** — full-build before `dotnet ef migrations add` or `remove`. With `--no-build` they
-  read whatever assembly the startup project last built, which generates empty migrations and lets
-  `remove --force` walk back an already-merged one. Recover a mis-removal with `git checkout` of
-  the Migrations folder, never by hand-editing.
-- **Phase 4** — with no compiler, C# doc-comment edits are safe only if they add no `<see cref>`
-  and the run verifies tag balance by parsing each `///` block as XML. CS1591 is suppressed but
-  CS1574 is not, and `TreatWarningsAsErrors` is on.
-- **Phase 4** — fixing a doc's headline stale claim is not fixing the doc. When a section doc is
-  opened at all, read it end to end against the code and fix every claim, not the worst one.
-- **Phase 4** — rebuild a section doc's Cross-Section Dependencies from its `.csproj` project
-  references, not from prose.
-- **Phase 4** — sweep a renamed concept by its abbreviations too, and update the freshness trigger
-  in the same pass.
-- **Phase 4** — when a doc and the code disagree and the code looks wrong, change neither; the pair
-  goes to Needs-Peter together. Fixing the doc to match a suspected defect cements it.
-- **Phase 4** — when a doc explains why an unused member exists, verify the explanation before
-  writing it. "Nothing reads these" is often both the correct answer and a finding.
-- **Phase 4** — "never crosses the boundary" is almost always an overclaim for a section reading a
-  shared read-model. The honest form names what is carried, what this code reads, and what the
-  output record exposes.
-- **Phase 4/5** — a comment-only edit to a `.cs` file is not score-neutral: a doc comment on
-  production code is production LOC. A run that calls such a change "docs only" misreports it.
-- **Phase 7** — run `dotnet format whitespace Humans.slnx --verify-no-changes` before the PR, not
-  after CI says so. A green build is not the formatting gate.
-- **Phase 4** — when a reviewer gate cannot be obtained, say so in the commit message as well as
-  the run file. A commit that lands unreviewed should say so where the diff is read.
