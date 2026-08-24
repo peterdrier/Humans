@@ -1,9 +1,9 @@
 ---
 name: no-tests-for-absences
-description: never write a test asserting a section does NOT have something — no repository, no DbContext, no Hangfire dependency, no public type beyond N, no nav property, no ctor parameter; an absence has no behaviour to regress, the list of things a section lacks is unbounded, and the test can only fail on the deliberate edit that was going to update it anyway
+description: never write a per-section test asserting a section does NOT have something — no repository, no DbContext, no Hangfire dependency, no public type beyond N, no nav property, no ctor parameter; an absence has no behaviour to regress, the list of things a section lacks is unbounded, and the test can only fail on the deliberate edit that was going to update it anyway. Repo-wide universal enforcers are exempt; an analyzer beats a test wherever one can express the rule
 ---
 
-Never write a test whose assertion is that a section *lacks* something. The category is
+Never write a per-section test whose assertion is that a section *lacks* something. The category is
 irrelevant — repository, `DbContext`, Hangfire, `UserManager`, `IServiceProvider`, a nav
 property, a ctor parameter, a public type, an assembly reference, a whole interceptor. If
 the section doesn't have it, it doesn't have it. That's the whole story.
@@ -22,6 +22,12 @@ red when someone deliberately edits that exact site — adds the ctor parameter,
 method, marks the type public. That person is already looking at the thing and updates the
 test in the same commit. The test never warns anyone; it just adds an edit.
 
+*And some are testing for the impossible.* Since G5 each section is its own assembly with its
+own `DbContext`, and repositories and entities are internal. A cross-section navigation
+property or an out-of-section repository consumer cannot compile, so the seven per-section
+nav-property tests and the seven `I*Repository_HasNoUnexpectedConsumers` were pinning a
+historical hazard the structure had already closed (Peter, 2026-08-24).
+
 **The trap that generates these:** a section doc claims an architecture test enforces
 something and the test doesn't exist. The doc is wrong. Delete the false claim — do not
 write the test to make the sentence true. A doc sentence is not a specification. This
@@ -33,12 +39,22 @@ the write).
 - About to assert `BeEmpty()` / `BeNull()` / `NotContain()` / `BeEquivalentTo([…])` over what
   a section's types, constructors, dependencies, entities or exports *are not*? Stop.
 - Doc claims a pinning test that isn't there? Fix the doc, not the test file.
-- Genuinely need it enforced? One universal analyzer keyed off convention, never a
-  per-section test — [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md),
-  and Peter's hard rule that analyzers beat tests for call-site rules.
+- Genuinely need it enforced? Enforce it **once, universally**, keyed off convention — never a
+  per-section test. An analyzer whenever one can express the rule (Peter's hard rule: analyzers
+  beat tests for call-site rules, because they give in-editor feedback and a source location);
+  a single repo-wide reflection test only where an analyzer can't reach.
+  See [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md).
 - Deleting one already in the tree: retire it with a note saying why the premise died, the
   way `AuditLogArchitectureTests` retired `SectionReferencesNoVerticalSection` — "re-listing
   the leaves would restate whatever the csproj happens to say, which is not an invariant."
+
+**Universal enforcers are exempt.** This rule is about *per-section* tests. The sanctioned
+repo-wide reflection tests in `tests/Humans.Web.Tests/Architecture/Rules/` — e.g.
+`ApplicationServicesTakeNoDbContextRule`, which sweeps every section's services — assert an
+absence and stay. The reasoning inverts at that scope: one test covers 40 sections' worth of
+authors who have never seen it, so it fires on someone who wasn't thinking about the rule.
+Never delete one of those under this atom; the most it justifies is asking whether an
+analyzer could replace it.
 
 **Not this rule** — these assert something the code actively does, and stay:
 - A query returning no rows for an input that should match nothing.

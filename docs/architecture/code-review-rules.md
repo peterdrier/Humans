@@ -108,7 +108,7 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 
 ## Tests Asserting an Absence
 
-- **Reject any new test asserting a section does NOT have something** — no repository, no `DbContext`, no ctor parameter of some type, no nav property, no public type beyond a named list, no assembly reference. Whatever the category: the list of things a section lacks is unbounded, there is no behaviour to regress, and the test can only fail on the deliberate edit that would update it in the same commit. Containment of something the section really *has* (a vendor SDK confined to one layer) is a different thing and is fine. `memory/architecture/no-tests-for-absences.md`.
+- **Reject any new per-section test asserting a section does NOT have something** — no repository, no `DbContext`, no ctor parameter of some type, no nav property, no public type beyond a named list, no assembly reference. Whatever the category: the list of things a section lacks is unbounded, there is no behaviour to regress, and the test can only fail on the deliberate edit that would update it in the same commit. Two things are NOT this: containment of something the section really *has* (a vendor SDK confined to one layer), and the repo-wide enforcers in `tests/Humans.Web.Tests/Architecture/Rules/` (exempt — though an analyzer is preferred wherever one can express the rule). `memory/architecture/no-tests-for-absences.md`.
 
 ## Test Attribute Policy
 
