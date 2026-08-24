@@ -530,21 +530,23 @@ worktree/PR, three bookkeeping writes:
   run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, the ranked
   findings list, worked, skipped + why (including sections passed over as blocked), retro
   (Phase 6), `## Needs Peter` checklist — **`- [ ]` unanswered, `- [x]` answered and applied,
-  one item per line** — holding Phase 4's skipped classes plus 3d's open-issue recommendations,
-  each `<finding #> — <the question, in a phrase>` — and `## Sweep queue` (`lesson:` /
+  one item per line** — holding Phase 4's skipped classes, 3d's open-issue recommendations and
+  Phase 6's proposed edits, each `<finding #> — <the question, in a phrase>` — and `## Sweep queue` (`lesson:` /
   `debt:` / `memory:` items as plain bullets — a later run's sweep applies them after this run
   merges; nothing ever ticks them).
 
-  **One prose description per finding, in the ranked list, and nowhere else.** The assessment
-  summary, `## Skipped`, `## Needs Peter` and the PR body cite a finding by number and add
-  nothing a later ruling could invalidate. A Needs-Peter ruling is a state change to a finding —
-  "not a defect", "done", "filed", "deferred" — and it lands on the ranked entry, that one place,
-  or the copies drift.
+  **One prose description per finding, where it was first written, and nowhere else.** For a 3e
+  finding that is the ranked list; for one raised later — a Phase 4 skip, a Phase 6 lesson, a
+  Phase 7 measurement gap — the block that raised it. Every other mention (assessment summary,
+  `## Skipped`, `## Needs Peter`, the PR body) cites the number and adds nothing a later ruling
+  could invalidate. A Needs-Peter ruling is a state change to a finding — "not a defect", "done",
+  "filed", "deferred" — and it lands on that one description, or the copies drift.
 
-  **Finding numbers are assigned once, at 3e, and never change** — not on a reorder, not when an
-  item is struck, not when a ruling abolishes it. Key Needs-Peter items and PR-body references to
-  the finding number, never to queue position: the two diverge the moment either list is
-  reordered, and a position-matched tick marks the wrong item.
+  **A finding number is assigned once and never changes** — not on a reorder, not when an item is
+  struck, not when a ruling abolishes it. 3e numbers the ranked list; a finding raised after 3e
+  takes the next unused number as it is written, and no number is ever reused. Key Needs-Peter
+  items and PR-body references to the finding number, never to queue position: the two diverge the
+  moment either list is reordered, and a position-matched tick marks the wrong item.
 
   Plus two blocks that make the Purpose's tests answerable rather than assertable — the size
   test is answered by the PR's own diff stats:
@@ -610,7 +612,8 @@ either the section moved or the earlier target was wrong, and which one it was i
 Then:
 
 - **Mechanical lessons** → this run's `## Sweep queue` as `lesson:` one-liners, each **naming the
-  phase it governs**, and carried into `## Needs Peter` as a proposed edit. Recording a lesson is
+  phase it governs**, and carried into `## Needs Peter` as a proposed edit under its own finding
+  number (Phase 5). Recording a lesson is
   the run's job; applying it to this skill is Peter's — never edit the skill's files directly,
   mid-run or in a sweep. A lesson that names no phase is a war story: leave it in the run file,
   which is where a run's history belongs.
