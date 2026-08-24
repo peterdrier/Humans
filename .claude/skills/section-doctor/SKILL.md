@@ -477,9 +477,9 @@ worktree/PR, three bookkeeping writes:
   **One prose description per finding, in the ranked list, and nowhere else.** The assessment
   summary, `## Skipped`, `## Needs Peter` and the PR body cite a finding by number and add
   nothing a later ruling could invalidate. A Needs-Peter ruling is a state change to a finding —
-  "not a defect", "done", "filed", "deferred" — and it has to land in exactly one place or the
-  copies drift (peterdrier/Humans#1477: five consecutive passes over one queue, each ticking
-  correctly and each leaving four restatements stale).
+  "not a defect", "done", "filed", "deferred" — and it lands on the ranked entry, that one place,
+  or the copies drift (peterdrier/Humans#1477: five consecutive passes over one queue, each
+  ticking correctly and each leaving four restatements stale).
 
   **Finding numbers are assigned once, at 3e, and never change** — not on a reorder, not when an
   item is struck, not when a ruling abolishes it. Key Needs-Peter items and PR-body references to
@@ -657,7 +657,10 @@ it was filed under, the method or type name, the abolished case) across **`.cs` 
 `.md`**. The grep is a completeness gate, not a licence to edit: only a ruling that makes the
 claim false — the case abolished, the method gone, the defect fixed — sends you to the hits, and
 then every hit is corrected, not just the one that prompted the finding. A `keep`, `not a defect`
-or `deferred` leaves the text standing and only ticks the item. Doc comments are documentation
+or `deferred` leaves those hits standing. **Every ruling lands on the finding either way** — the
+ranked entry records what Peter decided, so a rejected finding stops asserting a defect and a
+deferred one says it is deferred. That is the state change; the checklist only ticks.
+Doc comments are documentation
 and drift exactly like it; counting the copies from memory always undercounts, and one grep for
 `AnonymizeProfileInternalAsync` found in a single command the copy five careful passes had missed.
 Then tick the item — `- [ ]` becomes `- [x]`:

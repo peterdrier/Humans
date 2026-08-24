@@ -410,8 +410,9 @@ and a `## Size` block whose subject was the diff containing it.
     finding's distinguishing terms across `.cs` as well as `.md` — doc comments are documentation
     and drift like it, and counting copies from memory always undercounts. The grep is a
     completeness gate, not a licence to edit: only a ruling that makes the claim false sends the
-    run to the hits; a `keep`, `not a defect` or `deferred` ticks the item and leaves the text
-    standing. A review bot's finding
+    run to the hits; a `keep`, `not a defect` or `deferred` leaves them standing. Either way the
+    ruling is recorded on the ranked finding — a rejected finding stops asserting a defect — and
+    the checklist only ticks. A review bot's finding
     is a sample, not an instance: grep for the class of claim before fixing the reported line.
     Before the PR, every new UI claim is traced to the view that renders it, not the DTO that
     feeds it. Environment caveats are dated per-session lines, never standing banners — "this run
