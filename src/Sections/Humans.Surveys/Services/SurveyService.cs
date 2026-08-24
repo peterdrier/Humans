@@ -924,7 +924,7 @@ internal sealed class SurveyService(
         var submission = new SurveySubmission(
             state.SurveyId,
             state.InvitationId,
-            state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
+            state.Anonymity == ResponseAnonymity.Anonymous ? null : state.UserId,
             state.DraftResponseId,
             state.Anonymity,
             state.InputMethod,
