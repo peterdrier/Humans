@@ -732,9 +732,10 @@ it was filed under, the method or type name, the abolished case) across **`.cs` 
 `.md`**. The grep is a completeness gate, not a licence to edit: only a ruling that makes the
 claim false — the case abolished, the method gone, the defect fixed — sends you to the hits, and
 then every hit is corrected, not just the one that prompted the finding. A `keep`, `not a defect`
-or `deferred` leaves those hits standing. **Every ruling lands on the finding either way** — the
-ranked entry records what Peter decided, so a rejected finding stops asserting a defect and a
-deferred one says it is deferred. That is the state change; the checklist only ticks. Doc comments
+or `deferred` leaves those hits standing. **Every ruling lands on the finding's one description
+either way** — the ranked entry for a 3e finding, the block that raised it for one numbered later
+(Phase 5) — so a rejected finding stops asserting a defect and a deferred one says it is deferred.
+That is the state change; the checklist only ticks. Doc comments
 are documentation and drift exactly like it, and counting the copies from memory always
 undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
 

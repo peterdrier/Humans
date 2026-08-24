@@ -397,9 +397,9 @@ and a `## Size` block whose subject was the diff containing it.
     the next substantive commit, or are skipped. This is the item that bounds the cost of every
     other mistake in the list — each push is a CI run, a preview deploy, a surface report and a
     review.
-22. **One prose description per finding, at a stable number.** The ranked findings list is the
-    single source of truth; the assessment summary, `## Skipped`, `## Needs Peter` and the PR body
-    cite the number. Numbers are assigned once and survive reordering, striking and abolition —
+22. **One prose description per finding, at a stable number.** That description lives where the
+    finding was first written — the ranked list, or the block that raised it (amendment 25); the
+    assessment summary, `## Skipped`, `## Needs Peter` and the PR body cite the number. Numbers are assigned once and survive reordering, striking and abolition —
     Needs-Peter items key to the finding number, never to queue position, because a
     position-matched tick marks the wrong item as soon as either list is reordered. `- [ ]` /
     `- [x]` is the checkbox format, written into the skill so `resume` cannot invent one.
@@ -410,8 +410,9 @@ and a `## Size` block whose subject was the diff containing it.
     and drift like it, and counting copies from memory always undercounts. The grep is a
     completeness gate, not a licence to edit: only a ruling that makes the claim false sends the
     run to the hits; a `keep`, `not a defect` or `deferred` leaves them standing. Either way the
-    ruling is recorded on the ranked finding — a rejected finding stops asserting a defect — and
-    the checklist only ticks. A review bot's finding
+    ruling is recorded on the finding's one description — the ranked entry, or the block that
+    raised it for a finding numbered after 3e (amendment 25) — so a rejected finding stops
+    asserting a defect, and the checklist only ticks. A review bot's finding
     is a sample, not an instance: grep for the class of claim before fixing the reported line.
     Before the PR, every new UI claim is traced to the view that renders it, not the DTO that
     feeds it. Environment caveats are dated per-session lines, never standing banners — "this run
