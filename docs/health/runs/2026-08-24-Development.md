@@ -6,7 +6,7 @@
 - Anchor commit: `origin/main` @ `28f62ad8`
 - Budget: 2.5h
 - Branch: `section-doctor/2026-08-24T071255Z`
-- PR: pending
+- PR: peterdrier/Humans#1480
 - 2026-08-24 07:12Z session: dotnet SDK 10.0.400, reforge and dotnet-ef available.
   Stryker not installed — Tests-thread mutation-score half skipped with reason.
 
@@ -98,18 +98,20 @@ Every path in the 3a inventory has a disposition here:
 
 ## Threads
 
-| Thread | How | Model | Findings | Notes |
-|---|---|---|---|---|
-| Spine + Shape + Behavior & bugs (3a–3c, 3e) | main | opus-5 | #1,#2,#3,#4,#6 | shared cost (Phase 3 marked once) |
-| Freshness | main (self-run) | opus-5 | #1,#2,#5 | dispatched-thread degrade path: sub-agent skipped in unattended run to keep the strike loop moving |
-| Conformance | inspected in-band | — | none | `section-conformance.yml` rows (file-layout, resource-key-prefix, table-prefix) all pass — no resx, no tables, canonical layer folders |
-| Tests | main (self-run) | opus-5 | (#2, #6) | Stryker skipped — not installed in this environment; invariant matrix walked in-band — the two missing pinning tests surfaced as #2 |
-| Prose & surface | main (self-run) | opus-5 | none | 3 view files reviewed in-band; no dead resx (no resx); nav discoverability fine (both admin-nav items point at existing actions) |
-| History | main (self-run) | opus-5 | none | `Development.md` history block ("audit's G1 gap #1", "gap #4 known deviation") passes the cut test — every live constraint |
-| Comments | main (self-run) | opus-5 | #3 | Comment-cleanup mojibake only; rest survive the cut test |
-| Inbox | not run | — | — | Environment lacks `gh` CLI; the GitHub MCP tools listed 0 open PRs but no per-section open-issue call was made — deferred to next run |
+| Thread | How | Model | Findings | Cost | Notes |
+|---|---|---|---|---|---|
+| Spine + Shape + Behavior & bugs (3a–3c, 3e) | main | opus-5 | #1,#2,#3,#4,#6 | shared ($6.42, phase3) | Phase 3 marked once — one bucket shared with the reading threads below |
+| Freshness | main (self-run) | opus-5 | #1,#2,#5 | shared | dispatched-thread degrade path: sub-agent skipped in unattended run to keep the strike loop moving |
+| Conformance | inspected in-band | — | none | shared | `section-conformance.yml` rows (file-layout, resource-key-prefix, table-prefix) all pass — no resx, no tables, canonical layer folders |
+| Tests | main (self-run) | opus-5 | (#2, #6) | shared | Stryker skipped — not installed in this environment; invariant matrix walked in-band — the two missing pinning tests surfaced as #2 |
+| Prose & surface | main (self-run) | opus-5 | none | shared | 3 view files reviewed in-band; no dead resx (no resx); nav discoverability fine (both admin-nav items point at existing actions) |
+| History | main (self-run) | opus-5 | none | shared | `Development.md` history block ("audit's G1 gap #1", "gap #4 known deviation") passes the cut test — every live constraint |
+| Comments | main (self-run) | opus-5 | #3 | shared | Comment-cleanup mojibake only; rest survive the cut test |
+| Inbox | not run | — | — | — | Environment lacks `gh` CLI; the GitHub MCP tools listed 0 open PRs but no per-section open-issue call was made — deferred to next run |
 
-Costs land in the `## Cost` block at Phase 7.
+The `assess` row of `## Cost` is the shared bucket for every main-thread reading
+lens; per the skill, splitting the turn-by-turn cost per lens would be an
+invented number.
 
 ## Worked
 
@@ -180,5 +182,23 @@ Costs land in the `## Cost` block at Phase 7.
 
 ## Cost
 
-Filled in at PR-creation time — see the PR body's `## Cost` block for the
-authoritative figure; that same table is backfilled here in the same commit.
+| Component | Phase | Model | Fresh in | Out | Cache write | Cache read | ~$ |
+|---|---|---|---|---|---|---|---|
+| worktree | phase1 | opus | 2 | 499 | 994 | 190,420 | 0.11 |
+| select section | phase2 | opus | 16 | 1,384 | 3,032 | 577,897 | 0.34 |
+| assess | phase3 | opus | 56 | 44,707 | 134,970 | 8,915,963 | 6.42 |
+| strike: 1 mojibake em-dash cleanup | phase4 | opus | 11 | 3,854 | 6,041 | 2,206,406 | 1.24 |
+| strike: 2 Contracts README service names | phase4 | opus | 5 | 2,117 | 3,557 | 1,021,604 | 0.59 |
+| strike: 3 Development.md test-claim corrections | phase4 | opus | 6 | 2,275 | 3,554 | 1,243,454 | 0.70 |
+| strike: 4 dedup PascalToKebab | phase4 | opus | 23 | 14,654 | 46,913 | 5,099,859 | 3.21 |
+| bookkeeping | phase5 | opus | 8 | 5,139 | 11,740 | 1,906,612 | 1.16 |
+| PR | phase7 | opus | 8 | 2,170 | 6,508 | 1,978,411 | 1.08 |
+| **total** | | | 135 | 76,799 | 217,309 | 23,140,626 | **14.85** |
+
+API-equivalent $, list rates; run under subscription quota. Measured
+Phase 1 to PR creation; PR create/backfill and Phase 8 excluded.
+
+Well below the 2026-08-23 Onboarding baseline
+(nobodies-collective/Humans#1465: $93.30 / 746 calls / 184k median
+context); the section is small and the assessment mostly one long
+main-thread read, so nothing conclusive about the dispatch question.

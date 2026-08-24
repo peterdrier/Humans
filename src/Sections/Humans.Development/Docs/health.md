@@ -135,4 +135,4 @@ recorded on 2026-08-24: `score=273, loc=1568`.
 
 | Date | Branch | PR | Reforge (loc) | Notes |
 |---|---|---|---|---|
-| 2026-08-24 | `section-doctor/2026-08-24T071255Z` | pending | 273 (1568) | First doctor pass — target derived; Contracts README + Development.md doc drift fixed; mojibake em-dashes in DevPersonaSeeder.cs cleaned; `PascalToKebab` deduped across DevLoginController/DevPersonaSeeder. |
+| 2026-08-24 | `section-doctor/2026-08-24T071255Z` | peterdrier/Humans#1480 | 273 (1568) | First doctor pass — target derived; Contracts README + Development.md doc drift fixed; mojibake em-dashes in DevPersonaSeeder.cs cleaned; `PascalToKebab` deduped across DevLoginController/DevPersonaSeeder. |
