@@ -183,8 +183,11 @@ build also serves Phase 3/4), runs `reforge surface-score --format compact`, and
 **median** of the ranked never-doctored tier — middle-out: the process proves itself on
 mid-sized sections; the biggest and smallest get their turn once the middle has been worked.
 It prints `SECTION:` / `TIER:` / `RATIONALE:` plus the full ranked table for the run file, and
-falls back to a LOC ranking (flagged in its output) when reforge is unusable. Act on its
-verdicts — never re-derive the maths in-band:
+an **`UPCOMING:`** line — the next 4 sections a repeat of this maths would pick, assuming each
+pick blocks itself and nothing else changes. That forecast is purely informational (it goes in
+the PR body, Phase 7): it is not stored, no later run reads or honours it, and tomorrow's run
+recomputing differently is expected. The script falls back to a LOC ranking (flagged in its
+output) when reforge is unusable. Act on its verdicts — never re-derive the maths in-band:
 
 - **`ALL BLOCKED`** (exit 3): report the open PRs and stop. This is the one path that removes the
   worktree immediately (Phase 9) — nothing has been written yet, so it is clean and
@@ -644,7 +647,10 @@ git push -u origin section-doctor/$TS
 gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <headline>" --body ...
 ```
 
-Body: assessment summary, worked/skipped bullets, a **`## Cost`** table (below), and a
+Body: assessment summary, worked/skipped bullets, a one-line **next-up forecast** from Phase 2's
+`UPCOMING:` output — "Next 5 (non-binding): 1. <today's section> (this run) 2. … 5. …; each run
+recomputes live, so tomorrow may differ" — omitted when the selector was skipped (`--section`) or
+returned `JUDGMENT REQUIRED`, a **`## Cost`** table (below), and a
 **`## Needs Peter`** block — terse, numbered, answerable in a word or two, **citing findings by
 number rather than re-describing them** (Phase 5). **The PR body is the authoritative queue while
 the PR is open** (resume reads it from there); the run file's copy carries it forward after merge.
