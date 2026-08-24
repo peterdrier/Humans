@@ -163,28 +163,27 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ToggleFavouriteAsync_DayToggle_RemovesWholeEventRow()
+    public async Task RemoveFavouriteAsync_SpecificDay_AlsoRemovesWholeEventRow()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         await _db.EventFavourites.AddAsync(BuildFavourite(userId, eventId), Xunit.TestContext.Current.CancellationToken);
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var nowFavourited = await _repo.ToggleFavouriteAsync(
-            userId, eventId, BuildFavourite(userId, eventId, dayOffset: 2), Xunit.TestContext.Current.CancellationToken);
+        var removed = await _repo.RemoveFavouriteAsync(userId, eventId, dayOffset: 2, Xunit.TestContext.Current.CancellationToken);
 
-        nowFavourited.Should().BeFalse();
+        removed.Should().BeTrue();
         (await _repo.GetFavouriteEventIdsAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task ToggleFavouriteAsync_DifferentDays_CoexistAsSeparateRows()
+    public async Task AddFavouriteIfAbsentAsync_DifferentDays_CoexistAsSeparateRows()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        (await _repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset: 2), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
-        (await _repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset: 4), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset: 2), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset: 4), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var favourites = await _repo.GetFavouritesForContributorAsync(userId, Xunit.TestContext.Current.CancellationToken);
         favourites.Select(f => f.DayOffset).Should().BeEquivalentTo([2, 4]);
