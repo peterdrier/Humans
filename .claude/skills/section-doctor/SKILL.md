@@ -389,15 +389,18 @@ Cap the pass at the section's open issues — recommendations are per-issue one-
 backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
 `## Threads` like every other thread; a review that did not happen says so, with why.
 
-**Prove reach first; suspend only the half you cannot reach.** Issues live on **both**
+**Prove reach per repo; suspend only the half you cannot reach.** Issues live on **both**
 `nobodies-collective/Humans` and `peterdrier/Humans` — most of them upstream. A cloud run's
-scope is usually the fork alone, and `search_issues` against the upstream repo then returns 0
+scope is often the fork alone, and an issue search against an out-of-scope repo returns 0
 **silently** rather than erroring, which is indistinguishable from a clean backlog. So before
-any issue work, `issue_read` one known-open `nobodies-collective/Humans` issue. On failure,
-suspend the upstream half and say so — the fork's own open issues stay reachable and are still
-reviewed, as are the ledger and in-app halves — with `## Threads` recording `Inbox: partial —
-upstream issues unreachable (scope: peterdrier/Humans)`. No run reports an empty or complete
-issue review it could not perform.
+any issue work, probe **each** repo independently — read one known-open issue from it, with
+`gh issue view --repo <owner>/Humans <n>` or the GitHub MCP `issue_read` where `gh` is absent
+(Phase 2's rule). A probe that fails for **any** reason — scope, auth, network, rate limit,
+missing tool — suspends that repo's half; don't reason about the cause, and don't infer one
+repo's reach from the other's. Suspending both is correct when both fail. `## Threads` then
+records what was actually covered, e.g. `Inbox: partial — upstream issues unreachable (scope:
+peterdrier/Humans)`. The ledger and in-app halves are unaffected. No run reports an empty or
+complete issue review it could not perform.
 
 ### 3e. Merge, rank, and check independence
 
