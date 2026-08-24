@@ -51,10 +51,11 @@ between `DevLoginController` and `DevPersonaSeeder` (finding #4).
    `DevPersonaSeeder.PascalToKebab` (10 lines). Same assembly, same
    behaviour. — **dedup** (code)
 5. `Development.md` Cross-Section Dependencies table lists `IHumanLifecycleService`
-   under a separate "Human Lifecycle" heading — it lives in Users. Minor
-   misrouting of the row heading; keep the entry, note in Users' row.
-   Deferred to the next run — not the shape of this run. — **freshness**
-   (deferred, non-blocking)
+   under a separate "Human Lifecycle" heading — it lives in
+   `Humans.Users.Contracts`. Row heading misrouted. — **freshness**
+   *(struck in the post-push round, folded into finding #8's table rebuild;
+   the "Human Lifecycle" row is gone and the entry sits in the Users row.
+   No other doc in the repo carried that row heading.)*
 6. Three `HUM_USER_DISPLAYNAME` analyzer warnings in section code
    (`DevPersonaSeeder.cs:104,324`, `DevelopmentDashboardSeeder.cs:258`) at
    `new User { DisplayName = display, BurnerName = display }` — creation-time
@@ -62,6 +63,25 @@ between `DevLoginController` and `DevPersonaSeeder` (finding #4).
    consumer, but the warning still fires. Cross-section decision (whether
    creation-time uses should be suppressed section-wide or the analyzer's
    allowlist should recognise the pattern). — **Needs Peter #2**
+
+7. **The sweep carried a wrong diagnosis.** This run's Phase 5 sweep copied
+   Onboarding's "four misbound resource keys in Users" item into the new
+   `src/Sections/Humans.Users/Docs/debt.yml` verbatim, without re-verifying
+   it. Codex refuted it on the PR and is right: none of the four keys exists
+   in any of the repo's 156 `.resx` files, and `Admin_SortBy` already reads
+   through `SharedLocalizer`, so nothing is misbound — the entries are simply
+   missing. The user-visible symptom (raw key name rendered in all six
+   languages) is real; the cause and therefore the fix were both wrong, and
+   `/debt-sweep` would have been pointed at a no-op rebind. Entry rewritten.
+   — **freshness** (struck, post-push round)
+8. `Contracts/README.md` names `Docs/Development.md`'s Cross-Section
+   Dependencies table authoritative, but that table omitted
+   `SignInManager<User>` and `IUserServiceRead` — both real constructor
+   dependencies (`DevLoginController` and `DevSeedController` respectively).
+   Declaring an incomplete table authoritative preserves exactly the drift
+   Strike 2 was meant to remove. Raised by Codex on the PR; table rebuilt
+   from the constructors so the two catalogues are now the same set.
+   — **freshness** (struck, post-push round)
 
 Independence check: pass — #1/#2/#5 came from cross-checking the target's
 "stated behavior" against the code and test tree, #3 from reading the source,
@@ -124,13 +144,15 @@ invented number.
   missing pinning tests are queued as Needs Peter #1.
 - **Strike 4 (dedup):** Promote `DevPersonaSeeder.PascalToKebab` to
   `internal static` and delete `DevLoginController.PascalToKebab`.
+- **Strike 5 (post-push, findings #7 + #5 + #8):** Rewrite the swept Users
+  debt entry with the verified diagnosis (missing resx entries, not
+  misbindings) and rebuild `Development.md`'s Cross-Section Dependencies
+  table from the constructors — `SignInManager<User>`, `IUserServiceRead`
+  and `IHumanLifecycleService` into the Users row, the misrouted "Human
+  Lifecycle" row removed. The two catalogues are now the same set.
 
 ## Skipped
 
-- **Finding #5** (Users vs Human Lifecycle row heading in Cross-Section
-  Dependencies) — non-blocking cosmetic; deferred to the next run so it lands
-  with any other Development.md revision rather than churning the doc twice
-  in a week.
 - **Finding #6** (`HUM_USER_DISPLAYNAME` at creation-time sites) — Needs
   Peter #2. Suppressing three warnings in section code is a policy call, and
   the analyzer already treats these as a "legitimate consumer" per its
@@ -148,9 +170,17 @@ invented number.
 - **Wasted motion:** none material. The freshness lane's stale-service
   finding sat next to the doc-vs-tests finding, which is exactly the "read
   the doc end-to-end once the section doc is open" rule paying off.
-- **Assessment missed:** nothing revealed only in striking. The mojibake was
-  visible on first read of `DevPersonaSeeder.cs` (cheap to catch, cheap to
-  fix) — no reason a first pass wouldn't have found it.
+- **Assessment missed:** nothing revealed only in striking, but the *sweep*
+  missed something the assessment would have caught: finding #7. The sweep
+  copied another run's debt diagnosis verbatim and it was wrong — Codex
+  refuted it on the PR within minutes, and verifying took one grep across
+  the repo's resx files. The sweep is the one phase in this skill that
+  transcribes another run's conclusions rather than deriving its own, and
+  this run treated that as a mechanical copy. Proposed as Needs Peter #3.
+- **Assessment missed, second:** finding #8 — Strike 2 named
+  `Development.md`'s dependency table authoritative without checking it was
+  complete. It wasn't. A "defer to the canonical catalogue" edit is only
+  valid if the run has read the catalogue it is deferring to.
 - **Target diff:** the section had no prior `health.md`, so today's is the
   first snapshot. Nothing to diff. Recorded for future runs.
 
@@ -172,6 +202,13 @@ invented number.
   analyzer's allowlist to recognise `new User { … DisplayName = X, BurnerName
   = X }` as the same value. Cross-cutting — every seeder in the repo faces
   this.
+- [ ] 3 — Phase 5's sweep transcribes another run's `debt:` text into a
+  ledger without re-deriving it, and finding #7 shows that ships a wrong
+  diagnosis into `/debt-sweep`'s input. Proposed edit, governing **Phase 5
+  (the sweep)**: before writing a swept `debt:` item, verify its central
+  claim against the tree — one grep for the named symbol, key or path — and
+  correct the text where it no longer holds, citing the re-derivation.
+  Idempotence stays the only other bookkeeping.
 
 ## Sweep queue
 

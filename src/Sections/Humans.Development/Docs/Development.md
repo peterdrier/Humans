@@ -77,13 +77,12 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator` |
+| Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserServiceRead`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator`, `IHumanLifecycleService` |
 | Auth | `IRoleAssignmentService` |
 | Teams | `ITeamService`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampServiceRead`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IBurnSettingsService`, `IShiftSignupSeeding` |
 | Audit Log | `IAuditLogService` |
-| Human Lifecycle | `IHumanLifecycleService` |
 | Consent | `IConsentSubmission` (contracts leaf) |
 | Governance | `IMembershipCalculatorRead` (contracts leaf) |
 | City Planning | `CityPlanningOptions` (contracts leaf) - the dev city-planning team slug |
