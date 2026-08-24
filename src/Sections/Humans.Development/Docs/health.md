@@ -83,11 +83,6 @@ Every file above is claimed by at least one thread in §Threads.
 
 ### 5. Seams (specified-but-unbuilt)
 
-- **`SectionTakesNoDbContextOrRepository` and no-`IStringLocalizer` pinning
-  tests.** `Development.md` claimed both were enforced by
-  `DevelopmentArchitectureTests`; only `Register_binds_nothing_…` actually
-  ships there. Adding the two tests is queued for Peter's judgment (Needs
-  Peter #1) — this run corrects the doc so it stops overstating coverage.
 - **`Contracts/` folder.** Reserved for future consumers of an
   `IDevelopmentX` interface; today's `README.md` explains why it stays empty.
 
