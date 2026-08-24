@@ -478,8 +478,7 @@ worktree/PR, three bookkeeping writes:
   summary, `## Skipped`, `## Needs Peter` and the PR body cite a finding by number and add
   nothing a later ruling could invalidate. A Needs-Peter ruling is a state change to a finding —
   "not a defect", "done", "filed", "deferred" — and it lands on the ranked entry, that one place,
-  or the copies drift (peterdrier/Humans#1477: five consecutive passes over one queue, each
-  ticking correctly and each leaving four restatements stale).
+  or the copies drift.
 
   **Finding numbers are assigned once, at 3e, and never change** — not on a reorder, not when an
   item is struck, not when a ruling abolishes it. Key Needs-Peter items and PR-body references to
@@ -602,8 +601,7 @@ row), commit, push again.
 doc a reader depends on. **Never push a commit whose entire content is a corrected figure or a
 restated status about the branch** — such a correction rides along with the next substantive
 commit, or is skipped. Every push costs a CI run, a preview deploy, a surface report and a review
-quota; five of peterdrier/Humans#1453's seven post-resume pushes bought only arithmetic about
-themselves (peterdrier/Humans#1477).
+quota.
 
 ## Phase 8: Inline round (interactive runs only)
 
@@ -619,9 +617,8 @@ it is opened — review arrives after Phase 7 (a BLOCK, bot findings, Peter work
 queue) and every one of those is answered by committing to this branch.
 
 **A review bot's finding is a sample, not an instance.** Before fixing the reported line, grep the
-branch for the class of claim it is an example of — the type, the method, the abolished case. Every
-peterdrier/Humans#1453 finding investigated by class had siblings and the last had six; fixing only
-the reported line leaves the rest and looks resolved.
+branch for the class of claim it is an example of — the type, the method, the abolished case.
+Fixing only the reported line leaves the siblings and looks resolved.
 
 Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
 session needs is already derivable: the branch is `section-doctor/$TS`, its worktree is
@@ -659,11 +656,9 @@ claim false — the case abolished, the method gone, the defect fixed — sends 
 then every hit is corrected, not just the one that prompted the finding. A `keep`, `not a defect`
 or `deferred` leaves those hits standing. **Every ruling lands on the finding either way** — the
 ranked entry records what Peter decided, so a rejected finding stops asserting a defect and a
-deferred one says it is deferred. That is the state change; the checklist only ticks.
-Doc comments are documentation
-and drift exactly like it; counting the copies from memory always undercounts, and one grep for
-`AnonymizeProfileInternalAsync` found in a single command the copy five careful passes had missed.
-Then tick the item — `- [ ]` becomes `- [x]`:
+deferred one says it is deferred. That is the state change; the checklist only ticks. Doc comments
+are documentation and drift exactly like it, and counting the copies from memory always
+undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
 
 - **Open-PR item** — commits on that item's PR branch (reuse its worktree, or recreate from the
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
@@ -794,11 +789,10 @@ Then tick the item — `- [ ]` becomes `- [x]`:
   output record has no such property" — check which the code implements before repeating the claim.
 - 2026-08-23: a Needs-Peter ruling is a state change to a finding, so a finding gets exactly one
   prose description (Phase 5). Ticking is the cheap half; propagating the changed status is the
-  half that gets skipped — two passes over one queue both ticked correctly and both left four
-  restatements stale.
+  half that gets skipped.
 - 2026-08-23: never freeze a figure that counts the commit writing it, and never write "final"
-  about a branch that is still moving. Three successive corrections failed on this — which is why
-  the run file no longer describes its own diff at all (peterdrier/Humans#1477).
+  about a branch that is still moving — which is why the run file no longer describes its own
+  diff at all.
 - 2026-08-23: a comment-only edit to a `.cs` file is not score-neutral. Rewriting seven DTO doc
   comments moved `locProd` from −56 to −49; a run that calls such a change "docs only" and leaves
   its reforge row alone will misreport it.
