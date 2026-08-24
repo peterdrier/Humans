@@ -10,8 +10,10 @@ Full design: `docs/superpowers/specs/2026-08-17-section-doctor-design.md`.
 
 **Only Peter edits this file.** A run proposes — it records lessons in its run file and its
 Needs-Peter block — and never amends its own instructions, in a sweep or otherwise. It is
-instructions, not a record: no shas, no issue numbers, no accounts of past runs. That history
-lives in the run files and the design spec.
+instructions, not a record: no shas, no dated post-mortems, no accounts of past runs. That
+history lives in the run files and the design spec. An issue reference earns its place only by
+naming a live contract or a baseline a phase is bound to — never as provenance for a rule that
+already stands on its own.
 
 ## Purpose
 
@@ -147,9 +149,9 @@ out-of-order log is still bucketed correctly (the report sorts by timestamp), a 
 
 ## Phase 2: Select the section
 
-Selection is computed live every run — nothing is stored. (`docs/health/plan.md` and the
-replan machinery are gone, 2026-08-22: a checked-in plan went stale whenever merges paused for
-long enough, and the runs must keep going unattended.)
+Selection is computed live every run — nothing is stored. There is no `docs/health/plan.md` and
+no replan machinery; never reintroduce either. A checked-in plan goes stale the moment merges
+pause, and these runs must keep going unattended.
 
 **Fetch the open-PR list once** (main thread, cheap):
 
@@ -163,8 +165,8 @@ silently drops out without it. `--search "head:..."` matches exact branch names,
 — don't use it.) In a cloud session without `gh`, write the same JSON shape from the GitHub
 MCP tools: `[{number, headRefName, title, files: [paths]}]` for all open PRs.
 
-**Then run the selector script** (scripted 2026-08-22 — the selection maths used to be a
-sonnet subagent burning ~$1.50/run; a subagent remains only for the re-doctor judgment below):
+**Then run the selector script** — the selection maths is scripted, not a subagent; a subagent
+remains only for the re-doctor judgment below:
 
 ```bash
 python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json"
@@ -215,8 +217,8 @@ the open PR first, or use `resume` to work its Needs-Peter queue.
 
 Five stages, in this order. **The order is the point.** The target is derived *before* any scan
 runs, because a target written after a linter run is a summary of the linter run (`/simplify`,
-Pass 2). This skill had it backwards until 2026-08-18, and the Finance run's "ideal shape" came
-out as a restatement of its reforge score — the failure that rule exists to prevent.
+Pass 2) — an "ideal shape" that restates the reforge score is the failure this order exists to
+prevent.
 
 Phase 2's selector script already built the solution on a normal run; only when it was skipped
 (`--section`) start `dotnet build Humans.slnx -v quiet` in the background now — reforge needs a
@@ -240,14 +242,13 @@ file. The run file's `## File coverage` block records a disposition for every pa
 
 **`reviewed` means the file's names resolve, not that the file was opened.** For any file that
 names things — a doc, comment-bearing source, a csproj — record `reviewed` only after every code
-symbol, route and file path it names has been checked against the tree. This is mechanical: the
-2026-08-18 Finance benchmark marked files reviewed that still said a controller "stayed in
-Shell", carried an `IBudgetService` dependency the read-split had replaced, and pointed at a
-folder a job had moved out of — every miss was a name that no longer resolved.
+symbol, route and file path it names has been checked against the tree. This is mechanical, and
+it is what catches the doc that still names a controller's old home, a dependency a read-split
+replaced, or a folder a job moved out of.
 
 Why this is stage one: a finding-driven pass only finds what sits adjacent to what it already
-suspects. The 2026-08-18 Finance run skipped ~20 of 55 files and two instances of its own
-headline finding were sitting in two of them, reachable from no lane it ran.
+suspects, so instances of the run's own headline finding sit unreached in the files no lane
+opened.
 
 ### 3b. Behavior first, tool-free
 
@@ -298,8 +299,8 @@ the wall-clock / token / fragility balance:
   the section's `Docs/health.md` (Phase 5).
 - **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
   and returns a little, and reading it on the main thread permanently raises the price of every
-  later turn in the run — the 2026-08-23 Onboarding run held ~184k context from Phase 3 to the
-  end, and cache reads alone were $65.87 of $93.30. **Small context dominates model choice**:
+  later turn in the run: cache reads on a run that carries Phase 3 to the end are the largest
+  line in its bill. **Small context dominates model choice**:
   moving a thread off main saves ~87%, swapping its model ~40%. Each dispatched thread gets an
   explicit tagged model (table below) and a deadline.
 - **Only the spine and the two judgment threads stay on main** — 3a–3c, Shape, Behavior & bugs,
@@ -400,8 +401,8 @@ Either symptom is a fail:
 On a fail, 3c was reverse-engineered from the defect list. Re-derive the target from 3b and
 re-rank — the scans are still good, the design isn't. Record the verdict in the run file either
 way, as a literal line — `Independence check: pass` or `Independence check: fail (re-derived)` —
-plus one sentence naming which items came from the target rather than a scan. The 2026-08-18
-Finance benchmark had the evidence in its run file and never wrote the verdict.
+plus one sentence naming which items came from the target rather than a scan. Evidence in the
+run file is not the verdict; write the verdict.
 
 ## Phase 4: Strike
 
@@ -531,9 +532,10 @@ worktree/PR, three bookkeeping writes:
   findings list, worked, skipped + why (including sections passed over as blocked), retro
   (Phase 6), `## Needs Peter` checklist — **`- [ ]` unanswered, `- [x]` answered and applied,
   one item per line** — holding Phase 4's skipped classes, 3d's open-issue recommendations and
-  Phase 6's proposed edits, each `<finding #> — <the question, in a phrase>` — and `## Sweep queue` (`lesson:` /
-  `debt:` / `memory:` items as plain bullets — a later run's sweep applies them after this run
-  merges; nothing ever ticks them).
+  Phase 6's proposed edits, each `<finding #> — <the question, in a phrase>` — and `## Sweep queue`
+  (`debt:` / `memory:` items as plain bullets — a later run's sweep applies them after this run
+  merges; nothing ever ticks them). Lessons about this skill are **not** sweep-queue items: they
+  are Needs-Peter findings and nothing else (Phase 6).
 
   **One prose description per finding, where it was first written, and nowhere else.** For a 3e
   finding that is the ranked list; for one raised later — a Phase 4 skip, a Phase 6 lesson, a
@@ -570,9 +572,8 @@ worktree/PR, three bookkeeping writes:
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
   list the same file carries ("15 contract methods" above the table of them, "52 paths" above
-  the coverage list). Measurements with a generator — Stryker scores, reforge — stay; both
-  2026-08-18 Finance runs typed self-counts, and the one that was wrong nearly sent a refactor
-  at a method with a live external caller.
+  the coverage list). Measurements with a generator — Stryker scores, reforge — stay. A typed
+  self-count that is wrong points a refactor at the wrong method.
 
   **The run file never describes its own diff.** No size block, no insertions/deletions, no line
   count of the branch or of the file itself: the commit that writes such a figure is a commit the
@@ -589,10 +590,12 @@ worktree/PR, three bookkeeping writes:
   atom + INDEX line — skipping any item already present in its target (idempotence is the only
   bookkeeping; there is no anchor window).
 
-  **The sweep never edits this skill.** `lesson:` items are not applied here or anywhere else by
-  a run: a `lesson:` carries into the run's `## Needs Peter` block as a proposed one-line edit
-  naming the phase it governs, and reaches the skill only through Peter's answer (Phase 8 inline,
-  or `resume` applying it later). **No unattended run edits its own instructions** — a skill that
+  **The sweep never edits this skill, and never carries a lesson about it.** A proposed amendment
+  lives in one place only — the `## Needs Peter` block of the run that thought of it (Phase 6) —
+  and reaches the skill through Peter's answer there, inline (Phase 8) or via `resume` later. It is
+  never a sweep-queue item: the sweep has no anchor window, so an item it carries it would carry
+  again on every later run, re-asking a question Peter already closed with a tick the sweep cannot
+  see. **No unattended run edits its own instructions** — a skill that
   rewrites itself while nobody is reading drifts with nothing to catch it, and the lessons it
   appends are exactly the war stories that do not belong in instructions. **Never edit the swept run files** — resume is
   their only post-merge editor, which is what keeps resume conflict-free. Two piled-up
@@ -611,12 +614,11 @@ diff say** — 3c regenerated the target and diffed it against the previous run'
 either the section moved or the earlier target was wrong, and which one it was is worth a line.
 Then:
 
-- **Mechanical lessons** → this run's `## Sweep queue` as `lesson:` one-liners, each **naming the
-  phase it governs**, and carried into `## Needs Peter` as a proposed edit under its own finding
-  number (Phase 5). Recording a lesson is
-  the run's job; applying it to this skill is Peter's — never edit the skill's files directly,
-  mid-run or in a sweep. A lesson that names no phase is a war story: leave it in the run file,
-  which is where a run's history belongs.
+- **Mechanical lessons** → `## Needs Peter`, as a one-line proposed edit **naming the phase it
+  governs**, under its own finding number (Phase 5) — that block, and nowhere else; never the
+  sweep queue. Recording a lesson is the run's job; applying it to this skill is Peter's — never
+  edit the skill's files directly, mid-run or in a sweep. A lesson that names no phase is a war
+  story: leave it in the run file, which is where a run's history belongs.
 - **Judgment lessons** (rubric axes, thresholds, play choices) → the Needs-Peter block.
 - **Durable project rules** → `## Sweep queue` as `memory: <bucket>/<name> — <rule>`.
 

@@ -41,9 +41,10 @@ under `src/Sections/` and can be reviewed as a unit.
    replanning unless the plan is exhausted or stale. (Not a fixed per-run checklist.)
 2. **One macro skill.** `/section-doctor` is the single entry point; the existing per-section
    skills become plays in its toolbox, named by plan items. They remain directly invocable.
-3. **Self-amending.** Every run ends with a retro; mechanical lessons queue in the run file's
-   sweep queue and the next replan applies them to the skill's own files (see decision 11);
-   rubric-level changes queue for Peter; durable rules graduate to `memory/` atoms the same way.
+3. **Self-proposing, never self-amending.** Every run ends with a retro; mechanical and
+   rubric-level lessons alike become Needs-Peter findings proposing a one-line edit, and reach the
+   skill only through Peter's answer. No run edits the skill's own files, in a sweep or otherwise.
+   Durable project rules still graduate to `memory/` atoms through the sweep queue.
 4. **Toolbox in:** section-align, audit-surface, section-read-split, trim-tests, simplify,
    reuse-review (run against the section's own surface, not a diff), the refactor-swarm per-lane
    process (`.codex/skills/humans-refactor`), debt-sweep (absorbed — its ledger becomes a planner
@@ -185,8 +186,7 @@ Run: <invocation>, anchor <commit>, budget <n>h. PR: peterdrier/Humans#N
 - [ ] <one-line question>  ← `- [ ]` unanswered / `- [x]` answered; keyed to a finding number,
                               never a queue position. Authoritative in the PR body while open;
                               here after merge
-## Sweep queue             ← shared-file writes; a later replan's window applies them (no ticks)
-- lesson: <dated one-liner for the skill's Lessons>
+## Sweep queue             ← shared-file writes; a later run's sweep applies them (no ticks)
 - debt: <debt-ledger inbox entry>
 - memory: <bucket>/<name> — <rule>
 ```
@@ -265,11 +265,10 @@ The plan is advisory — run-day findings can extend a section's stay.
 - **5 Bookkeeping** — exactly two writes, both conflict-free: the `health.md` history row and
   this run's own `docs/health/runs/<date>-<Section>.md` (all in the worktree, same PR). No
   shared file is touched; daily runs never write `maintenance-log.md`.
-- **6 Retro + self-amend** — what was planned vs. what helped, wasted motion, rubric misses —
-  written into the run file. Mechanical lessons → the run file's `## Sweep queue` as `lesson:`
-  items (the next replan applies them to the skill's files; never edited directly mid-run —
-  they are shared). Judgment lessons → Needs-Peter queue. Durable rules → sweep queue as
-  `memory:` items. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
+- **6 Retro + propose amendments** — what was planned vs. what helped, wasted motion, rubric
+  misses — written into the run file. Mechanical and judgment lessons alike → the Needs-Peter
+  queue as a proposed one-line edit naming the phase it governs; a run never edits the skill's
+  files, mid-run or in a sweep. Durable rules → sweep queue as `memory:` items. All Phase 5–6 edits are committed before the Phase 7 push — nothing lands
   after it.
 - **7 PR** — one PR per run to `peterdrier/Humans:main`. Body: assessment summary, worked/skipped,
   **Needs Peter** block — authoritative while the PR is open; the run file's copy carries it
@@ -418,3 +417,15 @@ and a `## Size` block whose subject was the diff containing it.
     feeds it. Environment caveats are dated per-session lines, never standing banners — "this run
     had no compiler" was false an hour after it was written.
 
+24. **Only Peter edits the skill.** Decision 3's self-amendment is withdrawn: no run edits
+    `SKILL.md`, mid-run or in a sweep, and `lesson:` leaves the sweep queue entirely. A lesson is
+    a Needs-Peter finding proposing a one-line edit that names the phase it governs, and reaches
+    the skill through Peter's answer alone. It is never a sweep-queue item — the sweep has no
+    anchor window, so it would re-ask the question on every later run, blind to the tick that
+    closed it. The skill is instructions, not a record: the `## Lessons` list is gone, its
+    entries folded into the phases they govern, and an issue reference earns its place only by
+    naming a live contract or a baseline a phase is bound to.
+25. **Finding numbers outlive 3e.** 3e numbers the ranked list; a finding raised later — a Phase 4
+    skip, a Phase 6 lesson, a Phase 7 measurement gap — takes the next unused number as it is
+    written, and no number is reused. One prose description per finding, where it was first
+    written; every other mention cites the number.
