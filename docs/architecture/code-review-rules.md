@@ -106,6 +106,10 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 
 - **No unused variables, unreachable code, or orphan imports** in committed code. If a reviewer spots `var x = ...; // never read`, it's a reject.
 
+## Tests Asserting an Absence
+
+- **Reject any new test asserting a section does NOT have something** — no repository, no `DbContext`, no ctor parameter of some type, no nav property, no public type beyond a named list, no assembly reference. Whatever the category: the list of things a section lacks is unbounded, there is no behaviour to regress, and the test can only fail on the deliberate edit that would update it in the same commit. Containment of something the section really *has* (a vendor SDK confined to one layer) is a different thing and is fine. `memory/architecture/no-tests-for-absences.md`.
+
 ## Test Attribute Policy
 
 - **Bare `[Fact]` and `[Theory]` are forbidden in test code.** All test methods must use `[HumansFact]` / `[HumansTheory]` from `Humans.Testing` (default timeout: 30s for `HumansFact`; 5s for `HumansTheory`, raised to 30s in `Humans.Integration.Tests`). Enforced via `BannedApiAnalyzers` rule `RS0030`.

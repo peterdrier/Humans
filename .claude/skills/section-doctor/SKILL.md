@@ -347,7 +347,10 @@ several runs record it as "ran, found nothing".
   mutants it was written for is not passing, it is undiscriminating — re-run the tool thread
   against new tests before the PR. Stryker's `--coverage-analysis` is config-only, not a CLI flag,
   and a section-scoped run must exclude `Data/Migrations` or migration bodies swamp the score.
-- **Freshness** — a trigger that resolves is not a trigger that works: check each path actually
+- **Freshness** — a doc claiming a test that does not exist is a doc to fix, never a test to
+  write. That instinct has fired twice (#1465, #1480) and both times the test would have been
+  an absence assertion — `memory/architecture/no-tests-for-absences.md`. A trigger that
+  resolves is not a trigger that works: check each path actually
   carries the claim, not merely that it is live. Read a feature doc's "Out of scope" list against
   its route table every time; it ages worse than the body.
 - **Prose & surface** — diff the resx key set against the keys the section's views reference. Dead
