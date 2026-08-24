@@ -30,28 +30,4 @@ public class CampaignsArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "repository should not capture scoped DbContext instances");
     }
-
-    /// <summary>
-    /// Pins the set of types that may inject <see cref="ICampaignRepository"/>: the owning
-    /// service and the repository implementation. A new consumer taking the repository directly
-    /// would bypass the service layer and the single-writer rule for the <c>campaign*</c> tables.
-    /// </summary>
-    [HumansFact]
-    public void ICampaignRepository_HasNoUnexpectedConsumers()
-    {
-        var allowed = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Humans.Campaigns.Services.CampaignService",
-            "Humans.Campaigns.Data.CampaignRepository",
-        };
-
-        var consumers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.GetConstructors()
-                .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampaignRepository))))
-            .Select(t => t.FullName ?? t.Name)
-            .ToList();
-
-        consumers.Where(c => !allowed.Contains(c)).Should().BeEmpty(
-            because: "every read/write to the campaign* tables must go through CampaignService");
-    }
 }

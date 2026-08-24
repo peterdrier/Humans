@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
-using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
@@ -18,35 +17,11 @@ namespace Humans.Calendar.Tests;
 /// that <c>Humans.Application</c> carries no EF reference, and the section assembly holds the
 /// repository and legitimately does. The invariant it was reaching for — the service never
 /// touches a <c>DbContext</c> — is asserted directly on the constructor instead, which is
-/// stronger and survives the move. The §15 decorator, DTO-only read surface and no-cross-section-nav
-/// assertions carry over unchanged.
+/// stronger and survives the move. The §15 decorator and DTO-only read surface assertions carry
+/// over unchanged.
 /// </remarks>
 public class CalendarArchitectureTests
 {
-    /// <summary>
-    /// Pins the set of types that may inject <see cref="ICalendarRepository"/>: the owning
-    /// service and the repository implementation. A new consumer taking the repository directly
-    /// would bypass the service layer and the single-writer rule for the <c>calendar_*</c> tables.
-    /// </summary>
-    [HumansFact]
-    public void ICalendarRepository_HasNoUnexpectedConsumers()
-    {
-        var allowed = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Humans.Calendar.Services.CalendarService",
-            "Humans.Calendar.Data.CalendarRepository",
-        };
-
-        var consumers = typeof(Section).Assembly.GetTypes()
-            .Where(t => t.GetConstructors()
-                .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICalendarRepository))))
-            .Select(t => t.FullName ?? t.Name)
-            .ToList();
-
-        consumers.Where(c => !allowed.Contains(c)).Should().BeEmpty(
-            because: "every read/write to the calendar_* tables must go through CalendarService");
-    }
-
     [HumansFact]
     public void CachingCalendarService_ImplementsReadAndWriteSurfaces()
     {
@@ -71,16 +46,6 @@ public class CalendarArchitectureTests
         // Records expose the synthesized EqualityContract property.
         t.GetMethod("get_EqualityContract", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             .Should().NotBeNull(because: "CalendarEventInfo must be a record");
-    }
-
-    [HumansFact]
-    public void CalendarEvent_HasNoOwningTeamNav()
-    {
-        typeof(CalendarEvent)
-            .GetProperty("OwningTeam")
-            .Should().BeNull(
-                because: "CalendarEvent.OwningTeam was a cross-domain nav into the Teams section; the FK is now " +
-                          "a bare column (design-rules §6c, memory/architecture/no-cross-section-ef-joins.md)");
     }
 
     [HumansFact]

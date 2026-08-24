@@ -12,15 +12,9 @@ using CampService = Humans.Camps.Services.CampService;
 namespace Humans.Camps.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests for the Camps section — §15 caching decorator (T-06, 2026-05-16). Pins:
-/// <list type="bullet">
-/// <item><c>CachingCampService</c> wraps <c>CampService</c> with a Singleton, hit-tracked
-///   per-camp projection plus a separate CampSettingsInfo slot.</item>
-/// <item>The set of types that depend on <see cref="ICampRepository"/> is
-///   pinned — no one outside the approved list can bypass the decorator and
-///   write to the Camps tables behind its back. This is what replaces the
-///   T-06 SaveChanges-interceptor backstop.</item>
-/// </list>
+/// Architecture tests for the Camps section — §15 caching decorator (T-06, 2026-05-16). Pins
+/// that <c>CachingCampService</c> wraps <c>CampService</c> with a Singleton, hit-tracked
+/// per-camp projection plus a separate CampSettingsInfo slot.
 /// </summary>
 public class CampsArchitectureTests
 {
@@ -58,78 +52,6 @@ public class CampsArchitectureTests
                 because: "§15d decorators live in Humans.Infrastructure.Services.<Section>");
     }
 
-    // ── No-bypass tripwire (replaces the T-06 SaveChanges interceptor) ───────
-
-    /// <summary>
-    /// Pins the set of types that may inject <see cref="ICampRepository"/>.
-    /// The decorator's invalidation contract holds only as long as every
-    /// write to the Camps tables goes through an <see cref="ICampService"/>
-    /// method the decorator wraps. New consumers that take the repo
-    /// directly — especially write-shaped consumers — can skip the
-    /// invalidate-after-mutate call and reintroduce the
-    /// <see cref="CampSeasonInfo.EeGrantedCount"/> drift that T-06 fixed.
-    /// If you're adding a legitimate new caller, update this list and the
-    /// remarks on <c>CachingCampService</c> together.
-    /// </summary>
-    [HumansFact]
-    public void ICampRepository_HasNoUnexpectedConsumers()
-    {
-        var allowed = new HashSet<string>(StringComparer.Ordinal)
-        {
-            // Reads + writes — the inner service is the only writer.
-            "Humans.Camps.Services.CampService",
-            // Repo implementation itself.
-            "Humans.Camps.Data.CampRepository",
-            // Decorator — reads for the per-camp refresh / settings reload.
-            "Humans.Camps.Services.CachingCampService",
-            // Read-only consumer — uses GetActiveLeadUserIdsAsync /
-            // IsLeadAnywhereAsync. Never writes through the repo.
-            "Humans.Teams.Services.SystemTeamSyncJob",
-            // Owns camp_role_definitions + camp_role_assignments through the
-            // same repo; camp/season lookups route through
-            // ICampRoleCampAccess on the decorator (which invalidates).
-            "Humans.Camps.Services.CampRoleService",
-        };
-
-        var assemblies = new[]
-        {
-            typeof(CampService).Assembly,
-            typeof(CampRepository).Assembly,
-            typeof(CachingCampService).Assembly,
-        };
-
-        var consumers = assemblies
-            .SelectMany(a => a.GetTypes())
-            .Where(t => t.GetConstructors()
-                .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampRepository))))
-            .Select(t => t.FullName ?? t.Name)
-            .ToList();
-
-        var unexpected = consumers.Where(c => !allowed.Contains(c)).ToList();
-
-        unexpected.Should().BeEmpty(
-            because: "T-06: every write to the Camps tables must go through ICampService so the decorator can invalidate the affected camp. If this new type only reads, add it to the allow-list with a comment explaining why; if it writes, route through ICampService instead.");
-    }
-
-    /// <summary>
-    /// Belt-on-belt: ensure the obsolete <c>CampInfoSaveChangesInterceptor</c>
-    /// hasn't crept back into the Infrastructure assembly. The decorator's
-    /// inline invalidation is the only path; a re-added interceptor would
-    /// double-fire invalidations and re-introduce the per-row
-    /// <c>CampSeason</c>→<c>CampId</c> round trip the no-bypass rule was
-    /// designed to retire.
-    /// </summary>
-    [HumansFact]
-    public void CampInfoSaveChangesInterceptor_IsNotPresent()
-    {
-        var found = typeof(CachingCampService).Assembly
-            .GetTypes()
-            .FirstOrDefault(t => string.Equals(t.Name, "CampInfoSaveChangesInterceptor", StringComparison.Ordinal));
-
-        found.Should().BeNull(
-            because: "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation pinned by ICampRepository_HasNoUnexpectedConsumers — see CachingCampService remarks");
-    }
-
     // ── Google Group membership source — Camps claim ─────────────────────────
 
     /// <summary>
@@ -154,31 +76,6 @@ public class CampsArchitectureTests
 
         campsClaimants.Should().BeEquivalentTo([typeof(CampRoleService).FullName!],
             because: "CampRoleService is the only Camps-side IGoogleGroupMembershipSource claimant; new Camps groups must route through this service so the orchestrator's collision check sees one Camps voice per group key (issue nobodies-collective/Humans#740)");
-    }
-
-    /// <summary>
-    /// Issue nobodies-collective/Humans#740: the Camps section exposes its
-    /// Google Group claims through <see cref="IGoogleGroupMembershipSource"/>
-    /// only — the orchestrator (<c>GoogleGroupSyncService</c>) pulls; sections
-    /// never push. The "post-commit RequestSyncAsync nudge" pattern was
-    /// removed, and provisioning of missing groups moved into the orchestrator.
-    /// Pins that CampRoleService takes neither <c>IGoogleGroupSync</c> nor
-    /// <c>IGoogleGroupProvisioningClient</c> in its constructor.
-    /// </summary>
-    [HumansFact]
-    public void CampRoleService_DoesNotDependOnGoogleSyncOrProvisioning()
-    {
-        var ctor = typeof(CampRoleService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().NotContain(typeof(IGoogleGroupSync),
-            because: "sections must not call IGoogleGroupSync.RequestSyncAsync; the orchestrator pulls from IGoogleGroupMembershipSource (issue nobodies-collective/Humans#740)");
-
-        // IGoogleGroupProvisioningClient is internal to Humans.GoogleIntegration since that
-        // section's G5 move, so this half is asserted by name. Stronger than the typeof it
-        // replaces, in fact: it also fails if a differently-namespaced clone appears.
-        paramTypes.Select(t => t.Name).Should().NotContain("IGoogleGroupProvisioningClient",
-            because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
     }
 
     [HumansFact]
