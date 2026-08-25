@@ -1,0 +1,117 @@
+# Humans
+
+Humans is the membership management system for Nobodies Collective, a Spanish nonprofit. It runs the full membership lifecycle: volunteer signup, profile and consent, Colaborador/Asociado applications voted on by the Board, provisioning members into teams and Google Workspace, governance roles, shifts, tickets, and finance — with audit trails so the Board can see what automation did, and GDPR compliance throughout.
+
+## What makes Humans special?
+
+About 500 real people trust this system with their personal data, and a volunteer Board relies on it to run a legal Spanish asociación. Here's what we never compromise on.
+
+### 1. Sections own their data, end to end
+
+The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its `DbContext`, migrations, tables, services, and views. There is no shared DbContext — every table belongs to exactly one section. Sections interact only through public interfaces and `.Contracts` leaves. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
+
+### 2. GDPR is a feature, not a checkbox
+
+Consent tracking, data export, right-to-deletion. Anything that touches personal data must keep those paths whole: new personal data needs an export contributor and a deletion path, and consent gates stay in front of what they gate.
+
+### 3. The Board can see what happened
+
+Automated actions leave audit trails. An automation that acts invisibly is a bug, even when it acts correctly.
+
+### 4. Small scale, simple systems
+
+~500 users, one server. Load the dataset into RAM instead of optimizing queries. No distributed coordination, no concurrency tokens, no pagination for its own sake. Complexity has to buy something at *this* scale, not an imagined one.
+
+## Peter's rules
+
+The constitution of this repo is hand-written by Peter and is the final word, above this file and everything else:
+
+- [`docs/architecture/peters-hard-rules.md`](docs/architecture/peters-hard-rules.md) — how code is structured (sections, repositories, services, DTOs across boundaries).
+- [`docs/architecture/peters-working-rules.md`](docs/architecture/peters-working-rules.md) — how to behave while working (think before coding, simplicity first, surgical changes, brevity).
+
+Read both before your first change. LLMs never edit either file; changes to them come from Peter himself. If a rule fights the task in front of you, say so loudly and get Peter's sign-off — for hard rules there is no sign-off, only an issue recording the debt.
+
+## A small glossary
+
+Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`](CONTEXT.md), and where other prose disagrees with it, the prose is wrong.
+
+- **you** means the agent reading this file and changing Humans.
+- **Peter / maintainer** means who you are talking to now.
+- **member** means a person in the system. Nearly all are **Volunteers**.
+- **Volunteer** means the standard member: sign up → complete profile → consent → Consent Coordinator clears → auto-approved into the Volunteers team. Volunteers never go through the `Application` entity.
+- **Colaborador** means an active contributor; application plus Board vote; 2-year term.
+- **Asociado** means a voting member (assemblies, elections); application plus Board vote; 2-year term.
+- **Application** means the entity for Colaborador/Asociado tier applications *only*. Volunteer access runs in parallel and is never blocked by it.
+- **Section** means a vertical slice owning one lane — its tables plus the logic over them.
+- **Lane / width** mean one section's domain, and how many lanes a service touches. Width is a cost, not a feature.
+- **Crosscut** means a full-width, logic-free tool section (Audit, Email, Notifications). It owns its own data and reaches into nobody else's.
+- **Orchestrator** means a service that owns no tables and coordinates two or more sections through their interfaces only. The moment it owns a table, it's a Section.
+- **Base** means `src/Humans.Base`, the bottom of the dependency graph and the only project every section may reference.
+- **Shell** means `src/Humans.Web`: chrome, page composition, platform context. Nothing references the Shell.
+- **Board** means the governance body that reviews and votes on tier applications.
+
+## The ways to hurt yourself
+
+1. **Conflating Volunteer with Application.** These are separate concepts and the most common conceptual mistake in this codebase. Volunteers are ~100% of users and never touch the `Application` entity; tier applications are the exception, not the model.
+2. **Hand-editing state to make a red light go away.** No `--no-verify`, no suppressing errors, no deleting "stuck" state, no editing the database or deployed config by hand. The fix lives in code, configuration, or re-provisioning. If the only path you can see goes through a manual state edit or a bypass flag, stop and ask — offering the shortcut as one option among several is itself the violation. "Broken" is sometimes the correct state to leave something in.
+3. **Mid-chain migration surgery.** Migrations are per-section and shipped ones are immutable. After your branch merges main, `dotnet ef migrations remove` on your in-flight migrations is unsafe — regenerate the branch's migrations as one consolidated migration instead (see [`memory/architecture/migration-regen-after-rebase.md`](memory/architecture/migration-regen-after-rebase.md)).
+4. **Trampling parallel sessions.** Several agent sessions work this repo at once. Work only in your own worktree (`.worktrees/<name>`), never assume the main checkout is idle or yours, and never clean up state — worktrees, branches, stashes — you didn't create.
+5. **Committing straight to main.** Every change goes on a feature branch in a worktree, then a PR. `origin/main` auto-deploys to QA; there is no such thing as a commit too small for a PR.
+
+## Hit every surface
+
+The most common defect here is a change that works on the path you tested and is missing everywhere else. Before calling work done, walk this list and say which entries applied:
+
+- **Both languages.** Every user-facing string lives in the section's resx set, in English and Spanish. A hardcoded string or a missing translation is an incomplete change.
+- **Authorization, including the negative cases.** Each section's invariant doc lists who must *not* see or do a thing. New pages and endpoints need the deny paths verified, not just the happy path.
+- **Audit trail.** Actions taken by automation or admins on members' behalf need their audit entries.
+- **GDPR paths.** New personal data → export contributor, deletion path, consent where it applies.
+- **The section's invariant doc.** Behavior changes must keep `src/Sections/Humans.<Section>/Docs/<Section>.md` true — update it in the same PR or you've shipped documentation drift.
+- **Migrations.** Schema changes get a migration in that section's own context, following the EF migration discipline in `memory/`.
+- **Navigation.** A feature nobody can find is a dead end: the page needs a link that reaches it and a way back out.
+- **Tests.** Under the section's own test project (`tests/Humans.<Section>.Tests`), covering the invariant you changed — not a screenshot of the happy path.
+
+## Building and verifying
+
+```bash
+dotnet build Humans.slnx -v quiet
+dotnet test Humans.slnx -v quiet
+dotnet run --project src/Humans.Web
+```
+
+- `-v quiet` is mandatory — default verbosity floods the context for no benefit.
+- Smallest proof first: build, then the tests for the section you touched. CI owns the full suite.
+- Analyzers enforce the call-site rules (repository access, service boundaries). A red analyzer is the answer, not an obstacle — grandfathered and baselined violations are documented tech debt and never justify a new one.
+- Version check on a deployed instance: `GET /api/version`.
+- Every PR gets a preview deploy at `https://{pr_id}.n.burn.camp` with its own database cloned from QA and dev login enabled — the place to verify user-visible changes for real.
+
+## Pull requests
+
+- **Always open the PR yourself.** A pushed branch with no PR is invisible: no review, no preview environment, no bots. Don't ask permission first.
+- Two remotes: `origin` = `peterdrier/Humans` (fork; QA auto-deploys from its main) and `upstream` = `nobodies-collective/Humans` (production). Feature branches PR to `origin/main` (squash). Promotion to production batches `origin/main` → `upstream/main` and is the one PR that needs Peter's explicit go-ahead.
+- Qualify issue references across repos: `nobodies-collective/Humans#123`, never a bare `#123`.
+- Reviewer findings — Codex, Claude bot, Gemini, humans — are hypotheses, not a work list. Verify each against the code before changing anything; every finding ends with a disposition reply in its thread (fixed / not fixing / issue opened).
+- Unattended review rounds are capped at five post-PR commits. Past that, stop and surface it.
+
+## How it works
+
+Controllers parse the request, call services, and format the response — no logic. Services (`IApplicationService`) hold the business rules and are the only callers of their section's repository. Repositories (`IRepository`) are the sole readers and writers of their section's tables, and EF entities never leave the section — DTOs and domain objects cross boundaries. Caching decorators wrap service interfaces (never repositories) using `TrackedCache`. Each section registers its own DI from `Section.cs : ISection`, and the Shell composes the registered sections into one app.
+
+## Where code lives
+
+- `src/Humans.Base` — the bottom of the graph: role markers, architecture attributes, `TrackedCache`, the shared view layer. The only project every section may reference.
+- `src/Sections/Humans.<Section>[.Contracts]` — the sections. `ls src/Sections` is the list. Each carries `Docs/<Section>.md` (its invariants) and `Docs/data-access.md` — grep the latter to find which section owns a service, repository, or table.
+- `src/Humans.Web` — the Shell. Layouts, page composition, platform context. Thin by design and getting thinner.
+- `memory/` — atomic project rules, one rule per file; [`memory/INDEX.md`](memory/INDEX.md) is the catalog to scan when you wonder whether a rule applies. A new durable rule means a new atom plus an INDEX line in the same commit.
+- `docs/architecture/` — the hard rules, [`design-rules.md`](docs/architecture/design-rules.md) (the implementing regulations), and the debt/freshness ledgers.
+- `docs/sections/SECTION-TEMPLATE.md` — the template every section invariant doc follows.
+- `tests/` — one test project per section, plus `Humans.Testing` helpers.
+
+## Taste
+
+- Width is a cost. The best cross-section feature is the one that touches the fewest lanes, through the narrowest interfaces (`I<Section>ServiceRead` for cross-section reads).
+- Reuse before adding. Before any new file, public type, interface method, DTO, helper, endpoint, or DI registration: audit the existing owner and prefer reuse or caller-side composition. New public surface needs Peter's approval, and you should say which existing options you rejected and why.
+- Minimum code that solves the problem. No speculative flexibility, no abstractions for single-use code. If you wrote 200 lines and it could be 50, rewrite it.
+- Surgical changes. Every changed line traces to the request. Don't improve adjacent code; mention dead code, don't delete it.
+- Prefer in-memory data over clever queries. The whole dataset fits in RAM; act like it.
+- Brevity in everything you write — replies, commits, PR bodies, comments, docs. Never use 15 words where 5 will do.
