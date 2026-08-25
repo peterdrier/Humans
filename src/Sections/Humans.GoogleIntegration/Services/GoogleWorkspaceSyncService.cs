@@ -403,7 +403,7 @@ internal sealed class GoogleWorkspaceSyncService(
         // Load every resource of this type, active-only. Cross-reference teams
         // (including soft-deleted) through the Teams service so we never touch
         // the team graph directly — the resource's Team nav is hydrated via
-        // ITeamService.GetTeamByIdAsync / GetByIdsWithParentsAsync.
+        // ITeamService.GetTeamByIdAsync / GetTeamsWithParentsAsync.
         IReadOnlyList<GoogleResource> resources =
             await resourceRepository.GetActiveByResourceTypeAsync(resourceType, cancellationToken);
 
