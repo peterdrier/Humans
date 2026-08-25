@@ -157,4 +157,4 @@ about what the section does.
 
 | Run | Date | reforge surface score | PR |
 |---|---|---|---|
-| 1 | 2026-08-25 | 231 → 230 (loc=3529 → 3494) | peterdrier/Humans#1520 |
+| 1 | 2026-08-25 | 231 → 178 (loc=3529 → 3487) | peterdrier/Humans#1520 |
