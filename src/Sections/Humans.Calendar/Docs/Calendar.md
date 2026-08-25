@@ -13,7 +13,7 @@ Community calendar: one-off and recurring events per team, with per-occurrence o
 
 - **CalendarEvent** — a single scheduled event or recurring event series belonging to a team. Can be a one-time event or repeat according to an RFC 5545 recurrence rule.
 - **CalendarEventException** — a per-occurrence override or cancellation for a recurring event. Allows changing title, time, or marking a specific occurrence as cancelled without deleting the entire series.
-- **Personal iCal feed** — a per-user subscribable `VCALENDAR` of that user's dated commitments, assembled by `ICalFeedService` fanning out over `ICalendarFeedContributor`. Separate concept from `CalendarEvent`: the feed contains no calendar events at all, only Shifts' signups and Events' favourited entries. Design: [`2026-06-09-ical-feed-design.md`](2026-06-09-ical-feed-design.md).
+- **Personal iCal feed** — a per-user subscribable `VCALENDAR` of that user's dated commitments, assembled by `ICalFeedService` fanning out over `ICalendarFeedContributor`. Separate concept from `CalendarEvent`: the feed contains no calendar events at all, only Shifts' signups and Events' favourited entries.
 
 ## Data Model
 

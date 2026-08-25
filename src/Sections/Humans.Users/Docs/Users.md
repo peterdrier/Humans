@@ -212,7 +212,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Cross-Section Dependencies
 
-Outbound (Users → other sections), split between the foundational `UserService` (no higher-section edges, enforced by `UserArchitectureTests.UserService_HasNoOutboundEdgeToHigherLevelSections`) and `AccountDeletionService` (the deletion cascade orchestrator that explicitly bridges higher-level sections):
+Outbound (Users → other sections), split between the foundational `UserService` (no higher-section edges — not currently pinned by an architecture test) and `AccountDeletionService` (the deletion cascade orchestrator that explicitly bridges higher-level sections):
 
 **From `UserService` / `UnsubscribeService`:**
 - **Profiles:** `ICommunicationPreferenceService.UpdatePreferenceAsync` (called from `UnsubscribeService`). `communication_preferences` is not one of the 8 tables `CachingUserService` projects into `UserInfo`, so this write needs no cache invalidation.

@@ -19,7 +19,8 @@ surface) inside a `TransactionScope`, not through `TeamRepository`. The
 table is therefore owned wholly by Google Integration.
 
 The `Humans.Teams.Contracts` leaf carries three interface levels:
-`ITeamServiceRead` (5 members, `[SurfaceBudget(5)]`)
+`ITeamServiceRead` (8 members; `[SurfaceBudget]` remains intentionally
+suspended per the 866 migration)
 and `ITeamService` (~20 members, flat projections — extends
 `ITeamServiceRead` + `IApplicationService`) on the leaf; the internal
 `ITeamManagementService : ITeamService` in `Services/` carries the rest

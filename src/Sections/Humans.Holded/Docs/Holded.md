@@ -120,4 +120,4 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`, G5)
 **Public contract:** `Humans.Holded.Contracts.IHoldedService` (+ `HoldedLedgerLineInfo`)
 **Owned tables:** the four above
-**Status:** (G5) Own project. Spec: [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+**Status:** (G5) Own project.
