@@ -12,9 +12,9 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 @docs/architecture/peters-working-rules.md
 
-**Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), per nobodies-collective/Humans#866 (G5), all 42 of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext` — deleted in nobodies-collective/Humans#858; every table belongs to exactly one section context.
+**Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), all 42 of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext`; every table belongs to exactly one section context.
 
-The old four-layer hub projects are gone: `src/Humans.Domain`, `src/Humans.Application`, `src/Humans.Infrastructure` and `src/Humans.UI` were all deleted over the course of G5. **The layers are roles now, not projects,** and three kinds of project are left:
+**The layers are roles now, not projects.** Three kinds of project exist:
 
 - **`src/Humans.Base`** — the bottom of the graph and the only project every section may reference. Role markers (`IApplicationService`, `IRepository`, `ISection`, …), the architecture attributes, `TrackedCache` and the cross-cutting invalidators, the `AddSectionDbContext` seam, and the shared view layer (`SharedResource`, the shared tag helpers and `Views/Shared` partials, `HumansControllerBase`). Formerly `Humans.Interfaces`; its namespaces are `Humans.Base.<folder>`.
 - **`src/Sections/Humans.<Section>[.Contracts]`** — the sections. A section may reference the base and other sections' `.Contracts` leaves, and nothing else.
@@ -54,9 +54,9 @@ The `Application` entity is for **Colaborador/Asociado tier applications only**.
 
 Each major section of the app has a terse invariant doc defining: concepts, data model, actors/roles, invariants, negative access rules, triggers, cross-section dependencies, architecture status. Every section follows [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).
 
-Every section carries that doc inside its own project (nobodies-collective/Humans#866, G5) at `src/Sections/Humans.<Section>/Docs/<Section>.md` — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). The path is derivable from the section name, so there is no index doc; `ls src/Sections` is the list. Each section's generated data-access map sits beside it at `Docs/data-access.md`, which is what to grep to find the section owning a given service, repository or table.
+Every section carries that doc inside its own project at `src/Sections/Humans.<Section>/Docs/<Section>.md` — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). The path is derivable from the section name, so there is no index doc; `ls src/Sections` is the list. Each section's generated data-access map sits beside it at `Docs/data-access.md`, which is what to grep to find the section owning a given service, repository or table.
 
-`/` (Home) and `/Admin/*` are Shell frames, not sections — decided in nobodies-collective/Humans#1091: they stay in `Humans.Web`, thin toward pure composition (their page bodies are section-contributed), and their services belong to the sections they act on.
+`/` (Home) and `/Admin/*` are Shell frames, not sections: they stay in `Humans.Web`, thin toward pure composition (their page bodies are section-contributed), and their services belong to the sections they act on.
 
 ## Scale and Deployment
 

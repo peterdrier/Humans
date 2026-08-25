@@ -85,10 +85,10 @@ HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolat
 HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and **frozen** — do not lower them, and do not burn down the grandfather list, until nobodies-collective/Humans#866 (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
 HUM0032 | Cross-section injection of a write-capable `I*Service` that has an `I*ServiceRead` base — inject the read interface, or mark the class `[CrossSectionWrite("reason")]` | Error
 HUM0033 | State-changing controller action (`[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`) passes a request-scoped cancellation token (`HttpContext.RequestAborted` or the action's own `CancellationToken` parameter) to a method marked `[ExternalWrite]` — pass `CancellationToken.None` or enqueue through Hangfire (`[Grandfathered("HUM0033")]` on the action downgrades to Warning) | Error
-HUM0034 | Public type in a section outside `Contracts/` or `Jobs/` (Hangfire `IRecurringJob` implementors and `*Job`-named jobs) that is not the `ISection` entry point, the `<Section>Resource` marker, an EF migration, or framework-required-public (view component, tag helper) — the #866 keystone, making "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
+HUM0034 | Public type in a section outside `Contracts/` or `Jobs/` (Hangfire `IRecurringJob` implementors and `*Job`-named jobs) that is not the `ISection` entry point, the `<Section>Resource` marker, an EF migration, or framework-required-public (view component, tag helper) — makes "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
 HUM0035 | Repository interface or implementation declared under a section `Contracts/` folder | Error
 
-> The next free id is **HUM0036** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the G5 section split (nobodies-collective/Humans#866) — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types except `Humans.Users.Contracts`, which deliberately declares the EF `User : IdentityUser<Guid>` entity and is unguarded for this property; the `IQueryable` half it also carried is tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0036** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the section split — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types except `Humans.Users.Contracts`, which deliberately declares the EF `User : IdentityUser<Guid>` entity and is unguarded for this property; the `IQueryable` half it also carried is tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
@@ -103,8 +103,7 @@ and its name is the assembly name minus the `Humans.` prefix (`Humans.Store` and
 
 **"Application DbContext"** (HUM0008 / HUM0009 / HUM0025 / HUM0026) is matched
 **structurally** by `Internal/SectionDbContexts.cs`: any class whose base chain
-reaches `Microsoft.EntityFrameworkCore.DbContext`. Since the per-section split
-(nobodies-collective/Humans#858) that means every
+reaches `Microsoft.EntityFrameworkCore.DbContext`. That means every
 `<Section>DbContext` (`UsersDbContext` included). Neither namespace nor assembly is pinned, so moving the
 contexts cannot silently switch these rules off; production-only scoping comes
 from `src/Directory.Build.props` attaching the analyzer to `src/` projects only,
@@ -131,8 +130,8 @@ analyzer to their own compilation — they instantiate analyzers directly via
 | EF migration-file checks (no `Drop*` in `Up()`) | **Ratchet test** | Migration files are EF-generated; an analyzer would fire on legitimate ops. |
 
 The ratchet rules under `tests/Humans.Web.Tests/Architecture/Rules/` (they moved
-there when `Humans.Application.Tests` was dissolved into per-section test projects
-at G5, nobodies-collective/Humans#866) and the boundary scans in
+there when `Humans.Application.Tests` was dissolved into per-section test projects)
+and the boundary scans in
 `ServiceBoundaryArchitectureTests.cs` all fall into
 "ratchet" / "marker" / "filesystem-aware" buckets — they stay as tests.
 

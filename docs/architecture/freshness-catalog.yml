@@ -50,7 +50,7 @@ mechanical:
       - "docs/features/**/*.md"
       - "docs/sections/**/*.md"
       - "docs/guide/**/*.md"
-      # README indexes the in-project invariants docs of G5 sections too, so a
+      # README indexes the in-project invariants docs of sections too, so a
       # new or renamed section doc must mark it dirty. Adding Tour's row this
       # sweep required a manual nudge for exactly this reason.
       - "src/Sections/*/Docs/*.md"
@@ -91,9 +91,9 @@ mechanical:
       - "src/Humans.Web/Controllers/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
       # RoleChecks / ShiftRoleChecks / PolicyNames moved with the rest of Humans.UI
-      # into Humans.Base at G5 lane 5d; the old glob matched nothing.
+      # into Humans.Base; the old glob matched nothing.
       - "src/Humans.Base/Authorization/**/*.cs"
-      # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
+      # Section-owned resource handlers — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
       # Section-owned controllers carry [Authorize] attributes the inventory lists,
@@ -213,7 +213,7 @@ mechanical:
     triggers:
       - "src/Humans.Web/Services/**/*.cs"
       # SystemDbContext and the admin diagnostics repository followed the rest of
-      # src/Humans.Infrastructure into Humans.Web at G5 lane 5b-6, which deleted it.
+      # src/Humans.Infrastructure into Humans.Web, which deleted it.
       - "src/Humans.Web/Repositories/**/*.cs"
       - "src/Humans.Web/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
@@ -250,14 +250,13 @@ mechanical:
 
       For every service in a touched section (and the cross-section orchestrators
       left in src/Humans.Web/Services/), identify:
-      1. Which repository interfaces it depends on. Note that a G5 section's
+      1. Which repository interfaces it depends on. Note that a section's
          repository is often a class literally named `Repository` implementing
          `I<Section>Repository`, not `<Section>Repository`; use the real class name.
       2. Which database tables those repositories ultimately access, and which
-         DbContext maps each one. Since the per-section split
-         (nobodies-collective/Humans#858) there is no single context: resolve
+         DbContext maps each one. There is no single context: resolve
          the DbSet<> declarations across src/Humans.Web/Data/
-         *DbContext.cs plus each G5 section's own Data/*DbContext.cs, and
+         *DbContext.cs plus each section's own Data/*DbContext.cs, and
          report the owning context per table. Do not assume a table is on
          HumansDbContext because a previous revision of this doc said so —
          re-resolve it from the context sources.
@@ -280,7 +279,7 @@ mechanical:
     target: docs/guid-reservations.md
     triggers:
       # SystemTeamIds / SystemUserIds followed the rest of Humans.Domain/Constants
-      # into Humans.Base at G5 lane 3a-1. The old Humans.Domain and
+      # into Humans.Base. The old Humans.Domain and
       # Humans.Infrastructure globs matched nothing once those projects were deleted;
       # no seed GUID lives outside this folder and the section Data/ tree below.
       - "src/Humans.Base/Constants/**/*.cs"
@@ -293,7 +292,7 @@ mechanical:
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
       Walk src/Humans.Base/Constants/ AND the whole src/Sections/*/Data/ tree —
-      G5 sections carry their own EF configurations and therefore their own HasData
+      Sections carry their own EF configurations and therefore their own HasData
       seed GUIDs, so scanning only the Base constants folder can omit the very
       section-owned GUID that fired this entry (blocks 0001/Teams and 0026/Events
       already live in sections).
@@ -334,8 +333,8 @@ editorial_trees:
   - docs/sections/
   - docs/features/
   - docs/guide/
-  # Sections that moved into their own project (nobodies-collective/Humans#866, G5)
-  # carry their invariants + feature docs in-project rather than in docs/sections/.
+  # Sections in their own project carry their invariants + feature docs in-project
+  # rather than in docs/sections/.
   - src/Sections/
   - docs/architecture/coding-rules.md
   - docs/architecture/design-rules.md
@@ -362,7 +361,6 @@ ignore:
   - docs/sections/SECTION-TEMPLATE.md
   - docs/sections/G5-SECTION-TEMPLATE.md
   - docs/architecture/maintenance-log.md
-  - docs/architecture/tech-debt-*.md
   - docs/architecture/screenshot-maintenance.md
   - docs/admin-role-setup.md
   - docs/google-service-account-setup.md
@@ -372,7 +370,7 @@ ignore:
   - docs/guide/README.md
   - docs/guide/GettingStarted.md
   - docs/guide/Glossary.md
-  # G5 in-project docs: sweep the living invariants/feature docs, not the dated
+  # In-project docs: sweep the living invariants/feature docs, not the dated
   # design records (historical, same genre as docs/superpowers/specs/).
   - src/Sections/*/Docs/20*.md
   - src/Sections/*/Contracts/README.md
