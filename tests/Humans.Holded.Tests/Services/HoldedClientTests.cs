@@ -193,6 +193,19 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task PayPurchaseDocumentAsync_BlankPaymentId_ReturnsAnUnconfirmedRef()
+    {
+        // An empty ref would defeat both the sentinel and the non-empty-refs re-booking gate.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, """{"id":""}"""));
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansFact]
     public async Task PayPurchaseDocumentAsync_UnparseableResponseBody_ReturnsAnUnconfirmedRef()
     {
         var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "not json"));

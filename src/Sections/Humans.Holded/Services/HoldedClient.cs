@@ -194,7 +194,9 @@ internal sealed class HoldedClient : IHoldedClient
                 documentId);
         }
 
-        if (id is not null) return id;
+        // Blank counts as unreadable: an empty ref would defeat both the sentinel and the
+        // non-empty-refs gate that stops a partially booked transfer being re-booked.
+        if (!string.IsNullOrWhiteSpace(id)) return id;
 
         // SendAsync already accepted the response, so the payment IS posted — throwing here would
         // lose it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
