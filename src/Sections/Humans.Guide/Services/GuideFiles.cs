@@ -24,6 +24,7 @@ internal static class GuideFiles
         "Calendar",
         "Email",
         "Campaigns",
+        "Issues",
         "Feedback",
         "Governance",
         "Budget",

@@ -233,9 +233,6 @@
   <data name="Issue_Comment_Posted" xml:space="preserve">
     <value>Kommentar veröffentlicht.</value>
   </data>
-  <data name="Issue_Comment_Reopened" xml:space="preserve">
-    <value>Ticket erneut geöffnet.</value>
-  </data>
   <data name="Issue_Comment_PostFailed" xml:space="preserve">
     <value>Kommentar konnte nicht veröffentlicht werden.</value>
   </data>

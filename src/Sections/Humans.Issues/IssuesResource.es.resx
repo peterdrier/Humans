@@ -233,9 +233,6 @@
   <data name="Issue_Comment_Posted" xml:space="preserve">
     <value>Comentario publicado.</value>
   </data>
-  <data name="Issue_Comment_Reopened" xml:space="preserve">
-    <value>Incidencia reabierta.</value>
-  </data>
   <data name="Issue_Comment_PostFailed" xml:space="preserve">
     <value>No se pudo publicar el comentario.</value>
   </data>

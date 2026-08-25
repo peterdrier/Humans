@@ -99,7 +99,6 @@
   <data name="Issue_Submitted" xml:space="preserve"><value>Issue submitted. Thanks!</value></data>
   <data name="Issue_Error" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
   <data name="Issue_Comment_Posted" xml:space="preserve"><value>Comment posted.</value></data>
-  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Issue reopened.</value></data>
   <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Could not post comment.</value></data>
   <data name="Issue_Status_Updated" xml:space="preserve"><value>Status updated.</value></data>
   <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignee updated.</value></data>

@@ -53,14 +53,15 @@ email it only when nothing else worked.
 9. [Calendar](Calendar.md)
 10. [Email](Email.md)
 11. [Campaigns](Campaigns.md)
-12. [Feedback](Feedback.md)
-13. [Governance](Governance.md)
-14. [Budget](Budget.md)
-15. [Expenses](Expenses.md)
-16. [Store](Store.md)
-17. [City Planning](CityPlanning.md)
-18. [Google Integration](GoogleIntegration.md)
-19. [Admin](Admin.md)
+12. [Issues](Issues.md)
+13. [Feedback](Feedback.md)
+14. [Governance](Governance.md)
+15. [Budget](Budget.md)
+16. [Expenses](Expenses.md)
+17. [Store](Store.md)
+18. [City Planning](CityPlanning.md)
+19. [Google Integration](GoogleIntegration.md)
+20. [Admin](Admin.md)
 
 ## Common questions
 
