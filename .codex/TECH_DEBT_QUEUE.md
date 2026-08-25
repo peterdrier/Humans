@@ -2153,6 +2153,21 @@ Blocked:
 Next:
 - Continue with the highest-value safe remaining controller baseline item.
 
+## 2026-08-25 checkpoint - live Teams and Shifts entity-read cleanup
+Done:
+- Replaced volunteer export's event-settings entity reads with `IBurnSettingsService` DTO reads.
+- Removed unused Teams entity-list and parent-lookup service surfaces.
+- Replaced internal Teams membership consumers with `UserTeamMembershipInfo` projections and removed the legacy entity membership cache.
+- Synced the live queue metadata to `tests/Humans.Web.Tests/Architecture/Baselines`.
+Validation:
+- Shifts tests: 562 passed.
+- Teams tests: 255 passed.
+- Architecture ratchet: 4 passed.
+- Full solution build: 0 errors.
+- Full no-build sweep: all suites passed except one parallel-only missing-database log assertion; the test passes in isolation.
+Next:
+- Continue with the remaining 15 live service entity-read baseline entries; preserve admin mutation paths and avoid persistence-forbidden areas.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.
