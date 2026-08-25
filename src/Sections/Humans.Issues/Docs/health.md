@@ -22,7 +22,7 @@ browser, and every write they make is attributed to the human whose key was used
 |---|---|---|
 | 1 | *What is in my queue?* | `GET /Issues` · `GetIssueListAsync` · `GetActionableCountForViewerAsync` · `GetDistinctReportersAsync` · `IssuesUserMenu` badge · admin-nav entry |
 | 2 | *What is the story of this one?* | `GET /Issues/{id}` · `GetIssueByIdAsync` · `GetThreadAsync` |
-| 3 | *I want to report something* | `GET/POST /Issues/New` · `_IssueWidgetModal` · `SubmitIssueAsync` · `CreateIssueAsync` |
+| 3 | *I want to report something* | `GET /Issues/New` (form) · `POST /Issues` (submit) · `_IssueWidgetModal` · `SubmitIssueAsync` · `CreateIssueAsync` |
 | 4 | *I want to say something on it* | `POST /Issues/{id}/Comments` · `PostCommentAsync` (auto-reopen, comment-and-resolve) |
 | 5 | *I want to move one field on it* | `POST /Issues/{id}/{Status,Assignee,Section,GitHubIssue}` · `Update{Status,Assignee,Section}Async` · `SetGitHubIssueNumberAsync` · four `…WithResultAsync` twins |
 | 6 | *Make it go away* | `PurgeExpiredAsync` + `CleanupIssuesJob` · `EraseForUserAsync` · `ContributeForUserAsync` |
@@ -37,9 +37,10 @@ machine door wants the exception and the browser door wants the message.
 - **`Domain/`** — `Issue`, `IssueComment`, and `IssueSectionRouting`, the section→roles table.
 - **`Data/`** — `IssuesDbContext` + the one repository. Repository projections are repo-local
   tuples/records; no service-layer DTO travels down into `Data/`.
-- **`Services/`** — `IssuesService`: one *apply a field change* pipeline that the four field
-  mutations parameterise, plus submit, thread assembly, badge count, retention and GDPR.
-  Result-vs-throw is a single wrapper, not four copies.
+- **`Services/`** — `IssuesService`: submit, thread assembly, badge count, retention, GDPR, and
+  the four field mutations. **Target, not built:** those four should be one *apply a field
+  change* pipeline they parameterise, with result-vs-throw as a single wrapper. Today it is
+  four methods plus four `…WithResultAsync` try/catch copies — see §2 shape 5 and §5.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders.
 - **`Authorization/`** — one requirement (`Handle`) and its resource handler.
@@ -63,7 +64,10 @@ machine door wants the exception and the browser door wants the message.
 
 ## 5. Seams — specified, not built
 
-- **None.** Nothing in the section's docs or specs describes behavior that has not shipped.
+- **The collapsed field-mutation pipeline** (§3). Eight method signatures answer one
+  question-shape; the target is one parameterised pipeline behind one result wrapper.
+  Collapsing them changes `IIssueTriage`, the machine door's surface, so it is Peter's call.
+- Otherwise nothing in the section's docs or specs describes behavior that has not shipped.
 
 ## 6. Deliberately not done
 
