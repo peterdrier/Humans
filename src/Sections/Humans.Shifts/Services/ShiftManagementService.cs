@@ -1312,6 +1312,8 @@ internal sealed class ShiftManagementService(
     internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
         $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
 
+    public void InvalidateDashboardCaches(Guid eventSettingsId) => EvictDashboardCaches(eventSettingsId);
+
     private void EvictDashboardCaches(Guid eventSettingsId)
     {
         var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
