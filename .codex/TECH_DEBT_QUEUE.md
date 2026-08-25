@@ -91,8 +91,10 @@ violation, never edit a baseline the code still triggers.
   (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
   command/read-model design, not a return-type swap); Teams `GetTeamByIdAsync` /
   `GetTeamEntityBySlugAsync` (admin authorization + mutation-adjacent state).
-- **Surface baseline:** not yet recorded — seed on the next run (built solution, see
-  above) and track the per-section score here as the reducible number.
+- **Surface baseline:** never recorded here — regenerate with `reforge surface-score`
+  on a built solution (see above) at the start of each run
+  (`memory/process/no-derived-aggregates-in-docs.md`); per-section history lives in
+  the Section Refactor History table in `docs/architecture/maintenance-log.md`.
 - **Needs Peter:** none open. (Legal-name picker scope shipped separately as
   peterdrier/Humans#1516; integration-test Serilog race filed as
   nobodies-collective/Humans#1145.)
