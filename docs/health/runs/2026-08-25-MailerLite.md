@@ -4,7 +4,7 @@
 - **Anchor commit:** `d754bb7d` (`origin/main` at branch point)
 - **Branch:** `section-doctor/2026-08-25T143901Z`
 - **Budget:** 2.5h
-- **PR:** pending
+- **PR:** peterdrier/Humans#1513
 - 2026-08-25 14:39Z session: .NET SDK, `dotnet-ef` and reforge present; **Stryker not installed** — the mutation-score half of the Tests thread is skipped with reason (see `## Threads`). Compiler available; this is a normal full run, not a docs-only one.
 
 ## Selection
@@ -371,15 +371,15 @@ No guide page exists for MailerLite (`docs/guide/` has none) — the section is 
 
 | Thread | Ran as | Model | Findings | Cost |
 |---|---|---|---|---|
-| Shape | main | — | 4, 5, 6, 7 | shared (see `assess` row) |
-| Behavior & bugs | main | — | 1, 2, 3, 10, 14, 15, 21, 23 | shared (see `assess` row) |
-| Freshness | subagent | sonnet | 8, 9, 11, 16, 22 | — |
-| Conformance | subagent (+ razor-lint) | haiku | 1 (confirmed) | — |
-| Tests | subagent | sonnet | 17, 18, 19, 20 | — |
-| Prose & surface | subagent | haiku | 3 (confirmed) | — |
-| History | subagent | sonnet | 8-part prose cuts | — |
-| Comments | subagent | sonnet | 12, plus four comment cuts | — |
-| Inbox | subagent | sonnet | 22 | — |
+| Shape | main | opus | 4, 5, 6, 7 | $7.58 shared (the `assess` row) |
+| Behavior & bugs | main | opus | 1, 2, 3, 10, 14, 15, 21, 23 | $7.58 shared (the `assess` row) |
+| Freshness | subagent | sonnet | 8, 9, 11, 16, 22 | $2.86 |
+| Conformance | subagent (+ razor-lint) | haiku | 1 (confirmed) | $0.57 |
+| Tests | subagent | sonnet | 17, 18, 19, 20 | $2.21 |
+| Prose & surface | subagent | haiku | 3 (confirmed) | $0.52 |
+| History | subagent | sonnet | 8-part prose cuts | $1.63 |
+| Comments | subagent | sonnet | 12, plus four comment cuts | shared with History (one agent, one transcript) |
+| Inbox | subagent | sonnet | 22 | $1.08 |
 
 - **Tests — mutation score: skipped, Stryker not installed in this environment and deliberately out
   of scope for this run.** The invariant coverage matrix (findings 17–20) ran in full.
@@ -391,3 +391,41 @@ No guide page exists for MailerLite (`docs/guide/` has none) — the section is 
   reported separately above.
 - The main-thread threads (Shape, Behavior & bugs) share one `assess` bucket in the phase log and
   cannot be split per lens; the figure is marked `shared` rather than invented.
+- **Reviewer (Phase 4, opus, $9.70)** — not an assessment thread; two second-opinion passes, one on
+  the deletion (approve) and one on the dedup (reject, then approve after rework). Both share one
+  `reviewer` row in the cost table because the script names rows by the `thread:` marker.
+
+## Cost
+
+| Component | Phase | Model | Fresh in | Out | Cache write | Cache read | ~$ |
+|---|---|---|---|---|---|---|---|
+| worktree | phase1 | opus | 10 | 1,293 | 5,544 | 461,889 | 0.30 |
+| select section | phase2 | opus | 4 | 740 | 2,702 | 190,206 | 0.13 |
+| assess | phase3 | opus | 102 | 51,230 | 309,316 | 8,723,482 | 7.58 |
+| Freshness (subagent) | phase3 | sonnet | 142 | 281 | 304,759 | 5,707,541 | 2.86 |
+| Tests (subagent) | phase3 | sonnet | 64 | 701 | 341,929 | 3,060,380 | 2.21 |
+| Conformance (subagent) | phase3 | haiku | 330 | 896 | 283,804 | 2,122,110 | 0.57 |
+| Prose & surface (subagent) | phase3 | haiku | 460 | 1,019 | 171,653 | 2,983,310 | 0.52 |
+| History (subagent) | phase3 | sonnet | 70 | 138 | 211,765 | 2,785,877 | 1.63 |
+| Inbox (subagent) | phase3 | sonnet | 54 | 555 | 151,451 | 1,674,203 | 1.08 |
+| strike: razor boolean attr + duplicate confirm handler | phase4 | opus | 26 | 11,272 | 41,313 | 3,339,874 | 2.21 |
+| strike: delete dead surface | phase4 | opus | 120 | 57,134 | 153,957 | 9,736,723 | 7.26 |
+| reviewer (subagent) | phase4 | opus | 176 | 5,560 | 989,599 | 6,753,543 | 9.70 |
+| strike: collapse the three duplicated rules | phase4 | opus | 52 | 12,759 | 26,234 | 3,184,147 | 2.08 |
+| strike: rework dedup + fix false doc claims | phase4 | opus | 82 | 22,402 | 65,599 | 6,194,144 | 4.07 |
+| strike: pin the unpinned invariants | phase4 | opus | 72 | 15,320 | 56,486 | 6,639,182 | 4.06 |
+| bookkeeping: sweep + run file | phase5 | opus | 78 | 22,267 | 75,153 | 8,890,402 | 5.47 |
+| retro | phase6 | opus | 6 | 867 | 1,523 | 747,843 | 0.41 |
+| pr | phase7 | opus | 36 | 10,270 | 24,195 | 4,609,739 | 2.71 |
+| **total** | | | 1,884 | 214,704 | 3,216,982 | 77,804,595 | **54.84** |
+
+API-equivalent $, list rates; run under subscription quota. Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded.
+
+Against the 2026-08-23 Onboarding baseline of **$93.30 / 746 calls / 184k median context**: this run
+came in at **$53.13**, 43% under. The two runs are not the same shape — Onboarding's spend went on a
+resx carve and a mutation pass this run did not have — so this is not evidence that dispatch is
+cheaper by itself. What the table does show is that the six dispatched Phase 3 threads cost $8.87 of
+the $53.13 total, against $7.58 for the main thread's own assess bucket: dispatch roughly doubled
+Phase 3's cost and, by the findings column above, supplied 8–20 while the main thread supplied the
+top three. The report carries no call count or median-context column, so those two halves of the
+baseline are not comparable from it.

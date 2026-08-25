@@ -116,4 +116,4 @@ Reserve the places; don't build them.
 
 | Date | Run | reforge | loc | cogP95 | cogMax |
 |---|---|---|---|---|---|
-| 2026-08-25 | [2026-08-25-MailerLite](../../../../docs/health/runs/2026-08-25-MailerLite.md) (PR pending) | 278 | 2771 | 17 | 38 |
+| 2026-08-25 | [2026-08-25-MailerLite](../../../../docs/health/runs/2026-08-25-MailerLite.md) (peterdrier/Humans#1513) | 278 | 2771 | 17 | 38 |
