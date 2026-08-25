@@ -82,9 +82,10 @@ violation, never edit a baseline the code still triggers.
 
 *As of 2026-08-25, branch `techdebt/2026-08-25-codex-1` (curated into peterdrier/Humans#1514).*
 
-- **Baselines:** regenerate before trusting: `ApplicationServiceEntityReadReturns` 15
-  (12 after peterdrier/Humans#1514 merges), `DisplaySortInControllers` 29, `NoDestructiveMigrationOps` 7
-  (blocked by design — immutable migration history, not a backlog).
+- **Baselines:** counts live in the baseline files only — regenerate with the command
+  above, never record them here (`memory/process/no-derived-aggregates-in-docs.md`).
+  `NoDestructiveMigrationOps` is blocked by design — immutable migration history, not
+  a backlog.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
   (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
