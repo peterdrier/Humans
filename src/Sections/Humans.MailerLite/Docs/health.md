@@ -36,12 +36,12 @@ MailerLite subscriber goes with them.
 | 5 | Push list X / push them all. | `Audiences/{key}/Sync` (POST), `SyncAll` (POST), the Hangfire job |
 | 6 | Forget this person at the processor. | `MailerLiteGdprContributor.EraseForUserAsync` |
 
-Six shapes; nine public/internal service methods plus six routes. Shapes 1–5 are one admin
-screen apiece or a button on one; shape 6 is a fan-out target with no UI.
+Shapes 1–5 are one admin screen apiece or a button on one; shape 6 is a fan-out target with
+no UI.
 
 ## 3. Structure
 
-The layout those six shapes imply:
+The layout those shapes imply:
 
 - **One port to the remote** — `IMailerLiteService` / `MailerLiteClient`: paged reads held in a
   Singleton snapshot, and exactly the writes shapes 5 and 6 need. Every write to a group is
@@ -54,7 +54,7 @@ The layout those six shapes imply:
   cross-section read interfaces. Everything they share — the marketing opt-out exclusion, the
   ticket-holder set, the shift-signup set — belongs in exactly one place above them.
 - **One suppressed-status rule**, named once and read by the sync, the stats and the debug
-  preview. Three copies of it is three chances for the preview to lie about the apply.
+  preview. Every extra copy of it is another chance for the preview to lie about the apply.
 - **One table**, `mailerlite_sync_states`: the current state of each list's last push plus the
   import's, behind the section's repository.
 - **Views** are operator English with no resource set, over view models the controller shapes.

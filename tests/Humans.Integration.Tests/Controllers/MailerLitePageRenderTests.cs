@@ -11,7 +11,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// MailerLite has none of the usual halves — no resource set (the two admin pages are English
+/// MailerLite has none of the usual halves — no resource set (the admin pages are English
 /// operator copy, so there is no <c>NotContain("MailerLite_")</c> and no Spanish request) and no
 /// <c>wwwroot/</c>, so no <c>?v=</c>. What a G5 move actually breaks here is the section
 /// RCL's own <c>Views/_ViewImports.cshtml</c>, which the host's does not supply: an unbound

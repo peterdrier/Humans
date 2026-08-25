@@ -28,7 +28,7 @@ A per-audience debug screen on the existing MailerLite admin section that previe
 
 `GET /MailerLite/Admin/Audiences/{key}/Debug` — `AdminOnly`. Same auth as the rest of the section.
 
-## Five Sections
+## Sections
 
 | # | Section | Source |
 |---|---|---|

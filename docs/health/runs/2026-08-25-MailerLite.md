@@ -19,7 +19,7 @@ sections** ranked by reforge surface score (278, `loc=2771`), pool 43.
 
 MailerLite is a well-built section carrying an unusual amount of *narration*. Its behaviour matches
 its invariant doc almost everywhere; what has drifted is the prose around it — a Cross-Section
-Dependencies list naming a section that does not exist and five methods that do not either, a job
+Dependencies list naming a section that does not exist and methods that do not either, a job
 whose XML doc promises a daily schedule the code makes opt-in, and a DTO doc describing an API
 fan-out the client stopped doing.
 
@@ -108,9 +108,11 @@ Value order. Effort is a column, never the sort key. Execution ran `cut → dele
     `GetAllUserInfosAsync`. A comment inside it points at "line 127 there" in
     `MailerLiteAudienceSyncService` — a cross-file line-number reference, and already wrong (the
     filter is at line 135). *(fix — struck)*
-13. **"The two admin pages" — there are three.** `Views/_ViewImports.cshtml` and
-    `Docs/MailerLite.md` both say two; `Index.cshtml`, `Import.cshtml` and `Debug.cshtml` are three.
-    *(fix — struck)*
+13. **"The two admin pages" — a count that had already drifted.** `Views/_ViewImports.cshtml`,
+    `Docs/MailerLite.md` and `MailerLitePageRenderTests` all say two; `Index.cshtml`,
+    `Import.cshtml` and `Debug.cshtml` say otherwise. Struck by dropping the count rather than
+    correcting it — `memory/process/no-derived-aggregates-in-docs.md` forbids restating a
+    code-owned set's size, which is exactly why this one went stale. *(fix — struck)*
 14. **`HasTicketAudience`'s summary is a half-edited sentence.** "buyer-only excluded — see derived
     from the ticket order projection" — a leftover from an edit that replaced the cross-reference
     without removing "see". *(fix — struck)*
@@ -130,20 +132,20 @@ Value order. Effort is a column, never the sort key. Execution ran `cut → dele
     effective CI coverage. A reflection check on the controller's `[Authorize(Policy = …)]` attribute
     in `MailerLiteArchitectureTests` would restore a real gate without touching the excluded suite.
     *(fix — struck)*
-18. **Three invariants the sync-service tests state but do not exercise.** The suppressed-status
+18. **Invariants the sync-service tests state but do not exercise.** The suppressed-status
     exclusion is tested only for `unsubscribed`, never `bounced` or `junk`, though the invariant names
     all three — and `bounced`/`junk` are covered only in the *debug builder's* copy of the rule, which
     is exactly the divergence finding 5 is about. The 429 retry invariant's "defaults to 60s when the
     header is absent or unparsable" branch has no test; every case sets an explicit `Retry-After`.
     *(fix — struck)*
-19. **Two tests that do not discriminate.**
+19. **Tests that do not discriminate.**
     `TicketNoShiftsAudienceTests.ComputeMemberUserIdsAsync_TicketWithoutCommittedShift_IncludesUser`
     promises to prove that Refused/Bailed/Cancelled/NoShow signups do not count as "has a shift", but
     its harness maps every non-committed id to `ShiftUserSummary.Empty(id)` — no such signup is ever
     constructed, so it walks the same path as the test above it.
     `MailerLiteAudienceBaseTests.ComputeMemberUserIdsAsync_NoOptOuts_ReturnsRawUnchanged` is a subset
     of the exclusion test beside it. *(fix — struck)*
-20. **Six invariants with no pinning test at all** (from the Tests thread's matrix, none struck): the
+20. **Invariants with no pinning test at all** (from the Tests thread's matrix, none struck): the
     reserved `import-reconciliation` key exclusion; `ComputeAllStatsAsync` taking the most recent row
     when a key duplicates; `SubscribedAt` stamped once and never overwritten; the
     `MailerLiteDbContext`-stays-in-`Data/` boundary; `MailerLiteImportService` not injecting
@@ -360,6 +362,7 @@ pipelines visible as *one* observation rather than three separate ones.
 ### Touched outside the section (callers a play required)
 
 - `tests/Humans.Integration.Tests/Infrastructure/StubMailerLiteService.cs` — changed
+- `tests/Humans.Integration.Tests/Controllers/MailerLitePageRenderTests.cs` — changed (review round 1)
 - `src/Sections/Humans.Issues/Docs/debt.yml` — changed (sweep commit only; new file)
 - `src/Sections/Humans.Events/Docs/debt.yml` — changed (sweep commit only)
 - `memory/process/resx-value-edits.md` — changed (sweep commit only; new file)
