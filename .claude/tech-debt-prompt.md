@@ -32,8 +32,10 @@ added to it.
 
 ## Working rules
 
-- Work on a fresh branch `techdebt/YYYY-MM-DD-claude-N` in a worktree at
-  `.worktrees/<same-name>`, off `origin/main`.
+- Launched via `.claude/run-autonomous.sh`, your branch and worktree already
+  exist — the wrapper's preamble says "Use the current git branch"; stay in that
+  checkout. Invoked directly, create branch `techdebt/YYYY-MM-DD-claude-N` in a
+  worktree at `.worktrees/<same-name>` off `origin/main`.
 - One coherent improvement per commit. Targeted section tests + build per change;
   full `dotnet test Humans.slnx -v quiet` before any push. `-v quiet` always.
 - Honor every boundary in the queue file's *Boundaries* section — especially: debt

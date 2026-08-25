@@ -38,8 +38,11 @@ file's *Current state* instead of restarting discovery.
 
 ## Working rules
 
-- Branch `techdebt/YYYY-MM-DD-codex-N` in a worktree at `.worktrees/<same-name>`,
-  off `origin/main`. Scratch notes under `local/tech-debt-runs/<run-id>/`.
+- Launched via `.codex/run-weekly-bug-hunt.sh`, your branch and worktree already
+  exist — the wrapper's preamble says "Use the current git branch"; stay in that
+  checkout. Invoked directly, create branch `techdebt/YYYY-MM-DD-codex-N` in a
+  worktree at `.worktrees/<same-name>` off `origin/main`. Scratch notes under
+  `local/tech-debt-runs/<run-id>/` either way.
 - One coherent improvement per commit, each with a one-sentence architecture thesis
   that stands without score movement. Targeted section tests + build per change;
   full `dotnet test Humans.slnx -v quiet` before any push. `-v quiet` always.
