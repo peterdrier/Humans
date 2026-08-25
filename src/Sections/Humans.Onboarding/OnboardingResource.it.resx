@@ -153,11 +153,9 @@
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Completa la configurazione del tuo account per accedere ai turni e alle funzionalità del team.</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Continua la configurazione →</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Il nome che tutti nel sistema vedono. L'unicità aiuta ma non è obbligatoria, anche se potrebbe essere difficile trovare "Bob" tra le diverse migliaia di humans qui se qualcuno ti sta cercando.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Il nome con cui tutti ti conosceranno.</value></data>
