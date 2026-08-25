@@ -34,4 +34,3 @@ Humans.Shifts.Services.IShiftManagementService.GetShiftByIdAsync:Humans.Shifts.D
 Humans.Shifts.Services.IShiftSignupService.GetByUserAsync:Humans.Shifts.Domain.ShiftSignup
 Humans.Teams.Services.ITeamManagementService.GetTeamByIdAsync:Humans.Teams.Domain.Team
 Humans.Teams.Services.ITeamManagementService.GetTeamEntityBySlugAsync:Humans.Teams.Domain.Team
-Humans.Teams.Services.ITeamManagementService.GetUserTeamsAsync:Humans.Teams.Domain.TeamMember

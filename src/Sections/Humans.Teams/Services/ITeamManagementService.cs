@@ -196,11 +196,6 @@ internal interface ITeamManagementService : ITeamService
     Task<TeamDetailResult?> GetTeamDetailAsync(string slug, Guid? userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all teams the user is a member of.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.
     /// </summary>
     Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(

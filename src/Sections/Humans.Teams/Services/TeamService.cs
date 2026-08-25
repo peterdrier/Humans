@@ -295,9 +295,6 @@ internal sealed class TeamService(
             PendingRequestCount: pendingRequestCount);
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await repo.GetActiveByUserIdAsync(userId, cancellationToken);
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -313,11 +310,11 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await GetUserTeamsAsync(userId, cancellationToken);
+        var memberships = await GetUserTeamMembershipsAsync(userId, cancellationToken);
         var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
 
         var coordinatorTeamIds = memberships
-            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
+            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.IsSystemTeam)
             .Select(m => m.TeamId)
             .ToHashSet();
 
@@ -346,12 +343,12 @@ internal sealed class TeamService(
 
                 return new MyTeamMembershipSummary(
                     m.TeamId,
-                    m.Team.DisplayName,
-                    m.Team.Slug,
-                    m.Team.IsSystemTeam,
+                    m.TeamName,
+                    m.TeamSlug,
+                    m.IsSystemTeam,
                     m.Role,
                     m.JoinedAt,
-                    CanLeave: !m.Team.IsSystemTeam,
+                    CanLeave: !m.IsSystemTeam,
                     PendingRequestCount: directCount + childCount);
             })
             .ToList();
@@ -1985,8 +1982,8 @@ internal sealed class TeamService(
         CancellationToken cancellationToken)
     {
         // TeamMember fold via AddMemberToTeamAsync/RemoveMemberAsync (system teams skipped — reconciled by SystemTeamSyncJob).
-        var sourceMemberships = await GetUserTeamsAsync(sourceUserId, cancellationToken);
-        var targetMemberships = await GetUserTeamsAsync(targetUserId, cancellationToken);
+        var sourceMemberships = await GetUserTeamMembershipsAsync(sourceUserId, cancellationToken);
+        var targetMemberships = await GetUserTeamMembershipsAsync(targetUserId, cancellationToken);
         var targetTeamIds = targetMemberships.Select(m => m.TeamId).ToHashSet();
         var sourceTeamsById = await repo.GetByIdsWithParentsAsync(
             sourceMemberships.Select(m => m.TeamId).Distinct().ToList(), cancellationToken);

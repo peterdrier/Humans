@@ -1694,7 +1694,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].TeamId.Should().Be(teamA.Id);
@@ -1708,10 +1708,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Single().Team.Should().NotBeNull();
-        result.Single().Team.Name.Should().Be("Alpha");
+        result.Single().TeamName.Should().Be("Alpha");
     }
 
     [HumansFact]
@@ -1720,7 +1719,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var user = SeedUser();
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }

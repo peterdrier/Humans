@@ -228,7 +228,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var second = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         second.Should().HaveCount(1);
 
-        await inner.DidNotReceive().GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await inner.DidNotReceive().GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -242,7 +242,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         result.Should().BeEmpty();
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamManagementService>(
             CachingTeamService.InnerServiceKey);
-        await inner.DidNotReceive().GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await inner.DidNotReceive().GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
