@@ -278,6 +278,42 @@ public class HoldedClientContactTests
         capturedBody.Should().NotContain("customId");
     }
 
+    [HumansFact]
+    public async Task UpsertContact_create_sends_creditor_type()
+    {
+        string? capturedBody = null;
+        var client = Make(new StubHandler(req =>
+        {
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.OK, """{"id":"new-c"}""");
+        }));
+
+        await client.UpsertContactAsync(
+            new HoldedContactInput { Name = "Legal" }, Xunit.TestContext.Current.CancellationToken);
+
+        capturedBody.Should().Contain("\"type\":\"creditor\"");
+    }
+
+    [HumansFact]
+    public async Task UpsertContact_update_omits_type()
+    {
+        // A PUT carrying type flipped a manually-created supplier contact to creditor, minting a
+        // new 410000xx acreedor account instead of reusing the contact's existing 400000xx
+        // proveedor account. type is left off the update payload entirely.
+        string? capturedBody = null;
+        var client = Make(new StubHandler(req =>
+        {
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.OK, """{"id":"c-exist"}""");
+        }));
+
+        await client.UpsertContactAsync(
+            new HoldedContactInput { Name = "Legal", ExistingContactId = "c-exist" },
+            Xunit.TestContext.Current.CancellationToken);
+
+        capturedBody.Should().NotContain("\"type\"");
+    }
+
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

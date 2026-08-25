@@ -1183,7 +1183,16 @@ internal sealed class ExpenseReportService(
             await repo.MarkAttachmentPushedAsync(line.Attachment.Id, now, ct);
         }
 
-        // 4. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
+        // 4. Approve the doc — POST /purchases only creates a draft, and nothing else approves it,
+        // so an unapproved doc never books to the ledger. Checked first via GetPurchaseDocumentAsync's
+        // ApprovedAt, mirroring how Store decides whether a sales document still needs approving
+        // (Humans.Store/Services/Service.cs, IsDraft check before ApproveSalesDocumentAsync) — so a
+        // re-drain that reaches an already-approved doc does not throw the event into permanent failure.
+        var currentDoc = await holdedClient.GetPurchaseDocumentAsync(holdedDocId, ct);
+        if (currentDoc.ApprovedAt is null)
+            await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
+
+        // 5. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
         // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
         // (that would strand a created doc as permanently-failed). There is no automatic retry — a null
         // num stays null until an admin runs POST /Finance/Creditors/Bind, or a later report for this

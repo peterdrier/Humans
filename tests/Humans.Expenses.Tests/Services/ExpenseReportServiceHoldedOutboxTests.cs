@@ -81,6 +81,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 });
 
+        // Step 4 (approve) reads the doc back first to check ApprovedAt — not yet approved by
+        // default, so the happy-path tests that don't care about approval still exercise it.
+        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(MakePurchaseDoc());
+
         _sut = new ExpenseReportService(
             _repo,
             _fileStorage,
@@ -163,6 +168,18 @@ public class ExpenseReportServiceHoldedOutboxTests
     // ever used here, and it is two lines.
     private static UserInfo MinimalUserInfo(User user) =>
         UserInfo.Create(user, [], [], [], profile: null, []);
+
+    private static HoldedPurchaseDocumentDto MakePurchaseDoc(Instant? approvedAt = null) => new()
+    {
+        Id = "doc-1",
+        DocNumber = "",
+        Subtotal = 0m,
+        Tax = 0m,
+        Total = 0m,
+        PaymentsTotal = 0m,
+        PaymentsPending = 0m,
+        ApprovedAt = approvedAt,
+    };
 
     private static HoldedExpenseOutboxEvent MakeEvent(
         Guid reportId, HoldedExpenseOutboxEventType eventType) => new()
@@ -738,6 +755,57 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _auditLog.Received(1).LogAsync(
             AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
             Arg.Is<string>(s => s.Contains("holded-doc-42")), Arg.Any<string>(), null, null);
+    }
+
+    // ─── purchase doc approval ─────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_ApprovesTheDocAfterAttachments()
+    {
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-doc-42");
+        _holdedClient.GetPurchaseDocumentAsync("holded-doc-42", Arg.Any<CancellationToken>())
+            .Returns(MakePurchaseDoc(approvedAt: null));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).ApprovePurchaseDocumentAsync(
+            "holded-doc-42", Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_AlreadyApprovedOnReDrain_SkipsApproveAndStillSucceeds()
+    {
+        // A re-drain can reach a doc a prior attempt already approved (e.g. approve succeeded but
+        // a later step in this method failed). Re-approving must not throw the event into
+        // permanent failure.
+        var report = MakeReport();
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("holded-doc-42");
+        _holdedClient.GetPurchaseDocumentAsync("holded-doc-42", Arg.Any<CancellationToken>())
+            .Returns(MakePurchaseDoc(approvedAt: Now - Duration.FromHours(1)));
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.DidNotReceiveWithAnyArgs()
+            .ApprovePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     // ─── sync state reported to finance ───────────────────────────────────────

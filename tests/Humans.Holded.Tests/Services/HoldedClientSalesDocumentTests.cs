@@ -213,9 +213,11 @@ public class HoldedClientSalesDocumentTests
         body.Should().NotContain("bill_address");
         body.Should().NotContain("trade_name");
         body.Should().NotContain("null");
+        // An update omits type entirely (see HoldedClientContactTests.UpsertContact_update_omits_type) —
+        // sending it flips a manually-created contact's type on Holded's side.
+        body.Should().NotContain("\"type\"");
         // What it does mean to send still goes.
         body.Should().Contain("\"name\":\"Supplier\"");
-        body.Should().Contain("\"type\":\"creditor\"");
         body.Should().Contain("\"iban\":\"ES9121000418450200051332\"");
     }
 

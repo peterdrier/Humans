@@ -1715,6 +1715,12 @@ public sealed class ExpenseReportServiceTests
             .Returns("doc-1");
         _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocumentDto
+            {
+                Id = "doc-1", DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m,
+                PaymentsTotal = 0m, PaymentsPending = 0m,
+            });
         _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new byte[] { 1, 2, 3 });
 
@@ -1769,6 +1775,12 @@ public sealed class ExpenseReportServiceTests
             .Returns("doc-1");
         _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocumentDto
+            {
+                Id = "doc-1", DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m,
+                PaymentsTotal = 0m, PaymentsPending = 0m,
+            });
         _fileStorage.TryReadAsync(
                 ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())

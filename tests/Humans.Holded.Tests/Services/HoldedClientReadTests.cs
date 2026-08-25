@@ -128,8 +128,10 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListDraftPurchaseIds_sends_approval_status_filter_and_returns_ids()
+    public async Task ListDraftPurchaseIds_sends_draft_filter_and_returns_ids()
     {
+        // approval_status=draft is silently ignored by the live API and returns every doc as
+        // approved (verified live); draft=true is the filter that actually works.
         string? capturedQuery = null;
         var handler = new StubHandler(req =>
         {
@@ -141,7 +143,7 @@ public class HoldedClientReadTests
         var client = Make(handler);
         var ids = await client.ListDraftPurchaseIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        capturedQuery.Should().Contain("approval_status=draft");
+        capturedQuery.Should().Contain("draft=true");
         ids.Should().BeEquivalentTo(["d1", "d2"]);
     }
 

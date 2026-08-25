@@ -27,6 +27,10 @@ public interface IHoldedClient
         string documentId,
         CancellationToken ct = default);
 
+    /// <summary>Approves a purchase document. POST /purchases only creates a draft — only an
+    /// approved doc books to the ledger and leaves the draft list.</summary>
+    Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
+
     /// <summary>Lists all P&L expense accounts (id + number + name).</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default);
