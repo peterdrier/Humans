@@ -1,0 +1,13 @@
+# Section debt ledger for Humans.Issues. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-25
+    what: "Screenshots are written directly to wwwroot/uploads/issues/{id}/ with FileStream rather than through Humans.Base/Interfaces/IFileStorage.cs, and are served from wwwroot with no authorization check, so an issue screenshot is public to anyone holding the URL. Humans.Feedback does the same — this is a repo-wide pattern and wants one decision, not two section fixes. Found by /section-doctor on Issues 2026-08-25."
+    review: panel
+  - added: 2026-08-25
+    what: "IssuesServiceTests duplicates state assertions in two places that the direct-call tests already own, while GetThreadAsync's merge/sort, AuditAction.IssueGitHubLinked, badge-cache invalidation and the null-actor ('API') audit branch are each unasserted. Found by /section-doctor on Issues 2026-08-25."
+    review: light
+  - added: 2026-08-25
+    what: "IssuesService is 838 lines, at the top of the section's range, and holds four near-identical field-mutation pipelines plus their four …WithResultAsync twins — eight method signatures for one operation shape. Collapsing them changes the machine door's surface, so it is Peter's call. Found by /section-doctor on Issues 2026-08-25."
+    review: panel
