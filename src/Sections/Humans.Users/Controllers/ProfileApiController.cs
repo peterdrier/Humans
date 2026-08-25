@@ -1,9 +1,12 @@
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
+using Humans.Base.Authorization;
+using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 
 namespace Humans.Users.Controllers;
@@ -34,10 +37,13 @@ internal sealed class ProfileApiController(
         if (!q.HasSearchTerm())
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
-        // scope=name → display/burner name only; default → broad public match. Admin bit never set on public endpoint.
+        // scope=name → display/burner name only; default → broad public match.
+        // scope=manage adds legal-name matching, but only for an admin-shaped role.
         var fields = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
             ? PersonSearchFields.Name
-            : PersonSearchFields.PublicAll;
+            : string.Equals(scope, "manage", StringComparison.OrdinalIgnoreCase) && CanUseManageScope(User)
+                ? PersonSearchFields.ManageAll
+                : PersonSearchFields.PublicAll;
 
         // Cover the deleted-user-but-session-still-valid race — fail-closed with 401.
         var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
@@ -87,6 +93,20 @@ internal sealed class ProfileApiController(
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         return Ok(response);
     }
+
+    private static bool CanUseManageScope(ClaimsPrincipal user) =>
+        user.IsInRole(RoleNames.Admin)
+        || user.IsInRole(RoleNames.Board)
+        || user.IsInRole(RoleNames.HumanAdmin)
+        || user.IsInRole(RoleNames.TeamsAdmin)
+        || user.IsInRole(RoleNames.CampAdmin)
+        || user.IsInRole(RoleNames.NoInfoAdmin)
+        || user.IsInRole(RoleNames.VolunteerCoordinator)
+        || user.IsInRole(RoleNames.ConsentCoordinator)
+        || user.IsInRole(RoleNames.TicketAdmin)
+        || user.IsInRole(RoleNames.EventsAdmin)
+        || user.IsInRole(RoleNames.FinanceAdmin)
+        || user.IsInRole(RoleNames.StoreAdmin);
 
     // Exact (accent-/case-folded full-string) burner-name collision count, excluding the editing user.
     // Drives the live edit-profile warning. Uncapped — the real number must surface, not the search cap.

@@ -84,8 +84,8 @@ Per-window scope flip so admin/coordinator windows match **legal name** (defect 
   hybrid (existing members by DisplayName+Email, candidates by BurnerName) onto the matcher. **Done.**
 - `Shift{Admin,Dashboard}Controller.SearchVolunteers` → `ManageAll` (both are coordinator/admin-gated).
   **Done.**
-- `ProfileApiController.Search`: add a role-checked `scope=manage` → `ManageAll`; point the
-  add-to-team / add-to-barrio / early-entry views at it.
+- `ProfileApiController.Search`: role-checked `scope=manage` → `ManageAll`; the
+  add-to-team / add-to-barrio / early-entry views now request it. **Done.**
 - Web controller tests asserting public endpoints never receive legal-name/admin scope.
 
 ## Out of scope

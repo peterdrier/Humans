@@ -110,7 +110,7 @@
                                                              instance-key="@($"role-{role.DefinitionId:N}")"
                                                              placeholder="Search humans…"
                                                              exclude-user-ids="@alreadyInRole"
-                                                             scope="Name" />
+                                                             scope="Manage" />
                                             <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
@@ -136,7 +136,7 @@
                 <div class="card-body">
                     <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
                         @Html.AntiForgeryToken()
-                        <vc:human-search field-name="userId" scope="Name" />
+                        <vc:human-search field-name="userId" scope="Manage" />
                         <button type="submit" class="btn btn-outline-success" title="Add active member">
                             <i class="fa-solid fa-user-plus"></i>
                         </button>
