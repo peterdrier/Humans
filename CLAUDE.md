@@ -12,7 +12,7 @@ Membership management system for Nobodies Collective (Spanish nonprofit). Manage
 
 @docs/architecture/peters-working-rules.md
 
-**Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), all 42 of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext`; every table belongs to exactly one section context.
+**Every section is its own project** — `src/Sections/Humans.<Section>/` (+ an optional `.Contracts` leaf), all of them. A section owns its `DbContext`, migrations and tables end-to-end (`Domain/`, `Services/`, `Data/`, `Controllers/`, `Views/`, its own `<Section>Resource` resx set) and registers its own DI from `Section.cs : ISection`. There is no shared `HumansDbContext`; every table belongs to exactly one section context.
 
 **The layers are roles now, not projects.** Three kinds of project exist:
 

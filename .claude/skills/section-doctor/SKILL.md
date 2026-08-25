@@ -365,8 +365,8 @@ The Inbox thread pulls the section's open issues to work or rank them. Nothing t
 whether those issues are still *correct* — and a run that has just read the section end to end,
 inventory and target and docs and invariants, is the best-informed reader of that backlog anyone
 gets. Throwing that away is how a backlog drifts: issues describing files that moved, asking for
-behavior that shipped, contradicting each other or the section doc, or predating a G5 project
-split that changed the answer (nobodies-collective/Humans#1118).
+behavior that shipped, contradicting each other or the section doc, or predating a project
+split that changed the answer.
 
 So review each one against **this run's own target shape and inventory**, on four lenses:
 

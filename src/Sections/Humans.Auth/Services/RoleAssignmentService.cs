@@ -269,7 +269,7 @@ internal sealed class RoleAssignmentService(
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
     {
-        // Caller invalidates caches AFTER the ambient TransactionScope commits — see AccountMergeService.AcceptAsync.
+        // Caller invalidates caches after the merge's commit point — see AccountMergeService.MergeAsync.
         return repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
     }
 

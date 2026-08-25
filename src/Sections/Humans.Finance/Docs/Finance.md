@@ -22,8 +22,11 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 **Today — Holded creditor reads** (built, Feature 2): the daybook journal-line mirror itself belongs to the **Holded** section; Finance derives creditor balance, owed and payments from it (no balance/payment tables of its own, no live API call on page load), and `GetCreditorStatusAsync` / `GetCreditorLedgerAsync` expose that read surface to Expenses. See [Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror) below.
 
+**Today — SEPA payout** (built, Feature 3): `/Finance/Creditors` selects payable creditor balances and `POST /Finance/Sepa/Generate` streams a pain.001.001.09 credit-transfer file for the bank. Balance-based, not report-based: nothing in Expenses moves. See [Feature 3](#feature-3--sepa-payout-of-creditor-balances) and [`features/sepa-payout.md`](features/sepa-payout.md).
+
 ## Concepts
 
+- A **SEPA payout** is one generated pain.001.001.09 file over a set of member creditor *balances*, kept verbatim with one row per credit transfer. It settles nothing by itself: the treasurer uploads it to the bank, books the payment in Holded, and the next ledger sync clears the balance.
 - A **Holded Expense Doc** is a purchase invoice pulled from Holded and stored verbatim. Each line is attributed to a budget category via the attribution chain below.
 - **Attribution chain (Account → Tag → Unmatched):**
   1. **Account (A):** the line's booked Holded `account` id is looked up in `HoldedCategoryMap.HoldedAccountId`. Match → `MatchSource = Account`.
@@ -105,6 +108,38 @@ contact, three write paths with different collision remedies, and no unique inde
 
 Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `StatusChangedAt`, `LastSyncedDocCount`. Status of the purchase-doc sync only — the ledger mirror (`holded_ledger_lines`, kind-keyed sync states) moved to the **Holded section** (`src/Sections/Humans.Holded/Docs/Holded.md`); Finance reads it via `IHoldedService`.
 
+### SepaPayoutFile
+
+**Table:** `sepa_payout_files`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK. Also the source of the file's `MsgId` and `PmtInfId`. |
+| GeneratedAt | Instant | Indexed. |
+| GeneratedByUserId | Guid | The finance admin who pressed Generate. Bare FK, no nav (cross-section). |
+| FileName | string(128) | The download name, so a copy still on the treasurer's disk can be identified. |
+| Checksum | string(64) | SHA-256 of the UTF-8 XML, lowercase hex. |
+| Xml | text | The generated file, verbatim. |
+
+**Cross-section FKs:** `GeneratedByUserId` → `User` (Users) — FK only, no navigation property.
+
+### SepaPayoutTransfer
+
+**Table:** `sepa_payout_transfers`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK. Also the source of this transfer's `EndToEndId`; never changes. |
+| FileId | Guid | The file it belongs to. Indexed; intra-section, no nav property. |
+| UserId | Guid | The member paid. Bare FK, no nav (cross-section). Indexed. |
+| SupplierAccountNum | int | The creditor account the balance was read from. |
+| CreditorName | string(70) | As written into `Cdtr/Nm` — already SEPA-normalized. |
+| Iban | string(34) | **Unmasked.** This column and the XML are the only two places it exists. |
+| IbanMasked | string(34) | What logs, audit entries and screens use instead. |
+| Amount | numeric(12,2) | EUR. |
+
+**Cross-section FKs:** `UserId` → `User` (Users) — FK only, no navigation property.
+
 ### HoldedMatchStatus
 
 | Value | Description |
@@ -145,6 +180,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
 | `POST /Finance/Creditors/Bind` | Manually bind a member to a Holded creditor account by 400000xx number |
 | `POST /Finance/Creditors/Unbind` | Clear a member's creditor binding (the remedy for a wrong bind or a collision) |
+| `POST /Finance/Sepa/Generate` | Build and stream a pain.001.001.09 credit-transfer file over the selected creditor balances |
 
 ## Actors & Roles
 
@@ -159,7 +195,7 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`Service.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`FinanceController` → `GetActualsForYearAsync` → `HoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
-- `FinanceController` performs no budget mutations at all — its nine actions are the Holded and creditor surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
+- `FinanceController` performs no budget mutations at all — its ten actions are the Holded, creditor and SEPA-payout surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
 - `/Finance/Holded` issues **no** Holded HTTP call. Every figure comes from `holded_doc_sync_state`, `holded_category_map`, `holded_expense_docs` and `holded_creditor_contacts`; the mirror's own health (API budget, ledger sweeps, chart of accounts) is `/Holded`'s and is linked, not restated. Pinned by `GetConnectorOverview_MakesNoHoldedApiCall`.
 - The doc sync counts as **stale** at 36 h — the nightly job's 24 h cadence plus half a day of grace — and never having run counts as stale too: budget actuals and the unmatched queue are equally wrong either way, so both raise the same alarm.
 - The sync job pulls all purchase docs from Holded each cycle (full-pull). Upsert is keyed on `HoldedDocId`; `CreatedAt` is preserved across re-syncs.
@@ -184,6 +220,19 @@ Every `/Finance/*` route is gated on `PolicyNames.FinanceAdminOrAdmin`, declared
 - `ListCreditorAccountsAsync` reads the Holded contact list (`ListContactsAsync`) through a 2-minute `IMemoryCache` entry (design-rules §15 Option A, `CacheKeys.HoldedContacts`) rather than calling Holded live on every load — the 400000xx account **name** lives only in Holded, and the short TTL keeps a contact created today visible without a nightly-cache lag or a per-request call. `ListContactsAsync` itself paginates internally (walks `page` until an empty page returns), so the cached list is never silently truncated. It degrades to blank names when the Holded call fails — transport failure, a rejected key, or an unreadable body — rather than failing the page; unexpected exception types propagate.
 - **Never index a nested Holded JSON node directly.** Holded serializes an absent sub-record as an empty *array* (`"supplierRecord": []`), and `JsonNode`'s string indexer throws `InvalidOperationException` on anything that is not a `JsonObject`. Combined with the degrade-to-blank rule above, one such contact blanked every account name on the bind card and `/Finance/Creditors` in production (nobodies-collective/Humans#994). `HoldedClient.ParseContact` reads through `Prop(node, name)`, which yields null for a non-object, and the list parse isolates each contact so one unreadable row costs only its own name. `ListCreditorAccountsAsync` logs when *no* account resolved a name — the all-or-nothing signature of this failure — since it was otherwise silent until a human noticed.
 
+- **SEPA payout is balance-based, and stamps nothing.** `POST /Finance/Sepa/Generate` builds a pain.001.001.09 credit-transfer file over selected *creditor balances*, never over expense reports — no report status, no member field and no `Paid` flag moves. Settlement closes the ordinary way: the treasurer books the payment in Holded and the next ledger sync zeroes the balance. A partial payout is legitimate; the remainder stays visible as owed.
+- A creditor row is **payable** only when it is bound to exactly one member, its balance is positive from the member's side, and its Holded contact carries an IBAN. `/Finance/Creditors` shows the reason instead of a checkbox for every other row, and `GenerateSepaPayoutAsync` re-derives the same three rules server-side — the page is display, not the gate.
+- **Generation is all-or-nothing.** One bad row — over the cap, over the balance, more than two decimals, below €0.01, an IBAN that fails its check digits, a duplicate `EndToEndId` — refuses the whole file with a message, and nothing is persisted. A partially-sent batch is far harder to reconcile than a re-run.
+- `Sepa:MaxPayoutPerTransfer` (default **€50**) is a hard server-side ceiling, not a UI hint. It is also the backstop against a decimal-separator misread: the amount box posts invariant text and `FinanceController.GenerateSepa` parses it invariantly rather than through model binding, which uses the request culture.
+- The organisation's own SEPA identity — `Sepa:CreditorName`, `Sepa:CreditorIban`, `Sepa:CreditorIdentifier` (the NIF + suffix presenter id) — is **configuration-bound and never inferred**. With any of them unset, `/Finance/Creditors` says payout is unavailable and names the missing keys instead of offering a button. `Sepa:CreditorBic` is optional per the Sabadell guide.
+- Every generated file is validated **in-process against the official ISO 20022 XSD** (embedded at `Resources/pain.001.001.09.xsd`) before it can reach a browser; `SepaPaymentFileBuilder.Build` returns only files that validate. The builder is pure — no IO, no clock, no configuration — so all of its rules are unit-tested directly.
+- `MsgId`, `PmtInfId` and `EndToEndId` are derived from the persisted row ids (`"M"`/`"P"` + the file id, `"E"` + the transfer id — 33 chars, inside the 35 cap). The transfer row is minted before the file is built and never changes, so the `EndToEndId` the bank quotes always points back at one row.
+- The file omits postal addresses, `CdtrAgt`, `ChrgBr` and every category-purpose code entirely — **never `SALA`**, which would route a reimbursement as payroll. `RmtInf/Ustrd` is a single occurrence, capped at 140.
+- Names and remittance text are folded into the restricted SEPA subset (`SepaText`: accents decompose, Ø/Æ/ß and friends map by hand, anything else becomes a space) and capped at 70/140. XML-reserved characters are escaped by the writer, not stripped.
+- **A payout pays the contact the binding names, never "the account's first contact".** Holded lets two contacts carry one 400000xx, so both the row on `/Finance/Creditors` and the transfer resolve their name and IBAN through `ContactsByIdAsync` keyed on `CreditorContactBinding.HoldedContactId`. Keying by account number instead would let a singly-bound row display one member and pay another.
+- **The unmasked IBAN exists in exactly two places**: the generated XML and `sepa_payout_transfers.Iban`. Every log line, audit entry and screen goes through `IbanFormatter.Mask` ([`iban-mask-in-logs`](../../../../memory/code/iban-mask-in-logs.md)) — including `HoldedCreditorAccountRow.IbanMasked`, which is masked precisely because it crosses a section boundary.
+- Each generated file is persisted **verbatim** (`sepa_payout_files`: the XML, a SHA-256 checksum, the timestamp and the generating admin) with one `sepa_payout_transfers` row per credit transfer, and one `AuditAction.SepaPayoutTransfer` entry per transfer. Rebuilding the file from columns would not survive a builder change; the bytes the bank got are the record.
+
 ## Negative Access Rules
 
 - Coordinators **cannot** view `/Finance/*` routes.
@@ -203,7 +252,7 @@ Derived from `Humans.Finance.csproj`'s project references — four contracts lea
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetServiceRead.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
 - **Users** (`Humans.Users.Contracts`): `IUserServiceRead.GetUserInfosAsync`, to name bound members on `/Finance/Creditors`.
-- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding, and for Article 17 erasure — `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps `HoldedCreditorAccount` to `null` (erased in full). The invoices themselves live in Holded and are fiscal records outside this section's ownership.
+- **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of a member's creditor binding and of every SEPA payout made to them, and for Article 17 erasure — `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps `HoldedCreditorAccount` to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership.
 
 No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
 
@@ -262,12 +311,21 @@ The ledger cache and its sync moved to the Holded section (full mirror, all acco
 
 The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum)` and the statement via `GetCreditorLedgerAsync(supplierAccountNum)`. Both derive from the cached lines: balance = Σdebit − Σcredit (balance ≥ 0 = settled), owed = max(0, −balance), payments = debit lines. The debit lines stay internal to the derivation; only the aggregates (`TotalPaid`, `LastPaymentDate`) leave the service.
 
+### Feature 3 — SEPA payout of creditor balances
+
+`/Finance/Creditors` doubles as the payout screen: tick the payable rows, adjust amounts, and
+`POST /Finance/Sepa/Generate` streams a Norma 34-14 / pain.001.001.09 file for Sabadell's "Enviar
+ficheros". It reads the same balances and the same cached contact list the page already shows — no
+extra Holded call — and writes only its own two tables plus one audit entry per transfer. Full spec:
+[`Docs/features/sepa-payout.md`](features/sepa-payout.md).
+
 **Org-accounting boundary (HARD):** Humans only reads the Holded daybook. It never writes debt-reassignment journal entries or modifies the chart of accounts to reflect internal transfers. `holded_ledger_lines` is a read-through cache of immutable journal facts, not a ledger Humans writes to.
 
 ### Owned repository
 
-- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`
-  - No cross-domain navs: `BudgetCategoryId` and `HoldedCreditorContact.UserId` are FK-only, no navigation property
+- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`, `sepa_payout_files`, `sepa_payout_transfers`
+  - No cross-domain navs: `BudgetCategoryId`, `HoldedCreditorContact.UserId`, `SepaPayoutFile.GeneratedByUserId` and `SepaPayoutTransfer.UserId` are FK-only, no navigation property
+  - A payout file and its transfers are written in one `AddSepaPayoutAsync` save — one without the other is not a state this section wants to be in
   - Expense docs upsert (full overwrite on re-sync); ledger tables belong to the Holded section
 
 ### Current violations

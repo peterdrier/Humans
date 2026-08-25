@@ -75,7 +75,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  24 section services, each implementing           │
+│  Section services, each implementing              │
 │  IUserDataContributor:                            │
 │                                                   │
 │    UserService               AccountMergeService  │
@@ -86,7 +86,7 @@ change.
 │    CampaignService           CampService          │
 │    AuditLogService           BudgetService        │
 │    SurveyService             AgentService         │
-│    EventService              IssuesService        │
+│    CachingEventService       IssuesService        │
 │    ExpenseReportService      HoldedFinanceService │
 │    GateService               GoogleSyncLogService │
 │    EmailOutboxService                             │
@@ -141,7 +141,7 @@ service has no data for this user are omitted.
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of per-event profile records (skills, quirks, languages, dietary, allergies, intolerances, medical). |
 | `GeneralAvailability` | `ShiftSignupService` | Array of `{ EventName, AvailableDayOffsets, UpdatedAt }`. |
 | `ShiftTagPreferences` | `ShiftSignupService` | Array of `{ TagName }`. |
-| `Events` | `EventService` | Single object with `{ Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt } }` — the user's event favourites and category-exclusion preference; `Preference` is null when no preference row exists. |
+| `Events` | `CachingEventService` (delegates to `EventService`) | Single object with `{ Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt } }` — the user's event favourites and category-exclusion preference; `Preference` is null when no preference row exists. |
 | `FeedbackReports` | `FeedbackService` | Array of feedback reports with nested `Messages[]`. |
 | `Issues` | `IssuesService` | Array of `{ Title, Description, Category, Section, Status, PageUrl, CreatedAt, ResolvedAt, Comments: [{ Content, IsFromUser, CreatedAt }] }` — issues filed by the user including their comments. |
 | `Notifications` | `NotificationInboxService` | Array of `{ Title, Body, ActionUrl, Priority, Source, CreatedAt, ReadAt, ResolvedAt }`. |
@@ -156,6 +156,7 @@ service has no data for this user are omitted.
 | `ExpenseReports` | `ExpenseReportService` | Array of `{ Id, Status, Note, PayeeName, PayeeIban (masked), Total, SubmittedAt, ApprovedAt, CreatedAt, Lines: [{ Id, Description, Amount, LineType, SortOrder, Attachment? }] }` — the user's expense reports including line items and attachment metadata; null when the user has no reports. |
 | `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ MaskedIban, Entries: [{ Action, EntityType, EntityId, Description, OccurredAt }] }` covering all expense-related audit events (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
 | `HoldedCreditorAccount` | `HoldedFinanceService` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
+| `SepaPayouts` | `HoldedFinanceService` | Array of `{ GeneratedAt, FileName, SupplierAccountNum, CreditorName, Iban (masked), Amount }` — every SEPA credit transfer paid to the user, oldest first; empty when they have never been paid. Retained after erasure on the fiscal basis. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |

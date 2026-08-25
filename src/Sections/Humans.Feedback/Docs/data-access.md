@@ -23,7 +23,8 @@ Repository: `IFeedbackRepository`.
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `ITeamServiceRead`, `IEmailService`, `IEmailMessageFactory`,
 `INotificationEmitter`,
-`IAuditLogService`. Implements `IFeedbackServiceRead`,
+`IAuditLogService`. Implements `IFeedbackServiceRead`, `IFeedbackTriage`
+(Backdoor's machine-API triage surface, nobodies-collective/Humans#1128),
 `IUserDataContributor`, `IUserMerge`. Owns and caches `FeedbackBadgeCount`
 inside `GetActionableCountAsync`.
 

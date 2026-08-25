@@ -5,12 +5,16 @@ namespace Humans.Finance.Contracts;
 /// <param name="Bindings">Every member bound here, oldest first — not just one. The automatic write
 /// paths record a collision rather than refuse it, so the overview must show it, not pick a winner
 /// (nobodies-collective/Humans#975).</param>
+/// <param name="IbanMasked">The Holded contact's IBAN, masked. Masked and not raw because this row
+/// crosses a section boundary and reaches a screen; the unmasked value is read inside Finance at
+/// generation time and lives only in the payout record and the SEPA file itself.</param>
 public sealed record HoldedCreditorAccountRow(
     int SupplierAccountNum,
     string Name,                    // Holded account name (legal name for member creditors)
     decimal? Balance,               // signed; negative = org owes
     decimal OwedToMember,           // = max(0, -Balance)
-    IReadOnlyList<CreditorContactBinding> Bindings);
+    IReadOnlyList<CreditorContactBinding> Bindings,
+    string? IbanMasked = null);
 
 /// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
 public sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)

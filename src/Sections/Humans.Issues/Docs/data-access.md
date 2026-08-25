@@ -24,7 +24,9 @@ Repository: `IIssuesRepository`.
 Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,
 `IEmailMessageFactory`, `INotificationEmitter`, `INotificationAutoResolve`,
-`IAuditLogService`, `IHostEnvironment`. Implements `IUserDataContributor`.
+`IAuditLogService`, `IHostEnvironment`. Implements `IUserDataContributor`,
+`IIssueTriage` (Backdoor's machine-API triage surface,
+nobodies-collective/Humans#1128).
 
 ---
 

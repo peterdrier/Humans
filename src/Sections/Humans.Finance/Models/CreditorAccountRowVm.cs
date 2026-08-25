@@ -11,10 +11,25 @@ internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
     decimal? Balance,
-    IReadOnlyList<CreditorBindingVm> Bindings)
+    IReadOnlyList<CreditorBindingVm> Bindings,
+    string? IbanMasked = null)
 {
     /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
+
+    /// <summary>Why this row cannot be paid, or null when it can. The server re-derives the same
+    /// rules at generation; this is what the page shows instead of a checkbox.</summary>
+    public string? NotPayableReason => Bindings.Count switch
+    {
+        0 => "unbound",
+        > 1 => "collision",
+        _ when Balance is not > 0m => "nothing owed",
+        _ when IbanMasked is null => "no IBAN in Holded",
+        _ => null,
+    };
+
+    /// <summary>Single-bound, positive balance, IBAN known.</summary>
+    public bool IsPayable => NotPayableReason is null;
 
     /// <summary>Sort key for the Member column. Unbound rows sort last rather than first: an admin
     /// sorting by member is looking for people, not for gaps.</summary>
@@ -32,9 +47,11 @@ internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string 
 /// the resolution, so this is the only place they can be bound (nobodies-collective/Humans#972).</param>
 /// <param name="SortBy">Active column — "account" (default), "name", "balance" or "member".</param>
 /// <param name="SortDir">"asc" or "desc"; the headers link to the opposite of whatever is active.</param>
+/// <param name="Sepa">Whether the payout column renders at all, and the per-transfer ceiling.</param>
 internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorAccountRowVm> Accounts,
     IReadOnlyList<CreditorBindingVm> Unresolved,
     string SortBy,
-    string SortDir);
+    string SortDir,
+    SepaPayoutSettings Sepa);
 

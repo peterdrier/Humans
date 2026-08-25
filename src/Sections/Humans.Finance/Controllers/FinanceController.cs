@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
@@ -86,7 +88,8 @@ internal sealed class FinanceController(
                 r.Bindings.Select(b => new CreditorBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
-                    b.Source.ToString())).ToList()))
+                    b.Source.ToString())).ToList(),
+                r.IbanMasked))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" ? sort : "account";
@@ -100,7 +103,40 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
-        return View(new CreditorsPageVm(accounts, unresolvedVm, sortBy, sortDir));
+        return View(new CreditorsPageVm(
+            accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings()));
+    }
+
+    /// <summary>Streams a pain.001.001.09 credit-transfer file for the ticked rows. All-or-nothing:
+    /// a single bad amount refuses the whole batch, so the treasurer never uploads a half batch.</summary>
+    [HttpPost("Sepa/Generate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateSepa(
+        int[] selected, Dictionary<int, string> amounts, CancellationToken ct)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        // A checkbox posts only when ticked, so `selected` is the batch; the amount box next to it
+        // is keyed by the same account number. Parsed invariantly and not by model binding, which
+        // uses the request culture: `<input type="number">` always posts "12.34", and a comma-decimal
+        // culture would read that as 1234. A missing or unparseable amount stays 0 and is refused.
+        var picked = selected
+            .Select(num => new SepaPayoutSelection(
+                num,
+                amounts.TryGetValue(num, out var raw)
+                && decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+                    ? amount
+                    : 0m))
+            .ToList();
+
+        var result = await holdedConnector.GenerateSepaPayoutAsync(picked, actorUserId, ct);
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage!);
+            return RedirectToAction(nameof(Creditors));
+        }
+
+        return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName!);
     }
 
     /// <summary>Every column on /Finance/Creditors is sortable; ties resolve on the account number

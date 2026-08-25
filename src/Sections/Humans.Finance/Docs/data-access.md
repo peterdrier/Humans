@@ -9,7 +9,8 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `IHoldedRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns `HoldedExpenseDocs`,
-`HoldedCategoryMap`, `HoldedDocSyncStates`, `HoldedCreditorContacts`.
+`HoldedCategoryMap`, `HoldedDocSyncStates`, `HoldedCreditorContacts`,
+`SepaPayoutFiles`, `SepaPayoutTransfers`.
 
 The ledger mirror (`HoldedLedgerLines` and its sync state, chart-of-accounts
 cache, and API call-metering log) is owned by the
@@ -32,15 +33,20 @@ Repository: `IHoldedRepository`.
 | HoldedExpenseDocs | R/W |
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
+| SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export) |
+| SepaPayoutTransfers | R/W (append-only writes; read per user for the Article 15 export) |
 
 Cross-section calls via `IBudgetServiceRead` (migrated to the read-split
 surface — `budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
-API calls). Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
+API calls) and `IAuditLogService` (one entry per SEPA credit transfer).
+Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
-No `IMemoryCache`.
+Injects `IMemoryCache` for the 2-minute Holded contact-list entry
+(`CacheKeys.HoldedContacts`) and `IOptions<SepaOptions>` for the organisation's
+SEPA identity.
 
 `IHoldedFinanceAdminService` (`Services/IHoldedFinanceAdminService.cs`) is
 **internal** — the `/Finance/Holded` connector index is this section's own
@@ -52,7 +58,16 @@ unmatched and matched-for-year reads are each a filtered slice and neither
 composes into "all docs") and `HoldedCreditorContacts`, plus
 `IBudgetServiceRead` for category names. **No `IHoldedClient` call** — the
 index must not inherit the connector's 30 s timeout
-(nobodies-collective/Humans#976, #1000).
+(nobodies-collective/Humans#976, #1000). Its other two methods,
+`GetSepaPayoutSettings` and `GenerateSepaPayoutAsync`, serve
+`/Finance/Creditors`' payout column and `POST /Finance/Sepa/Generate` — also
+this section's own screen, so also not cross-section surface.
+
+### SepaPaymentFileBuilder / SepaText / SepaSchema
+
+Pure static helpers — pain.001.001.09 assembly, SEPA character folding and
+XSD validation against the embedded official schema. No DI dependencies, no
+DB access, no IO.
 
 ### HoldedMatcher
 

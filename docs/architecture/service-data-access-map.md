@@ -49,6 +49,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` (own project, `src/Sections/Humans.Store/`) |
+> | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
 >
 > Each context applies its `IEntityTypeConfiguration` classes explicitly (no
 > assembly scanning), so a section's model can never accrete another
@@ -327,7 +328,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
-    every table-owning section, with no shared context left.** 29 contexts
+    every table-owning section, with no shared context left.** 30 contexts
     exist — see the full DbContext table in the intro Methodology block
     above — each mapping **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
@@ -344,6 +345,17 @@ Every table is owned by exactly one repository; there are no HUM0025
     except `UsersDbContext`, which carries forward the original
     unsuffixed `__EFMigrationsHistory` (dropping the old table name is a
     pending cleanup).
+
+16. **Backdoor is a key-authed machine API, not a table consumer.** The
+    `/api/backdoor/*` controllers are thin orchestrators: each calls exactly
+    one other section's read/triage contracts interface —
+    `IAgentTranscriptRead` (Agent), `IIssueTriage` (Issues), `IFeedbackTriage`
+    (Feedback), `ISurveyAnalysisRead` (Surveys) — and formats the result.
+    `IBackdoorApiKeyRepository` is the only repository Backdoor's own service
+    touches, scoped to its one table, `backdoor_api_keys`. The four consumed
+    interfaces exist solely for this machine surface and carry no other
+    caller, so their `###` headings live in the owning section's own
+    `Docs/data-access.md`, not here.
 
 ---
 
