@@ -26,7 +26,12 @@
 # separated) before sourcing-and-calling to drop stragglers.
 
 # Interfaces that reach IApplicationService, directly or through another
-# interface (IFooService : IFooServiceRead : IApplicationService).
+# interface (IFooService : IFooServiceRead : IApplicationService) — plus the two
+# markers themselves, because a section that publishes no contract of its own
+# implements the marker directly and would otherwise enumerate as nothing at
+# all. Store is the first: retiring IStoreServiceRead left `Service :
+# IApplicationService`, and both checks went on reporting PASS while silently
+# covering one section less.
 #
 # Files are flattened before matching, exactly like the class pass below. A
 # line-oriented grep sees only the line carrying the `interface` keyword, so a
@@ -40,7 +45,9 @@ service_interfaces() {
           | xargs -0 awk 'FNR==1{printf "\n"} {printf "%s ", $0}' \
           | grep -oE 'interface +I[A-Za-z0-9_]+[^{;]*' \
           | sed -E 's/interface +//' | tr -d '\r')
-  seed=$(echo "$decls" | grep -E ':.*\b(IApplicationService|IOrchestrator)\b' | sed -E 's/[ <:].*//' | sort -u)
+  seed=$(printf 'IApplicationService\nIOrchestrator\n%s\n' \
+           "$(echo "$decls" | grep -E ':.*\b(IApplicationService|IOrchestrator)\b' | sed -E 's/[ <:].*//')" \
+         | grep -v '^$' | sort -u)
   for i in 1 2 3 4; do
     pat=$(echo "$seed" | paste -sd'|')
     new=$(echo "$decls" | grep -E ":.*\b($pat)\b" | sed -E 's/[ <:].*//' | sort -u)
@@ -69,7 +76,14 @@ service_classes() {
     # Flatten each file so multi-line primary constructors and base lists parse
     # as a single declaration, then emit its service-class records.
     function emit(text, file,   decl, name, mods, bases, nb, part, b, ifaces, ni,
-                  cand, names, primary, i, j, out) {
+                  cand, names, primary, i, j, out, section, marked) {
+      # `Humans.Store/Services/...` -> `Store`. Only needed for a class whose
+      # sole service interface is a bare marker, where the interface name says
+      # nothing about which section it belongs to.
+      section = ""
+      if (match(file, /Humans\.[A-Za-z0-9_]+\/Services\//))
+        section = substr(file, RSTART + 7, RLENGTH - 17)
+
       while (match(text, /(public|internal)[a-zA-Z ]*class [A-Za-z0-9_]+[^{;]*/)) {
         decl = substr(text, RSTART, RLENGTH)
         text = substr(text, RSTART + RLENGTH)
@@ -104,14 +118,35 @@ service_classes() {
         # class is documented as HoldedService. Read-split boundaries collapse
         # onto the owning service node (dependency-graph.md, "How to read"), so
         # IStoreServiceRead also offers StoreService.
+        #
+        # A bare marker is the exception: IApplicationService names every
+        # service in the tree, so it is useless as a key. Such a class is keyed
+        # by its own name — except where that name is the bare `Service` five
+        # sections share, which needs the section to disambiguate
+        # (Humans.Store/Services/Service.cs -> StoreService).
         delete names; names[name] = 1
+        marked = ""
         for (i = 1; i <= ni; i++) {
-          cand = ifaces[i]; sub(/^I/, "", cand)
+          cand = ifaces[i]
+          if (cand == "IApplicationService" || cand == "IOrchestrator") {
+            if (section != "") names[section "Service"] = 1
+            cand = (name == "Service") ? (section == "" ? "" : section "Service") : name
+            if (cand == "") continue
+            names[cand] = 1
+            if (marked == "") marked = cand
+            continue
+          }
+          sub(/^I/, "", cand)
           names[cand] = 1
           sub(/Read$/, "", cand)
           names[cand] = 1
         }
-        primary = ifaces[1]; sub(/^I/, "", primary)
+        primary = ifaces[1]
+        if (primary == "IApplicationService" || primary == "IOrchestrator") primary = marked
+        else sub(/^I/, "", primary)
+        # A marker-only class outside a Humans.<Section>/Services/ path has no
+        # derivable key; enumerating it under the marker would be worse than not.
+        if (primary == "") continue
         out = ""
         j = asorti(names, sorted)
         for (i = 1; i <= j; i++) out = out (i > 1 ? "," : "") sorted[i]
