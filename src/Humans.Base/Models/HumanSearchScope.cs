@@ -11,4 +11,7 @@ public enum HumanSearchScope
 
     /// <summary>Narrow matching to burner name only.</summary>
     Name,
+
+    /// <summary>Admin/coordinator matching, including legal first and last names.</summary>
+    Manage,
 }

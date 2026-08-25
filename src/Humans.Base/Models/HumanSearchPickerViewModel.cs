@@ -20,6 +20,8 @@ public class HumanSearchPickerViewModel
     /// <summary>
     /// Search scope passed through to <c>/api/profiles/search</c>.
     /// <see cref="HumanSearchScope.Name"/> narrows to burner-name match;
+    /// <see cref="HumanSearchScope.Manage"/> includes legal-name matching for
+    /// authorized admin/coordinator surfaces;
     /// <see cref="HumanSearchScope.All"/> (default) keeps the broad search.
     /// </summary>
     public HumanSearchScope Scope { get; set; } = HumanSearchScope.All;

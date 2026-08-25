@@ -5,6 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Users.Controllers;
 using NodaTime;
 using Humans.Base.Models;
+using Humans.Base.Constants;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +53,7 @@ public class ProfileApiControllerTests
             userStore, null, null, null, null, null, null, null, null);
     }
 
-    private ProfileApiController BuildSut(User? currentUser)
+    private ProfileApiController BuildSut(User? currentUser, params string[] roles)
     {
         if (currentUser is not null)
         {
@@ -67,8 +68,9 @@ public class ProfileApiControllerTests
         var http = new DefaultHttpContext();
         if (currentUser is not null)
         {
-            http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString())
-                ],
+            http.User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString()),
+                 .. roles.Select(role => new Claim(ClaimTypes.Role, role))],
                 "test"));
         }
 
@@ -159,6 +161,36 @@ public class ProfileApiControllerTests
     // ==========================================================================
     // Search — privacy gate behavior on the per-row detail line.
     // ==========================================================================
+
+    [HumansFact]
+    public async Task Search_manage_scope_uses_legal_name_fields_for_admin_roles()
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        _userService.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var sut = BuildSut(viewer, RoleNames.TeamsAdmin);
+
+        await sut.Search("Legal", scope: "manage", ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _userService.Received(1).SearchUsersAsync(
+            "Legal", PersonSearchFields.ManageAll, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Search_manage_scope_falls_back_to_public_fields_without_admin_role()
+    {
+        var viewer = MakeUser(Guid.NewGuid());
+        _userService.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var sut = BuildSut(viewer);
+
+        await sut.Search("Legal", scope: "manage", ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _userService.Received(1).SearchUsersAsync(
+            "Legal", PersonSearchFields.PublicAll, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task Search_returns_401_when_current_user_resolves_to_null()
