@@ -9,7 +9,7 @@ namespace Humans.Expenses.Authorization;
 
 /// <summary>
 /// Resource-based authorization handler for expense report operations.
-/// Encodes the actors-and-roles matrix from the spec (src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md):
+/// Encodes the actors-and-roles matrix:
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>

@@ -48,8 +48,7 @@ internal sealed class VolunteerBuildStatus
     /// Sparse list of "day off" annotations, one per calendar day inside the
     /// build window where the coord has acknowledged the volunteer is
     /// off-site. Stored as a jsonb collection; one entry per DayOffset by
-    /// app-side normalization. See
-    /// <see href="../Docs/2026-05-09-day-off-redesign-design.md"/>.
+    /// app-side normalization.
     /// </summary>
     public List<DayOffEntry> DayOffs { get; set; } = [];
 }
