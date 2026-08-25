@@ -1,6 +1,5 @@
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
