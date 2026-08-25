@@ -94,17 +94,28 @@ ledger, so paying one would post against a document that does not exist for acco
 |-----------|----------|
 | `Sepa:*` identity or `Sepa:TreasuryAccountId` unset | one banner for the whole screen; no buttons |
 | Already booked | the row renders as `Booked`; a re-POST pays nothing and says so |
+| Partially booked (refs, no `BookedAt`) | the reason and the accepted ids, in place of the button; never re-bookable |
 | Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
+| The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
 | Open documents cover less than the transfer amount | the reason, with the shortfall |
 | Holded unreadable at booking time | an error; nothing is posted |
 
 ### When Holded accepts one payment and refuses the next
 
 The payment ids already created are persisted and `BookedAt` stays **null** — nothing claims the
-transfer settled. The screen shows the part-paid ids alongside the reason. A retry will not go
-through (the remaining pending no longer covers the full amount), which is deliberate: the remainder
-is finished in Holded by hand, and there is no affordance to mark a transfer booked without paying
-through it.
+transfer settled — and one `AuditAction.SepaPayoutTransferBooked` entry follows, labelled `PARTIAL`
+with the accepted ids.
+
+That state is **terminal**: `HoldedPaymentRefs` with a null `BookedAt` refuses re-booking on its own,
+before coverage is even looked at. Coverage cannot stand in for it — a member owed more than the
+per-transfer cap still has enough pending after a partial failure, so a retry would pass the coverage
+check and post the full amount a second time. The screen shows the row as partially booked with the
+ids and no button; the remainder is finished in Holded by hand, and there is no affordance to mark a
+transfer booked without paying through it.
+
+If the *first* payment fails, the message asks the admin to check Holded rather than claiming nothing
+was posted: an unreadable response body is `HoldedPermanentException`, and Holded may well have taken
+the payment.
 
 ## The file
 

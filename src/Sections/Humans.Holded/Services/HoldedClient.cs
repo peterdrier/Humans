@@ -179,16 +179,19 @@ internal sealed class HoldedClient : IHoldedClient
         var body = await resp.Content.ReadAsStringAsync(ct);
         try
         {
+            // Permanent, not transient, on both: SendAsync already accepted the response, so the
+            // payment is posted and only its id is unreadable. A transient exception would read as
+            // "not paid, retry" and double-pay the document.
             var node = JsonNode.Parse(body)
-                ?? throw new HoldedTransientException("Holded returned empty body");
+                ?? throw new HoldedPermanentException(
+                    $"Holded accepted a payment on purchase document {documentId} but its response could not be read (empty body).");
             return node["id"]?.GetValue<string>()
-                ?? throw new HoldedTransientException("Holded payment response missing id");
+                ?? throw new HoldedPermanentException(
+                    $"Holded accepted a payment on purchase document {documentId} but its response could not be read (no payment id).");
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // The payment was accepted — only the id came back unreadable, so this must not read as
-            // "not paid": a permanent exception is what stops the caller retrying it.
             throw new HoldedPermanentException(
                 $"Holded accepted a payment on purchase document {documentId} but its response could not be read.", ex);
         }

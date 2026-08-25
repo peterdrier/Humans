@@ -178,6 +178,21 @@ public class HoldedClientTests
         capturedBody.Should().NotContain("description");
     }
 
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_ResponseWithoutAPaymentId_IsPermanentNotTransient()
+    {
+        // Holded accepted the payment; only its id is unreadable. A transient exception would read
+        // as "not paid, retry" and double-pay the document.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));
+
+        var act = async () => await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>())
+            .WithMessage("*could not be read*");
+    }
+
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

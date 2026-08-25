@@ -997,9 +997,9 @@ internal sealed class Service(
         var unavailable = BookingUnavailableReason();
         if (rows.Count == 0 || unavailable is not null) return (rows, unavailable);
 
-        var contactByUser = (await repo.GetCreditorContactsAsync(ct))
+        var bindingByUser = (await repo.GetCreditorContactsAsync(ct))
             .GroupBy(c => c.UserId)
-            .ToDictionary(g => g.Key, g => g.First().HoldedContactId);
+            .ToDictionary(g => g.Key, g => g.First());
 
         // One pull for the whole screen — the same full list the doc sync already walks. A vendor
         // failure leaves coverage unknown, and an unknown coverage still offers the button: the
@@ -1024,10 +1024,16 @@ internal sealed class Service(
         string? NotBookableReason(SepaPayoutTransferRow row)
         {
             if (row.IsBooked) return null;   // the row renders as booked; no reason to show
-            if (!contactByUser.TryGetValue(row.UserId, out var contactId) || string.IsNullOrEmpty(contactId))
+            // Same terminal state the booking refuses: refs without a BookedAt.
+            if (PaymentRefs(row.HoldedPaymentRefs) is { Count: > 0 } partial)
+                return $"partially booked — {partial.Count} payment(s) already in Holded; finish it there by hand";
+            if (!bindingByUser.TryGetValue(row.UserId, out var binding)
+                || string.IsNullOrEmpty(binding.HoldedContactId))
                 return "the member has no Holded contact binding";
+            if (binding.SupplierAccountNum != row.SupplierAccountNum)
+                return "the member's Holded binding changed since this file was generated — book it by hand";
             if (pendingByContact is null) return null;   // coverage unknown — let the booking decide
-            var pending = pendingByContact.GetValueOrDefault(contactId);
+            var pending = pendingByContact.GetValueOrDefault(binding.HoldedContactId);
             return pending < row.Amount
                 ? $"open Holded documents cover only {Euros(pending)} of {Euros(row.Amount)}"
                 : null;
@@ -1053,11 +1059,30 @@ internal sealed class Service(
             return new SepaBookingResult(false,
                 $"Transfer to {transfer.IbanMasked} is already booked — nothing was posted to Holded.");
 
+        // Payment refs without a BookedAt is the partial-booking state, and it is terminal. The
+        // coverage check below cannot stand in for this: a member owed more than the per-transfer
+        // cap still has enough pending after a partial failure, so a retry would pass coverage and
+        // post the FULL amount a second time.
+        if (PaymentRefs(transfer.HoldedPaymentRefs) is { Count: > 0 } priorRefs)
+            return new SepaBookingResult(false,
+                $"Transfer to {transfer.IbanMasked} was partially booked earlier — {priorRefs.Count} "
+                + "payment(s) already posted to Holded. Finish it in Holded by hand; it cannot be "
+                + "re-booked from here.");
+
         var binding = await repo.GetCreditorContactByUserAsync(transfer.UserId, ct);
         if (binding is null || string.IsNullOrEmpty(binding.HoldedContactId))
             return new SepaBookingResult(false,
                 "The member paid by that transfer has no Holded contact binding — bind them on "
                 + "/Finance/Creditors first.");
+
+        // The binding is the member's CURRENT one; the transfer names the account the file was built
+        // against. A rebind between the two would pay a different creditor account than the bank
+        // statement's Ustrd quotes, which is unreconcilable after the fact.
+        if (binding.SupplierAccountNum != transfer.SupplierAccountNum)
+            return new SepaBookingResult(false,
+                $"The member's Holded binding changed since this file was generated (now "
+                + $"{binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "unresolved"}, "
+                + $"the transfer pays {transfer.SupplierAccountNum}) — book it by hand.");
 
         IReadOnlyList<HoldedPurchaseDocListItemDto> open;
         try
@@ -1102,19 +1127,41 @@ internal sealed class Service(
             catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
             {
                 // Whatever Holded already accepted is real money and is kept; BookedAt stays null so
-                // nothing claims the transfer settled. The remainder is finished in Holded by hand.
+                // nothing claims the transfer settled. The refs also make the row non-retryable —
+                // this is a terminal state, finished in Holded by hand.
                 if (refs.Count > 0)
+                {
                     await repo.SaveSepaTransferBookingAsync(
                         transfer.Id, null, null, string.Join(',', refs), ct);
+
+                    // Payments an admin caused, so they get an audit row on this path too — same
+                    // action as a completed booking, labelled PARTIAL.
+                    await audit.LogAsync(
+                        AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                        $"PARTIAL SEPA booking of {Euros(transfer.Amount)} to {transfer.IbanMasked} on "
+                        + $"creditor account {transfer.SupplierAccountNum}: Holded accepted "
+                        + $"{refs.Count} payment(s) (payments {string.Join(", ", refs)}) and then "
+                        + "refused one. The transfer is NOT booked and cannot be re-booked here.",
+                        actorUserId, transfer.UserId, nameof(User));
+                }
 
                 logger.LogError(ex,
                     "Booking SEPA transfer {TransferId} failed after {Posted} payment(s) on Holded document {DocId}.",
                     transferId, refs.Count, doc.Id);
 
-                return new SepaBookingResult(false, refs.Count == 0
-                    ? "Holded refused the payment — nothing was posted."
-                    : $"Holded accepted {refs.Count} payment(s) and then refused one; the transfer is "
-                      + "NOT marked booked. Finish it in Holded and check for a double payment.");
+                if (refs.Count > 0)
+                    return new SepaBookingResult(false,
+                        $"Holded accepted {refs.Count} payment(s) and then refused one; the transfer is "
+                        + "NOT marked booked and cannot be re-booked here. Finish it in Holded and "
+                        + "check for a double payment.");
+
+                // Nothing came back for the first payment — but a permanent error can mean Holded
+                // took it and only its response was unreadable, so this must not claim nothing was
+                // posted (nobodies-collective/Humans#1141 review).
+                return new SepaBookingResult(false, ex is HoldedTransientException
+                    ? "Holded could not be reached — nothing was posted."
+                    : "Holded rejected or could not answer the first payment. Check the document in "
+                      + "Holded before retrying: the payment may have been accepted.");
             }
 
             remaining -= amount;
@@ -1154,6 +1201,15 @@ internal sealed class Service(
 
     private static string Euros(decimal amount) =>
         amount.ToString("F2", CultureInfo.InvariantCulture) + " EUR";
+
+    /// <summary>The Holded payment ids stamped on a transfer. Non-empty on a row whose
+    /// <c>BookedAt</c> is null means money was posted and the allocation then failed — a terminal
+    /// state, never re-bookable.</summary>
+    private static List<string> PaymentRefs(string? refs) =>
+        string.IsNullOrWhiteSpace(refs)
+            ? []
+            : refs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
 
     /// <summary>The organisation's name, reduced to something safe in a download filename.</summary>
     private static string FileSlug(string name)
