@@ -39,6 +39,20 @@ internal interface IHoldedRepository : IRepository
     Task<IReadOnlyList<SepaPayoutExportRow>> GetSepaPayoutsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>Every transfer ever generated, flattened with its file, for <c>/Finance/Sepa</c>.
+    /// Unordered and without the file's XML: the caller sorts for display and nothing on that screen
+    /// renders the document.</summary>
+    Task<IReadOnlyList<SepaPayoutTransferRow>> GetSepaPayoutTransferRowsAsync(
+        CancellationToken ct = default);
+
+    Task<SepaPayoutTransfer?> GetSepaTransferAsync(Guid transferId, CancellationToken ct = default);
+
+    /// <summary>Stamps the booking onto the transfer. A null <paramref name="bookedAt"/> records the
+    /// payment references of an allocation that failed part-way without claiming it settled.</summary>
+    Task SaveSepaTransferBookingAsync(
+        Guid transferId, Instant? bookedAt, Guid? bookedByUserId, string? holdedPaymentRefs,
+        CancellationToken ct = default);
+
     // Purchase-doc sync state (singleton, lazy-created)
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
     Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);

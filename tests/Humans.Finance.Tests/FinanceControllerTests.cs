@@ -287,6 +287,55 @@ public class FinanceControllerTests
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
     }
 
+    // ─── SEPA transfers screen ───────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task Sepa_GroupsByFileNewestFirst_AndOrdersTransfersByAccount()
+    {
+        var older = Guid.NewGuid();
+        var newer = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>()).Returns((
+            new List<SepaPayoutTransferRow>
+            {
+                Transfer(newer, "new.xml", Stamp(2), admin, Bo, 40000007),
+                Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
+                Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
+            },
+            null));
+        NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.Files.Select(f => f.FileName).Should().Equal("new.xml", "old.xml");
+        page.Files[0].GeneratedByName.Should().Be("Treasurer");
+        page.Files[0].Transfers.Select(t => t.Row.SupplierAccountNum).Should().Equal(40000002, 40000007);
+        page.Files[0].Transfers[0].MemberName.Should().Be("Ada");
+    }
+
+    [HumansFact]
+    public async Task Sepa_UnavailableReason_ReachesThePageUnchanged()
+    {
+        _connector.GetSepaPayoutsAsync(Arg.Any<CancellationToken>())
+            .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured."));
+
+        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+
+        page.UnavailableReason.Should().Be("Sepa:TreasuryAccountId is not configured.");
+        page.Files.Should().BeEmpty();
+    }
+
+    private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
+
+    private static SepaPayoutTransferRow Transfer(
+        Guid fileId, string fileName, Instant generatedAt, Guid generatedBy, Guid userId, int account) =>
+        new(Guid.NewGuid(), fileId, fileName, generatedAt, generatedBy,
+            userId, account, "Ana Ruiz", "ES79****789", 12.34m, null, null, null, null);
+
+    private static SepaPayoutsPageVm SepaPageOf(IActionResult result) =>
+        result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<SepaPayoutsPageVm>().Subject;
+
     private static CreditorLedgerLine Ledger(int entry, int line, Instant date) => new()
     {
         EntryNumber = entry,

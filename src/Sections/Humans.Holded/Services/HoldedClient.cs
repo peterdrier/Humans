@@ -157,6 +157,43 @@ internal sealed class HoldedClient : IHoldedClient
         using var resp = await SendAsync(req, ct);
     }
 
+    public async Task<string> PayPurchaseDocumentAsync(
+        string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
+        CancellationToken ct = default)
+    {
+        // v2 takes the amount as a decimal *string*; a JSON number is rejected.
+        var payload = new
+        {
+            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
+            treasury_id = string.IsNullOrWhiteSpace(treasuryId) ? null : treasuryId,
+            date = LocalDatePattern.Iso.Format(date),
+            description,
+        };
+
+        using var req = new HttpRequestMessage(
+            HttpMethod.Post, $"/api/v2/purchases/{documentId}/payments")
+        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        AttachAuth(req);
+
+        using var resp = await SendAsync(req, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        try
+        {
+            var node = JsonNode.Parse(body)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            return node["id"]?.GetValue<string>()
+                ?? throw new HoldedTransientException("Holded payment response missing id");
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // The payment was accepted — only the id came back unreadable, so this must not read as
+            // "not paid": a permanent exception is what stops the caller retrying it.
+            throw new HoldedPermanentException(
+                $"Holded accepted a payment on purchase document {documentId} but its response could not be read.", ex);
+        }
+    }
+
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default)
     {
@@ -666,12 +703,14 @@ internal sealed class HoldedClient : IHoldedClient
     {
         Id = Prop(n, "id")?.GetValue<string>() ?? "",
         DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
+        ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
+        PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),

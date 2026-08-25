@@ -19,8 +19,11 @@ internal sealed class SepaPaymentFileException : Exception
 /// <summary>The organisation's side of the transfer — every field configuration-bound.</summary>
 internal sealed record SepaDebtor(string Name, string Iban, string? Bic, string PresenterId);
 
-/// <summary>One recipient. <paramref name="EndToEndId"/> comes from the persisted transfer row.</summary>
-internal sealed record SepaTransfer(string EndToEndId, string CreditorName, string Iban, decimal Amount);
+/// <summary>One recipient. <paramref name="EndToEndId"/> comes from the persisted transfer row, and
+/// <paramref name="SupplierAccountNum"/> is the 400000xx the remittance text is prefixed with so the
+/// treasurer can tie a bank line to a creditor account without opening the file.</summary>
+internal sealed record SepaTransfer(
+    string EndToEndId, string CreditorName, string Iban, decimal Amount, int SupplierAccountNum);
 
 /// <summary>Everything the file is built from. Pure data — the builder does no IO.</summary>
 internal sealed record SepaPaymentFileRequest(
@@ -46,7 +49,8 @@ internal static class SepaPaymentFileBuilder
     /// <summary>SEPA caps a party name at 70, well below the schema's own 140.</summary>
     public const int MaxNameLength = 70;
 
-    /// <summary>Sabadell shows this to the recipient; one occurrence, one line.</summary>
+    /// <summary>Sabadell shows this to the recipient; one occurrence, one line, prefixed per transfer
+    /// with the creditor account number it pays.</summary>
     private const string RemittanceInformation = "Nobodies expense reimbursement";
 
     public static string Build(SepaPaymentFileRequest request)
@@ -65,7 +69,9 @@ internal static class SepaPaymentFileBuilder
                     new XElement(ns + "Id", new XElement(ns + "IBAN", IbanValidator.Normalize(t.Iban)))),
                 new XElement(ns + "RmtInf",
                     new XElement(ns + "Ustrd",
-                        SepaText.Normalize(RemittanceInformation, MaxRemittanceLength)))))
+                        SepaText.Normalize(
+                            $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)} {RemittanceInformation}",
+                            MaxRemittanceLength)))))
             .ToList();
 
         // Counted and summed off the transaction elements that were just built, not off the request,

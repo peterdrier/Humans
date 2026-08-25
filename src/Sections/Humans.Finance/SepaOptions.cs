@@ -24,4 +24,10 @@ internal sealed class SepaOptions
     /// change it per batch; the posted value, not this one, is what <see cref="Services.Service.GenerateSepaPayoutAsync"/>
     /// enforces.</summary>
     public decimal MaxPayoutPerTransfer { get; set; } = 50m;
+
+    /// <summary>The Holded treasury account a booked payout is paid from — <c>treasury_id</c> on
+    /// <c>POST /purchases/{id}/payments</c>. Never inferred: Holded would otherwise fall back to the
+    /// account default, which is not necessarily the bank account the SEPA file drew on. Unset means
+    /// <c>/Finance/Sepa</c> says so instead of offering Book buttons.</summary>
+    public string TreasuryAccountId { get; set; } = "";
 }

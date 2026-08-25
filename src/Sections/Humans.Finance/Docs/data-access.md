@@ -33,15 +33,16 @@ Repository: `IHoldedRepository`.
 | HoldedExpenseDocs | R/W |
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
-| SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export) |
-| SepaPayoutTransfers | R/W (append-only writes; read per user for the Article 15 export) |
+| SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation; the booking columns are the only update — `SaveSepaTransferBookingAsync`. Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetServiceRead` (migrated to the read-split
 surface — `budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
-API calls) and `IAuditLogService` (one entry per SEPA credit transfer).
+API calls, plus `PayPurchaseDocumentAsync` for SEPA booking) and `IAuditLogService`
+(one entry per SEPA credit transfer generated, and one per transfer booked).
 Implements `IHoldedFinanceService`, `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
 Injects `IMemoryCache` for the 2-minute Holded contact-list entry
@@ -58,10 +59,15 @@ unmatched and matched-for-year reads are each a filtered slice and neither
 composes into "all docs") and `HoldedCreditorContacts`, plus
 `IBudgetServiceRead` for category names. **No `IHoldedClient` call** — the
 index must not inherit the connector's 30 s timeout
-(nobodies-collective/Humans#976, #1000). Its other two methods,
-`GetSepaPayoutSettings` and `GenerateSepaPayoutAsync`, serve
-`/Finance/Creditors`' payout column and `POST /Finance/Sepa/Generate` — also
-this section's own screen, so also not cross-section surface.
+(nobodies-collective/Humans#976, #1000). Its other methods,
+`GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync` and
+`BookSepaTransferAsync`, serve `/Finance/Creditors`' payout column,
+`POST /Finance/Sepa/Generate`, `GET /Finance/Sepa` and
+`POST /Finance/Sepa/Book` — also this section's own screens, so also not
+cross-section surface. `BookSepaTransferAsync` is marked `[ExternalWrite]` and
+takes no `CancellationToken`: it posts payments to Holded and has to finish once
+it has started
+([`cancellation-token-propagation`](../../../../memory/architecture/cancellation-token-propagation.md)).
 
 ### SepaPaymentFileBuilder / SepaText / SepaSchema
 
