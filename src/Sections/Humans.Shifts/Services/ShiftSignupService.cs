@@ -103,6 +103,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
         if (autoConfirm && shift.IsEarlyEntry)
@@ -162,6 +163,7 @@ internal sealed class ShiftSignupService(
         signup.Confirm(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
         if (signup.Shift.IsEarlyEntry)
@@ -187,6 +189,7 @@ internal sealed class ShiftSignupService(
         signup.Refuse(reviewerUserId, clock, reason);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettings.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
 
@@ -228,6 +231,7 @@ internal sealed class ShiftSignupService(
         signup.Bail(actorUserId, clock, reason);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
         if (signup.Shift.IsEarlyEntry)
@@ -284,6 +288,7 @@ internal sealed class ShiftSignupService(
         repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
         if (shift.IsEarlyEntry)
@@ -407,6 +412,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(userId);
         // Range affects every shift in the rota; cascade via the rota.
         viewInvalidator.InvalidateRota(rotaId);
@@ -465,6 +471,7 @@ internal sealed class ShiftSignupService(
         signup.MarkNoShow(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
 
@@ -488,6 +495,7 @@ internal sealed class ShiftSignupService(
         signup.Remove(removedByUserId, clock, reason);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettings.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
         if (signup.Shift.IsEarlyEntry)
@@ -587,6 +595,7 @@ internal sealed class ShiftSignupService(
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateRota(rotaId);
         if (autoConfirm && availableShifts.Any(s => s.IsEarlyEntry))
@@ -854,6 +863,7 @@ internal sealed class ShiftSignupService(
             if (skippedAtCapacity.Count > 0)
             {
                 await repo.SaveChangesAsync();
+                shiftMgmt.InvalidateDashboardCaches(skippedAtCapacity[0].Shift.Rota.EventSettings.Id);
                 viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
                 viewInvalidator.InvalidateRota(skippedAtCapacity[0].Shift.RotaId);
 
@@ -870,6 +880,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(approved[0].Shift.Rota.EventSettings.Id);
         viewInvalidator.InvalidateUser(approved[0].UserId);
         viewInvalidator.InvalidateRota(approved[0].Shift.RotaId);
 
@@ -912,6 +923,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(signups[0].Shift.Rota.EventSettings.Id);
         viewInvalidator.InvalidateUser(signups[0].UserId);
         viewInvalidator.InvalidateRota(signups[0].Shift.RotaId);
 
@@ -959,6 +971,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
+        shiftMgmt.InvalidateDashboardCaches(es.Id);
         viewInvalidator.InvalidateUser(firstSignup.UserId);
         viewInvalidator.InvalidateRota(firstSignup.Shift.RotaId);
 

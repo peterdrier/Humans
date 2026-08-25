@@ -209,6 +209,9 @@ internal interface IShiftManagementService
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null);
 
+    /// <summary>Evicts all cached coordinator-dashboard aggregates for an event after signup mutations.</summary>
+    void InvalidateDashboardCaches(Guid eventSettingsId);
+
     /// <summary>
     /// Per-day stacked breakdown of Confirmed volunteers, grouped by parent
     /// department. Only returns data for <see cref="ShiftPeriod.Build"/> and
