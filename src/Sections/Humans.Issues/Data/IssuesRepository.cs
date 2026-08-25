@@ -55,10 +55,13 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
         if (!string.IsNullOrWhiteSpace(f.SearchText))
         {
-            // ILike, not Contains: Contains renders LIKE, which Postgres matches case-sensitively,
-            // so "ticket" missed every issue titled "Ticket". Matches every other section's search.
-            var term = $"%{f.SearchText}%";
-            q = q.Where(i => EF.Functions.ILike(i.Title, term) || EF.Functions.ILike(i.Description, term));
+            // ILike, not Contains: Contains renders a case-sensitive match on Postgres, so
+            // "ticket" missed every issue titled "Ticket". Escape the term first — ILike reads
+            // '%' and '_' as wildcards, and a search for "100%" or "ABC_1" is a literal one.
+            // Same shape as Shifts' rota search.
+            var term = "%" + EscapeLikePattern(f.SearchText) + "%";
+            q = q.Where(i => EF.Functions.ILike(i.Title, term, "\\")
+                          || EF.Functions.ILike(i.Description, term, "\\"));
         }
 
         // Visibility filter:
@@ -78,6 +81,12 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .Take(f.Limit)
             .ToListAsync(ct);
     }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)
     {
