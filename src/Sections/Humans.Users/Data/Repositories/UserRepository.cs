@@ -131,41 +131,6 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> TrySetGoogleEmailAsync(
-        Guid userId, string email, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        var entry = ctx.Entry(user).Property<string?>("GoogleEmail");
-        if (entry.CurrentValue is not null)
-            return false;
-
-        entry.CurrentValue = email;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<bool> SetGoogleEmailAsync(
-        Guid userId, string email, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        ctx.Entry(user).Property<string?>("GoogleEmail").CurrentValue = email;
-        // Dead/obsolete legacy path (#687). The reset is meaningless now that status is per-address;
-        // suppress CS0618 — there is no live writer of User.GoogleEmailStatus.
-#pragma warning disable CS0618
-        user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-#pragma warning restore CS0618
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

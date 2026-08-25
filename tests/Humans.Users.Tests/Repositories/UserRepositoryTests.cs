@@ -50,15 +50,6 @@ public sealed class UserRepositoryTests : IDisposable
         return user;
     }
 
-    private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
-    {
-        return await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => u.Id == userId)
-            .Select(u => EF.Property<string?>(u, "GoogleEmail"))
-            .FirstOrDefaultAsync(Xunit.TestContext.Current.CancellationToken);
-    }
-
     // ==========================================================================
     // SetLastLoginAsync (A1 — single owner of the login stamp)
     // ==========================================================================
@@ -84,41 +75,6 @@ public sealed class UserRepositoryTests : IDisposable
             Guid.NewGuid(), _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
-    }
-
-    // ==========================================================================
-    // TrySetGoogleEmailAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task TrySetGoogleEmailAsync_ReturnsFalse_WhenUserDoesNotExist()
-    {
-        var result = await _repo.TrySetGoogleEmailAsync(
-            Guid.NewGuid(), "new@example.com", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task TrySetGoogleEmailAsync_SetsValueAndReturnsTrue_WhenGoogleEmailIsNull()
-    {
-        var user = await SeedUserAsync(googleEmail: null);
-
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("new@nobodies.team");
-    }
-
-    [HumansFact]
-    public async Task TrySetGoogleEmailAsync_DoesNotOverwrite_WhenGoogleEmailAlreadySet()
-    {
-        var user = await SeedUserAsync(googleEmail: "existing@nobodies.team");
-
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("existing@nobodies.team");
     }
 
     // ==========================================================================

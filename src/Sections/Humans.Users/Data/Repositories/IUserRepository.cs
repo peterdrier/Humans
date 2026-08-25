@@ -70,23 +70,6 @@ internal partial interface IUserRepository : IRepository
     Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <c>User.GoogleEmail</c> if and only if it is currently null.
-    /// No-op if the user already has a GoogleEmail set or the user does not
-    /// exist. Returns true if the GoogleEmail was set.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle); UserEmailService maintains it via EnsureGoogleInvariantAsync on every row creation.")]
-    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
-    /// value. Used by the Workspace provisioning path after a successful
-    /// Google account creation. Returns true if the user exists and the
-    /// value was written, false if the user does not exist.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively) instead.")]
-    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
     /// Returns false if the user does not exist.
