@@ -98,8 +98,10 @@ violation, never edit a baseline the code still triggers.
   Finance navigation without an active year are covered or corrected. Data-access notes
   now live with their Users-owned lifecycle services; Base error toasts no longer require
   a DI fixture; and the Events moderation approval flow is covered. Onboarding banner and
-  Shifts availability controls are localized in every supported culture. Full solution tests
-  passed after each pushed set.
+  Shifts availability controls are localized in every supported culture. Home now depends on
+  Users' read surface; Store centralizes its active-event-year fallbacks; and Calendar grid,
+  local-date, and recurrence-window behavior plus Cantina matrix totals are covered. Full
+  solution tests passed after each pushed set.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
   (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
