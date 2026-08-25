@@ -28,8 +28,9 @@ public sealed class Section : ISection
         // so it can be Singleton; every method opens its own short-lived DbContext.
         services.AddSingleton<IStoreRepository, Repository>();
         services.AddScoped<Service>();
-        // The only cross-section seam: IStoreServiceRead.GetStoreSummaryAsync, for the
-        // admin dashboard tile (nobodies-collective/Humans#1264).
+        // IStoreServiceRead.GetStoreSummaryAsync, for the admin dashboard tile
+        // (nobodies-collective/Humans#1264). No other section consumes it: the one caller is
+        // this section's own SectionAdminTiles, which the Shell composes into /Admin.
         services.AddScoped<IStoreServiceRead>(sp => sp.GetRequiredService<Service>());
 
         // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
