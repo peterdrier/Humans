@@ -355,16 +355,6 @@ internal sealed class UserEmailService(
         return result.Added;
     }
 
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed. Method body is now a no-op.")]
-    public Task<bool> TryBackfillGoogleEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        // no-op — see nobodies-collective/Humans#687 (EnsureGoogleInvariantAsync now owns the invariant).
-        _ = userId;
-        _ = cancellationToken;
-        return Task.FromResult(false);
-    }
-
     public async Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

@@ -178,19 +178,6 @@ public interface IUserEmailService
         string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Legacy backfill that wrote the verified @nobodies.team email into the
-    /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
-    /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail
-    /// row creation, the shadow column no longer participates in the Google
-    /// identity invariant. Method body is now a no-op kept temporarily so
-    /// tests and callers compile through the obsolete transition.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed.")]
-    Task<bool> TryBackfillGoogleEmailAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the verified @nobodies.team email for a user, or null if none exists.
     /// </summary>
     Task<string?> GetNobodiesTeamEmailAsync(
