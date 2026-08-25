@@ -63,15 +63,13 @@ dotnet test tests/Humans.Application.Tests/Humans.Application.Tests.csproj --no-
 
 Active entries as of this queue creation:
 
-| Baseline | Entries | Priority | Strategy |
-| --- | ---: | --- | --- |
-| `ApplicationServiceEntityReadReturns.baseline.txt` | 15 | P0 | Replace service read returns of EF/domain entities with DTOs/snapshots. This remains the highest-value productive lane. |
-| `DisplaySortInControllers.baseline.txt` | 29 | P3 | Move reusable domain ordering out of controllers; keep screen-only sort at web boundary if rule is noisy/intentional. |
-| `NoDestructiveMigrationOps.baseline.txt` | 7 | Blocked by default | Migration-file entries are forbidden. Do not edit migrations; only classify/document unless a non-migration false positive appears. |
+| Baseline | Priority | Strategy |
+| --- | --- | --- |
+| `ApplicationServiceEntityReadReturns.baseline.txt` | P0 | Replace service read returns of EF/domain entities with DTOs/snapshots. This remains the highest-value productive lane. |
+| `DisplaySortInControllers.baseline.txt` | P3 | Move reusable domain ordering out of controllers; keep screen-only sort at web boundary if rule is noisy/intentional. |
+| `NoDestructiveMigrationOps.baseline.txt` | Blocked by default | Migration-file entries are forbidden. Do not edit migrations; only classify/document unless a non-migration false positive appears. |
 
-Total active baseline entries: 51.
-
-Regenerate counts with:
+Get current counts with:
 
 ```powershell
 Get-ChildItem tests/Humans.Application.Tests/Architecture/Baselines -File |

@@ -95,7 +95,6 @@ public class ExpenseReportServiceHoldedOutboxTests
             _auditLog,
             _holdedClient,
             _holdedFinance,
-            _holdedFinance,
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));
@@ -979,7 +978,6 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
-            _holdedFinance,
             _holdedFinance,
             _clock,
             logger,

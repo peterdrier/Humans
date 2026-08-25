@@ -310,11 +310,13 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await GetUserTeamMembershipsAsync(userId, cancellationToken);
+        // Entities (not the flat GetUserTeamMembershipsAsync projection) so DisplayName can
+        // carry the parent-team prefix for sub-team rows on the My Teams page.
+        var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
 
         var coordinatorTeamIds = memberships
-            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.IsSystemTeam)
+            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
             .Select(m => m.TeamId)
             .ToHashSet();
 
@@ -343,12 +345,12 @@ internal sealed class TeamService(
 
                 return new MyTeamMembershipSummary(
                     m.TeamId,
-                    m.TeamName,
-                    m.TeamSlug,
-                    m.IsSystemTeam,
+                    m.Team.DisplayName,
+                    m.Team.Slug,
+                    m.Team.IsSystemTeam,
                     m.Role,
                     m.JoinedAt,
-                    CanLeave: !m.IsSystemTeam,
+                    CanLeave: !m.Team.IsSystemTeam,
                     PendingRequestCount: directCount + childCount);
             })
             .ToList();

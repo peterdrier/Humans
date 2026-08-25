@@ -33,8 +33,7 @@ internal sealed class ExpenseReportService(
     IUserService userService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
-    IHoldedFinanceServiceRead holdedFinance,
-    IHoldedFinanceService holdedFinanceWrite,
+    IHoldedFinanceService holdedFinance,
     IClock clock,
     ILogger<ExpenseReportService> logger,
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
@@ -1095,7 +1094,7 @@ internal sealed class ExpenseReportService(
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }
 
-        var holdedContactId = await holdedFinanceWrite.EnsureCreditorContactAsync(
+        var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
             report.SubmitterUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ct);
 
@@ -1222,7 +1221,7 @@ internal sealed class ExpenseReportService(
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
         if (supplierAccountNum is not null)
-            await holdedFinanceWrite.SetCreditorAccountNumAsync(report.SubmitterUserId, supplierAccountNum.Value, ct);
+            await holdedFinance.SetCreditorAccountNumAsync(report.SubmitterUserId, supplierAccountNum.Value, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 

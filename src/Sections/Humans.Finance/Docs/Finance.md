@@ -261,7 +261,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 **Status:** (A) — Finance has its own service, an owned repository, and an EF migration.
 **G5 (own project, `src/Sections/Humans.Finance` + `src/Sections/Humans.Finance.Contracts`) — 2026-08-09.**
 
-**Owning service:** `Service` (`Humans.Finance.Services`), exposed as `IHoldedFinanceService` from the contracts leaf
+**Owning service:** `Service` (`Humans.Finance.Services`), exposed as `IHoldedFinanceService` from the contracts leaf. `IHoldedFinanceServiceRead` carries the read-only subset for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`); the write-capable `ExpenseReportService` and `Holded.HoldedController` are `[CrossSectionWrite]` and inject the full `IHoldedFinanceService` instead.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`)  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`  
@@ -301,8 +301,8 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 > - `Domain/HoldedCreditorContact.cs` — member → 400000xx binding (from #1021)
 > - `TotalPaid` / `LastPaymentDate` on `HoldedCreditorStatus` — aggregated straight off the debit lines; no payment row type leaves the service
 > - Ledger reads via `IHoldedService` (the mirror moved to the Holded section; sync is `SyncLedgerAsync` there)
-> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum)` / `GetCreditorLedgerAsync(int supplierAccountNum)` — Expenses→Finance read surface, derived from cached lines
-> - `IHoldedFinanceService.ListCreditorAccountsAsync` — returns `(Accounts, Unresolved)`; the `Unresolved` half is the bindings with no resolved 400000xx, surfaced on `/Finance/Creditors` for manual bind (nobodies-collective/Humans#972)
+> - `IHoldedFinanceServiceRead.GetCreditorStatusAsync(int? supplierAccountNum)` / `GetCreditorLedgerAsync(int supplierAccountNum)` — Expenses→Finance read surface, derived from cached lines
+> - `IHoldedFinanceServiceRead.ListCreditorAccountsAsync` — returns `(Accounts, Unresolved)`; the `Unresolved` half is the bindings with no resolved 400000xx, surfaced on `/Finance/Creditors` for manual bind (nobodies-collective/Humans#972)
 > - `IHoldedClient.GetContactAsync`, `ListContactsAsync`, `ListLedgerEntriesAsync`, `UpsertContactAsync` — Holded API surface
 
 ### Feature 2 — creditor reads over the Holded section's mirror

@@ -796,7 +796,7 @@ public class GoogleAdminServiceTests
 
         // Issue nobodies-collective/Humans#687: AddVerifiedEmailAsync creates the
         // row and the UserEmailService orchestrator stamps IsGoogle via
-                // EnsureGoogleInvariantAsync — no separate legacy GoogleEmail write to
+        // EnsureGoogleInvariantAsync — no separate legacy GoogleEmail write to
         // User.GoogleEmail. GoogleEmailStatus is reset explicitly so
         // reconciliation resumes.
         await _userEmailService.Received(1)
