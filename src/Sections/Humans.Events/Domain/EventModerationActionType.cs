@@ -18,7 +18,7 @@ internal enum EventModerationActionType
     /// An admin / moderator edited the event's fields in place without
     /// changing its status (the "edit in a pinch" path). Recorded for audit;
     /// not a state-transition decision, so it is appended directly rather than
-    /// through <see cref="Entities.Event.ApplyModerationAction"/>.
+    /// through <see cref="Event.ApplyModerationAction"/>.
     /// </summary>
     Edited = 3
 }
