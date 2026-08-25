@@ -162,6 +162,15 @@
     <value>E-Mail-Adresse {0} wurde verifiziert.</value>
     <comment>{0} = email address</comment>
   </data>
+  <data name="Profile_EmailDeleted" xml:space="preserve">
+    <value>E-Mail-Adresse gelöscht.</value>
+  </data>
+  <data name="Profile_EmailVisibilityUpdated" xml:space="preserve">
+    <value>Sichtbarkeit der E-Mail-Adresse aktualisiert.</value>
+  </data>
+  <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
+    <value>Benachrichtigungs-E-Mail-Adresse aktualisiert.</value>
+  </data>
   <data name="Profile_PreferredEmailCleared" xml:space="preserve">
     <value>Bevorzugte E-Mail wurde entfernt. System-E-Mails werden jetzt an Ihre Anmelde-E-Mail gesendet.</value>
   </data>

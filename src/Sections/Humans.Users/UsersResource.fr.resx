@@ -162,6 +162,15 @@
     <value>L'adresse e-mail {0} a été vérifiée.</value>
     <comment>{0} = email address</comment>
   </data>
+  <data name="Profile_EmailDeleted" xml:space="preserve">
+    <value>Adresse e-mail supprimée.</value>
+  </data>
+  <data name="Profile_EmailVisibilityUpdated" xml:space="preserve">
+    <value>Visibilité de l'adresse e-mail mise à jour.</value>
+  </data>
+  <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
+    <value>Adresse e-mail de notification mise à jour.</value>
+  </data>
   <data name="Profile_PreferredEmailCleared" xml:space="preserve">
     <value>L'e-mail préféré a été supprimé. Les e-mails du système seront désormais envoyés à votre adresse de connexion.</value>
   </data>

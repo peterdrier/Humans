@@ -103,5 +103,8 @@ violation, never edit a baseline the code still triggers.
   on a built solution (see above) at the start of each run
   (`memory/process/no-derived-aggregates-in-docs.md`); per-section history lives in
   the Section Refactor History table in `docs/architecture/maintenance-log.md`.
-- **Needs Peter:** none open. (Legal-name picker scope shipped separately as
+- **Needs Peter:** `Admin_SortBy` in UsersAdmin renders raw because it is an existing
+  SharedLocalizer call with no resource; adding its `Admin_*` key conflicts with
+  `localization-admin-exempt`'s ban on new admin-page keys. Decide resource versus
+  unlocalized literal. (Legal-name picker scope shipped separately as
   peterdrier/Humans#1516; the integration-test Serilog race is fixed in this branch.)
