@@ -145,6 +145,11 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         CancellationToken ct = default);
 
     // ── Results ────────────────────────────────────────────────────────────
+    Task<SurveyScopedResults?> GetScopedResultsAsync(
+        Guid surveyId,
+        SurveyResultsScope scope,
+        CancellationToken ct = default);
+
     /// <summary>
     /// The admin results read model: participation funnel, per-question aggregates over submitted
     /// responses, and the Identified-only respondent drill-down. Null if the survey does not exist.
@@ -160,6 +165,18 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// Anonymous rows still appear (so totals reconcile) but carry no identity. Prompts/labels are
     /// resolved in the survey's default culture.
     /// </summary>
+}
+
+internal sealed record SurveyScopedResults(
+    SurveyResultsView Results,
+    int SelectedResponseCount,
+    SurveyResultsScope Scope);
+
+internal enum SurveyResultsScope
+{
+    Combined,
+    Unique,
+    Anonymous,
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────

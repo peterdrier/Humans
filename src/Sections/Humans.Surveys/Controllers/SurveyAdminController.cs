@@ -331,13 +331,10 @@ internal sealed class SurveyAdminController(
         CancellationToken ct,
         SurveyResultsScope scope = SurveyResultsScope.Combined)
     {
-        var results = await surveyService.GetResultsAsync(id, ct);
+        var results = await surveyService.GetScopedResultsAsync(id, scope, ct);
         if (results is null) return NotFound();
 
-        var export = await surveyService.GetResponseExportAsync(id, ct);
-        if (export is null) return NotFound();
-
-        return View(SurveyResultsBuilder.Build(results, export, scope));
+        return View(SurveyResultsBuilder.Build(results));
     }
 
     [HttpGet("Results/{id:guid}/Export.csv")]
