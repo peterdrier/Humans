@@ -1015,13 +1015,22 @@ internal sealed class SurveyService(
         return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
 
-    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default)
+    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default) =>
+        (await GetScopedResultsAsync(surveyId, SurveyResultsScope.Combined, ct))?.Results;
+
+    public async Task<SurveyScopedResults?> GetScopedResultsAsync(
+        Guid surveyId,
+        SurveyResultsScope scope,
+        CancellationToken ct = default)
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey is null) return null;
 
         var culture = survey.DefaultCulture;
         var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
+        var selectedResponses = responses
+            .Where(response => MatchesScope(response.Anonymity, scope))
+            .ToList();
         var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
 
         var invitedCount = invited.GetValueOrDefault(surveyId);
@@ -1031,7 +1040,7 @@ internal sealed class SurveyService(
         var questions = survey.Questions
             .Where(q => q.Type != SurveyQuestionType.Information)
             .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-            .Select(q => BuildQuestionAggregate(q, responses, culture))
+            .Select(q => BuildQuestionAggregate(q, selectedResponses, culture))
             .ToList();
 
         var funnel = new SurveyFunnel(
@@ -1042,17 +1051,27 @@ internal sealed class SurveyService(
 
         var identified = await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
 
-        return new SurveyResultsView(
-            surveyId,
-            survey.Title.Resolve(culture, culture),
-            survey.Status,
-            invitedCount,
-            responseCount,
-            responseRate,
-            funnel,
-            questions,
-            identified);
+        return new SurveyScopedResults(
+            new SurveyResultsView(
+                surveyId,
+                survey.Title.Resolve(culture, culture),
+                survey.Status,
+                invitedCount,
+                responseCount,
+                responseRate,
+                funnel,
+                questions,
+                identified),
+            selectedResponses.Count,
+            scope);
     }
+
+    private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch
+    {
+        SurveyResultsScope.Unique => anonymity is ResponseAnonymity.Identified or ResponseAnonymity.CompletionTracked,
+        SurveyResultsScope.Anonymous => anonymity == ResponseAnonymity.Anonymous,
+        _ => true,
+    };
 
     public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default)
     {

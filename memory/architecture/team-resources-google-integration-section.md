@@ -3,7 +3,7 @@ name: TeamResourceService lives in the GoogleIntegration section
 description: ITeamResourceService and TeamResourceService live in the Humans.GoogleIntegration section project even though google_resources is a Team Resources sub-aggregate.
 ---
 
-`ITeamResourceService` lives on the `Humans.GoogleIntegration.Contracts` leaf and its implementation `TeamResourceService` in `Humans.GoogleIntegration.Services` (both moved there by the section's G5 project split, nobodies-collective/Humans#866). The arch-test `RepositoryOwners` map records `IGoogleResourceRepository → "GoogleIntegration"` to match.
+`ITeamResourceService` lives on the `Humans.GoogleIntegration.Contracts` leaf and its implementation `TeamResourceService` in `Humans.GoogleIntegration.Services`. The arch-test `RepositoryOwners` map records `IGoogleResourceRepository → "GoogleIntegration"` to match.
 
 `google_resources` is still a Team Resources sub-aggregate (see `src/Sections/Humans.Teams/Docs/Teams.md`), but the table is heavily Google-Workspace-coupled — its repository, EF entity configuration, and the `ITeamResourceGoogleClient` / `IGoogleDrivePermissionsClient` connectors all live in GoogleIntegration.
 

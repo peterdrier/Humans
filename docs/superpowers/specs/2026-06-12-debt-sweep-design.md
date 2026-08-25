@@ -147,7 +147,7 @@ Built during implementation with Peter; the table below was the starting shape �
 - **HUM-coded build warnings are not a separate theme.** A clean build's 97 warnings are entirely HUM0024 / HUM0028 / HUM0031 / HUM_USER_DISPLAYNAME — the grandfathered themes surfacing. Warning-backed themes use a shared `detect: build:<CODE>` sentinel counted from one build log per run. A `build-warnings-misc` catch-all theme (seeded at 0) owns any future non-HUM warnings (compiler CS, NuGet NU, framework obsoletions).
 - **`NoLinqAtDbLayer` and `NoStartupGuards` baselines were already empty** — drained before the skill existed; retired per the drain rule, not seeded.
 - **`NoDestructiveMigrationOps` baseline is excluded** — its entries are immutable migration history (a guard, not fixable debt).
-- **`tech-debt-2026-04-23-leftovers` became inbox entries** rather than a theme — the doc mixes done/open items, so its open items were enumerated into the inbox once, and the final inbox entry retires the doc itself.
+- **`tech-debt-2026-04-23-leftovers` became inbox entries** rather than a theme — the doc mixed done/open items, so its open items were enumerated into the inbox once, and the final inbox entry retired the doc itself (deleted 2026-08-25, fully ledgered).
 - Per-rule grandfathered themes seeded: HUM0024 (34 attribute sites), HUM0028 (17), HUM0031 (15 attributes / 26 warning sites). HUM0009, HUM0020, HUM0025, HUM0029, and HUM0032 had **zero** real attribute sites — an unanchored grep had counted analyzer doc-comments and message strings as debt (caught by Codex review on PR 989); those rules are already fully enforced and were not seeded.
 
 | Theme | Source | Review |
@@ -162,7 +162,7 @@ Built during implementation with Peter; the table below was the starting shape �
 | `controller-logic-hum0031` | controllers near the ratchet threshold | light |
 | `cross-section-read-splits` | sections without `I…ServiceRead` consumed cross-section | panel |
 | `repos-sharing-tables` | `SingleRepositoryPerTableAnalyzer` grandfathers | panel |
-| `tech-debt-2026-04-23-leftovers` | open items in that doc | per-item |
+| `tech-debt-2026-04-23-leftovers` | open items in that doc (retired 2026-08-25, fully ledgered) | per-item |
 | `inbox` | ledger inbox list | per-item |
 
 ## Relationship to existing skills

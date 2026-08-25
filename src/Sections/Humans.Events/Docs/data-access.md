@@ -46,8 +46,7 @@ Repository: `IEventRepository`.
 | EventFavourites | R/W |
 
 Cross-section calls limited to `IClock` (plus owning-service lookups for
-active-event scoping). Implements `IUserDataContributor`. The inner
-service has no `IMemoryCache`.
+active-event scoping). The inner service has no `IMemoryCache`.
 
 ### CachingEventService (Singleton, `Humans.Events.Services`)
 
@@ -59,7 +58,9 @@ service has no `IMemoryCache`.
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
 Implements `IEventService` (which extends the cross-section read surface
-`IEventServiceRead`), `IEventViewInvalidator`,
+`IEventServiceRead`), `IEventViewInvalidator`, `IUserDataContributor`
+(delegates to the inner service, then refreshes the affected cache slice —
+erasure edits a cached row's Host name),
 `IHostedService` (`StartAsync` warms all four projections).
 `IEventServiceRead` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the

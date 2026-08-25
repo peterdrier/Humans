@@ -87,8 +87,8 @@ assertion families that are plausible analyzer candidates:
 - Repository sealing and placement — **retired as predicted, not re-proposed.**
   `IRepositoryImplementationsAreSealedRule` and
   `RepositoryImplementationsLiveInInfrastructureRule` were both scoped to the
-  `Humans.Infrastructure` assembly; both files were deleted when G5 lane 5b-6
-  deleted that project. Do not repoint them at the section assemblies: there,
+  `Humans.Infrastructure` assembly, which no longer exists.
+  Do not repoint them at the section assemblies: there,
   HUM0034 forces every non-`Contracts/` type `internal` and MA0053 then errors on
   an unsealed `internal` class, so sealing is a structural fact, and a repository
   lives in its own section's `Data/` folder by construction (HUM0035 additionally
@@ -326,14 +326,14 @@ analyzer.
 
 - `NoConcurrencyTokensRule` — replaced by semantic analyzer `HUM0007`.
 - `NoCrossSectionEfJoinsRule` — was replaced by analyzer `HUM0024`; both are gone, the analyzer retired in nobodies-collective/Humans#1278 (per-section `DbContext`s make the join structurally impossible). Do not resurrect either.
-- `NoLinqAtDbLayerRule` — retired in nobodies-collective/Humans#866's GoogleIntegration move. It scanned a hardcoded `src/Humans.Application/Services`, which G5 had drained to 28 files while 360 service files moved to `src/Sections/*/Services`; its baseline reached zero through lost coverage, not through fixes. The `no-linq-at-db-layer` rule itself still stands (`memory/architecture/no-linq-at-db-layer.md`) — only the regex ratchet is gone. Do not resurrect it in this form.
+- `NoLinqAtDbLayerRule` — retired. It scanned a hardcoded `src/Humans.Application/Services`, which the section split drained to 28 files while 360 service files moved to `src/Sections/*/Services`; its baseline reached zero through lost coverage, not through fixes. The `no-linq-at-db-layer` rule itself still stands (`memory/architecture/no-linq-at-db-layer.md`) — only the regex ratchet is gone. Do not resurrect it in this form.
 - `NoBusinessLogicInControllersRule` — retired (the regex heuristic was noisy and only saw public action signatures; nobodies-collective/Humans#793). Replaced by semantic analyzer `HUM0031` (`ControllerBusinessLogicAnalyzer`): statements > 40 or cyclomatic complexity > 15 on any controller method, method-level `[Grandfathered]`, **thresholds frozen at 40/15 until 2027**. The freeze is Peter's call and is not up for revisiting — do not propose tightening, unfreezing, or "re-evaluating now that #866 has progressed". He will lower them when he decides to.
 - `NoObsoleteNavReadsRule` — was replaced by semantic analyzer `HUM0021`; both are gone, the analyzer retired in nobodies-collective/Humans#1278 as a dead rule (zero live `[Obsolete("Cross-domain nav…")]` markers since nobodies-collective/Humans#996). Do not resurrect either.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` — retired alongside `NoLinqAtDbLayerRule` (Peter's call). Its scan root `src/Humans.Web` was still valid and its baseline genuinely zero, but it was a regex over one project out of 36+ and saw no section's `Section.Register`. The `no-startup-guards` rule itself still stands (`memory/architecture/no-startup-guards.md`).
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
 - `ServiceBoundaryArchitectureTests` (`tests/Humans.Web.Tests/Architecture/ServiceBoundaryArchitectureTests.cs`) — four boundary scans (marker-attribute presence for services and for repositories, repository-ownership-map completeness, and the entity-read-return ratchet; the Users/Profiles single-section pin went with the merge, and the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
-- `ApplicationServicesTakeNoDbContextRule` / `ApplicationServicesTakeNoMemoryCacheRule` (`tests/Humans.Web.Tests/Architecture/Rules/`) — generalized ctor sweeps over the section assemblies. Their scope comes from `ApplicationSweepScope.Assemblies()`, which resolves through `SectionDiscoveryExtensions.SectionAssemblies()` rather than a hardcoded assembly name — the fix for the four silent anchor drifts G5 produced. Stay as tests.
+- `ApplicationServicesTakeNoDbContextRule` / `ApplicationServicesTakeNoMemoryCacheRule` (`tests/Humans.Web.Tests/Architecture/Rules/`) — generalized ctor sweeps over the section assemblies. Their scope comes from `ApplicationSweepScope.Assemblies()`, which resolves through `SectionDiscoveryExtensions.SectionAssemblies()` rather than a hardcoded assembly name — the fix for four silent anchor drifts the section split produced. Stay as tests.
 - The per-section `*ArchitectureTests.cs` files (in the section's own test project, under `Architecture/` or at its root; 39 of them today, across 33 test projects) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 
 Cited reference for the policy: `docs/architecture/code-analysis.md`

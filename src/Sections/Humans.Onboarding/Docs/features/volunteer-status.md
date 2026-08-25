@@ -124,7 +124,7 @@ Non-Active users are restricted from most of the application. A global action fi
 
 ### Bypass
 
-There is no role bypass. Roles authorize protected features only after `UserState == Active`; non-Active users are routed by state before role-gated controllers run.
+There is no role bypass. Roles authorize protected features only after `UserState == Active`; non-Active users are routed by state before role-gated controllers run. A Backdoor-API-key-authenticated request is a different kind of exemption: it carries no `UserState` claim at all and passes through the filter untouched (`src/Sections/Humans.Backdoor/Docs/Backdoor.md`).
 
 ### Exempt Controllers
 

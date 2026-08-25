@@ -499,9 +499,10 @@ internal sealed class HoldedClient : IHoldedClient
         LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default)
     {
         const int pageSafetyCap = 100; // 20 000 lines/window — far above a small nonprofit's volume
+        // end_date is exclusive on the live API — send to+1 so the inclusive-`to` contract holds.
         var query =
             $"/api/v2/ledger-entries?start_date={LocalDatePattern.Iso.Format(from)}" +
-            $"&end_date={LocalDatePattern.Iso.Format(to)}&limit=200";
+            $"&end_date={LocalDatePattern.Iso.Format(to.PlusDays(1))}&limit=200";
         if (accountNum is { } num)
             query += $"&account={num}";
 

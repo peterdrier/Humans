@@ -219,13 +219,16 @@ Paths are relative to `src/` (`src/Sections/` for the section projects).
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.
 
+<!-- wheat: docs/superpowers/specs/2026-06-09-team-early-entry-ticket-lookup-design.md §1 Shared picker -->
+Extra result sources are wired into `<vc:human-search>` as **opt-in URL attributes** (`ticket-lookup-url` on the Teams Early Entry page), never by widening the shared `/api/profiles/search` endpoint — that endpoint is Users-owned and shared by ~8 pickers. When such an attribute is set the picker fires a second fetch in parallel and concatenates rows of the same `{ userId, displayName, detail, profilePictureUrl }` shape; each fetch resolves to `[]` on error so a partial failure still renders the other source. With the attribute unset (the default) behaviour is byte-for-byte unchanged, and a query that resolves to nothing stays silent — no non-selectable "not found" row.
+
 ## List Tables
 
 <!-- wheat: docs/superpowers/specs/2026-06-10-table-component-design.md -->
 Every list table renders through `TableModel.For(rows).Column(...).Build()` (`Humans.Base.Models.Tables`) + `<partial name="_Table" model="table" />` (`Humans.Base/Views/Shared/_Table.cshtml`) — never a hand-authored `<table>`. One column model drives sorting, filtering, and formatting instead of each view re-inventing them.
 
 - **Formats** (`CellFormat`): `Text` (default, null → em-dash), `Date`/`DateTime` (via the date-formatting home above), `Currency`/`Number` (`N2`/`#,##0.##`, no currency symbol — Peter's call), `EnumBadge` (via `EnumBadgeMap`, unmapped values fall back to `bg-secondary`), `BoolIcon`, `Template` (escape hatch for `<vc:>`/`asp-*` cells).
-- **`EnumBadgeMap`** is the single enum→badge-color registry — views never inline a `switch` for badge color. A section moved into its own project (G5) pushes its enum rows in via `Section.Register` (`Humans.Base` cannot name a moved section's enum — see `memory/architecture/base-ui-registries-are-section-populated.md`); un-moved sections' enums are hardcoded in the map's literal.
+- **`EnumBadgeMap`** is the single enum→badge-color registry — views never inline a `switch` for badge color. A section in its own project pushes its enum rows in via `Section.Register` (`Humans.Base` cannot name a moved section's enum — see `memory/architecture/base-ui-registries-are-section-populated.md`); un-moved sections' enums are hardcoded in the map's literal.
 - **Client mode** (default) sorts/filters in-browser via the `site.js` `data-sortable-table` engine; **server mode** (`.ServerMode(...)`) emits sort-link/filter-form query params for controller-driven paging — same column declarations either way.
 - Column declaration lives in the view (a code block), not the controller: custom cells need Razor (`<vc:human>`, `Url.Action`); splitting a column list from its templates across two files was rejected as the alternative.
 

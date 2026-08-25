@@ -197,11 +197,48 @@
         @* Every decision on a report is taken here rather than from a queue row, so nobody
            approves a report without the lines and receipts on screen (peterdrier/Humans#1447).
            A finance admin looking at a Submitted report can both endorse and approve it — the
-           authorization handler has always granted them the coordinator's operations. *@
-        @if (Model.HasDecision)
+           authorization handler has always granted them the coordinator's operations — so they
+           see both cards; a coordinator sees only theirs. The cards follow workflow order:
+           the coordinator endorses first, then finance decides and may override the cap. *@
+        @if (Model.CanEndorse || Model.CanCoordinatorReject)
         {
             <div class="card mb-3 border-primary">
-                <div class="card-header bg-primary-subtle"><strong><i class="fa-solid fa-gavel me-1"></i>Decision</strong></div>
+                <div class="card-header bg-primary-subtle"><strong><i class="fa-solid fa-gavel me-1"></i>@Localizer["Expenses_CoordinatorDecision"]</strong></div>
+                <div class="card-body">
+                    @if (Model.CanEndorse)
+                    {
+                        <form asp-action="Endorse" asp-route-id="@r.Id" method="post" class="mb-3">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-2">
+                                <label class="form-label" for="endorse-max">@Localizer["Expenses_MaxAmount"]</label>
+                                <input type="number" class="form-control" id="endorse-max" name="MaxAmount"
+                                       step="0.01" min="0.01"
+                                       value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
+                            </div>
+                            <button type="submit" class="btn btn-outline-success w-100"
+                                    data-confirm="@Localizer["Expenses_EndorseConfirm"].Value">
+                                <i class="fa-solid fa-check me-1"></i>@Localizer["Expenses_Endorse"]
+                            </button>
+                        </form>
+                    }
+
+                    @* Finance admins reject from their own card below, so this button only
+                       renders for an actual coordinator. *@
+                    @if (Model.CanCoordinatorReject && !Model.CanFinanceReject)
+                    {
+                        <button type="button" class="btn btn-outline-danger w-100"
+                                data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fa-solid fa-xmark me-1"></i>@Localizer["Expenses_Reject"]
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Model.CanApprove || Model.CanFinanceReject)
+        {
+            <div class="card mb-3 border-primary">
+                <div class="card-header bg-primary-subtle"><strong><i class="fa-solid fa-gavel me-1"></i>@Localizer["Expenses_FinanceAdminDecision"]</strong></div>
                 <div class="card-body">
                     @if (Model.CanApprove)
                     {
@@ -236,24 +273,7 @@
                         </form>
                     }
 
-                    @if (Model.CanEndorse)
-                    {
-                        <form asp-action="Endorse" asp-route-id="@r.Id" method="post" class="mb-3">
-                            @Html.AntiForgeryToken()
-                            <div class="mb-2">
-                                <label class="form-label" for="endorse-max">@Localizer["Expenses_MaxAmount"]</label>
-                                <input type="number" class="form-control" id="endorse-max" name="MaxAmount"
-                                       step="0.01" min="0.01"
-                                       value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
-                            </div>
-                            <button type="submit" class="btn btn-outline-success w-100"
-                                    data-confirm="@Localizer["Expenses_EndorseConfirm"].Value">
-                                <i class="fa-solid fa-check me-1"></i>@Localizer["Expenses_Endorse"]
-                            </button>
-                        </form>
-                    }
-
-                    @if (Model.CanFinanceReject || Model.CanCoordinatorReject)
+                    @if (Model.CanFinanceReject)
                     {
                         <button type="button" class="btn btn-outline-danger w-100"
                                 data-bs-toggle="modal" data-bs-target="#rejectModal">

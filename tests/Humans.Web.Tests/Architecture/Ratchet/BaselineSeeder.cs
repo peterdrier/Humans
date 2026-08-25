@@ -38,7 +38,7 @@ public class BaselineSeeder
             repoRoot,
             "tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt",
             ServiceBoundaryArchitectureTests.ScanApplicationServiceEntityReadReturns(),
-            "no new Application service read methods return EF/domain entities (docs/architecture/service-entity-boundary-ratchet.md)");
+            "no new Application service read methods return EF/domain entities (docs/architecture/debt-ledger.yml inbox)");
 
     }
 

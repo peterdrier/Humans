@@ -341,9 +341,10 @@ public class ServiceBoundaryArchitectureTests
     }
 
     // Note: Get*/Find* also match GetOrCreate*/FindOrCreate* upsert mutations.
-    // Per service-entity-boundary-ratchet.md, mutations that temporarily return entities
-    // are allowed as ratcheted debt. If a new GetOrCreate* method is flagged here,
-    // either use a result record (preferred) or add it to the baseline with a comment.
+    // Mutations that temporarily return entities are allowed as ratcheted debt (queued
+    // for re-audit in docs/architecture/debt-ledger.yml's inbox). If a new GetOrCreate*
+    // method is flagged here, either use a result record (preferred) or add it to the
+    // baseline with a comment.
     private static bool IsReadMethod(MethodInfo method) =>
         method.Name.StartsWith("Get", StringComparison.Ordinal) ||
         method.Name.StartsWith("List", StringComparison.Ordinal) ||

@@ -122,9 +122,6 @@ internal sealed class ExpenseDetailViewModel
     /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
     public bool CanCoordinatorReject { get; init; }
 
-    /// <summary>Any decision at all is on offer — drives whether the decision card renders.</summary>
-    public bool HasDecision => CanApprove || CanFinanceReject || CanEndorse || CanCoordinatorReject;
-
     /// <summary>Budget categories offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
     public IReadOnlyList<BudgetCategoryOption> Categories { get; init; } = [];
 }

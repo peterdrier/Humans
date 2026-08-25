@@ -1,21 +1,17 @@
 ---
-name: Every dotnet ef command needs --context since the per-section split
-description: More than one DbContext is in play (one per section, nobodies-collective/Humans#858; there is no main pile since peel 15). Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context once a section owns its own project (nobodies-collective/Humans#866).
+name: Every dotnet ef command needs --context
+description: More than one DbContext is in play — one per section, plus the platform context. Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context since each section owns its own project.
 ---
 
-Since the per-section DbContext split (nobodies-collective/Humans#858), more than one DbContext
-is in play. `dotnet ef` errors out ("More than one DbContext was found") unless every invocation
-names its context. Since the section-project split (nobodies-collective/Humans#866), `--project`
-also varies: a section at G5 owns its migrations, so they are generated into and read from the
-section's own project.
+More than one DbContext is in play — one per section. `dotnet ef` errors out ("More than one
+DbContext was found") unless every invocation names its context. `--project` also varies: each
+section owns its migrations, so they are generated into and read from the section's own project.
 
-There is no main pile: `HumansDbContext` and its root chain were deleted at peel 15
-(design doc §10.3). Users/Profiles is a section project like any other since G5 lane 2
-(`UsersDbContext`, `src/Sections/Humans.Users/Data/Migrations/`).
+There is no main pile: `HumansDbContext` and its root chain are gone. Users/Profiles is a
+section project like any other (`UsersDbContext`, `src/Sections/Humans.Users/Data/Migrations/`).
 
 **The platform context, hosted in Humans.Web** — context AND output dir (it lives in its own
-folder with its own `SystemDbContextModelSnapshot.cs`). `src/Humans.Infrastructure` was the
-host until G5 lane 5b-6 deleted it:
+folder with its own `SystemDbContextModelSnapshot.cs`):
 
 ```bash
 dotnet ef migrations add <Name> --context SystemDbContext \
@@ -23,7 +19,7 @@ dotnet ef migrations add <Name> --context SystemDbContext \
   --project src/Humans.Web --startup-project src/Humans.Web
 ```
 
-**Section at G5, in its own project** — `--project` is the section, and the output dir is the
+**A section, in its own project** — `--project` is the section, and the output dir is the
 section-local `Data/Migrations` (no per-section subfolder: the project already scopes it):
 
 ```bash
@@ -57,4 +53,4 @@ dotnet ef migrations has-pending-model-changes --context <C> \
 - When a new section context lands, add its `context:project` pair to the `SECTION_DB_CONTEXTS`
   workflow-level `env` var in `.github/workflows/build.yml` — one list, consumed by all three
   loops (Layer 1, Layer 2 per-section apply, post-apply). Nowhere else in that file names a
-  context. A G5 move edits that pair's project and nothing else.
+  context.

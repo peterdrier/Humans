@@ -147,7 +147,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
 - **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId`, `CampaignGrantId`, and `ShiftSignupId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav (#992 cut the FK, #996 cut the last navs). A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`; the shift-signup dedup query filters on `ShiftSignupId` directly.
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
-  - `IEmailService` + `EmailMessage` — the one transport entry point, called by nine `Humans.Application` services, six `Humans.Infrastructure` jobs and six moved sections.
+  - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, Feedback, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
   - `IEmailMessageFactory` — the typed builders those callers use to construct an `EmailMessage`.
     `SurveyInvitation` accepts optional plain-text custom subject/message values from Surveys; the
     internal renderer trims and safely encodes them while retaining the existing template, generated

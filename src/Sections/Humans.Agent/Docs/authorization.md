@@ -4,8 +4,8 @@
 |---|---|---|---|
 | `AgentController` | Class | `[Authorize]` (authenticated) | — |
 | `AgentController.Ask` | In-method | `auth.AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (requirement instantiated directly — not a registered named policy) | Resource-based (see handler below) |
-| `AgentApiController` | Class | `[ServiceFilter(typeof(AgentApiKeyAuthFilter))]` (API-key auth) | `AgentApiKeyAuthFilter` |
 | `AdminAgentController` (`/Agent/Admin`) | Class | `Admin` | `PolicyNames.AdminOnly` (`Index`, `Status`, `Settings` GET/POST, `ReloadKnowledgeBase`, `Conversations/{id}/Prompt` all inherit) |
+| `BackdoorAgentController` (in `Humans.Backdoor`) | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent transcript read API at `/api/backdoor/agent` — `List`; reads this section through `IAgentTranscriptRead`) |
 
 ## Resource-Based Authorization Handler
 

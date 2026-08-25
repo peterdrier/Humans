@@ -1,6 +1,6 @@
 ---
 name: A section-project cycle is fixed by splitting contracts downward, never by promoting the shared type up
-description: When MSBuild refuses a section project reference as circular (nobodies-collective/Humans#866, G5), carve `<Section>.Contracts` out of the UPSTREAM section. Never move the shared type into a Base project to make the error go away — that is how Base silently becomes a global blob.
+description: When MSBuild refuses a section project reference as circular, carve `<Section>.Contracts` out of the UPSTREAM section. Never move the shared type into a Base project to make the error go away — that is how Base silently becomes a global blob.
 ---
 
 The tier model is `Shell → Section → Base`: Shell owns composition and nav, a section owns its
@@ -32,9 +32,9 @@ knots; nothing else is split in advance.
   and split *that* one's contracts. Do not reverse the dependency to dodge the split.
 - The `.Contracts` project references Base only. If it needs another section, you have found a
   second cycle, not an exception.
-- Moving a type into `Humans.Base` (or the pre-G5 `Humans.Domain` / `Humans.UI`, both long deleted) to resolve a cycle needs
+- Moving a type into `Humans.Base` (or the deleted `Humans.Domain` / `Humans.UI` projects) to resolve a cycle needs
   Peter's per-instance approval. "The build was red" is not the justification.
-- The standing shared-contract exceptions are `User`/`UserInfo`, Auth and Audit, decided in #866.
+- The standing shared-contract exceptions are `User`/`UserInfo`, Auth and Audit.
   Those are the whole list; a cycle does not add to it.
 - Full mechanics and the pilot plan: `docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md`.
 

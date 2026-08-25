@@ -31,6 +31,27 @@
 
 <vc:temp-data-alerts />
 
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+    <div>
+        <strong>Question results:</strong>
+        <span class="text-muted">@Model.SelectedResponseCount response(s)</span>
+    </div>
+    <div class="btn-group" role="group" aria-label="Filter question results">
+        <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Unique"
+           class="btn btn-sm @(Model.Scope == SurveyResultsScope.Unique ? "btn-primary" : "btn-outline-primary")">
+            Identified / unique
+        </a>
+        <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Anonymous"
+           class="btn btn-sm @(Model.Scope == SurveyResultsScope.Anonymous ? "btn-primary" : "btn-outline-primary")">
+            Anonymous
+        </a>
+        <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Combined"
+           class="btn btn-sm @(Model.Scope == SurveyResultsScope.Combined ? "btn-primary" : "btn-outline-primary")">
+            Combined
+        </a>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
     <div class="col-sm-4">
         <div class="card h-100"><div class="card-body text-center">
@@ -52,7 +73,7 @@
     </div>
 </div>
 
-<h2 class="h5">Participation funnel</h2>
+<h2 class="h5">Participation funnel <span class="text-muted fw-normal">(all responses)</span></h2>
 <div class="card mb-4">
     <div class="card-body">
         <div class="row">
@@ -182,65 +203,68 @@
     </div>
 }
 
-<h2 class="h5">Identified respondents</h2>
-@if (Model.Respondents.Count == 0)
+@if (Model.ShowIdentifiedRespondents)
 {
-    <p class="text-muted">No identified respondents.</p>
-}
-else
-{
-    <div class="accordion mb-4" id="respondents">
-        @for (var i = 0; i < Model.Respondents.Count; i++)
-        {
-            var r = Model.Respondents[i];
-            var headingId = $"respondent-heading-{i}";
-            var collapseId = $"respondent-collapse-{i}";
-            <div class="accordion-item">
-                <h3 class="accordion-header" id="@headingId">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                        @r.Name <span class="text-muted ms-2 small">@r.SubmittedAt</span>
-                    </button>
-                </h3>
-                <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
-                    <div class="accordion-body">
-                        <dl class="row mb-0">
-                            @foreach (var a in r.Answers)
-                            {
-                                <dt class="col-sm-4">@a.Prompt</dt>
-                                <dd class="col-sm-8">
-                                    @if (a.GridSelections?.Count > 0)
-                                    {
-                                        <ul class="list-unstyled mb-0">
-                                            @foreach (var selection in a.GridSelections)
-                                            {
-                                                <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
-                                            }
-                                        </ul>
-                                    }
-                                    else if (a.SelectedLabels.Count > 0)
-                                    {
-                                        @string.Join(", ", a.SelectedLabels)
-                                    }
-                                    else if (a.RatingValue is { } rating)
-                                    {
-                                        @rating
-                                    }
-                                    else if (!string.IsNullOrEmpty(a.TextValue))
-                                    {
-                                        @a.TextValue
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">—</span>
-                                    }
-                                </dd>
-                            }
-                        </dl>
+    <h2 class="h5">Identified respondents</h2>
+    @if (Model.Respondents.Count == 0)
+    {
+        <p class="text-muted">No identified respondents.</p>
+    }
+    else
+    {
+        <div class="accordion mb-4" id="respondents">
+            @for (var i = 0; i < Model.Respondents.Count; i++)
+            {
+                var r = Model.Respondents[i];
+                var headingId = $"respondent-heading-{i}";
+                var collapseId = $"respondent-collapse-{i}";
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="@headingId">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                            @r.Name <span class="text-muted ms-2 small">@r.SubmittedAt</span>
+                        </button>
+                    </h3>
+                    <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
+                        <div class="accordion-body">
+                            <dl class="row mb-0">
+                                @foreach (var a in r.Answers)
+                                {
+                                    <dt class="col-sm-4">@a.Prompt</dt>
+                                    <dd class="col-sm-8">
+                                        @if (a.GridSelections?.Count > 0)
+                                        {
+                                            <ul class="list-unstyled mb-0">
+                                                @foreach (var selection in a.GridSelections)
+                                                {
+                                                    <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else if (a.SelectedLabels.Count > 0)
+                                        {
+                                            @string.Join(", ", a.SelectedLabels)
+                                        }
+                                        else if (a.RatingValue is { } rating)
+                                        {
+                                            @rating
+                                        }
+                                        else if (!string.IsNullOrEmpty(a.TextValue))
+                                        {
+                                            @a.TextValue
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </dd>
+                                }
+                            </dl>
+                        </div>
                     </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
 }
 
 <div class="mt-3">

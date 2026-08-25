@@ -1,8 +1,5 @@
 using Humans.Surveys.Contracts;
 using Humans.Base.Controllers;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Humans.Surveys.Services;
 using Humans.Teams.Contracts;
 using Humans.Surveys.Domain;
@@ -29,12 +26,6 @@ internal sealed class SurveyAdminController(
     ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    private static readonly JsonSerializerOptions ExportJsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
-    };
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -335,9 +326,12 @@ internal sealed class SurveyAdminController(
     }
 
     [HttpGet("Results/{id:guid}")]
-    public async Task<IActionResult> Results(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Results(
+        Guid id,
+        CancellationToken ct,
+        SurveyResultsScope scope = SurveyResultsScope.Combined)
     {
-        var results = await surveyService.GetResultsAsync(id, ct);
+        var results = await surveyService.GetScopedResultsAsync(id, scope, ct);
         if (results is null) return NotFound();
 
         return View(SurveyResultsBuilder.Build(results));
@@ -359,8 +353,7 @@ internal sealed class SurveyAdminController(
         var export = await surveyService.GetResponseExportAsync(id, ct);
         if (export is null) return NotFound();
 
-        var json = JsonSerializer.Serialize(export, ExportJsonOptions);
-        return File(Encoding.UTF8.GetBytes(json), "application/json", $"survey-{id}.json");
+        return File(SurveyJsonExportBuilder.Build(export), "application/json", $"survey-{id}.json");
     }
 
     private async Task RunStatusTransitionAsync(Guid id, Func<Task> transition, string success)

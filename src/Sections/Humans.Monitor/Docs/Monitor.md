@@ -65,9 +65,9 @@ registration moves into the section, policy registration does not).
 ## Invariants
 
 - **Monitor's reference set is the section's justification.** It is
-  `Humans.AuditLog.Contracts` + `Humans.Settings.Contracts` + `Humans.GoogleIntegration.Contracts`
-  (plus `Humans.GoogleIntegration` itself, so `SyncAudit.cshtml`'s `<vc:google-sync-log>` tag
-  helper binds). Every name added there is a section
+  `Humans.AuditLog.Contracts` + `Humans.Settings.Contracts` + `Humans.GoogleIntegration.Contracts` +
+  `Humans.Users.Contracts` (plus `Humans.GoogleIntegration` itself, so `SyncAudit.cshtml`'s
+  `<vc:google-sync-log>` tag helper binds). Every name added there is a section
   Monitor now couples to — documentation, not a pinned assertion
   ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
 - **Nothing depends on Monitor except Shell naming the job.** Its whole outward surface is

@@ -1,20 +1,18 @@
 ---
-name: A Base UI registry holding section vocabulary becomes section-populated, never section-referencing
-description: When a shared `Humans.UI` lookup table names a section's enum and that section moves out at G5, the section registers its rows from `Section.Register` — Base must not gain a reference to the section's contracts leaf to keep naming the type. (Peter, 2026-08-09.)
+name: A Base UI registry holding section vocabulary is section-populated, never section-referencing
+description: A shared `Humans.UI` lookup table that would otherwise need to name a section's enum instead gets its rows pushed in from that section's `Section.Register` — Base never gains a reference to a section's contracts leaf just to keep naming the type. (Peter, 2026-08-09.)
 ---
 
 `Humans.UI` is Base. It holds cross-cutting presentation machinery — the table widget, the badge
-map, the status-badge extensions — and several of those are **registries keyed by section enums**:
-literal tables naming `CampaignStatus`, `ExpenseReportStatus`, `TicketPaymentStatus`, `VoteChoice`
-and six more. That compiles today only because every one of those enums still sits in
-`Humans.Domain.Enums`. Each G5 move (nobodies-collective/Humans#866) takes one out, and the
-registry stops compiling.
+map, the status-badge extensions — and several of those are **registries keyed by section enums**.
+Since a section's enums live inside its own project, Base cannot name them directly.
 
 **The fix is to invert the direction: the section pushes its rows into the registry from
-`ISection.Register`.** The registry keeps a literal table for the sections that have not moved and
-gains a `Register(...)` method; the moving section deletes its rows from Base and adds one call to
-its `Section.Register`. Nothing in Base names a section type, and the endgame — all ~35 moved — is
-an empty literal.
+`ISection.Register`.** The registry exposes a `Register(...)` method and a section adds one call
+to its `Section.Register` to populate its own rows. Nothing in Base names a section type. A row
+that a registry cannot avoid holding literally — because the value is genuinely Base's own
+vocabulary, not a section's — stays a literal entry (`EnumBadgeMap`'s one remaining literal row is
+`EmailOutboxStatus`).
 
 **Why not the cheap answer.** Promoting the enum into `<Section>.Contracts` and having `Humans.UI`
 reference that leaf is smaller in the moment and correct for exactly one section. Applied ten times
@@ -26,8 +24,8 @@ wrong home for one whose only cross-boundary use is a colour lookup. The test is
 
 **How to apply:**
 
-- Base registry names a moving section's type ⇒ add a `Register(...)` to the registry, move the
-  rows into `Section.Register`, leave the other sections' literals alone.
+- Base registry needs to name a section's type ⇒ add a `Register(...)` to the registry and have
+  the section push its own rows from `Section.Register`; leave other sections' literals alone.
 - **Make `Register` idempotent per row.** A process composes the service collection more than once
   — `WebApplicationFactory` builds a host per integration-test class, section architecture tests
   call `Register` against a throwaway `ServiceCollection` — while a static registry outlives all of
@@ -44,16 +42,13 @@ wrong home for one whose only cross-boundary use is a colour lookup. The test is
   `StatusBadgeExtensions.GetBadgeClass(ExpenseReportStatus)` had exactly two call sites, both in
   Expenses' own views.
 
-First applied 2026-08-09 by Expenses' move (peterdrier/Humans#1240), for `EnumBadgeMap`.
-Shifts applied it late, at G5 lane 4b-i (nobodies-collective/Humans#866): its six
-`ShiftPeriod`/`SignupStatus` rows moved to `Humans.Shifts/Section.cs` and are pinned by
-`ShiftsArchitectureTests.SectionRegistersABadgeClassForEveryShiftPeriodAndSignupStatus`.
-The same lane retired Base's `StatusBadgeExtensions` outright — its only two call sites are
-Users' views, so it moved into `Humans.Users/Extensions/` as an `internal` class rather than
-becoming a registry. `EnumBadgeMap`'s literal now holds only `EmailOutboxStatus`.
-Budget took its `BudgetYearStatus` overload with it at its G5 move — an extension in the
-section rather than an `EnumBadgeMap.Register` row, because its three admin views call
-`GetBadgeClass()` directly and the map serves `CellFormat.EnumBadge` table columns.
+`Humans.Shifts`'s `ShiftPeriod`/`SignupStatus` rows are registered from `Humans.Shifts/Section.cs`
+and pinned by `ShiftsArchitectureTests.SectionRegistersABadgeClassForEveryShiftPeriodAndSignupStatus`.
+Base's `StatusBadgeExtensions` was retired outright: its only two call sites were Users' views, so
+it now lives in `Humans.Users/Extensions/` as an `internal` class rather than a registry. Budget's
+`BudgetYearStatus` overload is likewise a section-local extension rather than an
+`EnumBadgeMap.Register` row, because its three admin views call `GetBadgeClass()` directly and the
+map only serves `CellFormat.EnumBadge` table columns.
 
 Related: [`section-project-cycle-fix`](section-project-cycle-fix.md),
 [`sections-are-logical-units`](sections-are-logical-units.md),

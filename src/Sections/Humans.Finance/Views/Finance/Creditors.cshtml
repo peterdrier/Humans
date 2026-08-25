@@ -1,6 +1,10 @@
+@using System.Globalization
 @model Humans.Finance.Models.CreditorsPageVm
 @{
     ViewData["Title"] = "Creditor Accounts";
+
+    // `<input type="number">` speaks invariant, and so does the controller that parses it back.
+    string Amount(decimal? value) => (value ?? 0m).ToString("0.00", CultureInfo.InvariantCulture);
 
     // Header links toggle the direction of the active column and open every other one ascending.
     string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
@@ -27,6 +31,14 @@
     Holded's own view of the same account, debit and credit as posted, is linked from each statement.
     Bind a member to an account from their expense report, and unbind here. An account should carry
     exactly one member — a row showing two is flagged and needs one of them cleared.
+</p>
+
+<p class="text-muted">
+    <strong>Pay out</strong> ticks the accounts to include in a SEPA credit-transfer file for the
+    bank's "Enviar ficheros". Only single-bound accounts with a positive balance and an IBAN on their
+    Holded contact can be paid; the amount defaults to the full balance and a partial payout leaves
+    the remainder owed. Nothing here marks a report or a member as paid — the balance clears when the
+    payment is booked in Holded and the next ledger sync picks it up.
 </p>
 
 @if (Model.Unresolved.Count > 0)
@@ -79,10 +91,31 @@
 }
 else
 {
+    @* Standalone, not wrapped around the table: each row already carries an Unbind form, and HTML
+       forbids nesting one form in another. The payout inputs join this one by id instead. *@
+    <form id="sepaForm" asp-action="GenerateSepa" method="post"
+          class="d-flex justify-content-end align-items-center gap-2 mb-3">
+        @Html.AntiForgeryToken()
+        @if (Model.Sepa.IsAvailable)
+        {
+            <span class="text-muted small">Cap: @Model.Sepa.MaxPerTransfer.ToEuro() per transfer.</span>
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-file-arrow-down me-1"></i>Generate SEPA file
+            </button>
+        }
+        else
+        {
+            <span class="text-warning-emphasis small">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.Sepa.UnavailableReason
+            </span>
+        }
+    </form>
+
     <div class="card">
         <table class="table table-hover mb-0 align-middle">
             <thead>
                 <tr>
+                    <th style="width: 14rem">Pay out</th>
                     <th>
                         <a asp-action="Creditors" asp-route-sort="account" asp-route-dir="@ToggleDir("account")"
                            class="text-decoration-none">@Header("Account", "account")</a>
@@ -105,6 +138,36 @@ else
             @foreach (var r in Model.Accounts)
             {
                 <tr>
+                    @* Only a single-bound account with a positive balance and a Holded IBAN can be
+                       paid; everything else says why instead of offering a box. The service
+                       re-derives the same rules — this column is display, not the gate. *@
+                    <td>
+                        @if (!Model.Sepa.IsAvailable)
+                        {
+                            <span class="text-muted small">—</span>
+                        }
+                        else if (r.IsPayable)
+                        {
+                            <div class="d-flex align-items-center gap-2">
+                                <input class="form-check-input mt-0" type="checkbox" form="sepaForm"
+                                       name="selected" value="@r.SupplierAccountNum"
+                                       aria-label="Include account @r.SupplierAccountNum in the SEPA file" />
+                                <div class="input-group input-group-sm" style="max-width: 8rem">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" class="form-control" form="sepaForm"
+                                           step="0.01" min="0.01"
+                                           max="@Amount(r.Balance)" value="@Amount(r.Balance)"
+                                           name="amounts[@r.SupplierAccountNum]"
+                                           aria-label="Amount to pay account @r.SupplierAccountNum" />
+                                </div>
+                            </div>
+                            <div class="text-muted small">@r.IbanMasked</div>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">@r.NotPayableReason</span>
+                        }
+                    </td>
                     @* A null balance means no cached ledger lines, which is exactly when
                        CreditorStatement 404s — a contact with no journal activity yet. Show the
                        number without a link rather than a dead one. *@
@@ -167,4 +230,18 @@ else
             </tbody>
         </table>
     </div>
+
+    <script>
+        // Idempotency guard (code-review-rules § View/Controller Consistency): a successful
+        // generation answers with a file download, so the page never navigates and a second click
+        // would write a second payout file for the same balances. Disable on submit; it comes back
+        // on reload — which is what an admin wants anyway, since these balances are stale the
+        // moment a file is out. A refusal redirects back here and reloads the button with it.
+        document.getElementById('sepaForm')?.addEventListener('submit', function (e) {
+            var btn = e.target.querySelector('button[type="submit"]');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
+        });
+    </script>
 }

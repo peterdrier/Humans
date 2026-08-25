@@ -70,9 +70,11 @@
   <data name="Expenses_ColSubject" xml:space="preserve"><value>Assumpte</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentat per</value></data>
+  <data name="Expenses_CoordinatorDecision" xml:space="preserve"><value>Decisió del coordinador</value></data>
   <data name="Expenses_Endorse" xml:space="preserve"><value>Avala</value></data>
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Vols avalar aquest informe de despeses?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta el teu primer informe</value></data>
+  <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Decisió de l'administrador financer</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>El que el col·lectiu et deu</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Deute amb tu (saldo de Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>

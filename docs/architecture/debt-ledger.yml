@@ -190,10 +190,10 @@ themes:
       separate). Still closely coupled to grandfathered-hum0024-nav-strip.
   - id: baseline-entity-read-returns
     title: Application services returning entities from reads
-    detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
+    detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
     review: panel
     last_swept: never
-    remaining: 21
+    remaining: 18
     notes: >-
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
@@ -208,7 +208,7 @@ themes:
       `never` (not per-item audited; only pattern-classified this run).
   - id: baseline-display-sort
     title: Display sorting below the presentation layer
-    detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
+    detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
     last_swept: 2026-06-13
     remaining: 29
@@ -267,6 +267,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-08-25
+    what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
+    review: panel
   - added: 2026-08-22
     what: "docs/features/global/background-jobs.md and Finance.md both carried POST /Finance/Creditors/Resync, deleted in nobodies-collective/Humans#1267 — a route can be removed from the controller and survive in every doc that names it, because nothing sweeps route strings. A repo-wide check that every /Route referenced under docs/ resolves to a live action would have caught it (found by /section-doctor on Finance, 2026-08-18)."
     review: light
@@ -352,9 +355,6 @@ inbox:
   - added: 2026-06-12
     what: "AuditLogRepository / UserRepository.PurgeAsync / AccountMergeRepository cross-domain data access — needs one coordinated pass"
     review: panel
-  - added: 2026-06-12
-    what: "Retire docs/architecture/tech-debt-2026-04-23.md once its open items are all ledgered/done (doc itself is freshness-sweep prune territory)"
-    review: light
   - added: 2026-06-12
     what: "Flaky integration test: UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid fails under full-suite parallel load (TaskCanceledException in test cleanup), passes in isolation — observed in sweep 2026-06-12"
     review: light

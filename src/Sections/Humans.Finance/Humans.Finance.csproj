@@ -28,6 +28,13 @@
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Official ISO 20022 schema; every generated payout file is validated against it in-process. -->
+    <EmbeddedResource Include="Resources\pain.001.001.09.xsd"
+                      LogicalName="Humans.Finance.Resources.pain.001.001.09.xsd" />
   </ItemGroup>
 
   <ItemGroup>

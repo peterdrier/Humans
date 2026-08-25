@@ -27,6 +27,21 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
 
+        // The organisation's SEPA identity. Keys are the pre-existing Sepa:* ones; absent them,
+        // /Finance/Creditors says payout is unavailable rather than generating a rejectable file.
+        // Second pass honours the flat SEPA_CREDITOR_IBAN, registered in ConfigurationMetadata-
+        // Extensions as winning over the appsetting, for deployments that cannot use dotted keys —
+        // same shape as MailerLite's MAILERLITE_API_KEY. It overrides rather than falls back: this
+        // is the account the money leaves, so the deployment-set value beats the committed one.
+        services
+            .Configure<SepaOptions>(configuration.GetSection("Sepa"))
+            .Configure<SepaOptions>(opts =>
+            {
+                var flat = Environment.GetEnvironmentVariable("SEPA_CREDITOR_IBAN");
+                if (!string.IsNullOrWhiteSpace(flat))
+                    opts.CreditorIban = flat;
+            });
+
         services.AddScoped<IHoldedRepository, Repository>();
         services.AddScoped<Service>();
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());

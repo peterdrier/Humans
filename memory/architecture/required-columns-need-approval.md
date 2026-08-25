@@ -8,9 +8,8 @@ as a separate, explicitly-approved step if it is ever actually needed.
 `DEFAULT <clr-default>` so old rows can be backfilled — and that default is never dropped
 and never declared in the model. The database and the model silently disagree from that
 moment on. This exact pattern produced 31 stray physical defaults across 16 tables in four
-months (inventory: nobodies-collective/Humans#866 comment, 2026-08-02) and walled off the
-Gate and Store DbContext peels (nobodies-collective/Humans#858 §5.1). Nullable columns add
-no default and no divergence.
+months and walled off the Gate and Store DbContext peels (nobodies-collective/Humans#858
+§5.1). Nullable columns add no default and no divergence.
 
 **How to apply:**
 

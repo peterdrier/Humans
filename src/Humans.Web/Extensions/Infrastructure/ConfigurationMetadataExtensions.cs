@@ -64,7 +64,8 @@ internal static class ConfigurationMetadataExtensions
                 importance: ConfigurationImportance.Recommended);
             configuration.GetOptionalSetting(configRegistry, "Anthropic:DefaultModel", "Anthropic");
 
-            // SEPA — read by Expenses payment file generation. Without these, payment files are unusable.
+            // SEPA — the organisation's own identity in a payout file, read by Finance's
+            // /Finance/Sepa/Generate. Without these, SEPA generation reports itself unavailable.
             configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorName", "SEPA",
                 importance: ConfigurationImportance.Recommended);
             configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorIban", "SEPA", isSensitive: true,
@@ -74,6 +75,8 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorIdentifier", "SEPA",
                 importance: ConfigurationImportance.Recommended);
             configuration.GetOptionalSetting(configRegistry, "Sepa:ChargeBearer", "SEPA");
+            // Hard per-transfer ceiling; defaults to €50 when unset.
+            configuration.GetOptionalSetting(configRegistry, "Sepa:MaxPayoutPerTransfer", "SEPA");
 
             // City Planning team slug — without it, only admins can edit polygons.
             configuration.GetOptionalSetting(configRegistry, "CityPlanning:CityPlanningTeamSlug", "City Planning");

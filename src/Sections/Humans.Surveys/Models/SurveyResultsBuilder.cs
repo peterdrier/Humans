@@ -15,18 +15,25 @@ internal static class SurveyResultsBuilder
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    public static SurveyResultsViewModel Build(SurveyResultsView view) => new()
+    public static SurveyResultsViewModel Build(SurveyScopedResults scoped)
     {
-        SurveyId = view.SurveyId,
-        Title = view.Title,
-        Status = view.Status,
-        InvitedCount = view.InvitedCount,
-        ResponseCount = view.ResponseCount,
-        ResponseRatePercent = (int)Math.Round(view.ResponseRate * 100d),
-        Funnel = view.Funnel,
-        Questions = view.Questions.Select(BuildQuestion).ToList(),
-        Respondents = view.IdentifiedRespondents.Select(BuildRespondent).ToList(),
-    };
+        var view = scoped.Results;
+
+        return new SurveyResultsViewModel
+        {
+            SurveyId = view.SurveyId,
+            Title = view.Title,
+            Status = view.Status,
+            InvitedCount = view.InvitedCount,
+            ResponseCount = view.ResponseCount,
+            ResponseRatePercent = (int)Math.Round(view.ResponseRate * 100d),
+            Funnel = view.Funnel,
+            Scope = scoped.Scope,
+            SelectedResponseCount = scoped.SelectedResponseCount,
+            Questions = view.Questions.Select(BuildQuestion).ToList(),
+            Respondents = view.IdentifiedRespondents.Select(BuildRespondent).ToList(),
+        };
+    }
 
     private static SurveyResultsQuestionViewModel BuildQuestion(QuestionAggregate q) => new()
     {
@@ -62,8 +69,11 @@ internal sealed class SurveyResultsViewModel
     public int ResponseCount { get; init; }
     public int ResponseRatePercent { get; init; }
     public SurveyFunnel Funnel { get; init; } = new(0, 0, 0, 0);
+    public SurveyResultsScope Scope { get; init; }
+    public int SelectedResponseCount { get; init; }
     public IReadOnlyList<SurveyResultsQuestionViewModel> Questions { get; init; } = [];
     public IReadOnlyList<SurveyResultsRespondentViewModel> Respondents { get; init; } = [];
+    public bool ShowIdentifiedRespondents => Scope != SurveyResultsScope.Anonymous;
 }
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>

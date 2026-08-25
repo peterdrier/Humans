@@ -46,12 +46,12 @@ Output lands in `local/test-utility/test-utility-<timestamp>.{json,csv,md}`. Rea
 
 ### Phase 1 — Baseline
 
-Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Application.Tests/stryker-*-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: off` and `concurrency: 16`** (see the Hard constraint above). Example:
+Find or generate a scoped Stryker config (existing ones live per section, e.g. `tests/Humans.Users.Tests/stryker-profiles-config.json`, `tests/Humans.Shifts.Tests/stryker-shifts-config.json`). If you must generate one, put it under `local/stryker-trim/` (gitignored). **Use `coverage-analysis: off` and `concurrency: 16`** (see the Hard constraint above). Example:
 
 ```json
 {
   "stryker-config": {
-    "project": "Humans.Application.csproj",
+    "project": "Humans.<Section>.csproj",
     "test-runner": "mtp",
     "coverage-analysis": "off",
     "mutation-level": "Standard",
@@ -66,7 +66,7 @@ Find or generate a scoped Stryker config (existing ones live at `tests/Humans.Ap
 Run:
 
 ```powershell
-Push-Location tests/Humans.Application.Tests
+Push-Location tests/Humans.<Section>.Tests
 dotnet tool run dotnet-stryker --config-file <path>
 Pop-Location
 ```

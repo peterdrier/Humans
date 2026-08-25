@@ -218,4 +218,7 @@ public enum AuditAction
     // (nobodies-collective/Humans#1128). The in-app reporter is their own filer, so that path
     // still records creation on the issue row alone.
     IssueCreated,
+    // One per credit transfer in a generated SEPA payout file (nobodies-collective/Humans#1134).
+    // Written by Finance; the IBAN in the description is always masked.
+    SepaPayoutTransfer,
 }

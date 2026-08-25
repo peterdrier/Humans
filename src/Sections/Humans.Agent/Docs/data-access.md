@@ -51,7 +51,9 @@ Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
 `IAgentAbuseDetector`, `IAgentUserSnapshotProvider`,
 `IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`,
 `IAgentToolDispatcher`, `IAnthropicClient`. Implements
-`IUserDataContributor`. Uses `AnthropicOptions`. No `IMemoryCache`.
+`IUserDataContributor`, `IAgentTranscriptRead` (Backdoor's machine-API
+transcript surface, nobodies-collective/Humans#1128). Uses
+`AnthropicOptions`. No `IMemoryCache`.
 
 ### AgentAdminStatusService (Scoped, `Humans.Agent.Services`)
 

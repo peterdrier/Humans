@@ -17,9 +17,9 @@ what gets automated; he does not need it re-pitched.
 
 There is also usually a second reason the pitch is wrong: the thing being "caught" is often
 **transient churn from an in-flight migration**, not a permanent condition. The dead
-`freshness:triggers` globs that three consecutive freshness sweeps proposed CI for are a direct
-product of the G5 section moves (nobodies-collective/Humans#866) relocating files. When G5 finishes,
-the churn stops on its own. Automating a permanent check against a temporary condition is exactly
+`freshness:triggers` globs that three consecutive freshness sweeps proposed CI for were a direct
+product of the section-project-split moves relocating files — once the moves finished, the churn
+stopped on its own. Automating a permanent check against a temporary condition is exactly
 backwards.
 
 **How to apply:**

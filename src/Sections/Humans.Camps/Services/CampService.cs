@@ -1389,7 +1389,7 @@ internal sealed class CampService : ICampService, ICampLeadDirectory, ICampSeedi
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        // AccountMergeService.AcceptAsync wraps the save in its TransactionScope.
+        // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
         // Folds the source's CampMember rows onto the survivor and carries their
         // CampRoleAssignments along — Camp Lead is a CampRoleAssignment now, so leads move too.
         await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
