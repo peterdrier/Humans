@@ -5,8 +5,10 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Holded.Services;
 
-/// <summary>Nightly Holded pull: purchase docs (Finance) then the ledger mirror (Holded section).</summary>
-/// <summary>Nightly Holded pull wrapper. It calls through to Finance for doc sync before running the local mirror pass.</summary>
+/// <summary>
+/// Nightly Holded pull wrapper. It calls through to Finance for doc sync before running the local
+/// ledger mirror pass.
+/// </summary>
 [CrossSectionWrite("Runs Finance's Holded doc sync side-effect as part of the Holded nightly pull.")]
 internal sealed class HoldedNightlySync(
     IHoldedFinanceService finance,
