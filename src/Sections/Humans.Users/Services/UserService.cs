@@ -1270,6 +1270,13 @@ internal sealed class UserService(
             "scans the cached UserInfo snapshot for MergedToUserId tombstones. If this is " +
             "being called on the inner UserService it indicates a DI registration mistake.");
 
+    public Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetMergedSourceIdsForTargetsAsync(
+        IReadOnlyCollection<Guid> targetUserIds, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetMergedSourceIdsForTargetsAsync is only meaningful through CachingUserService — " +
+            "scans the cached UserInfo snapshot for MergedToUserId tombstones. If this is " +
+            "being called on the inner UserService it indicates a DI registration mistake.");
+
     public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
     {
         var loginUserIds = await repo.GetUserIdsWithExternalLoginsAsync(ct);

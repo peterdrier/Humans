@@ -96,6 +96,15 @@ public interface IUserServiceRead
         Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the transitive source-tombstone ids for each requested merge target.
+    /// The result is keyed only by requested targets; source ids are folded into their
+    /// target's set. Batch callers should use this instead of repeatedly scanning the
+    /// cached user snapshot with <see cref="GetMergedSourceIdsAsync"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetMergedSourceIdsForTargetsAsync(
+        IReadOnlyCollection<Guid> targetUserIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Get all participation records for a given year, projected to the slim
     /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
     /// section). Served from the caching decorator's <see cref="UserInfo"/>

@@ -462,26 +462,54 @@ internal sealed class CachingUserService(
     public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default)
     {
+        var result = await GetMergedSourceIdsForTargetsAsync([targetUserId], ct).ConfigureAwait(false);
+        return result[targetUserId];
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetMergedSourceIdsForTargetsAsync(
+        IReadOnlyCollection<Guid> targetUserIds, CancellationToken ct = default)
+    {
+        if (targetUserIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlySet<Guid>>();
+
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
-        // Transitive: A merged into B, then B later merged into C leaves A's
-        // row pointing at B, not C. Walk the tombstone chain to a fixed point
-        // rather than one hop, so C's read picks up {A, B}. `ids.Add` guards
-        // against a cyclic MergedToUserId chain (shouldn't happen, but would
-        // otherwise loop forever).
-        var ids = new HashSet<Guid>();
-        var frontier = new HashSet<Guid> { targetUserId };
-        while (frontier.Count > 0)
+        var requested = targetUserIds.Distinct().ToList();
+        var childrenByTarget = Values
+            .Where(u => u.MergedToUserId.HasValue)
+            .GroupBy(u => u.MergedToUserId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(u => u.Id).ToList());
+
+        var result = requested.ToDictionary(id => id, _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
+        foreach (var targetUserId in requested)
         {
-            var next = new HashSet<Guid>();
-            foreach (var u in Values)
+            var ids = (HashSet<Guid>)result[targetUserId];
+            var frontier = new HashSet<Guid> { targetUserId };
+
+            // Transitive: A merged into B, then B later merged into C leaves A's
+            // row pointing at B, not C. The reverse index keeps a batch of targets
+            // proportional to the cached merge graph instead of rescanning Values
+            // once per target and per chain depth. `ids.Add` also breaks cycles.
+            while (frontier.Count > 0)
             {
-                if (u.MergedToUserId is { } mergedTo && frontier.Contains(mergedTo) && ids.Add(u.Id))
-                    next.Add(u.Id);
+                var next = new HashSet<Guid>();
+                foreach (var parentId in frontier)
+                {
+                    if (!childrenByTarget.TryGetValue(parentId, out var children))
+                        continue;
+
+                    foreach (var childId in children)
+                    {
+                        if (ids.Add(childId))
+                            next.Add(childId);
+                    }
+                }
+
+                frontier = next;
             }
-            frontier = next;
         }
-        return ids;
+
+        return result;
     }
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>

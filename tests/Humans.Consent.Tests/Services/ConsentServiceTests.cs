@@ -75,8 +75,11 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         // Default: no merge tombstones — chain-follow short-circuits to the
         // single-id repo path.
-        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        _userService.GetMergedSourceIdsForTargetsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.ArgAt<IReadOnlyCollection<Guid>>(0)
+                .Distinct()
+                .ToDictionary(id => id, _ => (IReadOnlySet<Guid>)new HashSet<Guid>()));
 
         // Default: requesting any user returns a UserInfo carrying an Active
         // profile with all required identity fields populated. Tests that need
@@ -601,13 +604,15 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Target's chain-follow set includes the source.
-        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { sourceId });
-        // Source tombstone has no further sources.
-        _userService.GetMergedSourceIdsAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-        _userService.GetMergedSourceIdsAsync(unrelatedId, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
+        _userService.GetMergedSourceIdsForTargetsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.ArgAt<IReadOnlyCollection<Guid>>(0)
+                .Distinct()
+                .ToDictionary(
+                    id => id,
+                    id => (IReadOnlySet<Guid>)(id == targetId
+                        ? new HashSet<Guid> { sourceId }
+                        : new HashSet<Guid>())));
 
         // Input contains both source and target — duplicate-id risk path.
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], Xunit.TestContext.Current.CancellationToken);

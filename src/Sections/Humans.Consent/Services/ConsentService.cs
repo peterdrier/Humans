@@ -205,12 +205,7 @@ internal sealed class ConsentService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
-        // TODO(perf): batch GetAllMergedSourceIdsByTargetsAsync(...) → single query. Negligible at ~500 users.
-        var sourcesByTarget = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
-        foreach (var userId in userIds)
-        {
-            sourcesByTarget[userId] = await userService.GetMergedSourceIdsAsync(userId, ct);
-        }
+        var sourcesByTarget = await userService.GetMergedSourceIdsForTargetsAsync(userIds, ct);
 
         var hasAnySources = sourcesByTarget.Values.Any(s => s.Count > 0);
         if (!hasAnySources)
