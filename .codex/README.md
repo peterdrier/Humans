@@ -2,6 +2,21 @@
 
 This folder contains project-local automation for long-running Codex maintenance passes.
 
+## Launching a tech-debt run (current method)
+
+Start an interactive Codex session in the repo root and paste:
+
+```
+/goal 4 hours of autonomous tech-debt reduction. Read .codex/tech-debt-prompt.md and follow it.
+```
+
+The `/goal` with an explicit duration is **required** — without it Codex wraps up
+after ~10 minutes regardless of what the prompt says (observed 2026-08-25). Adjust
+the hours to the time you want burned; the prompt handles worktree/branch setup,
+the work loop, and updating `.codex/TECH_DEBT_QUEUE.md`.
+
+The wrapper scripts below still work but are no longer the primary path.
+
 ## Scripts
 
 - `run-weekly-bug-hunt.sh`
