@@ -40,8 +40,7 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
@@ -139,8 +138,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var activeEvent = await burnSettings.GetActiveAsync();
-            var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+            var year = await GetCurrentEventYearAsync();
             catalog = (await GetActiveCatalogAsync(year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
@@ -391,8 +389,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
 
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -419,8 +416,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
         var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
@@ -597,6 +593,13 @@ internal sealed class Service(
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
         return clock.GetCurrentInstant().InZone(tz).Date;
+    }
+
+    /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
+    private async Task<int> GetCurrentEventYearAsync()
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
     public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, PaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
@@ -1477,8 +1480,7 @@ internal sealed class Service(
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var catalogYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var catalogYear = await GetCurrentEventYearAsync();
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
         foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
             prices[product.Id] = new BalanceCalculator.ProductPrice(
