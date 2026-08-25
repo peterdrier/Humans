@@ -36,7 +36,7 @@ public sealed class VolunteerTrackingExportServiceTests
             ActorPlayaName: "TestActor",
             GeneratedAtUtc: TestNow);
 
-    private static (IShiftManagementRepository repo, IShiftManagementService shiftMgmt, IUserService users)
+    private static (IShiftManagementRepository repo, IShiftManagementService shiftMgmt, IBurnSettingsService burnSettings, IUserService users)
         BuildMocks(
             IReadOnlyList<ConfirmedShiftRow> shifts,
             IReadOnlyList<(Guid TeamId, string TeamName)>? departments = null,
@@ -50,14 +50,9 @@ public sealed class VolunteerTrackingExportServiceTests
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         shiftMgmt.GetDepartmentsWithRotasAsync(EventId)
             .Returns(departments ?? Array.Empty<(Guid, string)>());
-        shiftMgmt.GetByIdAsync(EventId)
-            .Returns(new EventSettings
-            {
-                Id = EventId,
-                Year = 2026,
-                TimeZoneId = "Europe/Madrid",
-                GateOpeningDate = Day1,
-            });
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>())
+            .Returns(TestBurnSettings());
 
         var users = Substitute.For<IUserService>();
         if (playaNames is not null)
@@ -69,8 +64,26 @@ public sealed class VolunteerTrackingExportServiceTests
             }
         }
 
-        return (repo, shiftMgmt, users);
+        return (repo, shiftMgmt, burnSettings, users);
     }
+
+    private static BurnSettingsInfo TestBurnSettings() => new(
+        Id: EventId,
+        EventName: "Burn",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: Day1,
+        BuildStartOffset: 1,
+        EventEndOffset: 10,
+        StrikeEndOffset: 11,
+        FirstCrewStartOffset: 0,
+        SetupWeekStartOffset: 0,
+        PreEventWeekStartOffset: 0,
+        FinishingWeekendStartOffset: 0,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName) =>
         UserInfoFactory.Create(
@@ -93,8 +106,8 @@ public sealed class VolunteerTrackingExportServiceTests
     [HumansFact]
     public async Task EmptyRange_ReturnsModelWithNoGroupsButFullMetadata()
     {
-        var (repo, shiftMgmt, users) = BuildMocks(shifts: Array.Empty<ConfirmedShiftRow>());
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(shifts: Array.Empty<ConfirmedShiftRow>());
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -119,11 +132,11 @@ public sealed class VolunteerTrackingExportServiceTests
             ShiftRow(Alice, TeamA, Day1.PlusDays(3), 9, 17),
             ShiftRow(Alice, TeamA, Day1.PlusDays(4), 9, 17),
         };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -163,11 +176,11 @@ public sealed class VolunteerTrackingExportServiceTests
         var endInstant = (Day1.PlusDays(3) + LocalTime.FromHourMinuteSecondTick(6, 0, 0, 0))
             .InZoneStrictly(zone).ToInstant();
         var shifts = new[] { new ConfirmedShiftRow(Alice, TeamA, startInstant, endInstant) };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -188,18 +201,13 @@ public sealed class VolunteerTrackingExportServiceTests
         repo.GetConfirmedShiftsInRangeAsync(EventId, Day1, Day7, TeamA, Arg.Any<CancellationToken>())
             .Returns(teamAOnly);
         var shiftMgmt = Substitute.For<IShiftManagementService>();
+        var burnSettings = Substitute.For<IBurnSettingsService>();
         shiftMgmt.GetDepartmentsWithRotasAsync(EventId).Returns([(TeamA, "TeamA")]);
-        shiftMgmt.GetByIdAsync(EventId).Returns(new EventSettings
-        {
-            Id = EventId,
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = Day1,
-        });
+        burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>()).Returns(TestBurnSettings());
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Bob, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Bob, "Bob"));
 
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
         var model = await sut.BuildAsync(BuildRequest(departmentId: TeamA), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
@@ -218,11 +226,11 @@ public sealed class VolunteerTrackingExportServiceTests
             ShiftRow(Alice, TeamA, Day1, 9, 17),
             ShiftRow(Alice, TeamA, Day1.PlusDays(1), 9, 17),
         };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -241,11 +249,11 @@ public sealed class VolunteerTrackingExportServiceTests
             ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 12),
             ShiftRow(Alice, TeamB, Day1.PlusDays(2), 13, 18),
         };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -260,11 +268,11 @@ public sealed class VolunteerTrackingExportServiceTests
         // Whatever the repo returns is treated as authoritative.
         // The repo's integration test (Chunk 2) covers the actual WHERE clause.
         var shifts = new[] { ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17) };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -292,7 +300,7 @@ public sealed class VolunteerTrackingExportServiceTests
             ShiftRow(Carol, TeamB, Day1.PlusDays(3), 9, 17),
             ShiftRow(Carol, TeamB, Day1.PlusDays(4), 9, 17),
         };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA"), (TeamB, "TeamB")],
             playaNames: new Dictionary<Guid, string>
@@ -301,7 +309,7 @@ public sealed class VolunteerTrackingExportServiceTests
                 [Bob] = "Bob",
                 [Carol] = "Carol",
             });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -324,7 +332,7 @@ public sealed class VolunteerTrackingExportServiceTests
             ShiftRow(Zara,  TeamA, Day1.PlusDays(1), 9, 17),
             ShiftRow(Alice, TeamA, Day1.PlusDays(3), 9, 17),
         };
-        var (repo, shiftMgmt, users) = BuildMocks(
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
             departments: [(TeamA, "TeamA")],
             playaNames: new Dictionary<Guid, string>
@@ -332,7 +340,7 @@ public sealed class VolunteerTrackingExportServiceTests
                 [Alice] = "Alice",
                 [Zara] = "Zara",
             });
-        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users);
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 

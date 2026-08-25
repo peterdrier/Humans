@@ -11,18 +11,20 @@ namespace Humans.Shifts.Services;
 /// <summary>
 /// Builds the <see cref="VolunteerExportModel"/> consumed by the XLSX builder.
 /// Composes the repo read (confirmed shifts in range), the event time-zone lookup
-/// (via <see cref="IShiftManagementService.GetByIdAsync"/>), and per-user
+/// (via <see cref="IBurnSettingsService.GetByIdAsync"/>), and per-user
 /// <see cref="UserInfo"/> resolution. Trusts the repo's status filter — no
 /// re-check on <see cref="SignupStatus"/>.
 /// </summary>
 internal sealed class VolunteerTrackingExportService(
     IShiftManagementRepository shiftManagementRepository,
     IShiftManagementService shiftManagementService,
+    IBurnSettingsService burnSettingsService,
     IUserServiceRead userService)
     : IVolunteerTrackingExportService, IEarlyEntryProvider
 {
     private readonly IShiftManagementRepository _shiftManagementRepository = shiftManagementRepository;
     private readonly IShiftManagementService _shiftManagementService = shiftManagementService;
+    private readonly IBurnSettingsService _burnSettingsService = burnSettingsService;
     private readonly IUserServiceRead _userService = userService;
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
@@ -45,9 +47,8 @@ internal sealed class VolunteerTrackingExportService(
         if (shifts.Count == 0)
             return BuildModel(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
 
-        // Look up the event time zone via the existing IShiftManagementService surface
-        // (EventSettings.TimeZoneId is the IANA id). Avoids a new interface method.
-        var eventSettings = await _shiftManagementService.GetByIdAsync(request.EventSettingsId)
+        // Look up the event time zone through the DTO-only settings read surface.
+        var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
         var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
 
@@ -248,7 +249,7 @@ internal sealed class VolunteerTrackingExportService(
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var es = await _shiftManagementService.GetActiveAsync();
+        var es = await _burnSettingsService.GetActiveAsync(ct);
         if (es is null) return [];
 
         var start = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
