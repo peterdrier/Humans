@@ -915,7 +915,7 @@
                         ("instance-key", "<code>string?</code> — required when multiple instances render on the same page"),
                         ("placeholder", "<code>string?</code> — input placeholder (default \"Search by name…\")"),
                         ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
-                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
+                        ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>Manage</code> adds role-gated legal-name matching; <code>All</code> (default) = full-text"),
                         ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)"),
                         ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces"),
                         ("ticket-lookup-url", "<code>string?</code> — when set, the picker also queries this URL (<code>?q=…</code>) in parallel and merges any rows after the profile results; used by the Early Entry card for ticket-barcode lookup (default null = disabled)")
