@@ -2174,6 +2174,16 @@ Current remaining-entry classification:
 - Shifts settings, rota, shift, and signup reads: admin/settings mutations or full shift-overlap graph consumers; DTO replacement needs a command/read-model design, not a mechanical return-type change.
 - Teams `GetTeamByIdAsync` and `GetTeamEntityBySlugAsync`: remaining callers use admin/resource authorization and mutation-adjacent entity state.
 
+## 2026-08-25 checkpoint - missing-database log assertion reliability
+Done:
+- Made `MissingDatabase_StillRefusesToStart_AndLogsOneClearFatalLineNamingIt` wait briefly for the process-wide Serilog sink to publish the fatal event before asserting its rendered database name.
+- Removed a suite-wide parallel flake without changing the startup behavior under test.
+Validation:
+- Integration test in isolation: 1 passed.
+- Full integration assembly: 317 passed, 1 expected skip.
+Next:
+- Continue with the remaining live architecture entries; preserve guarded entity workflows and persistence boundaries.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.

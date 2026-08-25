@@ -31,7 +31,17 @@ public sealed class MissingDatabaseStartupTests(HumansTestDatabase database)
         // "Application terminated unexpectedly" with the database name buried only in the
         // attached exception, not the rendered message — this assertion fails against that
         // text.
-        var fatalEvents = Humans.Base.Logging.InMemoryLogSink.Instance.GetEvents(minLevel: LogEventLevel.Fatal);
+        var logWaitDeadline = DateTimeOffset.UtcNow.AddSeconds(3);
+        IReadOnlyList<Serilog.Events.LogEvent> fatalEvents = [];
+        while (DateTimeOffset.UtcNow < logWaitDeadline)
+        {
+            fatalEvents = Humans.Base.Logging.InMemoryLogSink.Instance.GetEvents(minLevel: LogEventLevel.Fatal);
+            if (fatalEvents.Any(e => e.RenderMessage().Contains(missingDatabaseName, StringComparison.Ordinal)))
+                break;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(25));
+        }
+
         fatalEvents.Should().Contain(
             e => e.RenderMessage().Contains(missingDatabaseName, StringComparison.Ordinal),
             "a startup failure caused by a missing database must name it in a FATAL log line, " +
