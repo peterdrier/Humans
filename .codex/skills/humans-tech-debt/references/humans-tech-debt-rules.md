@@ -20,11 +20,10 @@ Good candidates usually look like:
 
 ## Repo Map
 
-- `src/Humans.Domain/`: entities, enums, value objects
-- `src/Humans.Application/`: interfaces, DTOs, constants
-- `src/Humans.Infrastructure/`: EF Core, external integrations, jobs, caching
-- `src/Humans.Web/`: controllers, Razor views, authorization, UI flow
-- `tests/Humans.Application.Tests/`: fast regression coverage
+- `src/Humans.Base/`: role markers, architecture attributes, `TrackedCache`, shared view layer — the only project every section may reference
+- `src/Sections/Humans.<Section>[.Contracts]/`: the ~40 vertical sections — each owns its services, views, domain, and (where it has data) its own `DbContext` + migrations under `Data/`; per-section docs in `Docs/`
+- `src/Humans.Web/`: the Shell — chrome, page composition, platform context
+- `tests/Humans.<Section>.Tests/`: one test project per section; architecture baselines in `tests/Humans.Web.Tests/Architecture/Baselines/`
 
 ## Forbidden Areas
 
@@ -32,9 +31,10 @@ Never change how data is stored or migrated.
 
 Avoid these paths entirely:
 
-- `src/Humans.Infrastructure/Data/HumansDbContext.cs`
-- `src/Humans.Infrastructure/Data/EntityConfigurations/**`
-- `src/Humans.Infrastructure/Migrations/**`
+- `src/Sections/Humans.<Section>/Data/*DbContext*.cs`
+- `src/Sections/Humans.<Section>/Data/Configurations/**`
+- `src/Sections/Humans.<Section>/Data/Migrations/**`
+- `src/Humans.Web/Migrations/**` (platform context)
 
 Also avoid entity-shape cleanup, serialization attribute changes, and other schema-adjacent edits.
 
@@ -114,7 +114,7 @@ Start interface-consolidation passes with the largest interfaces and work down b
 
 Fixing strategy:
 
-- Rank `src/Humans.Application/Interfaces/**/*.cs` interfaces by public method count.
+- Rank section service interfaces (`src/Sections/Humans.<Section>/Services/I*.cs` and `src/Sections/Humans.<Section>.Contracts/I*.cs`) by public method count.
 - Inspect the largest interfaces first.
 - Find method families that differ only by status, filter, sort, window, dashboard, or screen.
 - Collapse them into one broader section-owned method when behavior remains clear and result size is safe.

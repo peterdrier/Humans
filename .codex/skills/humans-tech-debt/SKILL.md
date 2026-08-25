@@ -16,7 +16,7 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 
 ## Non-Negotiable Limits
 
-- Do not touch database or storage behavior. Avoid `src/Humans.Infrastructure/Data/HumansDbContext.cs`, `src/Humans.Infrastructure/Data/EntityConfigurations/**`, `src/Humans.Infrastructure/Migrations/**`, and any change that alters persistence, migrations, or schema configuration.
+- Do not touch database or storage behavior. Avoid per-section `Data/*DbContext*.cs`, `Data/Configurations/**`, and `Data/Migrations/**` (plus `src/Humans.Web/Migrations/**`), and any change that alters persistence, migrations, or schema configuration.
 - Do not modify entity shapes, migration files, or JSON serialization attributes.
 - Do not delete files, remove controller actions, or remove public members as part of the cleanup.
 - Prefer structural simplification and consolidation over broad rewrites.
@@ -32,7 +32,7 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 5. Add or extend tests when practical.
 6. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q`.
 7. Run a score-blind second pass before commit. Review only the diff, the architecture thesis, and verification. Reject the change if it would not be worth keeping without metric movement.
-8. Periodically run `dotnet test Humans.slnx --no-build --disable-build-servers -v q --filter "FullyQualifiedName~Application"`.
+8. Run the full `dotnet test Humans.slnx --no-build --disable-build-servers -v quiet` gate before any push.
 9. Commit each accepted improvement separately and push the branch after verified progress.
 10. Continue until remaining ideas are low-value, speculative, blocked by forbidden areas, or only reducible through metric-gaming changes.
 
