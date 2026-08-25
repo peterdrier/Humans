@@ -166,6 +166,31 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetMergedSourceIdsForTargetsAsync_FollowsTransitiveChainsInOneWarmSnapshot()
+    {
+        var target = Guid.NewGuid();
+        var middle = Guid.NewGuid();
+        var source = Guid.NewGuid();
+
+        UserInfo Tombstone(Guid id, Guid mergedTo) => UserInfoFactory.Create(
+            new User { Id = id, MergedToUserId = mergedTo, PreferredLanguage = "en" },
+            userEmails: [], eventParticipations: [], externalLogins: [], profile: null,
+            contactFields: [], profileLanguages: [], volunteerHistory: [], communicationPreferences: []);
+
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([Tombstone(middle, target), Tombstone(source, middle)]);
+
+        var sut = CreateSut();
+        var result = await sut.GetMergedSourceIdsForTargetsAsync(
+            [target, middle, target], Xunit.TestContext.Current.CancellationToken);
+
+        result.Keys.Should().BeEquivalentTo([target, middle]);
+        result[target].Should().BeEquivalentTo([middle, source]);
+        result[middle].Should().BeEquivalentTo([source]);
+        await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task WarmAllAsync_PopulatesDictForAllUsers_AndServesFromDict()
     {
         var userA = SampleUser();
