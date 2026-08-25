@@ -169,7 +169,8 @@ MCP tools: `[{number, headRefName, title, files: [paths]}]` for all open PRs.
 remains only for the re-doctor judgment below:
 
 ```bash
-python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json"
+python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json" \
+  | tee "$RUNDIR/selection.txt"
 ```
 
 It computes the **blocked set** (sections named by open `section-doctor/` PRs' titles,
@@ -184,9 +185,11 @@ build also serves Phase 3/4), runs `reforge surface-score --format compact`, and
 mid-sized sections; the biggest and smallest get their turn once the middle has been worked.
 It prints `SECTION:` / `TIER:` / `RATIONALE:` plus the full ranked table for the run file, and
 an **`UPCOMING:`** line — the next 4 sections a repeat of this maths would pick, assuming each
-pick blocks itself and nothing else changes. That forecast is purely informational (it goes in
-the PR body, Phase 7): it is not stored, no later run reads or honours it, and tomorrow's run
-recomputing differently is expected. The script falls back to a LOC ranking (flagged in its
+pick blocks itself and nothing else changes. The `tee` to `$RUNDIR/selection.txt` is what lets
+Phase 7 read that line hours later, after the selector's output has left context — without it the
+forecast silently drops out of the PR body. The forecast is purely informational (it goes in the
+PR body's header, Phase 7): no later run reads or honours it, and tomorrow's run recomputing
+differently is expected. The script falls back to a LOC ranking (flagged in its
 output) when reforge is unusable. Act on its verdicts — never re-derive the maths in-band:
 
 - **`ALL BLOCKED`** (exit 3): report the open PRs and stop. This is the one path that removes the
@@ -308,8 +311,8 @@ the wall-clock / token / fragility balance:
   explicit tagged model (table below) and a deadline.
 - **Only the spine and the two judgment threads stay on main** — 3a–3c, Shape, Behavior & bugs,
   and 3e. They are the reading this run exists to do, and a wrong call there costs a real finding.
-  Whether they *must* stay is an open measurement, not a settled rule: the run-over-run figure
-  that answers it is the whole-run total against the baseline (Phase 7), because Phase 3's
+  Whether they *must* stay is an open measurement, not a settled rule: the figure
+  that answers it is the whole-run total, compared run over run (Phase 7), because Phase 3's
   main-thread cost is one shared bucket and does not split per lens. Don't move them on a hunch
   in either direction — move them on a run that dispatched them and came out cheaper without
   losing findings.
@@ -597,7 +600,7 @@ worktree/PR, three bookkeeping writes:
     Never split it per lens: the split would be invented, and an invented number is worse here
     than a coarse one. (Phase 4 is the opposite case — it marks per strike item, so its rows are
     already per-item and need no such caveat.) The Shape/Behavior question is settled by whole-run
-    totals against the baseline (Phase 7), not by attributing turns to lenses that interleave.
+    totals compared across runs (Phase 7), not by attributing turns to lenses that interleave.
 
   `no-derived-aggregates-in-docs` applies to the run file and `health.md` too: never count a
   list the same file carries ("15 contract methods" above the table of them, "52 paths" above
@@ -670,10 +673,11 @@ git push -u origin section-doctor/$TS
 gh pr create --repo peterdrier/Humans --base main --title "doctor(<Section>): <headline>" --body ...
 ```
 
-Body: assessment summary, worked/skipped bullets, a one-line **next-up forecast** from Phase 2's
-`UPCOMING:` output — "Next 5 (non-binding): 1. <today's section> (this run) 2. … 5. …; each run
-recomputes live, so tomorrow may differ" — omitted when the selector was skipped (`--section`) or
-returned `JUDGMENT REQUIRED`, a **`## Cost`** table (below), and a
+Body: the opening header paragraph (run/section, run-file link, target-shape link) **ends with the
+next-up forecast**, read from the `UPCOMING:` line in `$RUNDIR/selection.txt` — "Target shape:
+`Docs/health.md` (new). Likely future sections: A, B, C, D." — never buried lower in the body;
+omitted when the selector was skipped (`--section`) or returned `JUDGMENT REQUIRED`. Then
+assessment summary, worked/skipped bullets, a **`## Cost`** table (below), and a
 **`## Needs Peter`** block — terse, numbered, answerable in a word or two, **citing findings by
 number rather than re-describing them** (Phase 5). **The PR body is the authoritative queue while
 the PR is open** (resume reads it from there); the run file's copy carries it forward after merge.
@@ -698,9 +702,9 @@ are, they are what the reader gets; a run that marks lazily reports lazily.
 The table is a **Phase 1 → PR-creation cutoff, not a run total** — the PR
 create/backfill calls and any Phase 8 work land after measurement (the footer says so). Paste
 it as `## Cost` into the PR body and the run file, and fill Phase 5's `## Threads` model/cost
-columns from the same report (both land with the backfill commit). Compare the total against the
-2026-08-23 Onboarding baseline of **$93.30 / 746 calls / 184k median context**
-(nobodies-collective/Humans#1465) and say in one line whether dispatch moved it. The script never fails the run — on any discovery problem it prints
+columns from the same report (both land with the backfill commit). The table stands on its own —
+never compare it against another run's cost or pull in a prior run's figures; cross-run reading is
+Peter's, done over the PRs. The script never fails the run — on any discovery problem it prints
 `Cost: unmeasured (...)`; use that line as the table. Cloud-environment transcript layout is
 unverified — if the first routine run reports unmeasured, note it in Needs-Peter.
 
