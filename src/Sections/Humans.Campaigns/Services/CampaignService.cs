@@ -520,7 +520,6 @@ internal sealed class CampaignService(
 
         await emailService.SendAsync(emailMessages.CampaignCode(
             BuildCampaignCodeRequest(
-                grant.CampaignTitle,
                 grant.CampaignEmailSubject,
                 grant.CampaignEmailBodyTemplate,
                 grant.CampaignReplyToAddress,
@@ -626,7 +625,6 @@ internal sealed class CampaignService(
             {
                 await emailService.SendAsync(emailMessages.CampaignCode(
                     BuildCampaignCodeRequest(
-                        grant.CampaignTitle,
                         grant.CampaignEmailSubject,
                         grant.CampaignEmailBodyTemplate,
                         grant.CampaignReplyToAddress,
@@ -669,10 +667,9 @@ internal sealed class CampaignService(
     }
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        string campaignTitle, string emailSubject, string emailBody, string? replyToAddress,
+        string emailSubject, string emailBody, string? replyToAddress,
         UserInfo user, string recipientEmail, string code, Guid grantId)
     {
-        _ = campaignTitle; // kept for future rendering-context parameters; no-op today.
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
