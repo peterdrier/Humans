@@ -1,14 +1,14 @@
 ﻿# Humans Tech Debt Queue
 
-Last updated: 2026-05-15
-Worktree: `H:\source\humans\.worktrees\techdebt-2026-05-15-codex-1`
-Branch: `techdebt/2026-05-15-codex-1`
+Last updated: 2026-08-25
+Worktree: `H:\source\Humans\.worktrees\techdebt-2026-08-25-codex-1`
+Branch: `techdebt/techdebt-2026-08-25-codex-1`
 
 This file is the durable work queue for autonomous tech-debt passes. Resume here before doing new discovery.
 
 ## Mission
 
-Clear or materially shrink the architecture baselines in `tests/Humans.Application.Tests/Architecture/Baselines` by making real code improvements, not by hiding violations. Use `docs/architecture/**` and `memory/architecture/**` as the target-state rules for finding additional debt after the obvious baseline queue is exhausted.
+Clear or materially shrink the live architecture baselines in `tests/Humans.Web.Tests/Architecture/Baselines` by making real code improvements, not by hiding violations. Use `docs/architecture/**` and `memory/architecture/**` as the target-state rules for finding additional debt after the obvious baseline queue is exhausted.
 
 The loop should continue until one of these is true:
 
@@ -65,18 +65,11 @@ Active entries as of this queue creation:
 
 | Baseline | Entries | Priority | Strategy |
 | --- | ---: | --- | --- |
-| `NoObsoleteNavReads.baseline.txt` | 231 | P1 | Remove real cross-domain nav reads by using owning services, IDs, and snapshots. Avoid entity/config forbidden paths. |
-| `NoBusinessLogicInControllers.baseline.txt` | 143 | P2 | Move orchestration/business decisions into application services or web presentation helpers. Do not just split methods for line count. |
-| `ApplicationServiceEntityReadReturns.baseline.txt` | 111 | P0 | Replace service read returns of EF/domain entities with DTOs/snapshots. This has been the highest-value productive lane. |
-| `DisplaySortInControllers.baseline.txt` | 105 | P3 | Move reusable domain ordering out of controllers; keep screen-only sort at web boundary if rule is noisy/intentional. |
-| `NoCrossSectionEfJoins.baseline.txt` | 26 | P1/P-blocked | Fix non-forbidden service/repository joins/includes. Entries in `EntityConfigurations/**` are blocked by storage limits. |
-| `NoDestructiveMigrationOps.baseline.txt` | 20 | Blocked by default | Migration-file entries are forbidden. Do not edit migrations; only classify/document unless a non-migration false positive appears. |
-| `CrossSectionRepositoryInjection.baseline.txt` | 1 | P1 | Replace cross-section repository injection with owning service call if not forbidden. |
-| `OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt` | 1 | P1 | Route direct audit writes through audit service/repository owner. |
-| `NoConcurrencyTokens.baseline.txt` | 0 | Done | Keep at zero. |
-| `OnlyNotificationRepositoryWritesNotificationDbSets.baseline.txt` | 0 | Done | Keep at zero. |
+| `ApplicationServiceEntityReadReturns.baseline.txt` | 15 | P0 | Replace service read returns of EF/domain entities with DTOs/snapshots. This remains the highest-value productive lane. |
+| `DisplaySortInControllers.baseline.txt` | 29 | P3 | Move reusable domain ordering out of controllers; keep screen-only sort at web boundary if rule is noisy/intentional. |
+| `NoDestructiveMigrationOps.baseline.txt` | 7 | Blocked by default | Migration-file entries are forbidden. Do not edit migrations; only classify/document unless a non-migration false positive appears. |
 
-Total active baseline entries: 640.
+Total active baseline entries: 51.
 
 Regenerate counts with:
 
