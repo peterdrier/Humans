@@ -918,11 +918,6 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.EnqueueGoogleResyncForUserTeamsAsync(userId, cancellationToken));
 
-    public Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetByIdsWithParentsAsync(teamIds, cancellationToken));
-
     /// <inheritdoc />
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
         IReadOnlyCollection<Guid> teamIds,
