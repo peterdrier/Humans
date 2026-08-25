@@ -28,6 +28,12 @@ internal interface IHoldedRepository : IRepository
     /// <summary>Removes the member's binding row. Returns false when there was none.</summary>
     Task<bool> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>Persists a generated payout file and its transfers in one save — the file is the
+    /// record of what the bank was sent, so a file without its rows (or the reverse) is not a state
+    /// this section ever wants to be in.</summary>
+    Task AddSepaPayoutAsync(
+        SepaPayoutFile file, IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct = default);
+
     // Purchase-doc sync state (singleton, lazy-created)
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
     Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);

@@ -27,6 +27,10 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
 
+        // The organisation's SEPA identity. Keys are the pre-existing Sepa:* ones; absent them,
+        // /Finance/Creditors says payout is unavailable rather than generating a rejectable file.
+        services.Configure<SepaOptions>(configuration.GetSection("Sepa"));
+
         services.AddScoped<IHoldedRepository, Repository>();
         services.AddScoped<Service>();
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());

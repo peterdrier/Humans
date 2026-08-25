@@ -1,15 +1,19 @@
 using System.Text.Json;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
+using Humans.Finance;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -28,6 +32,8 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly SepaOptions _sepa = new();
 
     private Service MakeService() => new(
         _repo,
@@ -36,7 +42,13 @@ public class HoldedFinanceServiceTests
         _holded,
         _clock,
         _cache,
+        _audit,
+        Options.Create(_sepa),
         NullLogger<Service>.Instance);
+
+    /// <summary>Same service, with a logger the test can read back.</summary>
+    private Service MakeService(ILogger<Service> logger) => new(
+        _repo, _client, _budget, _holded, _clock, _cache, _audit, Options.Create(_sepa), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -783,7 +795,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
-        var id = await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, 40000004,
                 Xunit.TestContext.Current.CancellationToken);
@@ -817,7 +829,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-new");
 
-        var id = await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, null,
                 Xunit.TestContext.Current.CancellationToken);
@@ -906,7 +918,7 @@ public class HoldedFinanceServiceTests
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
 
-        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        await MakeService(logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
@@ -1138,7 +1150,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
 
-        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        await MakeService(logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1168,7 +1180,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
         });
 
-        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        await MakeService(logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1191,7 +1203,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
-        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
                 Xunit.TestContext.Current.CancellationToken);
@@ -1222,7 +1234,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
-        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
+        await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
                 Xunit.TestContext.Current.CancellationToken);
@@ -1907,5 +1919,159 @@ public class HoldedFinanceServiceTests
         var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
 
         vm.CreditorBindingCount.Should().Be(2);
+    }
+
+    // ─── SEPA payout (nobodies-collective/Humans#1134) ───────────────────────────
+
+    private const string AnaIban = "ES7921000813610123456789";
+
+    /// <summary>One bound member on 40000004 owed €30, with an IBAN on their Holded contact.</summary>
+    private Guid SeedPayableCreditor(decimal owed = 30m, string? iban = AnaIban)
+    {
+        var userId = Guid.NewGuid();
+        // The mirror keeps Holded's sign: negative = the organisation owes the member.
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -owed });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = iban },
+        });
+        return userId;
+    }
+
+    private void ConfigureSepa()
+    {
+        _sepa.CreditorName = "Nobodies Collective";
+        _sepa.CreditorIban = "ES9121000418450200051332";
+        _sepa.CreditorIdentifier = "G12345678901";
+    }
+
+    [HumansFact]
+    public void GetSepaPayoutSettings_Unconfigured_NamesEveryMissingKey()
+    {
+        var settings = MakeService().GetSepaPayoutSettings();
+
+        settings.IsAvailable.Should().BeFalse();
+        settings.UnavailableReason.Should().Contain("Sepa:CreditorName")
+            .And.Contain("Sepa:CreditorIban").And.Contain("Sepa:CreditorIdentifier");
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_Unconfigured_RefusesWithoutTouchingHolded()
+    {
+        SeedPayableCreditor();
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Xml.Should().BeNull();
+        await _repo.DidNotReceive().AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_PersistsTheFileAndAuditsEachTransferWithAMaskedIban()
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+
+        var actor = Guid.NewGuid();
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], actor,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.FileName.Should().StartWith("nobodies-collective-").And.EndWith(".xml");
+
+        await _repo.Received(1).AddSepaPayoutAsync(
+            Arg.Is<SepaPayoutFile>(f =>
+                f.GeneratedByUserId == actor && f.Checksum.Length == 64
+                && f.Xml.Contains("CstmrCdtTrfInitn", StringComparison.Ordinal)),
+            Arg.Is<IReadOnlyList<SepaPayoutTransfer>>(t =>
+                t.Count == 1 && t[0].UserId == userId && t[0].Amount == 12.34m && t[0].Iban == AnaIban),
+            Arg.Any<CancellationToken>());
+
+        // The audit trail is where an IBAN would leak if anything but the file carried it raw.
+        await _audit.Received(1).LogAsync(
+            AuditAction.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
+                                && !d.Contains(AnaIban, StringComparison.Ordinal)),
+            actor, userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_MoreThanIsOwed_RefusesTheWholeBatch()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 30m);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 30.01m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("more than the 30.00 EUR owed");
+        await _repo.DidNotReceive().AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_AboveTheCap_RefusesTheWholeBatch()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 300m);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 60m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("cap");
+        await _repo.DidNotReceive().AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_PartialAmount_IsAccepted()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 30m);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.Xml.Should().Contain("<CtrlSum>10.00</CtrlSum>");
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_ContactWithNoIban_IsRefused()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(iban: null);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("no IBAN");
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_CarriesTheContactIbanMaskedOnly()
+    {
+        SeedPayableCreditor();
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.IbanMasked.Should().Be("ES79****789");
     }
 }

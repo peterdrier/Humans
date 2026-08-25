@@ -133,6 +133,17 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return true;
     }
 
+    // ── SEPA payouts ──────────────────────────────────────────────────────────
+
+    public async Task AddSepaPayoutAsync(
+        SepaPayoutFile file, IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.SepaPayoutFiles.Add(file);
+        ctx.SepaPayoutTransfers.AddRange(transfers);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     // ── Purchase-doc sync state (singleton, lazy-created) ─────────────────────
 
     public async Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default)

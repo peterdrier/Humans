@@ -1,4 +1,7 @@
+using Humans.AuditLog.Contracts;
 using Humans.Base.Caching;
+using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
@@ -6,8 +9,13 @@ using Humans.Holded.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;
+using Humans.Users.Contracts;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Finance.Services;
@@ -25,6 +33,8 @@ internal sealed class Service(
     IHoldedService holded,
     IClock clock,
     IMemoryCache cache,
+    IAuditLogService audit,
+    IOptions<SepaOptions> sepa,
     ILogger<Service> logger) : IHoldedFinanceService, IHoldedFinanceAdminService, IUserDataContributor
 {
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
@@ -494,7 +504,10 @@ internal sealed class Service(
                     Name: contact?.Name ?? "",
                     Balance: balance,
                     OwedToMember: balance is { } bal ? Math.Max(0m, -bal) : 0m,
-                    Bindings: bound ?? []);
+                    Bindings: bound ?? [],
+                    IbanMasked: string.IsNullOrWhiteSpace(contact?.Iban)
+                        ? null
+                        : IbanFormatter.Mask(contact.Iban));
             }).ToList();
 
         // Accounts but not one name is the signature of an unusable contact list, which leaves the bind
@@ -811,6 +824,151 @@ internal sealed class Service(
         if (removed)
             logger.LogInformation("Cleared the creditor binding for member {UserId}.", userId);
         return removed;
+    }
+
+    // ─── SEPA payout (nobodies-collective/Humans#1134) ──────────────────────────
+
+    // Persisted in audit_log.entity_type; pinned so a rename cannot silently orphan old rows.
+    private const string SepaTransferEntityType = nameof(SepaPayoutTransfer);
+
+    public SepaPayoutSettings GetSepaPayoutSettings()
+    {
+        // Never inferred: a file presented under a guessed name, account or presenter id is rejected
+        // by the bank at best, and paid out of the wrong account at worst.
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(sepa.Value.CreditorName)) missing.Add("Sepa:CreditorName");
+        if (string.IsNullOrWhiteSpace(sepa.Value.CreditorIban)) missing.Add("Sepa:CreditorIban");
+        if (string.IsNullOrWhiteSpace(sepa.Value.CreditorIdentifier)) missing.Add("Sepa:CreditorIdentifier");
+
+        return new SepaPayoutSettings(
+            sepa.Value.MaxPayoutPerTransfer,
+            missing.Count == 0
+                ? null
+                : $"SEPA payout is unavailable — not configured: {string.Join(", ", missing)}.");
+    }
+
+    public async Task<SepaPayoutResult> GenerateSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, Guid actorUserId, CancellationToken ct = default)
+    {
+        var settings = GetSepaPayoutSettings();
+        if (settings.UnavailableReason is { } unavailable)
+            return SepaPayoutResult.Failure(unavailable);
+
+        if (selections.Count == 0)
+            return SepaPayoutResult.Failure("No creditor account was selected — nothing to generate.");
+
+        if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
+            return SepaPayoutResult.Failure(
+                $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
+
+        var (rows, _) = await ListCreditorAccountsAsync(ct);
+        var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
+
+        // The unmasked IBAN is read here and goes nowhere but the file and the payout record.
+        var ibanByAccount = (await ListContactsOrEmptyAsync(ct))
+            .Where(c => c.SupplierAccountNum is not null && !string.IsNullOrWhiteSpace(c.Iban))
+            .GroupBy(c => c.SupplierAccountNum!.Value)
+            .ToDictionary(g => g.Key, g => g.First().Iban!);
+
+        var fileId = Guid.NewGuid();
+        var transfers = new List<SepaPayoutTransfer>(selections.Count);
+
+        foreach (var s in selections)
+        {
+            if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
+
+            if (row.Bindings.Count != 1)
+                return SepaPayoutResult.Failure(row.Bindings.Count == 0
+                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
+                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
+                      + "unbind all but the one who owns it first.");
+
+            if (s.Amount > row.OwedToMember)
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
+                    + $"{Euros(row.OwedToMember)} owed.");
+
+            if (!ibanByAccount.TryGetValue(s.SupplierAccountNum, out var iban))
+                return SepaPayoutResult.Failure(
+                    $"Creditor account {s.SupplierAccountNum} has no IBAN on its Holded contact.");
+
+            transfers.Add(new SepaPayoutTransfer
+            {
+                Id = Guid.NewGuid(),
+                FileId = fileId,
+                UserId = row.Bindings[0].UserId,
+                SupplierAccountNum = s.SupplierAccountNum,
+                CreditorName = SepaText.Normalize(row.Name, SepaPaymentFileBuilder.MaxNameLength),
+                Iban = IbanValidator.Normalize(iban),
+                IbanMasked = IbanFormatter.Mask(iban),
+                Amount = s.Amount,
+            });
+        }
+
+        var now = clock.GetCurrentInstant();
+        // Ids are minted before the file is built and never change: the persisted row is what the
+        // bank's EndToEndId points back at.
+        var request = new SepaPaymentFileRequest(
+            MsgId: "M" + fileId.ToString("N"),
+            PmtInfId: "P" + fileId.ToString("N"),
+            CreatedAt: now,
+            RequestedExecutionDate: now.InZone(MadridZone).Date,
+            Debtor: new SepaDebtor(
+                sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
+                sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
+            MaxAmountPerTransfer: sepa.Value.MaxPayoutPerTransfer,
+            Transfers: transfers
+                .Select(t => new SepaTransfer("E" + t.Id.ToString("N"), t.CreditorName, t.Iban, t.Amount))
+                .ToList());
+
+        string xml;
+        try
+        {
+            xml = SepaPaymentFileBuilder.Build(request);
+        }
+        catch (SepaPaymentFileException ex)
+        {
+            // The builder masks any IBAN it names, so the message is safe to log and to show.
+            logger.LogWarning("SEPA payout generation refused: {Reason}", ex.Message);
+            return SepaPayoutResult.Failure(ex.Message);
+        }
+
+        var fileName = $"{FileSlug(sepa.Value.CreditorName!)}-"
+                     + $"{now.InZone(MadridZone).ToDateTimeUnspecified().ToFileTimestamp()}.xml";
+
+        await repo.AddSepaPayoutAsync(new SepaPayoutFile
+        {
+            Id = fileId,
+            GeneratedAt = now,
+            GeneratedByUserId = actorUserId,
+            FileName = fileName,
+            Checksum = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(xml))).ToLowerInvariant(),
+            Xml = xml,
+        }, transfers, ct);
+
+        // After the save, per IAuditLogService's contract — a rolled-back write must not leave a ghost row.
+        foreach (var t in transfers)
+            await audit.LogAsync(
+                AuditAction.SepaPayoutTransfer, SepaTransferEntityType, t.Id,
+                $"SEPA payout {Euros(t.Amount)} to {t.IbanMasked} on creditor account "
+                + $"{t.SupplierAccountNum} (file {fileName}).",
+                actorUserId, t.UserId, nameof(User));
+
+        return new SepaPayoutResult(fileName, xml, null);
+    }
+
+    private static string Euros(decimal amount) =>
+        amount.ToString("F2", CultureInfo.InvariantCulture) + " EUR";
+
+    /// <summary>The organisation's name, reduced to something safe in a download filename.</summary>
+    private static string FileSlug(string name)
+    {
+        var cleaned = new string(SepaText.Normalize(name, 32).ToLowerInvariant()
+            .Select(c => char.IsAsciiLetterOrDigit(c) ? c : ' ').ToArray());
+        var slug = string.Join('-', cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return slug.Length == 0 ? "sepa" : slug;
     }
 
     // ─── GDPR (Article 15 export) ───────────────────────────────────────────────
