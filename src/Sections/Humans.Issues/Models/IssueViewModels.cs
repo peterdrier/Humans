@@ -68,7 +68,6 @@ internal sealed class IssuePageViewModel
     public Guid? ReporterFilter { get; set; }
     public string? SearchText { get; set; }
 
-    public Guid CurrentUserId { get; set; }
     public bool IsAdmin { get; set; }
 
     public Guid? SelectedIssueId { get; set; }
@@ -78,9 +77,6 @@ internal sealed class IssuePageViewModel
 
     /// <summary>Reporter dropdown (Admin only — non-admins only see their own queue).</summary>
     public List<ReporterDropdownItem> Reporters { get; set; } = [];
-
-    /// <summary>All status enum values, exposed so the view doesn't reach into Domain.</summary>
-    public IssueStatus[] StatusValues => Enum.GetValues<IssueStatus>();
 
     /// <summary>All category enum values.</summary>
     public IssueCategory[] CategoryValues => Enum.GetValues<IssueCategory>();
@@ -100,7 +96,6 @@ internal sealed class IssueListItemViewModel
     public Guid Id { get; set; }
     public IssueStatus Status { get; set; }
     public IssueCategory Category { get; set; }
-    public string? Section { get; set; }
     public string AreaLabel { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }

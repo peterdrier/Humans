@@ -12,12 +12,9 @@ namespace Humans.Issues.Authorization;
 /// </summary>
 internal sealed class IssuesOperationRequirement : IAuthorizationRequirement
 {
-    public static readonly IssuesOperationRequirement Handle = new(nameof(Handle));
+    public static readonly IssuesOperationRequirement Handle = new();
 
-    public string OperationName { get; }
-
-    private IssuesOperationRequirement(string operationName)
+    private IssuesOperationRequirement()
     {
-        OperationName = operationName;
     }
 }

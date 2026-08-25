@@ -19,8 +19,7 @@ internal sealed class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,
     IUserServiceRead users,
-    IUserServiceRead userService,
-    ILogger<IssuesController> logger) : HumansControllerBase(userService)
+    ILogger<IssuesController> logger) : HumansControllerBase(users)
 {
     // Roles from claims (RoleAssignment → claims-transformation), NOT UserManager.GetRolesAsync (misses CampAdmin etc.).
     private List<string> ClaimsRoles() => User.Claims
@@ -66,7 +65,7 @@ internal sealed class IssuesController(
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
 
-        var issues1 = await issues.GetIssueListAsync(filter, user.Id, roles, isAdmin);
+        var matches = await issues.GetIssueListAsync(filter, user.Id, roles, isAdmin);
 
         // Section dropdown: Admin sees all known sections; non-admins see the
         // sections their roles own (so they only filter inside their own queue).
@@ -93,7 +92,7 @@ internal sealed class IssuesController(
                 .ToList();
         }
 
-        var rows = issues1.Select(MapListItem).ToList();
+        var rows = matches.Select(MapListItem).ToList();
 
         var vm = new IssuePageViewModel
         {
@@ -103,7 +102,6 @@ internal sealed class IssuesController(
             SectionFilter = section,
             ReporterFilter = isAdmin ? reporter : null,
             SearchText = search,
-            CurrentUserId = user.Id,
             IsAdmin = isAdmin,
             SelectedIssueId = selected,
             SectionOptions = sectionOptions,
@@ -217,7 +215,7 @@ internal sealed class IssuesController(
 
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
     {
-        var activeIds = (await users.GetAllUserInfosAsync().ConfigureAwait(false))
+        var activeIds = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToList();
@@ -227,8 +225,8 @@ internal sealed class IssuesController(
         }
         else
         {
-            var users1 = await users.GetUserInfosAsync(activeIds);
-            vm.AssigneeOptions = users1.Values
+            var active = await UserService.GetUserInfosAsync(activeIds);
+            vm.AssigneeOptions = active.Values
                 .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
                 .ToList();
@@ -239,7 +237,7 @@ internal sealed class IssuesController(
         if (vm.AssigneeUserId.HasValue &&
             vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
         {
-            var inactiveInfo = await users.GetUserInfoAsync(vm.AssigneeUserId.Value);
+            var inactiveInfo = await UserService.GetUserInfoAsync(vm.AssigneeUserId.Value);
             vm.AssigneeOptions.Insert(0, new AssigneeOption
             {
                 Id = vm.AssigneeUserId.Value,
@@ -406,7 +404,6 @@ internal sealed class IssuesController(
         Id = i.Id,
         Status = i.Status,
         Category = i.Category,
-        Section = i.Section,
         AreaLabel = AreaLabelMap.LabelFor(i.Section),
         Title = i.Title,
         ReporterUserId = i.ReporterUserId,
@@ -478,6 +475,6 @@ internal sealed class IssuesController(
         if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
         if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
 
-        return await users.GetUserInfosAsync(ids);
+        return await UserService.GetUserInfosAsync(ids);
     }
 }

@@ -171,14 +171,14 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         return ownIssueIds.ToList();
     }
 
-    public async Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
+    public async Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
             .Where(i => i.ResolvedAt != null && i.ResolvedAt <= cutoff)
-            .Select(i => new ExpiredIssueRow(i.Id, i.ScreenshotStoragePath))
+            .Select(i => i.Id)
             .ToListAsync(ct);
     }
 

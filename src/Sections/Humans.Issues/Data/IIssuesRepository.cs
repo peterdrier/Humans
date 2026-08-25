@@ -35,12 +35,8 @@ internal interface IIssuesRepository : IRepository
     /// <summary>For GDPR export.</summary>
     Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the IDs and screenshot storage paths of issues whose
-    /// <c>ResolvedAt</c> is non-null and at or before <paramref name="cutoff"/>.
-    /// Used by the retention job to find rows ready for deletion.
-    /// </summary>
-    Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
+    /// <summary>Ids of issues whose <c>ResolvedAt</c> is at or before <paramref name="cutoff"/>.</summary>
+    Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default);
 
     /// <summary>
@@ -57,9 +53,3 @@ internal interface IIssuesRepository : IRepository
     Task<IReadOnlyList<Guid>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Projection used by the retention job. <see cref="ScreenshotStoragePath"/> is
-/// the relative path stored on the issue (under <c>wwwroot/uploads/issues/{id}/</c>);
-/// null when the issue had no screenshot.
-/// </summary>
-internal sealed record ExpiredIssueRow(Guid Id, string? ScreenshotStoragePath);

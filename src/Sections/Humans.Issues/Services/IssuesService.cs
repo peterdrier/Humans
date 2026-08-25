@@ -678,13 +678,12 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var ids = expired.Select(e => e.Id).ToList();
-        var deleted = await repo.DeleteByIdsAsync(ids, ct);
+        var deleted = await repo.DeleteByIdsAsync(expired, ct);
 
         // Best-effort: delete each issue's wwwroot/uploads/issues/{id}/ dir. Failures logged; next sweep retries.
-        foreach (var row in expired)
+        foreach (var issueId in expired)
         {
-            DeleteScreenshotDirectory(row.Id);
+            DeleteScreenshotDirectory(issueId);
         }
 
         logger.LogInformation(
