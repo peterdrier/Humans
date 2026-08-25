@@ -2,6 +2,7 @@
   src/**
   memory/**
   docs/architecture/**
+  CONTEXT.md
 -->
 <!-- freshness:flag-on-change
   Repo-root agent guide: architecture roles, glossary, workflow, and restated rules
@@ -19,7 +20,7 @@ About 500 real people trust this system with their personal data, and a voluntee
 
 ### 1. Sections own their data, end to end
 
-The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its `DbContext`, migrations, tables, services, and views. There is no shared DbContext — every table belongs to exactly one section. Sections interact only through public interfaces and `.Contracts` leaves. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
+The app is ~40 vertical sections (`src/Sections/Humans.<Section>`), each owning its services and views, and — where it has data — its own `DbContext`, migrations, and tables (orchestrator sections like Onboarding and Gdpr own none). There is no shared DbContext — every table belongs to exactly one section. Sections interact only through public interfaces and `.Contracts` leaves. Reaching into another section's tables or internals is the cardinal sin here, and existing violations are tech debt, never precedent.
 
 ### 2. GDPR is a feature, not a checkbox
 
@@ -55,7 +56,7 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 - **you** means the agent reading this file and changing Humans.
 - **Peter / maintainer** means who you are talking to now.
 - **member** means a person in the system. Nearly all are **Volunteers**.
-- **Volunteer** means the standard member: sign up → complete profile → consent → Consent Coordinator clears → auto-approved into the Volunteers team. Volunteers never go through the `Application` entity.
+- **Volunteer** means the standard member: sign up → complete profile → sign the required consents → auto-admitted to the Volunteers team. Admission is name + required consents; the Consent Coordinator's clear/flag review is an independent audit annotation that does not gate admission (reject and suspend are the kick-out levers). Volunteers never go through the `Application` entity.
 - **Colaborador** means an active contributor; application plus Board vote; 2-year term.
 - **Asociado** means a voting member (assemblies, elections); application plus Board vote; 2-year term.
 - **Application** means the entity for Colaborador/Asociado tier applications *only* (`Submitted → Approved/Rejected/Withdrawn`). Volunteer access runs in parallel and is never blocked by it.
@@ -73,13 +74,13 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 2. **Hand-editing state to make a red light go away.** No `--no-verify`, no suppressing errors, no deleting "stuck" state, no editing the database or deployed config by hand. The fix lives in code, configuration, or re-provisioning. If the only path you can see goes through a manual state edit or a bypass flag, stop and ask — offering the shortcut as one option among several is itself the violation. "Broken" is sometimes the correct state to leave something in.
 3. **Mid-chain migration surgery.** Migrations are per-section and shipped ones are immutable. After your branch merges main, `dotnet ef migrations remove` on your in-flight migrations is unsafe — regenerate the branch's migrations as one consolidated migration instead ([`migration-regen-after-rebase`](memory/architecture/migration-regen-after-rebase.md)).
 4. **Trampling parallel sessions.** Several agent sessions work this repo at once. Work only in your own worktree (`.worktrees/<name>`), never assume the main checkout is idle or yours, and never clean up state — worktrees, branches, stashes — you didn't create.
-5. **Committing straight to main.** Every change goes on a feature branch in a worktree, then a PR ([`no-direct-to-main`](memory/process/no-direct-to-main.md)). `origin/main` auto-deploys to QA; there is no such thing as a commit too small for a PR.
+5. **Committing straight to main.** Every change goes on a feature branch in a worktree, then a PR ([`no-direct-to-main`](memory/process/no-direct-to-main.md)). `origin/main` auto-deploys to QA; there is no such thing as a commit too small for a PR. One carve-out: a change confined to `memory/**` may go straight to `origin/main` — the atom has the details.
 
 ## Hit every surface
 
 The most common defect here is a change that works on the path you tested and is missing everywhere else. Before calling work done, walk this list and say which entries applied:
 
-- **Both languages.** Every user-facing string lives in the section's resx set, in English and Spanish. A hardcoded string or a missing translation is an incomplete change.
+- **Every supported culture.** Every user-facing string lives in the section's resx set, in all six supported cultures (en, es, de, it, fr, ca — parity tests enforce it). A hardcoded string or a missing translation is an incomplete change. Exception: admin-side views (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`) don't get new localization keys ([`localization-admin-exempt`](memory/code/localization-admin-exempt.md)).
 - **Authorization, including the negative cases.** Each section's invariant doc lists who must *not* see or do a thing. New pages and endpoints need the deny paths verified, not just the happy path.
 - **Audit trail.** Actions taken by automation or admins on members' behalf need their audit entries.
 - **GDPR paths.** New personal data → export contributor, deletion path, consent where it applies.
@@ -101,10 +102,10 @@ dotnet run --project src/Humans.Web
 ```
 
 - `-v quiet` is mandatory — default verbosity floods the context for no benefit ([`dotnet-verbosity-quiet`](memory/process/dotnet-verbosity-quiet.md)).
-- Smallest proof first: build, then the tests for the section you touched. CI owns the full suite.
+- Scope the inner loop to the section you touched (`dotnet test tests/Humans.<Section>.Tests -v quiet` runs in seconds), then run the full `dotnet test Humans.slnx -v quiet` gate once before committing or opening the PR — never skip it ([`scoped-inner-loop-tests`](memory/process/scoped-inner-loop-tests.md)).
 - Analyzers enforce the call-site rules (repository access, service boundaries). A red analyzer is the answer, not an obstacle — grandfathered and baselined violations are documented tech debt and never justify a new one.
 - Version check on a deployed instance: `GET /api/version`.
-- Every PR gets a preview deploy at `https://{pr_id}.n.burn.camp` with its own database cloned from QA and dev login enabled — the place to verify user-visible changes for real.
+- Every PR whose branch lives in `peterdrier/Humans` gets a preview deploy at `https://{pr_id}.n.burn.camp` with its own database cloned from QA and dev login enabled — the place to verify user-visible changes for real. Fork PRs get no preview; a maintainer can deploy one by hand.
 
 ## Pull requests
 
