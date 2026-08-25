@@ -24,14 +24,14 @@ Deterministic recovery: throw away the in-flight migrations on this branch and l
 
 ## Determine the touched context(s)
 
-Since the per-context DbContext split (nobodies-collective/Humans#858, #866) there is no shared context — `HumansDbContext` was deleted. Migrations live under one of two shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
+There is no shared context — `HumansDbContext` doesn't exist. Every section owns its own `DbContext`; migrations live under one of two shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
 
 | Location | `--project` | `--output-dir` |
 |---|---|---|
 | `src/Humans.Web/Migrations/<Area>/*.cs` (the platform context) | `src/Humans.Web` | `Migrations/<Area>` |
-| `src/Sections/Humans.<Section>/Data/Migrations/*.cs` (moved, G5) | `src/Sections/Humans.<Section>` | `Data/Migrations` |
+| `src/Sections/Humans.<Section>/Data/Migrations/*.cs` | `src/Sections/Humans.<Section>` | `Data/Migrations` |
 
-**Do not synthesize the context name from the folder.** A G5 section's project name and its context often differ: `src/Sections/Humans.Consent` is `LegalDbContext`, `src/Sections/Humans.Events` is `EventGuideDbContext`. Resolve the real class from either:
+**Do not synthesize the context name from the folder.** A section's project name and its context often differ: `src/Sections/Humans.Consent` is `LegalDbContext`, `src/Sections/Humans.Events` is `EventGuideDbContext`. Resolve the real class from either:
 
 - the snapshot file already in the folder — it is named `<Context>ModelSnapshot.cs`; or
 - the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`, whose entries are `<Context>:<project path>`.
@@ -122,19 +122,19 @@ git show origin/main:<pre-move-migrations-folder>/<Context>ModelSnapshot.cs \
 **A verbatim copy does not compile — you must rewrite two lines before step 5.** The pre-move snapshot is written for its old project and carries a `using` for the context's old namespace plus an unqualified `typeof`:
 
 ```csharp
-using Humans.Infrastructure.Data;                    // old context namespace
-namespace Humans.Infrastructure.Migrations.<Area>    // old migrations namespace
+using Humans.<OldProject>.Data;                      // old context namespace
+namespace Humans.<OldProject>.Data.Migrations        // old migrations namespace
     [DbContext(typeof(<Context>))]                   // resolved via that using
 ```
 
-In the relocated project the context class has moved with it, so that `using` no longer names anything and `typeof(<Context>)` fails to resolve — and because section contexts are declared `internal sealed`, the type is not visible from outside its assembly anyway. Rewrite both to the new project, matching what EF itself emits for an already-moved section:
+In the relocated project the context class has moved with it, so that `using` no longer names anything and `typeof(<Context>)` fails to resolve — and because section contexts are declared `internal sealed`, the type is not visible from outside its assembly anyway. Rewrite both to the new project, matching what EF itself emits for a section already in place:
 
 ```csharp
 using Humans.<Section>.Data;                         // new context namespace
 namespace Humans.<Section>.Data.Migrations           // new migrations namespace
 ```
 
-Cross-check against any section already moved — e.g. `src/Sections/Humans.Events/Data/Migrations/EventGuideDbContextModelSnapshot.cs` pairs `using Humans.Events.Data;` with `namespace Humans.Events.Data.Migrations`. `migrations add` rewrites the file's body in step 6, but it will not fix these two lines for you, and step 5 fails first if they are wrong.
+Cross-check against any section's actual snapshot — e.g. `src/Sections/Humans.Events/Data/Migrations/EventGuideDbContextModelSnapshot.cs` pairs `using Humans.Events.Data;` with `namespace Humans.Events.Data.Migrations`. `migrations add` rewrites the file's body in step 6, but it will not fix these two lines for you, and step 5 fails first if they are wrong.
 
 **New context on this branch** — there is no `origin/main` state to restore. Delete the snapshot so EF starts from empty:
 
@@ -170,7 +170,7 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/Humans.Web
 ```
 
-Section moved to its own project (G5):
+A section's own project:
 
 ```bash
 dotnet ef migrations add <MigrationName> \

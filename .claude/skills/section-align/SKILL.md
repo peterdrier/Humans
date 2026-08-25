@@ -22,46 +22,31 @@ A section is "aligned" when **all three axes hold**:
 
 **Axis 2 — internal cohesion.** Services live in the section's own `Services/` — `$SERVICES` per the resolution block below — and never import `Microsoft.EntityFrameworkCore` or take `DbContext`. Repositories are sealed, factory-based, registered Singleton. Caching lives in the service layer only (decorator or service-internal `IMemoryCache`), never in repos or controllers. Interfaces obey the budget ratchet. ViewComponents exist where the section's data is rendered on other sections' pages. Architecture tests pin each invariant. Migrations are EF-auto-generated.
 
-**Axis 3 — test focus.** Section-aligned tests live under one canonical location — `$TESTS` per the resolution block below: a moved section has its own `tests/Humans.<Section>.Tests/` project, otherwise pick one of `tests/Humans.Application.Tests/<Section>/` or `tests/Humans.Application.Tests/Services/<Section>/`, not both. Coverage maps to invariants, Negative Access Rules, and Triggers from the section doc — not to every method permutation. Redundant tests are pruned. Test maintenance cost matches test value. Tests assert observable behavior, not mock-graph internals.
+**Axis 3 — test focus.** Section-aligned tests live under one canonical location — `$TESTS` per the resolution block below: the section's own `tests/Humans.<Section>.Tests/` project. Coverage maps to invariants, Negative Access Rules, and Triggers from the section doc — not to every method permutation. Redundant tests are pruned. Test maintenance cost matches test value. Tests assert observable behavior, not mock-graph internals.
 
 **Camps is the reference.**
 
 ## Section location resolution
 
-Sections progressively move into their own project at `src/Sections/Humans.<Section>/` (nobodies-collective/Humans#866, G5). **Resolve these paths once, before running any check on any axis, and substitute them into every command below.** This applies to all three axes — the legacy paths written inline throughout are the not-yet-moved case, not the default.
-
-Each variable names **one** thing in both branches — `$SERVICES` is always the services directory, never the project root. A variable that means "the section root" for G5 and "the services folder" for legacy will silently change the meaning of every check it is substituted into.
+Every section lives at `src/Sections/Humans.<Section>/` (an optional `.Contracts` sibling project holds its cross-section contracts). **Resolve these paths once, before running any check on any axis, and substitute them into every command below.**
 
 ```bash
 SECTION=<Section>
-SEC=src/Sections/Humans.$SECTION                     # exists ⇒ section has moved (G5)
+SEC=src/Sections/Humans.$SECTION
 
-if [ -d "$SEC" ]; then
-  SERVICES="$SEC/Services"
-  ENTITIES="$SEC/Domain"
-  REPOS="$SEC/Data"
-  CONTROLLERS="$SEC/Controllers"
-  VIEWS="$SEC/Views"
-  CONTRACTS=$(ls -d src/Sections/Humans.$SECTION.Contracts "$SEC/Contracts" 2>/dev/null)
-  TESTS=tests/Humans.$SECTION.Tests
-  DOC="$SEC/Docs/$SECTION.md"
-  ALL="$SEC"                                         # whole section, for size/inventory only
-else
-  SERVICES=src/Humans.Application/Services/$SECTION
-  ENTITIES=src/Humans.Domain/Entities
-  REPOS=src/Humans.Infrastructure/Repositories/$SECTION
-  CONTROLLERS=src/Humans.Web/Controllers
-  VIEWS=src/Humans.Web/Views/$SECTION
-  CONTRACTS=src/Humans.Application/Interfaces/$SECTION
-  TESTS=tests/Humans.Application.Tests
-  DOC=docs/sections/$SECTION.md
-  ALL="$SERVICES $REPOS"
-fi
+SERVICES="$SEC/Services"
+ENTITIES="$SEC/Domain"
+REPOS="$SEC/Data"
+CONTROLLERS="$SEC/Controllers"
+VIEWS="$SEC/Views"
+CONTRACTS=$(ls -d src/Sections/Humans.$SECTION.Contracts "$SEC/Contracts" 2>/dev/null)
+TESTS=tests/Humans.$SECTION.Tests
+DOC="$SEC/Docs/$SECTION.md"
+ALL="$SEC"                                         # whole section, for size/inventory only
 
 # Every OTHER section's entities — for inbound-navigation scans. Never $ENTITIES,
 # which is this section's own and would invert the check into a self-scan.
-OTHER_ENTITIES=$(ls -d src/Sections/Humans.*/Domain src/Humans.Domain/Entities 2>/dev/null \
-                 | grep -v "^$SEC/Domain$")
+OTHER_ENTITIES=$(ls -d src/Sections/Humans.*/Domain 2>/dev/null | grep -v "^$SEC/Domain$")
 
 # Not every section has every folder: Humans.Auth and Humans.Gdpr have no
 # Controllers/ and no Views/. `git grep pat a/ b/` (no `--`) aborts the whole
@@ -72,12 +57,12 @@ exist() { for p in "$@"; do [ -e "$p" ] && printf '%s ' "$p"; done; }
 
 **Every multi-path `git grep` below must wrap its paths in `$(exist ...)`.** A section legitimately missing a folder should scan the folders it does have, not abort the inventory. That is separate from the existence *checks* in A1.2 and A1.4, which report a missing controller or views folder as a finding — keep both: `exist` decides what to scan, A1.2/A1.4 decide what to report.
 
-A moved section owns far more than `Services/` and `Data/`: `Humans.Events` also carries its own `Controllers/`, `Views/`, `Models/`, `Domain/`, `Resources/` and `Docs/`, and there is no `EventsController.cs` under `src/Humans.Web/Controllers/` at all. Any check that greps a fixed `src/Humans.Web/...` or `src/Humans.Domain/Entities/` path reports a moved section as missing or clean when it is neither.
+Each section owns far more than `Services/` and `Data/`: `Humans.Events` also carries its own `Controllers/`, `Views/`, `Models/`, `Domain/`, `Resources/` and `Docs/`, and there is no `EventsController.cs` under `src/Humans.Web/Controllers/` at all. Any check that greps a fixed `src/Humans.Web/...` path misreports a section as missing or clean when it is neither.
 
 Two things the section project does **not** absorb — resolve them separately:
 
-- **The DbContext.** There is no shared `HumansDbContext` any more (deleted in nobodies-collective/Humans#858). `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml` is authoritative — see `memory/process/ef-multi-context-commands.md`.
-- **The invariant doc.** A moved section carries it in-project (`$SEC/Docs/<Section>.md`); otherwise `docs/sections/<Section>.md`. Resolved once as `$DOC` — every later phase that reads or edits the invariant doc must use `$DOC`, never a literal `docs/sections/` path.
+- **The DbContext.** There is no shared `HumansDbContext`. `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml` is authoritative — see `memory/process/ef-multi-context-commands.md`.
+- **The invariant doc.** Every section carries it in-project at `$SEC/Docs/<Section>.md`, resolved once as `$DOC` — every later phase that reads or edits the invariant doc must use `$DOC`, never a literal `docs/sections/` path.
 
 ## Boundary-fix protocol
 
@@ -160,7 +145,7 @@ Output: `docs/plans/<YYYY-MM-DD>-section-align-<target>.md`. Both axes always au
 
 **A1.1 Section name consistency.** Variants across folders, namespaces, controllers, views, ViewModels, roles, routes, docs. Propose canonical name. Flag collisions.
 
-**A1.2 Controller existence.** Does `$CONTROLLERS/<Section>Controller.cs` (or `<Section>AdminController.cs` / `<Section>ApiController.cs` if split) exist? Use `$CONTROLLERS` — a moved section keeps its controllers in-project (`Humans.Events/Controllers/EventsController.cs`), so checking `src/Humans.Web/Controllers/` would report "no controller" for every G5 section. If routes serving this section's data live on *other* sections' controllers (e.g. `BoardController` hosting `/Board/AuditLog`), that is drift. List each foreign route and propose the move.
+**A1.2 Controller existence.** Does `$CONTROLLERS/<Section>Controller.cs` (or `<Section>AdminController.cs` / `<Section>ApiController.cs` if split) exist? Use `$CONTROLLERS` — a section keeps its controllers in-project (`Humans.Events/Controllers/EventsController.cs`), so checking `src/Humans.Web/Controllers/` would report "no controller" for every section. If routes serving this section's data live on *other* sections' controllers (e.g. `BoardController` hosting `/Board/AuditLog`), that is drift. List each foreign route and propose the move.
 
 **A1.3 URL surface.** Every route serving this section's data. Catch:
 - Routes outside `/<Section>/*` or `/<Section>/Admin/*` or `/api/<section>/*`
@@ -168,13 +153,13 @@ Output: `docs/plans/<YYYY-MM-DD>-section-align-<target>.md`. Both axes always au
 - Non-Barrios↔Camps aliases (`feedback_no_url_aliases`)
 - Generic top-level controllers hosting this section's concerns
 
-**A1.4 Views folder.** Does `$VIEWS/` exist? A moved section owns its views in-project (`Humans.Events/Views/`), so resolve rather than assuming `src/Humans.Web/Views/<Section>/`. Section-owned page views left behind in `src/Humans.Web/Views/Shared/` (e.g. `Shared/<Section>.cshtml`) are drift unless they are genuinely cross-section partials reused by widgets. ViewComponent partials at `src/Humans.Web/Views/Shared/Components/<Section>/` are fine (and expected) — those stay platform-side.
+**A1.4 Views folder.** Does `$VIEWS/` exist? A section owns its views in-project (`Humans.Events/Views/`), not under `src/Humans.Web/Views/<Section>/`. Section-owned page views left behind in `src/Humans.Web/Views/Shared/` (e.g. `Shared/<Section>.cshtml`) are drift unless they are genuinely cross-section partials reused by widgets. ViewComponent partials at `src/Humans.Web/Views/Shared/Components/<Section>/` are fine (and expected) — those stay platform-side.
 
 **A1.5 ViewModel placement.** Section ViewModels in `Models/<Section>ViewModels.cs` or `Models/<Section>/`. Types parked in `Models/AdminViewModels.cs` or other grab-bag files = drift.
 
 **A1.6 Controller-base leak.** Search `HumansControllerBase` (or equivalent) for section-specific helper methods or ViewModels. Section names appearing in `protected` method names, parameter types, or return types = drift. Move into `<Section>Controller`.
 
-**A1.7 Extensions placement.** `src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs` for DI wiring. Any `<Section>*.cs` in `Extensions/` root (not `Extensions/Sections/`) = drift.
+**A1.7 DI wiring placement.** A section registers its own DI from `$SEC/Section.cs` (`ISection.Register`) — not `src/Humans.Web/Extensions/`. Any `<Section>*.cs` under `Extensions/` (root or `Extensions/Sections/`) doing this section's DI wiring = drift; that folder is reserved for Shell-level chrome (Admin, Auth).
 
 **A1.8 Role surface.** Domain-scoped roles need `*Admin` suffix (`feedback_admin_superset`). Exceptions only when semantics don't fit (e.g., `ConsentCoordinator`).
 
@@ -235,19 +220,19 @@ git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' $(exist $SE
 
 Caching belongs in the service layer **only** per §15 — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
 
-**A2.3 DI lifetimes.** Read the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`, G5) or `Extensions/Sections/<Section>SectionExtensions.cs` (not yet moved). Verify:
-- Repository: Singleton, depends on `IDbContextFactory<TContext>` where `TContext` is **the section's own context** — never `HumansDbContext`, which no longer exists (nobodies-collective/Humans#858)
+**A2.3 DI lifetimes.** Read the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`). Verify:
+- Repository: Singleton, depends on `IDbContextFactory<TContext>` where `TContext` is **the section's own context** — never `HumansDbContext`, which doesn't exist
 - Service: Scoped (or Singleton if stateless + factory-based dependencies)
 - Decorator (if present): Singleton
 - Cross-interface re-exports (e.g. `IUserDataContributor` → existing service): bound to the registered concrete
 
 **A2.4 Repository pattern.** The section's repository:
-- `sealed` (`internal sealed` on G5)
+- `internal sealed`
 - uses `IDbContextFactory<TContext>` for the section's own context — resolve `TContext` from the section's `Data/` folder or the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`; **do not assume `<Section>DbContext`**, since e.g. `Humans.Consent` is `LegalDbContext` and `Humans.Events` is `EventGuideDbContext`. A repository taking its own section context is correct and must not be flagged.
 - has no Update/Delete if entity is append-only (§12)
-- lives at `src/Sections/Humans.<Section>/Data/` (G5) or `src/Humans.Infrastructure/Repositories/<Section>/` (not yet moved)
+- lives at `src/Sections/Humans.<Section>/Data/`
 
-A handful of G5 repositories inject the context directly rather than a factory (e.g. `AgentRepository(AgentDbContext db, IClock clock)`). Note it, but it is not a §2a violation on its own.
+A handful of repositories inject the context directly rather than a factory (e.g. `AgentRepository(AgentDbContext db, IClock clock)`). Note it, but it is not a §2a violation on its own.
 
 **A2.5 Shared visual components — inventory by type, ViewComponent preferred.** Cross-page UI for this section's data can live as one of three things; this skill is opinionated about which:
 
@@ -266,7 +251,7 @@ find src/Humans.Web/Views -name '_*.cshtml' | xargs grep -l '<section-related-pa
 
 For each shared component, classify and decide: keep, convert TagHelper→ViewComponent, convert Partial→ViewComponent, or leave (intra-section partials). Inverse check: section pages with inline rendering of "should-be-a-VC" content (10+ lines of Razor stitching this section's data into another section's view).
 
-Grep for ViewComponent invocations to verify reuse. Consumers can be anywhere, so search the platform's views **and** every section project — a G5 section's pages live in its own `Views/`, not under `src/Humans.Web/Views/`:
+Grep for ViewComponent invocations to verify reuse. Consumers can be anywhere, so search the platform's views **and** every section project — section pages live in their own `Views/`, not under `src/Humans.Web/Views/`:
 ```bash
 git grep -nE '<vc:<section-kebab>|Component\.InvokeAsync\("<Section>"' \
   src/Humans.Web/Views/ src/Sections/*/Views/
@@ -337,7 +322,7 @@ Output for each section pass: a `Redundancy candidates` subsection in the plan l
 | `IRepository_Implementations_AreAllSealed` (reflect over all `IRepository` impls) | `FooRepository_IsSealed`, `BarRepository_IsSealed`, … |
 | `Application_Services_TakeNoDbContext` (reflect over `IApplicationService` impls) | per-section `FooService_HasNoDbContextConstructorParameter` |
 | `Application_Services_TakeNoIMemoryCache_UnlessRegistered` | per-section copies |
-| `Repository_Implementations_LiveInInfrastructure` | per-section namespace tests |
+| `Repository_Implementations_LiveInSectionDataFolder` | per-section namespace tests |
 
 Section-specific tests are reserved for **section-specific invariants** that don't generalize:
 - Single-writer DbSet rule (`Only<Section>Repository_References_<DbSet>` — Roslyn or reflection scan).
@@ -345,38 +330,28 @@ Section-specific tests are reserved for **section-specific invariants** that don
 
 Phase 0 inventory:
 1. List section-specific tests in `<Section>ArchitectureTests.cs`.
-2. For each, ask: does this generalize to all sections? If yes, propose moving it to a generic test in a single shared file (e.g. `tests/Humans.Application.Tests/Architecture/Rules/RepositorySealing.cs`).
+2. For each, ask: does this generalize to all sections? If yes, propose moving it to a generic test in a single shared file under `tests/Humans.Web.Tests/Architecture/Rules/` (e.g. `RepositorySealing.cs`), alongside existing generic rules like `ApplicationServicesTakeNoDbContextRule.cs`.
 3. List genuinely-section-specific invariants that need keeping or adding.
 
 Missing tests (in either category) are Phase 2 adds. Per-section duplicates of generic patterns are Phase 3 prunes.
 
 ### Axis 3 — test focus
 
-**A3.1 Test folder placement.** Canonical layout is `$TESTS` as resolved above — for a moved section that is its own `tests/Humans.<Section>.Tests/` project, where the section's tests sit at the project root by category rather than under a `<Section>/` folder:
+**A3.1 Test folder placement.** Canonical layout is `$TESTS` as resolved above — the section's own `tests/Humans.<Section>.Tests/` project, where the section's tests sit at the project root by category rather than under a `<Section>/` folder:
 
 ```
-$TESTS/                              # G5: tests/Humans.<Section>.Tests/
+$TESTS/                              # tests/Humans.<Section>.Tests/
   <Section>ArchitectureTests.cs
   Services/  Data/  Controllers/  Domain/
 ```
 
-```
-$TESTS/<Section>/                    # not yet moved: tests/Humans.Application.Tests/<Section>/
-  <Section>ServiceTests.cs
-  <SecondaryService>Tests.cs
-  <Section>RepositoryTests.cs       # if the section's repo has unit tests
-```
-
-**A moved section's tests must live in its own test project, not `Humans.Application.Tests`.** That project does not reference the section assembly, and a G5 section grants `InternalsVisibleTo` only to `Humans.<Section>.Tests` (plus `Humans.Integration.Tests`) — so a test placed in `Humans.Application.Tests` cannot see the section's `internal` services and will not compile. Finding a moved section's tests still under `tests/Humans.Application.Tests/<Section>/` is itself drift to propose moving.
-
-For a not-yet-moved section, tests split across `$TESTS/<Section>/` AND `$TESTS/Services/<Section>/` AND `$TESTS/Services/<Section>FooTests.cs` AND `$TESTS/Repositories/<Section>RepositoryTests.cs` is drift. Inventory the scatter, pick the top-level folder as the canonical home, and propose moves.
+**A section's tests must live in its own test project.** No other test project references the section assembly, and a section grants `InternalsVisibleTo` only to `Humans.<Section>.Tests` (plus `Humans.Integration.Tests`) — so a test placed anywhere else cannot see the section's `internal` services and will not compile.
 
 Tests that belong elsewhere by category (not section drift):
-- `$TESTS/Architecture/<Section>ArchitectureTests.cs` — arch tests for this section (covered in Axis 2.7); in a G5 test project this sits at the project root, e.g. `tests/Humans.Events.Tests/EventsArchitectureTests.cs`
+- `$TESTS/Architecture/<Section>ArchitectureTests.cs` — arch tests for this section (covered in Axis 2.7); typically sits at the project root, e.g. `tests/Humans.Events.Tests/EventsArchitectureTests.cs`
 - `$TESTS/Authorization/<Section>AuthorizationHandlerTests.cs` — auth handler tests
 - `tests/Humans.Integration.Tests/...` — cross-section by definition
 - `tests/Humans.Web.Tests/Controllers/<Section>*Tests.cs` — controller tests live with the Web project
-- `tests/Humans.Domain.Tests/Entities/<Entity>Tests.cs` — pure entity behavior
 
 **A3.1a One test file per production class (1-to-1 rule).** For every production class in this section, there should be exactly one test file named `<ClassName>Tests.cs`:
 
@@ -390,7 +365,7 @@ Two production classes sharing one test file (e.g. `AuditEvent` + `AuditEventTex
 
 A production class with **no** test file at all (e.g. `<Section>Repository.cs` covered only by `<Section>ArchitectureTests`) is drift — the architecture test pins shape, not behavior. Add a unit test file or document why none is needed (e.g. "pure pass-through repository — coverage flows through `<Section>ServiceTests`").
 
-**A3.2 Coverage map against section doc.** Read `$DOC` — the resolved invariant doc, which for a moved section is `$SEC/Docs/<Section>.md` (Events' is at `src/Sections/Humans.Events/Docs/Events.md`, and there is no `docs/sections/Events.md`). Build a coverage map:
+**A3.2 Coverage map against section doc.** Read `$DOC` — the resolved invariant doc at `$SEC/Docs/<Section>.md` (Events' is at `src/Sections/Humans.Events/Docs/Events.md`, and there is no `docs/sections/Events.md`). Build a coverage map:
 - Each **Invariant** bullet → at least one test asserting it holds
 - Each **Negative Access Rule** → one test asserting the rejection
 - Each **Trigger** → one test asserting the side effect fires (audit row, notification, cascade)
@@ -583,18 +558,18 @@ For entity / DbSet renames, additionally check `[Table(...)]` attributes, EF con
 If the sweep finds non-trivial inbound work (>10 fixes, or fixes that touch other sections' views), surface as a stop-condition decision: bundle into this PR vs. flag the consumer section as a follow-up /section-align target. Bundling is usually correct for view-link fixes (mechanical, reviewers expect renames to be complete); a follow-up is correct only when the consumer needs a deeper structural change.
 
 **Create what's missing** (not only rename):
-1. **Invariant doc** — rename in place at its resolved location: `git mv $(dirname $DOC)/<Old>.md $DOC` if renamed. For a moved section that is `$SEC/Docs/`, not `docs/sections/`.
+1. **Invariant doc** — rename in place at its resolved location: `git mv $(dirname $DOC)/<Old>.md $DOC` if renamed. That's `$SEC/Docs/`, not `docs/sections/`.
 2. **Controller** — if `<Section>Controller.cs` doesn't exist and routes live on foreign controllers, create it. Migrate route handlers off `BoardController` / `GoogleController` / etc. **Run the inbound-link sweep (above) before committing** — controller renames must update `asp-controller=`, `Url.Action`, `RedirectToAction`, allow-lists in auth filters/middleware, and test fixtures. `/reforge` does not catch these.
 3. **Views folder** — if `Views/<Section>/` doesn't exist and page views live in `Views/Shared/<Section>.cshtml`, create it and move the page views. Keep genuine cross-section partials in Shared.
 4. **ViewModels file** — extract section types out of `Models/AdminViewModels.cs` or other grab-bag files into `Models/<Section>ViewModels.cs`.
 5. **Controller-base helpers** — move section-specific helpers off `HumansControllerBase` into `<Section>Controller` (or section-local helpers).
-6. **Folders** — `git mv` Application, Infrastructure, Views if rename triggered.
+6. **Folders** — `git mv` `Services/`, `Data/`, `Domain/`, `Controllers/`, `Views/` contents if rename triggered.
 7. **Namespaces** in lockstep.
 8. **Symbols** — `I<Section>Service`, `<Section>Controller`, etc. via `/reforge` + bulk Edit.
 9. **Route attributes** — class-level to `/<Section>/*`; admin under `/<Section>/Admin/*`.
 10. **Role names** — `*Admin` suffix unless Phase 0 justified exception.
 11. **Config keys** — update `appsettings*.json`.
-12. **Extensions** — `git mv Extensions/<Section>*.cs Extensions/Sections/`.
+12. **DI wiring** — update `$SEC/Section.cs` (`ISection.Register`) in lockstep with any renamed types.
 13. **Test folder** — if the section's tests are scattered, `git mv` them into the canonical home picked in A3.1. Rename test files to `<ClassUnderTest>Tests.cs` 1-to-1 if they aren't already (one production class → one test file).
 14. **Entities** — only if prefix is awkward post-rename; surface to user, default keep.
 15. **DB tables** — leave alone (`architecture_no_drops_until_prod_verified`); use `[Table("legacy_name")]` if entity renamed.
