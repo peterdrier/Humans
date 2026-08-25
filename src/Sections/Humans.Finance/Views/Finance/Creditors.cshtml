@@ -22,7 +22,7 @@
 </div>
 
 <p class="text-muted">
-    Holded creditor accounts (40000000–40000999). <strong>Balance</strong> is shown from the member's
+    Holded creditor accounts (40000000–41999999). <strong>Balance</strong> is shown from the member's
     side: a positive figure is money the organisation owes them, a negative one is money they owe it.
     Holded's own view of the same account, debit and credit as posted, is linked from each statement.
     Bind a member to an account from their expense report, and unbind here. An account should carry
@@ -40,7 +40,7 @@
                 These members pushed an expense report but their Holded creditor-account number never
                 resolved — neither the one-shot push lookup nor Holded's own contact list has a number
                 for them. There is no automatic retry; bind each one manually once you know their
-                creditor account (40000000–40000999) in Holded.
+                creditor account (40000000–41999999) in Holded.
             </p>
             <table class="table table-sm align-middle mb-0">
                 <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
@@ -57,7 +57,7 @@
                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                                 <input type="number" name="supplierAccountNum" class="form-control form-control-sm"
                                        style="max-width: 10rem" placeholder="e.g. 40000004" required
-                                       min="40000000" max="40000999" />
+                                       min="40000000" max="41999999" />
                                 <button type="submit" class="btn btn-sm btn-outline-primary">Bind</button>
                             </form>
                         </td>

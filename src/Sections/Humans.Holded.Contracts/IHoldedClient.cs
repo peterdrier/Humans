@@ -43,9 +43,6 @@ public interface IHoldedClient
     Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Ids of purchases still in draft — GET /purchases?approval_status=draft.</summary>
-    Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = default);
-
     /// <summary>Creates or updates a contact; returns the contact id.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
 

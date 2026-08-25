@@ -103,7 +103,7 @@ Three things the shapes say about the inside:
   path checks; they differ only in the remedy, and the remedy follows from whether the value is our
   guess (refuse) or Holded's own statement of fact (write it, and make the collision visible).
 - A member's binding is never silently downgraded from a hand-made link to an automatic one.
-- Every read that draws on Holded's contact list is filtered to the `40000000`–`40000999` block.
+- Every read that draws on Holded's contact list is filtered to the `40000000`–`41999999` block.
   Outside that block a supplier number belongs to an ordinary vendor, not a member.
 - Balance keeps Holded's sign everywhere except the two admin views, which flip it once for display
   so a positive figure is money owed to the member.

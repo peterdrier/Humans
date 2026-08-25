@@ -187,9 +187,8 @@ internal sealed class Service(
                 .ToArray();
 
             var allDocs = await client.ListPurchaseDocumentsAsync(ct);
-            var draftIds = await client.ListDraftPurchaseIdsAsync(ct);
 
-            var docs = allDocs.Select(doc => MapDoc(doc, entries, draftIds, now)).ToList();
+            var docs = allDocs.Select(doc => MapDoc(doc, entries, now)).ToList();
 
             await repo.UpsertDocsAsync(docs, now, ct);
 
@@ -230,7 +229,6 @@ internal sealed class Service(
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,
-        IReadOnlySet<string> draftIds,
         Instant now)
     {
         // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
@@ -255,7 +253,11 @@ internal sealed class Service(
             Tax = doc.Tax,
             Total = doc.Total,
             Currency = doc.Currency,
-            IsApproved = !draftIds.Contains(doc.Id),
+            // Strict equality, not `!= true`: an absent `draft` field is treated as NOT approved,
+            // the same caution the old draft-id sweep applied to a doc it couldn't place — a
+            // silently-approved doc leaks into the budget actuals, an unmatched-approval one just
+            // stays a gap on the Unmatched queue.
+            IsApproved = doc.IsDraft == false,
             TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
@@ -387,8 +389,12 @@ internal sealed class Service(
 
     // ─── Creditor data (Feature 2) ──────────────────────────────────────────────
 
+    // A new ER-only contact still gets type "creditor" (Peter, 2026-08-25), which Holded mints
+    // in the 410-series rather than the 400-series proveedor accounts older members carry — so
+    // the block spans both. Bindings, not the range, are what separate a member's account from
+    // an ordinary org vendor's (the one-member-per-account conflict checks guard that).
     private const int CreditorAccountMin = 40000000;
-    private const int CreditorAccountMax = 40000999;
+    private const int CreditorAccountMax = 41999999;
 
     public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)

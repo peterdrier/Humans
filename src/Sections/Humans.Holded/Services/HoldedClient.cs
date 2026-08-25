@@ -224,20 +224,6 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = default)
-    {
-        const int pageSafetyCap = 200;
-        var items = await GetPagedAsync("/api/v2/purchases?draft=true&limit=200", pageSafetyCap, ct);
-        // A draft without an id cannot be dropped: MapDoc marks any doc absent from this set
-        // as approved, so an incomplete set silently feeds a draft into the budget actuals.
-        return items
-            .Select(n => Prop(n, "id")?.GetValue<string>() is { Length: > 0 } id
-                ? id
-                : throw new HoldedPermanentException(
-                    "Holded item is missing required field 'id' — refusing the page."))
-            .ToHashSet(StringComparer.Ordinal);
-    }
-
     public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
         // v2 contacts POST/PUT have no `custom_id` field (see HoldedContactInput.CustomId) — not sent.
@@ -685,6 +671,7 @@ internal sealed class HoldedClient : IHoldedClient
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
+        IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto

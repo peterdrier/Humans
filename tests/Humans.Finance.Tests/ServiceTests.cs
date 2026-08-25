@@ -203,14 +203,14 @@ public class HoldedFinanceServiceTests
             new()
             {
                 Id = "d1", DocNumber = "F001", ContactName = "Alice", Date = docDate,
-                Subtotal = 100, Tax = 21, Total = 121, Currency = "eur",
+                Subtotal = 100, Tax = 21, Total = 121, Currency = "eur", IsDraft = false,
                 Lines = [new HoldedPurchaseLineDto { Amount = 100, AccountId = "acc-1", Tags = [] }],
                 Tags = [],
             },
             new()
             {
                 Id = "d2", DocNumber = "F002", ContactName = "Bob", Date = docDate,
-                Subtotal = 50, Tax = 0, Total = 50, Currency = "eur",
+                Subtotal = 50, Tax = 0, Total = 50, Currency = "eur", IsDraft = true,
                 Lines = [new HoldedPurchaseLineDto { Amount = 50, AccountId = "acc-generic", Tags = [] }],
                 Tags = ["comms"],   // tag match
             },
@@ -225,8 +225,6 @@ public class HoldedFinanceServiceTests
 
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .ReturnsForAnyArgs((IReadOnlyList<HoldedPurchaseDocListItemDto>)docs1);
-        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs((IReadOnlySet<string>)new HashSet<string>(StringComparer.Ordinal) { "d2" });
 
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
         await _repo.UpsertDocsAsync(
@@ -930,15 +928,15 @@ public class HoldedFinanceServiceTests
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
             new() { Id = "c2", Name = "Maria Garcia", SupplierAccountNum = 40000012 },  // no ledger lines yet
             new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a supplier
-            new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 40001500 }, // vendor, outside the block
+            new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 42000000 }, // vendor, outside the block
         });
 
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Ordinary org vendors carry supplier numbers too — only the 40000000–40000999 member-creditor
+        // Ordinary org vendors carry supplier numbers too — only the 40000000–41999999 member-creditor
         // block counts, or an admin could bind a member onto a vendor's account.
         rows.Should().HaveCount(2);
-        rows.Should().NotContain(r => r.SupplierAccountNum == 40001500);
+        rows.Should().NotContain(r => r.SupplierAccountNum == 42000000);
         rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004)
             .Which.Name.Should().Be("Daniela Marquez");
         // A first-time submitter's contact exists in Holded before any journal activity — still selectable.
@@ -1002,7 +1000,7 @@ public class HoldedFinanceServiceTests
     {
         // The number arrives on a POST; the filtered dropdown is not a server-side gate.
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 40001500, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), 42000000, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("outside the member creditor block");
@@ -1499,25 +1497,25 @@ public class HoldedFinanceServiceTests
             {
                 [39999999] = -1m,
                 [40000000] = -1m,
-                [40000999] = -1m,
-                [40001000] = -1m,
+                [41999999] = -1m,
+                [42000000] = -1m,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
         {
             new() { Id = "lo-out", Name = "Vendor", SupplierAccountNum = 39999999 },
             new() { Id = "lo-in", Name = "First member", SupplierAccountNum = 40000000 },
-            new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 40000999 },
-            new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 40001000 },
+            new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 41999999 },
+            new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 42000000 },
         });
 
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 40000999]);
+        rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 41999999]);
         // Name comes from the contact filter and Balance from the mirror filter; assert both, or a row
         // arriving through one of them hides the other end being wrong.
         var first = rows.Single(r => r.SupplierAccountNum == 40000000);
-        var last = rows.Single(r => r.SupplierAccountNum == 40000999);
+        var last = rows.Single(r => r.SupplierAccountNum == 41999999);
         first.Name.Should().Be("First member");
         last.Name.Should().Be("Last member");
         first.Balance.Should().Be(-1m);
@@ -1526,7 +1524,7 @@ public class HoldedFinanceServiceTests
 
     [HumansTheory]
     [InlineData(39999999)]
-    [InlineData(40001000)]
+    [InlineData(42000000)]
     public async Task SetCreditorContact_JustOutsideTheBlock_IsRefused(int accountNum)
     {
         var result = await MakeService().SetCreditorContactAsync(
@@ -1538,7 +1536,7 @@ public class HoldedFinanceServiceTests
 
     [HumansTheory]
     [InlineData(40000000)]
-    [InlineData(40000999)]
+    [InlineData(41999999)]
     public async Task SetCreditorContact_OnTheBlockBoundary_IsAccepted(int accountNum)
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
@@ -1564,8 +1562,6 @@ public class HoldedFinanceServiceTests
         _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedPurchaseDocListItemDto>());
-        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HashSet<string>(StringComparer.Ordinal));
 
         var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
 

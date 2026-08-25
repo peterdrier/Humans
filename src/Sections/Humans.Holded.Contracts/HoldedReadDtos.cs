@@ -69,8 +69,10 @@ public sealed record HoldedPurchaseDocListItemDto
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
     // v2 list items carry no approval timestamp (only the single-GET does — see
-    // HoldedPurchaseDocumentDto.ApprovedAt); approval state here comes from
-    // IHoldedClient.ListDraftPurchaseIdsAsync instead.
+    // HoldedPurchaseDocumentDto.ApprovedAt), but they do carry `draft`: true while the doc is
+    // still a draft. Null when Holded does not report the field (treated as not-yet-approved —
+    // see Service.MapDoc).
+    public bool? IsDraft { get; init; }
     public string Currency { get; init; } = "eur";
     public IReadOnlyList<string> Tags { get; init; } = []; // doc-level tags
     public IReadOnlyList<HoldedPurchaseLineDto> Lines { get; init; } = [];

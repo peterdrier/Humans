@@ -47,7 +47,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | ApprovedAt | Instant? | |
 | HoldedDocId | string? | Holded purchase document id |
 | HoldedContactId | string? | Holded contact id for this submitter; set on first push; links to creditor cache |
-| HoldedSupplierAccountNum | int? | 40000000–40000999 supplier-account number (supplierRecord.num), cached at push time |
+| HoldedSupplierAccountNum | int? | 40000000–41999999 supplier-account number (supplierRecord.num), cached at push time |
 | LastRejectionReason / LastRejectedByUserId / LastRejectedAt | — | last rejection details |
 | CreatedAt / UpdatedAt | Instant | |
 
@@ -94,7 +94,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
-| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports, plus their Holded creditor-account statement (`AccountLedger`) once bound to a 40000000–40000999 account. The statement is the cached daybook lines for that account verbatim, both sides; it is not mixed with locally-held report rows. Unbound members get an explanatory note instead. |
+| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports, plus their Holded creditor-account statement (`AccountLedger`) once bound to a 40000000–41999999 account. The statement is the cached daybook lines for that account verbatim, both sides; it is not mixed with locally-held report rows. Unbound members get an explanatory note instead. |
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
