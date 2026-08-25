@@ -270,9 +270,6 @@ inbox:
   - added: 2026-08-25
     what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
     review: panel
-  - added: 2026-08-22
-    what: "Budget's Views/BudgetAdmin/NoActiveYear.cshtml has no links to the three /Finance/* pages that YearDetail.cshtml carries, so with no active budget year the Holded provisioning, unmatched-doc and creditor-accounts pages have no nav path at all (found by /section-doctor on Finance, 2026-08-18; the view is Budget's)."
-    review: light
   - added: 2026-08-21
     what: "Nothing builds the real service provider and resolves the sections' registered services, so a DI misregistration ships green. Found in nobodies-collective/Humans#1104: a commit registered Service only as ISettingsWriteService while two consumers still asked for the concrete Service — the build passed and all ~4,900 unit tests passed, but /Settings/Admin and /Settings/Admin/Carry would both have thrown on activation and IEventSettingsCarryService could not have been constructed. Nothing in the suite would have caught it at any point. A composition-root smoke check that builds the container from the same ISection registration path the app uses and resolves every registered service would close it. Needs Peter's approval before anything is added (memory/process rule: no new CI checks without permission)."
     review: panel
