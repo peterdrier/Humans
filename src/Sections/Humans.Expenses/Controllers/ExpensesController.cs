@@ -20,7 +20,7 @@ internal sealed class ExpensesController(
     IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetServiceRead budgetService,
-    IHoldedFinanceService holdedFinance,
+    IHoldedFinanceServiceRead holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {

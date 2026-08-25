@@ -80,6 +80,7 @@ public sealed class ExpenseReportServiceTests
             AuditLog,
             _holdedClient,
             _holdedFinance,
+            _holdedFinance,
             Clock,
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
@@ -449,7 +450,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedFinance, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -490,7 +491,7 @@ public sealed class ExpenseReportServiceTests
 
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedFinance, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -938,7 +939,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedFinance, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -966,7 +967,7 @@ public sealed class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            AuditLog, _holdedClient, _holdedFinance, _holdedFinance, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
