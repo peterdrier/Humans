@@ -44,7 +44,6 @@ internal interface IStoreRepository : IRepository
     Task<IReadOnlyList<Order>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<Order?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
-    Task<IReadOnlyList<Order>> GetAllOrdersAsync(CancellationToken ct = default);
     /// <summary>
     /// Returns every <see cref="Order"/> whose <c>CampSeasonId</c> is in
     /// <paramref name="campSeasonIds"/>, with <c>Lines</c> and <c>Payments</c>
@@ -135,8 +134,4 @@ internal interface IStoreRepository : IRepository
     /// carry an invoice row while still <c>Open</c>.
     /// </summary>
     Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default);
-
-    // Treasury sync state
-    Task<TreasurySyncState> GetOrCreateTreasurySyncStateAsync(CancellationToken ct = default);
-    Task UpdateTreasurySyncStateAsync(TreasurySyncState state, CancellationToken ct = default);
 }

@@ -101,13 +101,17 @@ Written from the shapes, not from today's layout.
 
 ## 5. Seams — specified but not built
 
+An unbuilt seam is carried in the docs and, where a shipped migration forces it, in the schema —
+never in live code. A method that throws or an accessor nobody calls is not a seam, it is a lie
+about what the section does.
+
 - **Manual payment entry** (FinanceAdmin records a bank transfer or a refund as a negative
-  amount). A stub throws `NotSupportedException("Phase 5")` and nothing calls it.
+  amount). No code.
 - **Treasury sync** (a recurring job matching Holded bank entries to orders). The
-  `store_treasury_sync_state` table, its entity and two repository methods exist; the job does
-  not, and the matching key it was designed around (`Order.Label`) was abolished.
-- **A FinanceAdmin order ledger** at `/Store/Admin/Orders`. Documented as a route; no such route
-  exists.
+  `store_treasury_sync_state` table, its entity and its EF configuration ship because the
+  migration shipped; no code reads or writes them. The matching key the job was designed around
+  (`Order.Label`) was abolished.
+- **A FinanceAdmin order ledger** at `/Store/Admin/Orders`. No route, no view.
 
 ## 6. Deliberately not done
 

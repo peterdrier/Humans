@@ -598,9 +598,6 @@ internal sealed class Service(
         return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
-    public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, PaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 5");
-
     public Task<string> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,

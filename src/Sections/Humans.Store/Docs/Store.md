@@ -178,7 +178,6 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
 - `/Store/Order/{id}/IssueInvoice` — POST: Store admin issues the order's Holded factura. The button lives on the order page, next to Delete, and renders only for an `Open` camp order with at least one line.
-- `/Store/Admin/Orders` — FinanceAdmin order ledger + manual payment entry. **Not yet implemented** (`RecordManualPaymentAsync` still throws `NotSupportedException("Phase 5")`).
 - `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. **Totals use effective pricing** — Open orders are repriced to the live catalog (matching the order-page behavior), InvoiceIssued orders use their frozen snapshots. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
@@ -197,7 +196,7 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 ## Invariants
 
 - An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
-- **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordManualPaymentAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
+- **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
 - At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
 - Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
@@ -247,8 +246,8 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - `IssueInvoiceAsync` (nobodies-collective/Humans#1029) — upserts the Holded `client` contact for an identified counterparty, creates the v2 sales document with per-line revenue accounts, approves it, reads it back, and writes `store_invoices` (both payloads) + the frozen order in one save. Emits `StoreInvoiceIssued` against `StoreInvoice`, cross-referenced to the order.
 
 **Not yet shipped (Phase 5+):**
-- `RecordManualPaymentAsync` — manual payment entry by FinanceAdmin. Currently throws `NotSupportedException("Phase 5")`.
-- `StoreTreasurySyncJob` (Hangfire recurring) — polls `IHoldedClient.ListTreasuryEntriesAsync` from `TreasurySyncState.LastSyncAt`, inserts `Payment(Method=BankTransfer)` for unambiguous matches, advances cursor. Not yet implemented (the original Label matching key was removed in #816).
+- Manual payment entry by FinanceAdmin, and the `/Store/Admin/Orders` ledger it would live on. No service member, endpoint, or view exists.
+- `StoreTreasurySyncJob` (Hangfire recurring) — would poll `IHoldedClient.ListTreasuryEntriesAsync` from `TreasurySyncState.LastSyncAt`, insert `Payment(Method=BankTransfer)` for unambiguous matches, advance the cursor. No job exists (the original Label matching key was removed in #816). The `store_treasury_sync_state` table and its entity ship, but nothing reads or writes them.
 
 ## Cross-Section Dependencies
 
@@ -294,4 +293,4 @@ Acountax's call and change without a deploy:
 | `Store:DepositLiabilityAccountNum` | unset | Holded chart number of the refundable-deposit (fianzas) liability account. Unset refuses issuance of any order carrying a deposit. |
 | `Store:SimplifiedInvoiceThresholdEur` | `400` | Order total at or below which a counterparty-less order may issue as a *factura simplificada*. Spanish law allows €400 generally / €3,000 for retail-type B2C; the conservative figure is the default until Acountax rules. |
 
-Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, and Holded invoice issuance are live. `RecordManualPaymentAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See [`Store-feature.md`](features/Store-feature.md).
+Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, and Holded invoice issuance are live. Manual payment entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).

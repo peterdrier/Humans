@@ -18,7 +18,7 @@ Repository: `IStoreRepository`.
 | StoreOrderLines | R/W |
 | StorePayments | R/W |
 | StoreInvoices | R/W |
-| StoreTreasurySyncStates | R/W |
+| StoreTreasurySyncStates | — (table ships; no code reads or writes it) |
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface),
