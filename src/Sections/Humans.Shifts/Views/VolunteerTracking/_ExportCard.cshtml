@@ -31,7 +31,7 @@
                     <option value="">@Localizer["VolTrack_Export_AllDepartments"]</option>
                     @foreach (var d in Model.Departments)
                     {
-                        <option value="@d.TeamId" selected="@(Model.SelectedDepartmentId == d.TeamId)">@d.TeamName</option>
+                        <option value="@d.TeamId" selected="@(Model.SelectedDepartmentId == d.TeamId ? "selected" : null)">@d.TeamName</option>
                     }
                 </select>
             </div>
@@ -41,17 +41,17 @@
                     <option value="">@Localizer["VolTrack_Export_PeriodCustom"]</option>
                     @foreach (var p in Enum.GetValues<ShiftPeriod>())
                     {
-                        <option value="@p" selected="@(Model.SelectedPeriod == p)">@PeriodLabel(p)</option>
+                        <option value="@p" selected="@(Model.SelectedPeriod == p ? "selected" : null)">@PeriodLabel(p)</option>
                     }
                 </select>
             </div>
             <div class="col-md-2 @(subPeriodHidden ? "d-none" : "")" id="exp-subperiod-wrapper">
                 <label class="form-label" for="exp-subperiod">@Localizer["ShiftDash_SubPeriodFilter_Label"]</label>
-                <select id="exp-subperiod" name="subPeriod" class="form-select" disabled="@subPeriodHidden">
+                <select id="exp-subperiod" name="subPeriod" class="form-select" disabled="@(subPeriodHidden ? "disabled" : null)">
                     <option value="">@Localizer["ShiftDash_SubPeriodFilter_All"]</option>
                     @foreach (var s in Enum.GetValues<BuildSubPeriod>())
                     {
-                        <option value="@s" selected="@(Model.SelectedSubPeriod == s)">@SubPeriodLabel(s)</option>
+                        <option value="@s" selected="@(Model.SelectedSubPeriod == s ? "selected" : null)">@SubPeriodLabel(s)</option>
                     }
                 </select>
             </div>
