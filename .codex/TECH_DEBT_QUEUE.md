@@ -2184,6 +2184,15 @@ Validation:
 Next:
 - Continue with the remaining live architecture entries; preserve guarded entity workflows and persistence boundaries.
 
+## 2026-08-25 checkpoint - remove stale obsolete-warning suppression
+Done:
+- Removed the no-op `CS0618` suppression from `AboutController`; its former `RoleAssignment` navigation-property references were already removed.
+Validation:
+- Humans.Web build: 0 warnings, 0 errors.
+- Service-boundary architecture tests: 4 passed.
+Next:
+- Continue auditing for similarly stale suppressions and safe boundary reductions.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.

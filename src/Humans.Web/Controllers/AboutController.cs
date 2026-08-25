@@ -6,9 +6,6 @@ using NodaTime;
 using Humans.Web.Models;
 using Humans.Users.Contracts;
 
-// Obsolete RoleAssignment nav props (User, CreatedByUser) stitched in-memory by RoleAssignmentService; see design-rules §15i.
-#pragma warning disable CS0618
-
 namespace Humans.Web.Controllers;
 
 [Route("[controller]")]
