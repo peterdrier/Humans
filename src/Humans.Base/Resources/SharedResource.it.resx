@@ -254,7 +254,7 @@
     <comment>{0} = pending consent count</comment>
   </data>
   <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Completi il Suo profilo:&lt;/strong&gt; Il Suo profilo è incompleto. &lt;a href="/Profile/Edit" class="alert-link"&gt;Aggiunga le Sue informazioni&lt;/a&gt; per aiutarci a conoscerLa meglio.</value>
+    <value>&lt;strong&gt;Completi il Suo profilo:&lt;/strong&gt; Il Suo profilo è incompleto. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Aggiunga le Sue informazioni&lt;/a&gt; per aiutarci a conoscerLa meglio.</value>
   </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Profilo</value>

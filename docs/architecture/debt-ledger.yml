@@ -382,6 +382,3 @@ inbox:
   - added: 2026-08-24
     what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while sibling SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Humans.Onboarding.Tests files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger through the base class would delete both copies. Base owns HumansControllerBase. Found by /section-doctor on Onboarding 2026-08-23."
     review: light
-  - added: 2026-08-24
-    what: "/Profile/Edit is stale in three places outside Users. The live route is /Profile/Me/Edit. Sites: a comment in src/Sections/Humans.Consent/Controllers/ConsentController.cs, a doc comment in tests/Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. Cross-section (Consent + a repo-level skill). Found by /section-doctor on Onboarding 2026-08-23."
-    review: light

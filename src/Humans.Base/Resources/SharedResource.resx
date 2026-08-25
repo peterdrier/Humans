@@ -133,7 +133,7 @@
   <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard</value></data>
   <data name="Dashboard_Welcome" xml:space="preserve"><value>Welcome, {0}</value><comment>{0} = display name</comment></data>
   <data name="Dashboard_PendingConsentsAlert" xml:space="preserve"><value>&lt;strong&gt;Action Required:&lt;/strong&gt; You have {0} pending consent(s). &lt;a href="/Consent" class="alert-link"&gt;Review and consent&lt;/a&gt; to maintain your active membership.</value><comment>{0} = pending consent count</comment></data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve"><value>&lt;strong&gt;Complete Your Profile:&lt;/strong&gt; Your profile is incomplete. &lt;a href="/Profile/Edit" class="alert-link"&gt;Add your information&lt;/a&gt; to help us know you better.</value></data>
+  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve"><value>&lt;strong&gt;Complete Your Profile:&lt;/strong&gt; Your profile is incomplete. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Add your information&lt;/a&gt; to help us know you better.</value></data>
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Your profile is complete.</value></data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Complete your profile to help us know you better.</value></data>
