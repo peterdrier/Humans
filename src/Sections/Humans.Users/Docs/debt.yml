@@ -5,6 +5,3 @@ inbox:
   - added: 2026-08-24
     what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
     review: panel
-  - added: 2026-08-24
-    what: "Two data-access blocks in src/Sections/Humans.Onboarding/Docs describe Users-owned services (HumanLifecycleService and NonCompliantMemberSuspension) rather than Onboarding-owned ones, and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them today. Left with a pointer in the source doc rather than moved because the section-doctor concurrency contract forbids a run writing another section's file. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light

@@ -118,6 +118,32 @@ external login, and `BackfillLegacyIdentityEmailsAsync` returns the
 `(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
 `IClock`.
 
+## Human Lifecycle
+
+Folder: `src/Sections/Humans.Users/Services/`. Orchestrator — owns no DB
+tables. Pairs with Onboarding's service to handle suspend, unsuspend, and
+restore state transitions.
+
+### HumanLifecycleService (Scoped)
+
+No repository. Fans out over `IUserService`, `INotificationEmitter`,
+`INotificationAutoResolve`, `IAuditLogService`, `IHumansMetrics`. No direct
+DB access or cache. All `Profile.State` writes go through `IUserService`, the
+unified user/profile write surface which invalidates its read model downstream.
+
+### NonCompliantMemberSuspension (Scoped)
+
+No repository. Implements `SuspendNonCompliantMembersJob`'s body
+(`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
+have not re-consented after the grace period and runs each suspension's
+downstream side effects. Cross-section calls via `IUserService`,
+`ITeamServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncService`,
+`IEmailService`, `IEmailMessageFactory`, `INotificationEmitter`,
+`IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
+`IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
+for cache eviction. `[CrossSectionWrite]`-marked because suspension removes a
+user from their team's Google resources. No direct DB access or `IMemoryCache`.
+
 ---
 
 
@@ -307,5 +333,4 @@ ticket-purchase status for the admin audience dashboard. No direct DB
 access, no cache.
 
 ---
-
 
