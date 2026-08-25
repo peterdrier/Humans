@@ -245,6 +245,27 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListLedgerEntries_sends_end_date_one_day_past_the_inclusive_to()
+    {
+        // end_date is exclusive on the live API (probed 2026-08-25: an entry dated 25/08/2026 is
+        // absent with end_date=2026-08-25, present with end_date=2026-08-26), so the request must
+        // carry to+1 day for this method's own `to` parameter to stay inclusive.
+        string? capturedQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK, """{"items":[],"cursor":null,"has_more":false}""");
+        });
+
+        var client = Make(handler);
+        await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 8, 20), new LocalDate(2026, 8, 25),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        capturedQuery.Should().Contain("end_date=2026-08-26");
+    }
+
+    [HumansFact]
     public async Task ListLedgerEntries_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
     {
         // Fail the page rather than drop the line: creditor and account balances are summed from
