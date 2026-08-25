@@ -1,37 +1,21 @@
-## Hand written rules from Peter
+# Hand written rules from Peter
 
-These superceed all other docs and are the final word on how to write code in this codebase. They are not to ever be edited by an LLM, and any changes to them must be made by Peter himself.
+These supersede all other docs and are the final word on how to write code in this codebase. They are not to ever be edited by an LLM, and any changes to them must be made by Peter himself.
 
-## Concepts 
-* "Surgical fixes" are not allowed.  Fix it right, or record an issue to track fixing it later.
+**The one idea:** Humans is ~40 small apps sharing a roof, not one big app. Each section should be understandable, testable, and replaceable on its own. Every rule below exists to protect that — and when you hit a case the rules don't cover, protect that.
 
-## Principles
-* (in progress, nearly final..) The application is split into a number of sections and this is implemented as a number of projects in the solution. 
-* Each section may have its own ui, services, domain model and database tables, and is responsible for its own data integrity and invariants. 
-* Sections may only interact through well-defined interfaces and APIs. The public surface area of the project is what's exposed to other sections, and should be minimal following standard api design principles.  The public surface area should be documented and reviewed for each section. 
-* The application is split into a number of vertical sections, each with its own domain model and database tables. Each section is responsible for its own data integrity and invariants, and **must** not reach into other sections' data or logic. Sections may only interact through well-defined interfaces and APIs. 
-* There are horizontal sections for cross-cutting concerns like Auth, and Audit.  It is a bad smell if a horizontal section reaches into a vertical section's data or logic.  Horizontal sections should only interact with vertical sections through well-defined interfaces and APIs.  Existing exceptions to this rule are considered tech debt and should be refactored to comply with the rules over time. 
-* Repositories must derive from IRepository, and only the repository may read or write to its section's tables. No other class may reference the DbContext directly or indirectly. 
-* A table must only exist in one repository. 
-* Services must derive from IApplicationService.  
-* Services may only call repositories on their own section, and may only call other services through their public interfaces. No service may reach into another section's repository or internal logic.
-* EF Objects must not be publically accessible at the project level, relegating them to private or internal as is appropriate for the section. Services may only pass DTOs or domain objects across section boundaries.  Repositories may only return EF objects to their own service, and services must map them to DTOs or domain objects before returning them to other sections.
-* Some services are orchestrators, organizing calls to multiple services. These should not call repositories.  
-* Controllers should not contain any logic beyond parsing the request, calling the appropriate service(s), and formatting the response. They can not call repositories.  They are responsible for formatting, sorting, filtering.  
-* CachingDecorators may not call repositories directly. They must call the inner service via the interface, and the inner service is responsible for calling the repository. This ensures that all calls to the repository go through the service layer, and that caching decorators do not bypass any business logic in the service.
+**Data ownership is the load-bearing wall.** A section that owns its tables can guarantee its invariants; the moment anything else reads or writes them, nobody can. That's why a table lives in exactly one repository, only the repository touches the DbContext, and everything crossing a section boundary is a DTO through a public interface. EF entities stay internal because an entity that escapes couples one section's schema to another section's code — the exact coupling the whole architecture exists to prevent. Crosscuts (Audit, Email, Auth) are tools every section may call: they own their own data and reach into nobody else's.
 
-## Preferences
-* Analyzers are preferred for enforcing call-site rules because they provide in-editor feedback and precise source locations. Tests are **not acceptable** for rules that fit the analyzer pattern, such as "no new violations from here" baselines. 
-* Reuse existing code/services/patterns where possible, rather than creating new ones. That said, do not reuse code, interfaces or patterns that violate these rules or are marked as tech debt. 
+**Layers keep the rules in one findable place.** Controllers only translate — parse the request, call services, format/sort/filter the response — so business logic lives where tests reach it. Services (`IApplicationService`) are the only repository callers so invariants are enforced exactly once. Caching decorators wrap the service interface, never the repository, so a cache hit and a miss run the same business logic. Orchestrators own no tables and call no repositories, so coordination never becomes a back door into data.
 
-## Patterns
-* IServiceRead interfaces for cross-section service calls. These are read-only interfaces that expose only the methods needed for other sections to call into the service, and they are implemented by the service itself. They serve as a clear contract for cross-section interactions and help prevent accidental coupling.
+**Public surface is a promise.** Every public member is something other sections will build on and we will maintain forever. Expose the narrowest contract that serves the caller — `I<Section>ServiceRead` for cross-section reads — document it, and treat each addition as needing a reason and review.
 
-## Tech debt
-- We have some existing cross-section references in the codebase that violate these rules. They are tech debt and should be refactored to comply with the rules over time. The presence of these references does not justify new ones.
+**Enforcement lives in analyzers,** because in-editor feedback at the exact line beats review vigilance and test archaeology. A red analyzer is the architecture answering you. Tests are not acceptable for rules that fit the analyzer pattern, such as "no new violations from here" baselines.
 
-### Examples of existing tech debt:
-* Everything in the Humans.Application.Tests/Architecture/Baselines folder - these are the existing violations of the rules that we are aware of and have documented. They should be used as a reference for what not to do, and as a starting point for refactoring to eliminate these violations over time.
-* Anything labeled with the GrandfatheredAttribute - these are known violations that we have explicitly allowed to exist for now, but they should be refactored to comply with the rules when possible. The attribute serves as a marker for technical debt that needs to be addressed.
-* Anything marked Obsolete
+**Existing violations are a map of debt, not a pattern library.** The architecture-test baselines, anything carrying `GrandfatheredAttribute`, and anything marked `Obsolete` are the violations we know about. Copying one creates new debt, never precedent. Reuse existing code and patterns wherever possible — but never ones that violate these rules or are marked as debt.
 
+## The absolutes
+
+- No surgical fixes. Fix it right, or record an issue to track fixing it later.
+- Never touch another section's tables.
+- Fix at the source, never hand-edit runtime state or reach for bypass flags (see the working rules).

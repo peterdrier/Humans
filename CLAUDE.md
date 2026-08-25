@@ -6,6 +6,6 @@
 
 @docs/architecture/peters-hard-rules.md
 
-**Peter's working rules — how to behave while working; same authority, same no-LLM-edits policy:**
+**Peter's working rules — the behavioral absolutes; same authority, same no-LLM-edits policy:**
 
 @docs/architecture/peters-working-rules.md

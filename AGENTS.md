@@ -37,8 +37,8 @@ Automated actions leave audit trails. An automation that acts invisibly is a bug
 
 The constitution of this repo is hand-written by Peter and is the final word, above this file and everything else:
 
-- [`docs/architecture/peters-hard-rules.md`](docs/architecture/peters-hard-rules.md) — how code is structured (sections, repositories, services, DTOs across boundaries).
-- [`docs/architecture/peters-working-rules.md`](docs/architecture/peters-working-rules.md) — how to behave while working (think before coding, simplicity first, surgical changes, brevity).
+- [`docs/architecture/peters-hard-rules.md`](docs/architecture/peters-hard-rules.md) — the intent behind the architecture (data ownership, layers, public surface) and the short list of absolutes.
+- [`docs/architecture/peters-working-rules.md`](docs/architecture/peters-working-rules.md) — the behavioral absolutes: fix at the source, a question gets an answer not a commit.
 
 Read both before your first change. LLMs never edit either file; changes to them come from Peter himself. If a rule fights the task in front of you, say so loudly and get Peter's sign-off — for hard rules there is no sign-off, only an issue recording the debt.
 
@@ -133,9 +133,11 @@ Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven
 
 - Width is a cost. The best cross-section feature is the one that touches the fewest lanes, through the narrowest interfaces (`I<Section>ServiceRead` for cross-section reads).
 - Reuse before adding ([`reuse-first-change-discipline`](memory/process/reuse-first-change-discipline.md)). Before any new file, public type, interface method, DTO, helper, endpoint, or DI registration: audit the existing owner and prefer reuse or caller-side composition. New public surface needs Peter's approval, and you should say which existing options you rejected and why.
+- Think before coding. Don't assume, don't hide confusion, surface tradeoffs. State your assumptions; if multiple interpretations exist, present them instead of picking silently; if a simpler approach exists, say so and push back.
 - Minimum code that solves the problem. No speculative flexibility, no abstractions for single-use code. If you wrote 200 lines and it could be 50, rewrite it.
 - Surgical changes. Every changed line traces to the request. Don't improve adjacent code; mention dead code, don't delete it.
+- Define success criteria, loop until verified. "Fix the bug" means "write a test that reproduces it, then make it pass" — strong criteria let you work independently; weak ones ("make it work") mean constant clarification.
 - Prefer in-memory data over clever queries. The whole dataset fits in RAM; act like it.
-- Brevity in everything you write — replies, commits, PR bodies, comments, docs. Never use 15 words where 5 will do.
+- Brevity in everything you write — replies, commits, PR bodies, comments, docs. Never use 15 words where 5 will do. Lead with the answer, and write it short the first time.
 
 Humans is licensed under **AGPL-3.0** (`LICENSE` at repo root).
