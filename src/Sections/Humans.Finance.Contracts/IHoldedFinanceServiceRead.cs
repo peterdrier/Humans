@@ -24,7 +24,7 @@ public interface IHoldedFinanceServiceRead
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Admin overview: every 400000xx creditor account - cached balances, member bindings and
+    /// <summary>Admin overview: every 400000xx creditor account — cached balances, member bindings and
     /// the Holded contacts carrying the account names. Names are blank when Holded is unreachable.</summary>
     /// <returns>Two halves of one partition. <c>Unresolved</c> is the bindings with no 400000xx at all,
     /// which no account row can carry; nothing retries the resolution, so returning them here is what
@@ -36,6 +36,6 @@ public interface IHoldedFinanceServiceRead
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Per-account statement: balance plus every journal line the Holded mirror holds for the
-    /// account - no window of its own, so the span is whatever the last sync swept. Null when none.</summary>
+    /// account — no window of its own, so the span is whatever the last sync swept. Null when none.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);
 }

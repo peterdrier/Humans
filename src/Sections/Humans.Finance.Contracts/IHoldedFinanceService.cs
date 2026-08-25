@@ -22,7 +22,7 @@ public interface IHoldedFinanceService : IApplicationService, IHoldedFinanceServ
     /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).</summary>
     Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Clears the member's creditor binding - the remedy for a wrong bind or a collision. Removes
+    /// <summary>Clears the member's creditor binding — the remedy for a wrong bind or a collision. Removes
     /// the whole row, not just the number: the contact id alone merges two members' payables just as
     /// thoroughly. The next push re-resolves. False when nothing was bound.</summary>
     Task<bool> ClearCreditorContactAsync(Guid userId, CancellationToken ct = default);

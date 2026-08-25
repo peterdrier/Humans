@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Finance;
 
 /// <summary>
-/// Finance's DI entry point, at the project root by convention. Discovered by Shell -
+/// Finance's DI entry point, at the project root by convention. Discovered by Shell —
 /// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
@@ -46,9 +46,9 @@ public sealed class Section : ISection
         services.AddScoped<Service>();
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IHoldedFinanceServiceRead>(sp => sp.GetRequiredService<Service>());
-        // /Finance/Holded's read model. Internal - this section's own screen is the only consumer.
+        // /Finance/Holded's read model. Internal — this section's own screen is the only consumer.
         services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
-        // Owns the user-scoped holded_creditor_contacts table - GDPR export contributor (design-rules 8a).
+        // Owns the user-scoped holded_creditor_contacts table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
     }
 }
