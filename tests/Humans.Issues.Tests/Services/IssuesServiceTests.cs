@@ -964,6 +964,63 @@ public sealed class IssuesServiceTests
     }
 
     // ==========================================================================
+    // Visibility predicate, against the real repository
+    //
+    // The substitute-backed tests above pin which arguments the service passes.
+    // These run the predicate itself: "in one of my sections OR reported by me".
+    // With a substitute returning [], flipping that OR to an AND still passes.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetIssueListAsync_role_holder_sees_own_section_and_own_reports_only()
+    {
+        var viewerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
+        SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var inSection = await SeedIssueRowAsync(
+            strangerId, IssueStatus.Open, "In my section", IssueSectionRouting.Tickets);
+        await SeedIssueRowAsync(
+            strangerId, IssueStatus.Open, "Someone else's section", IssueSectionRouting.Camps);
+        var ownReport = await SeedIssueRowAsync(
+            viewerId, IssueStatus.Open, "Mine, elsewhere", IssueSectionRouting.Camps);
+
+        var result = await _service.GetIssueListAsync(
+            new IssueListFilter(),
+            viewerId,
+            viewerRoles: [RoleNames.TicketAdmin],
+            viewerIsAdmin: false,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(i => i.Id).Should().BeEquivalentTo([inSection, ownReport]);
+    }
+
+    [HumansFact]
+    public async Task CountActionableAsync_counts_own_section_and_own_reports_only()
+    {
+        var viewerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
+        SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "In my section", IssueSectionRouting.Tickets);
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", IssueSectionRouting.Camps);
+        await SeedIssueRowAsync(viewerId, IssueStatus.Triage, "Mine, elsewhere", IssueSectionRouting.Camps);
+        await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", IssueSectionRouting.Tickets);
+
+        var count = await _service.GetActionableCountForViewerAsync(
+            viewerId,
+            viewerRoles: [RoleNames.TicketAdmin],
+            viewerIsAdmin: false,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(2);
+    }
+
+    // ==========================================================================
     // GDPR contributor
     // ==========================================================================
 
@@ -986,6 +1043,48 @@ public sealed class IssuesServiceTests
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_removes_own_issues_and_detaches_comments_elsewhere()
+    {
+        var aliceId = Guid.NewGuid();
+        var bobId = Guid.NewGuid();
+        SeedUser(aliceId, "Alice").Email = "a@a.com";
+        SeedUser(bobId, "Bob").Email = "b@b.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's");
+        var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
+
+        // Alice assigned to, and commented on, an issue that is not hers.
+        var bobRow = await _issuesDb.Issues.FirstAsync(
+            i => i.Id == bobIssue, Xunit.TestContext.Current.CancellationToken);
+        bobRow.AssigneeUserId = aliceId;
+        _issuesDb.IssueComments.Add(new IssueComment
+        {
+            Id = Guid.NewGuid(),
+            IssueId = bobIssue,
+            SenderUserId = aliceId,
+            Content = "Alice's comment on Bob's issue",
+            CreatedAt = Clock.GetCurrentInstant()
+        });
+        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.EraseForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
+
+        _issuesDb.ChangeTracker.Clear();
+        var remaining = await _issuesDb.Issues
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remaining.Select(i => i.Id).Should().Equal(bobIssue);
+        remaining[0].AssigneeUserId.Should().BeNull();
+        aliceIssue.Should().NotBe(bobIssue);
+
+        // Bob's thread keeps Alice's comment; only her authorship goes.
+        var comments = await _issuesDb.IssueComments
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        comments.Should().ContainSingle();
+        comments[0].SenderUserId.Should().BeNull();
     }
 
     // ==========================================================================
