@@ -1206,7 +1206,6 @@
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilidad y seguimiento de montaje</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Cuéntanos sobre tu alimentación</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Lo necesitamos para planificar las comidas de la cantina</value></data>

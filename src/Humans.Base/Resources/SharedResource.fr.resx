@@ -1205,8 +1205,7 @@
     <value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
-    <value>Build availability &amp; tracking</value>
-    <comment>TODO: translate — copied from English</comment>
+    <value>Disponibilité et suivi du montage</value>
   </data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Tell us about your food needs</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>
