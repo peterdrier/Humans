@@ -47,9 +47,10 @@ The question-shapes across the section's whole external surface.
 | 6 | *Pay it* | `POST /Store/Order/{id}/Pay`, `POST /Store/StripeWebhook` |
 | 7 | *Did the money arrive?* | `GET /Store/Admin/Payments`, `POST /Store/Admin/Payments/RecordMissing` |
 | 8 | *Bill it* | `POST /Store/Order/{id}/IssueInvoice` |
-| 9 | *What was ordered in total?* | `GET /Store/Admin/Summary`, `IStoreServiceRead.GetStoreSummaryAsync` |
+| 9 | *What was ordered in total?* | `GET /Store/Admin/Summary`, and the `/Admin` dashboard tile |
 
-Shape 9 is the only surface any other section can reach; everything else is `internal`.
+No shape here is reachable from another section: the whole surface is `internal`, and the tile
+that renders shape 9 on `/Admin` is Store's own class, composed by the Shell.
 
 ## 3. Structure
 
@@ -73,8 +74,9 @@ Written from the shapes, not from today's layout.
   processor's. All only translate.
 - **Vendor systems are reached through their own sections' contracts** — `IStripeService`,
   `IHoldedClient` — never their internals.
-- **One public contract seam**, shape 9, and the DTO graph it returns. Nothing else is public
-  except `Section` and `StoreResource`.
+- **No public contract seam.** Nothing outside the section reads Store, so nothing is public
+  except `Section` and `StoreResource`. A read contract gets added the day a second section
+  actually needs one — not in advance for the section's own admin tile.
 
 ## 4. Invariants
 

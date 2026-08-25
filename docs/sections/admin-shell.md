@@ -76,7 +76,7 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Teams:** `teams.total` tile (`ITeamServiceRead`).
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
 - **Email:** `email.outbox` tile (`IEmailOutboxServiceRead`).
-- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (`IStoreServiceRead`).
+- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (Store's internal `Service`).
 - **Expenses:** `expenses.reports` tile, gated to `FinanceAdminOrAdmin` (`IExpenseReportServiceRead`).
 - **Governance:** the "Tier applications" card (`IApplicationServiceRead`); also contributes the Voting sidebar pill's unvoted-application count.
 - **Debug:** the "User set membership" (Venn/UpSet) card.

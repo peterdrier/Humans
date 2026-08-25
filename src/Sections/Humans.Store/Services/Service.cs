@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
+using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Shifts.Contracts;
@@ -27,7 +28,7 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedClient holdedClient,
     IOptions<StoreSectionOptions> options,
-    ILogger<Service> logger) : IStoreServiceRead
+    ILogger<Service> logger) : IApplicationService
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
