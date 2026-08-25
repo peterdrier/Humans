@@ -69,6 +69,8 @@ public sealed class SurveyJsonExportBuilderTests
         answer.GetProperty("GridSelections").GetProperty("monday")[0].GetString().Should().Be("morning");
         answer.TryGetProperty("GridSelectionLabels", out _).Should().BeFalse();
         answer.TryGetProperty("SelectedLabels", out _).Should().BeFalse();
+        json.RootElement.GetProperty("Rows")[0].GetProperty("SubmittedAt").GetString()
+            .Should().Be("2026-08-25T06:00:00Z");
     }
 
     [HumansFact]

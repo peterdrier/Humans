@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Base.Extensions;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
-using NodaTime;
 
 namespace Humans.Surveys.Models;
 
@@ -34,7 +34,7 @@ internal static class SurveyJsonExportBuilder
                 row.Anonymity,
                 row.InputMethod,
                 row.Culture,
-                row.SubmittedAt,
+                row.SubmittedAt.ToIso8601(),
                 row.UserId,
                 row.UserName,
                 row.Answers.Select(answer => new SurveyJsonAnswer(
@@ -61,7 +61,7 @@ internal static class SurveyJsonExportBuilder
         ResponseAnonymity Anonymity,
         SurveyInputMethod InputMethod,
         string Culture,
-        Instant? SubmittedAt,
+        string? SubmittedAt,
         Guid? UserId,
         string? UserName,
         IReadOnlyList<SurveyJsonAnswer> Answers);
