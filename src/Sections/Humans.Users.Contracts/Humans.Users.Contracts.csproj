@@ -29,7 +29,7 @@
       AccountMergeRequest — are internal in Humans.Users/Domain/ as the Camps precedent
       wants.
 
-      The four Users/Profiles enums (UserState, ProfileState, ContactFieldType,
+      The three Users/Profiles enums (UserState, ContactFieldType,
       ContactFieldVisibility), which PR A could not take because Humans.Domain's entities
       declared columns of those types. The entities are here now, so the cycle is gone.
 
