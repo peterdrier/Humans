@@ -66,7 +66,7 @@ Written from the shapes, not from today's layout.
   gate and issuance's freeze. Any second place that adds a line up is a defect.
 - **Authorization is resource-based and lives in one handler.** Every "may this actor do this to
   this order" question — including the per-product ordering deadline — is answered by
-  `OrderAuthorizationHandler` against one of three resources (the order, a create context, a
+  `OrderAuthorizationHandler` against one of its resources (the order, a create context, a
   line context). No controller re-derives a rule; no service re-checks a role.
 - **Controllers split by audience, not by verb.** `StoreController` is the counterparty's
   surface, `StoreAdminController` the admin's, `StoreStripeWebhookController` the payment
