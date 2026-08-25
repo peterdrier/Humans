@@ -99,23 +99,6 @@ public class MailerLiteArchitectureTests
         }
     }
 
-    /// <summary>
-    /// The class-level policy is only a gate while no action opts out of it.
-    /// </summary>
-    [HumansFact]
-    public void NoAction_OptsOutOfAuthorization()
-    {
-        var offenders = SectionAssembly
-            .GetTypes()
-            .Where(t => typeof(Controller).IsAssignableFrom(t) && t is { IsAbstract: false })
-            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            .Where(m => m.GetCustomAttribute<AllowAnonymousAttribute>(inherit: true) is not null)
-            .Select(m => $"{m.DeclaringType!.Name}.{m.Name}")
-            .ToList();
-
-        offenders.Should().BeEmpty("no MailerLite admin action may be anonymous");
-    }
-
     [HumansFact]
     public void MailerLiteAudienceSyncService_LivesInSectionServicesNamespace()
     {

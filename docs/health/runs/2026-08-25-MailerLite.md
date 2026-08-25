@@ -131,7 +131,10 @@ Value order. Effort is a column, never the sort key. Execution ran `cut → dele
     Negative Access Rule — "Non-admins **cannot** access any `/MailerLite/Admin/*` route" — has no
     effective CI coverage. A reflection check on the controller's `[Authorize(Policy = …)]` attribute
     in `MailerLiteArchitectureTests` would restore a real gate without touching the excluded suite.
-    *(fix — struck)*
+    *(fix — struck: `EveryController_IsAdminOnly`.)* The strike also shipped a second test asserting
+    no action carries `[AllowAnonymous]`; Codex rejected it on review and was right —
+    `docs/architecture/code-review-rules.md` §"Tests Asserting an Absence" bans exactly that shape.
+    Removed in review round 2, leaving the positive policy check finding 17 actually called for.
 18. **Invariants the sync-service tests state but do not exercise.** The suppressed-status
     exclusion is tested only for `unsubscribed`, never `bounced` or `junk`, though the invariant names
     all three — and `bounced`/`junk` are covered only in the *debug builder's* copy of the rule, which
@@ -229,6 +232,13 @@ a lone unread wire-DTO field would not have been — and it then produced findin
 was half-done. The other wasted round was the dedup reject (finding 25): an extension method written
 without checking `memory/code/`, reworked to a plain static one commit later.
 
+**The pattern the review rounds exposed:** three of this run's four rejected outputs — the extension
+method, the derived counts, the `[AllowAnonymous]` absence test — were written correctly against the
+*problem* and wrongly against a rule that already existed and that nothing in the phase forced me to
+open. The reviewer subagent caught one; Codex caught two after the PR. The gap is that Phase 4 checks
+`memory/INDEX.md` when a change *feels* rule-adjacent, which is exactly when the miss does not happen.
+See the Phase 4 retro item below.
+
 **What the assessment missed that striking revealed:** the `.csproj`'s stale `Contracts/…` path
 (finding 15) surfaced only when the file was opened for the deletion commit — no thread claimed
 `.csproj` *comments*, only its references. Comment prose inside build files is a real surface and
@@ -236,13 +246,14 @@ nothing in the thread table currently owns it.
 
 **What the target diff says:** there is no previous target — this is MailerLite's first run, so
 `Docs/health.md` is new. The exercise of writing §2 (the shapes) before scanning is what produced
-findings 5, 6 and 7: grouping six questions against nine service methods made the three duplicated
-pipelines visible as *one* observation rather than three separate ones.
+findings 5, 6 and 7: grouping the questions the section answers against the service methods that
+answer them made the duplicated pipelines visible as *one* observation rather than several separate
+ones.
 
 ## Needs Peter
 
 - [ ] 3 — the dashboard's permanently-blank drift row: compute `HumansOptedInMlAbsent`, or drop the row until it can be?
-- [ ] 25 — Phase 4: before a dedup strike extracts a shared helper over another section's contract interface, grep `memory/code/` for the shape being created — this run's reviewer rejected an extension method that `no-extensions-for-owned-classes` forbids unconditionally. Add the grep to the dedup play?
+- [ ] 25 — Phase 4: before a strike writes anything new, check the rule that governs the *shape* being written, not the problem being solved — `memory/INDEX.md` for code shapes, `docs/architecture/code-review-rules.md` for test and doc shapes. This run shipped three violations of rules that already existed (extension method over a contract interface; derived counts in prose; a test asserting an absence), each caught only by a reviewer. Generalise the dedup play's grep into a shape check across all five plays?
 - [ ] 26 — Phase 5: state that `## Worked` and `## File coverage` are written after Phase 4 closes, never ahead of it. This run drafted both early and eleven coverage rows were wrong at PR time.
 
 ## Sweep queue

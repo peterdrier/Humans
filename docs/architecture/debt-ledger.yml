@@ -268,6 +268,9 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-25
+    what: "tests/Humans.MailerLite.Tests/Audiences/TicketNoShiftsAudienceTests.ComputeMemberUserIdsAsync_DoesNotInjectShiftSignupOrManagementService asserts the ctor has no IShiftSignups / IShiftManagementServiceRead parameter — 'no ctor parameter of some type' is named verbatim by docs/architecture/code-review-rules.md 'Tests Asserting an Absence' (memory/architecture/no-tests-for-absences.md). Predates this branch (nobodies-collective/Humans#1417); surfaced when Codex rejected a new sibling absence test on peterdrier/Humans#1513. Delete it, keeping the positive IShiftView assertion."
+    review: light
+  - added: 2026-08-25
     what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
     review: panel
   - added: 2026-08-22
