@@ -64,7 +64,7 @@
                     data-debug-nav="/MailerLite/Admin/Audiences/{key}/Debug">
                 @foreach (var a in Model.AvailableAudiences)
                 {
-                    <option value="@a.Key" selected="@(a.Key == Model.SelectedKey)">@a.GroupName</option>
+                    <option value="@a.Key" selected="@(a.Key == Model.SelectedKey ? "selected" : null)">@a.GroupName</option>
                 }
             </select>
             <span class="text-muted small ms-2">→ <code>@Model.SelectedMailerLiteGroupName</code></span>
@@ -320,11 +320,5 @@
                 if (tpl) window.location.href = tpl.replace('{key}', encodeURIComponent(sel.value));
             });
         }
-        document.querySelectorAll('form[data-confirm]').forEach(function (form) {
-            form.addEventListener('submit', function (ev) {
-                var msg = form.getAttribute('data-confirm');
-                if (msg && !window.confirm(msg)) ev.preventDefault();
-            });
-        });
     })();
 </script>
