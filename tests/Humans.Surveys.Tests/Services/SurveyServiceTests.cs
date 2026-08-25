@@ -2599,6 +2599,46 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task GetResultsAsync_orders_identified_respondents_by_submission_time()
+    {
+        var surveyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>();
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var earlierUser = Guid.NewGuid();
+        var laterUser = Guid.NewGuid();
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>
+            {
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    now, laterUser),
+                SubmittedResponse(
+                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    now - Duration.FromMinutes(5), earlierUser),
+            });
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [earlierUser] = UserInfoWithName(earlierUser, "Earlier"),
+                    [laterUser] = UserInfoWithName(laterUser, "Later"),
+                }));
+
+        var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
+
+        result!.IdentifiedRespondents.Select(respondent => respondent.Name)
+            .Should().ContainInOrder("Earlier", "Later");
+        result.IdentifiedRespondents.Select(respondent => respondent.SubmittedAt)
+            .Should().BeInAscendingOrder();
+    }
+
+    [HumansFact]
     public async Task GetResultsAsync_builds_funnel_from_started_count_public_count_and_input_method_splits()
     {
         var surveyId = Guid.NewGuid();

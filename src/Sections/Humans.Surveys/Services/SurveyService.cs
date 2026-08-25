@@ -1330,6 +1330,8 @@ internal sealed class SurveyService(
     {
         var identified = responses
             .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
+            .OrderBy(r => r.SubmittedAt)
+            .ThenBy(r => r.Id)
             .ToList();
         if (identified.Count == 0) return [];
 
