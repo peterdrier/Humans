@@ -869,7 +869,8 @@ internal sealed class Service(
     }
 
     public async Task<SepaPayoutResult> GenerateSepaPayoutAsync(
-        IReadOnlyList<SepaPayoutSelection> selections, Guid actorUserId, CancellationToken ct = default)
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
+        CancellationToken ct = default)
     {
         var settings = GetSepaPayoutSettings();
         if (settings.UnavailableReason is { } unavailable)
@@ -941,7 +942,7 @@ internal sealed class Service(
             Debtor: new SepaDebtor(
                 sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
                 sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
-            MaxAmountPerTransfer: sepa.Value.MaxPayoutPerTransfer,
+            MaxAmountPerTransfer: maxPerTransfer,
             Transfers: transfers
                 .Select(t => new SepaTransfer("E" + t.Id.ToString("N"), t.CreditorName, t.Iban, t.Amount))
                 .ToList());

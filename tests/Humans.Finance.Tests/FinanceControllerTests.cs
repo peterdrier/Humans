@@ -1,10 +1,15 @@
+using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -27,6 +32,31 @@ public class FinanceControllerTests
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, NullLogger<FinanceController>.Instance);
+
+    /// <summary>A controller wired with a real HttpContext and TempData, for actions
+    /// (<see cref="FinanceController.GenerateSepa"/>) that need <c>GetCurrentUserId</c> or
+    /// <c>SetError</c> to work rather than throw.</summary>
+    private FinanceController MakeControllerWithHttpContext(Guid userId)
+    {
+        var controller = MakeController();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(),
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], authenticationType: "test")),
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = http,
+            ActionDescriptor = new ControllerActionDescriptor
+                { ActionName = nameof(FinanceController.GenerateSepa) },
+        };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        return controller;
+    }
 
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
         new(userId, $"contact-{userId:N}"[..12], num, CreditorContactSource.Auto);
@@ -169,6 +199,44 @@ public class FinanceControllerTests
 
         page.Accounts.Should().BeEmpty();
         page.Unresolved.Should().ContainSingle().Which.MemberName.Should().Be("Bo");
+    }
+
+    // ─── SEPA generation cap ─────────────────────────────────────────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData("not-a-number")]
+    [Xunit.InlineData("0")]
+    [Xunit.InlineData("-5.00")]
+    public async Task GenerateSepa_UnparseableOrNonPositiveCap_RefusesWithoutCallingTheService(string cap)
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.GenerateSepa(
+            [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, cap,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName
+            .Should().Be(nameof(FinanceController.Creditors));
+        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().NotBeNull();
+        await _connector.DidNotReceive().GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepa_ValidCap_ParsesInvariantlyAndPassesItToTheService()
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult("f.xml", "<xml/>", null));
+
+        await controller.GenerateSepa(
+            [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, "75.00",
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _connector.Received(1).GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), 75.00m, Ana, Arg.Any<CancellationToken>());
     }
 
     // ─── Statement ───────────────────────────────────────────────────────────────

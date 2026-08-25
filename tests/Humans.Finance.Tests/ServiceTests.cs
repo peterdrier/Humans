@@ -1986,7 +1986,7 @@ public class HoldedFinanceServiceTests
         SeedPayableCreditor();
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2003,7 +2003,7 @@ public class HoldedFinanceServiceTests
 
         var actor = Guid.NewGuid();
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 12.34m)], actor,
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, actor,
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
@@ -2036,10 +2036,10 @@ public class HoldedFinanceServiceTests
         var service = MakeService();
 
         var first = await service.GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
         var second = await service.GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         first.Succeeded.Should().BeTrue();
@@ -2054,7 +2054,7 @@ public class HoldedFinanceServiceTests
         SeedPayableCreditor(owed: 30m);
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 30.01m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 30.01m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2070,13 +2070,43 @@ public class HoldedFinanceServiceTests
         SeedPayableCreditor(owed: 300m);
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 60m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 60m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("cap");
         await _repo.DidNotReceive().AddSepaPayoutAsync(
             Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>The posted cap governs, not the config default: a lower cap entered on the screen
+    /// refuses an amount the old €50 default would have allowed.</summary>
+    [HumansFact]
+    public async Task GenerateSepaPayout_AboveThePostedCapButBelowTheConfigDefault_RefusesTheWholeBatch()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 30m);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 25m)], 20m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("cap");
+    }
+
+    /// <summary>Raising the cap on the screen above the config default is honoured, not clamped.</summary>
+    [HumansFact]
+    public async Task GenerateSepaPayout_AboveTheConfigDefaultButBelowThePostedCap_IsAccepted()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 100m);
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 60m)], 100m, Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
     }
 
     [HumansFact]
@@ -2086,7 +2116,7 @@ public class HoldedFinanceServiceTests
         SeedPayableCreditor(owed: 30m);
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
@@ -2100,7 +2130,7 @@ public class HoldedFinanceServiceTests
         SeedPayableCreditor(iban: null);
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -2145,7 +2175,7 @@ public class HoldedFinanceServiceTests
         SeedTwoContactsOnOneAccount();
 
         var result = await MakeService().GenerateSepaPayoutAsync(
-            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
             Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();

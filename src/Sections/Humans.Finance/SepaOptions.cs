@@ -20,7 +20,8 @@ internal sealed class SepaOptions
     /// Never inferred: Sabadell rejects a file presented under an id it did not issue.</summary>
     public string? CreditorIdentifier { get; set; }
 
-    /// <summary>Hard ceiling on a single transfer. Any selected amount above it refuses the whole
-    /// generation — a mistyped payout is far more expensive than a re-run.</summary>
+    /// <summary>Prefill default for the per-transfer cap on <c>/Finance/Creditors</c>. The admin can
+    /// change it per batch; the posted value, not this one, is what <see cref="Services.Service.GenerateSepaPayoutAsync"/>
+    /// enforces.</summary>
     public decimal MaxPayoutPerTransfer { get; set; } = 50m;
 }

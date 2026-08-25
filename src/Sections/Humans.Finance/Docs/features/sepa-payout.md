@@ -21,24 +21,32 @@ A partial payout is legitimate. The remainder stays on the balance and stays vis
 | `Sepa:CreditorIban` | yes | The account the money leaves → `DbtrAcct/Id/IBAN`. The flat `SEPA_CREDITOR_IBAN` env var overrides it, for deployments that cannot use dotted keys. |
 | `Sepa:CreditorIdentifier` | yes | Presenter id (NIF + 3-char suffix) → `InitgPty/Id/OrgId/Othr/Id` |
 | `Sepa:CreditorBic` | no | → `DbtrAgt/FinInstnId/BICFI`; omitted entirely when unset |
-| `Sepa:MaxPayoutPerTransfer` | no | Hard per-transfer ceiling, default **50** |
+| `Sepa:MaxPayoutPerTransfer` | no | Per-transfer cap **prefill default**, **50**; the admin can raise or lower it per batch on the screen |
 
 The names are the pre-existing `Sepa:*` keys. "Creditor" is their historical spelling; in a payout
 the organisation is the *debtor*, and that is where the values land. With any required key unset the
 page says payout is unavailable and names the missing keys — nothing is ever inferred.
+
+The per-transfer cap itself is **not** config-only: `/Finance/Creditors` shows it as an editable
+field next to the Generate button, prefilled from `Sepa:MaxPayoutPerTransfer`, and the value posted
+with the batch is what `GenerateSepaPayoutAsync` enforces — changing the cap for a one-off batch no
+longer needs a redeploy.
 
 ## Flow
 
 1. `FinanceController.Creditors` renders each row's payability. Payable = **exactly one binding**,
    **positive balance from the member's side**, **an IBAN on the Holded contact**. Anything else
    shows the reason (`unbound`, `collision`, `nothing owed`, `no IBAN in Holded`) in place of a box.
-2. The checkboxes and amount boxes belong to a standalone `#sepaForm` via the HTML5 `form`
-   attribute — each row already carries an Unbind form and forms cannot nest.
-3. `POST /Finance/Sepa/Generate` (`FinanceAdminOrAdmin`, antiforgery) parses the amounts
+2. The checkboxes, amount boxes and the per-transfer cap field belong to a standalone `#sepaForm`
+   via the HTML5 `form` attribute — each row already carries an Unbind form and forms cannot nest.
+   The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch.
+3. `POST /Finance/Sepa/Generate` (`FinanceAdminOrAdmin`, antiforgery) parses the amounts and the cap
    **invariantly** rather than through model binding, which would use the request culture and read
-   `12.34` as `1234` under a comma-decimal locale.
-4. `Service.GenerateSepaPayoutAsync` re-derives payability server-side, checks each amount against
-   the balance, resolves the payee's name and unmasked IBAN from the cached Holded contact list
+   `12.34` as `1234` under a comma-decimal locale. An unparseable or non-positive cap refuses the
+   whole batch before any selection is looked at.
+4. `Service.GenerateSepaPayoutAsync` takes the posted cap as a parameter (the config key is only the
+   screen's prefill default), re-derives payability server-side, checks each amount against the
+   balance, resolves the payee's name and unmasked IBAN from the cached Holded contact list
    **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row. Two
    Holded contacts can share one 400000xx; keying by account number instead would pay whichever of
    them Holded happened to list first, which is not necessarily the bound member.
@@ -93,6 +101,7 @@ Server-side, all-or-nothing:
 
 | Condition | Where |
 |-----------|-------|
+| Posted cap unparseable or not positive | controller |
 | Required config missing | service |
 | Nothing selected, or one account selected twice | service |
 | Account unbound, or bound to more than one member | service |
@@ -122,9 +131,11 @@ the bank was given, and Spanish law requires the books and their supporting docu
 `tests/Humans.Finance.Tests/SepaPaymentFileBuilderTests.cs` covers the builder end to end. Because
 `Build` validates every file it returns against the embedded XSD, any test that receives a string
 has already proved schema conformance — there is no separate validation test.
-`ServiceTests.cs` covers the service-side gates: unavailable config, over-balance, over-cap, partial
-amounts, missing IBAN, the masked-only audit entry, two contacts on one account paying the bound one,
-and the masked Article 15 slice.
+`ServiceTests.cs` covers the service-side gates: unavailable config, over-balance, over-cap (the
+posted cap governs, not the config default), partial amounts, missing IBAN, the masked-only audit
+entry, two contacts on one account paying the bound one, and the masked Article 15 slice.
+`FinanceControllerTests.cs` covers the posted-cap parsing: unparseable or non-positive refuses
+before the service is called, a valid cap is parsed invariantly and passed through.
 
 ## Not done here
 

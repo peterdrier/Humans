@@ -23,7 +23,10 @@ internal interface IHoldedFinanceAdminService : IApplicationService
 
     /// <summary>Validates the selection, persists the payout record and returns the pain.001.001.09
     /// file. All-or-nothing: any bad row refuses the whole generation. Nothing is stamped onto a
-    /// report or a member — settlement closes through Holded and the next ledger sync.</summary>
+    /// report or a member — settlement closes through Holded and the next ledger sync.
+    /// <paramref name="maxPerTransfer"/> is the cap entered on the screen for this batch; the caller
+    /// has already validated it is positive.</summary>
     Task<SepaPayoutResult> GenerateSepaPayoutAsync(
-        IReadOnlyList<SepaPayoutSelection> selections, Guid actorUserId, CancellationToken ct = default);
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
+        CancellationToken ct = default);
 }

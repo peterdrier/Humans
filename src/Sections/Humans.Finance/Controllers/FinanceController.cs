@@ -112,9 +112,18 @@ internal sealed class FinanceController(
     [HttpPost("Sepa/Generate")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateSepa(
-        int[] selected, Dictionary<int, string> amounts, CancellationToken ct)
+        int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        // Posted per batch, same invariant-parse reasoning as the amounts below: the posted value is
+        // authoritative, the config key (Sepa:MaxPayoutPerTransfer) is only the prefill default.
+        if (!decimal.TryParse(maxPerTransfer, NumberStyles.Number, CultureInfo.InvariantCulture, out var cap)
+            || cap <= 0m)
+        {
+            SetError("The per-transfer cap must be a positive amount.");
+            return RedirectToAction(nameof(Creditors));
+        }
 
         // A checkbox posts only when ticked, so `selected` is the batch; the amount box next to it
         // is keyed by the same account number. Parsed invariantly and not by model binding, which
@@ -129,7 +138,7 @@ internal sealed class FinanceController(
                     : 0m))
             .ToList();
 
-        var result = await holdedConnector.GenerateSepaPayoutAsync(picked, actorUserId, ct);
+        var result = await holdedConnector.GenerateSepaPayoutAsync(picked, cap, actorUserId, ct);
         if (!result.Succeeded)
         {
             SetError(result.ErrorMessage!);
