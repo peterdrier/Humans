@@ -97,7 +97,8 @@ violation, never edit a baseline the code still triggers.
   Issues thread/audit/cache behavior, the Expenses guide, stale Events references, and
   Finance navigation without an active year are covered or corrected. Data-access notes
   now live with their Users-owned lifecycle services; Base error toasts no longer require
-  a DI fixture; and the Events moderation approval flow is covered. Full solution tests
+  a DI fixture; and the Events moderation approval flow is covered. Onboarding banner and
+  Shifts availability controls are localized in every supported culture. Full solution tests
   passed after each pushed set.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
