@@ -434,7 +434,7 @@ public class ServiceTeamOrdersTests
             });
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateOrderAsync(seasonId, null, Guid.NewGuid(), TestContext.Current.CancellationToken));
+            () => _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     private static OrderDto MakeOrderDto(
@@ -448,7 +448,6 @@ public class ServiceTeamOrdersTests
             CounterpartyType: counterpartyType,
             CounterpartyDisplayName: counterpartyType.ToString(),
             Year: 2026,
-            Label: null,
             State: OrderState.Open,
             CounterpartyName: null,
             CounterpartyVatId: null,

@@ -331,7 +331,7 @@ internal sealed class Service(
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
-    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
+    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
             ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
@@ -354,8 +354,7 @@ internal sealed class Service(
         await repo.AddOrderAsync(order, ct);
         await audit.LogAsync(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
-            $"Created store order for camp season {campSeasonId}" +
-            (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
+            $"Created store order for camp season {campSeasonId}",
             actorUserId);
         return order.Id;
     }
@@ -623,8 +622,7 @@ internal sealed class Service(
         if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
             throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
 
-        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}"
-            + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
+        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
 
         return stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
@@ -1371,7 +1369,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Camp,
                 sid,
                 campName,
-                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totalDue,
                 totals.PaymentsTotalEur,
@@ -1387,7 +1384,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Team,
                 tid,
                 teamName,
-                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
                 0m, // team orders never have payments
@@ -1522,7 +1518,6 @@ internal sealed class Service(
             counterpartyType,
             displayName,
             o.Year,
-            null, // Label removed from the UI (#816); column retained, unused.
             o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,

@@ -11,7 +11,6 @@ internal sealed record OrderDto(
     OrderCounterpartyType CounterpartyType,
     string CounterpartyDisplayName,
     int Year,
-    string? Label,
     OrderState State,
     string? CounterpartyName,
     string? CounterpartyVatId,

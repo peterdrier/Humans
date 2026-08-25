@@ -180,7 +180,6 @@ public class OrderAuthorizationHandlerTests
             CounterpartyType: team ? OrderCounterpartyType.Team : OrderCounterpartyType.Camp,
             CounterpartyDisplayName: "x",
             Year: 2026,
-            Label: null,
             State: state,
             CounterpartyName: null,
             CounterpartyVatId: null,
