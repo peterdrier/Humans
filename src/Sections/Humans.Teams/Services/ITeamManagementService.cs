@@ -458,19 +458,6 @@ internal interface ITeamManagementService : ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Loads the Team rows for the requested IDs <b>and</b> any referenced parent
-    /// teams, so the caller can resolve the "department" (parent or self) for each
-    /// team via dictionary lookups without navigating <c>team.ParentTeam</c>. Used
-    /// by the shift coordinator dashboard to stitch department rows in memory after
-    /// moving off a cross-domain <c>.Include(Rota).ThenInclude(Team).ThenInclude(ParentTeam)</c>
-    /// chain. Returned teams are not active-filtered — shifts/rotas may still
-    /// reference deactivated teams and the caller still needs the name.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
     /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
     /// a restricted seed/migration-only path; production membership changes must go through

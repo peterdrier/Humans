@@ -1808,11 +1808,6 @@ internal sealed class TeamService(
         }
     }
 
-    public Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        repo.GetByIdsWithParentsAsync(teamIds, cancellationToken);
-
     // ==========================================================================
     // ITeamSeeding — the dev/demo fixture surface. Explicit implementations: the members of
     // the same names on this class return the section's entities, which cannot leave the
