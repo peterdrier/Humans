@@ -44,27 +44,27 @@ using Humans.Web.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "Humans.Web")
-    .Enrich.With<PiiRedactionEnricher>()
-    .Enrich.With<CurrentUserEnricher>()
-    .WriteTo.Console()
-    .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Warning);
-
-if (Debugger.IsAttached)
+builder.Services.AddSingleton<InMemoryLogSink>();
+builder.Host.UseSerilog((_, services, logConfig) =>
 {
-    var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "human");
-    Directory.CreateDirectory(logDir);
-    logConfig.WriteTo.File(
-        Path.Combine(logDir, "humans-.log"),
-        rollingInterval: RollingInterval.Day);
-}
+    logConfig
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "Humans.Web")
+        .Enrich.With<PiiRedactionEnricher>()
+        .Enrich.With<CurrentUserEnricher>()
+        .WriteTo.Console()
+        .WriteTo.Sink(services.GetRequiredService<InMemoryLogSink>(), LogEventLevel.Warning);
 
-Log.Logger = logConfig.CreateLogger();
-
-builder.Host.UseSerilog();
+    if (Debugger.IsAttached)
+    {
+        var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "human");
+        Directory.CreateDirectory(logDir);
+        logConfig.WriteTo.File(
+            Path.Combine(logDir, "humans-.log"),
+            rollingInterval: RollingInterval.Day);
+    }
+}, preserveStaticLogger: true);
 
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
@@ -859,12 +859,8 @@ try
 }
 catch (Exception ex)
 {
-    LogStartupFailure(ex, builder.Configuration);
+    LogStartupFailure(ex, builder.Configuration, app.Logger);
     throw;
-}
-finally
-{
-    Log.CloseAndFlush();
 }
 
 /// <summary>
@@ -873,12 +869,12 @@ finally
 /// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
 /// generic message for anything else, so a startup failure is never silently unlabeled.
 /// </summary>
-static void LogStartupFailure(Exception ex, IConfiguration configuration)
+static void LogStartupFailure(Exception ex, IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
 {
     var pgEx = FindException<NpgsqlException>(ex);
     if (pgEx is null)
     {
-        Log.Fatal(ex, "Application terminated unexpectedly");
+        logger.LogCritical(ex, "Application terminated unexpectedly");
         return;
     }
 
@@ -889,11 +885,11 @@ static void LogStartupFailure(Exception ex, IConfiguration configuration)
 
     if (pgEx is PostgresException { SqlState: PostgresErrorCodes.InvalidCatalogName })
     {
-        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
+        logger.LogCritical(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
     }
     else
     {
-        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
+        logger.LogCritical(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
     }
 }
 
