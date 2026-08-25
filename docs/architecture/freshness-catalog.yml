@@ -330,6 +330,7 @@ mechanical:
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees:
+  - AGENTS.md
   - docs/sections/
   - docs/features/
   - docs/guide/
