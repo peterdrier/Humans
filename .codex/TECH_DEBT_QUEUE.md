@@ -2193,6 +2193,16 @@ Validation:
 Next:
 - Continue auditing for similarly stale suppressions and safe boundary reductions.
 
+## 2026-08-25 checkpoint - narrow ProfileController obsolete suppression
+Done:
+- Removed the controller-wide `CS0618` suppression left over from removed RoleAssignment navigation reads.
+- Scoped the remaining suppression to the single legacy `User.GoogleEmailStatus` compatibility projection.
+Validation:
+- Humans.Web build: 0 errors.
+- ProfileController and service-boundary tests: 4 passed.
+Next:
+- Continue the autonomous audit loop while preserving intentional compatibility suppressions.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.
