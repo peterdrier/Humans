@@ -95,7 +95,9 @@ violation, never edit a baseline the code still triggers.
   (nobodies-collective/Humans#1145); Shifts boolean controls and Events literal search
   work correctly; Users profile email messages are restored; Events controller policies,
   Issues thread/audit/cache behavior, the Expenses guide, stale Events references, and
-  Finance navigation without an active year are covered or corrected. Full solution tests
+  Finance navigation without an active year are covered or corrected. Data-access notes
+  now live with their Users-owned lifecycle services; Base error toasts no longer require
+  a DI fixture; and the Events moderation approval flow is covered. Full solution tests
   passed after each pushed set.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
