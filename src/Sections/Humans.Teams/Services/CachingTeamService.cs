@@ -156,9 +156,6 @@ internal sealed class CachingTeamService(
         return result;
     }
 
-    public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetAllTeamsAsync(cancellationToken));
-
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default)

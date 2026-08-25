@@ -1666,7 +1666,7 @@ internal sealed class GoogleWorkspaceSyncService(
             parentId => parentId,
             _ => new List<TeamActiveMemberSnapshot>());
 
-        // GetAllTeamsAsync returned active teams only, so preserve the active
+        // GetTeamsAsync returns the cached team projection; preserve the active
         // child-team filter; TeamInfo.Members are already active-only.
         foreach (var team in teamsById.Values
             .Where(t => t.IsActive && t.ParentTeamId is { } parentId && parentSet.Contains(parentId)))
