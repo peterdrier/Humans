@@ -73,6 +73,7 @@ internal sealed class SurveyResultsViewModel
     public int SelectedResponseCount { get; init; }
     public IReadOnlyList<SurveyResultsQuestionViewModel> Questions { get; init; } = [];
     public IReadOnlyList<SurveyResultsRespondentViewModel> Respondents { get; init; } = [];
+    public bool ShowIdentifiedRespondents => Scope != SurveyResultsScope.Anonymous;
 }
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>
