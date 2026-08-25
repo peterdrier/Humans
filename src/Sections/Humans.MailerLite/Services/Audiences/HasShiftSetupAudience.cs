@@ -9,11 +9,12 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class HasShiftSetupAudience(
     IShiftView shiftView,
-    IUserServiceRead users) : HasShiftInPeriodAudienceBase(shiftView, users)
+    IUserServiceRead users) : ShiftViewAudienceBase(shiftView, users)
 {
     public override string Key => "has-shift-setup";
     public override string DisplayName => "Volunteers with a setup shift";
     public override string MailerLiteGroupName => "Humans - Has Shift - Setup";
 
-    protected override ShiftPeriod Period => ShiftPeriod.Build;
+    protected override bool Matches(ShiftUserSummary summary) =>
+        summary.HasShiftInPeriod(ShiftPeriod.Build);
 }

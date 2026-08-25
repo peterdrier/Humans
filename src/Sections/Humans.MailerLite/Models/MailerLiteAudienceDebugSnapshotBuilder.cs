@@ -19,11 +19,6 @@ namespace Humans.MailerLite.Models;
 /// </remarks>
 internal static class MailerLiteAudienceDebugSnapshotBuilder
 {
-    // Mirrors MailerLiteAudienceSyncService.UnsubscribedStatuses so the debug page
-    // previews what Sync will actually do. If you change one, change both.
-    private static readonly HashSet<string> SuppressedSubscriberStatuses =
-        new(StringComparer.OrdinalIgnoreCase) { "unsubscribed", "bounced", "junk" };
-
     public static async Task<DebugSnapshot> BuildAsync(
         IMailerLiteAudience audience,
         IMailerLiteService ml,
@@ -106,7 +101,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             foreach (var s in subscribers)
             {
                 if (!s.GroupIds.Contains(group.Id, StringComparer.Ordinal)) continue;
-                if (SuppressedSubscriberStatuses.Contains(s.Status)) continue;
+                if (s.IsSuppressed) continue;
                 emailToUser.TryGetValue(s.Email, out var matchedUser);
                 var name = matchedUser?.BurnerName ?? "—";
                 currentlyInMl.Add(new DebugMlRow(

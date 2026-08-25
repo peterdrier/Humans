@@ -4,9 +4,8 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
-/// "Humans - Has Ticket" — humans with a Valid/CheckedIn matched ticket
-/// attendee in the active vendor event (buyer-only excluded — see
-/// derived from the ticket order projection).
+/// "Humans - Has Ticket" — humans holding a ticket to the active vendor event, as
+/// defined by <see cref="CurrentEventTicketHolders.ForCurrentEventAsync"/>.
 /// </summary>
 internal sealed class HasTicketAudience(
     ITicketServiceRead tickets,
@@ -18,13 +17,6 @@ internal sealed class HasTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var orders = await tickets.GetTicketOrdersAsync(ct);
-        return orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .Where(a => a.MatchedUserId.HasValue
-                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
-            .Select(a => a.MatchedUserId!.Value)
-            .ToHashSet();
+        return await tickets.ForCurrentEventAsync(ct);
     }
 }

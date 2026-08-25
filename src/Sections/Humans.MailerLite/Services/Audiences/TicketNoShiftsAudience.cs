@@ -13,7 +13,7 @@ namespace Humans.MailerLite.Services.Audiences;
 /// <remarks>
 /// Reads shifts state through <see cref="IShiftView"/> — the cached read
 /// surface — so opening the MailerLite audience debug page doesn't burn DB
-/// queries on every render. <see cref="Dtos.Shifts.ShiftUserView.HasShift"/>
+/// queries on every render. <see cref="ShiftUserSummary.HasShift"/>
 /// already encodes the Pending/Confirmed-on-active-event rule.
 /// </remarks>
 internal sealed class TicketNoShiftsAudience(
@@ -27,14 +27,7 @@ internal sealed class TicketNoShiftsAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        // Returns Valid/CheckedIn matched attendees (buyer-only excluded) — see ITicketServiceRead.
-        var ticketHolders = (await tickets.GetTicketOrdersAsync(ct))
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .Where(a => a.MatchedUserId.HasValue
-                && a.Status is TicketAttendeeStatus.Valid or TicketAttendeeStatus.CheckedIn)
-            .Select(a => a.MatchedUserId!.Value)
-            .ToHashSet();
+        var ticketHolders = await tickets.ForCurrentEventAsync(ct);
         if (ticketHolders.Count == 0) return new HashSet<Guid>();
 
         var views = await shiftView.GetUsersAsync(ticketHolders, ct);

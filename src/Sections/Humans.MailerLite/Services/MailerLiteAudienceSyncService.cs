@@ -25,9 +25,6 @@ internal sealed class MailerLiteAudienceSyncService(
     private const string HumansGroupPrefix = "Humans - ";
     private const string JobName = nameof(MailerLiteAudienceSyncService);
 
-    private static readonly HashSet<string> UnsubscribedStatuses =
-        new(StringComparer.OrdinalIgnoreCase) { "unsubscribed", "bounced", "junk" };
-
     public async Task<IReadOnlyList<AudienceSyncResult>> SyncAllAsync(
         Guid? actorUserId = null, CancellationToken ct = default)
     {
@@ -126,7 +123,7 @@ internal sealed class MailerLiteAudienceSyncService(
                 toBulkImport.Add(email);
                 continue;
             }
-            if (UnsubscribedStatuses.Contains(sub.Status))
+            if (sub.IsSuppressed)
             {
                 excluded++;
                 continue;
@@ -257,7 +254,7 @@ internal sealed class MailerLiteAudienceSyncService(
         foreach (var (_, email) in userEmailMap)
         {
             if (!snapshot.ByEmail.TryGetValue(NormalizeEmail(email), out var sub)) continue;
-            if (UnsubscribedStatuses.Contains(sub.Status)) excluded++;
+            if (sub.IsSuppressed) excluded++;
             else if (group is not null && sub.GroupIds.Contains(group.Id, StringComparer.Ordinal)) inGroup++;
         }
 

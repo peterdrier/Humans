@@ -50,7 +50,7 @@ Audience-membership computation classes under `MailerLite/Audiences/`:
 `HasShiftAudience`, `HasShiftSetupAudience`, `HasShiftEventAudience`,
 `HasShiftStrikeAudience`, `HasTicketAudience`, `MarketingAudience`,
 `MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerLiteAudienceBase`,
-`HasShiftInPeriodAudienceBase`.
+`ShiftViewAudienceBase`, `CurrentEventTicketHolders`.
 No repository; compute over read-split / section service interfaces
 (`ITicketServiceRead`, `IShiftView`, `IUserServiceRead`). No direct DB
 access, no cache.

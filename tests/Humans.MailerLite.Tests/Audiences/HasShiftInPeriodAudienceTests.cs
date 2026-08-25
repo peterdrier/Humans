@@ -94,7 +94,7 @@ public class HasShiftInPeriodAudienceTests
     }
 
     private static TAudience NewAudience<TAudience>(IReadOnlyDictionary<Guid, ShiftUserSummary> viewsByUser)
-        where TAudience : HasShiftInPeriodAudienceBase
+        where TAudience : ShiftViewAudienceBase
     {
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())

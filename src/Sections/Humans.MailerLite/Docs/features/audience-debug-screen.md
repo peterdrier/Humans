@@ -42,7 +42,7 @@ A per-audience debug screen on the existing MailerLite admin section that previe
 
 ## Suppressed-status filter
 
-§2 excludes subscribers in `unsubscribed` / `bounced` / `junk` statuses, mirroring `MailerLiteAudienceSyncService.UnsubscribedStatuses`. The two filters are conceptually coupled — if the apply path's filter changes, the debug-screen filter must follow or the preview will lie about what Apply will do.
+§2 excludes subscribers in `unsubscribed` / `bounced` / `junk` statuses via `MailerLiteSubscriber.IsSuppressed` — the same property the apply path reads. One definition, so the preview cannot disagree with Apply about who is excluded.
 
 ## Caching
 
