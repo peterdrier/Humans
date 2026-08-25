@@ -53,7 +53,7 @@ public class ExpenseReportServiceGdprTests
             _repo,
             Substitute.For<IFileStorage>(),
             Substitute.For<IBudgetServiceRead>(),
-            Substitute.For<ITeamService>(),
+            Substitute.For<ITeamServiceRead>(),
             _userService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),

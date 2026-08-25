@@ -168,21 +168,6 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
-    // Budget Integration
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the department-scoped team IDs a user can coordinate for budget
-    /// purposes: departments (<c>ParentTeamId is null</c>) where the user is a
-    /// direct coordinator or holds a management role assignment, plus every
-    /// child team of those departments. Encapsulates the "department coordinators
-    /// manage child team budgets" policy inside the Teams section so the Budget
-    /// service does not read team graph tables itself.
-    /// </summary>
-    Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
-    // ==========================================================================
     // Cache Helpers
     // ==========================================================================
 

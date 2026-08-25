@@ -29,7 +29,7 @@ internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,
     IBudgetServiceRead budgetService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserService userService,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,

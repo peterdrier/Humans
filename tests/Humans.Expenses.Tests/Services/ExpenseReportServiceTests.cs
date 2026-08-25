@@ -49,7 +49,7 @@ public sealed class ExpenseReportServiceTests
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetServiceRead _budgetService;
-    private readonly ITeamService _teamService;
+    private readonly ITeamServiceRead _teamService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
@@ -68,7 +68,7 @@ public sealed class ExpenseReportServiceTests
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetServiceRead>();
-        _teamService = Substitute.For<ITeamService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
         _userService = Substitute.For<IUserService>();
 
         _sut = new ExpenseReportService(
