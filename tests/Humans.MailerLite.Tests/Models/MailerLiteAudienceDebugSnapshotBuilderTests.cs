@@ -30,7 +30,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         var audience = StubAudience("ticket-no-shifts", "Humans - Ticket no Shifts",
             members: [frankId]);
         var ml = StubMl(
-            groups: [new MailerLiteGroup("g1", "Humans - Ticket no Shifts", Instant.FromUtc(2026, 1, 1, 0, 0), 1, 0, 0, 0, 0)],
+            groups: [new MailerLiteGroup("g1", "Humans - Ticket no Shifts", 1, 0, 0, 0, 0)],
             subscribers: [
                 new MailerLiteSubscriber("sub-1", "frank@gmail.com", "active",
                     Source: "manual",
@@ -127,7 +127,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
 
         var audience = StubAudience("k", "Humans - k", members: [aliceId]);
         var ml = StubMl(
-            groups: [new MailerLiteGroup("g1", "Humans - k", Instant.FromUtc(2026, 1, 1, 0, 0), 4, 0, 0, 0, 0)],
+            groups: [new MailerLiteGroup("g1", "Humans - k", 4, 0, 0, 0, 0)],
             subscribers: [
                 Sub("s-alice", "alice@example.com", "active"),
                 Sub("s-bob", "bob@example.com", "unsubscribed"),

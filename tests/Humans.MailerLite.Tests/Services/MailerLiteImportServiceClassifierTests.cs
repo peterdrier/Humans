@@ -281,7 +281,7 @@ internal sealed class ClassifierHarness
         // Website group must resolve, and BuildPlanAsync's reset pass enumerates all users.
         _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
-                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+                [new MailerLiteGroup(WebsiteGroupId, "Website", 0, 0, 0, 0, 0)]));
         _users
             .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));

@@ -285,7 +285,7 @@ public class MailerLiteAudienceSyncServiceTests
               .Returns(subscribers.ToAsyncEnumerable());
 
     private static MailerLiteGroup Group(string id, string name) =>
-        new(id, name, Instant.FromUtc(2026, 1, 1, 0, 0), 0, 0, 0, 0, 0);
+        new(id, name, 0, 0, 0, 0, 0);
 
     private static MailerLiteSubscriber Subscriber(
         string id, string email, string status, string[]? inGroups = null) =>

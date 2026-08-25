@@ -58,17 +58,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         foreach (var s in _subscribers!) yield return s;
     }
 
-    public async Task<MailerLiteSubscriber?> GetSubscriberAsync(string email, CancellationToken ct = default)
-    {
-        // Passthrough — callers want live state, not the dashboard snapshot.
-        using var resp = await SendAsync(HttpMethod.Get,
-            $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
-        if (resp.StatusCode == HttpStatusCode.NotFound) return null;
-        resp.EnsureSuccessStatusCode();
-        var body = await resp.Content.ReadFromJsonAsync<SubscriberSingleEnvelope>(Json, ct);
-        return body?.Data;
-    }
-
     public async Task RefreshAsync(CancellationToken ct = default)
     {
         using var _ = await _gate.AcquireAsync(logger, ct);
@@ -363,7 +352,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             PropertyNameCaseInsensitive = true,
         };
         o.Converters.Add(new MailerLiteDateConverter());
-        o.Converters.Add(new MailerLiteRequiredDateConverter());
         o.Converters.Add(new MailerLiteSubscriberConverter());
         return o;
     }
@@ -376,9 +364,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
 
     private sealed record SubscriberMeta(
         [property: JsonPropertyName("next_cursor")] string? NextCursor);
-
-    private sealed record SubscriberSingleEnvelope(
-        [property: JsonPropertyName("data")] MailerLiteSubscriber Data);
 
     private sealed record GroupListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteGroup> Data,

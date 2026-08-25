@@ -221,7 +221,7 @@ internal sealed class WebsiteScopeHarness
     public WebsiteScopeHarness(bool includeWebsiteGroup = true)
     {
         var groups = includeWebsiteGroup
-            ? new List<MailerLiteGroup> { new(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0) }
+            ? new List<MailerLiteGroup> { new(WebsiteGroupId, "Website", 0, 0, 0, 0, 0) }
             : [];
         _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(groups));

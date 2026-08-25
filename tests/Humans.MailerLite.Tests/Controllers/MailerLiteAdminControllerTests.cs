@@ -322,7 +322,7 @@ public class MailerLiteAdminControllerTests
 
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns([
-                new MailerLiteGroup("g1", "Humans - Ticket no Shifts", Instant.FromUtc(2026, 1, 1, 0, 0), 0, 0, 0, 0, 0),
+                new MailerLiteGroup("g1", "Humans - Ticket no Shifts", 0, 0, 0, 0, 0),
             ]);
         _mlService.ListSubscribersAsync(Arg.Any<CancellationToken>())
             .Returns(EmptyAsync());

@@ -11,9 +11,6 @@ namespace Humans.MailerLite.Services;
 /// </summary>
 internal interface IMailerLiteAudienceSyncService : IApplicationService
 {
-    /// <summary>Read-only stats for one audience: candidates / excluded-unsubscribed / currently-in-group.</summary>
-    Task<AudienceStats> ComputeStatsAsync(IMailerLiteAudience audience, CancellationToken ct = default);
-
     /// <summary>
     /// Read-only stats for every registered audience in a single pass.
     /// Pulls the MailerLite subscriber/group snapshot once and the audit-log

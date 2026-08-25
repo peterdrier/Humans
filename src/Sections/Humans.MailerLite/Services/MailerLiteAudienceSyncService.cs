@@ -58,12 +58,6 @@ internal sealed class MailerLiteAudienceSyncService(
         return results.Count;
     }
 
-    public async Task<AudienceStats> ComputeStatsAsync(IMailerLiteAudience audience, CancellationToken ct = default)
-    {
-        var snapshot = await BuildSnapshotAsync(ct);
-        return await BuildStatsForAudienceAsync(audience, snapshot, ct);
-    }
-
     public async Task<IReadOnlyList<AudienceStats>> ComputeAllStatsAsync(CancellationToken ct = default)
     {
         var snapshot = await BuildSnapshotAsync(ct);

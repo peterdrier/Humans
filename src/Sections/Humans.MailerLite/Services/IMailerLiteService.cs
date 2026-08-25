@@ -27,9 +27,6 @@ internal interface IMailerLiteService : IApplicationService
     IAsyncEnumerable<MailerLiteSubscriber> ListSubscribersAsync(
         CancellationToken ct = default);
 
-    Task<MailerLiteSubscriber?> GetSubscriberAsync(
-        string email, CancellationToken ct = default);
-
     Instant? LastFetchedAt { get; }
 
     Task RefreshAsync(CancellationToken ct = default);

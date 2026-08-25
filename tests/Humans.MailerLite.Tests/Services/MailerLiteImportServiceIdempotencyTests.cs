@@ -81,7 +81,7 @@ internal sealed class IdempotencyHarness
         // Website group resolves; reset pass finds no candidate users.
         _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
-                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+                [new MailerLiteGroup(WebsiteGroupId, "Website", 0, 0, 0, 0, 0)]));
         _users
             .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));

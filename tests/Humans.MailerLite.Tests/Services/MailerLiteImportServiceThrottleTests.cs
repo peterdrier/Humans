@@ -166,7 +166,7 @@ internal sealed class ThrottleHarness
         // ApplyAsync resolves + filters by the Website group.
         _ml.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
-                [new MailerLiteGroup(WebsiteGroupId, "Website", Instant.FromUtc(2020, 1, 1, 0, 0), 0, 0, 0, 0, 0)]));
+                [new MailerLiteGroup(WebsiteGroupId, "Website", 0, 0, 0, 0, 0)]));
 
         Service = new MailerLiteImportService(
             _ml, _userEmails, Substitute.For<IUserService>(),

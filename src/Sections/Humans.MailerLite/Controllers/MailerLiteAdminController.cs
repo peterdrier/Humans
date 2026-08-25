@@ -309,7 +309,6 @@ internal sealed class MailerLiteAdminController(
         plan.Decisions.Select(d => new SubscriberDecisionRow(
             Email: d.Email,
             MlStatus: d.Status,
-            MlLastActionAt: null,
             MatchedUserId: d.TargetUserId,
             Outcome: d.Outcome)).ToList();
 

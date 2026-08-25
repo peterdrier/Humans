@@ -24,7 +24,7 @@ internal sealed class StubMailerLiteService : IMailerLiteService
 
     private readonly List<MailerLiteGroup> _groups =
     [
-        new(WebsiteGroupId, "Website", Instant.FromUtc(2026, 1, 1, 0, 0), 0, 0, 0, 0, 0),
+        new(WebsiteGroupId, "Website", 0, 0, 0, 0, 0),
     ];
 
     private readonly List<MailerLiteSubscriber> _subscribers = [];
@@ -65,10 +65,6 @@ internal sealed class StubMailerLiteService : IMailerLiteService
         await Task.CompletedTask;
     }
 
-    public Task<MailerLiteSubscriber?> GetSubscriberAsync(string email, CancellationToken ct = default) =>
-        Task.FromResult(_subscribers.Find(s =>
-            string.Equals(s.Email, email, StringComparison.OrdinalIgnoreCase)));
-
     public Task RefreshAsync(CancellationToken ct = default)
     {
         LastFetchedAt = Instant.FromUtc(2026, 2, 1, 0, 0);
@@ -78,7 +74,7 @@ internal sealed class StubMailerLiteService : IMailerLiteService
     public Task<MailerLiteGroup> CreateGroupAsync(string name, CancellationToken ct = default)
     {
         var group = new MailerLiteGroup(
-            $"grp-{_groups.Count + 1}", name, Instant.FromUtc(2026, 1, 1, 0, 0), 0, 0, 0, 0, 0);
+            $"grp-{_groups.Count + 1}", name, 0, 0, 0, 0, 0);
         _groups.Add(group);
         return Task.FromResult(group);
     }
