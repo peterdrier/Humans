@@ -9,7 +9,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
 -->
 <!-- freshness:flag-on-change
-  Search scope authorization model (LegalName/Admin gating, never-searchable fields) and matcher semantics (resolved name, accent folding, token split). Review when the matcher, PersonSearchFields, or search endpoints change — especially the §Follow-up per-window scope flip landing.
+  Search scope authorization model (LegalName/Admin gating, never-searchable fields) and matcher semantics (resolved name, accent folding, token split). Review when the matcher, PersonSearchFields, or search endpoints change.
 -->
 
 # User search overhaul — match all profile info, exclude board/private
