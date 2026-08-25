@@ -75,7 +75,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  24 section services, each implementing           │
+│  25 section services, each implementing           │
 │  IUserDataContributor:                            │
 │                                                   │
 │    UserService               AccountMergeService  │
@@ -86,7 +86,7 @@ change.
 │    CampaignService           CampService          │
 │    AuditLogService           BudgetService        │
 │    SurveyService             AgentService         │
-│    EventService              IssuesService        │
+│    CachingEventService       IssuesService        │
 │    ExpenseReportService      HoldedFinanceService │
 │    GateService               GoogleSyncLogService │
 │    EmailOutboxService                             │
@@ -141,7 +141,7 @@ service has no data for this user are omitted.
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of per-event profile records (skills, quirks, languages, dietary, allergies, intolerances, medical). |
 | `GeneralAvailability` | `ShiftSignupService` | Array of `{ EventName, AvailableDayOffsets, UpdatedAt }`. |
 | `ShiftTagPreferences` | `ShiftSignupService` | Array of `{ TagName }`. |
-| `Events` | `EventService` | Single object with `{ Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt } }` — the user's event favourites and category-exclusion preference; `Preference` is null when no preference row exists. |
+| `Events` | `CachingEventService` (delegates to `EventService`) | Single object with `{ Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt } }` — the user's event favourites and category-exclusion preference; `Preference` is null when no preference row exists. |
 | `FeedbackReports` | `FeedbackService` | Array of feedback reports with nested `Messages[]`. |
 | `Issues` | `IssuesService` | Array of `{ Title, Description, Category, Section, Status, PageUrl, CreatedAt, ResolvedAt, Comments: [{ Content, IsFromUser, CreatedAt }] }` — issues filed by the user including their comments. |
 | `Notifications` | `NotificationInboxService` | Array of `{ Title, Body, ActionUrl, Priority, Source, CreatedAt, ReadAt, ResolvedAt }`. |

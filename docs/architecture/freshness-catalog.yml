@@ -383,3 +383,9 @@ ignore:
   # Per-section data-access maps: mechanical outputs of the service-data-access-map
   # entry (split from the global file 2026-08-18). No editorial markers; never hand-edited.
   - src/Sections/*/Docs/data-access.md
+  # Per-section authorization maps: the exact same case one entry over — mechanical
+  # outputs of the authorization-inventory entry, split per-section on the same day.
+  # Without this line all ~40 of them land in the report's "Unmarked editorial" flag
+  # list every single sweep, asking for freshness:triggers markers they must never
+  # carry: they are regenerated wholesale from source, not reviewed as prose.
+  - src/Sections/*/Docs/authorization.md

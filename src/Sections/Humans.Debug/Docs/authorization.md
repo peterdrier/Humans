@@ -6,5 +6,4 @@
 | `DebugController` actions — `Logs`, `HttpErrors`, `Maintenance`, `ClearHangfireLocks`, `Configuration`, `DbStats`/`ResetDbStats`, `CacheStats`/`ResetCacheStats`, `ClientStats`, `Timings`, `FormatGallery`, `Translations` | Action | `Admin` | `PolicyNames.AdminOnly` (all inherit the class-level policy) |
 | `DebugController.DbVersion` | Action | `AllowAnonymous` | Override |
 | `ColorPaletteController` | Class | `AllowAnonymous` | — (design reference page: palette, controls, typography; linked from the admin sidebar "Design" group) |
-| `LogApiController` | Class | (no `[Authorize]`; API-key auth) | `ServiceFilter(typeof(LogApiKeyAuthFilter))` |
 | `WidgetGalleryController` | Class | `Admin` | `PolicyNames.AdminOnly` (admin-only catalog of reusable UI widgets; companion to `/ColorPalette`) |

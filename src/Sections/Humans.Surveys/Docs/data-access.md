@@ -16,11 +16,17 @@ aggregation, and full GDPR Article 15 export of identified responses.
 pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
 `TrackedCache` at ~500-user scale). There is no `ISurveyServiceRead`: it shipped
-empty in v1, no cross-section consumer ever appeared, and it was deleted at G5.
-The section's only outbound contract is the single-member
-`Humans.Surveys.Contracts.ISurveyReminderSender`.
+empty in v1 and was deleted at G5. Two consumers live outside the section
+today: the reminder job in Base, which sees the single-member
+`Humans.Surveys.Contracts.ISurveyReminderSender`, and Backdoor's machine
+API, which sees `ISurveyAnalysisRead`. Everything else — authoring,
+sending, the wizard, submission — has no caller outside Surveys.
 
 ### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`)
+
+`ISurveyService` also carries `ISurveyAnalysisRead` — Backdoor's read-only
+machine-API surface (survey list, one survey's question graph, the raw
+per-response export, per-question aggregates; nobodies-collective/Humans#1128).
 
 Repository: `ISurveyRepository`.
 
