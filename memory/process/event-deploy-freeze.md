@@ -1,9 +1,9 @@
 ---
-name: No schema-changing deploy during the live event
-description: HARD RULE. From build week through strike, deploys with pending EF migrations are frozen. If one truly cannot wait it needs a confirmed pre-deploy snapshot plus an admin awake at a keyboard. Code-only deploys stay allowed.
+name: No schema-changing deploy during a live event
+description: HARD RULE. During a live-event period (build week through strike), deploys with pending EF migrations are frozen. If one truly cannot wait it needs a confirmed pre-deploy snapshot plus an admin awake at a keyboard. Code-only deploys stay allowed.
 ---
 
-During the live event — build week through the end of strike — **do not deploy anything with a
+During a live-event period — build week through the end of strike — **do not deploy anything with a
 pending EF migration.** Any `Up()` counts: `AddColumn` is as frozen as `DropColumn`.
 
 **Still allowed:** code-only deploys with no pending migrations. They roll back with the image
@@ -34,9 +34,10 @@ snapshot surviving a container replacement.
 hand-restore. That is a ten-minute job with a snapshot, the runbook, and an awake admin; an
 outage of unknown length without them, during the one week the app is load-bearing in real time.
 
-**How to apply:** when planning or executing a deploy during the event window, check for pending
+**How to apply:** when planning or executing a deploy during a live-event window, check for pending
 migrations first. If there are any, the answer is "after the event" unless the four conditions
-above are met and Peter has said go.
+above are met and Peter has said go. Outside a live-event window, this freeze does not apply —
+normal migration discipline governs instead.
 
 **Related:** [`no-drops-until-prod-verified`](../architecture/no-drops-until-prod-verified.md) —
 the hard-storage drop split this rule leans on;

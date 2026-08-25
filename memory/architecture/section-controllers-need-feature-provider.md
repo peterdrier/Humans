@@ -1,10 +1,10 @@
 ---
 name: internal section controllers need SectionControllerFeatureProvider
-description: MVC's ControllerFeatureProvider requires IsPublic, so an `internal` controller in a G5 section project is never discovered — green build, zero warnings, 404 at runtime. Read when moving a section into its own project, making a controller internal, or debugging a route that 404s with the controller clearly present.
+description: MVC's ControllerFeatureProvider requires IsPublic, so an `internal` controller in a section project is never discovered — green build, zero warnings, 404 at runtime. Read when making a controller internal, or debugging a route that 404s with the controller clearly present.
 ---
 
 MVC's `ControllerFeatureProvider.IsController` requires `typeInfo.IsPublic`. A controller that is
-`internal` — which every G5 section project's "public means `Section` or `Contracts/`" rule requires —
+`internal` — which every section project's "public means `Section` or `Contracts/`" rule requires —
 is simply not added to the application part's controller feature. **Nothing says so:** the build is
 green with zero warnings, the type exists, the `[Route]` attribute is right there, and the URL 404s.
 
@@ -12,11 +12,10 @@ green with zero warnings, the type exists, the `[Route]` attribute is right ther
 for discovered section assemblies, and is registered once in Shell for all sections.
 
 **Why:** without it, "public means `Section` or `Contracts/`" needs a controllers-shaped carve-out in
-all ~35 sections — and then a section's controllers, its action-parameter view models and everything
+every section — and then a section's controllers, its action-parameter view models and everything
 those touch stay nameable from any other section, which is the boundary the split exists to create.
 Ten lines in Shell buy the rule back. Measured, not assumed: all 20 Store controller integration
-tests failed on the first internalisation attempt (nobodies-collective/Humans#866, PR
-peterdrier/Humans#1223).
+tests failed on the first internalisation attempt.
 
 **How to apply:** `Section.cs : ISection` is what turns discovery on — it serves the analyzers, DI
 discovery *and* controller discovery, so there is nothing per-section to register. If a section route

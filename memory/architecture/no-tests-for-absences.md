@@ -22,7 +22,7 @@ red when someone deliberately edits that exact site — adds the ctor parameter,
 method, marks the type public. That person is already looking at the thing and updates the
 test in the same commit. The test never warns anyone; it just adds an edit.
 
-*And some are testing for the impossible.* Since G5 each section is its own assembly with its
+*And some are testing for the impossible.* Each section is its own assembly with its
 own `DbContext`, and repositories and entities are internal. A cross-section navigation
 property or an out-of-section repository consumer cannot compile, so the seven per-section
 nav-property tests and the seven `I*Repository_HasNoUnexpectedConsumers` were pinning a

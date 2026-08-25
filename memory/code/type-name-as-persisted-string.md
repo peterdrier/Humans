@@ -1,6 +1,6 @@
 ---
 name: Never rename a type whose name is persisted or used as a lookup key
-description: `nameof(T)` written to a DB column, and `Enum_{typeof(T).Name}_*` resx keys, turn a CLR rename into a silent data or translation break — build green, tests green, no exception. Two different remedies: pin the persisted one, rename the resource keys with the type. Read before renaming any entity, enum, or DTO, and always before a G5 section prefix drop.
+description: `nameof(T)` written to a DB column, and `Enum_{typeof(T).Name}_*` resx keys, turn a CLR rename into a silent data or translation break — build green, tests green, no exception. Two different remedies: pin the persisted one, rename the resource keys with the type. Read before renaming any entity, enum, or DTO, and always before dropping a section's legacy type-name prefix.
 ---
 
 A CLR type name is inert only where nothing outside the compiler reads it. Two places in this
@@ -28,10 +28,9 @@ Pinning a resource key would freeze the resx set to a name the code no longer us
 than the rename. Pinning a persisted discriminator is the only correct answer, because the database
 is not yours to rewrite.
 
-**Why:** these are the two rename traps that survive the rendered-HTML diff that guards a G5 section
+**Why:** these are the two rename traps that survive the rendered-HTML diff that guards a section
 move — an emptied audit panel renders as an empty panel, and the capture locale is English. Both bit
-the Store pilot (nobodies-collective/Humans#866, PR peterdrier/Humans#1223) and both were caught by
-review, not by the suite.
+the Store pilot and both were caught by review, not by the suite.
 
 **How to apply:** before renaming any entity, enum or DTO, run both searches — as separate lines, and
 with a bare prefix rather than a trailing `*`, since `grep`'s default BRE reads `Store*` as "`Stor`
