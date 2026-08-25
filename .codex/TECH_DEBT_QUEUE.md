@@ -89,11 +89,14 @@ violation, never edit a baseline the code still triggers.
   remaining display-sort entries inspected in Teams and Tickets are documented
   operational selectors, chronology, or page windows. Campaign tracking ordering
   would need a public DTO expansion to relocate it, so it remains.
-- **Resolved this pass:** Gate now respects vendor check-in timestamps; Base and Profile
-  stale localization/resources are removed; the MailerLite absence assertion is gone;
-  Camps admin missing values render a real em dash; and host-local Serilog configuration
-  removes the parallel `WebApplicationFactory` log-buffer race
-  (nobodies-collective/Humans#1145). Full solution tests passed after each pushed set.
+- **Resolved this pass:** Gate respects vendor check-in timestamps; Base/Profile resources
+  and the MailerLite absence assertion are removed; Camps missing values render an em dash;
+  host-local Serilog removes the parallel `WebApplicationFactory` log-buffer race
+  (nobodies-collective/Humans#1145); Shifts boolean controls and Events literal search
+  work correctly; Users profile email messages are restored; Events controller policies,
+  Issues thread/audit/cache behavior, the Expenses guide, stale Events references, and
+  Finance navigation without an active year are covered or corrected. Full solution tests
+  passed after each pushed set.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
   (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
