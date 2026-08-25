@@ -70,9 +70,11 @@
   <data name="Expenses_ColSubject" xml:space="preserve"><value>Oggetto</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentata</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentata da</value></data>
+  <data name="Expenses_CoordinatorDecision" xml:space="preserve"><value>Decisione del coordinatore</value></data>
   <data name="Expenses_Endorse" xml:space="preserve"><value>Avalla</value></data>
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Avallare questa nota spese?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta la tua prima nota</value></data>
+  <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Decisione dell'amministratore finanziario</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dovuto a te (saldo Holded)</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>
