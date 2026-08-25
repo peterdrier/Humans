@@ -89,8 +89,8 @@ public record TeamActiveMemberSnapshot(
 /// <summary>
 /// One active team membership of a user, flattened so cross-section callers can read the
 /// team's identity without the <c>TeamMember</c> entity or its <c>Team</c> navigation.
-/// Returned by <see cref="ITeamServiceRead.GetUserTeamMembershipsAsync"/> — the projection the
-/// Teams-internal <c>GetUserTeamsAsync</c> hands its own callers as entities.
+/// Returned by <see cref="ITeamServiceRead.GetUserTeamMembershipsAsync"/> as a flat
+/// membership projection.
 /// </summary>
 public sealed record UserTeamMembershipInfo(
     Guid TeamMemberId,
