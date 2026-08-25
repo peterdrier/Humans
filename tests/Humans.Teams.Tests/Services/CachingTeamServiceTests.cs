@@ -114,12 +114,11 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeamMember(team2.Id, user.Id, TeamMemberRole.Coordinator);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Should().Contain(m => m.TeamId == team1.Id && m.Role == TeamMemberRole.Member);
         result.Should().Contain(m => m.TeamId == team2.Id && m.Role == TeamMemberRole.Coordinator);
-        result.Should().OnlyContain(m => m.LeftAt == null);
     }
 
     [HumansFact]
@@ -131,7 +130,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         member.LeftAt = Clock.GetCurrentInstant();
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -146,15 +145,11 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeamMember(child.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         var membership = result.Should().ContainSingle().Subject;
-        membership.Team.Should().NotBeNull();
-        membership.Team.Slug.Should().Be("logo");
-        // Team.DisplayName concatenates ParentTeam.Name when ParentTeam is set;
-        // synthesized entity must populate ParentTeam so consumers like
-        // ProfileCardViewComponent render "Parent - Child" without an EF round-trip.
-        membership.Team.DisplayName.Should().Be("Comms - Logo");
+        membership.TeamSlug.Should().Be("logo");
+        membership.TeamName.Should().Be("Logo");
     }
 
     [HumansFact]
@@ -166,7 +161,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Warm the cache + inverse index.
-        var before = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var before = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         before.Should().HaveCount(1);
 
         // New membership written outside the decorator: clearing simulates the
@@ -176,7 +171,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         _service.InvalidateActiveTeamsCache();
 
-        var after = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var after = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         after.Should().HaveCount(2);
     }
 
@@ -197,11 +192,11 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeamMember(t3.Id, carol.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var aliceTeams = (await _service.GetUserTeamsAsync(alice.Id, Xunit.TestContext.Current.CancellationToken))
+        var aliceTeams = (await _service.GetUserTeamMembershipsAsync(alice.Id, Xunit.TestContext.Current.CancellationToken))
             .Select(m => m.TeamId).ToHashSet();
-        var bobTeams = (await _service.GetUserTeamsAsync(bob.Id, Xunit.TestContext.Current.CancellationToken))
+        var bobTeams = (await _service.GetUserTeamMembershipsAsync(bob.Id, Xunit.TestContext.Current.CancellationToken))
             .Select(m => m.TeamId).ToHashSet();
-        var carolTeams = (await _service.GetUserTeamsAsync(carol.Id, Xunit.TestContext.Current.CancellationToken))
+        var carolTeams = (await _service.GetUserTeamMembershipsAsync(carol.Id, Xunit.TestContext.Current.CancellationToken))
             .Select(m => m.TeamId).ToHashSet();
 
         aliceTeams.Should().BeEquivalentTo([t1.Id, t2.Id]);
@@ -218,14 +213,14 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // First call drives warmup (which uses repository, not inner service).
-        await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         // The inner ITeamManagementService is an unconfigured NSubstitute mock; if the
         // warm-cache path served from the index, no method on it is invoked.
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamManagementService>(
             CachingTeamService.InnerServiceKey);
 
-        var second = await _service.GetUserTeamsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var second = await _service.GetUserTeamMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
         second.Should().HaveCount(1);
 
         await inner.DidNotReceive().GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -237,7 +232,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeam("Alpha");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTeamMembershipsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamManagementService>(

@@ -32,7 +32,7 @@ internal sealed class CachingTeamService(
     /// <summary>
     /// Secondary user→teams index, populated during <see cref="WarmAllAsync"/>
     /// alongside the primary <c>teamId → TeamInfo</c> dict. Serves
-    /// <see cref="GetUserTeamsAsync"/> without touching the inner scoped
+    /// <see cref="GetUserTeamMembershipsAsync"/> without touching the inner scoped
     /// <see cref="ITeamService"/> / EF.
     ///
     /// <para>Every membership-mutating path on this decorator calls
@@ -348,35 +348,6 @@ internal sealed class CachingTeamService(
             Role: member.Role,
             JoinedAt: member.JoinedAt);
 
-    public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        // Ensure the inverse map and primary dict are in lockstep (both rebuilt
-        // by WarmAllAsync). Without warmup the inverse map is empty even when
-        // the user is genuinely a member of a team.
-        await EnsureWarmedAsync(cancellationToken);
-
-        if (!_teamIdsByUserId.TryGetValue(userId, out var teamIds) || teamIds.Count == 0)
-            return [];
-
-        var snapshot = AsReadOnlyDictionary;
-        var result = new List<TeamMember>(teamIds.Count);
-        foreach (var teamId in teamIds)
-        {
-            if (!snapshot.TryGetValue(teamId, out var team))
-                continue;
-
-            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
-            if (membership is null)
-                continue;
-
-            result.Add(ProjectToTeamMember(team, membership, snapshot));
-        }
-
-        return result;
-    }
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId,
@@ -405,71 +376,6 @@ internal sealed class CachingTeamService(
 
         return result;
     }
-
-    /// <summary>
-    /// Synthesize the <see cref="TeamMember"/> Domain entity shape from the
-    /// cached <see cref="TeamInfo"/> + <see cref="TeamMemberInfo"/> projections
-    /// so consumers of <see cref="GetUserTeamsAsync"/> keep their existing
-    /// field access on the membership row and its nested team entity
-    /// (SystemTeamType / IsHidden / DisplayName / Slug / Role / JoinedAt /
-    /// TeamId / LeftAt) without reaching back to EF. Members are filtered by
-    /// <c>LeftAt is null</c> at warmup time, so all synthesized memberships
-    /// are active and <see cref="TeamMember.LeftAt"/> stays null.
-    ///
-    /// <para>Populates the synthesized team's <c>ParentTeam</c> nav when a
-    /// parent is in cache so the <c>DisplayName</c> "Parent - Name" form
-    /// resolves without an EF round-trip.</para>
-    /// </summary>
-    private static TeamMember ProjectToTeamMember(
-        TeamInfo team,
-        TeamMemberInfo membership,
-        IReadOnlyDictionary<Guid, TeamInfo> teamsById)
-    {
-        Team? parent = null;
-        if (team.ParentTeamId.HasValue && teamsById.TryGetValue(team.ParentTeamId.Value, out var parentInfo))
-        {
-            parent = SynthesizeTeam(parentInfo, parent: null);
-        }
-
-        var teamEntity = SynthesizeTeam(team, parent);
-        return new TeamMember
-        {
-            Id = membership.TeamMemberId,
-            TeamId = team.Id,
-            Team = teamEntity,
-            UserId = membership.UserId,
-            Role = membership.Role,
-            JoinedAt = membership.JoinedAt,
-            LeftAt = null,
-        };
-    }
-
-    private static Team SynthesizeTeam(TeamInfo info, Team? parent) => new()
-    {
-        Id = info.Id,
-        Name = info.Name,
-        Description = info.Description,
-        Slug = info.Slug,
-        IsActive = info.IsActive,
-        SystemTeamType = info.SystemTeamType,
-        RequiresApproval = info.RequiresApproval,
-        GoogleGroupPrefix = info.GoogleGroupPrefix,
-        CreatedAt = info.CreatedAt,
-        UpdatedAt = info.UpdatedAt ?? info.CreatedAt,
-        CustomSlug = info.CustomSlug,
-        IsPublicPage = info.IsPublicPage,
-        ShowCoordinatorsOnPublicPage = info.ShowCoordinatorsOnPublicPage,
-        PageContent = info.PageContent,
-        PageContentUpdatedAt = info.PageContentUpdatedAt,
-        PageContentUpdatedByUserId = info.PageContentUpdatedByUserId,
-        CallsToAction = info.CallsToAction is null ? null : [.. info.CallsToAction],
-        HasBudget = info.HasBudget,
-        IsHidden = info.IsHidden,
-        IsSensitive = info.IsSensitive,
-        ParentTeamId = info.ParentTeamId,
-        ParentTeam = parent,
-        IsPromotedToDirectory = info.IsPromotedToDirectory,
-    };
 
     public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
         Guid userId,
