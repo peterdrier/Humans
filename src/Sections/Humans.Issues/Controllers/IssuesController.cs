@@ -316,7 +316,7 @@ internal sealed class IssuesController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? localizer["Issue_Error"].Value);
+            SetError(localizer["Issue_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -343,7 +343,7 @@ internal sealed class IssuesController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? localizer["Issue_Error"].Value);
+            SetError(localizer["Issue_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -368,6 +368,12 @@ internal sealed class IssuesController(
         }
         else
         {
+            // The only handler that still surfaces the service's own string: the section
+            // rejection ("cannot change section on a terminal issue") is the one failure
+            // reason a user can act on. It is English-only — localizing it needs the
+            // service to return a resource key, which rides with the pipeline collapse
+            // in Docs/health.md §5. The other three reasons are generic, so they use
+            // the localized message.
             SetError(result.ErrorMessage ?? localizer["Issue_Error"].Value);
         }
 
@@ -395,7 +401,7 @@ internal sealed class IssuesController(
         }
         else
         {
-            SetError(result.ErrorMessage ?? localizer["Issue_Error"].Value);
+            SetError(localizer["Issue_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
