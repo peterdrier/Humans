@@ -38,8 +38,10 @@ page says payout is unavailable and names the missing keys — nothing is ever i
    **invariantly** rather than through model binding, which would use the request culture and read
    `12.34` as `1234` under a comma-decimal locale.
 4. `Service.GenerateSepaPayoutAsync` re-derives payability server-side, checks each amount against
-   the balance, resolves the unmasked IBAN from the cached Holded contact list, and mints one
-   `SepaPayoutTransfer` per row.
+   the balance, resolves the payee's name and unmasked IBAN from the cached Holded contact list
+   **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row. Two
+   Holded contacts can share one 400000xx; keying by account number instead would pay whichever of
+   them Holded happened to list first, which is not necessarily the bound member.
 5. `SepaPaymentFileBuilder.Build` enforces the file-level rules, serializes, and validates against
    the embedded official XSD. It is pure — no IO, no clock, no configuration.
 6. The file, its SHA-256 checksum, the timestamp and the generating admin are persisted with the
@@ -105,13 +107,22 @@ Everything else — logs, audit descriptions, the page, and even the cross-secti
 `HoldedCreditorAccountRow` — carries `IbanFormatter.Mask(...)` output only. Builder error messages
 mask the IBAN they name.
 
+## GDPR
+
+`SepaPayouts` is the member's Article 15 slice: every transfer paid to them, oldest first, with the
+**masked** IBAN. Article 17 retains the whole record — a payout file is the credit-transfer order
+the bank was given, and Spanish law requires the books and their supporting documents be kept
+(Código de Comercio Art. 30, Ley 58/2003 Art. 66; GDPR Art. 17(3)(b)). The basis is stated in
+`Service.PayoutRetention` and enforced by `GdprErasureCoverageTests`.
+
 ## Tests
 
 `tests/Humans.Finance.Tests/SepaPaymentFileBuilderTests.cs` covers the builder end to end. Because
 `Build` validates every file it returns against the embedded XSD, any test that receives a string
 has already proved schema conformance — there is no separate validation test.
 `ServiceTests.cs` covers the service-side gates: unavailable config, over-balance, over-cap, partial
-amounts, missing IBAN, and the masked-only audit entry.
+amounts, missing IBAN, the masked-only audit entry, two contacts on one account paying the bound one,
+and the masked Article 15 slice.
 
 ## Not done here
 

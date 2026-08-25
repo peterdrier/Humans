@@ -1638,8 +1638,8 @@ public class HoldedFinanceServiceTests
         var slices = await MakeService().ContributeForUserAsync(
             userId, Xunit.TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        var slice = slices.Should()
+            .ContainSingle(s => s.SectionName == GdprExportSections.HoldedCreditorAccount).Subject;
         slice.Data.Should().NotBeNull();
         var json = JsonSerializer.Serialize(slice.Data);
         json.Should().Contain("40000004").And.Contain("contact-9").And.Contain("Manual");
@@ -1657,9 +1657,29 @@ public class HoldedFinanceServiceTests
         var slices = await MakeService().ContributeForUserAsync(
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        var slice = slices.Should().ContainSingle().Subject;
-        slice.SectionName.Should().Be(GdprExportSections.HoldedCreditorAccount);
+        var slice = slices.Should()
+            .ContainSingle(s => s.SectionName == GdprExportSections.HoldedCreditorAccount).Subject;
         slice.Data.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_IncludesEveryPayoutWithTheIbanMasked()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SepaPayoutExportRow>
+            {
+                new(FixedNow, "nobodies-collective-2026-08-25-0309.xml", 40000004, "Ana Ruiz", "ES79****789", 12.34m),
+            });
+
+        var slices = await MakeService().ContributeForUserAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should()
+            .ContainSingle(s => s.SectionName == GdprExportSections.SepaPayouts).Subject;
+        var json = JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("ES79****789").And.Contain("12.34")
+            .And.NotContain(AnaIban, "the export masks the IBAN even though the payout row keeps it raw");
     }
 
     // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────
@@ -2073,5 +2093,53 @@ public class HoldedFinanceServiceTests
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.IbanMasked.Should().Be("ES79****789");
+    }
+
+    /// <summary>
+    /// Holded lets two contacts carry the same 400000xx. The bound member is the second one, so
+    /// anything that picks "the account's first contact" picks the wrong person's name and IBAN.
+    /// </summary>
+    private Guid SeedTwoContactsOnOneAccount()
+    {
+        var userId = Guid.NewGuid();
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -30m });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Wrong Person", SupplierAccountNum = 40000004, Iban = "NL91ABNA0417164300" },
+            new() { Id = "c2", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
+        });
+        return userId;
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_TwoContactsOnOneAccount_PaysTheBoundContact()
+    {
+        ConfigureSepa();
+        SeedTwoContactsOnOneAccount();
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.Xml.Should().Contain(AnaIban).And.Contain("Ana Ruiz");
+        result.Xml.Should().NotContain("Wrong Person").And.NotContain("NL91ABNA0417164300");
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_TwoContactsOnOneAccount_ShowsTheBoundContact()
+    {
+        SeedTwoContactsOnOneAccount();
+
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.Name.Should().Be("Ana Ruiz");
+        row.IbanMasked.Should().Be("ES79****789");
     }
 }

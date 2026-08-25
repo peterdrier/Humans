@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Finance.Models;
 
 /// <summary>One row of the payout the admin ticked, as posted from /Finance/Creditors.</summary>
@@ -20,3 +22,16 @@ internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? Unavai
 {
     public bool IsAvailable => UnavailableReason is null;
 }
+
+/// <summary>
+/// One credit transfer made to the member, flattened with the file it belongs to, for their GDPR
+/// Article 15 export. Carries the masked IBAN only — the unmasked one stays in the payout row and
+/// the file, which is the whole point of storing both.
+/// </summary>
+internal sealed record SepaPayoutExportRow(
+    Instant GeneratedAt,
+    string FileName,
+    int SupplierAccountNum,
+    string CreditorName,
+    string IbanMasked,
+    decimal Amount);

@@ -230,4 +230,18 @@ else
             </tbody>
         </table>
     </div>
+
+    <script>
+        // Idempotency guard (code-review-rules § View/Controller Consistency): a successful
+        // generation answers with a file download, so the page never navigates and a second click
+        // would write a second payout file for the same balances. Disable on submit; it comes back
+        // on reload — which is what an admin wants anyway, since these balances are stale the
+        // moment a file is out. A refusal redirects back here and reloads the button with it.
+        document.getElementById('sepaForm')?.addEventListener('submit', function (e) {
+            var btn = e.target.querySelector('button[type="submit"]');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
+        });
+    </script>
 }

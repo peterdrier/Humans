@@ -15,9 +15,21 @@ internal static class SepaText
 
     private static readonly Dictionary<char, string> NonDecomposing = new()
     {
-        ['ß'] = "ss", ['Ø'] = "O", ['ø'] = "o", ['Æ'] = "AE", ['æ'] = "ae",
-        ['Œ'] = "OE", ['œ'] = "oe", ['Đ'] = "D", ['đ'] = "d", ['Ð'] = "D",
-        ['ð'] = "d", ['Þ'] = "TH", ['þ'] = "th", ['Ł'] = "L", ['ł'] = "l",
+        ['ß'] = "ss",
+        ['Ø'] = "O",
+        ['ø'] = "o",
+        ['Æ'] = "AE",
+        ['æ'] = "ae",
+        ['Œ'] = "OE",
+        ['œ'] = "oe",
+        ['Đ'] = "D",
+        ['đ'] = "d",
+        ['Ð'] = "D",
+        ['ð'] = "d",
+        ['Þ'] = "TH",
+        ['þ'] = "th",
+        ['Ł'] = "L",
+        ['ł'] = "l",
     };
 
     public static string Normalize(string? value, int maxLength)

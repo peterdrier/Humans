@@ -33,8 +33,8 @@ Repository: `IHoldedRepository`.
 | HoldedExpenseDocs | R/W |
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
-| SepaPayoutFiles | W (append-only: one row per generated payout file) |
-| SepaPayoutTransfers | W (append-only: one row per credit transfer) |
+| SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export) |
+| SepaPayoutTransfers | R/W (append-only writes; read per user for the Article 15 export) |
 
 Cross-section calls via `IBudgetServiceRead` (migrated to the read-split
 surface — `budget` in the ctor), `IHoldedService` (the Holded section's

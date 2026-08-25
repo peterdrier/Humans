@@ -442,10 +442,14 @@ internal sealed class Service(
     {
         var byAccount = await holded.GetAccountBalancesAsync(ct: ct);
 
+        // Who a binding names is the binding's own fact, so this map is not range-filtered — the
+        // range decides which accounts are creditor accounts, not which contact is the member's.
+        var contactById = await ContactsByIdAsync(ct);
+
         // Holded is the only place the account label lives. The range filter is load-bearing: Holded
         // numbers every supplier contact, so unfiltered, an org vendor becomes a bindable creditor
         // account. Group-by-first so a duplicate number cannot throw the whole list.
-        var contacts = (await ListContactsOrEmptyAsync(ct))
+        var contacts = contactById.Values
             .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
@@ -498,7 +502,16 @@ internal sealed class Service(
             {
                 decimal? balance = byAccount.TryGetValue(num, out var b) ? b : null;
                 bindings.TryGetValue(num, out var bound);
-                contacts.TryGetValue(num, out var contact);
+
+                // Holded can carry two contacts on one 400000xx, and then the account's first
+                // contact is not necessarily the bound member's. A singly-bound row therefore
+                // takes its name and IBAN from the contact the binding names — that contact is
+                // what a payout would pay, so it is what the row has to show. Unbound and
+                // colliding rows are unpayable anyway and keep the account's contact as a label.
+                var contact = bound is { Count: 1 }
+                    ? contactById.GetValueOrDefault(bound[0].HoldedContactId)
+                    : contacts.GetValueOrDefault(num);
+
                 return new HoldedCreditorAccountRow(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
@@ -520,6 +533,14 @@ internal sealed class Service(
 
         return (rows, unresolved);
     }
+
+    /// <summary>Holded's contact list keyed by contact id — the identity a creditor binding stores.
+    /// Both the account rows and the payout resolve their contact through this one map, so the name
+    /// and IBAN a row displays cannot disagree with the ones the file is built from.</summary>
+    private async Task<Dictionary<string, HoldedContactDto>> ContactsByIdAsync(CancellationToken ct) =>
+        (await ListContactsOrEmptyAsync(ct))
+        .GroupBy(c => c.Id, StringComparer.Ordinal)
+        .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
     /// <summary>Holded's contact list, cached for <see cref="ContactsCacheDuration"/> (design-rules §15
     /// Option A) because every /Finance/Creditors and /Expenses/{id} load reads the same list. A vendor
@@ -864,11 +885,10 @@ internal sealed class Service(
         var (rows, _) = await ListCreditorAccountsAsync(ct);
         var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
 
-        // The unmasked IBAN is read here and goes nowhere but the file and the payout record.
-        var ibanByAccount = (await ListContactsOrEmptyAsync(ct))
-            .Where(c => c.SupplierAccountNum is not null && !string.IsNullOrWhiteSpace(c.Iban))
-            .GroupBy(c => c.SupplierAccountNum!.Value)
-            .ToDictionary(g => g.Key, g => g.First().Iban!);
+        // The unmasked IBAN is read here and goes nowhere but the file and the payout record. Keyed
+        // by contact id, never by account number: two Holded contacts can share one 400000xx, and
+        // only the one the binding names is the member's — by-account would pay the other one.
+        var contactById = await ContactsByIdAsync(ct);
 
         var fileId = Guid.NewGuid();
         var transfers = new List<SepaPayoutTransfer>(selections.Count);
@@ -890,9 +910,12 @@ internal sealed class Service(
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
-            if (!ibanByAccount.TryGetValue(s.SupplierAccountNum, out var iban))
+            // Name and IBAN both come off the bound contact, so a transfer cannot carry one
+            // person's name over another person's account.
+            if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
+                || string.IsNullOrWhiteSpace(contact.Iban))
                 return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} has no IBAN on its Holded contact.");
+                    $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
 
             transfers.Add(new SepaPayoutTransfer
             {
@@ -900,9 +923,9 @@ internal sealed class Service(
                 FileId = fileId,
                 UserId = row.Bindings[0].UserId,
                 SupplierAccountNum = s.SupplierAccountNum,
-                CreditorName = SepaText.Normalize(row.Name, SepaPaymentFileBuilder.MaxNameLength),
-                Iban = IbanValidator.Normalize(iban),
-                IbanMasked = IbanFormatter.Mask(iban),
+                CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
+                Iban = IbanValidator.Normalize(contact.Iban),
+                IbanMasked = IbanFormatter.Mask(contact.Iban),
                 Amount = s.Amount,
             });
         }
@@ -976,6 +999,7 @@ internal sealed class Service(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        var payouts = await repo.GetSepaPayoutsForUserAsync(userId, ct);
         return
         [
             new UserDataSlice(GdprExportSections.HoldedCreditorAccount,
@@ -987,22 +1011,44 @@ internal sealed class Service(
                         binding.HoldedContactId,
                         Source = binding.Source.ToString(),
                     }),
+
+            // Every credit transfer paid to them. The IBAN is the masked one, as everywhere
+            // outside the file and the payout row itself.
+            new UserDataSlice(GdprExportSections.SepaPayouts, payouts.Select(p => new
+            {
+                p.GeneratedAt,
+                p.FileName,
+                p.SupplierAccountNum,
+                p.CreditorName,
+                Iban = p.IbanMasked,
+                p.Amount,
+            })),
         ];
     }
 
     // ─── GDPR (Article 17 erasure) ─────────────────────────────────────────────
 
+    private const string PayoutRetention =
+        "Retained in full, nothing erased: a payout file is the credit-transfer order the bank was " +
+        "given, and it keeps the payee's legal name, their IBAN (stored unmasked in both the transfer " +
+        "row and the file's XML — the export masks it, these do not), the creditor account and the " +
+        "amount. Spanish law requires the books and their supporting documents be kept 6 years " +
+        "(Código de Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66), and a " +
+        "payment order stripped of its payee is no longer evidence of the payment. GDPR Art. 17(3)(b).";
+
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [GdprExportSections.HoldedCreditorAccount] = null
+            [GdprExportSections.HoldedCreditorAccount] = null,
+            [GdprExportSections.SepaPayouts] = PayoutRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
     /// Drops the member↔Holded creditor binding. The invoices themselves live in
-    /// Holded and are fiscal records outside this section's ownership.
+    /// Holded and are fiscal records outside this section's ownership; the payout files
+    /// this section does own survive on the same basis — see <see cref="PayoutRetention"/>.
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         ClearCreditorContactAsync(userId, ct);

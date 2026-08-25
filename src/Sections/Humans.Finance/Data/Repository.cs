@@ -1,4 +1,5 @@
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -142,6 +143,20 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         ctx.SepaPayoutFiles.Add(file);
         ctx.SepaPayoutTransfers.AddRange(transfers);
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<SepaPayoutExportRow>> GetSepaPayoutsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await (from t in ctx.SepaPayoutTransfers.AsNoTracking()
+                      join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
+                      where t.UserId == userId
+                      orderby f.GeneratedAt
+                      select new SepaPayoutExportRow(
+                          f.GeneratedAt, f.FileName, t.SupplierAccountNum,
+                          t.CreditorName, t.IbanMasked, t.Amount))
+            .ToListAsync(ct);
     }
 
     // ── Purchase-doc sync state (singleton, lazy-created) ─────────────────────

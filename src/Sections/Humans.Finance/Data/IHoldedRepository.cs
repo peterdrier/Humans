@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using NodaTime;
 
 namespace Humans.Finance.Data;
@@ -33,6 +34,10 @@ internal interface IHoldedRepository : IRepository
     /// this section ever wants to be in.</summary>
     Task AddSepaPayoutAsync(
         SepaPayoutFile file, IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct = default);
+
+    /// <summary>Every credit transfer made to the member, oldest first, for their Article 15 export.</summary>
+    Task<IReadOnlyList<SepaPayoutExportRow>> GetSepaPayoutsForUserAsync(
+        Guid userId, CancellationToken ct = default);
 
     // Purchase-doc sync state (singleton, lazy-created)
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
