@@ -185,7 +185,7 @@ else
                     <td class="text-end">
                         @if (r.Balance is { } bal)
                         {
-                            <span class="@(bal > 0 ? "text-danger fw-semibold" : "")">@bal.ToEuro()</span>
+                            <span class="@(bal > 0 ? "finance-positive fw-semibold" : bal < 0 ? "finance-negative fw-semibold" : "")">@bal.ToEuro()</span>
                         }
                         else
                         {

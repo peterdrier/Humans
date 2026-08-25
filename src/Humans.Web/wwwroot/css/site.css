@@ -714,6 +714,15 @@ a:hover {
     color: var(--h-sage-dark) !important;
 }
 
+/* Finance: sign-based coloring for monetary figures — green = positive, red = negative, never the reverse. */
+.finance-positive {
+    color: var(--h-sage-dark) !important;
+}
+
+.finance-negative {
+    color: var(--h-rust) !important;
+}
+
 .text-warning {
     color: var(--h-amber) !important;
 }
