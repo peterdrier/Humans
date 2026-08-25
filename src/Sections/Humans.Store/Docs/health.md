@@ -35,7 +35,7 @@ ordered across everyone, and the two crossed against each other.
 
 ## 2. The shapes
 
-Nine question-shapes across the section's whole external surface.
+The question-shapes across the section's whole external surface.
 
 | # | Shape | Surface |
 |---|---|---|
@@ -68,8 +68,9 @@ Written from the shapes, not from today's layout.
   this order" question — including the per-product ordering deadline — is answered by
   `OrderAuthorizationHandler` against one of three resources (the order, a create context, a
   line context). No controller re-derives a rule; no service re-checks a role.
-- **Two controllers, split by audience, not by verb.** `StoreController` is the counterparty's
-  surface, `StoreAdminController` the admin's. Both only translate.
+- **Controllers split by audience, not by verb.** `StoreController` is the counterparty's
+  surface, `StoreAdminController` the admin's, `StoreStripeWebhookController` the payment
+  processor's. All only translate.
 - **Vendor systems are reached through their own sections' contracts** — `IStripeService`,
   `IHoldedClient` — never their internals.
 - **One public contract seam**, shape 9, and the DTO graph it returns. Nothing else is public
@@ -131,9 +132,11 @@ about what the section does.
 
 ## Load-bearing weirdness
 
-- **`PaymentStatus.Paid` is deliberately the enum's zero member and the column default.** It is
-  what every pre-async row and every sync/manual insert means, and being EF's insert sentinel it
-  is what stops an explicitly-set `Pending` from being swallowed by the store default.
+- **`PaymentStatus.Paid` is deliberately the enum's zero member.** It is what every pre-async row
+  and every sync/manual insert means. The `store_payments.Status` column carried a matching
+  default only for the `AddStorePaymentStatus` migration and no longer does; `Payment.Status`'s
+  C# initializer is the only thing that settles an insert today. A future run should not reason
+  about an EF insert sentinel here — there is no store default to be swallowed by.
 - **Repricing reads one catalog year — the active event's — not each order's `Year`.** The org
   runs one event at a time, and this is also why legacy rows still at `Year = 0` reprice
   correctly. The admin summary is the exception: it prices a historical year against that year's
