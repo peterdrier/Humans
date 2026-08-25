@@ -105,11 +105,11 @@ The Razor partial renders all user-controlled values (`displayName`, `detail`) v
 
 | Method | Route | Returns | Notes |
 | --- | --- | --- | --- |
-| `GET` | `/api/profiles/search?q={term}&scope={name|...}` | `HumanLookupSearchResult[]` | Existing endpoint. Detail enrichment added by this feature. Uncapped — all matches, relevance-ranked (`OrderByRelevance()`: best name match first, then name). |
+| `GET` | `/api/profiles/search?q={term}&scope={name|manage|...}` | `HumanLookupSearchResult[]` | Existing endpoint. `manage` is role-gated and adds legal-name matching without private contact fields. Detail enrichment added by this feature. Uncapped — all matches, relevance-ranked (`OrderByRelevance()`: best name match first, then name). |
 | `GET` | `/api/profiles/by-userid/{userId:guid}` | `HumanLookupSearchResult` | New. Single-person lookup. 404 if user not found or profile rejected. |
 
 `HumanLookupSearchResult` shape: `{ userId, displayName, detail, profilePictureUrl }`.
 
 ### Extension: ticket-number lookup
 
-The `<vc:human-search>` picker accepts an optional `TicketLookupUrl` on `HumanSearchPickerViewModel`. When set, the client fetches it in parallel with `/api/profiles/search` and merges both result sets into the same dropdown — used by the Team Admin Early Entry card to find a human by ticket barcode (`/TeamAdmin/.../LookupTicket`). The opt-in-attribute rule for extra result sources lives in [`docs/architecture/conventions.md`](../../../../../docs/architecture/conventions.md) under *Current exceptions list*. The profile search endpoints themselves are unchanged.
+The `<vc:human-search>` picker accepts an optional `TicketLookupUrl` on `HumanSearchPickerViewModel`. When set, the client fetches it in parallel with `/api/profiles/search` and merges both result sets into the same dropdown — used by the Team Admin Early Entry card to find a human by ticket barcode (`/TeamAdmin/.../LookupTicket`). The opt-in-attribute rule for extra result sources lives in [`docs/architecture/conventions.md`](../../../../../docs/architecture/conventions.md) under *Current exceptions list*. This ticket lookup is separate from the profile-search `scope` authorization described above; the profile search endpoints themselves are unchanged.
