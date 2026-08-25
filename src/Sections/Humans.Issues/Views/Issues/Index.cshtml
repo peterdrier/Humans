@@ -104,13 +104,13 @@
                 <p class="text-muted p-3">@Localizer["Issue_NoneFound"]</p>
             }
             <table class="table table-hover table-sm align-middle issues-table mb-0">
+                @* Three headers for three cells: the reporter and the comment count live
+                   inside the title and updated cells, so they get no column of their own. *@
                 <thead class="visually-hidden">
                     <tr>
                         <th>@Localizer["Issue_ColStatus"]</th>
                         <th>@Localizer["Issue_ColTitle"]</th>
-                        <th>@Localizer["Issue_ColReporter"]</th>
                         <th>@Localizer["Issue_ColUpdated"]</th>
-                        <th>@Localizer["Issue_ColComments"]</th>
                     </tr>
                 </thead>
                 <tbody>

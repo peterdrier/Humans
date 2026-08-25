@@ -83,7 +83,7 @@
   <data name="Issue_Description" xml:space="preserve"><value>Description</value></data>
   <data name="Issue_Description_Placeholder" xml:space="preserve"><value>What happened? What did you expect?</value></data>
   <data name="Issue_Attachment" xml:space="preserve"><value>Screenshot (optional)</value></data>
-  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG or JPEG, max 5 MB.</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG, JPEG or WebP, max 10 MB.</value></data>
   <data name="Issue_FileIssue" xml:space="preserve"><value>File issue</value></data>
   <data name="Issue_FileAnIssue" xml:space="preserve"><value>File an issue</value></data>
   <data name="Issue_Cancel" xml:space="preserve"><value>Cancel</value></data>
@@ -108,8 +108,6 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Feature</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Question</value></data>
-  <data name="Issue_ColComments" xml:space="preserve"><value>Comments</value></data>
-  <data name="Issue_ColReporter" xml:space="preserve"><value>Reporter</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Title</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Updated</value></data>

@@ -185,7 +185,7 @@
     <value>Capture (optionnelle)</value>
   </data>
   <data name="Issue_Attachment_Hint" xml:space="preserve">
-    <value>PNG ou JPEG, 5 Mo max.</value>
+    <value>PNG, JPEG ou WebP, 10 Mo max.</value>
   </data>
   <data name="Issue_FileIssue" xml:space="preserve">
     <value>Signaler l'incident</value>
@@ -254,8 +254,6 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Fonctionnalité</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Question</value></data>
-  <data name="Issue_ColComments" xml:space="preserve"><value>Commentaires</value></data>
-  <data name="Issue_ColReporter" xml:space="preserve"><value>Rapporteur</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Statut</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Titre</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Mis à jour</value></data>

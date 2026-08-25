@@ -185,7 +185,7 @@
     <value>Screenshot (optional)</value>
   </data>
   <data name="Issue_Attachment_Hint" xml:space="preserve">
-    <value>PNG oder JPEG, max. 5 MB.</value>
+    <value>PNG, JPEG oder WebP, max. 10 MB.</value>
   </data>
   <data name="Issue_FileIssue" xml:space="preserve">
     <value>Ticket erstellen</value>
@@ -254,8 +254,6 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Feature</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Frage</value></data>
-  <data name="Issue_ColComments" xml:space="preserve"><value>Kommentare</value></data>
-  <data name="Issue_ColReporter" xml:space="preserve"><value>Melder</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Titel</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Aktualisiert</value></data>

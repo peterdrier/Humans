@@ -185,7 +185,7 @@
     <value>Captura (opcional)</value>
   </data>
   <data name="Issue_Attachment_Hint" xml:space="preserve">
-    <value>PNG o JPEG, màxim 5 MB.</value>
+    <value>PNG, JPEG o WebP, màxim 10 MB.</value>
   </data>
   <data name="Issue_FileIssue" xml:space="preserve">
     <value>Reportar incidència</value>
@@ -254,8 +254,6 @@
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Error</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Funcionalitat</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Pregunta</value></data>
-  <data name="Issue_ColComments" xml:space="preserve"><value>Comentaris</value></data>
-  <data name="Issue_ColReporter" xml:space="preserve"><value>Informador</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Estat</value></data>
   <data name="Issue_ColTitle" xml:space="preserve"><value>Títol</value></data>
   <data name="Issue_ColUpdated" xml:space="preserve"><value>Actualitzada</value></data>

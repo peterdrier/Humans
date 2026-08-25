@@ -54,7 +54,12 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (f.ReporterUserId is { } rid) q = q.Where(i => i.ReporterUserId == rid);
         if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
         if (!string.IsNullOrWhiteSpace(f.SearchText))
-            q = q.Where(i => i.Title.Contains(f.SearchText) || i.Description.Contains(f.SearchText));
+        {
+            // ILike, not Contains: Contains renders LIKE, which Postgres matches case-sensitively,
+            // so "ticket" missed every issue titled "Ticket". Matches every other section's search.
+            var term = $"%{f.SearchText}%";
+            q = q.Where(i => EF.Functions.ILike(i.Title, term) || EF.Functions.ILike(i.Description, term));
+        }
 
         // Visibility filter:
         //  - sectionFilter null = no constraint (Admin)
