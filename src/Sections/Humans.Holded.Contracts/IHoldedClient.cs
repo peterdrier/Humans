@@ -35,8 +35,9 @@ public interface IHoldedClient
     /// Partial payments are allowed — <paramref name="amount"/> may be less than what the document
     /// still owes. <paramref name="treasuryId"/> names the account the money left; omitting it lets
     /// Holded pick its own default, so callers that care pass one.
-    /// An unreadable success response throws <c>HoldedPermanentException</c>, never transient: the
-    /// payment is already posted and a retry would double-pay the document.</summary>
+    /// Never throws over an unreadable success response: the payment is already posted, so a
+    /// success Holded gave no readable id for returns <c>"unconfirmed:{documentId}"</c> instead.
+    /// Callers persist that ref like any other — it names the document a human must check.</summary>
     Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default);

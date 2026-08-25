@@ -17,6 +17,10 @@ namespace Humans.Holded.Services;
 
 internal sealed class HoldedClient : IHoldedClient
 {
+    /// <summary>Stands in for a payment id Holded never gave back. See
+    /// <see cref="PayPurchaseDocumentAsync"/>.</summary>
+    private const string UnconfirmedPaymentRefPrefix = "unconfirmed:";
+
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;
 
@@ -177,24 +181,28 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
+        string? id = null;
         try
         {
-            // Permanent, not transient, on both: SendAsync already accepted the response, so the
-            // payment is posted and only its id is unreadable. A transient exception would read as
-            // "not paid, retry" and double-pay the document.
-            var node = JsonNode.Parse(body)
-                ?? throw new HoldedPermanentException(
-                    $"Holded accepted a payment on purchase document {documentId} but its response could not be read (empty body).");
-            return node["id"]?.GetValue<string>()
-                ?? throw new HoldedPermanentException(
-                    $"Holded accepted a payment on purchase document {documentId} but its response could not be read (no payment id).");
+            id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            throw new HoldedPermanentException(
-                $"Holded accepted a payment on purchase document {documentId} but its response could not be read.", ex);
+            _logger.LogWarning(ex,
+                "Holded accepted a payment on purchase document {DocumentId} but its response could not be parsed.",
+                documentId);
         }
+
+        if (id is not null) return id;
+
+        // SendAsync already accepted the response, so the payment IS posted — throwing here would
+        // lose it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
+        // allocation going and names the document a human has to eyeball in Holded.
+        _logger.LogWarning(
+            "Holded accepted a payment on purchase document {DocumentId} without a readable payment id; recording it as unconfirmed.",
+            documentId);
+        return UnconfirmedPaymentRefPrefix + documentId;
     }
 
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(

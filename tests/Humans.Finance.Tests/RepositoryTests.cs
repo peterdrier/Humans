@@ -235,8 +235,12 @@ public class RepositoryTests
         await repo.AddSepaPayoutAsync(
             new SepaPayoutFile
             {
-                Id = fileId, GeneratedAt = Created, GeneratedByUserId = actor,
-                FileName = "payout.xml", Checksum = "abc", Xml = "<x/>",
+                Id = fileId,
+                GeneratedAt = Created,
+                GeneratedByUserId = actor,
+                FileName = "payout.xml",
+                Checksum = "abc",
+                Xml = "<x/>",
             },
             [new SepaPayoutTransfer
             {

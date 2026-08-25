@@ -179,18 +179,29 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task PayPurchaseDocumentAsync_ResponseWithoutAPaymentId_IsPermanentNotTransient()
+    public async Task PayPurchaseDocumentAsync_ResponseWithoutAPaymentId_ReturnsAnUnconfirmedRef()
     {
-        // Holded accepted the payment; only its id is unreadable. A transient exception would read
-        // as "not paid, retry" and double-pay the document.
+        // A 2xx means the payment posted. Throwing would lose it from the record and let the caller
+        // pay again — the sentinel keeps it, naming the document a human has to check in Holded.
         var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));
 
-        var act = async () => await Make(handler).PayPurchaseDocumentAsync(
+        var id = await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
             Xunit.TestContext.Current.CancellationToken);
 
-        (await act.Should().ThrowAsync<HoldedPermanentException>())
-            .WithMessage("*could not be read*");
+        id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_UnparseableResponseBody_ReturnsAnUnconfirmedRef()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "not json"));
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:doc-123");
     }
 
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>

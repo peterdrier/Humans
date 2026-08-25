@@ -1155,13 +1155,9 @@ internal sealed class Service(
                         + "NOT marked booked and cannot be re-booked here. Finish it in Holded and "
                         + "check for a double payment.");
 
-                // Nothing came back for the first payment — but a permanent error can mean Holded
-                // took it and only its response was unreadable, so this must not claim nothing was
-                // posted (nobodies-collective/Humans#1141 review).
-                return new SepaBookingResult(false, ex is HoldedTransientException
-                    ? "Holded could not be reached — nothing was posted."
-                    : "Holded rejected or could not answer the first payment. Check the document in "
-                      + "Holded before retrying: the payment may have been accepted.");
+                // An accepted-but-unreadable payment comes back as an "unconfirmed:" ref rather than
+                // an exception, so reaching here on the first payment means Holded really refused it.
+                return new SepaBookingResult(false, "Holded refused the payment — nothing was posted.");
             }
 
             remaining -= amount;

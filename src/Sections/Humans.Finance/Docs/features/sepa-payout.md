@@ -113,9 +113,11 @@ check and post the full amount a second time. The screen shows the row as partia
 ids and no button; the remainder is finished in Holded by hand, and there is no affordance to mark a
 transfer booked without paying through it.
 
-If the *first* payment fails, the message asks the admin to check Holded rather than claiming nothing
-was posted: an unreadable response body is `HoldedPermanentException`, and Holded may well have taken
-the payment.
+A payment Holded **accepted** but gave no readable id for is not a failure at all: the client returns
+`"unconfirmed:{documentId}"`, the allocation continues, and the transfer books normally. The sentinel
+lands in `HoldedPaymentRefs` and in the audit entry, naming the document the treasurer has to eyeball
+in Holded. Throwing there would have lost a real payment from the record and left the transfer
+retryable — so reaching the catch on the *first* payment now genuinely means Holded refused it.
 
 ## The file
 

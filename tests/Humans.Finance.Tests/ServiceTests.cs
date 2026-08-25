@@ -2221,8 +2221,10 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
             {
-                UserId = userId, HoldedContactId = "c1",
-                SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto,
+                UserId = userId,
+                HoldedContactId = "c1",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Auto,
             });
         return userId;
     }
@@ -2316,8 +2318,10 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
             {
-                UserId = userId, HoldedContactId = "c2",
-                SupplierAccountNum = 40000099, Source = CreditorContactSource.Manual,
+                UserId = userId,
+                HoldedContactId = "c2",
+                SupplierAccountNum = 40000099,
+                Source = CreditorContactSource.Manual,
             });
         SeedOpenDocs(Doc("d1", 500m, 1, contactId: "c2"));
 
