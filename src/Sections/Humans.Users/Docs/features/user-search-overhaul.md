@@ -81,8 +81,9 @@ per-record matching to it.
 Per-window scope flip so admin/coordinator windows match **legal name** (defect 2):
 
 - `TeamAdminController.SearchUsers` / `SearchMembersForRole` → `ManageAll`; collapse the role-picker
-  hybrid (existing members by DisplayName+Email, candidates by BurnerName) onto the matcher.
-- `Shift{Admin,Dashboard}Controller.SearchVolunteers` → `ManageAll` (confirm each is lead/admin-gated).
+  hybrid (existing members by DisplayName+Email, candidates by BurnerName) onto the matcher. **Done.**
+- `Shift{Admin,Dashboard}Controller.SearchVolunteers` → `ManageAll` (both are coordinator/admin-gated).
+  **Done.**
 - `ProfileApiController.Search`: add a role-checked `scope=manage` → `ManageAll`; point the
   add-to-team / add-to-barrio / early-entry views at it.
 - Web controller tests asserting public endpoints never receive legal-name/admin scope.

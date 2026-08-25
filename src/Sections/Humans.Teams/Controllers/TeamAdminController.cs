@@ -350,11 +350,12 @@ internal sealed class TeamAdminController(
             return Json(Array.Empty<HumanLookupSearchResult>());
         }
 
-        // Name-only — team admins are not global admins, so no contact-data search.
+        // Team management is coordinator/admin-gated: include legal names, but keep
+        // private contact and email fields out of the search scope.
         // Uncapped + relevance-ranked: a hard cap returned an arbitrary subset (the target could be
         // missing) alphabetized; now the best name match leads the scrollable picker.
         var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: int.MaxValue);
+            q, PersonSearchFields.ManageAll, limit: int.MaxValue);
 
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
@@ -1197,10 +1198,10 @@ internal sealed class TeamAdminController(
             .Select(m => m.UserId)
             .ToHashSet();
 
-        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
-        // Uncapped folded name search over everyone (accent/case-insensitive); relevance-ranked.
+        // Coordinator/admin-gated role picker: include legal names, but no private
+        // contact data. Uncapped folded search is relevance-ranked.
         var allResults = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: int.MaxValue);
+            q, PersonSearchFields.ManageAll, limit: int.MaxValue);
         var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
 
         // Team members first, matched by any of:
