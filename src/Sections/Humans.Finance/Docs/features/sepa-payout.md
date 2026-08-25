@@ -18,7 +18,7 @@ A partial payout is legitimate. The remainder stays on the balance and stays vis
 | Key | Required | Meaning |
 |-----|----------|---------|
 | `Sepa:CreditorName` | yes | The organisation's legal name → `Dbtr/Nm` and `InitgPty/Nm` |
-| `Sepa:CreditorIban` | yes | The account the money leaves → `DbtrAcct/Id/IBAN` |
+| `Sepa:CreditorIban` | yes | The account the money leaves → `DbtrAcct/Id/IBAN`. The flat `SEPA_CREDITOR_IBAN` env var overrides it, for deployments that cannot use dotted keys. |
 | `Sepa:CreditorIdentifier` | yes | Presenter id (NIF + 3-char suffix) → `InitgPty/Id/OrgId/Othr/Id` |
 | `Sepa:CreditorBic` | no | → `DbtrAgt/FinInstnId/BICFI`; omitted entirely when unset |
 | `Sepa:MaxPayoutPerTransfer` | no | Hard per-transfer ceiling, default **50** |
