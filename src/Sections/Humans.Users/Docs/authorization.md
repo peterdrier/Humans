@@ -13,7 +13,7 @@
 | `UsersAdminController.AddRole/EndRole` runtime guards | In-method | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` — called via the named policy string rather than passing `RoleAssignmentOperationRequirement.Manage` directly (still resolves to the same resource-based handler, owned by `Humans.Auth`) | Resource-based |
 | `ProfileController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (gating 18 email-edit endpoints) | Resource-based (see handler below) |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
-| `ProfileApiController.Search` | Action | `[Authorize]` inherited (`[HttpGet("search")]`) | — (people search; admin bit never set on this endpoint) |
+| `ProfileApiController.Search` | Action | `[Authorize]` inherited (`[HttpGet("search")]`) | `scope=manage` is additionally role-checked for admin-shaped roles and enables legal-name matching; private/admin contact fields remain excluded |
 | `ProfileApiController.BurnerNameCount` | Action | `[Authorize]` inherited (`[HttpGet("burner-name-count")]`) | — (excludes the authenticated viewer; self-exclusion uses session identity, not a caller-supplied id) |
 | `ProfileApiController.GetByUserId` | Action | `[Authorize]` inherited (`[HttpGet("by-userid/{userId:guid}")]`) | — |
 | `UsersAdminController.PurgeHuman` | Action | `Admin` | `PolicyNames.AdminOnly` (override on the class-level `HumanAdminBoardOrAdmin` controller) |
