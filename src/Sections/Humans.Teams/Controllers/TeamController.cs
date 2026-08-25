@@ -761,8 +761,8 @@ internal sealed class TeamController(
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
         Guid? excludeTeamId, CancellationToken cancellationToken)
     {
-        var allTeams = await teamService.GetAllTeamsAsync(cancellationToken);
-        return allTeams
+        var allTeams = await teamService.GetTeamsAsync(cancellationToken);
+        return allTeams.Values
             .Where(t => t.IsActive && !t.IsSystemTeam
                 && t.ParentTeamId is null  // Can't nest >1 level
                 && t.Id != excludeTeamId)  // Can't be own parent

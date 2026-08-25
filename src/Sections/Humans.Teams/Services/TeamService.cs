@@ -156,12 +156,6 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         await LoadTeamsByIdAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
-    {
-        var teams = await repo.GetAllActiveAsync(cancellationToken);
-        return teams.ToList();
-    }
-
     // Team search is served from the cached TeamInfo snapshot in CachingTeamService — it must
     // never hit the DB. Reaching the inner service means a DI mistake. Mirrors
     // UserService.SearchUsersAsync (search is cache-only; there is no repository search).

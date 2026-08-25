@@ -1680,60 +1680,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
-    // GetAllTeamsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetAllTeamsAsync_ReturnsOnlyActiveTeams()
-    {
-        SeedTeam("Active");
-        SeedTeam("Inactive", isActive: false);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAllTeamsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("Active");
-    }
-
-    [HumansFact]
-    public async Task GetAllTeamsAsync_ReturnsActiveTeamsWithoutPresentationOrdering()
-    {
-        SeedTeam("Charlie");
-        SeedTeam("Alpha");
-        SeedTeam("Bravo");
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAllTeamsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Select(t => t.Name).Should().BeEquivalentTo("Alpha", "Bravo", "Charlie");
-    }
-
-    [HumansFact]
-    public async Task GetAllTeamsAsync_IncludesOnlyActiveMembers()
-    {
-        var team = SeedTeam("Alpha");
-        var active = SeedUser(displayName: "Active");
-        var left = SeedUser(displayName: "Left");
-        SeedTeamMember(team.Id, active.Id);
-        SeedTeamMember(team.Id, left.Id,
-            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAllTeamsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Single().Members.Should().ContainSingle();
-    }
-
-    [HumansFact]
-    public async Task GetAllTeamsAsync_NoTeams_ReturnsEmpty()
-    {
-        var result = await _service.GetAllTeamsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    // ==========================================================================
     // GetUserTeamsAsync
     // ==========================================================================
 

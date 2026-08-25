@@ -185,11 +185,6 @@ internal interface ITeamManagementService : ITeamService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all active teams.
-    /// </summary>
-    Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
     /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
