@@ -958,8 +958,12 @@ internal sealed class Service(
             return SepaPayoutResult.Failure(ex.Message);
         }
 
+        // The stamp is minute-resolution, so it alone would give two batches in one minute the same
+        // name — and the name is what reconciles a file on the treasurer's disk against its row, and
+        // what the audit line quotes. The file id's first 8 hex characters settle it.
         var fileName = $"{FileSlug(sepa.Value.CreditorName!)}-"
-                     + $"{now.InZone(MadridZone).ToDateTimeUnspecified().ToFileTimestamp()}.xml";
+                     + $"{now.InZone(MadridZone).ToDateTimeUnspecified().ToFileTimestamp()}-"
+                     + $"{fileId.ToString("N")[..8]}.xml";
 
         await repo.AddSepaPayoutAsync(new SepaPayoutFile
         {

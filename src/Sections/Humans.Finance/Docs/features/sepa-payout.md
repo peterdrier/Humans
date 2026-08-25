@@ -46,7 +46,9 @@ page says payout is unavailable and names the missing keys — nothing is ever i
    the embedded official XSD. It is pure — no IO, no clock, no configuration.
 6. The file, its SHA-256 checksum, the timestamp and the generating admin are persisted with the
    transfer rows in one save; one `AuditAction.SepaPayoutTransfer` entry per transfer follows.
-7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>.xml`.
+7. The XML streams back as `<org-slug>-<yyyy-MM-dd-HHmm>-<first 8 hex of the file id>.xml`. The
+   stamp is minute-resolution, so the id suffix is what keeps two batches in one minute apart — the
+   filename is the treasurer's handle on a downloaded copy and is quoted in the audit line.
 
 Any failure at any step refuses the **whole** batch with a message and persists nothing.
 

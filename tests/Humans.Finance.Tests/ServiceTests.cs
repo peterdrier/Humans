@@ -1669,7 +1669,7 @@ public class HoldedFinanceServiceTests
         _repo.GetSepaPayoutsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<SepaPayoutExportRow>
             {
-                new(FixedNow, "nobodies-collective-2026-08-25-0309.xml", 40000004, "Ana Ruiz", "ES79****789", 12.34m),
+                new(FixedNow, "nobodies-collective-2026-08-25-0309-4f1a9c02.xml", 40000004, "Ana Ruiz", "ES79****789", 12.34m),
             });
 
         var slices = await MakeService().ContributeForUserAsync(
@@ -2008,6 +2008,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.FileName.Should().StartWith("nobodies-collective-").And.EndWith(".xml");
+        result.FileName.Should().MatchRegex(@"^nobodies-collective-\d{4}-\d{2}-\d{2}-\d{4}-[0-9a-f]{8}\.xml$");
 
         await _repo.Received(1).AddSepaPayoutAsync(
             Arg.Is<SepaPayoutFile>(f =>
@@ -2023,6 +2024,27 @@ public class HoldedFinanceServiceTests
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
                                 && !d.Contains(AnaIban, StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_TwiceInOneMinute_GivesEachFileItsOwnName()
+    {
+        // The clock is fixed, so the timestamp is identical across both calls — which is exactly the
+        // case that used to collide. The name is the treasurer's handle on a downloaded file.
+        ConfigureSepa();
+        SeedPayableCreditor(owed: 100m);
+        var service = MakeService();
+
+        var first = await service.GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+        var second = await service.GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        first.Succeeded.Should().BeTrue();
+        second.Succeeded.Should().BeTrue();
+        second.FileName.Should().NotBe(first.FileName);
     }
 
     [HumansFact]
