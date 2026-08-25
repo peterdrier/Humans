@@ -1,6 +1,6 @@
 ---
 name: Person search uses one bit-flag service method and two canonical UI patterns
-description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `<vc:user-search-result>` (page-style row). Admin-bit fields require admin auth at the controller. Emergency-contact data is never searchable. Shift volunteer search is exempt.
+description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `<vc:user-search-result>` (page-style row). Admin-bit fields require admin auth at the controller; legal-name matching requires the role-gated managed picker scope. Emergency-contact data is never searchable. Shift volunteer search is exempt.
 ---
 
 Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI components. Don't fork.
@@ -29,7 +29,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 **Hard invariants:**
 
 - **Emergency-contact data is never searchable.** Regardless of bit-flag combination. `Profile.EmergencyContactName` / `EmergencyContactPhone` are skipped by every branch of `PersonSearchMatcher`.
-- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules §6. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
+- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules §6. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check; `ProfileApiController` additionally fail-closes an unauthorised `scope=manage` request to `PublicAll`. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
 - **Service returns matches in unspecified order.** Display ordering happens at the controller / view per [`display-sort-in-controllers.md`](display-sort-in-controllers.md). Don't push a `sortBy` parameter into the service.
 - **Limit is a safety cap, not a presentation choice.** It protects against fan-out under broad queries. Controllers may further `.Take(N)` after their own `OrderBy`.
 
