@@ -95,8 +95,8 @@ internal sealed class CalendarService(
 
         await repo.AddAsync(ev, ct);
 
-        // Audit best-effort: row already committed. Re-raising would lie to the caller and
-        // skip §15 decorator invalidation. See PR #585 follow-up.
+        // Audit best-effort: row already committed. Re-raising would lie to the caller;
+        // the caching decorator refreshes the committed row after this method returns.
         try
         {
             await audit.LogAsync(
