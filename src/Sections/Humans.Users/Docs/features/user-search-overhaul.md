@@ -14,8 +14,7 @@
 
 # User search overhaul — match all profile info, exclude board/private
 
-**Status:** in progress. This PR lands the matcher + wiring; the per-window legal-name
-scope flip is the tracked follow-up (see §Follow-up).
+**Status:** complete. The matcher, wiring, and per-window legal-name scope flip are live.
 
 ## Problem
 
@@ -66,7 +65,7 @@ NFD + strip combining marks); name matching token-splits the folded query and re
 (order-independent). `CachingUserService` keeps the cache iteration + Guid fast-path and delegates
 per-record matching to it.
 
-## Done in this PR
+## Delivered
 
 - `PersonSearchFields`: `LegalName` + `ManageAll`; `AdminAll` includes `LegalName`.
 - `PersonSearchMatcher` + 23 unit tests (resolved-name fallback, accents, tokens, legal-name
@@ -76,7 +75,7 @@ per-record matching to it.
 - **Net effect now:** resolved-name + accent + token fixes are live in **every** window (defects
   1, 3, 4). The `LegalName`/email scope infrastructure exists, ready for callers to opt in.
 
-## Follow-up (next PR)
+## Per-window scope delivery
 
 Per-window scope flip so admin/coordinator windows match **legal name** (defect 2):
 
@@ -86,7 +85,8 @@ Per-window scope flip so admin/coordinator windows match **legal name** (defect 
   **Done.**
 - `ProfileApiController.Search`: role-checked `scope=manage` → `ManageAll`; the
   add-to-team / add-to-barrio / early-entry views now request it. **Done.**
-- Web controller tests asserting public endpoints never receive legal-name/admin scope.
+- Users controller tests assert public callers fall back to `PublicAll` and authorized
+  admin-shaped roles receive `ManageAll`.
 
 ## Out of scope
 
