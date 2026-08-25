@@ -200,7 +200,7 @@
     <value>Gràcies! Incidència registrada. Veure-la aquí: {0}</value>
     <comment>{0} = absolute URL path of the new issue</comment>
   </data>
-  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve">
+  <data name="Issue_ValidationFailed" xml:space="preserve">
     <value>No s'ha pogut registrar la incidència. Revisa els camps obligatoris i torna-ho a provar.</value>
   </data>
   <data name="Issue_Widget_ToastNetworkError" xml:space="preserve">

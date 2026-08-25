@@ -200,7 +200,7 @@
     <value>Grazie! Segnalazione registrata. Vedila qui: {0}</value>
     <comment>{0} = absolute URL path of the new issue</comment>
   </data>
-  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve">
+  <data name="Issue_ValidationFailed" xml:space="preserve">
     <value>Impossibile inviare la segnalazione. Controlla i campi obbligatori e riprova.</value>
   </data>
   <data name="Issue_Widget_ToastNetworkError" xml:space="preserve">

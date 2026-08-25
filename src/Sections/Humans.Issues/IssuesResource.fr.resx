@@ -200,7 +200,7 @@
     <value>Merci ! Incident enregistré. Voir ici : {0}</value>
     <comment>{0} = absolute URL path of the new issue</comment>
   </data>
-  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve">
+  <data name="Issue_ValidationFailed" xml:space="preserve">
     <value>Impossible d'enregistrer l'incident. Veuillez vérifier les champs requis et réessayer.</value>
   </data>
   <data name="Issue_Widget_ToastNetworkError" xml:space="preserve">

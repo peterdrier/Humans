@@ -200,7 +200,7 @@
     <value>Danke! Ticket erfasst. Hier ansehen: {0}</value>
     <comment>{0} = absolute URL path of the new issue</comment>
   </data>
-  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve">
+  <data name="Issue_ValidationFailed" xml:space="preserve">
     <value>Ticket konnte nicht erstellt werden. Bitte prüfe die Pflichtfelder und versuche es erneut.</value>
   </data>
   <data name="Issue_Widget_ToastNetworkError" xml:space="preserve">

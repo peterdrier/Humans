@@ -8,7 +8,7 @@
    Model is the page path pre-filled into the hidden PageUrl field. *@
 @{
     var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
-    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
+    var toastValidationFailed = Localizer["Issue_ValidationFailed"].Value;
     var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
 }
 <div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
@@ -33,7 +33,7 @@
                         <select name="Category" class="form-select" required>
                             @foreach (var c in Enum.GetValues<IssueCategory>())
                             {
-                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @Localizer.EnumDisplay(c)</option>
                             }
                         </select>
                     </div>
