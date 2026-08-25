@@ -1,9 +1,9 @@
 namespace Humans.MailerLite.Services.Dtos;
 
 /// <summary>
-/// Global per-status totals. Derived by fan-out: one
-/// <c>GET /api/subscribers?filter[status]=X&amp;limit=1</c> per bucket;
-/// <c>meta.total</c> is read from each response.
+/// Global per-status totals, counted in process while the client pages the full
+/// subscriber list once. No per-status request fan-out — the snapshot is already
+/// being pulled, so the buckets come free.
 /// </summary>
 internal sealed record MailerLiteAccountSummary(
     int ActiveCount,

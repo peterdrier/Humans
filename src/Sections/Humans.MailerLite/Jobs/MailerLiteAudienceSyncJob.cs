@@ -5,8 +5,10 @@ using Humans.MailerLite.Contracts;
 namespace Humans.MailerLite.Jobs;
 
 /// <summary>
-/// Hangfire recurring job that runs <see cref="IMailerLiteAudienceSync.SyncAllAudiencesAsync"/>
-/// daily. Default cron <c>0 6 * * *</c> (06:00 UTC) — early morning, low MailerLite traffic.
+/// Hangfire recurring job that runs <see cref="IMailerLiteAudienceSync.SyncAllAudiencesAsync"/>.
+/// Opt-in: <c>SectionJobs</c> reads <c>MailerLite:AudienceSyncCron</c>, which is unset by
+/// default, so the job is contributed but not scheduled until an admin sets a cron. Until
+/// then syncs happen on demand from the /MailerLite/Admin buttons.
 /// </summary>
 /// <remarks>
 /// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-5

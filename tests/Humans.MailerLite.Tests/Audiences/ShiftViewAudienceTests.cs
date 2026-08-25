@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Tests.Audiences;
 
-public class HasShiftInPeriodAudienceTests
+public class ShiftViewAudienceTests
 {
     private const int EventEndOffset = 5;
 

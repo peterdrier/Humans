@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.MailerLite/**
   tests/Humans.MailerLite.Tests/**
+  tests/Humans.Integration.Tests/Controllers/MailerLitePageRenderTests.cs
 -->
 <!-- freshness:flag-on-change
   Import classification/reset rules, "Humans - " group write guard, audience framework and universal Marketing opt-out exclusion, idempotency invariants, and admin routes. Review when MailerLite services, audiences, client, or architecture-test pins change.
@@ -88,11 +89,33 @@ All routes are `AdminOnly`.
 
 ## Cross-Section Dependencies
 
-- **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
-- **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads through `IUserServiceRead` — the audience classes take it via `MailerLiteAudienceBase` and resolve people from the cached `UserInfo` set (`GetAllUserInfosAsync` / `GetUserInfosAsync`).
-- **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience` is derived from the current-event `TicketOrderInfo` projection.
-- **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserSummary.HasShift`). The per-period `HasShiftSetupAudience` / `HasShiftEventAudience` / `HasShiftStrikeAudience` add the shift's `DayOffset`-derived period via `ShiftUserSummary.HasShiftInPeriod` (Setup = Build).
-- **Users**: `IUserService.GetAllUserInfosAsync` — read by `MailerLiteAudienceBase` to drop explicit Marketing opt-outs from *every* audience, and by `MarketingAudience` / `MarketingNoTicketAudience` to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`).
+The section references exactly five contracts leaves — `Humans.Users.Contracts`,
+`Humans.Tickets.Contracts`, `Humans.Shifts.Contracts`, `Humans.Gdpr.Contracts`,
+`Humans.AuditLog.Contracts` — plus `Humans.Base`. There is no Profiles reference: the email
+and communication-preference interfaces all live in `Humans.Users.Contracts`.
+
+- **Users — people**: `IUserServiceRead.GetAllUserInfosAsync` and `GetUserInfoAsync` over the
+  cached `UserInfo` set. `MailerLiteAudienceBase` reads it to drop explicit Marketing
+  opt-outs from *every* audience; `MarketingAudience` / `MarketingNoTicketAudience` read it
+  to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`); the debug screen
+  reads it for names and addresses.
+- **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
+  user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
+  (GDPR erasure), `FindAnyEmailRowByAddressAsync` and `GetDistinctVerifiedUserIdsAsync`
+  (import matching), `DeleteEmailAsync` (import remediation).
+- **Users — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
+  `GetPreferenceOrNullAsync`, `GetCountByCategoryAndStateAsync` (reads) and
+  `UpdatePreferenceAsync`, `ResetPreferenceAsync` (writes, from the import apply).
+- **Users — provisioning**: `IAccountProvisioningService.FindOrCreateUserByEmailAsync`, the
+  import's create path.
+- **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync`, called once from
+  `CurrentEventTicketHolders.ForCurrentEventAsync` — the single definition of the
+  current-event ticket-holder set that `HasTicketAudience`, `MarketingNoTicketAudience` and
+  `TicketNoShiftsAudience` all read.
+- **Shifts**: `IShiftView.GetUsersAsync` — cached per-user shift signups. `HasShiftAudience`
+  and the three per-period audiences share `ShiftViewAudienceBase`, differing only in the
+  predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
+  Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 - **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email via `IMailerLiteService.DeleteSubscriberAsync`.
 
@@ -104,7 +127,7 @@ All routes are `AdminOnly`.
 
 - Everything lives in `src/Sections/Humans.MailerLite/`: `Services/` (the two orchestrators, the four interfaces and the internal DTOs), `Services/Audiences/`, `Services/MailerLite/` (the client, its two JSON converters and `MailerLiteOptions`), `Domain/`, `Data/` (context, design-time factory, configuration, repository, migrations), `Controllers/`, `Models/` and `Views/`. The section still takes **no `Humans.Infrastructure` reference** — the context registers through Base's `AddSectionDbContext` seam, and the client needs only `IHttpClientFactory` from the ASP.NET shared framework.
 - **Cross-section surface** — `IMailerLiteAudienceSync` (`Contracts/`), one method returning `int`. `MailerLiteAudienceSyncJob` — its only consumer — moved into this project's `Jobs/` folder at G5 lane 5b-5 (public, since Shell names the concrete type at registration and HUM0034 makes every other public type in a section an error), leaving only its DI registration and roll-call entry in Shell (no `ISection` seam for jobs yet, design §15 step 6b). With no Base consumer left, the `Humans.MailerLite.Contracts` leaf was no longer forced and folded into this project's `Contracts/` folder beside the interface. Nothing else — the dashboard stats, the import plan/apply pair and the whole `IMailerLiteService` surface are internal.
-- **No resource set** — the two admin pages are English operator copy with no `Localizer[…]` call. `MailerLiteArchitectureTests.SectionTypesTakeNoStringLocalizer` is what makes adding copy fail the build rather than silently resolving against a `SharedResource` the RCL cannot see.
+- **No resource set** — the three admin pages are English operator copy with no `Localizer[…]` call. `MailerLiteArchitectureTests.SectionTypesTakeNoStringLocalizer` is what makes adding copy fail the build rather than silently resolving against a `SharedResource` the RCL cannot see.
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at 500 users. `MailerLiteClient` is a Singleton holding its own subscriber/group snapshot, refreshed only on demand.
-- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketServiceRead`, `IShiftView`, `IAuditLogService`.
+- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserServiceRead`, `ITicketServiceRead`, `IShiftView`, `IAuditLogService`.
 - **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, no `IStringLocalizer<T>` anywhere in the section, allowed-write surface on `IMailerLiteService`, and audience group-name prefix + uniqueness. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`) pins that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.

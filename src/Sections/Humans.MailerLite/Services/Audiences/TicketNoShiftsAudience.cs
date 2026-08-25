@@ -27,7 +27,7 @@ internal sealed class TicketNoShiftsAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var ticketHolders = await tickets.ForCurrentEventAsync(ct);
+        var ticketHolders = await CurrentEventTicketHolders.ForCurrentEventAsync(tickets, ct);
         if (ticketHolders.Count == 0) return new HashSet<Guid>();
 
         var views = await shiftView.GetUsersAsync(ticketHolders, ct);

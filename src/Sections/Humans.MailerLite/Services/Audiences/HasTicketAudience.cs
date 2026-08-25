@@ -17,6 +17,6 @@ internal sealed class HasTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        return await tickets.ForCurrentEventAsync(ct);
+        return await CurrentEventTicketHolders.ForCurrentEventAsync(tickets, ct);
     }
 }

@@ -19,7 +19,7 @@ internal sealed class MarketingNoTicketAudience(
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)
     {
-        var ticketHolders = await tickets.ForCurrentEventAsync(ct);
+        var ticketHolders = await CurrentEventTicketHolders.ForCurrentEventAsync(tickets, ct);
         var allUsers = await Users.GetAllUserInfosAsync(ct);
         return allUsers
             .Where(u => u.MarketingOptedOut == false && !ticketHolders.Contains(u.Id))

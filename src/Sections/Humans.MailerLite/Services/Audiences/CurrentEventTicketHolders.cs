@@ -7,6 +7,12 @@ namespace Humans.MailerLite.Services.Audiences;
 /// audience that includes or excludes ticket holders. Three copies of this pipeline meant
 /// three chances for the audiences to disagree about the same set.
 /// </summary>
+/// <remarks>
+/// A plain static over <see cref="ITicketServiceRead"/>, deliberately not an extension
+/// method: this is a MailerLite-side composition of one Tickets read, and dressing it up as
+/// a method on that interface would both fragment its surface and contradict its own
+/// surface budget (memory/code/no-extensions-for-owned-classes.md).
+/// </remarks>
 internal static class CurrentEventTicketHolders
 {
     /// <summary>
@@ -14,7 +20,7 @@ internal static class CurrentEventTicketHolders
     /// Buyer-only rows carry no <c>MatchedUserId</c> and so are excluded.
     /// </summary>
     public static async Task<HashSet<Guid>> ForCurrentEventAsync(
-        this ITicketServiceRead tickets, CancellationToken ct)
+        ITicketServiceRead tickets, CancellationToken ct)
     {
         var orders = await tickets.GetTicketOrdersAsync(ct);
         return orders

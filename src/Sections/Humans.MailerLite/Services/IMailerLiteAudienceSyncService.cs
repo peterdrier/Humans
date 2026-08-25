@@ -13,8 +13,8 @@ internal interface IMailerLiteAudienceSyncService : IApplicationService
 {
     /// <summary>
     /// Read-only stats for every registered audience in a single pass.
-    /// Pulls the MailerLite subscriber/group snapshot once and the audit-log
-    /// last-sync entries once, then folds them into per-audience rows. Used
+    /// Pulls the MailerLite subscriber/group snapshot once and the section's own
+    /// sync-state rows once, then folds them into per-audience rows. Used
     /// by the /MailerLite/Admin dashboard so the controller doesn't fan out
     /// multiple service+audit calls per render.
     /// </summary>

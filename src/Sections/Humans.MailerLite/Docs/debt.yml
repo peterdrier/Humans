@@ -1,7 +1,4 @@
 # Section debt ledger for Humans.MailerLite. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox:
-  - added: 2026-08-24
-    what: "Boolean-attribute trap in Views/MailerLite/Admin/Debug.cshtml:67 — selected=\"@(a.Key == Model.SelectedKey)\" renders selected=\"True\"/\"False\" and either value selects the option, so the debug page's group picker marks every option selected. Sanctioned form is attr=\"@(cond ? \"attr\" : null)\" per docs/architecture/code-review-rules.md §Razor Boolean Attributes. Found by /section-doctor on Onboarding 2026-08-23; invisible to .claude/razor-lint.sh until nobodies-collective/Humans#1120 un-inverted its regex."
-    review: light
+inbox: []
