@@ -2168,6 +2168,12 @@ Validation:
 Next:
 - Continue with the remaining 15 live service entity-read baseline entries; preserve admin mutation paths and avoid persistence-forbidden areas.
 
+Current remaining-entry classification:
+- Auth `FindUserByVerifiedEmailAsync`: Identity `UserManager` requires the entity for login relinking.
+- Events `GetCampEventAsync`, `GetUserEventAsync`, and `GetEventForModerationAsync`: callers perform validated read-then-mutate workflows.
+- Shifts settings, rota, shift, and signup reads: admin/settings mutations or full shift-overlap graph consumers; DTO replacement needs a command/read-model design, not a mechanical return-type change.
+- Teams `GetTeamByIdAsync` and `GetTeamEntityBySlugAsync`: remaining callers use admin/resource authorization and mutation-adjacent entity state.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.
