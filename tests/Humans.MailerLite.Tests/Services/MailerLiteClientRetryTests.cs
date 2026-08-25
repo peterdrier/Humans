@@ -72,6 +72,28 @@ public class MailerLiteClientRetryTests
             "an absurd Retry-After must clamp to the 90s ceiling, not be honored verbatim");
     }
 
+    [HumansFact]
+    public async Task AssignSubscriberToGroupAsync_NoRetryAfterHeader_WaitsTheDefault60s()
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        handler.Enqueue429NoRetryAfter();
+        var logger = new CapturingLogger<MailerLiteClient>();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+            Xunit.TestContext.Current.CancellationToken);
+        // Same ordering trick as the clamp test: cancel once the warning is written, so the
+        // pending delay is observed through the log line rather than the wall clock.
+        var client = NewClient(handler, new CancelOnRetryWarningLogger(logger, cts));
+
+        var act = async () => await client.AssignSubscriberToGroupAsync("sub-1", "42", cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>(
+            "the default 60s delay is still pending when the token cancels");
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Message.Contains("retrying in 60s"),
+            "a 429 with no Retry-After must fall back to ML's 60s rate-limit window");
+    }
+
     private static MailerLiteClient NewClient(HttpMessageHandler handler, ILogger<MailerLiteClient>? logger = null) =>
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
@@ -124,6 +146,14 @@ public class MailerLiteClientRetryTests
             resp.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(retryAfterSeconds));
             _responses.Enqueue(resp);
         }
+
+        // A 429 with no Retry-After at all — ML omits it on some rate-limit responses.
+        public void Enqueue429NoRetryAfter()
+            => _responses.Enqueue(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("""{"message":"Too Many Attempts."}""",
+                    System.Text.Encoding.UTF8, "application/json"),
+            });
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
         {

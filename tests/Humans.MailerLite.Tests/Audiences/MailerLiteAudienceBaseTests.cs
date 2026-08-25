@@ -29,19 +29,24 @@ public class MailerLiteAudienceBaseTests
         members.Should().BeEquivalentTo([optedIn, noPref]);
     }
 
+    // Which ids survive with no opt-outs is already covered by the test above; the branch
+    // only this test reaches is the no-copy one — with nothing to exclude, the base hands
+    // back the subclass's own set rather than rebuilding it.
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_NoOptOuts_ReturnsRawUnchanged()
+    public async Task ComputeMemberUserIdsAsync_NoOptOuts_ReturnsTheRawSetItself()
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
+        var raw = new HashSet<Guid> { a, b };
 
         var audience = NewAudience(
-            raw: [a, b],
+            raw: raw,
             infos: [InfoWithMarketing(a, optedOut: null), InfoWithMarketing(b, optedOut: false)]);
 
         var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        members.Should().BeEquivalentTo([a, b]);
+        members.Should().BeSameAs(raw,
+            "with no opted-out users there is nothing to exclude, so the base returns the raw set");
     }
 
     [HumansFact]

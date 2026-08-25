@@ -5,6 +5,8 @@ using Humans.Tickets.Contracts;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Testing;
+using Xunit;
 
 namespace Humans.MailerLite.Tests.Audiences;
 
@@ -49,16 +51,28 @@ public class TicketNoShiftsAudienceTests
         audience.MailerLiteGroupName.Should().StartWith("Humans - ");
     }
 
-    [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_TicketWithoutCommittedShift_IncludesUser()
+    // A ticket holder whose only signups were Refused/Bailed/Cancelled/NoShow has not
+    // committed to a shift and must stay in the audience. This constructs those signups
+    // rather than handing back an empty summary — an empty summary would walk the same
+    // path as ComputeMemberUserIdsAsync_ReturnsTicketHoldersMinusShiftHavers and prove
+    // nothing about the statuses named here.
+    [HumansTheory]
+    [InlineData(SignupStatus.Refused)]
+    [InlineData(SignupStatus.Bailed)]
+    [InlineData(SignupStatus.Cancelled)]
+    [InlineData(SignupStatus.NoShow)]
+    public async Task ComputeMemberUserIdsAsync_TicketWithOnlyUncommittedSignups_IncludesUser(
+        SignupStatus status)
     {
-        // Users with only Refused/Bailed/Cancelled/NoShow signups are NOT in
-        // shiftCommitted (per ShiftUserSummary.HasShift — only Pending+Confirmed count).
-        // They should remain in the audience.
         var userA = Guid.NewGuid();
+        var summary = ShiftFixtures.UserSummary(userA, [ShiftFixtures.Signup(status: status)]);
+        summary.HasShift.Should().BeFalse(
+            $"{status} must not count as a committed shift — only Pending and Confirmed do");
+
         var audience = NewAudience(
             ticketHolders: [userA],
-            shiftCommitted: []);
+            shiftCommitted: [],
+            summaryOverrides: new Dictionary<Guid, ShiftUserSummary> { [userA] = summary });
 
         var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -81,7 +95,8 @@ public class TicketNoShiftsAudienceTests
 
     private static TicketNoShiftsAudience NewAudience(
         HashSet<Guid> ticketHolders,
-        HashSet<Guid> shiftCommitted)
+        HashSet<Guid> shiftCommitted,
+        IReadOnlyDictionary<Guid, ShiftUserSummary>? summaryOverrides = null)
     {
         var tickets = Substitute.For<ITicketServiceRead>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -95,9 +110,11 @@ public class TicketNoShiftsAudienceTests
                 var map = new Dictionary<Guid, ShiftUserSummary>();
                 foreach (var id in ids)
                 {
-                    map[id] = shiftCommitted.Contains(id)
-                        ? ViewWithShift(id)
-                        : ShiftUserSummary.Empty(id);
+                    map[id] = summaryOverrides is not null && summaryOverrides.TryGetValue(id, out var over)
+                        ? over
+                        : shiftCommitted.Contains(id)
+                            ? ViewWithShift(id)
+                            : ShiftUserSummary.Empty(id);
                 }
                 return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(map);
             });
