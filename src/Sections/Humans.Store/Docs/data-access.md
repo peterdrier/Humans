@@ -22,7 +22,7 @@ Repository: `IStoreRepository`.
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface),
-`IShiftManagementService`, `IStripeService` (the `Humans.Stripe` connector
+`IBurnSettingsService`, `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), `IHoldedClient` (the
 `Humans.Holded` connector section — contact upsert, sales-document create/approve/read

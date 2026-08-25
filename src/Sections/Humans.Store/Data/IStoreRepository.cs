@@ -5,9 +5,9 @@ namespace Humans.Store.Data;
 
 /// <summary>
 /// Repository for the Store section's tables: <c>store_products</c>,
-/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c>,
-/// <c>store_invoices</c>, and <c>store_treasury_sync_state</c>. The only
-/// non-test file that writes to these DbSets.
+/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c> and
+/// <c>store_invoices</c>. The only non-test file that writes to these DbSets.
+/// <c>store_treasury_sync_state</c> ships unused — nothing here touches it.
 /// </summary>
 /// <remarks>
 /// Follows the §15b Singleton + <c>IDbContextFactory</c> pattern: every method

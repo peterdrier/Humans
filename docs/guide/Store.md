@@ -28,7 +28,7 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 
 Go to `/Store` to see what's available for your camp this year. Prices are shown VAT-inclusive as the headline amount, with the net price and VAT rate underneath. Start a new order and add items for what you need. While your order is still open it tracks the current catalogue price, so if a price changes the order updates to match; once an invoice is issued the prices are frozen as shown at that point. (Your order page lists any catalogue price changes that have happened since you started it.)
 
-You can have more than one order for the same camp season.
+Each camp season has a single order.
 
 ### Add and remove items
 
@@ -40,7 +40,7 @@ While your order is open, you can fill in the billing details (name, VAT ID, add
 
 ### Pay
 
-From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. If a payment is already awaiting clearance (e.g. a bank debit mandate that hasn't settled yet), the Pay button is hidden until that payment either confirms or fails; this prevents a double charge. Bank transfers are recorded by hand against the order by a treasurer; automatic matching from the org's accounts isn't switched on yet.
+From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. If a payment is already awaiting clearance (e.g. a bank debit mandate that hasn't settled yet), the Pay button is hidden until that payment either confirms or fails; this prevents a double charge. Bank transfers aren't recorded against the order yet — neither the hand-entry screen nor automatic matching from the org's accounts is switched on.
 
 ![TODO: screenshot — order detail page showing items, balance, and the Pay button]
 
