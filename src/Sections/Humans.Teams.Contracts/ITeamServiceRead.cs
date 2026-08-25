@@ -43,6 +43,14 @@ public interface ITeamServiceRead
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the department-scoped team IDs the user can coordinate for budget purposes:
+    /// top-level teams where the user is a direct coordinator or holds a management role,
+    /// plus their active child teams.
+    /// </summary>
+    Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if a user is a coordinator of a team.
     /// </summary>
     Task<bool> IsUserCoordinatorOfTeamAsync(
