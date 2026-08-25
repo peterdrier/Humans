@@ -2203,6 +2203,16 @@ Validation:
 Next:
 - Continue the autonomous audit loop while preserving intentional compatibility suppressions.
 
+## 2026-08-25 checkpoint - serialize integration hosts around global logging
+Done:
+- Disabled intra-assembly parallelism in integration tests because each `WebApplicationFactory` replaces and flushes process-wide Serilog state.
+- Documented the shared logger as the remaining non-isolated host dependency; this prevents startup-failure log assertions from racing other hosts.
+Validation:
+- Missing-database startup test: 1 passed.
+- Full integration assembly: 317 passed, 1 expected skip.
+Next:
+- Continue the autonomous debt loop and preserve the explicit no-schema-change boundary.
+
 ## 2026-05-15 checkpoint - team role management preservation
 Done:
 - Cleared `src/Humans.Web/Controllers/TeamAdminController.cs:EditRole/3` from `NoBusinessLogicInControllers.baseline.txt` by moving management-flag preservation into `ITeamService.UpdateRoleDefinitionAsync`.
