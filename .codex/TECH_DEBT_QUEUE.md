@@ -80,12 +80,20 @@ violation, never edit a baseline the code still triggers.
 
 ## Current state — rewrite this whole section every run; never append
 
-*As of 2026-08-25, branch `techdebt/2026-08-25-codex-1` (curated into peterdrier/Humans#1514).*
+*As of 2026-08-25, branch `techdebt/2026-08-25-codex-2` ([peterdrier/Humans#1519](https://github.com/peterdrier/Humans/pull/1519)).*
 
 - **Baselines:** counts live in the baseline files only — regenerate with the command
   above, never record them here (`memory/process/no-derived-aggregates-in-docs.md`).
   `NoDestructiveMigrationOps` is blocked by design — immutable migration history, not
-  a backlog.
+  a backlog. The current pass removed Camps' generic repository display ordering;
+  remaining display-sort entries inspected in Teams and Tickets are documented
+  operational selectors, chronology, or page windows. Campaign tracking ordering
+  would need a public DTO expansion to relocate it, so it remains.
+- **Resolved this pass:** Gate now respects vendor check-in timestamps; Base and Profile
+  stale localization/resources are removed; the MailerLite absence assertion is gone;
+  Camps admin missing values render a real em dash; and host-local Serilog configuration
+  removes the parallel `WebApplicationFactory` log-buffer race
+  (nobodies-collective/Humans#1145). Full solution tests passed after each pushed set.
 - **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
   (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
   (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
@@ -96,5 +104,4 @@ violation, never edit a baseline the code still triggers.
   (`memory/process/no-derived-aggregates-in-docs.md`); per-section history lives in
   the Section Refactor History table in `docs/architecture/maintenance-log.md`.
 - **Needs Peter:** none open. (Legal-name picker scope shipped separately as
-  peterdrier/Humans#1516; integration-test Serilog race filed as
-  nobodies-collective/Humans#1145.)
+  peterdrier/Humans#1516; the integration-test Serilog race is fixed in this branch.)
