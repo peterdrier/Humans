@@ -75,7 +75,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  25 section services, each implementing           │
+│  Section services, each implementing              │
 │  IUserDataContributor:                            │
 │                                                   │
 │    UserService               AccountMergeService  │

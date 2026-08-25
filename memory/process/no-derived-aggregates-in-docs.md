@@ -16,6 +16,13 @@ This covers:
   scorecard).
 - Count-reconciliation changelog — "was 9, then briefly 8", "total moves 6 → 7". Git history
   records how a number changed; the doc should not.
+- **Counts of a set the code owns, with no list in the doc at all** — "there are **43**
+  sections", "**30** own tables", "25 section services implement `IUserDataContributor`",
+  "24 section projects reference `Humans.Gdpr.Contracts`". Same defect one step out: the
+  generator is the compiler rather than an adjacent list, so it drifts on the next section,
+  contributor or table and nothing fails. Write "all of them", "they are: …", or a defining
+  predicate ("those with a paired `.Contracts` project") instead. Peter, 2026-08-25: "we
+  don't allow counts in docs. remove the number — 'all of them' is sufficient."
 
 **Why:** derived numbers are hand-maintained copies with no generator keeping them honest, so
 they drift the moment the underlying list changes — and they drift silently, because nothing

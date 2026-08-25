@@ -8,7 +8,7 @@
 
 **Counts:** 8 of 9 mechanical entries dirty (`code-analysis-suppressions` clean).
 83 editorial docs matched; 42 of them matched **only** sibling `.md` files and were
-skipped as no-code-drift (see *Self-dirtying editorial triggers*), leaving 41 reviewed.
+skipped as no-code-drift (see that section below), leaving 41 reviewed.
 All 9 verifiers in `docs/scripts/freshness-checks/run-all.sh` pass.
 
 ## Updated automatically
@@ -44,19 +44,22 @@ All 9 verifiers in `docs/scripts/freshness-checks/run-all.sh` pass.
   exempt lists as exhaustive, including an outright "Escape: none".
 - **Feedback / Issues** — Contracts-leaf surface lists omitted `IFeedbackTriage`,
   `IIssueTriage`, `IssueStatus` and `IssueReadModels`.
-- **design-rules.md** — 42 → 43 sections (Backdoor), 29 → 30 table-owning.
+- **design-rules.md** — Backdoor missing from the section list, and from the table-owning
+  set. The cardinal counts that sat beside both lists were removed rather than incremented
+  (Peter, `no-derived-aggregates-in-docs`).
 - **Monitor.md** — reference set was missing `Humans.Users.Contracts`.
 - **Debug** — `authorization.md` still listed the deleted `LogApiController` /
   `LogApiKeyAuthFilter`; `Debug.md` still explained `InMemoryLogSink`'s home by "Shell's
   `LogApiController` reads it" (it is Backdoor's `BackdoorLogsController` now);
   `authorization-inventory.md` still said `LogApiController` moved to Debug.
-- **gdpr-export.md / Gdpr.md** — contributor and referencing-project counts (24 → 25,
-  23 → 24); the Events contributor is `CachingEventService` delegating to `EventService`.
+- **gdpr-export.md / Gdpr.md** — the Events contributor is `CachingEventService`
+  delegating to `EventService`, not `EventService`. Contributor and referencing-project
+  counts removed rather than incremented (same rule).
 - **global-search.md** — stale `Section.cs` line citation.
 - **Email.md** — carried over from the previous sweep's flag list, unactioned there:
   `IEmailService`'s callers were still counted as "nine `Humans.Application` services,
   six `Humans.Infrastructure` jobs". Both projects were deleted at G5; replaced with the
-  15 consuming section projects plus the Shell.
+  named consuming section projects plus the Shell.
 
 Verified against source and found accurate, no edit needed: `Backdoor.md`,
 `admin-shell.md`, Debug's two feature docs, `code-review-rules.md`, `conventions.md`,
@@ -73,19 +76,28 @@ feature docs (this window's Events changes are internal helper extraction, not b
 `verify-triggers.sh` reported `repaired=0 unresolved=0 docs_forced_dirty=0` both before
 and after this sweep's catalog change.
 
-## Self-dirtying editorial triggers
+## Editorial docs that matched only sibling `.md` changes
 
-42 of the 83 matched editorial docs fired **only** because a sibling `.md` file changed —
-almost always the previous sweep's own edit to a doc under `src/Sections/Humans.X/Docs/`,
-caught by that section's whole-project trigger (`src/Sections/Humans.X/**`). No code
-changed for any of them, so there was nothing to fix; they were skipped rather than
-reviewed. The loop is self-perpetuating: every sweep's doc edits re-dirty the same set
-next run. Affected sections: Budget, Calendar, Camps, Cantina, CityPlanning, Consent,
-Containers, Email, Expenses, Finance, GoogleIntegration, Governance, Guide, MailerLite,
-Notifications, Shifts, Store, Stripe, Tickets, Users, plus four `docs/guide/` docs.
+42 of the 83 matched editorial docs fired **only** because a sibling `.md` under
+`src/Sections/Humans.X/**` changed, not because any code did. They were skipped rather
+than reviewed — there was nothing to fix.
 
-`docs/architecture/coding-rules.md` also matched only `.md` files, but real ones — a new
-`memory/` atom and an analyzer release note — so it was reviewed normally.
+Attributed, they split three ways:
+
+- **23 pure echo** — the only trigger was the *previous* sweep's own prose edit to a doc
+  in that section. This damps: this sweep left those docs alone, so next sweep's window
+  contains no `.md` change for them and they come back clean. One-sweep echo, not a
+  standing loop.
+- **19 mixed / 1 mechanical-only** — the trigger included a regenerated
+  `Docs/data-access.md` or `Docs/authorization.md`, which change *because that section's
+  source changed*. That is a legitimate (if indirect) drift signal, not noise.
+
+Of the 69 `.md` changes under `src/Sections/*/Docs/` in this window, 55 came from the
+previous sweep's own commit (`5a79da5fb1`), 9 from the Backdoor consolidation, 4 from the
+no-tests-for-absences pass, 1 from the Events doctor run.
+
+**No fix applied.** An earlier draft of this report called the pattern self-perpetuating;
+that was wrong. The echo component is self-limiting and the rest is code-driven.
 
 ## Pruned
 
@@ -173,14 +185,18 @@ None — all prune candidates resolved this sweep.
 
 Raised with Peter inline at the end of this run:
 
-1. Self-dirtying editorial triggers — fix by excluding `.md` from editorial trigger
-   matching, or by narrowing each section doc's glob?
-2. `RoleAssignmentService.cs:272` and `CampService.cs:1392` still carry comments
-   referencing `AccountMergeService.AcceptAsync`'s removed `TransactionScope`. Source
-   comments are outside the sweep's doc scope.
-3. `CLAUDE.md` says "all 42 of them" sections; it is 43 now. `CLAUDE.md` is not in the
-   catalog, so the sweep did not touch it.
-4. The `authorization.md` ignore-list addition above — confirm or revert.
+1. Editorial docs matching only sibling `.md` changes — **resolved, no fix needed.**
+   Peter: wouldn't they stop dirtying once there are no further changes? Correct; measured
+   above (23 of 42 are a one-sweep echo that damps, the other 19 are code-driven).
+2. Stale `TransactionScope` comments — **fixed.** `RoleAssignmentService.cs:271` and
+   `CampService.cs:1392` now point at `AccountMergeService.MergeAsync` and its ordered,
+   idempotent fan-out.
+3. Counts in docs — **fixed, and generalised.** `CLAUDE.md` now says "all of them".
+   Peter's rule ("we don't allow counts in docs") already existed as
+   `no-derived-aggregates-in-docs`; extended that atom to cover counts of a code-owned set
+   with no list in the doc, and stripped the counts this sweep had refreshed in
+   `design-rules.md`, `gdpr-export.md` and `Gdpr.md`.
+4. The `authorization.md` ignore-list addition — **approved by Peter for now.**
 
 ## Skipped (errors)
 
