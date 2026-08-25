@@ -51,7 +51,7 @@ public class FinanceControllerTests
         {
             HttpContext = http,
             ActionDescriptor = new ControllerActionDescriptor
-                { ActionName = nameof(FinanceController.GenerateSepa) },
+            { ActionName = nameof(FinanceController.GenerateSepa) },
         };
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();

@@ -101,7 +101,7 @@ else
             <label class="text-muted small mb-0" for="maxPerTransfer">Cap per transfer (€)</label>
             <input type="number" id="maxPerTransfer" name="maxPerTransfer" form="sepaForm"
                    class="form-control form-control-sm" style="max-width: 7rem"
-                   step="0.01" min="0.01" value="@Amount(Model.Sepa.MaxPerTransfer)" />
+                   step="0.01" min="0.01" required value="@Amount(Model.Sepa.MaxPerTransfer)" />
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-file-arrow-down me-1"></i>Generate SEPA file
             </button>
