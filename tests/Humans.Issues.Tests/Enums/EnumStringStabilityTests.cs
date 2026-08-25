@@ -5,11 +5,8 @@ using Humans.Issues.Domain;
 namespace Humans.Issues.Tests.Enums;
 
 /// <summary>
-/// Issues' string-stored-enum guard. Lives here rather than the central
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> because <see cref="IssueStatus"/>
-/// is internal to <c>Humans.Issues</c> and <see cref="IssueCategory"/> sits on Issues'
-/// contracts leaf after the section's G5 move (nobodies-collective/Humans#866), neither of
-/// which the central project can name (nobodies-collective/Humans#1025).
+/// Issues' string-stored-enum guard. Lives with the section that owns
+/// <see cref="IssueStatus"/> and <see cref="IssueCategory"/>, not in a central test project.
 /// </summary>
 /// <remarks>
 /// Both are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the
@@ -18,8 +15,7 @@ namespace Humans.Issues.Tests.Enums;
 /// also parsed by name across a section boundary via <c>Enum.TryParse&lt;IssueCategory&gt;</c>
 /// in <c>Humans.Agent</c>'s <c>AgentService.ParseIssueProposalArgs</c> — renaming a member
 /// silently breaks that parse (it falls back to <see cref="IssueCategory.Question"/> instead
-/// of erroring), not just stored history. A <c>[Fact]</c> rather than a theory: a public test
-/// method cannot take an internal enum type as a parameter (CS0051).
+/// of erroring), not just stored history.
 /// </remarks>
 public class EnumStringStabilityTests
 {

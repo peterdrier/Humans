@@ -12,7 +12,7 @@
 
 The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
 
-Issues **superseded** Feedback (`src/Sections/Humans.Feedback/Docs/features/feedback-system.md`), which was a single global queue. Since nobodies-collective/Humans#977 Feedback accepts no new reports and its screens are Admin-only, so Issues is the only in-app reporting path — every new report, section-specific or not, goes here.
+Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedback/Docs/features/feedback-system.md`), the single global queue it replaced, accepts no new reports and is Admin-only.
 
 ## User Stories
 
@@ -21,7 +21,7 @@ Issues **superseded** Feedback (`src/Sections/Humans.Feedback/Docs/features/feed
 **As** an authenticated human, **I want** to file an issue from any page, **so that** I can report a problem against the right area without leaving my current workflow.
 
 **Acceptance Criteria:**
-- Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from Shell's `HelpWidget` view component (so `Issue_*` copy resolves against `IssuesResource`)
+- Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from `Humans.Agent`'s `HelpWidgetViewComponent` (so `Issue_*` copy resolves against `IssuesResource`)
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
@@ -56,7 +56,7 @@ Issues **superseded** Feedback (`src/Sections/Humans.Feedback/Docs/features/feed
 - `PATCH /api/backdoor/issues/{id}/assignee` — set/clear assignee
 - `PATCH /api/backdoor/issues/{id}/section` — change section (re-route)
 - `PATCH /api/backdoor/issues/{id}/github-issue` — link GitHub issue
-- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Backdoor` (nobodies-collective/Humans#1128). The request acts as that person, and every write records them as the actor.
+- All endpoints require a personal `X-Api-Key` header — a key an admin allocated to a human at `/Backdoor`. The request acts as that person, and every write records them as the actor.
 - 401 if the header is missing, or the key is unknown or revoked
 - Enum values serialized as strings consistently (GET and PATCH)
 - Handler / reporter context included in responses: name, email, userId, preferred language
@@ -157,14 +157,14 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 ## Navigation
 
 - **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `SectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
-- **Floating widget:** Shell's `HelpWidget` view component renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
+- **Floating widget:** `Humans.Agent`'s `HelpWidgetViewComponent`, contributed into Shell's `body-end` chrome slot, renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
 - **`/Backdoor`:** allocate, rotate and revoke the keys that open this API.
 
 ## Related Features
 
-- `src/Sections/Humans.Feedback/Docs/features/feedback-system.md` — the retired global feedback queue Issues replaced (#977): closed to new reports, Admin-only, kept as a historical archive.
+- `src/Sections/Humans.Feedback/Docs/features/feedback-system.md` — the retired global feedback queue Issues replaced: closed to new reports, Admin-only, kept as a historical archive.
 - Email outbox (`EmailOutboxMessage`) — used for comment notification emails.
 - Notifications (`37-notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
-- `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count (Shell's former `NavBadges` ViewComponent dissolved into per-section chrome at nobodies-collective/Humans#1091).
+- `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count.
 - Role management — `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `VolunteerCoordinator`, `HumanAdmin`, `NoInfoAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

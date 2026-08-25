@@ -26,7 +26,7 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
-        // §15 repository pattern (issue #546): Singleton + IDbContextFactory (§15b) so the
+        // §15 repository pattern: Singleton + IDbContextFactory (§15b) so the
         // repository owns context lifetime.
         services.AddSingleton<IIssuesRepository, IssuesRepository>();
         services.AddScoped<IssuesService>();

@@ -7,8 +7,6 @@ namespace Humans.Issues.Tests.Domain;
 
 public class IssueStatusTransitionTests
 {
-    // One Fact rather than a [Theory]: IssueStatus turned internal at the G5 move, and a
-    // public theory method cannot take an internal parameter type (CS0051).
     [HumansFact]
     public void IsTerminal_returns_correct_value()
     {

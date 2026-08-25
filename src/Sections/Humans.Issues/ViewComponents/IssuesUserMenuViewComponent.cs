@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Issues.ViewComponents;
 
 /// <summary>
-/// The Issues link in the signed-in user menu — was Shell's hardcoded markup plus a
-/// by-name NavBadges invocation (nobodies-collective/Humans#1091). No IMemoryCache here
-/// (memory/code/viewcomponent-no-cache.md): IssuesService owns the per-viewer count cache.
+/// The Issues link in the signed-in user menu, with its actionable-item count. No
+/// IMemoryCache here (memory/code/viewcomponent-no-cache.md): IssuesService owns the
+/// per-viewer count cache.
 /// </summary>
 internal sealed class IssuesUserMenuViewComponent(IIssuesService issuesService) : ViewComponent
 {

@@ -4,9 +4,9 @@ using NodaTime;
 namespace Humans.Issues.Contracts;
 
 /// <summary>
-/// Issues' triage surface for the machine API behind <c>/api/backdoor/issues</c>
-/// (nobodies-collective/Humans#1128): read the queue and one issue's thread, file an issue,
-/// comment, and move status, assignee, section or the linked GitHub issue.
+/// Issues' triage surface for the machine API behind <c>/api/backdoor/issues</c>: read the
+/// queue and one issue's thread, file an issue, comment, and move status, assignee, section
+/// or the linked GitHub issue.
 /// </summary>
 /// <remarks>
 /// Every mutation takes the acting user. The Backdoor filter resolves the presented key to

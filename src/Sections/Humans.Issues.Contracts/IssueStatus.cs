@@ -5,7 +5,7 @@ namespace Humans.Issues.Contracts;
 /// <see cref="Resolved"/>, <see cref="WontFix"/>, <see cref="Duplicate"/>.
 /// A reporter posting a comment on a terminal issue auto-reopens it to <see cref="Open"/>.
 /// On the leaf beside <see cref="IssueCategory"/> because the Backdoor machine API filters
-/// and sets it (nobodies-collective/Humans#1128).
+/// and sets it.
 /// </summary>
 public enum IssueStatus
 {

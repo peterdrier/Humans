@@ -10,8 +10,8 @@ namespace Humans.Issues;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers
 /// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
-/// The set includes the eleven keys the floating help widget renders: its issue-submission
-/// modal moved into this section as <c>Views/Shared/_IssueWidgetModal.cshtml</c> so the
-/// whole <c>Issue_*</c> set could come home rather than splitting across two resource sets.
+/// The set also covers the floating help widget's issue-submission modal, which lives here
+/// as <c>Views/Shared/_IssueWidgetModal.cshtml</c> so the whole <c>Issue_*</c> set stays in
+/// one resource set.
 /// </remarks>
 public class IssuesResource;

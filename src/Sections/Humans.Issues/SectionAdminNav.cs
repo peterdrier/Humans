@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Issues;
 
-/// <summary>Issues' contribution to the shared "Feedback" admin group (nobodies-collective/Humans#1077).</summary>
+/// <summary>Issues' contribution to the shared "Feedback" admin group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

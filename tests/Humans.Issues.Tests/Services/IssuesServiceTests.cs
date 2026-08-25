@@ -25,14 +25,11 @@ using IssuesApplicationService = Humans.Issues.Services.IssuesService;
 namespace Humans.Issues.Tests.Services;
 
 /// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
+/// Owns its fixture rather than deriving from <c>Humans.Users.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
-/// to draw (nobodies-collective/Humans#866). Issues reads users back through DB-backed
-/// stubs, so the replacement is Campaigns' shape: an in-memory people registry behind a
-/// <c>Db</c> shim, with <c>SeedUser</c> keeping its old signature so the test bodies below
-/// are unchanged.
+/// <c>UsersDbContext</c>, and inheriting it would grant this section test project
+/// <c>InternalsVisibleTo</c> on another section's context. Issues reads users back through
+/// stubs instead — an in-memory people registry behind a <c>Db</c> shim.
 /// </summary>
 public sealed class IssuesServiceTests
 {

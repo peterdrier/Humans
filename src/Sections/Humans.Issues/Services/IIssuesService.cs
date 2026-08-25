@@ -7,8 +7,8 @@ namespace Humans.Issues.Services;
 
 /// <summary>
 /// The section's own service surface: what is left once <see cref="IIssuesRetention"/> (the
-/// cleanup job) and <see cref="IIssueTriage"/> (the Backdoor machine API,
-/// nobodies-collective/Humans#1128) have taken their members onto the contracts leaf.
+/// cleanup job) and <see cref="IIssueTriage"/> (the Backdoor machine API) have taken their
+/// members onto the contracts leaf.
 /// Everything declared here has no consumer outside Issues — the screenshot-carrying submit
 /// the in-app reporter uses, the result-returning mutation overloads its own controller
 /// prefers, the viewer-scoped badge count, and the index page's reporter filter.
