@@ -367,6 +367,3 @@ inbox:
   - added: 2026-08-21
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
-  - added: 2026-08-24
-    what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while sibling SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Humans.Onboarding.Tests files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger through the base class would delete both copies. Base owns HumansControllerBase. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light

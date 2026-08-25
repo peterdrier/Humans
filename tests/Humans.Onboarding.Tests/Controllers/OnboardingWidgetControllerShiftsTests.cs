@@ -10,7 +10,6 @@ using Humans.Onboarding.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -62,15 +61,10 @@ public class OnboardingWidgetControllerShiftsTests
         _http.Session = new TestSession();
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
-        var services = new ServiceCollection();
-        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        _http.RequestServices = services.BuildServiceProvider();
         var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
-            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor { ActionName = "Test" },
         };
         // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.
         ctrl.Url = Substitute.For<IUrlHelper>();

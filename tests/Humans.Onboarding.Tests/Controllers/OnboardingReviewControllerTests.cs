@@ -11,9 +11,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -189,20 +187,14 @@ public class OnboardingReviewControllerTests
             ? new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _reviewerId.ToString())], "test")
             : new ClaimsIdentity();
 
-        // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices and
-        // reads ActionDescriptor.ActionName, so both have to be real for an error path to run.
-        var services = new ServiceCollection();
-        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(identity),
-            RequestServices = services.BuildServiceProvider(),
         };
 
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = http,
-            ActionDescriptor = new ControllerActionDescriptor { ActionName = "Test" },
         };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         // Pre-set Url so RedirectToAction doesn't resolve IUrlHelperFactory from RequestServices.
