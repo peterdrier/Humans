@@ -34,9 +34,6 @@ using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
 
-// RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
-#pragma warning disable CS0618
-
 using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Controllers;
@@ -2257,7 +2254,9 @@ internal sealed class ProfileController(
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,
             HasNobodiesTeamEmail = hasNobodiesTeam,
+#pragma warning disable CS0618 // Legacy User.GoogleEmailStatus remains mapped for compatibility.
             GoogleEmailStatus = user.GoogleEmailStatus,
+#pragma warning restore CS0618
             TargetUserId = user.Id,
             TargetDisplayName = burnerName,
             IsAdminContext = isAdminContext,
