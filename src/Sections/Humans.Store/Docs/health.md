@@ -80,6 +80,9 @@ Written from the shapes, not from today's layout.
 
 - An order has exactly one counterparty: `CampSeasonId` xor `TeamId`. Service-enforced.
 - Team orders are non-billable: no payment, no counterparty, no invoice, at any privilege level.
+- At most one order per camp season, and a camp season is itself one camp's one year — so the
+  create guard tests for *any* existing order, never for one matching the season's year. A year
+  comparison there passes a legacy `Year = 0` row and hands the season a second order.
 - At most one team order per department per year; departments only (`ParentTeamId is null`).
 - Camp orders run `Open → InvoiceIssued`, one way. Team orders stay `Open`.
 - An `Open` order is priced at the live catalog; an `InvoiceIssued` order is priced at its

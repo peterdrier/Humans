@@ -336,9 +336,12 @@ internal sealed class Service(
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
             ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
 
+        // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
+        // already belongs to season.Year — except a legacy row still at Year = 0, which an
+        // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
-        if (existing.Any(o => o.Year == season.Year))
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order for {season.Year}.");
+        if (existing.Count > 0)
+            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
 
         var now = clock.GetCurrentInstant();
         var order = new Order
