@@ -10,17 +10,16 @@ namespace Humans.CityPlanning;
 
 /// <summary>
 /// City Planning's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. Replaces Shell's
-/// <c>AddCityPlanningSection</c> verbatim (design §6): same lifetimes, same order.
+/// nothing names it, so it needs no section prefix.
 /// </summary>
 /// <remarks>
 /// No caching decorator: a small admin-facing section whose reads are already a single row
 /// or a per-year polygon list. Cross-section reads (camps, teams, users) route through the
 /// owning service interfaces.
 /// <para>
-/// <c>Lazy&lt;ICityPlanningService&gt;</c> stays registered in Shell beside the Camps
-/// section: it exists to break the CampService ↔ CityPlanningService construction cycle, so
-/// it belongs with the consumer, not the producer.
+/// <c>Lazy&lt;ICityPlanningService&gt;</c> is registered by <c>Humans.Camps</c>'s own
+/// <c>Section.cs</c>, not here: it exists to break the CampService ↔ CityPlanningService
+/// construction cycle, so it belongs with the consumer, not the producer.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

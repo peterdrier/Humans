@@ -76,12 +76,12 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Teams:** `teams.total` tile (`ITeamServiceRead`).
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
 - **Email:** `email.outbox` tile (`IEmailOutboxServiceRead`).
-- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (`IStoreServiceRead`).
+- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (Store's internal `Service`).
 - **Expenses:** `expenses.reports` tile, gated to `FinanceAdminOrAdmin` (`IExpenseReportServiceRead`).
 - **Governance:** the "Tier applications" card (`IApplicationServiceRead`); also contributes the Voting sidebar pill's unvoted-application count.
 - **Debug:** the "User set membership" (Venn/UpSet) card.
 
-Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. All section-owned pieces read through public read-side contracts (`I*ServiceRead` / `I*Contracts`) — the shell holds no repository and writes nothing.
+Shell's own contribution is the three presence tiles (Online now / Active 1h / Active 24h, from `IUserActivityTracker`) in `AdminSummaryViewComponent`. Every piece above lives in the section it names and reads only that section, so none of them crosses a section boundary to render. Most reach their own data through their section's public read-side contract (`I*ServiceRead` / `I*Contracts`), which exists because something outside the section needs it. Store's tile is the exception and not a violation: Store publishes no read contract, so `SectionAdminTiles` resolves Store's `internal Service` — a section calling itself. Either way the shell holds no repository and writes nothing.
 
 ## Architecture
 

@@ -55,6 +55,25 @@ public class OrderAuthorizationHandlerTests
         AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: true), OrderOperationRequirement.Delete, expectAllowed: true);
 
     [HumansFact]
+    public Task TeamsAdmin_can_create_a_team_order_for_a_department_they_do_not_coordinate() =>
+        // Departments buy from the collective too, and a TeamsAdmin opening the order is how
+        // that is tracked — so the grant is deliberately wider than the coordinator's. The
+        // principal holds no management role on the team, only TeamsAdmin.
+        AssertOutcome(
+            RoleNames.TeamsAdmin,
+            new OrderCreateContext(CampSeasonId: null, TeamId: Guid.NewGuid()),
+            OrderOperationRequirement.Create,
+            expectAllowed: true);
+
+    [HumansFact]
+    public Task TeamsAdmin_cannot_create_a_camp_order() =>
+        AssertOutcome(
+            RoleNames.TeamsAdmin,
+            new OrderCreateContext(CampSeasonId: Guid.NewGuid()),
+            OrderOperationRequirement.Create,
+            expectAllowed: false);
+
+    [HumansFact]
     public Task TeamsAdmin_cannot_pay_team_order() =>
         AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: true), OrderOperationRequirement.Pay, expectAllowed: false);
 
@@ -180,7 +199,6 @@ public class OrderAuthorizationHandlerTests
             CounterpartyType: team ? OrderCounterpartyType.Team : OrderCounterpartyType.Camp,
             CounterpartyDisplayName: "x",
             Year: 2026,
-            Label: null,
             State: state,
             CounterpartyName: null,
             CounterpartyVatId: null,

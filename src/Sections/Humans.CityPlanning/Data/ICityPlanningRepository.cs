@@ -8,14 +8,15 @@ namespace Humans.CityPlanning.Data;
 /// Repository for the City Planning section's owned tables:
 /// <c>city_planning_settings</c>, <c>camp_polygons</c>, and
 /// <c>camp_polygon_histories</c>. The only non-test file that may write to or
-/// query those DbSets after the City Planning migration lands.
+/// query those DbSets.
 /// </summary>
 /// <remarks>
 /// Read methods are <c>AsNoTracking</c>. Per <see cref="CampPolygonHistory"/>'s
-/// append-only invariant (design-rules §12), this repository exposes only
-/// <c>Add</c>/<c>Get</c> for history rows — no <c>UpdateAsync</c> or
-/// <c>DeleteAsync</c>. Restores write a new history row and update the
-/// corresponding <see cref="CampPolygon"/>.
+/// append-only invariant (design-rules §12), this repository exposes no update or
+/// delete for a single history row; restores write a new one and update the
+/// corresponding <see cref="CampPolygon"/>. The season-scoped
+/// <see cref="DeletePolygonsForCampSeasonsAsync"/> is the one exception, and it
+/// removes the polygon with the history.
 /// </remarks>
 internal interface ICityPlanningRepository : IRepository
 {
@@ -42,10 +43,12 @@ internal interface ICityPlanningRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Returns all history entries for a single camp season, ordered by
-    /// <c>ModifiedAt</c> descending (most recent first). Read-only (AsNoTracking).
-    /// The returned rows carry only the FK <c>ModifiedByUserId</c> — user display
-    /// data must be resolved through <c>IUserService</c> at the service layer.
+    /// Returns all history entries for a single camp season, in no defined order —
+    /// display ordering belongs to the controller
+    /// (<c>memory/architecture/display-sort-in-controllers.md</c>). Read-only
+    /// (AsNoTracking). The returned rows carry only the FK <c>ModifiedByUserId</c>;
+    /// user display data is resolved through <c>IUserServiceRead</c> at the service
+    /// layer.
     /// </summary>
     Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default);
@@ -83,11 +86,10 @@ internal interface ICityPlanningRepository : IRepository
     /// Empty input is a no-op returning 0.
     /// </summary>
     /// <remarks>
-    /// Replaces the <c>CampSeason → camp_polygons</c> / <c>camp_polygon_histories</c>
-    /// <c>Restrict</c> constraints dropped by nobodies-collective/Humans#992: deleting
-    /// a Camp cascades to its seasons, and the database no longer refuses that delete
-    /// when city-planning rows hang off them. Called by the Camps section through
-    /// <c>ICityPlanningService</c>, never by a repository.
+    /// This section's tables carry no FK to <c>CampSeason</c> — the column is a bare
+    /// <c>Guid</c> — so nothing in the database cascades when a camp season goes.
+    /// Camps calls this through <c>ICityPlanningService</c> inside its own delete,
+    /// never repository-to-repository.
     /// </remarks>
     Task<int> DeletePolygonsForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
@@ -107,9 +109,10 @@ internal interface ICityPlanningRepository : IRepository
     /// <summary>
     /// Loads the settings row for the given year (creating on demand), applies
     /// <paramref name="mutate"/>, sets <c>UpdatedAt</c> to <paramref name="now"/>,
-    /// and persists. Returns the updated row (detached).
+    /// and persists. Read the result back through
+    /// <see cref="GetOrCreateSettingsAsync"/> when a caller needs it.
     /// </summary>
-    Task<CityPlanningSettings> MutateSettingsAsync(
+    Task MutateSettingsAsync(
         int year,
         Action<CityPlanningSettings> mutate,
         Instant now,

@@ -1,0 +1,13 @@
+# Section debt ledger for Humans.Store. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-25
+    what: "Authorization/OrderAuthorizationHandler.HandleAsync is the section's cognitive-complexity max at 51 against a p95 of 11. Its role blocks — store-admin, TeamsAdmin, lead/coordinator — each re-derive the same billing / order-state / product-deadline gates in a different order and with a different subset applied — the TeamsAdmin block never consults IsStoreAdminOnly, which is what produced the undocumented Create grant and the false delete comments this run found. A shared per-requirement gate applied once per block would make each role's exceptions explicit instead of implicit in the fall-through. Found by /section-doctor on Store 2026-08-25."
+    review: panel
+  - added: 2026-08-25
+    what: "The store_treasury_sync_state table, its Domain/TreasurySyncState entity, Data/Configurations/TreasurySyncStateConfiguration.cs and its DbSet all ship with no code that reads or writes them — this run deleted the two unused repository accessors, and no sync job was ever built. The matching key the job was designed around (Order.Label) was abolished in #816, so the design it exists for no longer works as specified. Either the job gets built or the table gets a drop migration; a table nobody writes is a third state nobody chose. Found by /section-doctor on Store 2026-08-25."
+    review: panel
+  - added: 2026-08-25
+    what: "Services/Service.cs is 1367 lines — the section's maxClassLoc and its only large class. It carries catalog CRUD, the order lifecycle, the Stripe payment state machine, Stripe reconciliation, the Holded issuance pipeline and the summary aggregation. Issuance alone (create + approve + adopt-a-recovered-document) is a cohesive concern with its own test class behind it and would split out without touching the others. Found by /section-doctor on Store 2026-08-25."
+    review: panel

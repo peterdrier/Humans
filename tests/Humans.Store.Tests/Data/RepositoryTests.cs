@@ -61,16 +61,6 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetOrCreateTreasurySyncStateAsync_creates_singleton_on_first_call()
-    {
-        var first = await _repo.GetOrCreateTreasurySyncStateAsync(Xunit.TestContext.Current.CancellationToken);
-        var second = await _repo.GetOrCreateTreasurySyncStateAsync(Xunit.TestContext.Current.CancellationToken);
-
-        first.Id.Should().Be(1);
-        second.Id.Should().Be(1);
-    }
-
-    [HumansFact]
     public async Task AddOrderAsync_then_GetOrderWithLinesAndPaymentsAsync_round_trip()
     {
         var orderId = Guid.NewGuid();

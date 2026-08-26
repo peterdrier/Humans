@@ -1,4 +1,7 @@
 # Section debt ledger for Humans.MailerLite. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox: []
+inbox:
+  - added: 2026-08-25
+    what: "Decide whether src/Sections/Humans.MailerLite/Services/MailerLite/MailerLiteDateConverter.cs stays. It is still registered on the client's JSON options (MailerLiteClient.cs line 354) and has its own test file, but no DTO property it could convert survives: MailerLiteGroup.CreatedAt was the last Instant? on the wire and was deleted by /section-doctor on MailerLite 2026-08-25. Either a nullable Instant? comes back onto a DTO or the converter, its registration and its tests go."
+    review: light

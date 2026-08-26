@@ -2,7 +2,7 @@ using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
-using Humans.Store.Contracts;
+using Humans.Store.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Store;
@@ -25,7 +25,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 
-        var summary = await sp.GetRequiredService<IStoreServiceRead>().GetStoreSummaryAsync(activeEvent.Year, ct);
+        var summary = await sp.GetRequiredService<Service>().GetStoreSummaryAsync(activeEvent.Year, ct);
         var orders = summary.ByCounterparty.Count;
         var totalEur = summary.ByCounterparty.Sum(o => o.TotalDueEur);
         return new AdminTileValue(orders.ToString("N0", CultureInfo.CurrentCulture), Detail: $"€{totalEur:N0} total, active year");

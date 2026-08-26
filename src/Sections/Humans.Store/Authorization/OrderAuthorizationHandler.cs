@@ -17,11 +17,14 @@ namespace Humans.Store.Authorization;
 /// View/AddLine/RemoveLine/EditCounterparty and <see cref="OrderCreateContext"/>
 /// resources for Create):
 /// - Admin or FinanceAdmin: allow any operation regardless of order state.
-/// - TeamsAdmin: View any order (camp or team); manage (AddLine/RemoveLine/Delete)
-///   team orders only. Camp orders are view-only. Additive — a TeamsAdmin who is also
-///   a camp lead still gets camp-edit rights through the lead path below.
-/// - Delete and IssueInvoice are Store-admin-only on every order, and IssueInvoice is
-///   additionally denied on team orders even for admins (team orders are non-billable).
+/// - TeamsAdmin: View any order (camp or team); manage (Create/AddLine/RemoveLine/Delete)
+///   team orders only, for any department, not only the ones they coordinate. Camp orders
+///   are view-only. Departments buy from the collective too, and a TeamsAdmin opening the
+///   order is how that gets tracked. Additive — a TeamsAdmin who is also a camp lead still
+///   gets camp-edit rights through the lead path below.
+/// - IssueInvoice is Store-admin-only on every order, and is additionally denied on team
+///   orders even for admins (team orders are non-billable). Delete is Store-admin-only on
+///   camp orders; on team orders TeamsAdmin gets it too, per the line above.
 /// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
 /// - Coordinator (department-level management role holder) of the resource's Team:
 ///   allow team orders for View/AddLine/RemoveLine; EditCounterparty and Pay are
@@ -69,7 +72,8 @@ internal sealed class OrderAuthorizationHandler(
             && await TodayInEventZoneAsync() > until;
 
         // TeamsAdmin: read any order; manage team orders only (camp orders stay
-        // view-only). Additive — fall through so a TeamsAdmin who is also a camp
+        // view-only) — including Create, for any department rather than only the ones
+        // they coordinate. Additive — fall through so a TeamsAdmin who is also a camp
         // lead still picks up camp-edit rights in the lead/coordinator block below.
         if (RoleChecks.IsTeamsAdmin(context.User))
         {
@@ -187,8 +191,9 @@ internal sealed class OrderAuthorizationHandler(
             || requirement == OrderOperationRequirement.Pay
             || requirement == OrderOperationRequirement.IssueInvoice;
 
-    /// <summary>Operations no camp lead, coordinator or TeamsAdmin ever gets — only the Store
-    /// admin block above succeeds them.</summary>
+    /// <summary>Operations no camp lead or coordinator ever gets. Consulted from the
+    /// lead/coordinator block only — the TeamsAdmin block above does not apply it, so a
+    /// TeamsAdmin still reaches Delete on a team order.</summary>
     private static bool IsStoreAdminOnly(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.Delete
             || requirement == OrderOperationRequirement.IssueInvoice;

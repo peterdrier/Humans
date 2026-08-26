@@ -18,11 +18,11 @@ Repository: `IStoreRepository`.
 | StoreOrderLines | R/W |
 | StorePayments | R/W |
 | StoreInvoices | R/W |
-| StoreTreasurySyncStates | R/W |
+| StoreTreasurySyncStates | — (table ships; no code reads or writes it) |
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface),
-`IShiftManagementService`, `IStripeService` (the `Humans.Stripe` connector
+`IBurnSettingsService`, `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), `IHoldedClient` (the
 `Humans.Holded` connector section — contact upsert, sales-document create/approve/read
