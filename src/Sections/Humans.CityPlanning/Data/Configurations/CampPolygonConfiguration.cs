@@ -10,7 +10,6 @@ internal sealed class CampPolygonConfiguration : IEntityTypeConfiguration<CampPo
     {
         builder.ToTable("camp_polygons");
 
-        // One polygon per camp season
         builder.HasIndex(p => p.CampSeasonId).IsUnique();
 
         builder.Property(p => p.GeoJson).HasColumnType("text").IsRequired();

@@ -3,6 +3,6 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `CityPlanningController` | Class | `[Authorize]` (authenticated) | — |
-| `CityPlanningController` runtime guards | In-method | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks | RoleChecks helper |
+| `CityPlanningController` runtime guards | In-method | Map-admin gate = `RoleChecks.IsCampAdmin(User)` **or** city-planning team membership; plus lead-of-camp and container-placement-phase checks | `RoleChecks` helper + `CityPlanningService.IsCityPlanningTeamMemberAsync` |
 | `CityPlanningApiController` | Class | `[Authorize]` (authenticated) | — |
-| `CityPlanningApiController` runtime guards | In-method | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; `authorizationService.AuthorizeAsync(...)` on three endpoints (camp-polygon edit, camp-polygon history restore, container placement edit) | RoleChecks helper + resource-based |
+| `CityPlanningApiController` runtime guards | In-method | Same map-admin gate (restore and polygon export); `CanUserEditAsync` for polygon save; `authorizationService.AuthorizeAsync(ContainerOperationRequirement.Place)` on the three container-placement endpoints (save, notes, clear) | `RoleChecks` helper + `CityPlanningService` + resource-based (`ContainerAuthorizationHandler`) |

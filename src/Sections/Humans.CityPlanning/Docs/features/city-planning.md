@@ -82,7 +82,7 @@ CampPolygonHistory
 ├── AreaSqm: double
 ├── ModifiedByUserId: Guid (FK → User)
 ├── ModifiedAt: Instant
-└── Note: string ("Saved" by default; "Restored from {ISO timestamp}" for restores)
+└── Note: string ("Saved" by default; "Restored from {ISO timestamp}" for restores; "Imported {timestamp}" for bulk import)
 ```
 
 ### CityPlanningSettings (singleton per year)
@@ -252,7 +252,7 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 
 ### SignalR Hub
 
-`/hubs/city-planning` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` and receives `CursorMoved(lng, lat)` from clients.
+`/hubs/city-planning` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` on save, and `CursorMoved(connectionId, displayName, lat, lng)` / `CursorLeft(connectionId)` to the other clients. Receives `UpdateCursor(lat, lng)` from clients.
 
 ## Related Features
 

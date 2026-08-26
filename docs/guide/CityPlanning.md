@@ -5,6 +5,7 @@
   src/Sections/Humans.CityPlanning/Data/Configurations/**
   src/Sections/Humans.CityPlanning/Views/**
   src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/**
+  src/Humans.Base/Authorization/RoleChecks.cs
 -->
 <!-- freshness:flag-on-change
   Map view, polygon edit/save/restore flow, placement-phase toggle, overlay uploads, GeoJSON export, and City Planning team admin access. Review when map views, controllers, or entities change.
@@ -67,4 +68,4 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 
 - [Camps](Camps.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year, and the camp's leads are the ones allowed to edit that camp's placement.
 - [Teams](Teams.md) — membership in the City Planning team (slug `city-planning`) grants map admin access without needing a global Camp Admin or Admin role.
-- [Glossary](Glossary.md) — definitions for "barrio", "sound zone", "limit zone", and related terms.
+- [Glossary](Glossary.md) — definitions for "barrio" and "sound zone".

@@ -72,9 +72,9 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 | AreaSqm | double | Area at time of snapshot |
 | ModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
 | ModifiedAt | Instant | When this version was saved |
-| Note | string (512) | "Saved" or "Restored from {timestamp}" |
+| Note | string (512) | "Saved", "Restored from {timestamp}", or "Imported {timestamp}" (bulk import) |
 
-Cross-domain User navs `CampPolygon.LastModifiedByUser` and `CampPolygonHistory.ModifiedByUser` have been stripped from the entities (nobodies-collective/Humans#934); the FK scalars remain. The intra-section `CampSeason` navs (`CampPolygon.CampSeason`, `CampPolygonHistory.CampSeason`) have since been stripped too — both configurations now use `HasOne<CampSeason>()` with no back-reference. New code must use `ICampService` / `IUserService` instead of navs.
+`CampSeasonId`, `LastModifiedByUserId` and `ModifiedByUserId` are bare `Guid` columns: neither configuration declares a relationship of any kind, so `CampSeason` and `User` are absent from this section's EF model entirely. New code resolves them through `ICampServiceRead` / `IUserServiceRead`, never a nav.
 
 ## Routing
 
@@ -103,6 +103,16 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 | `POST /CityPlanning/BarrioMap/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create a container for a barrio |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit a container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete a container |
+
+The admin page also carries a **bulk polygon import**: `barrio-map/admin-import.js` reads
+`GET /api/city-planning/state`, matches the uploaded FeatureCollection's features to camps by
+lower-cased name or slug, previews the matches, and then issues one ordinary
+`PUT /api/city-planning/camp-polygons/{campSeasonId}` per match with the note
+`Imported {timestamp}`. There is no server-side import endpoint — an import is N saves and
+gets N history rows for free.
 
 The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
 
@@ -123,7 +133,7 @@ The container entity CRUD for barrio leads is served by `ContainerController` at
 
 **SignalR — `CityPlanningHub` (`/hubs/city-planning`)**
 
-Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` after every polygon save. Receives `CursorMoved(lng, lat)` from clients.
+Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` after every polygon save, and `CursorMoved(connectionId, displayName, lat, lng)` / `CursorLeft(connectionId)` to the other connected clients. Receives `UpdateCursor(lat, lng)` from clients.
 
 ## Actors & Roles
 
@@ -157,7 +167,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Triggers
 
-- Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`.
+- Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
 - Restoring a historical version saves the current polygon state to history first (note: `"Restored from {timestamp}"`), then overwrites the polygon with the restored version.
 - SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save.
 
@@ -182,11 +192,11 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Save/restore return type.** `SaveCampPolygonAsync` and `RestoreCampPolygonVersionAsync` return `CampPolygonSaveResult(GeoJson, AreaSqm)` instead of the previous `(CampPolygon, CampPolygonHistory)` tuple, keeping EF entities inside the service boundary.
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly (file read, size limit, and JSON validation moved into the service) and return `GeoJsonUploadResult`. `UpdatePlacementDatesAsync` now accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult` — the controller no longer owns the `LocalDateTime` parse logic or `DateFormattingExtensions`.
 - **`GetSettingsByYearAsync` removed** from `ICityPlanningRepository`; all settings access routes through `GetOrCreateSettingsAsync` (creates the row with `IsPlacementOpen = false` when absent).
-- **`UpdatePlacementDatesAsync` is now `private`** inside `CityPlanningService`; it is no longer part of `ICityPlanningService`.
+- **`UpdatePlacementDatesAsync` is off the contract.** Two overloads live on the concrete `CityPlanningService`: the `string?`-taking entry point the controller calls is public, the `LocalDateTime?`-taking one that writes is private. Neither is on `ICityPlanningService` or `ICityPlanningServiceRead`.
 - **Cross-section reads** route through `ICampServiceRead`, `ITeamServiceRead`, and `IUserServiceRead`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserServiceRead.GetUserInfosAsync` lookup at the service layer.
-- **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md).
-- **Cross-section surface** — `Humans.CityPlanning.Contracts` is its own project, not a `Contracts/` folder: `Humans.Application`'s `CampService` clears a deleted camp's polygons, so a folder would make Base reference a section and cycle. It holds `ICityPlanningServiceRead` (three reads), `ICityPlanningService` (adds `DeleteCampPolygonsForSeasonsAsync` and `UpdateRegistrationInfoAsync`), `CityPlanningSettingsDto` and `CityPlanningOptions`. Everything else in the section is `internal`.
-- **Resources** — `CityPlanningResource` (103 keys × 6 languages). `Container_*` / `ContainerMap_*` on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`.
+- **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The page controller's routes and the `Views/_ViewImports.cshtml` set are exercised by `CityPlanningPageRenderTests`, which lives in `tests/Humans.Integration.Tests` and therefore **does not run in CI** — `build.yml` filters that assembly out deliberately ([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)). Treat it as a local check, not a gate.
+- **Cross-section surface** — `Humans.CityPlanning.Contracts` is its own project, not a `Contracts/` folder: `Humans.Camps`'s `CampService` clears a deleted camp's polygons through `ICityPlanningService`, and `Humans.Containers` needs `ICityPlanningServiceRead` while this section references `Humans.Containers` — a folder would cycle both pairs. It holds `ICityPlanningServiceRead` (three reads), `ICityPlanningService` (adds `DeleteCampPolygonsForSeasonsAsync` and `UpdateRegistrationInfoAsync`), `CityPlanningSettingsDto` and `CityPlanningOptions`. Everything else in the section is `internal`.
+- **Resources** — `CityPlanningResource`, six languages at key parity. `Container_*` / `ContainerMap_*` on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`.
 - **Per-map screens, not generic layers.** Issue #521 originally proposed a generic `MapFeature` entity with toggleable map layers; the implementation pivoted to dedicated per-map screens (overview / barrio placement / container placement) after thread discussion — see #521 for the rationale.
 
 ### Repository surface
@@ -196,6 +206,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Polygon reads by camp season ids (`GetPolygonsByCampSeasonIdsAsync`, `GetCampSeasonIdsWithPolygonAsync`).
 - Polygon-history reads for a camp season (`GetHistoryForCampSeasonAsync`, `GetHistoryEntryAsync`).
 - Atomic "save polygon + append history" write (`SavePolygonAndAppendHistoryAsync`). Returns the persisted `CampPolygon` only; the history row is a side effect readable via `GetHistoryForCampSeasonAsync`. Polygon upsert and history insert happen in one unit of work.
+- Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached from Camps through `ICityPlanningService.DeleteCampPolygonsForSeasonsAsync` when a camp is deleted.
 - Settings read/upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync`). All field-level mutations (placement open/close, limit zone, official zones, placement dates, registration info) flow through `MutateSettingsAsync` at the service layer. `GetSettingsByYearAsync` was removed — all settings access uses `GetOrCreateSettingsAsync`.
 
 Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
