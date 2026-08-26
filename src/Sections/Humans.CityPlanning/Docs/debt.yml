@@ -1,0 +1,13 @@
+# Section debt ledger for Humans.CityPlanning. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-26
+    what: "The three container CRUD posts on CityPlanningController (CreateBarrioContainer line 374, EditContainer line 414, DeleteContainer line 451, plus the two ModelState-invalid branches) redirect to Containers with settings.Year — which is CampSettings.PublicYear — instead of the {year} route value the admin was on. An admin curating containers for a non-public year is bounced to the public year's list after every create, edit and delete, silently losing their place. The private TryCreate/TryUpdate helpers already thread the correct year through; only the callers pass the wrong one. Behaviour fix, so out of scope for /section-doctor. Found by /section-doctor on CityPlanning 2026-08-26."
+    review: light
+  - added: 2026-08-26
+    what: "ICityPlanningRepository.MutateSettingsAsync returns Task<CityPlanningSettings> and all ten production callers in CityPlanningService discard it; only two repository tests read the value. Narrow it to Task and have those tests re-read through GetOrCreateSettingsAsync. Found by /section-doctor on CityPlanning 2026-08-26."
+    review: light
+  - added: 2026-08-26
+    what: "CityPlanningService.IsCityPlanningTeamMemberAsync lower-cases the configured CityPlanningTeamSlug and then compares it to Team.Slug / Team.CustomSlug with StringComparison.Ordinal, so a team whose stored slug carries any uppercase never matches and every city-planning team member silently loses their map-admin exemption. Either normalize both sides or compare OrdinalIgnoreCase. Needs a call on which, and it changes who can edit, so out of scope for /section-doctor. Found by /section-doctor on CityPlanning 2026-08-26."
+    review: full
