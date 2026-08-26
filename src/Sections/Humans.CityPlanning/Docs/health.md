@@ -79,9 +79,10 @@ Stated so a violation is recognisable:
    exposes no update and no delete for a single history row (the season-scoped cascade delete
    is the one exception, and it deletes the polygon with it).
 3. A restore writes the restored geometry as a *new* current polygon with the note
-   `Restored from {timestamp} UTC`; it never rewinds history. The history note is one of
-   `Saved` (map edit), `Restored from …` (restore) or `Imported {date}` (bulk import) — the
-   client supplies the last two.
+   `Restored from {timestamp} UTC`, composed server-side; it never rewinds history. The note
+   on an ordinary save is open-ended — the `PUT` persists whatever the caller sends and
+   falls back to `Saved`. The one caller-supplied note the codebase itself sends is
+   `Imported {date}`, from `admin-import.js`.
 4. A camp lead may edit their own polygon only while `IsPlacementOpen`. City-planning team
    members and `CampAdmin` are exempt from the phase and from the ownership check.
 5. A camp lead may place/clear their own camp's containers only while
