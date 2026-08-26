@@ -93,7 +93,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 ## Negative Access Rules
 
 - Regular humans **cannot** read another user's inbox or see another user's unread count. All inbox/popup/action endpoints scope to the authenticated user's `userId`.
-- A user who is **not** a recipient of a notification cannot resolve, dismiss, mark-read, or click-through it — the repository returns `Forbidden` and the controller `Forbid()`s. A non-recipient can still tell an existing notification from a missing one: the repository distinguishes `NotFound` from `Forbidden` and the controller keeps them distinct.
+- A user who is **not** a recipient of a notification cannot resolve, dismiss, mark-read, or click-through it. The *shape* of the refusal differs by route, because the two pairs look the row up differently. `Resolve` and `Dismiss` load the notification first, so they can tell the two cases apart and return `NotFound` for a missing notification but `Forbidden` for a real one the actor is not a recipient of. `MarkRead` and `ClickThrough` query the `(NotificationId, UserId)` recipient row directly, so a missing notification and a notification that is not yours are the same absent row and both come back `NotFound` — those two routes never return `Forbidden`.
 - Actionable notifications **cannot** be dismissed (only resolved). The `BulkDismiss` and `Dismiss` paths reject actionable rows.
 - Sections that own meters **cannot** query the `notifications` table to back their meter — they return counts from their own service. (A meter that reads `notifications` would be a stored count, not a live count, and would drift.)
 - Services **cannot** bypass `INotificationService` / `INotificationEmitter` to write `notifications` / `notification_recipients` directly. `INotificationRepository` is the only non-test type allowed to touch these tables.
@@ -166,7 +166,7 @@ Inbound (other sections → Notifications):
 | POST | `/Notifications/BulkDismiss` | Bulk-dismiss informational rows from `selectedIds` |
 | GET  | `/Notifications/ClickThrough/{id}` | Mark read + redirect to `ActionUrl` (LocalUrl-checked) |
 
-All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a recipient" — enforced by `INotificationRepository` returning `Forbidden` when the actor's `UserId` is not in the notification's recipient set; the controller maps to `Forbid()`, which the cookie scheme turns into a redirect to `/Account/AccessDenied`.
+All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a recipient", enforced in `INotificationRepository`. On `Resolve` and `Dismiss` a non-recipient gets `Forbidden`, which the controller maps to `Forbid()` and the cookie scheme turns into a redirect to `/Account/AccessDenied`. On `MarkRead` and `ClickThrough` the same user gets `NotFound` instead — those two look up the recipient row by `(NotificationId, UserId)`, so "not yours" and "does not exist" are indistinguishable to them by construction.
 
 ### Touch-and-clean guidance
 

@@ -16,10 +16,12 @@ people have seen it and — where it represents work — until someone has done 
 shows each human their own pile at `/Notifications` and in the bell at the top of every page,
 lets them clear items off it, and throws away what has aged out.
 
-Alongside the pile it shows a second thing that looks the same but isn't: a live count of
+Alongside the pile it shows a second thing that looks the same but isn't: a computed count of
 work waiting in someone else's queue ("11 consent reviews pending"). Those counts are asked
-for at the moment the page renders and are never written down, so they can never be stale or
-wrong the way a stored counter can.
+of the section that owns the work rather than kept in a column here, so they cannot drift the
+way a stored counter can — a stale one is at most two minutes behind, because the answers are
+held in a short-TTL memory cache that writes elsewhere evict. That bound is the whole
+guarantee: not "always current", but "never wrong for longer than the cache lives".
 
 Two rules give the section its character. **Seeing is personal, doing is shared** — each
 recipient has their own read state, but when any one of them handles an item it is handled
@@ -81,9 +83,12 @@ The layout those shapes imply, written fresh:
   `MessageCategory`; `Actionable` ignores it.
 - `Actionable` can be resolved, never dismissed — on the single and the bulk path alike.
 - A human who is not a recipient of a notification cannot read, resolve, dismiss, mark-read
-  or click through it. Not-a-recipient and no-such-notification stay distinguishable in the
-  response, deliberately: the id is an unguessable Guid, so there is nothing to enumerate, and
-  collapsing the two would cost the section its only signal for a stale link.
+  or click through it. Whether the refusal distinguishes "not yours" from "does not exist"
+  follows from how the route looks the row up, and today the two pairs differ: `Resolve` and
+  `Dismiss` load the notification and so can return `Forbidden`; `MarkRead` and `ClickThrough`
+  query the `(NotificationId, UserId)` row and so can only return `NotFound`. Either is
+  defensible — the id is an unguessable Guid, so there is nothing to enumerate — but the split
+  is an accident of two lookup shapes, not a decision, and one of the two should win.
 - A human cannot see another human's pile, badge count, or unread total.
 - Every source has a deliberate `MessageCategory`, not one arrived at by falling through a
   default arm.

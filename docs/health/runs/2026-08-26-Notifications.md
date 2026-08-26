@@ -56,6 +56,8 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 **17 — The scheduling prompt and the skill disagree about Stryker.** The prompt instructed this run to "record it skipped-with-reason in the run file"; the skill at HEAD (`3dcdae3c`, "upstream issues and Stryker become opt-in flags") says a run without `--mutation` must never "attempt, probe for, mention, or record-as-skipped" Stryker. Followed the skill, so no run artifact mentions it — but the scheduled prompt still carries the older instruction and will re-issue this conflict every night until it is edited. Raised for Peter.
 
+**19 — The four single-item routes refuse a non-recipient in two different shapes.** `Resolve` and `Dismiss` load the notification first, so they can tell a missing notification (`NotFound`) from a real one the actor is not a recipient of (`Forbidden`). `MarkRead` and `ClickThrough` query the `(NotificationId, UserId)` recipient row directly, so both cases are the same absent row and both return `NotFound` — those two never return `Forbidden` at all. Neither shape is unsafe (the id is an unguessable Guid), but the split follows from two lookup implementations rather than from a decision, and it means the same user hitting two endpoints on the same notification gets two different answers about whether it exists. Raised for Peter. Found by Codex on this PR, verified against `NotificationRepository.MarkReadAsync`, `ClickThroughAsync` and `ResolveAsync` before acting.
+
 **18 — The default arm still hides the next missing case.** Finding 5 filled in four accidental fall-throughs, but `_ => MessageCategory.System` remains, so the *next* source added without a mapping repeats the same silent default. Removing the arm would make a missing case a compile error (CS8509) instead — the analyzer-shaped fix Peter's rules prefer over a test — at the cost of turning an unmapped runtime value into a throw. That trade is a decision, not a repair. Raised for Peter.
 
 ## Worked
@@ -67,7 +69,7 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 ## Skipped
 
-- Findings 1, 2, 15, 18 — each is a decision rather than a repair; see the descriptions above and `## Needs Peter`.
+- Findings 1, 2, 15, 18, 19 — each is a decision rather than a repair; see the descriptions above and `## Needs Peter`.
 - Finding 16 — repo-wide, not this section's; queued.
 - Finding 17 — an instruction conflict, not a code defect.
 - Sections passed over as blocked: CityPlanning (open PR `#1525`), Store (open PR `#1520`).
@@ -91,6 +93,7 @@ Also wasted: three of fourteen scripted literal replacements missed on the first
 - [ ] 15 — Delete the recipient resolver? Only a manual app start can prove it safe today.
 - [ ] 17 — Edit the scheduled prompt to drop its Stryker instruction, which the skill now forbids.
 - [ ] 18 — Drop `_ => MessageCategory.System` so a missing mapping is a compile error?
+- [ ] 19 — Should all four single-item routes refuse a non-recipient the same way, and which way?
 - [ ] Phase 4 — after a scripted literal replacement reports a miss, re-read the region before retrying; a second guess at the string is how a strike plan silently half-applies.
 
 ## Sweep queue
