@@ -349,9 +349,13 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   changes landed in peterdrier/Humans#1525 rather than a follow-up:
   - **#22 → normalize.** `IsCityPlanningTeamMemberAsync` now lower-cases both
     sides — the configured slug and each `Team.Slug` / `Team.CustomSlug` — and a
-    blank configured slug matches nothing (normalizing turns a null
-    `CustomSlug` into `""`, which would otherwise match every team that has
-    none). Tests cover stored-slug uppercase, configured-slug uppercase, and blank.
+    blank configured slug matches nothing. That guard is there because
+    `CityPlanningOptions.CityPlanningTeamSlug` defaults to `string.Empty`, so an
+    unconfigured instance would normalize to `""` and compare equal to any team
+    whose slug normalized to the same. A null `CustomSlug` is not the reason: the
+    null-conditional leaves it null, and `string.Equals(null, "city-planning")` is
+    already false. Tests cover stored-slug uppercase, configured-slug uppercase,
+    and blank.
   - **#21 → narrow it.** `ICityPlanningRepository.MutateSettingsAsync` returns
     `Task`; the repository no longer detaches and returns the entity, and its
     tests read the row back through `GetOrCreateSettingsAsync` —

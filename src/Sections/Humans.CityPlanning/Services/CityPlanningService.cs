@@ -233,6 +233,9 @@ internal sealed class CityPlanningService(
         // Both sides are lower-cased before comparing. Only the configured value used to be,
         // so a stored slug carrying any uppercase never matched and every city-planning team
         // member silently lost their map-admin exemption.
+        // The option defaults to string.Empty, so an unconfigured instance would normalize
+        // to "" and match any team whose slug normalized to the same. No configured slug
+        // means no exemption, not a blanket one.
         var configuredSlug = options.Value.CityPlanningTeamSlug;
         if (string.IsNullOrWhiteSpace(configuredSlug)) return false;
 
