@@ -222,6 +222,44 @@ public class RepositoryTests
         (await repo.GetCategoryMapAsync(Ct)).Should().ContainSingle();
     }
 
+    // ─── SEPA payout booking (nobodies-collective/Humans#1141) ───────────────────
+
+    [HumansFact]
+    public async Task SaveSepaTransferBooking_StampsTheRowAndTheListReadsItBack()
+    {
+        var (repo, _) = Make();
+        var fileId = Guid.NewGuid();
+        var transferId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await repo.AddSepaPayoutAsync(
+            new SepaPayoutFile
+            {
+                Id = fileId,
+                GeneratedAt = Created,
+                GeneratedByUserId = actor,
+                FileName = "payout.xml",
+                Checksum = "abc",
+                Xml = "<x/>",
+            },
+            [new SepaPayoutTransfer
+            {
+                Id = transferId, FileId = fileId, UserId = userId, SupplierAccountNum = 40000004,
+                CreditorName = "Ana Ruiz", Iban = "ES7921000813610123456789",
+                IbanMasked = "ES79****789", Amount = 30m,
+            }], Ct);
+
+        await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "pay-a,pay-b", Ct);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
+        row.TransferId.Should().Be(transferId);
+        row.FileName.Should().Be("payout.xml");
+        row.BookedAt.Should().Be(Now);
+        row.BookedByUserId.Should().Be(actor);
+        row.HoldedPaymentRefs.Should().Be("pay-a,pay-b");
+        row.IsBooked.Should().BeTrue();
+    }
+
     // ─── Builders ────────────────────────────────────────────────────────────────
 
     private static HoldedExpenseDoc Doc(

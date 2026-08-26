@@ -31,6 +31,17 @@ public interface IHoldedClient
     /// approved doc books to the ledger and leaves the draft list.</summary>
     Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
+    /// <summary>Records a payment against a purchase document and returns the new payment id.
+    /// Partial payments are allowed — <paramref name="amount"/> may be less than what the document
+    /// still owes. <paramref name="treasuryId"/> names the account the money left; omitting it lets
+    /// Holded pick its own default, so callers that care pass one.
+    /// Never throws over an unreadable success response: the payment is already posted, so a
+    /// success Holded gave no readable id for returns <c>"unconfirmed:{documentId}"</c> instead.
+    /// Callers persist that ref like any other — it names the document a human must check.</summary>
+    Task<string> PayPurchaseDocumentAsync(
+        string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
+        CancellationToken ct = default);
+
     /// <summary>Lists all P&L expense accounts (id + number + name).</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default);

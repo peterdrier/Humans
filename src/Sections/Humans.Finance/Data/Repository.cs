@@ -155,8 +155,43 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                       orderby f.GeneratedAt
                       select new SepaPayoutExportRow(
                           f.GeneratedAt, f.FileName, t.SupplierAccountNum,
-                          t.CreditorName, t.IbanMasked, t.Amount))
+                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt))
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<SepaPayoutTransferRow>> GetSepaPayoutTransferRowsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await (from t in ctx.SepaPayoutTransfers.AsNoTracking()
+                      join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
+                      select new SepaPayoutTransferRow(
+                          t.Id, f.Id, f.FileName, f.GeneratedAt, f.GeneratedByUserId,
+                          t.UserId, t.SupplierAccountNum, t.CreditorName, t.IbanMasked, t.Amount,
+                          t.BookedAt, t.BookedByUserId, t.HoldedPaymentRefs, null))
+            .ToListAsync(ct);
+    }
+
+    public async Task<SepaPayoutTransfer?> GetSepaTransferAsync(
+        Guid transferId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SepaPayoutTransfers.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == transferId, ct);
+    }
+
+    public async Task SaveSepaTransferBookingAsync(
+        Guid transferId, Instant? bookedAt, Guid? bookedByUserId, string? holdedPaymentRefs,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
+        if (existing is null) return;
+
+        existing.BookedAt = bookedAt;
+        existing.BookedByUserId = bookedByUserId;
+        existing.HoldedPaymentRefs = holdedPaymentRefs;
+        await ctx.SaveChangesAsync(ct);
     }
 
     // ── Purchase-doc sync state (singleton, lazy-created) ─────────────────────

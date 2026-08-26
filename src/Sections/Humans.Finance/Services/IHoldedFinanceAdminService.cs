@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Finance.Models;
 
@@ -29,4 +30,20 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     Task<SepaPayoutResult> GenerateSepaPayoutAsync(
         IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
         CancellationToken ct = default);
+
+    /// <summary>Every generated transfer with its booking state and, per row, the reason it cannot be
+    /// booked — plus the one reason booking is off for the whole screen (missing configuration), when
+    /// there is one. Reads Holded's open purchase documents once for the whole screen; a vendor
+    /// failure costs the coverage pre-check, not the page.</summary>
+    Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason)> GetSepaPayoutsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>Pays the member's open Holded purchase documents, oldest first, up to the transfer
+    /// amount, and stamps the booking onto the transfer row. Refuses a transfer that is already
+    /// booked, whose member is unbound, or whose open documents do not cover the amount.
+    /// Takes no <c>CancellationToken</c> on purpose: a booking that has posted one payment to Holded
+    /// must run to the end regardless of whether the admin is still watching
+    /// (<c>memory/architecture/cancellation-token-propagation.md</c>).</summary>
+    [ExternalWrite]
+    Task<SepaBookingResult> BookSepaTransferAsync(Guid transferId, Guid actorUserId);
 }

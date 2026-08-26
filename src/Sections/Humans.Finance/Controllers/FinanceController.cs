@@ -148,6 +148,54 @@ internal sealed class FinanceController(
         return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName!);
     }
 
+    /// <summary>Generated payout files and their transfers, newest file first, with the booking
+    /// state of each transfer.</summary>
+    [HttpGet("Sepa")]
+    public async Task<IActionResult> Sepa(CancellationToken ct)
+    {
+        var (rows, unavailable) = await holdedConnector.GetSepaPayoutsAsync(ct);
+
+        var names = new Dictionary<Guid, string>();
+        var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
+            .Concat(rows.Where(r => r.BookedByUserId is not null).Select(r => r.BookedByUserId!.Value))
+            .Distinct().ToList();
+        if (ids.Count > 0)
+            foreach (var kv in await UserService.GetUserInfosAsync(ids))
+                names[kv.Key] = kv.Value.BurnerName;
+
+        string Name(Guid? id) =>
+            id is { } g && names.TryGetValue(g, out var nm) ? nm : id?.ToString() ?? "—";
+
+        // Display grouping and ordering: newest file first, transfers by creditor account within it.
+        var files = rows
+            .GroupBy(r => r.FileId)
+            .Select(g => new SepaPayoutFileVm(
+                g.First().FileName,
+                g.First().GeneratedAt,
+                Name(g.First().GeneratedByUserId),
+                g.OrderBy(r => r.SupplierAccountNum)
+                 .Select(r => new SepaTransferVm(r, Name(r.UserId), r.BookedByUserId is null ? null : Name(r.BookedByUserId)))
+                 .ToList()))
+            .OrderByDescending(f => f.GeneratedAt)
+            .ToList();
+
+        return View(new SepaPayoutsPageVm(files, unavailable));
+    }
+
+    /// <summary>Books one transfer's payment into Holded. No <c>CancellationToken</c> reaches the
+    /// service: a booking that has posted a payment must finish even if the admin closes the tab.</summary>
+    [HttpPost("Sepa/Book")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookSepaTransfer(Guid transferId)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.BookSepaTransferAsync(transferId, actorUserId);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa));
+    }
+
     /// <summary>Every column on /Finance/Creditors is sortable; ties resolve on the account number
     /// so the order is stable across reloads.</summary>
     private static List<CreditorAccountRowVm> SortCreditorRows(

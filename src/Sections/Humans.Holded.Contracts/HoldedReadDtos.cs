@@ -63,11 +63,15 @@ public sealed record HoldedPurchaseDocListItemDto
 {
     public required string Id { get; init; }
     public required string DocNumber { get; init; }
+    public string? ContactId { get; init; }            // `contact_id` — who the doc is payable to
     public required string ContactName { get; init; }
     public required Instant Date { get; init; }        // doc `date` (epoch s)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
+    /// <summary>`payments_pending` — what is still unpaid on this doc. An absent field reads as 0,
+    /// i.e. nothing owed, which is the safe direction: it refuses a booking rather than over-paying.</summary>
+    public decimal PaymentsPending { get; init; }
     // v2 list items carry no approval timestamp (only the single-GET does — see
     // HoldedPurchaseDocumentDto.ApprovedAt), but they do carry `draft`: true while the doc is
     // still a draft. Null when Holded does not report the field (treated as not-yet-approved —

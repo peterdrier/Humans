@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Finance.Domain;
 
 /// <summary>
@@ -27,4 +29,16 @@ internal sealed class SepaPayoutTransfer
     public string IbanMasked { get; init; } = "";
 
     public decimal Amount { get; init; }
+
+    /// <summary>When the payment was booked into Holded. Null is the whole "not booked yet" state —
+    /// there is no status column, and booking is refused while this is set.</summary>
+    public Instant? BookedAt { get; set; }
+
+    /// <summary>The finance admin who pressed Book. Bare FK (no nav).</summary>
+    public Guid? BookedByUserId { get; set; }
+
+    /// <summary>Comma-joined Holded payment ids, one per purchase document the amount was allocated
+    /// across. Written even when the allocation failed part-way, so a payment Holded accepted is
+    /// never lost from the record.</summary>
+    public string? HoldedPaymentRefs { get; set; }
 }

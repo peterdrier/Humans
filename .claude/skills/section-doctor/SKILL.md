@@ -1,7 +1,7 @@
 ---
 name: section-doctor
 description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (reforge surface score, middle-out, via a focused selector subagent — no stored plan), inventories every file in the section, derives the target shape before running any scan, then works parallel threads — shape, behavior/bugs, freshness, conformance, tests, prose/nav, inbox — into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report + Needs-Peter queue lives in its own docs/health/runs/ file; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
-argument-hint: "[resume] [--section=<Name>] [--budget=2.5h]"
+argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--upstream-issues] [--mutation]"
 ---
 
 # Section Doctor
@@ -56,6 +56,12 @@ sweep commit (Phase 5), idempotent by construction.
 | `resume` | no new work — work the Needs-Peter queue (see Resume mode) |
 | `--section=<Name>` | skip the selector, doctor this section |
 | `--budget=<duration>` | override budget (default 2.5h); wall-clock, checked between items |
+| `--upstream-issues` | opt-in upgrade: include `nobodies-collective/Humans` in the Inbox issue review (default: fork only) |
+| `--mutation` | opt-in upgrade: section-scoped Stryker in the Tests thread (default: invariant matrix + test quality only) |
+
+The two opt-in flags exist because the standard cloud environment supports neither — no
+upstream-repo GitHub scope, no Stryker. **Without its flag, a run never attempts, probes for,
+mentions, or records-as-skipped either capability.** The default run is complete without them.
 
 ## Phase 0: Setup
 
@@ -89,9 +95,13 @@ is recoverable with `git rev-parse --abbrev-ref HEAD` at any point in the run.
 
 Getting a toolchain is the *environment's* job, not this skill's — a local run and the
 scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already there. Never
-install one. Mutation scoring (Stryker) is **off, deliberately, until Peter turns it back on**:
-no run installs it, probes for it, or records it as skipped — the Tests thread is the invariant
-matrix and test-quality work only.
+install one. Mutation scoring (Stryker) runs **only under `--mutation`**: without the flag the
+Tests thread is the invariant matrix and test-quality work, complete in itself — no run installs
+Stryker, probes for it, mentions it, or records it as skipped or as a degraded analysis. With
+the flag, run section-scoped Stryker as one of Phase 3d's background tool threads — from the
+worktree, after selection, never here in Phase 0 — with `concurrency: 16` and
+`coverage-analysis: off` per `memory/process/stryker-concurrency-coverage.md` (the environment
+must already have Stryker — never install).
 
 **What is this skill's job is the run you get when there is no compiler** — which is a real
 run, not a failed one. If `dotnet build` cannot run at all, this is a **docs-only run**: work
@@ -396,12 +406,17 @@ Cap the pass at the section's open issues — recommendations are per-issue one-
 backlog costs the run one line each rather than a budget. Record the pass as ran or skipped in
 `## Threads` like every other thread; a review that did not happen says so, with why.
 
-**Prove reach per repo; suspend only the half you cannot reach.** Issues live on **both**
-`nobodies-collective/Humans` and `peterdrier/Humans` — most of them upstream. A cloud run's
-scope is often the fork alone, and an issue search against an out-of-scope repo returns 0
-**silently** rather than erroring, which is indistinguishable from a clean backlog. So before
-any issue work, probe **each** repo independently by reading an issue whose number you already
-hold — don't discover one by listing, which is the very call the probe exists to qualify:
+**Issue scope is `peterdrier/Humans` only, by default.** The standard cloud environment's
+GitHub access does not reach `nobodies-collective/Humans` — a default run never queries it,
+probes for it, or records the review as partial for lacking it; fork-only **is** the complete
+review, and `## Threads` states its scope without caveat. Issues an upstream backlog might
+duplicate are Peter's to reconcile, not the run's to hunt.
+
+Under `--upstream-issues`, include upstream — and then prove reach per repo before any issue
+work, because an issue search against an out-of-scope repo returns 0 **silently**, which is
+indistinguishable from a clean backlog. Probe each repo by reading an issue whose number you
+already hold — don't discover one by listing, which is the very call the probe exists to
+qualify:
 
 ```bash
 gh issue view --repo nobodies-collective/Humans 1118
@@ -411,11 +426,8 @@ gh issue view --repo peterdrier/Humans 1494
 (the GitHub MCP `issue_read` where `gh` is absent — Phase 2's rule; the issue need not still
 be open, the read only has to prove access). A probe that fails for **any** reason — scope,
 auth, network, rate limit, missing tool — suspends that repo's half; don't reason about the
-cause, and don't infer one
-repo's reach from the other's. Suspending both is correct when both fail. `## Threads` then
-records what was actually covered, e.g. `Inbox: partial — upstream issues unreachable (scope:
-peterdrier/Humans)`. The ledger and in-app halves are unaffected. No run reports an empty or
-complete issue review it could not perform.
+cause, and don't infer one repo's reach from the other's. `## Threads` then records what was
+actually covered. The ledger and in-app halves are unaffected either way.
 
 ### 3e. Merge, rank, and check independence
 
