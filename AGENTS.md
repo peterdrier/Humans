@@ -113,7 +113,7 @@ dotnet run --project src/Humans.Web
 - Two remotes: `origin` = `peterdrier/Humans` (fork; QA auto-deploys from its main) and `upstream` = `nobodies-collective/Humans` (production). Feature branches PR to `origin/main` (squash). Promotion to production batches `origin/main` → `upstream/main` and is the one PR that needs Peter's explicit go-ahead. Details: [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md).
 - Qualify issue references across repos: `nobodies-collective/Humans#123`, never a bare `#123` ([`issue-refs-qualified`](memory/process/issue-refs-qualified.md)).
 - Reviewer findings — Codex, Claude bot, Gemini, humans — are hypotheses, not a work list. Verify each against the code before changing anything ([`review-finding-triage`](memory/process/review-finding-triage.md)); every finding ends with a disposition reply in its thread ([`pr-review-feedback-handling`](memory/process/pr-review-feedback-handling.md)).
-- Before acting on any CI or review event on a PR you opened, read [`.claude/skills/steward/SKILL.md`](.claude/skills/steward/SKILL.md). Unattended review rounds are capped at five post-PR commits ([`review-round-budget`](memory/process/review-round-budget.md)) — past that, stop and surface it.
+- Before acting on any CI or review event on a PR you opened, read [`.claude/skills/steward/SKILL.md`](.claude/skills/steward/SKILL.md). Unattended review rounds are capped at five review-round commits — bot/CI response commits only, not the PR's own deliverable ([`review-round-budget`](memory/process/review-round-budget.md)) — past that, stop and surface it.
 
 ## How it works
 

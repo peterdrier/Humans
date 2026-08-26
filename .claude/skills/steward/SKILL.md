@@ -14,19 +14,30 @@ cannot let you merge.
 
 ## First, before you read a single finding
 
-Count the review commits already spent on this PR. Each review event is a separate wake,
-hours after the last, and the context that would have told you *this is round seventeen*
-has been compacted away by the time you read this. Derive the number from the PR — it is
-the only thing in the loop that remembers:
+Count the review-round commits already spent on this PR. Each review event is a separate
+wake, hours after the last, and the context that would have told you *this is round
+seventeen* has been compacted away by the time you read this. Derive the number from the
+PR — it is the only thing in the loop that remembers:
 
-    created=$(gh pr view <N> --repo <owner>/Humans --json createdAt --jq .createdAt)
-    gh pr view <N> --repo <owner>/Humans --json commits --jq "[.commits[] | select(.committedDate > \"$created\")] | length"
+    gh pr view <N> --repo <owner>/Humans --json commits \
+      --jq '[.commits[] | select((.messageBody // "") | test("(?m)^Review-round: [0-9]+"))] | length'
 
 Always pass `--repo` with the owner the PR actually lives on — fork and upstream reuse
 PR numbers ([`issue-refs-qualified`](../../../memory/process/issue-refs-qualified.md)),
 and a bare call reads the ambient clone's same-numbered PR instead.
 
-The unattended ceiling is **five post-PR commits per PR**. Then act on where you stand:
+**Only review rounds count.** A round is a commit pushed in response to an automated
+review finding or a CI failure, from the point the PR's own work is functionally
+complete, and it carries a `Review-round: <n>` trailer saying so. Commits that finish
+what the PR was opened to deliver, commits answering Peter's own instructions (a
+section-doctor run applying his Needs-Peter answers included), and mechanical commits —
+rebase, base-branch merge, conflict resolution — are not rounds, carry no trailer, and
+spend nothing. Nor do they reset or raise the ceiling: five bot rounds stay five. The
+trailer is the memory, not the definition — a round commit that lost its trailer to a
+rebase still counts, and where trailers and the PR's review history disagree, the history
+wins ([`review-round-budget`](../../../memory/process/review-round-budget.md)).
+
+The unattended ceiling is **five review-round commits per PR**. Then act on where you stand:
 
 | Spent | What to do |
 |---|---|
@@ -59,8 +70,9 @@ round's finding is about, and that has now happened twice in a row, stop. The in
 is underspecified, and another patch written on your own judgement is how the next leak
 gets written. Escalate the *rule*, not the line.
 
-**One round is one commit.** Batch the round's fixes. The count is commits, and splitting
-a round across three of them spends three rounds to do one.
+**One round is one commit.** Batch the round's fixes, and give the commit its
+`Review-round: <n>` trailer. The count is trailered commits, and splitting a round across
+three of them spends three rounds to do one.
 
 ## The reviewers
 
@@ -76,8 +88,9 @@ it answered mean the question was worth asking.
 ## Never
 
 - Merge. Peter merges.
-- Raise the five-commit ceiling, or push past it, on your own judgement. Peter says so
-  first, in his own words.
+- Raise the five-round ceiling, or push past it, on your own judgement. Peter says so
+  first, in his own words — an instruction of his on some other part of the PR is not that.
+- Put a `Review-round:` trailer on a commit that is not a round, or leave it off one that is.
 - Skip, disable or quarantine a test to get CI green.
 - Push a commit without `dotnet build Humans.slnx -v quiet` clean and
   `dotnet test Humans.slnx -v quiet` green.
