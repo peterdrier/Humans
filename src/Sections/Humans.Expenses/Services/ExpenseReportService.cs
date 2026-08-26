@@ -677,7 +677,9 @@ internal sealed class ExpenseReportService(
             report.SubmitterUserId == actorUserId
                 ? "Submitted expense report."
                 : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
-            actorUserId);
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditEntityTypes.User);
 
         return true;
     }

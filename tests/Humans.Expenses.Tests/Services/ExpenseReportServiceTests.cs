@@ -872,7 +872,9 @@ public sealed class ExpenseReportServiceTests
             AuditAction.ExpenseSubmit,
             "ExpenseReport", id,
             Arg.Any<string>(),
-            submitter);
+            submitter,
+            submitter,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -1272,6 +1274,16 @@ public sealed class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
         loaded!.PayeeName.Should().Be("Dani Member");
         loaded.PayeeIban.Should().Be("ES9121000418450200051332");
+
+        // Entity is the report and the actor is the admin, so the related id is the only thing
+        // carrying the submission into Dani's own GDPR slice.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseSubmit,
+            "ExpenseReport", id,
+            Arg.Any<string>(),
+            admin,
+            member,
+            AuditEntityTypes.User);
     }
 
     [HumansFact]
