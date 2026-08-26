@@ -66,6 +66,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "upload.geojson");
     }
 
+    // The size guard reads Length, never the stream, so this stays cheap.
+    private static IFormFile CreateOversizedUpload() =>
+        new FormFile(new MemoryStream([1]), 0, (10 * 1024 * 1024) + 1, "file", "huge.geojson");
+
     // --- Tests ---
 
     [HumansFact]
@@ -161,6 +165,54 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("InvalidGeoJson");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_NoFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_EmptyFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateUpload(""), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("FileTooLarge");
+    }
+
+    [HumansFact]
+    public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    {
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(
+            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("FileTooLarge");
     }
 
     [HumansFact]
@@ -611,6 +663,67 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // --- RegistrationInfo: keyed to the highest open season, not PublicYear ---
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotPublicYear()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027], null));
+
+        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", Xunit.TestContext.Current.CancellationToken);
+
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        settings.Year.Should().Be(2028);
+        settings.RegistrationInfo.Should().Be("Read this before you register.");
+    }
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_FallsBackToPublicYear_WhenNoOpenSeasons()
+    {
+        SetupCampSettings(2026);
+
+        await _sut.UpdateRegistrationInfoAsync("Blurb", Xunit.TestContext.Current.CancellationToken);
+
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        settings.Year.Should().Be(2026);
+    }
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
+    {
+        SetupCampSettings(2026);
+
+        await _sut.UpdateRegistrationInfoAsync("  padded  ", Xunit.TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be("padded");
+
+        await _sut.UpdateRegistrationInfoAsync("   ", Xunit.TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetRegistrationInfoAsync_ReadsTheSameYearTheWriteUsed()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2027], null));
+
+        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", Xunit.TestContext.Current.CancellationToken);
+
+        // A row keyed to PublicYear must not shadow the open-season one.
+        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
+        {
+            Year = 2026,
+            RegistrationInfo = "Stale public-year blurb",
+            UpdatedAt = Clock.GetCurrentInstant()
+        });
+        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be("Open-season blurb");
     }
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>

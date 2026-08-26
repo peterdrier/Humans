@@ -155,6 +155,55 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     // ==========================================================================
+    // DeletePolygonsForCampSeasonsAsync — the cross-section contract Camps calls
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task DeletePolygonsForCampSeasonsAsync_RemovesPolygonAndHistory_ForNamedSeasonsOnly()
+    {
+        var deleted = Guid.NewGuid();
+        var kept = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        await _repo.SavePolygonAndAppendHistoryAsync(
+            deleted, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+        Clock.Advance(Duration.FromSeconds(1));
+        await _repo.SavePolygonAndAppendHistoryAsync(
+            deleted, """{}""", 150.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+        await _repo.SavePolygonAndAppendHistoryAsync(
+            kept, """{}""", 200.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        // One polygon plus its two history rows.
+        var removed = await _repo.DeletePolygonsForCampSeasonsAsync([deleted], Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().Be(3);
+        (await _repo.GetPolygonsByCampSeasonIdsAsync([deleted], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+        (await _repo.GetHistoryForCampSeasonAsync(deleted, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+        (await _repo.GetPolygonsByCampSeasonIdsAsync([kept], Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
+        (await _repo.GetHistoryForCampSeasonAsync(kept, Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task DeletePolygonsForCampSeasonsAsync_EmptyInput_IsNoOp()
+    {
+        var campSeasonId = Guid.NewGuid();
+        await _repo.SavePolygonAndAppendHistoryAsync(
+            campSeasonId, """{}""", 100.0, Guid.NewGuid(), "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        var removed = await _repo.DeletePolygonsForCampSeasonsAsync([], Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().Be(0);
+        (await _repo.GetPolygonsByCampSeasonIdsAsync([campSeasonId], Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task DeletePolygonsForCampSeasonsAsync_UnknownSeason_ReturnsZero()
+    {
+        var removed = await _repo.DeletePolygonsForCampSeasonsAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+        removed.Should().Be(0);
+    }
+
+    // ==========================================================================
     // CityPlanningSettings operations
     // ==========================================================================
 
