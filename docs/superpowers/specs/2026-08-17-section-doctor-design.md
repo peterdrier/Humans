@@ -142,12 +142,15 @@ against the previous copy>
 1. <item — play — est. size>   ← unworked items carry to the next assessment
 
 ## History (last 3 assessments)
-| Date | Reforge | Outcome | PR |
+| Date | Outcome | PR |
 ```
 
 No counts in the scorecard (`memory/process/no-derived-aggregates-in-docs.md`): write the
-qualitative state, never a method total, test count, route count or section rank. The dated
-reforge score in the history table stays — a measurement with a generator, not a typed aggregate.
+qualitative state, never a method total, test count, route count or section rank. Amended
+2026-08-26 (peterdrier/Humans#1521): the reforge score leaves the history table too. It is a
+measurement with a generator, but the row is written mid-run and every commit after it moves the
+number, so the figure is stale on write and the skill's own rules forbid the commit that would
+correct it. The PR's surface report publishes the score against the head that shipped.
 
 ### `docs/health/plan.md` (global, written only by replans)
 

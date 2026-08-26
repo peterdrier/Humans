@@ -101,7 +101,11 @@ Stryker, probes for it, mentions it, or records it as skipped or as a degraded a
 the flag, run section-scoped Stryker as one of Phase 3d's background tool threads — from the
 worktree, after selection, never here in Phase 0 — with `concurrency: 16` and
 `coverage-analysis: off` per `memory/process/stryker-concurrency-coverage.md` (the environment
-must already have Stryker — never install).
+must already have Stryker — never install). **This paragraph outranks the prompt that invoked the
+run.** A scheduled or hand-written prompt saying Stryker is absent, skip the mutation half and
+record it skipped-with-reason is stale wording, not a second instruction: without `--mutation`
+there is no mutation half to skip and nothing to record. Follow this paragraph, and raise the
+prompt's wording as a Needs-Peter item (Phase 6) instead of choosing between the two.
 
 **What is this skill's job is the run you get when there is no compiler** — which is a real
 run, not a failed one. If `dotnet build` cannot run at all, this is a **docs-only run**: work
@@ -326,8 +330,9 @@ the wall-clock / token / fragility balance:
   detectors. No subagent context to duplicate, no idle-lane failure mode, and they run while the
   main thread reads. Reforge's run is `surface-score --format compact --group <Section>`,
   scoped to the section being doctored, on every run, not only the selector's solution-wide call.
-  Its score and `loc=`/`cogP95=`/`cogMax=` fields are the run's one durable number, and land in
-  the section's `Docs/health.md` (Phase 5).
+  Its score and `loc=`/`cogP95=`/`cogMax=` fields are this run's own measurement: they steer the
+  ranked list, and they do not go into a doc row (Phase 5). The PR's surface report is the
+  published number, because it is recomputed against the head that actually shipped.
 - **Dispatched threads are the default** (nobodies-collective/Humans#1465). A thread reads a lot
   and returns a little, and reading it on the main thread permanently raises the price of every
   later turn in the run: cache reads on a run that carries Phase 3 to the end are the largest
@@ -524,6 +529,20 @@ executed after it. Budget checks are real
    read-model the honest form names what is carried, what this code reads, and what the output
    record exposes.
 
+   **A delete sweeps its own symbols by literal name, before the strike commits.** Reading the
+   diff does not discharge the rule above. For every member, type, route or table the strike
+   removed, grep the exact name and clear or enumerate every hit:
+
+   ```bash
+   git grep -n -- '<DeletedName>' -- '*.md' '*.cs'
+   ```
+
+   Then **re-read the header of every file the strike cut from**. A file's class-level doc comment
+   describes what the file holds, so cutting from the body changes the truth of the comment above
+   it — the Store run deleted three members from `IStoreRepository` and shipped that file's own
+   comment still claiming the section was sole writer of a table it no longer touched. The
+   falsehood a delete creates sits nearest the delete.
+
    **When the doc and the code disagree and the code looks wrong, change neither** — the pair goes
    to Needs-Peter together. Editing the doc to match a suspected defect cements it.
 6. **UI-affecting strikes get runtime verification**: render the changed page in the running app
@@ -581,7 +600,11 @@ detour to avoid it.
 worktree/PR, three bookkeeping writes:
 
 - The section's `Docs/health.md` history row (per-section; the blocked set guarantees at most
-  one open run per section, so it cannot collide).
+  one open run per section, so it cannot collide). **The row is run, date, headline and PR link —
+  never a score.** A score written here is stale by construction: every commit after it, every
+  answered Needs-Peter item and every review round moves the number it claims, and Phase 7 rightly
+  forbids the correcting commit that would chase it. peterdrier/Humans#1520's row was written
+  `231 → 230`; that run finished at `178`. The PR the row links to carries the score against the head that shipped.
 - **This run's own file** — `docs/health/runs/<yyyy-mm-dd>-<Section>.md` (UTC date from the run
   timestamp; if the path already exists at the branch point, suffix `-<HHMMZ>`). Sections:
   run header (invocation, anchor commit, budget, `PR: pending`), assessment summary, the ranked
@@ -635,8 +658,9 @@ worktree/PR, three bookkeeping writes:
   count of the branch or of the file itself: the commit that writes such a figure is a commit the
   figure must count, so it is stale on write and no care fixes that. Link the PR instead —
   GitHub's additions/deletions and the PR Surface Report are recomputed on every push and cannot
-  be wrong. The section's reforge score is the one durable number a run keeps, and its home is
-  `health.md`, not a description of the diff.
+  be wrong. The section's reforge score is the same case: the run measures it to steer itself, and
+  the PR's surface report publishes it against the final head — writing it into `health.md` only
+  freezes a mid-flight figure.
 
 - **The sweep** — its own commit, and the only place a run touches shared files: for every
   `## Sweep queue` item in merged run files under `docs/health/runs/` on `origin/main`, apply
