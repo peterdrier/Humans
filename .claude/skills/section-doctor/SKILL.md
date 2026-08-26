@@ -98,8 +98,10 @@ scheduled cloud run both start with the SDK, `dotnet-ef` and reforge already the
 install one. Mutation scoring (Stryker) runs **only under `--mutation`**: without the flag the
 Tests thread is the invariant matrix and test-quality work, complete in itself — no run installs
 Stryker, probes for it, mentions it, or records it as skipped or as a degraded analysis. With
-the flag, kick off section-scoped Stryker as a background tool thread (the environment must
-already have it — never install).
+the flag, run section-scoped Stryker as one of Phase 3d's background tool threads — from the
+worktree, after selection, never here in Phase 0 — with `concurrency: 16` and
+`coverage-analysis: off` per `memory/process/stryker-concurrency-coverage.md` (the environment
+must already have Stryker — never install).
 
 **What is this skill's job is the run you get when there is no compiler** — which is a real
 run, not a failed one. If `dotnet build` cannot run at all, this is a **docs-only run**: work
