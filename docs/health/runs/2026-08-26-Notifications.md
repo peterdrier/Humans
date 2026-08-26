@@ -52,7 +52,7 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 **15 — The recipient resolver is probably deletable and there is no way to prove it offline.** `NotificationRecipientResolver` is a single method that forwards to `IRoleAssignmentService.GetActiveUserIdsInRoleAsync`. Its documented reason for existing — breaking a DI cycle — is not true of the current graph (finding 3). The gate that would catch a reintroduced cycle is `ValidateOnBuild = true` in `src/Humans.Web/Program.cs:72-73`, which only fires when the app actually starts; no test in the solution builds the full container. So a run can delete the resolver, watch every test pass, and ship a container that throws at startup. Held: this is a deletion whose only safety net is a manual `dotnet run`.
 
-**16 — `tests/Humans.Integration.Tests` runs nowhere.** `.github/workflows/build.yml:112` passes `--filter "FullyQualifiedName!~Humans.Integration.Tests"`, so that project's tests are excluded from every CI run. Repo-wide, not this section's, and the exclusion is deliberate enough to be written with an explaining comment — but a test project nothing runs is a test project nothing maintains. Queued.
+**16 — `tests/Humans.Integration.Tests` runs nowhere, and cannot run here either.** `.github/workflows/build.yml:112` passes `--filter "FullyQualifiedName!~Humans.Integration.Tests"`, so that project is excluded from every CI run; the comment above it says why — the assembly needs Docker/Testcontainers, which is noisy on `ubuntu-latest`. This run's own full `dotnet test Humans.slnx` confirmed the shape from the other side: all 318 of its tests fail in under a second with `DockerUnavailableException` at `unix:///var/run/docker.sock`, because this session's container has no Docker either. So the project is green nowhere and red everywhere it is actually invoked, which makes "excluded from CI" understate it — it is unrunnable in both environments the repo has. Repo-wide, not this section's. Queued.
 
 **17 — The scheduling prompt and the skill disagree about Stryker.** The prompt instructed this run to "record it skipped-with-reason in the run file"; the skill at HEAD (`3dcdae3c`, "upstream issues and Stryker become opt-in flags") says a run without `--mutation` must never "attempt, probe for, mention, or record-as-skipped" Stryker. Followed the skill, so no run artifact mentions it — but the scheduled prompt still carries the older instruction and will re-issue this conflict every night until it is edited. Raised for Peter.
 
@@ -62,6 +62,7 @@ Two user-visible gaps were held rather than struck, both because striking them w
 
 - Findings 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 — struck across four commits.
 - Target shape written fresh as `src/Sections/Humans.Notifications/Docs/health.md`, before any scan.
+- Gates: `dotnet format whitespace Humans.slnx --verify-no-changes` clean; full `dotnet test Humans.slnx -v quiet` green in every project **except** `Humans.Integration.Tests`, which fails 318/318 on Docker unavailability in this container and is the project CI excludes for the same reason (finding 16) — not a regression from this branch. `Humans.Notifications.Tests`: 65 passed.
 - Sweep applied (its own commit): every queued item from merged run files was already present in its target except two from the MailerLite run — a stale `debt-ledger.yml` entry claiming MailerLite has no GDPR contributor (verified closed: `Section.cs:80` registers one, and `IMailerLiteService.DeleteSubscriberAsync` exists) and the open `MailerLiteDateConverter` question, recorded in that section's `debt.yml`.
 
 ## Skipped
@@ -94,7 +95,7 @@ Also wasted: three of fourteen scripted literal replacements missed on the first
 
 ## Sweep queue
 
-- debt: `.github/workflows/build.yml:112` excludes `tests/Humans.Integration.Tests` from every CI run via `--filter "FullyQualifiedName!~Humans.Integration.Tests"`. The exclusion carries an explaining comment, so it is deliberate — but the project's tests therefore run nowhere, and a test nobody runs is a test nobody maintains. Decide whether the project is retired (delete it) or gated (run it somewhere). Found by /section-doctor on Notifications 2026-08-26 (finding 16).
+- debt: `tests/Humans.Integration.Tests` runs in no environment the repo has. `.github/workflows/build.yml:112` excludes it from CI via `--filter "FullyQualifiedName!~Humans.Integration.Tests"` because it needs Docker/Testcontainers, and in an agent session container all 318 tests fail in under a second with `DockerUnavailableException` at `unix:///var/run/docker.sock`. A test project that is skipped in CI and red locally is not a safety net; decide whether it is retired (delete it) or gated (a `services: postgres` job, or a Testcontainers-capable runner). Found by /section-doctor on Notifications 2026-08-26 (finding 16).
 
 ## File coverage
 
