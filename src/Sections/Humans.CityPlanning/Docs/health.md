@@ -7,9 +7,9 @@ Derived fresh each doctor run, before any scan. History rows at the bottom.
 Shows everyone where things sit on the festival site, and lets the people responsible for a
 piece of it move that piece.
 
-- Anyone signed in opens a map of the site and sees every barrio's claimed footprint and
-  every placed container, plus the official zone overlays and the site boundary. They can
-  measure distances on it.
+- Anyone signed in opens a map of the site and sees every barrio's claimed footprint over the
+  official zone overlays, and can turn on the placed containers and the site boundary — both
+  are layers, off by default. They can measure distances on it.
 - A barrio lead, while the organisers have opened barrio placement, draws or reshapes their
   own barrio's outline. Every version they save is kept, so an organiser can look back at
   what the outline was on any earlier date and put it back.

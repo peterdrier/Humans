@@ -387,6 +387,12 @@ something the code does not do; only re-deriving the target from scratch does.
 That is direct evidence for 3c preceding the scan, which the skill already
 requires.
 
+Phase 7's self-review earned its keep on the same file: `health.md`'s opening
+paragraph said the overview map "sees every placed container, plus the official
+zone overlays and the site boundary". `main.js` adds official zones and camp
+polygons always, and containers and the limit zone as layers that are **off by
+default**. Corrected before the PR.
+
 **What does the target diff say?** Nothing — CityPlanning had no
 `Docs/health.md` before this run, so there is no prior target to diff against.
 The question is structurally unanswerable on a section's first run, and the
