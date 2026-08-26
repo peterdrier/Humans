@@ -37,19 +37,24 @@ trailer is the memory, not the definition — a round commit that lost its trail
 rebase still counts, and where trailers and the PR's review history disagree, the history
 wins ([`review-round-budget`](../../../memory/process/review-round-budget.md)).
 
-**Reconcile a suspiciously low count against the review history before you act on it.**
-A PR whose rounds predate this rule, or whose trailers a rebase ate, counts as zero and
-hands you a fresh budget you have already spent. So check whether the PR has been reviewed
-at all:
+**When the count is ambiguous, judge it by what the cap is for.** The number exists to
+answer one question: *how many times has this PR already churned on automated review?*
+Past about five, the next commit is likelier to open a leak than close one — that is the
+whole reason for a ceiling, and it is what the trailers are trying to remember on your
+behalf.
+
+So a zero on a PR with a long review history is not a fresh budget, it is a missing
+record. Sanity-check it against whether the PR has been reviewed at all:
 
     gh api repos/<owner>/Humans/pulls/<N>/reviews --paginate \
       --jq '[.[] | select(.user.type=="Bot" or (.user.login|test("codex|claude|gemini";"i")))] | length'
 
-Zero bot reviews and zero trailers agree — the trailer count stands. But if that number is
-non-zero while the trailers say fewer rounds than it has plausibly drawn, the trailers are
-lying: list the PR's commits from the first bot review onward and count by hand the ones
-that answered a finding or a CI failure. **That hand count is the spent number**, and the
-round you are about to push gets the next number after it.
+Non-zero there while the trailers say fewer rounds than that has plausibly drawn means the
+trailers are behind: count the round commits yourself from the first bot review onward and
+use that. The same question settles the cases no rule here lists — a commit that both
+finishes the deliverable and answers a finding, a round you had to push twice, a finding
+answered by reverting. Ask what the commit was churning on, not what it touched, and act on
+the answer instead of looking for a rule that names it.
 
 The unattended ceiling is **five review-round commits per PR**. Then act on where you stand:
 

@@ -31,12 +31,18 @@ finishing the PR, or doing what Peter asked, spends nothing.
 
 **How to apply:**
 
+The count answers one question — *how many times has this PR already churned on automated
+review?* Everything below serves that. Where a case isn't listed, answer that question and
+act on the answer; don't hunt for a rule that names it.
+
 - Every review-round commit carries a `Review-round: <n>` trailer, `<n>` being its own
   number. Count spent = those trailers on the PR (command in the skill). A commit that is
   not a round must not carry one.
-- The trailer is the memory, not the definition. A round commit that predates this rule or
-  lost its trailer to a rebase still counts; where the trailers and the PR's review
-  history disagree, the history wins.
+- The trailer is the memory, not the definition — a record you keep for a future you who
+  has lost the context, not an enforcement mechanism. It is self-declared on purpose
+  (Peter, 2026-08-26: self-declaration has worked in practice). A round commit that
+  predates this rule or lost its trailer to a rebase still counts; where the trailers and
+  the PR's review history disagree, the history wins.
 - At 4 spent: last commit — read every open finding, spend it on the most serious.
 - At 5+: no triage, no patch. One comment (open items, what you'd do, what needs
   deciding), unsubscribe from PR activity, drop any check-in schedule, stop.
