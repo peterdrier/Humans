@@ -41,7 +41,8 @@ internal sealed class DebugController(
     QueryStatistics queryStatistics,
     ICacheStatsProvider cacheStatsProvider,
     IEnumerable<ICacheStats> decoratorCacheStats,
-    IAdminDatabaseDiagnosticsService databaseDiagnostics) : HumansControllerBase(userService)
+    IAdminDatabaseDiagnosticsService databaseDiagnostics,
+    InMemoryLogSink logSink) : HumansControllerBase(userService)
 {
     [HttpGet("Logs")]
     public IActionResult Logs(int count = 1000, string? minLevel = null)
@@ -56,11 +57,10 @@ internal sealed class DebugController(
             _ => null
         };
 
-        var sink = InMemoryLogSink.Instance;
-        var events = sink.GetEvents(count, minLogLevel);
-        ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
-        ViewBag.SinkStartedAt = sink.StartedAt;
-        ViewBag.TotalEvents = sink.TotalEvents;
+        var events = logSink.GetEvents(count, minLogLevel);
+        ViewBag.LifetimeCounts = logSink.GetLifetimeCounts();
+        ViewBag.SinkStartedAt = logSink.StartedAt;
+        ViewBag.TotalEvents = logSink.TotalEvents;
         ViewBag.MinLevel = minLevel;
         return View(events);
     }

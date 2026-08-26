@@ -1,7 +1,4 @@
 # Section debt ledger for Humans.Camps. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox:
-  - added: 2026-08-25
-    what: "Three UTF-8 mojibake em-dashes in src/Sections/Humans.Camps/Models/CampAdmin/CampAdminPageBuilder.cs lines 74, 76 and 77 — the AcceptingMembers, Zone and SpaceRequirement fallback strings each render as 'â€\"' instead of '—' on the camp admin page. Same encoding round-trip that hit Development's seeder comments; unlike those, these are rendered strings a user sees. Found by /section-doctor on Development 2026-08-24, swept 2026-08-25."
-    review: light
+inbox: []

@@ -1,5 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Controllers;
@@ -51,6 +52,35 @@ public class EventsArchitectureTests
         // Shell's controllers and can no longer name this one by type.
         typeof(EventsAdminController).GetCustomAttribute<AuthorizeAttribute>()?.Policy
             .Should().Be("EventsAdminOrAdmin");
+    }
+
+    [HumansFact]
+    public void EventsAdminSurfaces_RequireEventsAdminOrAdminPolicy()
+    {
+        var controllers = new[]
+        {
+            typeof(EventsAdminController),
+            typeof(EventsDashboardController),
+            typeof(EventsExportController),
+            typeof(EventsModerationController),
+        };
+
+        foreach (var controller in controllers)
+        {
+            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
+            authorize.Should().NotBeNull(
+                because: $"{controller.Name} is an Events administration surface");
+            authorize!.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
+                because: $"{controller.Name} is an Events administration surface");
+        }
+    }
+
+    [HumansFact]
+    public void EventsSubmissionSurface_RequiresAnAuthenticatedUser()
+    {
+        typeof(EventsController).GetCustomAttribute<AuthorizeAttribute>()
+            .Should().NotBeNull(
+                because: "event submission and personal submissions must not be anonymous");
     }
 
     [HumansFact]

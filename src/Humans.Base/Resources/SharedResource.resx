@@ -56,7 +56,6 @@
   <!-- Navigation (_Layout)     -->
   <!-- ======================== -->
   <data name="Nav_Brand" xml:space="preserve"><value>Humans</value></data>
-  <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>My Profile</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Teams</value></data>
   <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
@@ -66,7 +65,6 @@
   <data name="Nav_Privacy" xml:space="preserve"><value>Privacy</value></data>
   <data name="Nav_About" xml:space="preserve"><value>About</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
-  <data name="Nav_OnboardingReview" xml:space="preserve"><value>Review Queue</value></data>
 
   <!-- ======================== -->
   <!-- Cookie Banner (_Layout)  -->
@@ -135,7 +133,7 @@
   <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard</value></data>
   <data name="Dashboard_Welcome" xml:space="preserve"><value>Welcome, {0}</value><comment>{0} = display name</comment></data>
   <data name="Dashboard_PendingConsentsAlert" xml:space="preserve"><value>&lt;strong&gt;Action Required:&lt;/strong&gt; You have {0} pending consent(s). &lt;a href="/Consent" class="alert-link"&gt;Review and consent&lt;/a&gt; to maintain your active membership.</value><comment>{0} = pending consent count</comment></data>
-  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve"><value>&lt;strong&gt;Complete Your Profile:&lt;/strong&gt; Your profile is incomplete. &lt;a href="/Profile/Edit" class="alert-link"&gt;Add your information&lt;/a&gt; to help us know you better.</value></data>
+  <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve"><value>&lt;strong&gt;Complete Your Profile:&lt;/strong&gt; Your profile is incomplete. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Add your information&lt;/a&gt; to help us know you better.</value></data>
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Your profile is complete.</value></data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Complete your profile to help us know you better.</value></data>
@@ -442,7 +440,6 @@
   <!-- Onboarding Review -->
 
   <!-- Board Voting -->
-  <data name="Nav_BoardVoting" xml:space="preserve"><value>Board Voting</value></data>
 
   <!-- Term Renewal -->
   <data name="Dashboard_TermExpires" xml:space="preserve"><value>Term expires: {0}</value><comment>{0} = formatted date</comment></data>
@@ -451,10 +448,6 @@
   <data name="Dashboard_RenewNow" xml:space="preserve"><value>Renew Now</value></data>
 
   <!-- Navigation restructure -->
-  <data name="Nav_Review" xml:space="preserve"><value>Review</value></data>
-  <data name="Nav_Voting" xml:space="preserve"><value>Voting</value></data>
-  <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
-  <data name="Nav_Scanner" xml:space="preserve"><value>Scanner</value></data>
 
   <!-- Scanner section (issue nobodies-collective/Humans#525) -->
 
@@ -474,7 +467,6 @@
 
   <!-- Agent Widget -->
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
-  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
 
   <!-- Magic Link Auth -->
   <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>

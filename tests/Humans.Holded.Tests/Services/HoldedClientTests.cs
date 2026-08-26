@@ -136,6 +136,87 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedTransientException>();
     }
 
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_PostsTheAmountAsAStringAndReturnsThePaymentId()
+    {
+        string? capturedBody = null;
+        var handler = new StubHandler(req =>
+        {
+            req.Method.Method.Should().Be("POST");
+            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123/payments");
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.Created, """{"id":"pay-9"}""");
+        });
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), "SEPA payout E1",
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("pay-9");
+        // v2 rejects a JSON number here — the amount has to go over the wire as a decimal string.
+        capturedBody.Should().Contain("\"amount\":\"18.00\"");
+        capturedBody.Should().Contain("\"treasury_id\":\"treasury-1\"");
+        capturedBody.Should().Contain("\"date\":\"2026-08-25\"");
+    }
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_NoTreasuryAccount_OmitsTheKeyRatherThanSendingNull()
+    {
+        // A null treasury_id is not "use the default" to Holded — the key is simply left out.
+        string? capturedBody = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.Created, """{"id":"pay-9"}""");
+        });
+
+        await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        capturedBody.Should().NotContain("treasury_id");
+        capturedBody.Should().NotContain("description");
+    }
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_ResponseWithoutAPaymentId_ReturnsAnUnconfirmedRef()
+    {
+        // A 2xx means the payment posted. Throwing would lose it from the record and let the caller
+        // pay again — the sentinel keeps it, naming the document a human has to check in Holded.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_BlankPaymentId_ReturnsAnUnconfirmedRef()
+    {
+        // An empty ref would defeat both the sentinel and the non-empty-refs re-booking gate.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, """{"id":""}"""));
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansFact]
+    public async Task PayPurchaseDocumentAsync_UnparseableResponseBody_ReturnsAnUnconfirmedRef()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "not json"));
+
+        var id = await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 5m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("unconfirmed:doc-123");
+    }
+
     private static HttpResponseMessage Respond(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

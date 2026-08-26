@@ -35,11 +35,11 @@ public class SepaPaymentFileBuilderTests
             MaxAmountPerTransfer: 50m,
             Transfers: transfers);
 
-    private static SepaTransfer Ana(decimal amount = 12.34m, string? name = null) =>
-        new("E" + Guid.NewGuid().ToString("N"), name ?? "Ana Ruiz", AnaIban, amount);
+    private static SepaTransfer Ana(decimal amount = 12.34m, string? name = null, int account = 40000004) =>
+        new("E" + Guid.NewGuid().ToString("N"), name ?? "Ana Ruiz", AnaIban, amount, account);
 
     private static SepaTransfer Bo(decimal amount = 20m) =>
-        new("E" + Guid.NewGuid().ToString("N"), "Bo Jansen", BoIban, amount);
+        new("E" + Guid.NewGuid().ToString("N"), "Bo Jansen", BoIban, amount, 40000007);
 
     private static XDocument Parse(string xml) => XDocument.Parse(xml);
 
@@ -118,6 +118,22 @@ public class SepaPaymentFileBuilderTests
             .Which.Descendants(Ns + "BICFI").Should().BeEmpty();
     }
 
+    // ─── Remittance information (nobodies-collective/Humans#1141) ───────────────
+
+    [HumansFact]
+    public void Build_RemittanceCarriesEachTransfersOwnCreditorAccountNumber()
+    {
+        // The account number is what lets the treasurer tie a bank line to a creditor account, so it
+        // is per transfer — a shared constant would make every line in the batch read identically.
+        var doc = Parse(SepaPaymentFileBuilder.Build(Request(Ana(account: 40000004), Bo())));
+
+        var remittances = doc.Descendants(Ns + "Ustrd").Select(u => u.Value).ToList();
+
+        remittances.Should().Equal(
+            "40000004 Nobodies expense reimbursement",
+            "40000007 Nobodies expense reimbursement");
+    }
+
     // ─── Character handling ─────────────────────────────────────────────────────
 
     [HumansFact]
@@ -190,7 +206,7 @@ public class SepaPaymentFileBuilderTests
     public void Build_InvalidIban_IsRefusedAndTheMessageMasksIt()
     {
         var bad = new SepaTransfer("E" + Guid.NewGuid().ToString("N"), "Ana Ruiz",
-            "ES9121000418450200051333", 10m);
+            "ES9121000418450200051333", 10m, 40000004);
 
         var act = () => SepaPaymentFileBuilder.Build(Request(bad));
 
@@ -204,8 +220,8 @@ public class SepaPaymentFileBuilderTests
     {
         var id = "E" + Guid.NewGuid().ToString("N");
         var act = () => SepaPaymentFileBuilder.Build(Request(
-            new SepaTransfer(id, "Ana Ruiz", AnaIban, 10m),
-            new SepaTransfer(id, "Bo Jansen", BoIban, 11m)));
+            new SepaTransfer(id, "Ana Ruiz", AnaIban, 10m, 40000004),
+            new SepaTransfer(id, "Bo Jansen", BoIban, 11m, 40000007)));
 
         act.Should().Throw<SepaPaymentFileException>().WithMessage("*share the end-to-end id*");
     }

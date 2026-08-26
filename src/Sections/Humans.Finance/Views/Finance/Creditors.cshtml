@@ -15,6 +15,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Creditor Accounts</h1>
     <div class="d-flex gap-2">
+        <a asp-action="Sepa" class="btn btn-outline-secondary"
+           title="Generated payout files, their transfers, and the button that books each payment into Holded.">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
+        </a>
         <a href="/Holded" class="btn btn-outline-secondary"
            title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
             <i class="fa-solid fa-rotate me-1"></i>Holded sync
@@ -38,7 +42,8 @@
     bank's "Enviar ficheros". Only single-bound accounts with a positive balance and an IBAN on their
     Holded contact can be paid; the amount defaults to the full balance and a partial payout leaves
     the remainder owed. Nothing here marks a report or a member as paid — the balance clears when the
-    payment is booked in Holded and the next ledger sync picks it up.
+    payment is booked in Holded and the next ledger sync picks it up. Book it from
+    <a asp-action="Sepa">SEPA transfers</a> once the file is with the bank.
 </p>
 
 @if (Model.Unresolved.Count > 0)

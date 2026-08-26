@@ -91,9 +91,6 @@
   <data name="Nav_Brand" xml:space="preserve">
     <value>Humans</value>
   </data>
-  <data name="Nav_Home" xml:space="preserve">
-    <value>Inicio</value>
-  </data>
   <data name="Nav_MyProfile" xml:space="preserve">
     <value>Mi perfil</value>
   </data>
@@ -120,9 +117,6 @@
   </data>
   <data name="Nav_Admin" xml:space="preserve">
     <value>Administración</value>
-  </data>
-  <data name="Nav_OnboardingReview" xml:space="preserve">
-    <value>Cola de revisión</value>
   </data>
   <data name="CookieBanner_Title" xml:space="preserve">
     <value>Aviso de cookies</value>
@@ -260,7 +254,7 @@
     <comment>{0} = pending consent count</comment>
   </data>
   <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Complete su perfil:&lt;/strong&gt; Su perfil está incompleto. &lt;a href="/Profile/Edit" class="alert-link"&gt;Añada su información&lt;/a&gt; para que podamos conocerle mejor.</value>
+    <value>&lt;strong&gt;Complete su perfil:&lt;/strong&gt; Su perfil está incompleto. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Añada su información&lt;/a&gt; para que podamos conocerle mejor.</value>
   </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
@@ -792,9 +786,6 @@
   <data name="Validation_PhoneHint" xml:space="preserve">
     <value>Debe empezar con + y código de país (ej. +34 612 345 678)</value>
   </data>
-  <data name="Nav_BoardVoting" xml:space="preserve">
-    <value>Votación de la Junta</value>
-  </data>
   <data name="Dashboard_TermExpires" xml:space="preserve">
     <value>El mandato expira: {0}</value>
     <comment>{0} = formatted date</comment>
@@ -808,18 +799,6 @@
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Renovar ahora</value>
-  </data>
-  <data name="Nav_Review" xml:space="preserve">
-    <value>Revisión</value>
-  </data>
-  <data name="Nav_Voting" xml:space="preserve">
-    <value>Votación</value>
-  </data>
-  <data name="Nav_Board" xml:space="preserve">
-    <value>Board</value>
-  </data>
-  <data name="Nav_Scanner" xml:space="preserve">
-    <value>Escáner</value>
   </data>
   <data name="Search_Title" xml:space="preserve">
     <value>Buscar Humans</value>
@@ -841,9 +820,6 @@
   </data>
   <data name="Agent_WidgetButton" xml:space="preserve">
     <value>Abrir el asistente</value>
-  </data>
-  <data name="Nav_Agent" xml:space="preserve">
-    <value>Asistente</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>O iniciar sesión con correo</value>
@@ -1230,7 +1206,6 @@
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilidad y seguimiento de montaje</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Cuéntanos sobre tu alimentación</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Lo necesitamos para planificar las comidas de la cantina</value></data>

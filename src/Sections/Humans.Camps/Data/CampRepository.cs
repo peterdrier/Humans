@@ -74,9 +74,7 @@ internal sealed partial class CampRepository : ICampRepository
             query = query.Where(c => c.Seasons.Any(s => s.Year == year && statusFilter.Contains(s.Status)));
         }
 
-        return await query
-            .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
-            .ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default)

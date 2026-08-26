@@ -75,7 +75,8 @@ internal sealed class GateService(
             Found: true,
             IsVoid: attendee.Status == TicketAttendeeStatus.Void,
             AlreadyAdmittedLocally: priorAdmit is not null,
-            CheckedInAtVendor: attendee.Status == TicketAttendeeStatus.CheckedIn,
+            CheckedInAtVendor: attendee.CheckedInAt is not null
+                || attendee.Status == TicketAttendeeStatus.CheckedIn,
             Now: now,
             GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
             MatchedToHuman: attendee.MatchedUserId is not null,

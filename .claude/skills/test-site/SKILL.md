@@ -50,7 +50,7 @@ Run suites matching `$ARGUMENTS` (default: all). Report PASS/FAIL after each ste
 ### profile
 
 1. `/Profile` → name, contact fields, team memberships visible
-2. `/Profile/Edit` → form loads with current values; fields present: Burner Name, First/Last Name, Pronouns, City, Country, Bio, Birthday (month/day); contact fields section with "Add" button; volunteer history section
+2. `/Profile/Me/Edit` → form loads with current values; fields present: Burner Name, First/Last Name, Pronouns, City, Country, Bio, Birthday (month/day); contact fields section with "Add" button; volunteer history section
 3. Make a minor edit (e.g., Bio), submit, verify change appears, then undo it
 4. `/Profile/Emails` → email addresses with visibility controls
 

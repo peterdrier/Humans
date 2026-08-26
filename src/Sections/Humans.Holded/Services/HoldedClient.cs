@@ -17,6 +17,10 @@ namespace Humans.Holded.Services;
 
 internal sealed class HoldedClient : IHoldedClient
 {
+    /// <summary>Stands in for a payment id Holded never gave back. See
+    /// <see cref="PayPurchaseDocumentAsync"/>.</summary>
+    private const string UnconfirmedPaymentRefPrefix = "unconfirmed:";
+
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;
 
@@ -155,6 +159,52 @@ internal sealed class HoldedClient : IHoldedClient
         { Content = new ByteArrayContent([]) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
+    }
+
+    public async Task<string> PayPurchaseDocumentAsync(
+        string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
+        CancellationToken ct = default)
+    {
+        // v2 takes the amount as a decimal *string*; a JSON number is rejected.
+        var payload = new
+        {
+            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
+            treasury_id = string.IsNullOrWhiteSpace(treasuryId) ? null : treasuryId,
+            date = LocalDatePattern.Iso.Format(date),
+            description,
+        };
+
+        using var req = new HttpRequestMessage(
+            HttpMethod.Post, $"/api/v2/purchases/{documentId}/payments")
+        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        AttachAuth(req);
+
+        using var resp = await SendAsync(req, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        string? id = null;
+        try
+        {
+            id = JsonNode.Parse(body)?["id"]?.GetValue<string>();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            _logger.LogWarning(ex,
+                "Holded accepted a payment on purchase document {DocumentId} but its response could not be parsed.",
+                documentId);
+        }
+
+        // Blank counts as unreadable: an empty ref would defeat both the sentinel and the
+        // non-empty-refs gate that stops a partially booked transfer being re-booked.
+        if (!string.IsNullOrWhiteSpace(id)) return id;
+
+        // SendAsync already accepted the response, so the payment IS posted — throwing here would
+        // lose it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
+        // allocation going and names the document a human has to eyeball in Holded.
+        _logger.LogWarning(
+            "Holded accepted a payment on purchase document {DocumentId} without a readable payment id; recording it as unconfirmed.",
+            documentId);
+        return UnconfirmedPaymentRefPrefix + documentId;
     }
 
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
@@ -666,12 +716,14 @@ internal sealed class HoldedClient : IHoldedClient
     {
         Id = Prop(n, "id")?.GetValue<string>() ?? "",
         DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
+        ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
+        PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),

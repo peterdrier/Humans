@@ -272,8 +272,11 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         if (campId.HasValue)
             query = query.Where(e => e.CampId == campId.Value);
         if (!string.IsNullOrWhiteSpace(q))
-            query = query.Where(e => EF.Functions.ILike(e.Title, $"%{q}%") ||
-                                     EF.Functions.ILike(e.Description, $"%{q}%"));
+        {
+            var pattern = "%" + EscapeLikePattern(q.Trim()) + "%";
+            query = query.Where(e => EF.Functions.ILike(e.Title, pattern, "\\") ||
+                                     EF.Functions.ILike(e.Description, pattern, "\\"));
+        }
 
         return await query.ToListAsync(ct);
     }
@@ -488,4 +491,10 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
         return submissions.Count;
     }
+
+    private static string EscapeLikePattern(string value) =>
+        value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 }

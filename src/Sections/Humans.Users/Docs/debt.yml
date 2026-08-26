@@ -3,8 +3,5 @@
 version: 1
 inbox:
   - added: 2026-08-24
-    what: "Four resource keys used in Users exist in no .resx file at all (verified: zero hits across all 156 resx in the repo), so each renders as its own key name to the user in all six languages — the localizer returns the key when the lookup misses, with a green build, a 200 and no log line. Sites: Profile_EmailDeleted (ProfileController.cs:878,1529), Profile_EmailVisibilityUpdated (:833,1571) and Profile_NotificationTargetUpdated (:804,1224), all through IStringLocalizer<UsersResource>; and Admin_SortBy (Views/UsersAdmin/AdminList.cshtml:78) through SharedLocalizer. The fix is ADDING the entries — the first three to UsersResource, Admin_SortBy to SharedResource beside its Admin_* siblings (Admin_TotalCount, Admin_SearchPlaceholder, Admin_Clear, all already there and correctly bound) — plus the five language variants each. NOT a rebinding: every call site's localizer choice is already correct. Originally reported as four misbindings by /section-doctor on Onboarding 2026-08-23; re-diagnosed on peterdrier/Humans#1480 after Codex refuted the misbinding reading."
-    review: light
-  - added: 2026-08-24
-    what: "Two data-access blocks in src/Sections/Humans.Onboarding/Docs describe Users-owned services (HumanLifecycleService and NonCompliantMemberSuspension) rather than Onboarding-owned ones, and belong in src/Sections/Humans.Users/Docs/data-access.md, which does not carry them today. Left with a pointer in the source doc rather than moved because the section-doctor concurrency contract forbids a run writing another section's file. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light
+    what: "Admin_SortBy in Views/UsersAdmin/AdminList.cshtml:78 has no shared resource and renders raw. The call is correctly through SharedLocalizer, but adding a new Admin_* resource key conflicts with memory/code/localization-admin-exempt.md, which forbids new localization keys for admin pages. Peter must decide whether this existing admin localizer call should gain a resource or become an unlocalized literal."
+    review: panel

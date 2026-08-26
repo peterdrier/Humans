@@ -1,0 +1,117 @@
+@model Humans.Finance.Models.SepaPayoutsPageVm
+@{
+    ViewData["Title"] = "SEPA Transfers";
+
+    // Generation stamps are instants; the treasurer reads them in the org's own timezone.
+    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">SEPA Transfers</h1>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+    </a>
+</div>
+
+<p class="text-muted">
+    Every payout file generated from <a asp-action="Creditors">Creditor Accounts</a>, and the credit
+    transfers inside it. <strong>Book</strong> pays the member's open Holded purchase documents —
+    oldest first, partial allocation allowed — from the configured treasury account, up to the
+    transfer amount. Booking is what closes the loop after the file has been uploaded to the bank; a
+    booked transfer cannot be booked again.
+</p>
+
+@if (Model.UnavailableReason is { } unavailable)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>@unavailable
+    </div>
+}
+
+@if (Model.Files.Count == 0)
+{
+    <div class="card"><div class="card-body text-center py-5 text-muted">
+        No payout files generated yet — tick creditor accounts on
+        <a asp-action="Creditors">Creditor Accounts</a> and generate one.
+    </div></div>
+}
+
+@foreach (var file in Model.Files)
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="font-monospace">@file.FileName</span>
+            <span class="text-muted small">
+                @file.GeneratedAt.ToDateTime(madrid) by @file.GeneratedByName
+            </span>
+        </div>
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Member</th>
+                    <th>IBAN</th>
+                    <th class="text-end">Amount</th>
+                    <th>Status</th>
+                    <th style="width: 16rem">Book</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in file.Transfers)
+            {
+                <tr>
+                    <td>
+                        <a asp-action="CreditorStatement" asp-route-accountNum="@t.Row.SupplierAccountNum">@t.Row.SupplierAccountNum</a>
+                    </td>
+                    <td>@t.MemberName<div class="text-muted small">@t.Row.CreditorName</div></td>
+                    <td class="font-monospace small">@t.Row.IbanMasked</td>
+                    <td class="text-end">@t.Row.Amount.ToEuro()</td>
+                    <td>
+                        @if (t.Row.BookedAt is { } bookedAt)
+                        {
+                            <span class="badge text-bg-success">Booked</span>
+                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Generated</span>
+                        }
+                    </td>
+                    @* Booking is idempotent in the service; this column is display, not the gate. *@
+                    <td>
+                        @if (t.Row.IsBooked)
+                        {
+                            <div class="text-muted small font-monospace">@(t.Row.HoldedPaymentRefs ?? "—")</div>
+                        }
+                        else if (Model.UnavailableReason is not null)
+                        {
+                            <span class="text-muted small">—</span>
+                        }
+                        else if (t.Row.NotBookableReason is { } reason)
+                        {
+                            <span class="text-muted small">@reason</span>
+                            @if (t.Row.HoldedPaymentRefs is { Length: > 0 } partial)
+                            {
+                                <div class="text-danger small">
+                                    Part-paid in Holded: <span class="font-monospace">@partial</span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <form asp-action="BookSepaTransfer" method="post"
+                                  data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName into Holded? This posts real payments.">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book in Holded
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
