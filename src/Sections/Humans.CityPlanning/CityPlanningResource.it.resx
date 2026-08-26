@@ -65,9 +65,6 @@
   <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve">
     <value>Cancella tutte le misure</value>
   </data>
-  <data name="CityPlanning_CampLimits" xml:space="preserve">
-    <value>Limiti del campo</value>
-  </data>
   <data name="CityPlanning_BarrioZones" xml:space="preserve">
     <value>Zone del barrio</value>
   </data>

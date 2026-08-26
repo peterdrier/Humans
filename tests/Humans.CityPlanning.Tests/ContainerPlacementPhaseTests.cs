@@ -28,8 +28,8 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(options),
             _campService,
-            Substitute.For<ITeamService>(),
-            Substitute.For<IUserService>());
+            Substitute.For<ITeamServiceRead>(),
+            Substitute.For<IUserServiceRead>());
     }
 
     [HumansFact]

@@ -43,7 +43,6 @@
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>History</value></data>
   <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Measure</value></data>
   <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve"><value>Clear all measurements</value></data>
-  <data name="CityPlanning_CampLimits" xml:space="preserve"><value>Camp limits</value></data>
   <data name="CityPlanning_BarrioZones" xml:space="preserve"><value>Barrio zones</value></data>
   <data name="CityPlanning_Layers" xml:space="preserve"><value>Layers</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>

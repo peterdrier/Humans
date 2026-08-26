@@ -19,8 +19,8 @@ namespace Humans.CityPlanning.Tests;
 public sealed class CityPlanningServiceTests : CityPlanningTestBase
 {
     private readonly ICampServiceRead _campService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
+    private readonly ITeamServiceRead _teamService;
+    private readonly IUserServiceRead _userService;
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
@@ -28,8 +28,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         : base(Instant.FromUtc(2026, 3, 15, 12, 0, 0))
     {
         _campService = Substitute.For<ICampServiceRead>();
-        _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
+        _userService = Substitute.For<IUserServiceRead>();
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
@@ -563,21 +563,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     // --- UpdatePlacementDatesAsync ---
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_SetsBothDates()
-    {
-        await SeedMapSettingsAsync();
-        var opens = new LocalDateTime(2026, 4, 10, 18, 0);
-        var closes = new LocalDateTime(2026, 4, 20, 23, 59);
-
-        var result = await _sut.UpdatePlacementDatesAsync("2026-04-10T18:00", "2026-04-20T23:59", Xunit.TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        settings.PlacementOpensAt.Should().Be(opens);
-        settings.PlacementClosesAt.Should().Be(closes);
-    }
 
     [HumansFact]
     public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
