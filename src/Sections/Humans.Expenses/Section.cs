@@ -6,6 +6,7 @@ using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Hosting;
 using Humans.Base.Models.Tables;
+using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,19 +48,13 @@ public sealed class Section : ISection
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, IbanAccessHandler>();
 
-        // The section owns its badge colours rather than Humans.UI holding a literal row per
-        // section enum: Base cannot name ExpenseReportStatus once the enum moves in here, and
-        // referencing the section's contracts leaf from Base to get it back is the trap that
-        // ends with Base knowing every section's vocabulary (Peter, 2026-08-09 —
-        // memory/architecture/base-ui-registries-are-section-populated.md).
-        EnumBadgeMap.Register(new Dictionary<Enum, string>
-        {
-            [ExpenseReportStatus.Draft] = "bg-secondary",
-            [ExpenseReportStatus.Submitted] = "bg-primary",
-            [ExpenseReportStatus.CoordinatorEndorsed] = "bg-info text-dark",
-            [ExpenseReportStatus.Approved] = "bg-success",
-            [ExpenseReportStatus.Withdrawn] = "bg-secondary",
-        });
+        // The section owns its badge colours rather than Base holding a literal row per section
+        // enum: Base cannot name ExpenseReportStatus, and referencing the section's contracts
+        // leaf from Base to get it back is the trap that ends with Base knowing every section's
+        // vocabulary (memory/architecture/base-ui-registries-are-section-populated.md).
+        // GetBadgeClass is the single source; the section's own views call it directly.
+        EnumBadgeMap.Register(
+            Enum.GetValues<ExpenseReportStatus>().ToDictionary(s => (Enum)s, s => s.GetBadgeClass()));
 
         services.AddScoped<HoldedExpenseOutboxJob>();
     }

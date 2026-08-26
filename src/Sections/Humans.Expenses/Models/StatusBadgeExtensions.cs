@@ -3,14 +3,13 @@ using Humans.Expenses.Contracts;
 namespace Humans.Expenses.Models;
 
 /// <summary>
-/// Badge CSS classes for <see cref="ExpenseReportStatus"/>, used by the section's own
-/// Detail and Review pages.
+/// Badge CSS classes for <see cref="ExpenseReportStatus"/>. The single source: the section's
+/// Detail and Review pages call it directly, and <c>Section.cs</c> projects it into
+/// <c>EnumBadgeMap</c> for the table-column half of the same page.
 /// </summary>
 /// <remarks>
-/// This lived as an overload on <c>Humans.Base.Extensions.StatusBadgeExtensions</c> until the
-/// section moved out. Its only two call sites were always this section's views, so it comes
-/// with them rather than making Base name a section enum — the same reasoning as
-/// <c>EnumBadgeMap.Register</c>, which covers the table-column half of the same page.
+/// It lives in the section rather than Base because Base cannot name a section enum
+/// (memory/architecture/base-ui-registries-are-section-populated.md).
 /// </remarks>
 internal static class StatusBadgeExtensions
 {
