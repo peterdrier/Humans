@@ -41,12 +41,14 @@ Happy path. When something needs fixing it gets more complicated.
    totals (3 payments, totaling ####). Then the money goes bye-bye.
    - **7-A.** The member receives the money in their account. This can take a day or two —
      Spain isn't fast.
-8. **The bank movements sync back to Holded** as individual transfers, for more accounting math
-   fun.
-9. **Humans does not watch the bank.** The synced movements stay in Holded for the accountant;
-   Humans mirrors only Holded's *journal*, where the money doesn't appear until booked. The
-   treasurer proceeds straight from the verified upload to booking — Humans already knows every
-   transfer, because it generated the file.
+8. **The bank movements sync back to Holded** as individual transfers — visible in Holded's
+   Treasury on the Sabadell account as soon as the bank posts them, waiting to be reconciled.
+9. **Humans does not watch the bank.** It doesn't need the movements to know who was paid what —
+   its own SEPA transfer rows are that record, because it generated the file. Humans mirrors only
+   Holded's *journal*, where the money doesn't appear until booked; the treasurer proceeds
+   straight from the verified upload to booking. The join back to the bank movement happens
+   inside Holded: booking (step 10) puts a payment on the same treasury account with the same
+   amount, and Holded's reconciliation links movement to payment there.
 10. **Humans tells Holded which creditor account each transfer settles** — the treasurer clicks
     **Book** on `/Finance/Sepa`, which posts the payment against the member's open purchase docs,
     so the €123 lands on account `40000004` and the math adds up to zero. Booking is a manual
