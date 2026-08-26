@@ -1035,7 +1035,11 @@ internal sealed class SurveyService(
 
         var invitedCount = invited.GetValueOrDefault(surveyId);
         var responseCount = responses.Count;
-        var responseRate = invitedCount == 0 ? 0d : (double)responseCount / invitedCount;
+        var completedInvitationCount = invitedCount == 0
+            ? 0
+            : (await repo.GetInvitationsAsync(surveyId, ct))
+                .Count(invitation => invitation.SentAt.HasValue && invitation.Completed);
+        var responseRate = invitedCount == 0 ? 0d : (double)completedInvitationCount / invitedCount;
 
         var questions = survey.Questions
             .Where(q => q.Type != SurveyQuestionType.Information)

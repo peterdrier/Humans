@@ -38,6 +38,12 @@ public class SurveyServiceTests
     private readonly IGoogleTranslationService _translation = Substitute.For<IGoogleTranslationService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
 
+    public SurveyServiceTests()
+    {
+        _repo.GetInvitationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<SurveyInvitation>());
+    }
+
     private SurveyService CreateService(ILogger<SurveyService>? logger = null) => new(
         _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
@@ -2312,6 +2318,16 @@ public class SurveyServiceTests
                 StringComparer.Ordinal),
         };
 
+    private SurveyInvitation SentInvitation(Guid surveyId, bool completed, bool sent = true) => new()
+    {
+        Id = Guid.NewGuid(),
+        SurveyId = surveyId,
+        UserId = Guid.NewGuid(),
+        CreatedAt = _clock.GetCurrentInstant(),
+        SentAt = sent ? _clock.GetCurrentInstant() : null,
+        Completed = completed,
+    };
+
     [HumansFact]
     public async Task GetResultsAsync_returns_null_when_survey_missing()
     {
@@ -2394,6 +2410,17 @@ public class SurveyServiceTests
             .Returns(responses);
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int> { [surveyId] = 4 });
+        _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyInvitation>
+            {
+                SentInvitation(surveyId, completed: true),
+                SentInvitation(surveyId, completed: true),
+                SentInvitation(surveyId, completed: false),
+                SentInvitation(surveyId, completed: false),
+                // A logged-in public participant can have a completed ledger row without
+                // ever joining the invited pool.
+                SentInvitation(surveyId, completed: true, sent: false),
+            });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -2402,7 +2429,9 @@ public class SurveyServiceTests
         result.Should().NotBeNull();
         result.ResponseCount.Should().Be(3);
         result.InvitedCount.Should().Be(4);
-        result.ResponseRate.Should().BeApproximately(3d / 4d, 0.0001);
+        // Identified + CompletionTracked invited completions count; the Anonymous
+        // response and completed unsent public participation row do not.
+        result.ResponseRate.Should().BeApproximately(2d / 4d, 0.0001);
 
         var choice = result.Questions.Single(q => q.QuestionId == choiceId);
         choice.OptionCounts.Should().HaveCount(3);
