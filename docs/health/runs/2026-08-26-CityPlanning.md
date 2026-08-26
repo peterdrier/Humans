@@ -22,8 +22,8 @@ City Planning is a **first-time doctor target**: it had no `Docs/health.md`, so
 this run derived the target shape from scratch (reforge 210 / loc 1947 /
 cogP95 4 / cogMax 6). Structurally it is in good order and the score reflects
 breadth, not mess: ten question-shapes, one page controller, one API
-controller, one service, one repository over three tables, and the narrowest
-cross-section contract in the repo — three reads and two writes.
+controller, one service, one repository over the section's tables, and the
+narrowest cross-section contract in the repo.
 
 The structure needed almost nothing. **The value was in what the section
 *claimed* about itself**, and in three untested paths that each carry a real
@@ -149,9 +149,9 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
     version and can be restored; container placements keep none. Nothing in
     the section states that asymmetry as a decision, so a reader cannot tell
     whether it is a design call or an omission. — **Needs Peter #19**
-20. **Container CRUD posts redirect to the wrong year.** All three posts
-    (`CreateBarrioContainer`, `EditContainer`, `DeleteContainer`, plus the two
-    `ModelState`-invalid branches) redirect with `settings.Year` —
+20. **Container CRUD posts redirect to the wrong year.** `CreateBarrioContainer`,
+    `EditContainer` and `DeleteContainer` — and the `ModelState`-invalid
+    branches of the first two — redirect with `settings.Year` —
     `CampSettings.PublicYear` — instead of the `{year}` route value the admin
     was on, bouncing anyone curating a non-public year back to the public
     year's list after every operation. The private helpers already thread the
@@ -306,7 +306,7 @@ has no back-navigation (it has two, lines 57 and 63), and a claim that the
   `authorization.md`; the Contracts csproj comment renamed to the projects that
   exist; history citations cut from six production files; `docs/guide/CityPlanning.md`
   triggers and Glossary claim corrected. Commit `0294aa9b`.
-- **Strike 3 (add tests — findings #5, #11, #12):** twelve tests over the
+- **Strike 3 (add tests — findings #5, #11, #12):** new tests over the
   season-scoped delete (removal of polygon *and* history, other seasons
   untouched, both zero-return paths), the `RegistrationInfo` highest-open-season
   key (write target, `PublicYear` fallback, trim-and-null, and that the read

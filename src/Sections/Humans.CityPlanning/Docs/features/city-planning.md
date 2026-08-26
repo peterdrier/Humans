@@ -158,7 +158,7 @@ Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No
 | `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection |
 | `admin-import.js` | Admin-page bulk GeoJSON import: parse, name-match camps, preview, then `PUT` each polygon |
 
-The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported by both maps; `container-map/measure.js` is a one-line re-export.
+The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported directly by both maps.
 
 **State flow:**
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons

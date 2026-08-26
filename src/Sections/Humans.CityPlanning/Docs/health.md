@@ -32,40 +32,41 @@ structural item below follows from this table.
 | **See the site** | What is placed where, this year? | `GET /CityPlanning/`, `GET /api/city-planning/state`, `GET /api/city-planning/containers/{year}` |
 | **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{id}`, `GET …/history`, `POST …/restore/{historyId}` |
 | **Place a container** | Where does this box go, and what should it look like? | `GET /CityPlanning/ContainerMap/{year}`, `PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `PUT …/notes` |
-| **Run the phases** | Is placement open, and who may act now? | `GET /CityPlanning/BarrioMap/Admin`, the four `Open*/Close*Placement` posts, `UpdatePlacementDates`, `ICityPlanningServiceRead.GetSettingsAsync` |
+| **Run the phases** | Is placement open, and who may act now? | `GET /CityPlanning/BarrioMap/Admin`, the `Open*/Close*Placement` posts, `UpdatePlacementDates`, `ICityPlanningServiceRead.GetSettingsAsync` |
 | **Publish the ground truth** | What is the boundary and what are the named zones? | `Upload*/Download*/Delete*` for limit zone and official zones |
 | **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
 | **Curate containers** | Which containers exist for which barrio? | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` plus its Create/Edit/Delete posts (entity owned by Containers) |
 | **Hand the data out** | Give me this as a file. | `GET /api/city-planning/export.geojson`, `GET /api/city-planning/containers/{year}/export.geojson` |
-| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningServiceRead` (3 reads) + `ICityPlanningService` (2 writes) |
+| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningServiceRead` + `ICityPlanningService` |
 | **Watch each other work** | Who else is on this map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast) |
 
-Ten shapes. Two of them — *curate containers* and half of *place a container* — are City
-Planning URLs over an entity Containers owns; that is deliberate (placement is a planning
-concern) and is the section's one standing width cost.
+*Curate containers* and half of *place a container* are City Planning URLs over an entity
+Containers owns; that is deliberate (placement is a planning concern) and is the section's one
+standing width cost.
 
 ## 3. Structure
 
 The layout those shapes imply, written fresh:
 
-- **One page controller** (`CityPlanningController`) for the three map screens plus the
+- **One page controller** (`CityPlanningController`) for the map screens plus the
   admin screens, because they share the map-admin gate and the settings row.
 - **One API controller** (`CityPlanningApiController`) for everything the map JavaScript
   calls, because the maps are single-page surfaces that fetch their own state.
 - **One service** (`CityPlanningService`) holding both business rules: *who may edit what,
   when* and *what a save does to history*. It is the only repository caller.
-- **One repository** over three tables, exposing polygon reads, an atomic
+- **One repository** over the section's tables, exposing polygon reads, an atomic
   save-polygon-and-append-history write, a season-scoped delete, and a get-or-create /
   mutate pair for the settings singleton.
-- **One contracts leaf** with the narrowest cross-section surface: three reads, two writes.
-- **Four JavaScript bundles** — `main.js` (overview), `barrio-map/`, `container-map/`, and a
+- **One contracts leaf** carrying the narrowest cross-section surface — reads for anyone,
+  writes only for the callers that need them.
+- **A JavaScript bundle per map** — `main.js` (overview), `barrio-map/`, `container-map/` — and a
   `shared/` set holding exactly what more than one of them uses (map constants, the measure
   tool, the official-zones layer, the sound-zone colour expressions). A per-map file that only
   re-exports a shared one is indirection, not structure.
 - **One resx set** for City Planning's own vocabulary; container vocabulary is bound from
   `ContainersResource` at the call site, shared strings from `SharedResource`.
 
-Two things this section does *not* have and should not grow: a caching decorator (admin
+This section does *not* have, and should not grow, a caching decorator (admin
 traffic, one row and one small list per read) and an internal service interface (the section's
 own controllers take the concrete class; the seam that matters is the contracts leaf).
 
@@ -79,12 +80,12 @@ Stated so a violation is recognisable:
    is the one exception, and it deletes the polygon with it).
 3. A restore writes the restored geometry as a *new* current polygon with the note
    `Restored from {timestamp} UTC`; it never rewinds history. The history note is one of
-   three values: `Saved` (map edit), `Restored from …` (restore), `Imported {date}` (bulk
-   import) — the client supplies the last two.
+   `Saved` (map edit), `Restored from …` (restore) or `Imported {date}` (bulk import) — the
+   client supplies the last two.
 4. A camp lead may edit their own polygon only while `IsPlacementOpen`. City-planning team
    members and `CampAdmin` are exempt from the phase and from the ownership check.
 5. A camp lead may place/clear their own camp's containers only while
-   `IsContainerPlacementOpen`. Same two exemptions.
+   `IsContainerPlacementOpen`. Same exemptions.
 6. Restore and the polygon export are map-admin only — a lead cannot restore even their own
    camp's polygon.
 7. The settings row for a year is created on demand, closed (`IsPlacementOpen = false`), keyed
