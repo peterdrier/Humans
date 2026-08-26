@@ -14,6 +14,8 @@
 
 Finance is the **treasurer's reality side** of the money story. Budget owns planning and public presentation; Finance owns actuals, reconciliation, and treasurer-facing operational data. The two share `BudgetGroup` / `BudgetCategory` keys; nothing else.
 
+The end-to-end *business* process — how a reimbursement actually moves from expense report through the bank and back to a zero balance, including the manual steps and external parties — is [`expense-reimbursement-process.md`](expense-reimbursement-process.md). This file stays about code invariants.
+
 ## Today vs Planned
 
 **Today — treasurer surface over Budget** (built, *not this section*): the Budget years/groups/categories/line-items/cash-flow surface under the same `/Finance` prefix is `Humans.Budget`'s `BudgetAdminController` — see [`Budget.md`](../../Humans.Budget/Docs/Budget.md). It shares only the URL prefix and the `FinanceAdminOrAdmin` policy.
