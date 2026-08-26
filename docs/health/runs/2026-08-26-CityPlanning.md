@@ -6,7 +6,7 @@
 - Anchor commit: `origin/main` @ `290422cb`
 - Budget: 2.5h
 - Branch: `section-doctor/2026-08-26T071428Z`
-- PR: pending
+- PR: peterdrier/Humans#1525
 - Session: .NET SDK, `dotnet-ef` and reforge available; full
   `dotnet build Humans.slnx` green from a clean tree (0 errors, 33 pre-existing
   warnings). Stryker not installed — Tests-thread mutation-score half skipped
