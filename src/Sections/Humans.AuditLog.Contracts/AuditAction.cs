@@ -224,4 +224,7 @@ public enum AuditAction
     // One per transfer booked into Holded from /Finance/Sepa (nobodies-collective/Humans#1141).
     // Same entity type as the generation entry; the IBAN in the description is always masked.
     SepaPayoutTransferBooked,
+    // A finance admin filed an expense report for another member. Self-created drafts are not
+    // audited — only the on-behalf case, which names the actor and the member.
+    ExpenseCreatedOnBehalf,
 }

@@ -83,6 +83,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`always-log-problems`](code/always-log-problems.md) — log expected problems at LogWarning without exception object; LogInformation is invisible in prod
 - [`authorization-conventions`](code/authorization-conventions.md) — `[Authorize(Policy = PolicyNames.X)]` on controllers; `authorize-policy="X"` tag helper or injected `IAuthorizationService` in views; never raw `Roles = "..."` or inline `User.IsInRole` chains
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — reusable views/components inject `IAuthorizationService` and resolve their own gates; don't pre-compute `Can…` bools on view models
+- [`audit-pii-subject-allowed`](code/audit-pii-subject-allowed.md) — an audit entry may carry PII unmasked when it belongs to the entry's own subject and somebody else is acting on them; the one carve-out from `iban-mask-in-logs`
 - [`controller-base-conventions`](code/controller-base-conventions.md) — inherit `HumansControllerBase`; use `GetCurrentUserAsync`/`SetSuccess`/`SetError`. No raw `_userManager` or `TempData["..."]`.
 - [`comments-stay-short`](code/comments-stay-short.md) — code comments and doc blocks get 1-3 lines stating what's true now and why, never a history of the decision
 - [`clamp-page-size`](code/clamp-page-size.md) — use `ClampPageSize()` instead of inline `Math.Clamp`

@@ -22,6 +22,17 @@
 
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
+                    @* Finance admins file for members who cannot do it themselves. The report is the
+                       member's from the moment it is created — the admin is only the actor. *@
+                    <div class="mb-3" authorize-policy="FinanceAdminOrAdmin">
+                        <label class="form-label" for="human-search-expense-submitter">@Localizer["Expenses_ForMember"]</label>
+                        <vc:human-search field-name="SubmitterUserId"
+                                         instance-key="expense-submitter"
+                                         scope="Name"
+                                         selected-user-id="@Model.SubmitterUserId" />
+                        <div class="form-text">@Localizer["Expenses_ForMemberHelp"]</div>
+                    </div>
+
                     <div class="mb-3">
                         <label asp-for="BudgetCategoryId" class="form-label">Budget Category <span class="text-danger">*</span></label>
                         <select asp-for="BudgetCategoryId" class="form-select" required>

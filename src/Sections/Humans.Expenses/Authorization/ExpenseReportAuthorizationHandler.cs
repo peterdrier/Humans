@@ -33,6 +33,15 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
                     or ExpenseReportOperation.Approve
                     or ExpenseReportOperation.FinanceReject
                     or ExpenseReportOperation.CategoryOverride
+                // Filing and fixing a report for a member who cannot do it themselves. Editing a
+                // report already Submitted or CoordinatorEndorsed does not send it back a step —
+                // the endorsement stands. Approved and Withdrawn are closed to everyone.
+                || (op is ExpenseReportOperation.Edit
+                    && resource.Status is ExpenseReportStatus.Draft
+                        or ExpenseReportStatus.Submitted
+                        or ExpenseReportStatus.CoordinatorEndorsed)
+                || (op is ExpenseReportOperation.Submit
+                    && resource.Status == ExpenseReportStatus.Draft)
                 || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
                     && resource.Status == ExpenseReportStatus.Submitted)
                 // The push is queued at approval, so there is nothing to re-queue before it.
