@@ -113,10 +113,10 @@ All authenticated users can access their own notifications. No role-based restri
 | CampaignReceived | Informational | Campaign recipients | Marketing | Campaign code granted |
 | GoogleDriftDetected | Informational | Admin role | System | Reconciliation fixes drift |
 | FacilitatedMessageReceived | Informational | Camp leads | FacilitatedMessages | Facilitated message sent |
-| CampMembershipApproved | Informational | The user | System | Camp membership request approved |
-| CampMembershipRejected | Informational | The user | System | Camp membership request rejected |
-| CampMembershipSeasonClosed | Informational | The user | System | Camp season closed for new members |
-| CampRoleAssigned | Informational | The user | System | Camp role assigned |
+| CampMembershipApproved | Informational | The user | TeamUpdates | Camp membership request approved |
+| CampMembershipRejected | Informational | The user | TeamUpdates | Camp membership request rejected |
+| CampMembershipSeasonClosed | Informational | The user | TeamUpdates | Camp season closed for new members |
+| CampRoleAssigned | Informational | The user | TeamUpdates | Camp role assigned |
 | IssueComment | Informational | Issue participants | System | Comment added to an issue |
 | IssueStatusChanged | Informational | Issue participants | System | Issue status changed |
 | IssueAssigned | Actionable | The assignee | System | Issue assigned to a user |

@@ -59,118 +59,33 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_CreatesOneNotificationPerUser()
+    public async Task SendAsync_DelegatesToTheEmitter()
     {
-        var user1 = Guid.NewGuid();
-        var user2 = Guid.NewGuid();
+        // NotificationService.SendAsync is a pass-through to INotificationEmitter.
+        // What SendAsync *does* — per-recipient rows, preference suppression,
+        // field persistence, badge-cache eviction — is the emitter's behaviour and
+        // is covered once, in NotificationEmitterTests. This asserts only that the
+        // delegation is live, so the pass-through cannot silently become a no-op.
+        var user = Guid.NewGuid();
 
         await _service.SendAsync(
             NotificationSource.TeamMemberAdded,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Added to team",
-            [user1, user2],
-            body: "You were added to Logistics",
-            actionUrl: "/Teams/logistics", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            [user], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notifications = await _notificationsDb.Notifications
+        var notification = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
-        notifications.Should().HaveCount(2);
-        notifications.Should().AllSatisfy(n =>
-        {
-            n.Title.Should().Be("Added to team");
-            n.Body.Should().Be("You were added to Logistics");
-            n.ActionUrl.Should().Be("/Teams/logistics");
-            n.Source.Should().Be(NotificationSource.TeamMemberAdded);
-            n.Class.Should().Be(NotificationClass.Informational);
-            n.Priority.Should().Be(NotificationPriority.Normal);
-            n.Recipients.Should().HaveCount(1);
-            n.ResolvedAt.Should().BeNull();
-        });
+        notification.Title.Should().Be("Added to team");
+        notification.Recipients.Single().UserId.Should().Be(user);
     }
 
-    [HumansFact]
-    public async Task SendAsync_PersistsActionLabelAndTargetGroupName()
-    {
-        var userId = Guid.NewGuid();
 
-        await _service.SendAsync(
-            NotificationSource.ShiftCoverageGap,
-            NotificationClass.Actionable,
-            NotificationPriority.High,
-            "Coverage gap",
-            [userId],
-            actionLabel: "Find cover →",
-            targetGroupName: "Coordinators", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notification = await _notificationsDb.Notifications.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        notification.ActionLabel.Should().Be("Find cover →");
-        notification.TargetGroupName.Should().Be("Coordinators");
-    }
 
-    [HumansFact]
-    public async Task SendAsync_EmptyRecipientList_DoesNothing()
-    {
-        await _service.SendAsync(
-            NotificationSource.TeamMemberAdded,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            "Test",
-            [], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
-        count.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task SendAsync_SkipsInformationalWhenInboxDisabled()
-    {
-        var userId = Guid.NewGuid();
-
-        _dbContext.CommunicationPreferences.Add(new()
-        {
-            UserId = userId,
-            Category = MessageCategory.TeamUpdates,
-            InboxEnabled = false,
-        });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _service.SendAsync(
-            NotificationSource.TeamMemberAdded, // maps to TeamUpdates
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            "Added to team",
-            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
-        count.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task SendAsync_ActionableNotSuppressedByInboxDisabled()
-    {
-        var userId = Guid.NewGuid();
-
-        _dbContext.CommunicationPreferences.Add(new()
-        {
-            UserId = userId,
-            Category = MessageCategory.System,
-            InboxEnabled = false,
-        });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _service.SendAsync(
-            NotificationSource.ConsentReviewNeeded, // maps to System
-            NotificationClass.Actionable,
-            NotificationPriority.High,
-            "Consent review needed",
-            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
-        count.Should().Be(1);
-    }
 
     [HumansFact]
     public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
@@ -199,30 +114,4 @@ public class NotificationServiceTests : IDisposable
         notification.Recipients.Should().HaveCount(2);
     }
 
-    [HumansFact]
-    public async Task SendAsync_InvalidatesPerUserBadgeCache()
-    {
-        var userId = Guid.NewGuid();
-
-        _cache.Set(CacheKeys.NotificationBadgeCounts(userId), new { ActionableUnreadCount = 0, InformationalUnreadCount = 0 });
-
-        await _service.SendAsync(
-            NotificationSource.TeamMemberAdded,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            "Test",
-            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(userId), out _).Should().BeFalse();
-
-        // Admin nav-badge counts should NOT be affected (they're for admin queues, not notifications).
-        _cache.Set(CacheKeys.FeedbackBadgeCount, 1);
-        await _service.SendAsync(
-            NotificationSource.TeamMemberAdded,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            "Test2",
-            [Guid.NewGuid()], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-        _cache.TryGetValue(CacheKeys.FeedbackBadgeCount, out _).Should().BeTrue();
-    }
 }

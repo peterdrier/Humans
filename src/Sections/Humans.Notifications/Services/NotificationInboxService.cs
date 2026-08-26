@@ -60,6 +60,7 @@ internal sealed class NotificationInboxService(
             Informational = informational,
             Resolved = resolved,
             UnreadCount = unreadCount,
+            EffectiveTab = effectiveTab == NotificationInboxTab.Unread ? "unread" : "all",
         };
     }
 

@@ -269,7 +269,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 9. **Notification meters are computed, not queried.**
    `NotificationMeterProvider` reads no tables directly — every counter
    fans out through an owning-service interface call (`IUserServiceRead`,
-   `ITeamServiceRead`, `IApplicationServiceRead`, `ITicketSyncService`,
+   `ITeamServiceRead`, `IApplicationServiceRead`, `ITicketSync`,
    `IGoogleSyncServiceRead`, `ICampServiceRead`). Cache invalidation goes
    through `INotificationMeterCacheInvalidator`.
 

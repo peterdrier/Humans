@@ -23,10 +23,6 @@ internal sealed class NotificationsController(
         var userId = GetCurrentUserId();
         if (userId is null) return Unauthorized();
 
-        // Resolved filter is incompatible with unread tab
-        if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
-            tab = "all";
-
         var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab);
 
         var defaultActionLabel = localizer["Notification_DefaultActionLabel"].Value;
@@ -48,7 +44,7 @@ internal sealed class NotificationsController(
             UnreadCount = result.UnreadCount,
             SearchTerm = search,
             ActiveFilter = filter,
-            ActiveTab = tab,
+            ActiveTab = result.EffectiveTab,
         });
     }
 
