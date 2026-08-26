@@ -3,7 +3,7 @@
 - **Invocation:** `/section-doctor` (no arguments), unattended scheduled run
 - **Anchor commit:** `3dcdae3c` (`origin/main` at branch point)
 - **Branch:** `section-doctor/2026-08-26T101558Z`
-- **PR:** pending
+- **PR:** peterdrier/Humans#1527
 - 2026-08-26 10:15Z session: .NET SDK, `dotnet-ef` and reforge present; compiler available, so this is a normal full run. The clone is shallow, so git archaeology was unavailable — every "this used to be true" call below is inferred from the code, never from history.
 
 ## Selection
@@ -206,3 +206,25 @@ The three main-thread rows share one figure and are marked so: Phase 3 marks the
 Every thread ran. Findings 17 and 18 were raised later — 17 at Phase 1 when the prompt was read against the skill, 18 at Phase 4 while striking finding 5.
 
 One thread disagreement worth recording: the Comments subagent proposed an architecture-test comment asserting that a direct `NotificationService → IRoleAssignmentService` edge "would still close a cycle through the resolver". That presumes the resolver survives, which is the open question in finding 15, so it was rejected and replaced with a narrower claim the assertion can actually carry.
+
+## Cost
+
+| Component | Phase | Model | Fresh in | Out | Cache write | Cache read | ~$ |
+|---|---|---|---|---|---|---|---|
+| worktree | phase1 | opus | 20 | 3,712 | 20,329 | 955,958 | 0.70 |
+| select section | phase2 | opus | 6 | 994 | 3,493 | 310,169 | 0.20 |
+| assess | phase3 | opus | 134 | 76,768 | 286,042 | 11,743,359 | 9.58 |
+| Freshness (subagent) | phase3 | sonnet | 122 | 4,010 | 271,708 | 5,554,644 | 2.75 |
+| Tests (subagent) | phase3 | sonnet | 88 | 534 | 284,193 | 4,027,458 | 2.28 |
+| Comments (subagent) | phase3 | sonnet | 148 | 1,166 | 490,518 | 7,884,636 | 4.22 |
+| Prose (subagent) | phase3 | haiku | 560 | 5,984 | 382,677 | 4,196,336 | 0.93 |
+| Inbox (subagent) | phase3 | sonnet | 48 | 287 | 171,596 | 1,494,021 | 1.10 |
+| strike: baseline test run | phase4 | opus | 10 | 8,693 | 36,250 | 1,166,810 | 1.03 |
+| strike: delete 4 dead resx keys x6 cultures | phase4 | opus | 78 | 36,560 | 86,111 | 10,184,676 | 6.54 |
+| strike: false DI-cycle comments, history cuts, meter collapse, Forbid(), Issue* mapping | phase4 | opus | 164 | 54,153 | 247,681 | 9,931,096 | 7.87 |
+| strike: doc sweep, filter/tab collapse, test dedup + 2 invariant tests | phase4 | opus | 76 | 16,815 | 68,768 | 6,132,444 | 3.92 |
+| sweep | phase5 | opus | 24 | 23,402 | 30,281 | 2,181,528 | 1.87 |
+| run file + retro | phase5 | opus | 38 | 7,878 | 18,550 | 3,767,281 | 2.20 |
+| **total** | | | 1,516 | 240,956 | 2,398,197 | 69,530,416 | **45.17** |
+
+API-equivalent $, list rates; run under subscription quota. Measured Phase 1 to PR creation; PR create/backfill and Phase 8 excluded.

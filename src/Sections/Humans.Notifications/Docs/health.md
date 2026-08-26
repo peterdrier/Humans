@@ -143,4 +143,4 @@ Specified-but-unbuilt; reserved, not ranked, not built here:
 
 | Run | Date | Reforge (surface / loc / cogP95 / cogMax) | PR |
 |-----|------|-------------------------------------------|----|
-| 1 | 2026-08-26 | 274 / 2381 / 7 / 25 | pending |
+| 1 | 2026-08-26 | 274 / 2381 / 7 / 25 | peterdrier/Humans#1527 |
