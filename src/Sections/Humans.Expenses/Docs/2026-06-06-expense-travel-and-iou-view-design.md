@@ -1,8 +1,14 @@
 # Expense Reports — Travel Lines (Mileage / Per Diem) + Personal IOU View
 
+> **Historical.** The design as approved on 2026-06-06, kept as the record. Neither half is
+> live: travel lines can no longer be created (the forms and endpoints are gone; existing
+> lines still render and total — `health.md` §5), and the personal IOU card was removed
+> because it netted a local claim against a Holded debit whose matching credit was never
+> shown (`health.md`, Load-bearing weirdness). `/Finance/Creditors` operates on balances.
+
 **Date:** 2026-06-06
 **Section:** Expenses (with a small read-only DTO extension in Finance)
-**Status:** Design approved (Peter), pre-implementation
+**Status:** Superseded — see the banner above.
 
 ## Problem
 

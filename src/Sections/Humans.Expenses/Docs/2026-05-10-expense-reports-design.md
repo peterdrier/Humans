@@ -1,6 +1,12 @@
 # Expenses section — design
 
-**Status:** Draft, brainstorm complete, awaiting plan.
+> **Historical.** This is the design as written on 2026-05-10, kept as the record of what was
+> decided then. It is not current: SEPA payout, the `SepaSent` / `Paid` states and the
+> `Paid` back-flow all left the section (nobodies-collective/Humans#1134), and travel lines
+> can no longer be created. For what the section does today read `Expenses.md`; for its
+> target shape read `health.md`.
+
+**Status:** Superseded by the shipped section — see the banner above.
 **Date:** 2026-05-10
 **Owner:** Peter Drier
 
