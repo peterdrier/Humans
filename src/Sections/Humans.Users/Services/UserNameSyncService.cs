@@ -38,6 +38,7 @@ internal sealed class UserNameSyncService(
             rows.Add(new UnsyncedNameRow(
                 user.Id,
                 emailByUser.TryGetValue(user.Id, out var email) ? email : string.Empty,
+                user.State,
                 profile.BurnerName,
                 $"{profile.FirstName} {profile.LastName}".Trim(),
                 burnerMissing,
