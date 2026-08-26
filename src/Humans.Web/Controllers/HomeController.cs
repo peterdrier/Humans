@@ -7,7 +7,7 @@ using Humans.Users.Contracts;
 namespace Humans.Web.Controllers;
 
 public class HomeController(
-    IUserService userService,
+    IUserServiceRead userService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry) : HumansControllerBase(userService)
 {

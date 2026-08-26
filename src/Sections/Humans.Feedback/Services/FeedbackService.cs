@@ -22,7 +22,7 @@ namespace Humans.Feedback.Services;
 /// Feedback stopped accepting new reports in nobodies-collective/Humans#977, so
 /// there is deliberately no create path.
 /// Cross-section reads (display names, team names, effective emails) go through
-/// <see cref="IUserService"/>, <see cref="ITeamServiceRead"/>, and
+/// <see cref="IUserServiceRead"/>, <see cref="ITeamServiceRead"/>, and
 /// <see cref="IUserEmailService"/> and are projected into
 /// <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>.
 /// Nav-badge invalidation routes through <see cref="INavBadgeCacheInvalidator"/>.

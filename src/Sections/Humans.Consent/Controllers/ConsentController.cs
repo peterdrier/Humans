@@ -79,7 +79,7 @@ internal sealed class ConsentController(
         if (user is null)
             return NotFound();
 
-        // Stub profile (no legal name) cannot attest to a consent. Bounce to /Profile/Edit.
+        // Stub profile (no legal name) cannot attest to a consent. Bounce to /Profile/Me/Edit.
         if (await IsStubProfileAsync(user.Id))
             return RedirectToProfileEditForStub();
 

@@ -35,7 +35,7 @@ public sealed class MissingDatabaseStartupTests(HumansTestDatabase database)
         IReadOnlyList<Serilog.Events.LogEvent> fatalEvents = [];
         while (DateTimeOffset.UtcNow < logWaitDeadline)
         {
-            fatalEvents = Humans.Base.Logging.InMemoryLogSink.Instance.GetEvents(minLevel: LogEventLevel.Fatal);
+            fatalEvents = factory.LogSink.GetEvents(minLevel: LogEventLevel.Fatal);
             if (fatalEvents.Any(e => e.RenderMessage().Contains(missingDatabaseName, StringComparison.Ordinal)))
                 break;
 

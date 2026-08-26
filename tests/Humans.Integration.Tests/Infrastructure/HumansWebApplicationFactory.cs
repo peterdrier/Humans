@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -70,6 +71,9 @@ public class HumansWebApplicationFactory(string connectionString)
     /// </summary>
     internal StubMailerLiteService MailerLiteServiceStub { get; } = new();
 
+    /// <summary>The host-local Serilog buffer, isolated from parallel factories.</summary>
+    internal Humans.Base.Logging.InMemoryLogSink LogSink { get; } = new();
+
     public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -108,6 +112,9 @@ public class HumansWebApplicationFactory(string connectionString)
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<Humans.Base.Logging.InMemoryLogSink>();
+            services.AddSingleton(LogSink);
+
             // Replace email service with a no-op stub
             // so integration tests don't depend on Hangfire's job-storage
             // globals, which are intentionally disabled in Testing.

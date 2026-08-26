@@ -4,7 +4,7 @@ namespace Humans.Events.Domain;
 
 /// <summary>
 /// Event guide configuration for a single event edition.
-/// Links to <see cref="EventSettings"/> for shared date/timezone context.
+/// Carries the Shifts-owned event-settings identifier for shared date/timezone context.
 /// </summary>
 internal sealed class EventGuideSettings
 {

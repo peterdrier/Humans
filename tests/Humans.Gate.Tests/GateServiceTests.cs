@@ -149,6 +149,14 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task Evaluate_VendorCheckedInTimestamp_IsDuplicate()
+    {
+        StubTicket(checkedInAt: Clock.GetCurrentInstant());
+
+        (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.Duplicate);
+    }
+
+    [HumansFact]
     public async Task Evaluate_MatchesBarcodeCaseInsensitivelyAfterTrim()
     {
         StubTicket(barcode: Barcode);

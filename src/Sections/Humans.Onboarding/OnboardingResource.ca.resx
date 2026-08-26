@@ -153,11 +153,9 @@
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Acaba de configurar el teu compte per accedir als torns i a les funcions d'equip.</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Continua la configuració →</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>El nom que tothom veu al sistema. Que sigui únic ajuda, però no és obligatori, tot i que pot ser difícil trobar el "Bob" entre els milers d'humans que hi ha aquí si algú et ve a buscar.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nom amb què tothom et coneixerà.</value></data>

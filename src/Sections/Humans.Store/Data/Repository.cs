@@ -4,11 +4,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Store.Data;
 
 /// <summary>
-/// EF-backed implementation of <see cref="Repository"/>. The only
+/// EF-backed implementation of <see cref="IStoreRepository"/>. The only
 /// non-test file that touches <c>DbContext.Products</c>,
 /// <c>DbContext.Orders</c>, <c>DbContext.OrderLines</c>,
-/// <c>DbContext.Payments</c>, <c>DbContext.Invoices</c>, or
-/// <c>DbContext.TreasurySyncStates</c>.
+/// <c>DbContext.Payments</c>, or <c>DbContext.Invoices</c>.
+/// Nothing reads or writes <c>DbContext.TreasurySyncStates</c>; the table
+/// ships unused (see <c>Docs/Store.md</c>, treasury sync).
 /// </summary>
 /// <remarks>
 /// Follows design-rules §15b: registered as Singleton, injects
@@ -93,15 +94,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .Include(o => o.Lines)
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
-    }
-
-    public async Task<IReadOnlyList<Order>> GetAllOrdersAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Orders.AsNoTracking()
-            .Include(o => o.Lines)
-            .Include(o => o.Payments)
-            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
@@ -283,30 +275,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             lineEntry.Property(l => l.DepositAmountSnapshot).IsModified = true;
         }
 
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    // ==========================================================================
-    // Treasury sync state
-    // ==========================================================================
-
-    public async Task<TreasurySyncState> GetOrCreateTreasurySyncStateAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var s = await ctx.TreasurySyncStates.FirstOrDefaultAsync(x => x.Id == 1, ct);
-        if (s is null)
-        {
-            s = new TreasurySyncState { Id = 1 };
-            ctx.TreasurySyncStates.Add(s);
-            await ctx.SaveChangesAsync(ct);
-        }
-        return s;
-    }
-
-    public async Task UpdateTreasurySyncStateAsync(TreasurySyncState state, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.TreasurySyncStates.Update(state);
         await ctx.SaveChangesAsync(ct);
     }
 }

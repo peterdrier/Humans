@@ -1,7 +1,4 @@
 # Section debt ledger for Humans.Shifts. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-inbox:
-  - added: 2026-08-24
-    what: "Four boolean-attribute traps in Views/VolunteerTracking/_ExportCard.cshtml — lines 34, 44 and 54 write selected=\"@(expr)\" and line 50 writes disabled=\"@subPeriodHidden\". Both forms render the attribute as True/False and either value activates it, so the export card's department/period/sub-period selects mark every option selected and the sub-period select is always disabled. Sanctioned form is attr=\"@(cond ? \"attr\" : null)\" per docs/architecture/code-review-rules.md §Razor Boolean Attributes. Found by /section-doctor on Onboarding 2026-08-23; invisible to .claude/razor-lint.sh until nobodies-collective/Humans#1120 un-inverted its regex."
-    review: light
+inbox: []

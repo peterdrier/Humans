@@ -83,14 +83,10 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   local admits against the vendor's check-in status, supports a single test send before the bulk
   run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteBackfillAsync`,
   unix seconds), and skips anything the ledger already claimed until the ticket sync confirms it.
-- **Vendor-checked-in dedupe signal is still dead on the scan card** (now a Gate gap, tracked in
-  the debt-ledger inbox, 2026-07-02). The Tickets sync side was fixed (peterdrier#1059 pulls
-  `/v1/check_ins` and persists `TicketAttendee.CheckedInAt`; the issued ticket's `Status` stays
-  `Valid`), but `GateService.EvaluateAsync` still derives `CheckedInAtVendor` from
-  `Status == CheckedIn` — which the live sync never sets — so the signal never fires (the backfill
-  diff already tests `CheckedInAt`). Cross-device duplicate detection relies solely on the gate's
-  own `gate_scan_events` unique index (which is the authority anyway), so admission correctness is
-  unaffected.
+- **Vendor-checked-in dedupe signal** — `GateService.EvaluateAsync` treats either the synced
+  `TicketAttendee.CheckedInAt` timestamp or legacy `Status == CheckedIn` as an existing vendor
+  check-in. Cross-device duplicate detection remains secondary to the gate's own unique index,
+  which is the authority.
 - **Retention** — `GateRetentionJob` purges `gate_scan_events` older than `Gate:RetentionDays`
   (default 365) daily, because gate scans are attendance/movement data.
 

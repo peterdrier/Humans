@@ -32,7 +32,7 @@ internal static class SectionActivation
 
     /// <summary>
     /// The sections Shell itself consumes, read the same way as a section's own edges.
-    /// Shell always runs — <c>HomeController</c> names <c>IUserService</c> — so these are
+    /// Shell always runs — <c>HomeController</c> names <c>IUserServiceRead</c> — so these are
     /// dependencies no section-to-section edge records, and deactivating one composes an
     /// app that fails per request instead of at startup.
     /// </summary>

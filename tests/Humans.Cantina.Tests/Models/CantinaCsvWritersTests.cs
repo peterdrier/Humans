@@ -166,4 +166,42 @@ public sealed class CantinaCsvWritersTests
         lines[5].Should().StartWith("\"'+Ana\""); // injection escape on user-controlled name (escaped fields are also quoted)
         lines[^1].Should().StartWith("TOTALS,");
     }
+
+    [HumansFact]
+    public void DailyMatrix_Totals_each_chip_and_keeps_free_text_columns_unsummed()
+    {
+        var dto = new DailyMatrixDto(
+            DayOffset: 0,
+            CalendarDate: WeekStart,
+            EventTodayDate: null,
+            EventName: "Test Event",
+            WeekStartOffset: 0,
+            TotalOnSite: 2,
+            UnansweredCount: 0,
+            People:
+            [
+                new DailyPersonRowDto(
+                    Guid.NewGuid(), "Ana", "Vegan",
+                    new HashSet<string>(["Peanut", "Other"], StringComparer.Ordinal), "kiwi",
+                    new HashSet<string>(["Lactose"], StringComparer.Ordinal), null),
+                new DailyPersonRowDto(
+                    Guid.NewGuid(), "Bea", "Omnivore",
+                    new HashSet<string>(["Peanut"], StringComparer.Ordinal), null,
+                    new HashSet<string>(["Other"], StringComparer.Ordinal), "spices"),
+            ]);
+
+        var lines = Encoding.UTF8.GetString(CantinaDailyMatrixCsvWriter.Write(dto))
+            .TrimStart('\uFEFF')
+            .TrimEnd('\r', '\n')
+            .Split("\r\n");
+        var headers = lines[4].Split(',');
+        var totals = lines[^1].Split(',');
+
+        totals[Array.IndexOf(headers, "Peanut")].Should().Be("2");
+        totals[Array.IndexOf(headers, "Other allergy")].Should().Be("1");
+        totals[Array.IndexOf(headers, "Other allergy text")].Should().Be("\u2014");
+        totals[Array.IndexOf(headers, "Lactose")].Should().Be("1");
+        totals[Array.IndexOf(headers, "Other intolerance")].Should().Be("1");
+        totals[Array.IndexOf(headers, "Other intolerance text")].Should().Be("\u2014");
+    }
 }

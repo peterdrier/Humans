@@ -195,7 +195,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `teams.total` | Teams | Teams | — | `ITeamServiceRead.GetTeamsAsync` count |
 | `auditlog.total` | Audit events | Audit Log | — | `IAuditViewerService.GetPageAsync`'s `TotalCount` |
 | `email.outbox` | Emails | Email | — | `IEmailOutboxServiceRead.GetOutboxStatsAsync` total |
-| `store.orders` | Store orders | Store | StoreCatalogAdmin | `IStoreServiceRead.GetStoreSummaryAsync` for the active event year; blank with no active event |
+| `store.orders` | Store orders | Store | StoreCatalogAdmin | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
 | `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportServiceRead.GetAllAsync`, all statuses |
 
 ### Cards — `admin-dashboard` chrome slot

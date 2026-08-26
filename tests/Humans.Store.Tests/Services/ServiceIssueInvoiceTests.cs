@@ -214,6 +214,26 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
+    public async Task Issuance_audits_the_invoice_cross_referenced_to_the_order()
+    {
+        // Issuance is the section's only outbound write, and the Board's view of it is this one
+        // entry. The cross-reference is what makes the invoice findable from the order.
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        Invoice? savedInvoice = null;
+        await _repo.SaveIssuedInvoiceAsync(
+            Arg.Do<Invoice>(i => savedInvoice = i), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        savedInvoice.Should().NotBeNull();
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, savedInvoice!.Id,
+            Arg.Any<string>(), _actor,
+            order.Id, AuditEntityTypes.Order);
+    }
+
+    [HumansFact]
     public async Task Deposit_lines_post_tax_free_to_the_liability_account()
     {
         var order = CampOrder(qty: 2, depositSnapshot: 30m);

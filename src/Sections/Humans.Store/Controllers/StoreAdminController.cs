@@ -27,8 +27,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetDefaultCatalogYearAsync();
         var products = (await storeService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
@@ -39,8 +38,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary(int? year, CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var defaultYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var defaultYear = await GetDefaultCatalogYearAsync();
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
@@ -76,8 +74,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetDefaultCatalogYearAsync();
         var model = new ProductInputModel
         {
             Year = year,
@@ -163,5 +160,11 @@ internal sealed class StoreAdminController(
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Catalog));
+    }
+
+    private async Task<int> GetDefaultCatalogYearAsync()
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 }

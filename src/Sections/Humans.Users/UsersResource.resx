@@ -72,6 +72,9 @@
   <data name="Profile_VerificationExpired" xml:space="preserve"><value>The verification link is invalid or has expired.</value></data>
   <data name="Profile_EmailClaimed" xml:space="preserve"><value>This email address has been claimed by another account.</value></data>
   <data name="Profile_EmailVerified" xml:space="preserve"><value>Email address {0} has been verified.</value><comment>{0} = email address</comment></data>
+  <data name="Profile_EmailDeleted" xml:space="preserve"><value>Email address deleted.</value></data>
+  <data name="Profile_EmailVisibilityUpdated" xml:space="preserve"><value>Email address visibility updated.</value></data>
+  <data name="Profile_NotificationTargetUpdated" xml:space="preserve"><value>Notification email address updated.</value></data>
   <data name="Profile_PreferredEmailCleared" xml:space="preserve"><value>Preferred email has been removed. System emails will now be sent to your sign-in email.</value></data>
   <data name="Profile_DeletionAlreadyPending" xml:space="preserve"><value>A deletion request is already pending.</value></data>
   <data name="Profile_DeletionRequested" xml:space="preserve"><value>Account deletion requested. Your account will be deleted on {0} unless you cancel.</value><comment>{0} = deletion date</comment></data>

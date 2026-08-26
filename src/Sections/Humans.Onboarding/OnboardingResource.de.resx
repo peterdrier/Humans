@@ -153,11 +153,9 @@
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Schließe die Einrichtung deines Kontos ab, um auf Schichten und Teamfunktionen zuzugreifen.</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Einrichtung fortsetzen →</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Der Name, den alle im System sehen. Eindeutigkeit hilft, ist aber nicht erforderlich, auch wenn es schwierig sein kann, „Bob“ unter den paar Tausend Humans hier zu finden, falls jemand nach dir sucht.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Der Name, unter dem dich alle kennen werden.</value></data>

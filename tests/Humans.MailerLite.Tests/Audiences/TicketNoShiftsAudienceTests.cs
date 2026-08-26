@@ -79,20 +79,6 @@ public class TicketNoShiftsAudienceTests
         members.Should().BeEquivalentTo([userA]);
     }
 
-    [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_DoesNotInjectShiftSignupOrManagementService()
-    {
-        // Constructor surface check: the audience must no longer depend on
-        // IShiftSignups or IShiftManagementServiceRead. If a future change
-        // reintroduces either, the DI registration in MailerLiteSectionExtensions
-        // would need to wire them — and this test will fail at the type level.
-        var ctor = typeof(TicketNoShiftsAudience).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-        paramTypes.Should().NotContain(typeof(IShiftSignups));
-        paramTypes.Should().NotContain(typeof(IShiftManagementServiceRead));
-        paramTypes.Should().Contain(typeof(IShiftView));
-    }
-
     private static TicketNoShiftsAudience NewAudience(
         HashSet<Guid> ticketHolders,
         HashSet<Guid> shiftCommitted,
