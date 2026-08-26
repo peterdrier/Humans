@@ -8,9 +8,9 @@ public sealed record SurveySummary(Guid Id, string Title, SurveyStatus Status, i
 // ── Results DTOs (co-located) ───────────────────────────────────────────────
 
 /// <summary>
-/// The admin results read model. <see cref="ResponseRate"/> is <see cref="ResponseCount"/> ÷
-/// <see cref="InvitedCount"/> (0 when no one was invited). All prompts/labels are resolved in the
-/// survey's default culture.
+/// The admin results read model. <see cref="ResponseRate"/> is completed sent invitations ÷
+/// <see cref="InvitedCount"/> (0 when no one was invited); Anonymous responses and unsent public
+/// participation do not count. All prompts/labels are resolved in the survey's default culture.
 /// </summary>
 public sealed record SurveyResultsView(
     Guid SurveyId,
