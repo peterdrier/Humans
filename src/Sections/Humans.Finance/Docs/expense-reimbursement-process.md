@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Finance/**
+  src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
+-->
+<!-- freshness:flag-on-change
+  Business-process narrative — review when the approval flow (coordinator endorsement), the SEPA payout/booking surface (/Finance/Creditors, /Finance/Sepa), or the Holded sync loops change shape. The Status section dates fast by design.
+-->
+
 # Expense reimbursement — the end-to-end business process
 
 **This is a business-process doc, not a code spec.** It describes how money actually moves from
@@ -33,7 +43,10 @@ Happy path. When something needs fixing it gets more complicated.
      Spain isn't fast.
 8. **The bank movements sync back to Holded** as individual transfers, for more accounting math
    fun.
-9. **Humans gets the update from Holded** (nightly ledger sync): "the bank sent €123 to Sally".
+9. **Humans does not watch the bank.** The synced movements stay in Holded for the accountant;
+   Humans mirrors only Holded's *journal*, where the money doesn't appear until booked. The
+   treasurer proceeds straight from the verified upload to booking — Humans already knows every
+   transfer, because it generated the file.
 10. **Humans tells Holded which creditor account each transfer settles** — the treasurer clicks
     **Book** on `/Finance/Sepa`, which posts the payment against the member's open purchase docs,
     so the €123 lands on account `40000004` and the math adds up to zero. Booking is a manual
