@@ -4,10 +4,9 @@ using NSubstitute;
 namespace Humans.Notifications.Tests;
 
 /// <summary>
-/// The three members of <c>Humans.Application.Tests</c>' harness these tests actually used,
-/// owned here instead of shared: a section test project cannot see <c>UsersDbContext</c>,
-/// and the preference lookup the emitter calls is a substituted interface either way
-/// (design §15 step 8).
+/// Fixtures owned here rather than shared: a section test project cannot see
+/// <c>UsersDbContext</c>, and the preference lookup the emitter calls is a substituted
+/// interface either way.
 /// </summary>
 internal static class NotificationTestFixtures
 {

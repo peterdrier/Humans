@@ -3,15 +3,15 @@ using Humans.Base.Interfaces;
 namespace Humans.Notifications.Contracts;
 
 /// <summary>
-/// Dispatches in-app notifications to users. Handles recipient materialization,
-/// preference checks, and optional email queuing.
+/// Dispatches in-app notifications to users. Handles recipient materialization
+/// and preference checks. Emitting a notification never queues an email — a
+/// section that needs both sends both.
 /// </summary>
 /// <remarks>
-/// Extends <see cref="INotificationEmitter"/> with team- and role-based
-/// dispatch methods. Callers that already know their recipients should
-/// depend on <see cref="INotificationEmitter"/> instead — that narrower
-/// interface avoids the DI cycle through
-/// <c>INotificationRecipientResolver</c>.
+/// Extends <see cref="INotificationEmitter"/> with role-based dispatch.
+/// Callers that already know their recipients should depend on
+/// <see cref="INotificationEmitter"/> instead — that narrower interface
+/// does not pull in <c>INotificationRecipientResolver</c>.
 /// </remarks>
 public interface INotificationService : IApplicationService, INotificationEmitter
 {

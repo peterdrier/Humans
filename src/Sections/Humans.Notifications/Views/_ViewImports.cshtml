@@ -1,6 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
-   Guarded by NotificationPageRenderTests (step 12). *@
+   here ships broken markup with a green build and no runtime error. NotificationPageRenderTests
+   covers it, but lives in Humans.Integration.Tests, which CI does not run. *@
 @using Humans.Base.Extensions
 @using Humans.Notifications
 @using Humans.Notifications.Contracts

@@ -4,9 +4,9 @@ namespace Humans.Notifications.Contracts;
 /// The retention rule <c>CleanupNotificationsJob</c> drives. One method, so the job stays a
 /// scheduler shim and the three cutoffs — resolved, stale informational, retired source —
 /// live inside the section beside the repository they delete through; the same carve as
-/// Issues' <c>IIssuesRetention</c> and Agent's <c>IAgentConversationRetention</c>
-/// (design §15 step 6b). Before it, the job injected <c>INotificationRepository</c>
-/// directly, which is a job skipping the service layer.
+/// Issues' <c>IIssuesRetention</c> and Agent's <c>IAgentConversationRetention</c>. A job
+/// injecting <c>INotificationRepository</c> directly would be a job skipping the service
+/// layer.
 /// </summary>
 public interface INotificationRetention
 {

@@ -8,7 +8,7 @@ namespace Humans.Notifications.Data;
 /// <summary>
 /// Repository for the Notifications section's tables: <c>notifications</c>
 /// and <c>notification_recipients</c>. The only non-test file that touches
-/// those DbSets after the Notifications §15 migration lands.
+/// those DbSets.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -122,7 +122,7 @@ internal interface INotificationRepository : IRepository
     /// <summary>
     /// Deletes all unresolved notifications whose <c>Source</c> is in
     /// <paramref name="sources"/>. Used by <c>CleanupNotificationsJob</c> to purge
-    /// retired-source rows (e.g. pre-PR-642 ApplicationSubmitted / ConsentReviewNeeded)
+    /// retired-source rows (currently ApplicationSubmitted / ConsentReviewNeeded)
     /// that are no longer emitted and have no resolution path. Returns rows deleted.
     /// </summary>
     Task<int> DeleteUnresolvedBySourcesAsync(
@@ -150,7 +150,7 @@ internal interface INotificationRepository : IRepository
     /// <summary>
     /// Returns the recipient rows visible in a user's inbox under the given
     /// tab/filter/search criteria, with the full parent <c>Notification</c>
-    /// entity (but no cross-domain navigations). Ordered newest first.
+    /// entity (but no cross-domain navigations). Unordered — callers sort.
     /// </summary>
     Task<IReadOnlyList<NotificationRecipient>> GetInboxAsync(
         Guid userId,
@@ -186,6 +186,12 @@ internal interface INotificationRepository : IRepository
     // ==========================================================================
 
     /// <summary>
+    /// GDPR Art. 17: drops the user's recipient rows, deletes any notification
+    /// left with no recipients at all, and clears their resolver attribution.
+    /// </summary>
+    Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Re-FKs <c>notification_recipients.UserId</c> from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Same-Notification collision: if the target already has a recipient
@@ -194,12 +200,6 @@ internal interface INotificationRepository : IRepository
     /// not touched. Returns the count of recipient rows attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
-    /// <summary>
-    /// GDPR Art. 17: drops the user's recipient rows, deletes any notification
-    /// left with no recipients at all, and clears their resolver attribution.
-    /// </summary>
-    Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default);
-
     Task<int> ReassignRecipientsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

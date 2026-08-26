@@ -3,9 +3,8 @@ using Humans.Auth.Contracts;
 namespace Humans.Notifications.Services;
 
 /// <summary>
-/// Pass-through adapter delegating to <see cref="IRoleAssignmentService"/>.
-/// Exists so <see cref="INotificationService"/> doesn't depend on that service
-/// directly (it injects INotificationService, which would close a DI cycle).
+/// Pass-through adapter delegating to <see cref="IRoleAssignmentService"/>,
+/// so <c>NotificationService</c> does not depend on that service directly.
 /// </summary>
 internal sealed class NotificationRecipientResolver(
     IRoleAssignmentService roleAssignmentService) : INotificationRecipientResolver

@@ -28,12 +28,11 @@ public class NotificationsArchitectureTests
     [HumansFact]
     public void NotificationService_TakesRecipientResolver()
     {
-        // The NotificationService reaches teams and role holders via a thin
-        // recipient-resolver adapter rather than directly injecting
-        // ITeamService/IRoleAssignmentService — those services inject
-        // INotificationService in the other direction, so a direct dependency
-        // here closes a circular DI graph that trips ValidateOnBuild at
-        // startup. The resolver exists solely to break that cycle.
+        // NotificationService reaches role holders through a thin
+        // recipient-resolver adapter rather than injecting
+        // IRoleAssignmentService directly. RoleAssignmentService sends
+        // notifications in the other direction, and the adapter is what keeps
+        // the two edges from meeting and tripping ValidateOnBuild at startup.
         var ctor = typeof(NotificationService).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 

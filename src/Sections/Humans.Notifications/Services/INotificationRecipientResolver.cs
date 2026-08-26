@@ -8,14 +8,11 @@ namespace Humans.Notifications.Services;
 /// <see cref="IRoleAssignmentService"/>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This thin read-only adapter exists to break a circular DI graph:
-/// <see cref="IRoleAssignmentService"/> injects
-/// <see cref="INotificationService"/> (to send notifications on role events),
-/// so the notification service cannot inject it back without tripping
-/// <c>ValidateOnBuild</c>. The resolver depends on the role service, but
-/// nothing injects the resolver except the notification service — so no cycle.
-/// </para>
+/// A thin read-only adapter keeping <c>NotificationService</c> off
+/// <see cref="IRoleAssignmentService"/>, which sends notifications of its own
+/// in the other direction. It injects the narrow
+/// <see cref="INotificationEmitter"/> for that, so the two edges do not meet
+/// today; the adapter is what has kept them from meeting as either side grew.
 /// </remarks>
 internal interface INotificationRecipientResolver
 {

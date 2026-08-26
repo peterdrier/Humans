@@ -3,18 +3,17 @@ namespace Humans.Notifications.Contracts;
 /// <summary>
 /// Narrow outbound interface for emitting notifications to an explicit
 /// list of recipient user IDs. Implemented by a dedicated
-/// <c>NotificationEmitter</c> type (not <c>NotificationService</c>) so
-/// that <c>TeamService</c> and <c>RoleAssignmentService</c> — which
-/// <c>INotificationRecipientResolver</c> transitively injects —
-/// can depend on this interface without closing a DI cycle back through
-/// <see cref="INotificationService"/>.
+/// <c>NotificationEmitter</c> type, not by <c>NotificationService</c>, so
+/// that <c>TeamService</c> and <c>RoleAssignmentService</c> can inject it
+/// without reaching <c>INotificationRecipientResolver</c> and the role
+/// service behind it.
 /// </summary>
 /// <remarks>
 /// Callers that already know their recipients — typically because they
 /// just resolved a team roster or role holders — should depend on this
-/// interface. Callers that need team- or role-based dispatch should
-/// depend on <see cref="INotificationService"/>, which composes the
-/// emitter with the recipient resolver.
+/// interface. Callers that need role-based dispatch should depend on
+/// <see cref="INotificationService"/>, which composes the emitter with
+/// the recipient resolver.
 /// </remarks>
 public interface INotificationEmitter
 {

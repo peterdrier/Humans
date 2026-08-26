@@ -35,8 +35,7 @@ public class NotificationEmitterTests : IDisposable
 
     public NotificationEmitterTests()
     {
-        // notifications/notification_recipients live in NotificationsDbContext
-        // since the Notifications peel (nobodies-collective/Humans#858);
+        // notifications/notification_recipients live in NotificationsDbContext;
         // communication_preferences stays on the main pile.
         var notificationsOptions = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
