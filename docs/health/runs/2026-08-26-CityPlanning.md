@@ -276,7 +276,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
 | `docs/health/runs/2026-08-26-CityPlanning.md` | changed (new; this file) |
 | `docs/architecture/debt-ledger.yml` | changed (sweep commit only) |
 | `src/Sections/Humans.MailerLite/Docs/debt.yml` | changed (sweep commit only) |
-| `src/Sections/Humans.AuditLog.Contracts/AuditAction.cs` | changed (post-answer; eight appended values) |
+| `src/Sections/Humans.AuditLog.Contracts/AuditAction.cs` | changed (post-answer; appended values) |
 | `tests/e2e/tests/city-planning.spec.ts` | changed (post-answer) |
 
 ## Threads
@@ -329,7 +329,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   `src/Sections/Humans.MailerLite/Docs/debt.yml` (verified — still registered at
   `MailerLiteClient.cs:354`, and `MailerLiteGroup` no longer carries `CreatedAt`).
   One item declined; see `## Skipped`. Own commit.
-- **Strike 5 (comment fix + debt — findings #13, #20, #21, #22):** both
+- **Strike 5 (comment fix + debt — findings #13, #20, #21, #22):** the
   `CityPlanningPageRenderTests` guard claims now say the test never runs in CI;
   new `Docs/debt.yml` records the behaviour bugs (#20, #21, #22). Commit `bfda6315`.
 - **Phase 4 step 6, runtime verification (deferred to after Phase 7):** the run's
@@ -376,7 +376,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
     `/CityPlanning/BarrioMap` for a volunteer, and both container screens in
     positive and deny form. The spec reads the season year off the landing
     page's own container-map link rather than hard-coding it, so it follows the
-    rollover. Both comments from #13 now name the e2e suite as the
+    rollover. The comments from #13 now name the e2e suite as the
     post-merge guard instead of claiming nothing catches a missing line.
   - **#19 → in-season history is reasonable**, archived at the rollover into the
     next season; neither half is built. Recorded as the section's one seam.
@@ -386,7 +386,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
     **#25 the selector already prefers new sections**, **#26 the wrong-verdict
     system is working as intended**, **#27 the first-run wording is fine.**
 
-  Section tests 57 → 66. Re-measured after the rounds: reforge 218, locProd 1953,
+  Section tests 57 → 66. Re-measured after the rounds: reforge 218, locProd 1956,
   cogP95 4, cogMax 6. The score rose from 210 — the whole of it is
   `crossSectionFullService` for injecting `IAuditLogService`. That interface has
   no read-only half; it is the one contract every writer to the Audit crosscut
@@ -408,7 +408,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   | 2026-08-26 10:47:19 | Dev City Planning Team | `CityPlanningPlacementOpened` | Opened barrio placement |
   | 2026-08-26 10:47:53 | Dev City Planning Team | `CityPlanningPlacementClosed` | Closed barrio placement |
 
-  Two opens because the first `POST` was issued with `curl -L`: the write had
+  The repeated open is because the first `POST` was issued with `curl -L`: the write had
   already committed before the redirect was followed onto a POST-only route and
   returned 405. The 405 was the follow, not the write — which the log confirms.
 
@@ -423,7 +423,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   generalised from two personas to none. The debt entry is withdrawn, and the
   verification it claimed was impossible is the table above.
 
-  Two other findings this round, both from the same review, both confirmed:
+  The rest of the round came from the same review and was confirmed:
   the audit call sat behind a cancellable re-read of the settings row, so an
   aborted request could commit the change and skip its actor record — the row
   id is now resolved before the write, leaving no cancellable await between the
@@ -454,7 +454,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   session.
 - **Phase 8 (inline round)** — skipped by instruction; unattended run.
 - **Sweep item `memory: process/section-doctor-no-sdk`** (queued by the Cantina
-  run, 2026-08-22) — **not applied.** Two reasons, either sufficient. Its
+  run, 2026-08-22) — **not applied.** Either reason below is sufficient on its own. Its
   content is entirely a rule about how a section-doctor run should behave, and
   Phase 5 is explicit that the sweep never carries a lesson about this skill —
   writing it as a `memory/` atom would route one around that rule. And its
@@ -463,7 +463,7 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   nobodies-collective/Humans#1456 deliberately deleted it once the environment
   started shipping the toolchain, as it does in this session. Creating the atom
   now would re-add guidance for a condition that was retired on purpose.
-- **Three refuted subagent findings** — a live resx key reported dead, a
+- **Refuted subagent findings** — a live resx key reported dead, a
   present back-navigation reported missing, a live table reported dropped. Each
   was checked against the code and declined; no change was made.
 
@@ -477,9 +477,9 @@ shape every later run diffs against. The rubric got there by score, not
 because it values that. See finding #25.
 
 **What was wasted motion?** The Prose & surface thread. On haiku it returned
-three usable findings and two wrong ones — a live resx key called dead and a
+usable findings alongside wrong ones — a live resx key called dead and a
 back-navigation that exists called missing — and refuting them cost more than
-the thread saved on a section with one small resx set and six views. See
+the thread saved on a section with one small resx set and a handful of views. See
 finding #26.
 
 **What did the assessment miss that striking revealed?** Finding #1 — the
@@ -508,8 +508,8 @@ skill does not say so. See finding #27.
     never-doctored tier and treats the two as equal value. — **Needs Peter #25
     (Phase 2)**
 26. **The Prose & surface thread's model floor is too low for verdicts of
-    absence.** Two of its five findings this run asserted something was dead or
-    missing when it was live and present, and both took a full verification
+    absence.** Findings from it this run asserted something was dead or
+    missing when it was live and present, and each took a full verification
     round to refute. Either raise its floor above haiku or require every
     "dead"/"missing" verdict to cite the call site that proves it. — **Needs
     Peter #26 (Phase 3 dispatch)**
@@ -522,8 +522,8 @@ skill does not say so. See finding #27.
 
 All answered in session on 2026-08-26; the resolutions are in `## Worked`.
 
-- [x] #13 — non-issue: the e2e suite already guards the page routes post-merge. Three uncovered routes got e2e tests; the two comments now name it.
-- [x] #18 — add the audit entries. Done, with eight new `CityPlanning*` `AuditAction` values.
+- [x] #13 — non-issue: the e2e suite already guards the page routes post-merge. The uncovered routes got e2e tests; the comments now name it.
+- [x] #18 — add the audit entries. Done, with a `CityPlanning*` `AuditAction` value per audited write.
 - [x] #19 — in-season history is reasonable, archived at season rollover. Written down as the section's seam; not built.
 - [x] #20 — deferred: year-specific work goes together in the winter months.
 - [x] #21 — narrow it. `MutateSettingsAsync` returns `Task`.
