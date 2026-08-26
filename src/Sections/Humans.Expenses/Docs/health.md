@@ -61,9 +61,8 @@ What the shapes imply, written fresh:
   section actually consumes, and nothing wider.
 
 Where today's layout departs from that: mutations exist twice (an `internal XxxAsync` that
-throws and a `public XxxWithResultAsync` that catches), the controller repeats a five-line
-load-and-authorize preamble in fourteen actions, and the badge-colour map for one enum is
-written out in two files.
+throws and a `public XxxWithResultAsync` that catches), and the controller repeats a four-line
+load-and-authorize preamble in twelve actions. Both are open questions for Peter — see run 1.
 
 ## 4. Invariants
 
@@ -136,4 +135,4 @@ Settled decisions that read as accidents. Do not re-litigate these.
 
 | Run | Date | Reforge (surface) | loc | cogP95 / cogMax | PR |
 |---|---|---|---|---|---|
-| 1 | 2026-08-26 | 287 | 4094 | 9 / 20 | pending |
+| 1 | 2026-08-26 | 285 | 4071 | 9 / 20 | pending |
