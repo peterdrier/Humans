@@ -17,7 +17,7 @@ piece of it move that piece.
   containers onto the site, rotates them, adds a note or a sketch of how it should look, and
   clears a placement that was wrong.
 - The organisers (the city-planning team, or a camp admin) do all of the above for anyone,
-  at any time, open phase or not. They also decide when each of the two phases is open,
+  at any time, open phase or not. They also decide when each phase is open,
   upload the site boundary and the official zones, publish the text barrio leads read on the
   registration page, keep the org-wide container list, and download everything placed as a
   file they can open in a GIS tool.
@@ -130,10 +130,13 @@ touching these callers are shaped by them.
 
 ## Load-bearing weirdness
 
-- **`Humans.CityPlanning.Contracts` is a project, not a folder.** Camps' `CampService`
-  clears a deleted camp's polygons, so a folder would make Base reference a section and
-  cycle. `Lazy<ICityPlanningService>` is registered by `Humans.Camps`'s own `Section.cs` for
-  the same construction cycle — it belongs with the consumer, not the producer.
+- **`Humans.CityPlanning.Contracts` is a project, not a folder.** The compile-time cycle it
+  breaks is with Containers: `Humans.CityPlanning` references `Humans.Containers` outright, so
+  Containers can reach `ICityPlanningServiceRead` only through the leaf. `Humans.Camps` is not
+  the reason — it already references `Humans.CityPlanning` itself.
+- **`Lazy<ICityPlanningService>` is registered by `Humans.Camps`, not by this section.** That
+  is a separate, *runtime* cycle — `CampService → ICityPlanningService → ICampServiceRead`, hit
+  on the camp-delete path — and the lazy belongs with the consumer, not the producer.
 - **`RegistrationInfo` is keyed differently from every other settings field** (highest open
   season, not `PublicYear`) because the Register page it feeds targets the open season.
 - **Out-of-bounds and overlap detection is client-side only.** The server stores whatever
