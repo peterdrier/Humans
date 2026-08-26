@@ -8,8 +8,8 @@ Design/spec documents go on the **same branch as the implementation**, pushed to
 **Why:** Peter can't read `.md` files in his terminal, so the spec has to be on GitHub for him to review it. A separate "design PR" plus later "impl PR(s)" produces far too many PRs for one piece of work, and review bots (Codex) trigger on ready-for-review, not on drafts — so a draft carries the spec through review without burning bot passes on incomplete work. This combines with [[one-branch-for-phased-plans]]: one branch, one PR, phase-tagged commits — the spec is just phase 0.
 
 **How to apply:**
-1. Create a worktree at `.worktrees/<name>` branched from `origin/main`.
-2. Write and commit the spec in the worktree.
+1. Branch from `origin/main` in the workspace [[always-use-worktree]] selects — a worktree at `.worktrees/<name>` locally, the repo root in a cloud run.
+2. Write and commit the spec there.
 3. Push the branch and open a **draft** PR; give Peter the PR and the direct file link to the spec.
 4. After Peter approves the spec, implement on the same branch.
 5. Mark the PR ready for review only when implementation is done.

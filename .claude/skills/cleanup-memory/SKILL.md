@@ -23,7 +23,7 @@ Repo `memory/` is the source of truth for durable project rules (syncs via git).
 
 - **Never hardcode the external memory path.** Derive at runtime (see below).
 - **Never delete a file before confirming the rule survives somewhere.** Diff content; don't match by filename alone.
-- **Always work in a worktree.** `.worktrees/cleanup-memory-<date>`. Never edit the main checkout.
+- **Always work in the workspace `memory/process/always-use-worktree.md` selects.** Locally that is a worktree at `.worktrees/cleanup-memory-<date>` and the main checkout is never edited; in a cloud run it is the repo root on the branch.
 - **Migration PRs never modify the same file twice.** Add atom (PR A), merge, then consolidate (PR B).
 
 ## Discovering the External Memory Directory
@@ -74,7 +74,7 @@ If a repo atom is weaker than the external version (drops a constraint or "why")
 4. Build a per-file table: filename | bucket | reason | proposed action. Surface it to Peter and pause.
 5. Apply approved actions:
    - **A deletions:** `rm "$EXT_DIR/<file>"`. Update `$EXT_DIR/MEMORY.md` to drop index lines.
-   - **D migrations:** Create worktree, **`cd` into it** (mandatory — without this, edits land in the main checkout), then write `memory/<bucket>/<kebab-name>.md` (frontmatter per `memory/META.md`), add INDEX line (alphabetical within bucket), commit, push, open PR. Do NOT delete the external file in the same PR — wait until the migration PR merges.
+   - **D migrations:** Enter the workspace — locally create the worktree and `EnterWorktree` into it (mandatory; without this, edits land in the main checkout), in a cloud run just check the branch out in the repo root — then write `memory/<bucket>/<kebab-name>.md` (frontmatter per `memory/META.md`), add INDEX line (alphabetical within bucket), commit, push, open PR. Do NOT delete the external file in the same PR — wait until the migration PR merges.
 
 ---
 
@@ -105,7 +105,7 @@ Each finding: severity (BLOCK / IMPORTANT / NIT), location, what's wrong, propos
 
 ### Outputs
 
-Consolidated report grouped by severity → present to Peter → apply approved fixes in a new worktree + branch + PR (same `git worktree add` + mandatory `cd` pattern as Phase 1). BLOCK first; IMPORTANT next; NIT only if Peter opts in.
+Consolidated report grouped by severity → present to Peter → apply approved fixes on a new branch + PR, in the same workspace pattern as Phase 1. BLOCK first; IMPORTANT next; NIT only if Peter opts in.
 
 ---
 

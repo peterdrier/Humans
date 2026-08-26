@@ -1,6 +1,6 @@
 ---
 name: section-read-split
-description: "Introduce the cross-section read interface boundary (I<Section>ServiceRead) for one section's service per memory/architecture/section-read-write-split.md. Audits the surface, evaluates which methods belong on the read interface, creates a worktree, dispatches a subagent that introduces the interface and migrates non-section callers, opens a PR. Use when the user says 'read split for X', 'split <Section>Service', 'add I<Section>ServiceRead boundary', 'apply the section-read-write-split rule to <Section>', or any variation of carving the cross-section read surface out of a section's full service interface. Reference implementation is Teams (PR 678). Operates on one section per invocation."
+description: "Introduce the cross-section read interface boundary (I<Section>ServiceRead) for one section's service per memory/architecture/section-read-write-split.md. Audits the surface, evaluates which methods belong on the read interface, sets up the workspace, dispatches a subagent that introduces the interface and migrates non-section callers, opens a PR. Use when the user says 'read split for X', 'split <Section>Service', 'add I<Section>ServiceRead boundary', 'apply the section-read-write-split rule to <Section>', or any variation of carving the cross-section read surface out of a section's full service interface. Reference implementation is Teams (PR 678). Operates on one section per invocation."
 argument-hint: "Users | Camps | Calendar | Consent | Legal | Tickets | <SectionName>"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "Users | Camps | Calendar | Consent | Legal | Tickets | <SectionN
 
 ## Purpose
 
-Apply the read/write interface split — defined in [`memory/architecture/section-read-write-split.md`](../../../memory/architecture/section-read-write-split.md) — to one section's service. External sections that only read end up depending on the narrow `I<Section>ServiceRead`; writes, cache hooks, and section-internal reads stay on the full `I<Section>Service : I<Section>ServiceRead`. Active mode: skill creates a worktree, dispatches a subagent that implements and opens the PR, reports the URL.
+Apply the read/write interface split — defined in [`memory/architecture/section-read-write-split.md`](../../../memory/architecture/section-read-write-split.md) — to one section's service. External sections that only read end up depending on the narrow `I<Section>ServiceRead`; writes, cache hooks, and section-internal reads stay on the full `I<Section>Service : I<Section>ServiceRead`. Active mode: skill sets up the workspace, dispatches a subagent that implements and opens the PR, reports the URL.
 
 ## Vision
 
@@ -171,16 +171,20 @@ Audit tier 1A/1B fold-in (if any):
 
 If the user is happy, proceed. Otherwise iterate the proposal until they greenlight.
 
-## Phase 1 — Worktree + subagent dispatch
+## Phase 1 — Workspace + subagent dispatch
 
-Create the worktree from origin/main (per `memory/process/worktrees-off-origin-main.md`):
+Branch off origin/main (per `memory/process/worktrees-off-origin-main.md`), in a worktree locally and in the repo root in a cloud run (per `memory/process/always-use-worktree.md`):
 
 ```
 git fetch origin --quiet
-git worktree add .worktrees/section-read-split-<lower-section> -b feat/<lower-section>-service-read-split origin/main
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b feat/<lower-section>-service-read-split origin/main
+else
+  git worktree add .worktrees/section-read-split-<lower-section> -b feat/<lower-section>-service-read-split origin/main
+fi
 ```
 
-Dispatch a single subagent with `isolation: "worktree"` pointing at the worktree path. The subagent prompt embeds the approved plan from Phase 0 — the read surface, skip cases, naming renames, Tier 1A/1B verifications. The skill **does not parallelize phases** inside the subagent (each phase depends on the previous: interface must exist before callers can swap).
+Dispatch a single subagent. Locally, use `isolation: "worktree"` pointing at the worktree path; in a cloud run drop the flag — the subagent works in the repo root on the branch just created. The subagent prompt embeds the approved plan from Phase 0 — the read surface, skip cases, naming renames, Tier 1A/1B verifications. The skill **does not parallelize phases** inside the subagent (each phase depends on the previous: interface must exist before callers can swap).
 
 Subagent model: Sonnet (mechanical refactor work; complexity is in the surface design which the main session already settled).
 
@@ -190,7 +194,7 @@ The subagent receives this plan, with `<Section>` / `<section>` / method names s
 
 ### Pre-flight
 
-- Working directory is the worktree root. Branch `feat/<lower-section>-service-read-split` is checked out off `origin/main`.
+- Working directory is the workspace root — the worktree locally, the repo root in a cloud run. Branch `feat/<lower-section>-service-read-split` is checked out off `origin/main`.
 - Build green from clean: `dotnet build Humans.slnx -v quiet && dotnet test Humans.slnx -v quiet`. If not green, stop and report.
 - Delete any audit JSON artifacts in the repo root (`*-surface.json`, `*-downstream.json`, `*-classified.json`) so they don't end up in the diff.
 

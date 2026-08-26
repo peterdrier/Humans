@@ -21,18 +21,25 @@ See `docs/superpowers/specs/2026-06-12-debt-sweep-design.md` for full design.
 
 `REPO_ROOT=$(git rev-parse --show-toplevel)`. Parse `--budget` (default 2h); record start time.
 
-## Phase 1: Worktree
+## Phase 1: Workspace
+
+Per [`always-use-worktree`](../../../memory/process/always-use-worktree.md) — a worktree locally, the repo root in a cloud run. `$WORKTREE` is the sweep's workspace either way; the rest of the skill doesn't care which it is.
 
 ```bash
 git fetch origin main
 TS=$(date -u +%Y-%m-%dT%H%M%SZ)
-git worktree add $REPO_ROOT/.worktrees/debt-sweep-$TS -b debt-sweep/$TS origin/main
-WORKTREE=$REPO_ROOT/.worktrees/debt-sweep-$TS  # cd here; all commands run inside
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b debt-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT
+else
+  git worktree add $REPO_ROOT/.worktrees/debt-sweep-$TS -b debt-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT/.worktrees/debt-sweep-$TS  # EnterWorktree here; all commands run inside
+fi
 ```
 
 **Scope is frozen here.** Never re-fetch, re-resolve, or reconcile against `origin/main` mid-run — a parallel session merging a PR while the sweep runs is expected and irrelevant. Anything landing after the branch point is the *next* sweep's input. Path/branch collision → error; instruct `git worktree list` / `git worktree remove`.
 
-Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds other worktrees).
+Locally, scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds other worktrees). In a cloud run `$WORKTREE` *is* the repo root and there is nothing to scope away.
 
 ## Phase 2: Ledger + staleness check
 
@@ -143,7 +150,7 @@ Zero judgment calls → say so in one line and proceed.
 
 ## Phase 8: Teardown
 
-Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`--force` only if Phase 6 errored). Never `rm -rf`. Branch stays on origin until the PR closes.
+Only after Phase 7 resolves: `cd $REPO_ROOT && git worktree remove $WORKTREE` (`--force` only if Phase 6 errored). Never `rm -rf`. Branch stays on origin until the PR closes. Nothing to tear down in a cloud run — there is no worktree, and the container is reclaimed anyway.
 
 ## Adding debt to the ledger (any session, any time)
 

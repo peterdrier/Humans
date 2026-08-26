@@ -117,16 +117,26 @@ reads as a run that found nothing to build.
 not the run: the next session on this branch gets a different environment, and a banner reading
 "this run had no compiler" ends up sitting above compiler-confirmed strikes within the hour.
 
-## Phase 1: Worktree
+## Phase 1: Workspace
+
+Per [`always-use-worktree`](../../../memory/process/always-use-worktree.md) — a worktree locally, the
+repo root in a cloud run. `$WORKTREE` is the run's workspace either way; the rest of the skill
+doesn't care which it is.
 
 ```bash
 git fetch origin main   # $TS was fixed in Phase 0 — branch, run dir and run file share it
-git worktree add $REPO_ROOT/.worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
-WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # cd here; all commands run inside
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b section-doctor/$TS origin/main
+  WORKTREE=$REPO_ROOT
+else
+  git worktree add $REPO_ROOT/.worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
+  WORKTREE=$REPO_ROOT/.worktrees/section-doctor-$TS  # EnterWorktree here; all commands run inside
+fi
 ```
 
-Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Scope every
-Glob/Grep to `$WORKTREE`.
+Scope is frozen at the branch point — never reconcile against `origin/main` mid-run. Locally, scope
+every Glob/Grep to `$WORKTREE`; in a cloud run `$WORKTREE` *is* the repo root and there is nothing
+to scope away.
 
 **Scope history checks to a named branch or ref, never `git log --all`** — on a run with a blocked
 branch set, `--all` surfaces commit subjects from that set and is not blindfold-safe.
@@ -206,7 +216,8 @@ output) when reforge is unusable. Act on its verdicts — never re-derive the ma
 
 - **`ALL BLOCKED`** (exit 3): report the open PRs and stop. This is the one path that removes the
   worktree immediately (Phase 9) — nothing has been written yet, so it is clean and
-  `git worktree remove` succeeds without `--force`.
+  `git worktree remove` succeeds without `--force`. In a cloud run there is no worktree to
+  remove: just stop.
 - **`JUDGMENT REQUIRED`** (exit 2): every eligible section is previously-doctored. Only now
   dispatch a focused **sonnet** selector subagent, giving it the script's table: read each
   section's `Docs/health.md` for its last-assessed date, rank by days since that date combined
@@ -759,13 +770,16 @@ branch for the class of claim it is an example of — the type, the method, the 
 Fixing only the reported line leaves the siblings and looks resolved.
 
 Phase 9 writes nothing. Phase 7's backfill commit is the run's last write, and everything a later
-session needs is already derivable: the branch is `section-doctor/$TS`, its worktree is
-`$REPO_ROOT/.worktrees/section-doctor-$TS`, and the PR number is in the run file. `$RUNDIR` is
+session needs is already derivable: the branch is `section-doctor/$TS`, its workspace is
+`$REPO_ROOT/.worktrees/section-doctor-$TS` locally (`$REPO_ROOT` in a cloud run), and the PR
+number is in the run file. `$RUNDIR` is
 scratch; leave it for the OS to reclaim. **Leave the worktree clean** — an uncommitted edit here
 never reaches the PR and makes the retained worktree dirty for whoever picks the review up.
 
 **Teardown happens when the PR reaches terminal state** — by `/merged`, or by hand with
-`git worktree remove $WORKTREE` from `$REPO_ROOT` (never a recursive delete).
+`git worktree remove $WORKTREE` from `$REPO_ROOT` (never a recursive delete). A cloud run has
+nothing to tear down — `$WORKTREE` is the repo root and the container is reclaimed on its own, so
+never run `git worktree remove` there.
 
 Phase 2's **`ALL BLOCKED`** exit is the one case that tears down immediately: no PR, no branch
 content, nothing to come back for.
@@ -802,8 +816,9 @@ undercounts. Then tick the item — `- [ ]` becomes `- [x]`:
   branch). Tick the item in **both** places: the PR body *and* the branch's run file — an
   unticked run file would resurface as a merged-queue item after the PR lands and get re-asked
   or applied twice. Push.
-- **Merged items** — group by run file: one fresh worktree + branch off `origin/main` **per run
-  file**, applying all of that file's answers and ticking each entry, push, one PR per run file
+- **Merged items** — group by run file: one fresh branch off `origin/main` **per run file** (its
+  own worktree locally; sequentially in the repo root in a cloud run), applying all of that
+  file's answers and ticking each entry, push, one PR per run file
   (an answer pushed to a branch with no PR is stranded), tear the worktree down. One writer per
   run file — several same-file answers in separate PRs would conflict with each other; grouped,
   these PRs cannot conflict with each other or with concurrent doctor runs.
