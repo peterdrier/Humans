@@ -37,6 +37,20 @@ trailer is the memory, not the definition — a round commit that lost its trail
 rebase still counts, and where trailers and the PR's review history disagree, the history
 wins ([`review-round-budget`](../../../memory/process/review-round-budget.md)).
 
+**Reconcile a suspiciously low count against the review history before you act on it.**
+A PR whose rounds predate this rule, or whose trailers a rebase ate, counts as zero and
+hands you a fresh budget you have already spent. So check whether the PR has been reviewed
+at all:
+
+    gh api repos/<owner>/Humans/pulls/<N>/reviews --paginate \
+      --jq '[.[] | select(.user.type=="Bot" or (.user.login|test("codex|claude|gemini";"i")))] | length'
+
+Zero bot reviews and zero trailers agree — the trailer count stands. But if that number is
+non-zero while the trailers say fewer rounds than it has plausibly drawn, the trailers are
+lying: list the PR's commits from the first bot review onward and count by hand the ones
+that answered a finding or a CI failure. **That hand count is the spent number**, and the
+round you are about to push gets the next number after it.
+
 The unattended ceiling is **five review-round commits per PR**. Then act on where you stand:
 
 | Spent | What to do |

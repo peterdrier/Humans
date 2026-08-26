@@ -84,7 +84,7 @@ Round 4 · PR #1234 · bar: P0/P1
 
 Then:
 
-1. **FIX rows only:** apply the fix; one commit per run, message listing each fixed finding. Build: `dotnet build Humans.slnx -v quiet`. Push (no force).
+1. **FIX rows only:** apply the fix; one commit per run, message listing each fixed finding, ending with a `Review-round: <n>` trailer — that trailer is what the five-round commit budget counts, so a round commit without one is a round spent invisibly (`memory/process/review-round-budget.md`). `<n>` is this commit's budget round (spent + 1, from the steward count), which is not §1's round: §1 counts bot review submissions to set the severity bar, the budget counts round commits. Build: `dotnet build Humans.slnx -v quiet`. Push (no force).
 2. **Every row:** reply in-thread with the verdict and one line of reasoning (`INVALID — line 88 is inside the `if (lead != null)` block`; `IMPOSSIBLE — a team without a lead can't be saved, see TeamService.ValidateAsync`; `DEFER — P2, out of round-4 bar, opened #N`), react, resolve. Nothing left open unless a live disagreement with Peter is pending.
 3. **Summary** to the user: round, counts per verdict, SHA pushed (if any), issues opened. If round ≥ 10, end with: "PR has hit the review ceiling — further bot rounds get no fixes."
 
