@@ -92,6 +92,10 @@ public sealed class InMemoryLogSink(int warningCapacity = 1000, int errorCapacit
     public IReadOnlyDictionary<LogEventLevel, long> GetLifetimeCounts() =>
         _lifetimeCounts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-    /// <summary>Singleton instance registered in DI and Serilog config.</summary>
+    /// <summary>
+    /// Legacy process-wide buffer. Application hosts resolve their own instance from DI so
+    /// parallel hosts cannot write to or flush each other's log buffers.
+    /// </summary>
+    [Obsolete("Resolve InMemoryLogSink from DI so the buffer remains host-local.")]
     public static InMemoryLogSink Instance { get; } = new();
 }

@@ -222,6 +222,19 @@ Take the selected section (or `--section`, which skips the selector but never th
 set — check it with `select-section.py --prs "$RUNDIR/prs.json" --blocked-only`). Sections
 are `src/Sections/` projects only.
 
+**Name the run after the section, here.** A scheduled run opens a session titled after the
+routine, so every day's run is called `section-doctor-daily` and they are told apart only by
+their start time. This is the first moment the section is known, so rename the session now —
+`set_session_title` on the claude-code-remote MCP server, with this session's own id from
+`get_session` (call it with no `session_id` and it describes the caller):
+
+    section-doctor: <Section> — <yyyy-mm-dd>
+
+Skip it without comment when either tool is unavailable — an interactive run is already
+titled by whatever the human typed, and a rename is a convenience, never a gate. Do not
+rename again later: the title is how the run is found in a list, and a title that moves is
+worse than a generic one.
+
 **A low reforge score is not evidence the section is healthy.** The score measures structure, never
 correctness — the lowest-scoring section in the solution was failing open on access control. Nothing
 in the ranking rubric surfaces that, so never read a good score as a reason to look less hard.

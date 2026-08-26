@@ -21,7 +21,7 @@ namespace Humans.Consent.Tests.Controllers;
 
 /// <summary>
 /// Gates: <c>Review</c> (GET) and <c>Submit</c> (POST) redirect Stub-state
-/// profiles (null legal name) to <c>/Profile/Edit</c> rather than rendering
+/// profiles (null legal name) to <c>/Profile/Me/Edit</c> rather than rendering
 /// the signing form or persisting a <c>ConsentRecord</c>.
 /// </summary>
 public sealed class ConsentControllerTests

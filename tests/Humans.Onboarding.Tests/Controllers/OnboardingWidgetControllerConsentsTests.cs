@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -65,10 +64,6 @@ public class OnboardingWidgetControllerConsentsTests
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
-        var services = new ServiceCollection();
-        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        _http.RequestServices = services.BuildServiceProvider();
         // Default: user has a non-Stub profile so the new pre-flight gate
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -77,7 +72,6 @@ public class OnboardingWidgetControllerConsentsTests
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
-            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor { ActionName = "Test" },
         };
         ctrl.TempData = new TempDataDictionary(_http, Substitute.For<ITempDataProvider>());
         // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.

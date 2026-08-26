@@ -434,7 +434,28 @@ public class ServiceTeamOrdersTests
             });
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateOrderAsync(seasonId, null, Guid.NewGuid(), TestContext.Current.CancellationToken));
+            () => _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken));
+    }
+
+    [HumansFact]
+    public async Task CreateOrderAsync_throws_when_the_camp_season_s_only_order_is_a_legacy_year_zero_row()
+    {
+        // A CampSeason is a (camp, year) pair, so the only order a year comparison can miss is one
+        // that pre-dates the Year column. AddLine backfills those lazily — an order with no lines
+        // stays at 0 forever, and the create guard must not hand its season a second order.
+        var seasonId = Guid.NewGuid();
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+                "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
+        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new List<Order>
+            {
+                new() { Id = Guid.NewGuid(), CampSeasonId = seasonId, Year = 0 }
+            });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateOrderAsync(seasonId, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     private static OrderDto MakeOrderDto(
@@ -448,7 +469,6 @@ public class ServiceTeamOrdersTests
             CounterpartyType: counterpartyType,
             CounterpartyDisplayName: counterpartyType.ToString(),
             Year: 2026,
-            Label: null,
             State: OrderState.Open,
             CounterpartyName: null,
             CounterpartyVatId: null,

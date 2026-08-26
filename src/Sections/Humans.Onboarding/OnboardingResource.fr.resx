@@ -153,11 +153,9 @@
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Terminez la configuration de votre compte pour accéder aux créneaux et aux fonctionnalités d'équipe.</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Continuer la configuration →</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Le nom que tout le monde voit dans le système. L'unicité aide mais n'est pas obligatoire, même s'il pourrait être difficile de trouver « Bob » parmi les quelques milliers de humans présents si quelqu'un vous cherche.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Le nom sous lequel tout le monde vous connaîtra.</value></data>

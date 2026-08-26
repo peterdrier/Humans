@@ -156,6 +156,46 @@ public class CalendarServiceValidationTests
         result.ErrorMessage.Should().Contain("Recurrence timezone is unknown");
     }
 
+    [HumansFact]
+    public async Task CreateEventAsync_COUNT_rule_persists_the_last_occurrence_end()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        await service.CreateEventAsync(
+            new CreateCalendarEventDto(
+                "Three daily events", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                "FREQ=DAILY;COUNT=3", "UTC"),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
+                e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 11, 0)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateEventAsync_DATE_until_persists_the_end_of_that_local_day()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+
+        await service.CreateEventAsync(
+            new CreateCalendarEventDto(
+                "Madrid daily events", null, null, null, Guid.NewGuid(),
+                start, start + Duration.FromHours(1), false,
+                "FREQ=DAILY;UNTIL=20260603", "Europe/Madrid"),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
+                e.RecurrenceUntilUtc == Instant.FromUtc(2026, 6, 3, 22, 0)),
+            Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Audit-best-effort invariant
     // ==========================================================================

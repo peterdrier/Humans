@@ -162,6 +162,15 @@
     <value>La dirección de correo {0} ha sido verificada.</value>
     <comment>{0} = email address</comment>
   </data>
+  <data name="Profile_EmailDeleted" xml:space="preserve">
+    <value>Dirección de correo eliminada.</value>
+  </data>
+  <data name="Profile_EmailVisibilityUpdated" xml:space="preserve">
+    <value>Visibilidad de la dirección de correo actualizada.</value>
+  </data>
+  <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
+    <value>Dirección de correo para notificaciones actualizada.</value>
+  </data>
   <data name="Profile_PreferredEmailCleared" xml:space="preserve">
     <value>El correo preferido ha sido eliminado. Los correos del sistema se enviarán a su dirección de inicio de sesión.</value>
   </data>

@@ -21,9 +21,7 @@ namespace Humans.Onboarding;
 /// The sidebar's "Review" entry is <em>not</em> in this set and is not localized at all:
 /// <c>AdminNavItem.Label</c> is a raw string rendered as-is by Shell's
 /// <c>AdminSidebarViewComponent</c>, so <c>SectionAdminNav.cs</c> hard-codes English like
-/// every other section's contribution. <c>SharedResource</c>'s
-/// <c>Nav_OnboardingReview</c> is what the pre-contribution sidebar rendered and is now
-/// dead — dropping it belongs to a Base sweep, not to this section.
+/// every other section's contribution.
 /// </para>
 /// </remarks>
 public class OnboardingResource;

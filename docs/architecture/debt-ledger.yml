@@ -268,17 +268,8 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-25
-    what: "tests/Humans.MailerLite.Tests/Audiences/TicketNoShiftsAudienceTests.ComputeMemberUserIdsAsync_DoesNotInjectShiftSignupOrManagementService asserts the ctor has no IShiftSignups / IShiftManagementServiceRead parameter — 'no ctor parameter of some type' is named verbatim by docs/architecture/code-review-rules.md 'Tests Asserting an Absence' (memory/architecture/no-tests-for-absences.md). Predates this branch (nobodies-collective/Humans#1417); surfaced when Codex rejected a new sibling absence test on peterdrier/Humans#1513. Delete it, keeping the positive IShiftView assertion."
-    review: light
-  - added: 2026-08-25
     what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
     review: panel
-  - added: 2026-08-22
-    what: "docs/features/global/background-jobs.md and Finance.md both carried POST /Finance/Creditors/Resync, deleted in nobodies-collective/Humans#1267 — a route can be removed from the controller and survive in every doc that names it, because nothing sweeps route strings. A repo-wide check that every /Route referenced under docs/ resolves to a live action would have caught it (found by /section-doctor on Finance, 2026-08-18)."
-    review: light
-  - added: 2026-08-22
-    what: "Budget's Views/BudgetAdmin/NoActiveYear.cshtml has no links to the three /Finance/* pages that YearDetail.cshtml carries, so with no active budget year the Holded provisioning, unmatched-doc and creditor-accounts pages have no nav path at all (found by /section-doctor on Finance, 2026-08-18; the view is Budget's)."
-    review: light
   - added: 2026-08-21
     what: "Nothing builds the real service provider and resolves the sections' registered services, so a DI misregistration ships green. Found in nobodies-collective/Humans#1104: a commit registered Service only as ISettingsWriteService while two consumers still asked for the concrete Service — the build passed and all ~4,900 unit tests passed, but /Settings/Admin and /Settings/Admin/Carry would both have thrown on activation and IEventSettingsCarryService could not have been constructed. Nothing in the suite would have caught it at any point. A composition-root smoke check that builds the container from the same ISection registration path the app uses and resolves every registered service would close it. Needs Peter's approval before anything is added (memory/process rule: no new CI checks without permission)."
     review: panel
@@ -320,9 +311,6 @@ inbox:
     what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
     review: panel
   - added: 2026-08-17
-    what: "docs/guide/Expenses.md never got #1336's changes (ca4fb6e0b, same day): the nullable ExpenseReport.MaxAmount cap a coordinator sets on Endorse and a Finance Admin sets/overrides on Approve (Payable = min(Total, MaxAmount), pushed to Holded as a negative adjustment line), and the report-level Note field relabelled Subject (optional, 500 chars) now shown on New/Edit/Detail and as a column on My Expenses/Coordinator/Review. That commit updated only the internal invariant doc src/Sections/Humans.Expenses/Docs/Expenses.md; the user-facing guide page's 'As a Coordinator' and 'As a Board member / Admin (Finance Admin)' sections still describe neither. Guide pages are what members actually read, so a feature that ships without one is undocumented in practice (found by /section-doctor on Guide)"
-    review: light
-  - added: 2026-08-17
     what: "~113 dead freshness:triggers lines across 16 of the 28 docs/guide/*.md pages, all pointing at the pre-G5 layout (src/Humans.Web/, src/Humans.Application/, src/Humans.Domain/, src/Humans.Infrastructure/, src/Humans.UI/ — every one deleted or emptied). Worst offenders: Shifts.md 20, Admin.md 13, Camps.md 13, Profiles.md 13, Onboarding.md 9, YourData.md 8. Each dead glob is a page the sweep can never flag as stale, which is how docs/guide/Expenses.md missed #1336 entirely. The section->project half of the rewrite is mechanical (src/Humans.Web/Controllers/CampController.cs -> src/Sections/Humans.Camps/Controllers/CampController.cs) but the internal subfolder (Domain/ vs Data/Configurations/ vs Services/) needs a per-file check, so this wants a scripted pass, not hand-editing. Overlaps nobodies-collective/Humans#1021, which has the intent but not this measured scope (found by /section-doctor on Guide, which repaired its own 2 dead globs)"
     review: panel
   - added: 2026-08-05
@@ -334,9 +322,6 @@ inbox:
   - added: 2026-08-02
     what: "Humans.Integration.Tests is timeout-flaky under parallel load — each of the 14 test classes owns an IClassFixture<HumansWebApplicationFactory> that starts its own Testcontainers Postgres, and with no maxParallelThreads cap several tests land at 26-29s against HumansFact's 30s default (DetailedHealthEndpoint_ReturnsJsonWithStatus, Volunteer_cannot_create_order_against_someone_elses_camp_season, UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid observed timing out). Measured ~1-in-3 failure rate on unmodified origin/main. Fix is a shared collection fixture or a maxParallelThreads cap, not longer timeouts (found while verifying nobodies-collective#925)"
     review: panel
-  - added: 2026-07-02
-    what: "GateService.EvaluateAsync CheckedInAtVendor uses Status==CheckedIn, but the /check_ins sync stamps CheckedInAt and leaves Status Valid — the 'already checked in at vendor' dedupe signal on the gate card never fires; switch to CheckedInAt (found via Codex on peterdrier/Humans#1080)"
-    review: per-item
   - added: 2026-06-12
     what: "UsersAdminController.Audience direct DbContext reads — route through IAdminDatabaseDiagnosticsService"
     review: panel
@@ -379,12 +364,3 @@ inbox:
   - added: 2026-08-21
     what: "TicketTailor re-sync can resurrect erased ticket PII. GDPR erasure (nobodies-collective/Humans#853) tombstones BuyerName/BuyerEmail/AttendeeName/AttendeeEmail and nulls MatchedUserId in our copy of the vendor's data (Humans.Tickets/Data/TicketRepository.EraseUserPiiAsync), but the vendor still holds the real record. The next TicketTailor sync re-reads it and can write the real name and email straight back over the tombstone, silently undoing the erasure with no signal that it happened. Fixing it properly means either a per-order erased flag the sync respects (needs a column) or deleting the vendor-side record; both are larger than #853 and the first is a schema change."
     review: panel
-  - added: 2026-08-24
-    what: "Eight Nav_* keys in SharedResource are named nowhere under src/ or tests/: Nav_Home, Nav_BoardVoting, Nav_Review, Nav_Voting, Nav_Board, Nav_Scanner, Nav_Agent, Nav_OnboardingReview. Dead because the admin sidebar takes raw strings (AdminNavItem.Label rendered as-is by Shell's AdminSidebarViewComponent, all 29 sections hard-code English). The English-only admin sidebar is Peter's decision (per Onboarding 2026-08-23 decision entry), but that decision governs the sidebar, not keeping dead keys — these are still deletable. Base owns SharedResource. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light
-  - added: 2026-08-24
-    what: "HumansControllerBase.SetError resolves ILoggerFactory from HttpContext.RequestServices while sibling SetSuccess and SetInfo resolve nothing, so a controller unit test passes for two of the three and throws ArgumentNullException on the third. Two Humans.Onboarding.Tests files now carry the same six-line RequestServices/ActionDescriptor scaffolding to work around it; injecting the logger through the base class would delete both copies. Base owns HumansControllerBase. Found by /section-doctor on Onboarding 2026-08-23."
-    review: light
-  - added: 2026-08-24
-    what: "/Profile/Edit is stale in three places outside Users. The live route is /Profile/Me/Edit. Sites: a comment in src/Sections/Humans.Consent/Controllers/ConsentController.cs, a doc comment in tests/Humans.Consent.Tests/Controllers/ConsentControllerTests.cs, and step 2 of .claude/skills/test-site/SKILL.md. Cross-section (Consent + a repo-level skill). Found by /section-doctor on Onboarding 2026-08-23."
-    review: light

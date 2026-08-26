@@ -44,27 +44,31 @@ using Humans.Web.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "Humans.Web")
-    .Enrich.With<PiiRedactionEnricher>()
-    .Enrich.With<CurrentUserEnricher>()
-    .WriteTo.Console()
-    .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Warning);
+// Bootstrap static logger for pre-Build callers (section discovery logs during service
+// registration). UseSerilog swaps Log.Logger to the host's full pipeline at Build.
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
 
-if (Debugger.IsAttached)
+builder.Services.AddSingleton<InMemoryLogSink>();
+builder.Host.UseSerilog((_, services, logConfig) =>
 {
-    var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "human");
-    Directory.CreateDirectory(logDir);
-    logConfig.WriteTo.File(
-        Path.Combine(logDir, "humans-.log"),
-        rollingInterval: RollingInterval.Day);
-}
+    logConfig
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "Humans.Web")
+        .Enrich.With<PiiRedactionEnricher>()
+        .Enrich.With<CurrentUserEnricher>()
+        .WriteTo.Console()
+        .WriteTo.Sink(services.GetRequiredService<InMemoryLogSink>(), LogEventLevel.Warning);
 
-Log.Logger = logConfig.CreateLogger();
-
-builder.Host.UseSerilog();
+    if (Debugger.IsAttached)
+    {
+        var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "human");
+        Directory.CreateDirectory(logDir);
+        logConfig.WriteTo.File(
+            Path.Combine(logDir, "humans-.log"),
+            rollingInterval: RollingInterval.Day);
+    }
+});
 
 // Fail fast on DI cycles/captive deps; factory lambdas still need smoke coverage.
 builder.Host.UseDefaultServiceProvider(options =>
@@ -560,15 +564,15 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 
     if (result.ResourceNotFound)
     {
-        Log.Error("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
+        app.Logger.LogError("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
             testKey, result.SearchedLocation);
-        Log.Error("Resource type: {TypeName}, Assembly: {Assembly}",
+        app.Logger.LogError("Resource type: {TypeName}, Assembly: {Assembly}",
             resourceType.FullName, resourceType.Assembly.GetName().Name);
 
         // List embedded resources for debugging
         var assembly = resourceType.Assembly;
         var resourceNames = assembly.GetManifestResourceNames();
-        Log.Error("Embedded resources in {Assembly}: {Resources}",
+        app.Logger.LogError("Embedded resources in {Assembly}: {Resources}",
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
@@ -578,18 +582,18 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
             {
                 var satAssembly = assembly.GetSatelliteAssembly(new System.Globalization.CultureInfo(culture));
                 var satResources = satAssembly.GetManifestResourceNames();
-                Log.Information("Satellite assembly [{Culture}] resources: {Resources}",
+                app.Logger.LogInformation("Satellite assembly [{Culture}] resources: {Resources}",
                     culture, string.Join(", ", satResources));
             }
             catch (Exception ex)
             {
-                Log.Warning("No satellite assembly for culture '{Culture}': {Error}", culture, ex.Message);
+                app.Logger.LogWarning("No satellite assembly for culture '{Culture}': {Error}", culture, ex.Message);
             }
         }
     }
     else
     {
-        Log.Information("Localization OK: '{Key}' => '{Value}'", testKey, result.Value);
+        app.Logger.LogInformation("Localization OK: '{Key}' => '{Value}'", testKey, result.Value);
     }
 }
 
@@ -605,7 +609,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     var embedded = resourceType.Assembly.GetManifestResourceNames();
     if (!embedded.Contains(expected, StringComparer.Ordinal))
     {
-        Log.Error(
+        app.Logger.LogError(
             "LOCALIZATION BROKEN: {Assembly} embeds no '{Expected}'. Its .resx files must sit " +
             "in the same folder as {TypeName}, whose namespace decides the manifest name. Found: {Embedded}",
             resourceType.Assembly.GetName().Name, expected, resourceType.FullName,
@@ -613,7 +617,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     }
     else
     {
-        Log.Information("Localization OK: {Expected} embedded in {Assembly}",
+        app.Logger.LogInformation("Localization OK: {Expected} embedded in {Assembly}",
             expected, resourceType.Assembly.GetName().Name);
     }
 }
@@ -635,7 +639,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
         var policy = await policyProvider.GetPolicyAsync(value);
         if (policy is null)
         {
-            Log.Error(
+            app.Logger.LogError(
                 "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
                 "owning section may be missing, or its Policies contribution failed to register.",
                 name);
@@ -859,12 +863,8 @@ try
 }
 catch (Exception ex)
 {
-    LogStartupFailure(ex, builder.Configuration);
+    LogStartupFailure(ex, builder.Configuration, app.Logger);
     throw;
-}
-finally
-{
-    Log.CloseAndFlush();
 }
 
 /// <summary>
@@ -873,12 +873,12 @@ finally
 /// deployed before <c>preview-db.yml</c> cloned <c>humans_pr_{N}</c>. Falls back to the
 /// generic message for anything else, so a startup failure is never silently unlabeled.
 /// </summary>
-static void LogStartupFailure(Exception ex, IConfiguration configuration)
+static void LogStartupFailure(Exception ex, IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
 {
     var pgEx = FindException<NpgsqlException>(ex);
     if (pgEx is null)
     {
-        Log.Fatal(ex, "Application terminated unexpectedly");
+        logger.LogCritical(ex, "Application terminated unexpectedly");
         return;
     }
 
@@ -889,11 +889,11 @@ static void LogStartupFailure(Exception ex, IConfiguration configuration)
 
     if (pgEx is PostgresException { SqlState: PostgresErrorCodes.InvalidCatalogName })
     {
-        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
+        logger.LogCritical(ex, "Application terminated unexpectedly: database {Database} does not exist", database);
     }
     else
     {
-        Log.Fatal(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
+        logger.LogCritical(ex, "Application terminated unexpectedly: database {Database} is unreachable", database);
     }
 }
 

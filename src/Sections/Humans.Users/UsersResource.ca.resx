@@ -162,6 +162,15 @@
     <value>L'adreça de correu {0} ha estat verificada.</value>
     <comment>{0} = email address</comment>
   </data>
+  <data name="Profile_EmailDeleted" xml:space="preserve">
+    <value>Adreça de correu eliminada.</value>
+  </data>
+  <data name="Profile_EmailVisibilityUpdated" xml:space="preserve">
+    <value>Visibilitat de l'adreça de correu actualitzada.</value>
+  </data>
+  <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
+    <value>Adreça de correu de notificacions actualitzada.</value>
+  </data>
   <data name="Profile_PreferredEmailCleared" xml:space="preserve">
     <value>El correu preferit s'ha eliminat. Els correus del sistema s'enviaran a la teva adreça d'inici de sessió.</value>
   </data>

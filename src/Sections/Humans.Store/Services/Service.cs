@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
+using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Shifts.Contracts;
@@ -27,7 +28,7 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedClient holdedClient,
     IOptions<StoreSectionOptions> options,
-    ILogger<Service> logger) : IStoreServiceRead
+    ILogger<Service> logger) : IApplicationService
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
@@ -40,8 +41,7 @@ internal sealed class Service(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
         var catalog = (await GetActiveCatalogAsync(year, ct))
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
@@ -139,8 +139,7 @@ internal sealed class Service(
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var activeEvent = await burnSettings.GetActiveAsync();
-            var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+            var year = await GetCurrentEventYearAsync();
             catalog = (await GetActiveCatalogAsync(year, ct))
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
@@ -331,14 +330,17 @@ internal sealed class Service(
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
-    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
+    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
             ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
 
+        // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
+        // already belongs to season.Year — except a legacy row still at Year = 0, which an
+        // `o.Year == season.Year` guard would wave through and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
-        if (existing.Any(o => o.Year == season.Year))
-            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order for {season.Year}.");
+        if (existing.Count > 0)
+            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order.");
 
         var now = clock.GetCurrentInstant();
         var order = new Order
@@ -354,8 +356,7 @@ internal sealed class Service(
         await repo.AddOrderAsync(order, ct);
         await audit.LogAsync(
             AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
-            $"Created store order for camp season {campSeasonId}" +
-            (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
+            $"Created store order for camp season {campSeasonId}",
             actorUserId);
         return order.Id;
     }
@@ -391,8 +392,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
 
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -419,8 +419,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var year = await GetCurrentEventYearAsync();
         var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
@@ -599,8 +598,12 @@ internal sealed class Service(
         return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
-    public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, PaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 5");
+    /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
+    private async Task<int> GetCurrentEventYearAsync()
+    {
+        var activeEvent = await burnSettings.GetActiveAsync();
+        return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+    }
 
     public Task<string> CreateStripeCheckoutSessionAsync(
         OrderDto order,
@@ -623,8 +626,7 @@ internal sealed class Service(
         if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
             throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
 
-        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}"
-            + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
+        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
 
         return stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
@@ -1371,7 +1373,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Camp,
                 sid,
                 campName,
-                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totalDue,
                 totals.PaymentsTotalEur,
@@ -1387,7 +1388,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Team,
                 tid,
                 teamName,
-                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
                 0m, // team orders never have payments
@@ -1477,8 +1477,7 @@ internal sealed class Service(
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
-        var activeEvent = await burnSettings.GetActiveAsync();
-        var catalogYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var catalogYear = await GetCurrentEventYearAsync();
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
         foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
             prices[product.Id] = new BalanceCalculator.ProductPrice(
@@ -1522,7 +1521,6 @@ internal sealed class Service(
             counterpartyType,
             displayName,
             o.Year,
-            null, // Label removed from the UI (#816); column retained, unused.
             o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,

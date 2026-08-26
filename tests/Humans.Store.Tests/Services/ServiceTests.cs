@@ -99,7 +99,6 @@ public class ServiceTests
             CounterpartyType: OrderCounterpartyType.Camp,
             CounterpartyDisplayName: "Camp Test",
             Year: 2026,
-            Label: "Kitchen",
             State: OrderState.Open,
             CounterpartyName: null,
             CounterpartyVatId: null,
@@ -341,7 +340,7 @@ public class ServiceTests
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
-        var orderId = await _service.CreateOrderAsync(campSeasonId, "First order", actor, TestContext.Current.CancellationToken);
+        var orderId = await _service.CreateOrderAsync(campSeasonId, actor, TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(orderId);
@@ -946,7 +945,7 @@ public class ServiceTests
     [HumansFact]
     public async Task CreateStripeCheckoutSessionAsync_builds_checkout_session_from_order()
     {
-        var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp Alpha", label: "Build meals", email: "camp@example.test");
+        var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp Alpha", email: "camp@example.test");
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(
                 order.Id,
@@ -954,7 +953,7 @@ public class ServiceTests
                 "https://humans.test/Store/Order/1",
                 "https://humans.test/Store/Order/1",
                 "camp@example.test",
-                "Nobodies Collective - Camp Alpha (Build meals)",
+                "Nobodies Collective - Camp Alpha",
                 Arg.Any<CancellationToken>())
             .Returns("https://stripe.test/session");
 
@@ -1412,7 +1411,6 @@ public class ServiceTests
     private static OrderDto MakeOrderDto(
         decimal balanceEur,
         string? counterpartyName = null,
-        string? label = null,
         string? email = null)
     {
         return new OrderDto(
@@ -1422,7 +1420,6 @@ public class ServiceTests
             CounterpartyType: OrderCounterpartyType.Camp,
             CounterpartyDisplayName: counterpartyName ?? "Camp",
             Year: 2026,
-            Label: label,
             State: OrderState.Open,
             CounterpartyName: counterpartyName,
             CounterpartyVatId: null,

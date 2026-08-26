@@ -37,7 +37,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampServiceRead.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
-- "Create order" creates a new `Order` in `Open` state attached to the camp season; multiple orders per season are allowed. (The order `Label` was removed from the UI in #816 — the column is retained but unused.)
+- "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one. (The order `Label` was removed from the UI in #816 — the column is retained but unused.)
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
@@ -68,7 +68,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - Inserts a `Payment` row with `RecordedByUserId = actorUserId`, `Method` as supplied. `Stripe` method is reserved for the webhook path and rejected here.
 - Allowed in any order state (refunds frequently happen post-issuance).
 - Audit-logged with the actor.
-- *Note: not yet implemented (Phase 5) — `Service.RecordManualPaymentAsync` throws `NotSupportedException("Phase 5")` and there is no `/Store/Order/{id}/RecordPayment` endpoint yet. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
+- *Note: not yet implemented (Phase 5) — no service member, and no `/Store/Order/{id}/RecordPayment` endpoint. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 
@@ -97,7 +97,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a `StoreAdmin`, `FinanceAdmin`, or `Admin`, **I want** a single page that aggregates a year's store activity across all camps, **so that** I can read top-line totals, spot under-paid camps, and audit per-product demand without opening order pages one by one.
 
 **Acceptance Criteria:**
-- `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog` and `/Store/Admin/Orders`); volunteers receive 403/redirect.
+- `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog`); volunteers receive 403/redirect.
 - Year selector at the top defaults to the active event year via `IBurnSettingsService.GetActiveAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
 - Three projections render in this order, each as its own card:
   - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid. A footer summary row totals Total due / Paid / Balance across **camp counterparties only** (team orders are excluded so the totals reconcile: teams never pay, so their due would break `Total due = Paid + Balance`). **Totals use effective pricing** — Open orders use the live catalog price (same as the order page); InvoiceIssued orders use frozen snapshots.
@@ -146,7 +146,7 @@ All cross-section linkage is bare `Guid` columns — no FK constraints, no nav p
 
 ## Authorization
 
-Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`}). Logic:
+Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`}). Logic:
 
 | Role | View | AddLine / RemoveLine / EditCounterparty | Pay |
 |---|---|---|---|

@@ -12,7 +12,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/logs")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-internal sealed class BackdoorLogsController : ControllerBase
+internal sealed class BackdoorLogsController(InMemoryLogSink logSink) : ControllerBase
 {
     [HttpGet]
     public IActionResult Get(
@@ -36,7 +36,7 @@ internal sealed class BackdoorLogsController : ControllerBase
                 return BadRequest(new { error = $"Invalid minLevel '{minLevel}'. Valid values: Warning, Error, Fatal" });
         }
 
-        var events = InMemoryLogSink.Instance.GetEvents(count, minLogLevel);
+        var events = logSink.GetEvents(count, minLogLevel);
 
         var result = events.Select(e => new
         {

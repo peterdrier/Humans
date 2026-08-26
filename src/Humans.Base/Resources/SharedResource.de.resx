@@ -91,9 +91,6 @@
   <data name="Nav_Brand" xml:space="preserve">
     <value>Humans</value>
   </data>
-  <data name="Nav_Home" xml:space="preserve">
-    <value>Startseite</value>
-  </data>
   <data name="Nav_MyProfile" xml:space="preserve">
     <value>Mein Profil</value>
   </data>
@@ -120,9 +117,6 @@
   </data>
   <data name="Nav_Admin" xml:space="preserve">
     <value>Administration</value>
-  </data>
-  <data name="Nav_OnboardingReview" xml:space="preserve">
-    <value>Prüfwarteschlange</value>
   </data>
   <data name="CookieBanner_Title" xml:space="preserve">
     <value>Cookie-Hinweis</value>
@@ -260,7 +254,7 @@
     <comment>{0} = pending consent count</comment>
   </data>
   <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Profil vervollständigen:&lt;/strong&gt; Ihr Profil ist unvollständig. &lt;a href="/Profile/Edit" class="alert-link"&gt;Ergänzen Sie Ihre Informationen&lt;/a&gt;, damit wir Sie besser kennenlernen können.</value>
+    <value>&lt;strong&gt;Profil vervollständigen:&lt;/strong&gt; Ihr Profil ist unvollständig. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Ergänzen Sie Ihre Informationen&lt;/a&gt;, damit wir Sie besser kennenlernen können.</value>
   </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Profil</value>
@@ -792,9 +786,6 @@
   <data name="Validation_PhoneHint" xml:space="preserve">
     <value>Muss mit + und Ländervorwahl beginnen (z.B. +34 612 345 678)</value>
   </data>
-  <data name="Nav_BoardVoting" xml:space="preserve">
-    <value>Vorstandsabstimmung</value>
-  </data>
   <data name="Dashboard_TermExpires" xml:space="preserve">
     <value>Amtszeit endet: {0}</value>
     <comment>{0} = formatted date</comment>
@@ -808,18 +799,6 @@
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Jetzt verlängern</value>
-  </data>
-  <data name="Nav_Review" xml:space="preserve">
-    <value>Überprüfung</value>
-  </data>
-  <data name="Nav_Voting" xml:space="preserve">
-    <value>Abstimmung</value>
-  </data>
-  <data name="Nav_Board" xml:space="preserve">
-    <value>Board</value>
-  </data>
-  <data name="Nav_Scanner" xml:space="preserve">
-    <value>Scanner</value>
   </data>
   <data name="Search_Title" xml:space="preserve">
     <value>Humans suchen</value>
@@ -841,9 +820,6 @@
   </data>
   <data name="Agent_WidgetButton" xml:space="preserve">
     <value>Assistent öffnen</value>
-  </data>
-  <data name="Nav_Agent" xml:space="preserve">
-    <value>Assistent</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>Oder per E-Mail anmelden</value>
@@ -1229,8 +1205,7 @@
     <value>Dieses Google-Konto konnte nicht verknüpft werden. Bitte versuche es erneut.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
-    <value>Build availability &amp; tracking</value>
-    <comment>TODO: translate — copied from English</comment>
+    <value>Verfügbarkeit und Nachverfolgung des Aufbaus</value>
   </data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Tell us about your food needs</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>

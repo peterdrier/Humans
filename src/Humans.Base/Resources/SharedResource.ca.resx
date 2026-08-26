@@ -91,9 +91,6 @@
   <data name="Nav_Brand" xml:space="preserve">
     <value>Humans</value>
   </data>
-  <data name="Nav_Home" xml:space="preserve">
-    <value>Inici</value>
-  </data>
   <data name="Nav_MyProfile" xml:space="preserve">
     <value>El meu perfil</value>
   </data>
@@ -120,9 +117,6 @@
   </data>
   <data name="Nav_Admin" xml:space="preserve">
     <value>Administració</value>
-  </data>
-  <data name="Nav_OnboardingReview" xml:space="preserve">
-    <value>Cua de revisió</value>
   </data>
   <data name="CookieBanner_Title" xml:space="preserve">
     <value>Avís de galetes</value>
@@ -260,7 +254,7 @@
     <comment>{0} = pending consent count</comment>
   </data>
   <data name="Dashboard_IncompleteProfileAlert" xml:space="preserve">
-    <value>&lt;strong&gt;Completa el teu perfil:&lt;/strong&gt; El teu perfil està incomplet. &lt;a href="/Profile/Edit" class="alert-link"&gt;Afegeix la teva informació&lt;/a&gt; perquè et puguem conèixer millor.</value>
+    <value>&lt;strong&gt;Completa el teu perfil:&lt;/strong&gt; El teu perfil està incomplet. &lt;a href="/Profile/Me/Edit" class="alert-link"&gt;Afegeix la teva informació&lt;/a&gt; perquè et puguem conèixer millor.</value>
   </data>
   <data name="Dashboard_ProfileCard" xml:space="preserve">
     <value>Perfil</value>
@@ -792,9 +786,6 @@
   <data name="Validation_PhoneHint" xml:space="preserve">
     <value>Ha de començar amb + i codi de país (ex. +34 612 345 678)</value>
   </data>
-  <data name="Nav_BoardVoting" xml:space="preserve">
-    <value>Votació de la Junta</value>
-  </data>
   <data name="Dashboard_TermExpires" xml:space="preserve">
     <value>El mandat expira: {0}</value>
     <comment>{0} = formatted date</comment>
@@ -808,18 +799,6 @@
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Renova ara</value>
-  </data>
-  <data name="Nav_Review" xml:space="preserve">
-    <value>Revisió</value>
-  </data>
-  <data name="Nav_Voting" xml:space="preserve">
-    <value>Votació</value>
-  </data>
-  <data name="Nav_Board" xml:space="preserve">
-    <value>Junta</value>
-  </data>
-  <data name="Nav_Scanner" xml:space="preserve">
-    <value>Escàner</value>
   </data>
   <data name="Search_Title" xml:space="preserve">
     <value>Cerca Humans</value>
@@ -841,9 +820,6 @@
   </data>
   <data name="Agent_WidgetButton" xml:space="preserve">
     <value>Obrir l'assistent</value>
-  </data>
-  <data name="Nav_Agent" xml:space="preserve">
-    <value>Assistent</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>O inicia la sessió amb correu</value>
@@ -1229,8 +1205,7 @@
     <value>No hem pogut vincular aquest compte de Google. Torna-ho a provar.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
-    <value>Build availability &amp; tracking</value>
-    <comment>TODO: translate — copied from English</comment>
+    <value>Disponibilitat i seguiment del muntatge</value>
   </data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Tell us about your food needs</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>

@@ -209,7 +209,7 @@ internal sealed class StoreController(
 
     [HttpPost("Order/Create/{campSeasonId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Guid campSeasonId, string? label, CancellationToken ct)
+    public async Task<IActionResult> Create(Guid campSeasonId, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -223,7 +223,7 @@ internal sealed class StoreController(
             OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
-        var newId = await storeService.CreateOrderAsync(campSeasonId, label, user.Id, ct);
+        var newId = await storeService.CreateOrderAsync(campSeasonId, user.Id, ct);
         SetSuccess("Order created.");
         return RedirectToAction(nameof(Order), new { id = newId });
     }

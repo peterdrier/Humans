@@ -152,12 +152,10 @@
     <value>La revisión del perfil puede realizarse de forma independiente. El humano se unirá a Voluntarios cuando todos los documentos estén firmados.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
-    <value>¡Termina de configurar tu cuenta para empezar a participar!</value>
-    <comment>TODO: translate</comment>
+    <value>Completa la configuración de tu cuenta para acceder a los turnos y las funciones de equipo.</value>
   </data>
   <data name="Onboarding_BannerCta" xml:space="preserve">
     <value>Terminar configuración →</value>
-    <comment>TODO: translate</comment>
   </data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>El nombre que ve todo el mundo en el sistema. Que sea único ayuda, pero no es obligatorio, aunque puede ser difícil encontrar a "Bob" entre los pocos miles de humans que hay aquí si alguien viene buscándote.</value></data>
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nombre por el que todos te conocerán.</value></data>

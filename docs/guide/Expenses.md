@@ -25,6 +25,8 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 
 ### Start a report
 
+Give the report an optional **Subject** (up to 500 characters) so you and the reviewers can recognize it later.
+
 Go to `/Expenses/New` to start a draft. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**. A report with no items can't be submitted.
 
 ### Add items and attach receipts
@@ -57,6 +59,8 @@ Once one of your reports has reached the org's accounting system, **My expenses*
 
 ## As a Coordinator
 
+When you set a cap, the original receipts total remains visible while the lower cap becomes the payable amount.
+
 If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. This step only happens when the report's category actually has a coordinator assigned.
 
 Coordinators can't approve — that requires Finance Admin.
@@ -66,6 +70,8 @@ Coordinators can't approve — that requires Finance Admin.
 The tasks below need the **Finance Admin** or **Admin** role.
 
 ### Review and approve
+
+Finance can set or replace a cap chosen by the coordinator.
 
 Go to `/Expenses/Review` to see every report waiting for Finance. Open one to check its items, receipts, and who submitted it, then **approve** it or **reject** it with a reason — optionally capping the payable amount below what was submitted. When you approve, the accounting system is updated automatically in the background (and retried if there's a hiccup). If a push keeps failing, the report shows a banner and you can re-queue it manually from its detail page.
 

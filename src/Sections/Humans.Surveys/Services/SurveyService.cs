@@ -1884,45 +1884,51 @@ internal sealed class SurveyService(
         {
             if (question.Type == SurveyQuestionType.Information)
             {
-                if (question.IsRequired)
-                {
-                    throw new InvalidOperationException(
-                        $"Information item {question.Id} cannot be required.");
-                }
-
-                var images = question.InformationImages ?? [];
-                if (images.Count > MaxInformationImages)
-                {
-                    throw new InvalidOperationException(
-                        $"Information item {question.Id} can have at most {MaxInformationImages} images.");
-                }
-
-                if (!question.HelpText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))
-                    && images.Count == 0)
-                {
-                    throw new InvalidOperationException(
-                        $"Information item {question.Id} must contain Markdown or at least one image.");
-                }
-
-                if (images.Any(image =>
-                    !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
-                {
-                    throw new InvalidOperationException(
-                        $"Every image in Information item {question.Id} must have a label.");
-                }
-
-                if (images.Any(image =>
-                    !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
-                {
-                    throw new InvalidOperationException(
-                        $"Every image in Information item {question.Id} must have alt text.");
-                }
-
+                ValidateInformationQuestion(question);
                 continue;
             }
 
             if (question.Type != SurveyQuestionType.Grid) continue;
 
+            ValidateGridQuestion(question);
+        }
+
+        static void ValidateInformationQuestion(SurveyQuestion question)
+        {
+            if (question.IsRequired)
+                throw new InvalidOperationException($"Information item {question.Id} cannot be required.");
+
+            var images = question.InformationImages ?? [];
+            if (images.Count > MaxInformationImages)
+            {
+                throw new InvalidOperationException(
+                    $"Information item {question.Id} can have at most {MaxInformationImages} images.");
+            }
+
+            if (!question.HelpText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))
+                && images.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Information item {question.Id} must contain Markdown or at least one image.");
+            }
+
+            if (images.Any(image =>
+                !image.Label.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
+            {
+                throw new InvalidOperationException(
+                    $"Every image in Information item {question.Id} must have a label.");
+            }
+
+            if (images.Any(image =>
+                !image.AltText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))))
+            {
+                throw new InvalidOperationException(
+                    $"Every image in Information item {question.Id} must have alt text.");
+            }
+        }
+
+        static void ValidateGridQuestion(SurveyQuestion question)
+        {
             if (question.GridSelectionMode is null
                 || !Enum.IsDefined(question.GridSelectionMode.Value))
             {
@@ -1931,21 +1937,16 @@ internal sealed class SurveyService(
 
             var rows = question.GridRows ?? [];
             if (rows.Count == 0)
-            {
                 throw new InvalidOperationException($"Grid question {question.Id} must have at least one row.");
-            }
 
             if (question.Options.Count == 0 || question.Options.Count > 5)
             {
-                throw new InvalidOperationException($"Grid question {question.Id} must have between one and five columns.");
+                throw new InvalidOperationException(
+                    $"Grid question {question.Id} must have between one and five columns.");
             }
 
-            ValidateStableValues(
-                rows.Select(row => row.Value),
-                $"Grid question {question.Id} row");
-            ValidateStableValues(
-                question.Options.Select(option => option.Value),
-                $"Grid question {question.Id} column");
+            ValidateStableValues(rows.Select(row => row.Value), $"Grid question {question.Id} row");
+            ValidateStableValues(question.Options.Select(option => option.Value), $"Grid question {question.Id} column");
         }
 
         static void ValidateStableValues(IEnumerable<string> values, string description)

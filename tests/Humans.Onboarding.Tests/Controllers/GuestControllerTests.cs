@@ -4,9 +4,7 @@ using Humans.Onboarding.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -45,14 +43,10 @@ public class GuestControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
                 "test")),
-            RequestServices = new ServiceCollection()
-                .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
-                .BuildServiceProvider(),
         };
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = http,
-            ActionDescriptor = new ControllerActionDescriptor { ActionName = "Test" },
         };
         ctrl.Url = Substitute.For<IUrlHelper>();
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());

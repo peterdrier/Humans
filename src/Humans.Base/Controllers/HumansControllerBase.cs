@@ -60,9 +60,9 @@ public abstract class HumansControllerBase(IUserServiceRead userService) : Contr
 
     protected void SetError(string message)
     {
-        var logger = HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-            .CreateLogger(GetType());
-        logger.LogDebug("Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor.ActionName);
+        var loggerFactory = HttpContext?.RequestServices?.GetService<ILoggerFactory>();
+        loggerFactory?.CreateLogger(GetType()).LogDebug(
+            "Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor?.ActionName);
         TempData[TempDataKeys.ErrorMessage] = message;
     }
 

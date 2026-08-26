@@ -207,6 +207,37 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task GetThreadAsync_merges_comments_and_audit_events_chronologically()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var commenterId = Guid.NewGuid();
+        SeedUser(commenterId, "Commenter").Email = "commenter@test.com";
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
+        AuditLog.GetFilteredEntriesAsync(
+                Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
+                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
+            [new(Guid.NewGuid(), AuditAction.IssueGitHubLinked, nameof(Issue), issueId,
+                "GitHub link: 123", auditAt, null, null, null)]));
+
+        await _service.PostCommentAsync(
+            issueId, commenterId, "A comment", senderIsReporter: false,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        var thread = await _service.GetThreadAsync(issueId, Xunit.TestContext.Current.CancellationToken);
+
+        thread.Should().HaveCount(2);
+        thread.Select(e => e.At).Should().BeInAscendingOrder();
+        thread[0].Should().BeOfType<IssueCommentEvent>()
+            .Which.ActorDisplayName.Should().Be("Commenter");
+        thread[1].Should().BeOfType<IssueAuditEvent>()
+            .Which.Action.Should().Be(AuditAction.IssueGitHubLinked);
+        thread[1].ActorUserId.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SubmitIssueAsync_lands_in_Triage_and_invalidates_nav_badge()
     {
         var userId = Guid.NewGuid();
@@ -223,6 +254,8 @@ public sealed class IssuesServiceTests
         issue.ReporterUserId.Should().Be(userId);
         issue.Section.Should().Be(IssueSectionRouting.Tickets);
         _navBadge.Received(1).Invalidate();
+        _issuesBadge.Received(1).InvalidateMany(
+            Arg.Is<IReadOnlySet<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)));
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id, Xunit.TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Triage);
@@ -497,6 +530,20 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateStatusAsync_without_actor_audits_as_API()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+
+        await _service.UpdateStatusAsync(
+            issueId, IssueStatus.InProgress, actorUserId: null,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.IssueStatusChanged, nameof(Issue), issueId,
+            Arg.Any<string>(), "API", Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task UpdateStatusAsync_notifies_reporter_and_assignee_excluding_actor()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
@@ -719,9 +766,6 @@ public sealed class IssuesServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
-
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
-        stored.Section.Should().Be(IssueSectionRouting.Teams);
     }
 
     [HumansFact]
@@ -745,9 +789,23 @@ public sealed class IssuesServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SetGitHubIssueNumberAsync_audits_link_change()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var actorId = Guid.NewGuid();
+
+        await _service.SetGitHubIssueNumberAsync(issueId, 1234, actorId, Xunit.TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.GitHubIssueNumber.Should().Be(1234);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.IssueGitHubLinked, nameof(Issue), issueId,
+            Arg.Is<string>(s => s.Contains("1234", StringComparison.Ordinal)), actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

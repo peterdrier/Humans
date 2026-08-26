@@ -5,9 +5,9 @@ namespace Humans.Store.Data;
 
 /// <summary>
 /// Repository for the Store section's tables: <c>store_products</c>,
-/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c>,
-/// <c>store_invoices</c>, and <c>store_treasury_sync_state</c>. The only
-/// non-test file that writes to these DbSets.
+/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c> and
+/// <c>store_invoices</c>. The only non-test file that writes to these DbSets.
+/// <c>store_treasury_sync_state</c> ships unused — nothing here touches it.
 /// </summary>
 /// <remarks>
 /// Follows the §15b Singleton + <c>IDbContextFactory</c> pattern: every method
@@ -44,7 +44,6 @@ internal interface IStoreRepository : IRepository
     Task<IReadOnlyList<Order>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<Order?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
-    Task<IReadOnlyList<Order>> GetAllOrdersAsync(CancellationToken ct = default);
     /// <summary>
     /// Returns every <see cref="Order"/> whose <c>CampSeasonId</c> is in
     /// <paramref name="campSeasonIds"/>, with <c>Lines</c> and <c>Payments</c>
@@ -135,8 +134,4 @@ internal interface IStoreRepository : IRepository
     /// carry an invoice row while still <c>Open</c>.
     /// </summary>
     Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default);
-
-    // Treasury sync state
-    Task<TreasurySyncState> GetOrCreateTreasurySyncStateAsync(CancellationToken ct = default);
-    Task UpdateTreasurySyncStateAsync(TreasurySyncState state, CancellationToken ct = default);
 }
