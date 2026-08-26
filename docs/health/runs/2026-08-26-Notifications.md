@@ -93,7 +93,7 @@ Also wasted: three of fourteen scripted literal replacements missed on the first
 - [ ] 1 — Delete the three uncalled POST routes, or restore the single-item buttons that would call them?
 - [ ] 2 — Localize the meter titles (a key per title across all six cultures, plus a plural form), or exempt `/Notifications` meters?
 - [ ] 15 — Delete the recipient resolver? Only a manual app start can prove it safe today.
-- [ ] 17 — Edit the scheduled prompt to drop its Stryker instruction, which the skill now forbids.
+- [x] 17 — Edit the scheduled prompt to drop its Stryker instruction, which the skill now forbids. Peter fixed the prompt separately on 2026-08-26; nothing left for a run to do.
 - [ ] 18 — Drop `_ => MessageCategory.System` so a missing mapping is a compile error?
 - [ ] 19 — Should all four single-item routes refuse a non-recipient the same way, and which way?
 - [ ] 20 — Widen the three purge delete methods to return affected user ids and evict, or state the purge as a deliberate exception to the badge-cache invariant?
