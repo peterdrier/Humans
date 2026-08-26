@@ -17,8 +17,9 @@ Happy path. When something needs fixing it gets more complicated.
 
 1. **A member enters an expense report** (`/Expenses`).
 2. **The department coordinator approves it**, setting a max if the report goes over what's
-   allocated.
-3. **The treasurer (finance admin) also approves it** — second pair of eyes on every report.
+   allocated. Only when the category has a budget coordinator — with none assigned, the report
+   goes straight to step 3 (`CategoryRequiresCoordinatorEndorsementAsync` in Expenses).
+3. **The treasurer (finance admin) also approves it.**
 4. **The report is uploaded to Holded** for the accountant, and because math. The member gets a
    Holded contact with a creditor account (e.g. `40000004`).
 5. **Holded tells Humans** that the member with that account is now owed, say, €132.45. Visible
@@ -33,23 +34,27 @@ Happy path. When something needs fixing it gets more complicated.
 8. **The bank movements sync back to Holded** as individual transfers, for more accounting math
    fun.
 9. **Humans gets the update from Holded** (nightly ledger sync): "the bank sent €123 to Sally".
-10. **Humans tells Holded which creditor account each transfer settles** — the Book action on
-    `/Finance/Sepa` posts the payment against the member's open purchase docs, so the €123 lands
-    on account `40000004` and the math adds up to zero.
-11. **When it all adds up to zero, we're done.** The balance disappears from `/Expenses` and
-    `/Finance/Creditors`.
+10. **Humans tells Holded which creditor account each transfer settles** — the treasurer clicks
+    **Book** on `/Finance/Sepa`, which posts the payment against the member's open purchase docs,
+    so the €123 lands on account `40000004` and the math adds up to zero. Booking is a manual
+    per-transfer click today; the next ledger sync after it is what updates the cached balance.
+11. **When it all adds up to zero, we're done.** After that post-booking sync, the balance
+    disappears from `/Expenses` and `/Finance/Creditors` — until then the pages still show the
+    pre-booking balance.
 
 ## Why it's built this way
 
 It's not exactly cake, but the shape is deliberate: **appropriate controls where we could get
 robbed, automation everywhere else.**
 
-- Two human approvals (steps 2–3) before anything reaches the books.
-- Two humans verify the bank upload (step 7) — the one step that irreversibly moves money stays
-  manual and double-checked.
+- Human approval before anything reaches the books (steps 2–3): the treasurer always, plus the
+  coordinator wherever the category has one.
+- The bank upload (step 7) — the one step that irreversibly moves money — stays manual, with the
+  treasurer and a second verifier checking the totals.
+- Settlement booking (step 10) is also a deliberate human click per transfer, so nothing posts
+  payments into the books unattended.
 - Everything around those control points is automated: the Holded push, the balance reads, the
-  SEPA file generation, the settlement booking, the sync loops. Nothing depends on a human
-  remembering to do bookkeeping.
+  SEPA file generation, the sync loops.
 - Holded is the source of truth for what's owed (the balance is derived from its daybook, never
   tracked in Humans), and Humans never writes journal entries by hand — settlement goes through
   Holded's own payment API so the accountant sees a normal ledger.

@@ -102,7 +102,7 @@ dotnet run --project src/Humans.Web
 ```
 
 - `-v quiet` is mandatory — default verbosity floods the context for no benefit ([`dotnet-verbosity-quiet`](memory/process/dotnet-verbosity-quiet.md)).
-- Scope the inner loop to the section you touched (`dotnet test tests/Humans.<Section>.Tests -v quiet` runs in seconds), then run the full `dotnet test Humans.slnx -v quiet` gate once before committing or opening the PR — never skip it ([`scoped-inner-loop-tests`](memory/process/scoped-inner-loop-tests.md)).
+- Scope testing to the change's blast radius ([`scoped-inner-loop-tests`](memory/process/scoped-inner-loop-tests.md)): docs-only changes need no build or tests; a single-section change is gated by that section's test project (`dotnet test tests/Humans.<Section>.Tests -v quiet`, seconds — CI runs the full suite anyway); cross-section surface or an unclear radius gets `tests/Humans.Application.Tests` plus the full `dotnet test Humans.slnx -v quiet` gate before the PR.
 - Analyzers enforce the call-site rules (repository access, service boundaries). A red analyzer is the answer, not an obstacle — grandfathered and baselined violations are documented tech debt and never justify a new one.
 - Version check on a deployed instance: `GET /api/version`.
 - Every PR whose branch lives in `peterdrier/Humans` gets a preview deploy at `https://{pr_id}.n.burn.camp` with its own database cloned from QA and dev login enabled — the place to verify user-visible changes for real. Fork PRs get no preview; a maintainer can deploy one by hand.
