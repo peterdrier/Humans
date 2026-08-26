@@ -105,7 +105,7 @@ internal sealed class NotificationsController(
         var result = await inboxService.DismissAsync(id, userId.Value);
 
         if (result.NotFound) return NotFound();
-        if (result.Forbidden) return StatusCode(403);
+        if (result.Forbidden) return Forbid();
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();

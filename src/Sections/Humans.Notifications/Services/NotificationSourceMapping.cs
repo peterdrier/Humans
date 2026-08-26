@@ -38,6 +38,10 @@ internal static class NotificationSourceMapping
         NotificationSource.CampMembershipRejected => MessageCategory.TeamUpdates,
         NotificationSource.CampMembershipSeasonClosed => MessageCategory.TeamUpdates,
         NotificationSource.CampRoleAssigned => MessageCategory.TeamUpdates,
+        NotificationSource.IssueComment => MessageCategory.System,
+        NotificationSource.IssueStatusChanged => MessageCategory.System,
+        NotificationSource.IssueAssigned => MessageCategory.System,
+        NotificationSource.IssueSubmitted => MessageCategory.System,
         _ => MessageCategory.System
     };
 }

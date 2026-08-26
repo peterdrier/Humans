@@ -112,23 +112,11 @@
   <data name="Notification_Inbox_Title" xml:space="preserve">
     <value>Notificacions</value>
   </data>
-  <data name="Notification_Tag_Urgent" xml:space="preserve">
-    <value>Urgent</value>
-  </data>
-  <data name="Notification_Tag_Action" xml:space="preserve">
-    <value>Acció</value>
-  </data>
-  <data name="Notification_Tag_Info" xml:space="preserve">
-    <value>Info</value>
-  </data>
   <data name="Notification_Dismiss" xml:space="preserve">
     <value>Descartar</value>
   </data>
   <data name="Notification_HandledBy" xml:space="preserve">
     <value>Gestionat per {0}, {1}</value>
-  </data>
-  <data name="Notification_Pref_InboxEnabled" xml:space="preserve">
-    <value>Notificacions dins l'aplicació</value>
   </data>
   <data name="Notification_DefaultActionLabel" xml:space="preserve">
     <value>Veure →</value>
