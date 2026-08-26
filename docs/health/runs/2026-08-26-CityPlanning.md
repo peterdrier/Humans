@@ -435,6 +435,21 @@ has no back-navigation (it has one at line 57 and another at line 63), and a cla
   not a default value, and `appsettings.json` supplies `"city-planning"`. That
   entry is withdrawn too. Both were mine to catch and I did not.
 
+  A later round found the same defect one layer down. Resolving the id before
+  the write closed the gap *between* the two awaits, but the write itself still
+  carried the request token into `SaveChangesAsync`, and a request aborted while
+  that command is in flight can leave the row committed on the server while the
+  await reports cancellation — the change lands, `LogAsync` is never reached, and
+  the actor record is lost anyway. The audited write now runs on
+  `CancellationToken.None`; everything before it stays cancellable, because
+  abandoning the read writes no value change worth an entry. A second test issues
+  the mutation through a repository that honours its token, with the request
+  already aborted, and asserts both that the write was issued with a token that
+  cannot be cancelled and that the entry was still recorded. It fails on the old
+  code. The two unaudited settings writes — `UpdatePlacementDatesAsync` and
+  `UpdateRegistrationInfoAsync`, neither of which takes a `userId` — keep the
+  request token, since they have no audit entry to protect.
+
 ## Skipped
 
 - **Sections passed over as blocked:** Store — open doctor PR

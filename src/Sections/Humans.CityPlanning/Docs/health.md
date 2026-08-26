@@ -100,8 +100,9 @@ Stated so a violation is recognisable:
 10. Uploaded zone files are rejected above 10 MB and when unparseable.
 11. Every settings write that takes a `userId` — both placement phases, the zone uploads and
     the zone deletes — appends an audit entry naming that actor, after the save, and a request
-    aborted mid-write does not drop it: the row id is resolved before the save so no cancellable
-    await sits between the save and the token-less `LogAsync`. The settings row records *when* a
+    aborted mid-write does not drop it: the row id is resolved before the save, and the save
+    itself runs on `CancellationToken.None`, so nothing cancellable sits between the committing
+    write and the token-less `LogAsync`. The settings row records *when* a
     value changed; the audit log is the only record of *who*. A rejected upload never reaches the
     row and writes no entry.
 12. The city-planning team slug is normalized on both sides before comparing, so the configured

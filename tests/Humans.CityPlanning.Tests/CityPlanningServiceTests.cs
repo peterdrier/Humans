@@ -420,6 +420,56 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<string?>());
     }
 
+    // The repository passes its token into SaveChangesAsync, so a request aborted while that
+    // command is in flight can leave the row committed while the await reports cancellation —
+    // the change lands and LogAsync, which takes no token, is never reached. The audited write
+    // therefore runs on CancellationToken.None: here the token is already cancelled by the time
+    // the mutation is issued, and a repository that honours its token still commits and audits.
+    [HumansFact]
+    public async Task OpenPlacementAsync_RequestAlreadyAbortedWhenTheWriteIsIssued_StillWritesAuditEntry()
+    {
+        SetupCampSettings();
+        var settingsId = Guid.NewGuid();
+        var userId = NewUserId();
+        using var cts = new CancellationTokenSource();
+
+        var repo = Substitute.For<ICityPlanningRepository>();
+        repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                // The abort arrives after the read and before the write — the window the
+                // production repository would carry into SaveChangesAsync.
+                await cts.CancelAsync();
+                return new CityPlanningSettings { Id = settingsId, Year = 2026 };
+            });
+        repo.MutateSettingsAsync(
+                Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+                Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                ci.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+        var sut = new CityPlanningService(
+            repo, Clock, Options.Create(_options),
+            _campService, _teamService, _userService, _auditLog);
+
+        await sut.OpenPlacementAsync(userId, cts.Token);
+
+        await repo.Received(1).MutateSettingsAsync(
+            Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+            Arg.Any<Instant>(), Arg.Is<CancellationToken>(t => !t.CanBeCanceled));
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settingsId,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
     // The slug is normalized on both sides. Before that it was lower-cased on the configured
     // side only and compared Ordinal, so a stored slug carrying any uppercase never matched
     // and every city-planning team member silently lost their map-admin exemption.

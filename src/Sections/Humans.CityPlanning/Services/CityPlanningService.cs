@@ -35,11 +35,19 @@ internal sealed class CityPlanningService(
     /// <summary>
     /// Applies a settings change for the public year and records who made it. Every caller is
     /// an organiser acting on the members' behalf, and <c>CityPlanningSettings</c> stores only
-    /// when a value changed — the actor exists nowhere but the audit log. The row id is resolved
-    /// <em>before</em> the write: <c>LogAsync</c> deliberately takes no cancellation token, so a
-    /// cancellable await between the save and the audit call would let an aborted request commit
-    /// the change and skip its actor record. Both repository calls create the row on demand, and
-    /// nothing deletes it, so the id read here is the id the mutation writes.
+    /// when a value changed — the actor exists nowhere but the audit log.
+    ///
+    /// <para><c>LogAsync</c> deliberately takes no cancellation token, so nothing cancellable may
+    /// sit between the committing write and the audit call. Two things follow. The row id is
+    /// resolved <em>before</em> the write, so no post-save re-read stands in the way. And the write
+    /// itself runs on <see cref="CancellationToken.None"/>: the repository passes its token into
+    /// <c>SaveChangesAsync</c>, and a request aborted while that command is in flight can leave the
+    /// row committed on the server while the await reports cancellation — the change lands and its
+    /// actor record does not. Everything up to that point stays cancellable, because abandoning it
+    /// writes no value change worth an entry.</para>
+    ///
+    /// <para>Both repository calls create the row on demand, and nothing deletes it, so the id read
+    /// here is the id the mutation writes.</para>
     /// </summary>
     private async Task MutateSettingsAndAuditAsync(
         Action<CityPlanningSettings, Instant> mutate,
@@ -54,7 +62,7 @@ internal sealed class CityPlanningService(
         var settings = await repo.GetOrCreateSettingsAsync(campSettings.PublicYear, now, cancellationToken);
 
         await repo.MutateSettingsAsync(
-            campSettings.PublicYear, s => mutate(s, now), now, cancellationToken);
+            campSettings.PublicYear, s => mutate(s, now), now, CancellationToken.None);
 
         await auditLog.LogAsync(
             action, nameof(CityPlanningSettings), settings.Id, description, userId);
