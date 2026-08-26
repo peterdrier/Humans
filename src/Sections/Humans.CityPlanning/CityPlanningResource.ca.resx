@@ -338,4 +338,22 @@
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
     <value>Cada barrio està acolorit segons la seva zona sonora preferida (editable des de la pàgina del barrio).</value>
   </data>
+  <data name="CityPlanning_Help_PlacingImageAlt" xml:space="preserve">
+    <value>Captura: dibuixant el contorn d'un barrio al mapa</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingImageAlt" xml:space="preserve">
+    <value>Captura: arrossegant un vèrtex per canviar la forma d'un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_SavingImageAlt" xml:space="preserve">
+    <value>Captura: l'historial de versions d'un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve">
+    <value>Captura: un barrio dibuixat fora de les zones d'acampada discontínues</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve">
+    <value>Captura: dos barrios superposats al mapa</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
+    <value>Captura: barrios acolorits segons la seva zona de so</value>
+  </data>
 </root>

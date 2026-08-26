@@ -338,4 +338,22 @@
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
     <value>Ogni barrio è colorato in base alla sua zona sonora preferita (modificabile dalla pagina del barrio).</value>
   </data>
+  <data name="CityPlanning_Help_PlacingImageAlt" xml:space="preserve">
+    <value>Screenshot: disegno del contorno di un barrio sulla mappa</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingImageAlt" xml:space="preserve">
+    <value>Screenshot: trascinamento di un vertice per modificare la forma di un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_SavingImageAlt" xml:space="preserve">
+    <value>Screenshot: la cronologia delle versioni di un barrio</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve">
+    <value>Screenshot: un barrio disegnato fuori dalle zone di campeggio tratteggiate</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve">
+    <value>Screenshot: due barrio sovrapposti sulla mappa</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
+    <value>Screenshot: barrio colorati in base alla zona sonora</value>
+  </data>
 </root>
