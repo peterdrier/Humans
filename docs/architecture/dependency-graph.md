@@ -237,6 +237,7 @@ graph LR
     CityPlan --> Camp
     CityPlan --> Team
     CityPlan --> User
+    CityPlan --> Audit
 
     %% Shifts
     ShiftMgmt --> Audit

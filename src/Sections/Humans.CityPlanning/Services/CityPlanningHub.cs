@@ -7,15 +7,11 @@ using Humans.Users.Contracts;
 namespace Humans.CityPlanning.Services;
 
 /// <summary>
-/// Live cursor presence for the barrio and container maps. Owned by the City Planning
-/// section since G5 lane 4b-ii (nobodies-collective/Humans#866); it used to sit in
-/// <c>Humans.UI</c> and had to be <c>public</c> because Shell's
-/// <c>app.MapHub&lt;CityPlanningHub&gt;("/hubs/city-planning")</c> named the concrete type.
-/// That call moved into this section's own <c>SectionEndpoints : ISectionEndpoints</c>
-/// (nobodies-collective/Humans#1075), so the hub is <c>internal</c> like the rest of the
-/// section (HUM0034) — its only consumers are <c>SectionEndpoints</c> and
-/// <c>CityPlanningApiController</c>'s <c>IHubContext&lt;CityPlanningHub&gt;</c>, both in this
-/// assembly.
+/// Live cursor presence for the barrio and container maps. <c>internal</c> like the rest
+/// of the section (HUM0034): its only consumers are this section's
+/// <c>SectionEndpoints</c>, which maps it, and <c>CityPlanningApiController</c>'s
+/// <c>IHubContext&lt;CityPlanningHub&gt;</c> — both in this assembly. Keep it that way;
+/// a <c>MapHub</c> call by concrete type from Shell would force it public again.
 /// </summary>
 [Authorize]
 internal sealed class CityPlanningHub(IUserServiceRead userService, UserManager<User> userManager) : Hub
@@ -35,10 +31,6 @@ internal sealed class CityPlanningHub(IUserServiceRead userService, UserManager<
         await base.OnConnectedAsync();
     }
 
-    /// <summary>
-    /// Called by clients to broadcast their cursor position.
-    /// Relayed to all other connected clients.
-    /// </summary>
     public async Task UpdateCursor(double lat, double lng)
     {
         var displayName = _displayNames.GetValueOrDefault(Context.ConnectionId, Context.User?.Identity?.Name ?? "Unknown");

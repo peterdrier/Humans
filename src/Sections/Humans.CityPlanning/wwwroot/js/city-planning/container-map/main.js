@@ -5,7 +5,7 @@ import { initPlacementNotes, openPlacementNotes }           from './placement-no
 import { addBackgroundLayers, addContainerLayers, updateContainerSource } from './layers.js';
 import { initSidebar, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
 import { initInteraction, activateContainer, selectPlacedContainer, deactivate } from './interaction.js';
-import { initMeasure, exitMeasureMode, wireMeasureButtons } from './measure.js';
+import { initMeasure, exitMeasureMode, wireMeasureButtons } from '../shared/measure.js';
 
 const toast = document.getElementById('map-toast');
 let containers = []; // live container data array

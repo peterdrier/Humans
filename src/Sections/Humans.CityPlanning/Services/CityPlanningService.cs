@@ -1,4 +1,5 @@
 using Humans.CityPlanning.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 
@@ -17,7 +18,8 @@ namespace Humans.CityPlanning.Services;
 /// The City Planning section service. Implements the cross-section surface
 /// (<see cref="ICityPlanningService"/> on the contracts leaf) and, beyond it, the polygon,
 /// placement-phase, zone and export operations the section's own controllers call directly.
-/// Cross-section reads via ICampServiceRead/ITeamServiceRead/IUserServiceRead.
+/// Cross-section reads via ICampServiceRead/ITeamServiceRead/IUserServiceRead; settings
+/// writes record their actor through the Audit crosscut.
 /// </summary>
 internal sealed class CityPlanningService(
     ICityPlanningRepository repo,
@@ -25,9 +27,46 @@ internal sealed class CityPlanningService(
     IOptions<CityPlanningOptions> options,
     ICampServiceRead campService,
     ITeamServiceRead teamService,
-    IUserServiceRead userService) : ICityPlanningService
+    IUserServiceRead userService,
+    IAuditLogService auditLog) : ICityPlanningService
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
+
+    /// <summary>
+    /// Applies a settings change for the public year and records who made it. Every caller is
+    /// an organiser acting on the members' behalf, and <c>CityPlanningSettings</c> stores only
+    /// when a value changed — the actor exists nowhere but the audit log.
+    ///
+    /// <para><c>LogAsync</c> deliberately takes no cancellation token, so nothing cancellable may
+    /// sit between the committing write and the audit call. Two things follow. The row id is
+    /// resolved <em>before</em> the write, so no post-save re-read stands in the way. And the write
+    /// itself runs on <see cref="CancellationToken.None"/>: the repository passes its token into
+    /// <c>SaveChangesAsync</c>, and a request aborted while that command is in flight can leave the
+    /// row committed on the server while the await reports cancellation — the change lands and its
+    /// actor record does not. Everything up to that point stays cancellable, because abandoning it
+    /// writes no value change worth an entry.</para>
+    ///
+    /// <para>Both repository calls create the row on demand, and nothing deletes it, so the id read
+    /// here is the id the mutation writes.</para>
+    /// </summary>
+    private async Task MutateSettingsAndAuditAsync(
+        Action<CityPlanningSettings, Instant> mutate,
+        AuditAction action,
+        string description,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var now = clock.GetCurrentInstant();
+
+        var settings = await repo.GetOrCreateSettingsAsync(campSettings.PublicYear, now, cancellationToken);
+
+        await repo.MutateSettingsAsync(
+            campSettings.PublicYear, s => mutate(s, now), now, CancellationToken.None);
+
+        await auditLog.LogAsync(
+            action, nameof(CityPlanningSettings), settings.Id, description, userId);
+    }
 
     // --- Polygon reads ---
 
@@ -199,11 +238,20 @@ internal sealed class CityPlanningService(
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var normalizedSlug = options.Value.CityPlanningTeamSlug.ToLowerInvariant();
+        // Both sides are lower-cased before comparing. Only the configured value used to be,
+        // so a stored slug carrying any uppercase never matched and every city-planning team
+        // member silently lost their map-admin exemption.
+        // The option defaults to string.Empty, so an unconfigured instance would normalize
+        // to "" and match any team whose slug normalized to the same. No configured slug
+        // means no exemption, not a blanket one.
+        var configuredSlug = options.Value.CityPlanningTeamSlug;
+        if (string.IsNullOrWhiteSpace(configuredSlug)) return false;
+
+        var normalizedSlug = configuredSlug.ToLowerInvariant();
         var team = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .FirstOrDefault(t =>
-                string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal) ||
-                string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
+                string.Equals(t.Slug.ToLowerInvariant(), normalizedSlug, StringComparison.Ordinal) ||
+                string.Equals(t.CustomSlug?.ToLowerInvariant(), normalizedSlug, StringComparison.Ordinal));
         return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
@@ -236,76 +284,62 @@ internal sealed class CityPlanningService(
         return ToDto(settings);
     }
 
-    public async Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        var now = clock.GetCurrentInstant();
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
+    public Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, now) =>
             {
                 s.IsPlacementOpen = true;
                 s.OpenedAt = now;
             },
-            now,
+            AuditAction.CityPlanningPlacementOpened,
+            "Opened barrio placement",
+            userId,
             cancellationToken);
-    }
 
-    public async Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        var now = clock.GetCurrentInstant();
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
+    public Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, now) =>
             {
                 s.IsPlacementOpen = false;
                 s.ClosedAt = now;
             },
-            now,
+            AuditAction.CityPlanningPlacementClosed,
+            "Closed barrio placement",
+            userId,
             cancellationToken);
-    }
 
-    public async Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        var now = clock.GetCurrentInstant();
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
+    public Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, now) =>
             {
                 s.IsContainerPlacementOpen = true;
                 s.ContainerPlacementOpenedAt = now;
             },
-            now,
+            AuditAction.CityPlanningContainerPlacementOpened,
+            "Opened container placement",
+            userId,
             cancellationToken);
-    }
 
-    public async Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        var now = clock.GetCurrentInstant();
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
+    public Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, now) =>
             {
                 s.IsContainerPlacementOpen = false;
                 s.ContainerPlacementClosedAt = now;
             },
-            now,
+            AuditAction.CityPlanningContainerPlacementClosed,
+            "Closed container placement",
+            userId,
             cancellationToken);
-    }
 
-    public async Task UpdateLimitZoneAsync(
-        string geoJson, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s => s.LimitZoneGeoJson = geoJson,
-            clock.GetCurrentInstant(),
+    public Task UpdateLimitZoneAsync(
+        string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, _) => s.LimitZoneGeoJson = geoJson,
+            AuditAction.CityPlanningLimitZoneUpdated,
+            "Uploaded the site boundary",
+            userId,
             cancellationToken);
-    }
 
     public async Task<GeoJsonUploadResult> UpdateLimitZoneFromUploadAsync(
         IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
@@ -335,26 +369,22 @@ internal sealed class CityPlanningService(
             : (false, "InvalidGeoJson", null);
     }
 
-    public async Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s => s.LimitZoneGeoJson = null,
-            clock.GetCurrentInstant(),
+    public Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, _) => s.LimitZoneGeoJson = null,
+            AuditAction.CityPlanningLimitZoneDeleted,
+            "Deleted the site boundary",
+            userId,
             cancellationToken);
-    }
 
-    public async Task UpdateOfficialZonesAsync(
-        string geoJson, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s => s.OfficialZonesGeoJson = geoJson,
-            clock.GetCurrentInstant(),
+    public Task UpdateOfficialZonesAsync(
+        string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, _) => s.OfficialZonesGeoJson = geoJson,
+            AuditAction.CityPlanningOfficialZonesUpdated,
+            "Uploaded the official zones",
+            userId,
             cancellationToken);
-    }
 
     public async Task<GeoJsonUploadResult> UpdateOfficialZonesFromUploadAsync(
         IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
@@ -367,15 +397,13 @@ internal sealed class CityPlanningService(
         return new GeoJsonUploadResult(true);
     }
 
-    public async Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s => s.OfficialZonesGeoJson = null,
-            clock.GetCurrentInstant(),
+    public Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, _) => s.OfficialZonesGeoJson = null,
+            AuditAction.CityPlanningOfficialZonesDeleted,
+            "Deleted the official zones",
+            userId,
             cancellationToken);
-    }
 
     private async Task UpdatePlacementDatesAsync(
         LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)

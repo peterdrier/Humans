@@ -7,8 +7,8 @@ namespace Humans.CityPlanning;
 
 /// <summary>
 /// City Planning's endpoint contribution, at the project root by convention. Discovered by
-/// Shell — nothing names it, so it needs no section prefix. Maps the live-cursor hub at its
-/// existing path (nobodies-collective/Humans#1075).
+/// Shell — nothing names it, so it needs no section prefix. Maps the live-cursor hub, which
+/// stays <c>internal</c> because this call names the type from inside the assembly.
 /// </summary>
 internal sealed class SectionEndpoints : ISectionEndpoints
 {

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Services;
@@ -19,8 +20,9 @@ namespace Humans.CityPlanning.Tests;
 public sealed class CityPlanningServiceTests : CityPlanningTestBase
 {
     private readonly ICampServiceRead _campService;
-    private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
+    private readonly ITeamServiceRead _teamService;
+    private readonly IUserServiceRead _userService;
+    private readonly IAuditLogService _auditLog;
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
@@ -28,12 +30,13 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         : base(Instant.FromUtc(2026, 3, 15, 12, 0, 0))
     {
         _campService = Substitute.For<ICampServiceRead>();
-        _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
+        _userService = Substitute.For<IUserServiceRead>();
+        _auditLog = Substitute.For<IAuditLogService>();
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService);
+            _campService, _teamService, _userService, _auditLog);
     }
 
     // --- Helpers ---
@@ -65,6 +68,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var bytes = System.Text.Encoding.UTF8.GetBytes(content);
         return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "upload.geojson");
     }
+
+    // The size guard reads Length, never the stream, so this stays cheap.
+    private static IFormFile CreateOversizedUpload() =>
+        new FormFile(new MemoryStream([1]), 0, (10 * 1024 * 1024) + 1, "file", "huge.geojson");
 
     // --- Tests ---
 
@@ -164,6 +171,54 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_NoFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_EmptyFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateUpload(""), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    {
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("FileTooLarge");
+    }
+
+    [HumansFact]
+    public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
+    {
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("MissingFile");
+    }
+
+    [HumansFact]
+    public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    {
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(
+            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("FileTooLarge");
+    }
+
+    [HumansFact]
     public async Task UpdateOfficialZonesFromUploadAsync_ValidFile_PersistsOfficialZones()
     {
         await SeedMapSettingsAsync();
@@ -235,7 +290,224 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.Should().BeTrue();
     }
 
-    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId)
+    // --- Audit: the settings row records when a phase or zone changed, never who. These
+    // writes are organisers acting on the members' behalf, so the actor lives in the audit log.
+
+    [HumansFact]
+    public async Task OpenPlacementAsync_WritesAuditEntry_NamingTheActor()
+    {
+        var settings = await SeedMapSettingsAsync();
+        var userId = NewUserId();
+
+        await _sut.OpenPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settings.Id,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ClosePlacementAsync_WritesAuditEntry()
+    {
+        await SeedMapSettingsAsync(placementOpen: true);
+        var userId = NewUserId();
+
+        await _sut.ClosePlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementClosed,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ContainerPlacementToggles_WriteTheirOwnAuditActions()
+    {
+        await SeedMapSettingsAsync();
+        var userId = NewUserId();
+
+        await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CloseContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningContainerPlacementOpened,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningContainerPlacementClosed,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ZoneUploadAndDelete_WriteTheirOwnAuditActions()
+    {
+        await SeedMapSettingsAsync();
+        var userId = NewUserId();
+        var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
+
+        await _sut.UpdateOfficialZonesFromUploadAsync(file, userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.DeleteLimitZoneAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningOfficialZonesUpdated,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningLimitZoneDeleted,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // A rejected upload never reaches the settings row, so it must not leave an audit entry.
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_RejectedFile_WritesNoAuditEntry()
+    {
+        await SeedMapSettingsAsync();
+
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(
+            CreateUpload("{not-json"), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CityPlanningLimitZoneUpdated,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // IAuditLogService takes no cancellation token by design. Before the fix the settings row
+    // was re-read after the save to get its id, so a request aborted during the write committed
+    // the change and never reached LogAsync — the actor record lost exactly when someone hit
+    // stop mid-click. The id is now resolved before the write.
+    [HumansFact]
+    public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
+    {
+        SetupCampSettings();
+        var settingsId = Guid.NewGuid();
+        var userId = NewUserId();
+        using var cts = new CancellationTokenSource();
+
+        var repo = Substitute.For<ICityPlanningRepository>();
+        repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                ci.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new CityPlanningSettings { Id = settingsId, Year = 2026 };
+            });
+        repo.MutateSettingsAsync(
+                Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+                Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(_ => cts.CancelAsync());
+
+        var sut = new CityPlanningService(
+            repo, Clock, Options.Create(_options),
+            _campService, _teamService, _userService, _auditLog);
+
+        await sut.OpenPlacementAsync(userId, cts.Token);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settingsId,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    // The repository passes its token into SaveChangesAsync, so a request aborted while that
+    // command is in flight can leave the row committed while the await reports cancellation —
+    // the change lands and LogAsync, which takes no token, is never reached. The audited write
+    // therefore runs on CancellationToken.None: here the token is already cancelled by the time
+    // the mutation is issued, and a repository that honours its token still commits and audits.
+    [HumansFact]
+    public async Task OpenPlacementAsync_RequestAlreadyAbortedWhenTheWriteIsIssued_StillWritesAuditEntry()
+    {
+        SetupCampSettings();
+        var settingsId = Guid.NewGuid();
+        var userId = NewUserId();
+        using var cts = new CancellationTokenSource();
+
+        var repo = Substitute.For<ICityPlanningRepository>();
+        repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                // The abort arrives after the read and before the write — the window the
+                // production repository would carry into SaveChangesAsync.
+                await cts.CancelAsync();
+                return new CityPlanningSettings { Id = settingsId, Year = 2026 };
+            });
+        repo.MutateSettingsAsync(
+                Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+                Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                ci.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+        var sut = new CityPlanningService(
+            repo, Clock, Options.Create(_options),
+            _campService, _teamService, _userService, _auditLog);
+
+        await sut.OpenPlacementAsync(userId, cts.Token);
+
+        await repo.Received(1).MutateSettingsAsync(
+            Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
+            Arg.Any<Instant>(), Arg.Is<CancellationToken>(t => !t.CanBeCanceled));
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementOpened,
+            nameof(CityPlanningSettings),
+            settingsId,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    // The slug is normalized on both sides. Before that it was lower-cased on the configured
+    // side only and compared Ordinal, so a stored slug carrying any uppercase never matched
+    // and every city-planning team member silently lost their map-admin exemption.
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_StoredSlugHasUppercase_StillMatches()
+    {
+        var userId = NewUserId();
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId, slug: "City-Planning");
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_ConfiguredSlugHasUppercase_StillMatches()
+    {
+        var userId = NewUserId();
+        _options.CityPlanningTeamSlug = "City-Planning";
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeTrue();
+    }
+
+    // Normalizing both sides turns null into the empty string, so a blank configured slug
+    // would otherwise match any team whose CustomSlug is null.
+    [HumansFact]
+    public async Task IsCityPlanningTeamMemberAsync_BlankConfiguredSlug_MatchesNothing()
+    {
+        var userId = NewUserId();
+        _options.CityPlanningTeamSlug = "   ";
+        SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeFalse();
+    }
+
+    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId, string slug = "city-planning")
     {
         var members = memberUserId.HasValue
             ? new List<TeamMemberInfo>
@@ -245,7 +517,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             }
             : new List<TeamMemberInfo>();
         var teamInfo = new TeamInfo(
-            teamId, "City Planning", null, "city-planning",
+            teamId, "City Planning", null, slug,
             IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
             RequiresApproval: false, IsPublicPage: false, IsHidden: false,
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
@@ -565,21 +837,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     // --- UpdatePlacementDatesAsync ---
 
     [HumansFact]
-    public async Task UpdatePlacementDatesAsync_SetsBothDates()
-    {
-        await SeedMapSettingsAsync();
-        var opens = new LocalDateTime(2026, 4, 10, 18, 0);
-        var closes = new LocalDateTime(2026, 4, 20, 23, 59);
-
-        var result = await _sut.UpdatePlacementDatesAsync("2026-04-10T18:00", "2026-04-20T23:59", Xunit.TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        settings.PlacementOpensAt.Should().Be(opens);
-        settings.PlacementClosesAt.Should().Be(closes);
-    }
-
-    [HumansFact]
     public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
     {
         await SeedMapSettingsAsync();
@@ -626,6 +883,67 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+    }
+
+    // --- RegistrationInfo: keyed to the highest open season, not PublicYear ---
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotPublicYear()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027], null));
+
+        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", Xunit.TestContext.Current.CancellationToken);
+
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        settings.Year.Should().Be(2028);
+        settings.RegistrationInfo.Should().Be("Read this before you register.");
+    }
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_FallsBackToPublicYear_WhenNoOpenSeasons()
+    {
+        SetupCampSettings(2026);
+
+        await _sut.UpdateRegistrationInfoAsync("Blurb", Xunit.TestContext.Current.CancellationToken);
+
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        settings.Year.Should().Be(2026);
+    }
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
+    {
+        SetupCampSettings(2026);
+
+        await _sut.UpdateRegistrationInfoAsync("  padded  ", Xunit.TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be("padded");
+
+        await _sut.UpdateRegistrationInfoAsync("   ", Xunit.TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetRegistrationInfoAsync_ReadsTheSameYearTheWriteUsed()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2027], null));
+
+        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", Xunit.TestContext.Current.CancellationToken);
+
+        // A row keyed to PublicYear must not shadow the open-season one.
+        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
+        {
+            Year = 2026,
+            RegistrationInfo = "Stale public-year blurb",
+            UpdatedAt = Clock.GetCurrentInstant()
+        });
+        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be("Open-season blurb");
     }
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>

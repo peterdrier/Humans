@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Services;
@@ -28,8 +29,9 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(options),
             _campService,
-            Substitute.For<ITeamService>(),
-            Substitute.For<IUserService>());
+            Substitute.For<ITeamServiceRead>(),
+            Substitute.For<IUserServiceRead>(),
+            Substitute.For<IAuditLogService>());
     }
 
     [HumansFact]

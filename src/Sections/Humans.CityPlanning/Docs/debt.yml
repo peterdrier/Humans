@@ -1,0 +1,7 @@
+# Section debt ledger for Humans.CityPlanning. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+inbox:
+  - added: 2026-08-26
+    what: "The container CRUD posts on CityPlanningController (CreateBarrioContainer line 374, EditContainer line 414, DeleteContainer line 451, and their ModelState-invalid branches) redirect to Containers with settings.Year — which is CampSettings.PublicYear — instead of the {year} route value the admin was on. An admin curating containers for a non-public year is bounced to the public year's list after every create, edit and delete, silently losing their place. The private TryCreate/TryUpdate helpers already thread the correct year through; only the callers pass the wrong one. Deferred by Peter (2026-08-26): the year-specific work is being taken together in the winter months, not now. Found by /section-doctor on CityPlanning 2026-08-26."
+    review: light

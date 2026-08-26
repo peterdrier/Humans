@@ -14,7 +14,7 @@
 
 ## Business Context
 
-City Planning organizes the physical layout of the event site across three distinct phases and three screens:
+City Planning organizes the physical layout of the event site across these phases and screens:
 
 1. **Main map** (`/CityPlanning`) — read-only overview available to all authenticated users. Shows official zones, barrio polygons, and optionally containers and the limit zone (both togglable).
 2. **Barrio placement map** (`/CityPlanning/BarrioMap`) — collaborative real-time tool for barrio leads and map admins to draw and adjust camp polygons. Only meaningful while the barrio placement phase is open.
@@ -82,7 +82,7 @@ CampPolygonHistory
 ├── AreaSqm: double
 ├── ModifiedByUserId: Guid (FK → User)
 ├── ModifiedAt: Instant
-└── Note: string ("Saved" by default; "Restored from {ISO timestamp}" for restores)
+└── Note: string — open-ended, persisted as the caller sends it. Examples: "Saved" (the fallback when none is sent); "Restored from {ISO timestamp} UTC" (composed server-side by a restore); "Imported {timestamp}" (what the bulk import sends)
 ```
 
 ### CityPlanningSettings (singleton per year)
@@ -158,7 +158,7 @@ Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No
 | `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection |
 | `admin-import.js` | Admin-page bulk GeoJSON import: parse, name-match camps, preview, then `PUT` each polygon |
 
-The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported by both maps; `container-map/measure.js` is a one-line re-export.
+The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported directly by both maps.
 
 **State flow:**
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
@@ -252,7 +252,7 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 
 ### SignalR Hub
 
-`/hubs/city-planning` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` and receives `CursorMoved(lng, lat)` from clients.
+`/hubs/city-planning` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` on save, and `CursorMoved(connectionId, displayName, lat, lng)` / `CursorLeft(connectionId)` to the other clients. Receives `UpdateCursor(lat, lng)` from clients.
 
 ## Related Features
 

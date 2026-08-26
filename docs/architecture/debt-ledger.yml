@@ -267,6 +267,9 @@ themes:
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-08-26
+    what: "AuditLogEntry.EntityType is a plain string filtered by exact equality (IAuditLogRepository.GetEntityIdsForEntityTypeActionsAsync, AuditViewerService's entityType filter), and nearly every caller supplies it as nameof(<EntityType>) — User, ShiftSignup, GoogleResource, Team, CampSeason, Camp and more, with User by far the most widely audited. Renaming any audited entity therefore changes the discriminator for new rows while historical rows keep the old string, and the entity's audit history silently splits with nothing failing. Decide whether persisted entity-type names should be pinned to constants (and an analyzer added) or the rename risk accepted; the fix is repo-wide across the Audit crosscut's callers, not one section's. Found by /section-doctor on CityPlanning 2026-08-26, from a review finding on peterdrier/Humans#1525 that proposed pinning CityPlanning alone — declined there because a single-section constant would make it the only caller not following the house convention without reducing the exposure."
+    review: panel
   - added: 2026-08-25
     what: "docs/architecture/service-entity-boundary-ratchet.md is retired: its baseline targeted the pre-split Humans.Domain/Humans.Application layout and was never re-run against the current src/Sections layout. Re-run the service/entity boundary audit (I<Section>Service read APIs returning owned EF/domain entities) against src/Sections/*/Contracts and src/Sections/*.Contracts, and decide whether a ratchet is still wanted."
     review: panel
